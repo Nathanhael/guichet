@@ -228,23 +228,46 @@ export default function ManagerView() {
                   <StatCard label="Avg Duration" value={stats.avgDurationMinutes > 0 ? `${stats.avgDurationMinutes}m` : '—'} color="gray" />
                   <StatCard label="Satisfaction" value={stats.avgRating > 0 ? `${stats.avgRating} ⭐` : '—'} color="yellow" />
                   <StatCard label="Abandoned" value={stats.abandonedCount} color="red" />
-                  <StatCard label="Dept Health" value={`${Math.round((stats.dscCount / (stats.total || 1)) * 100)}% DSC`} color="purple" />
+                  <StatCard
+                    label="SLA Health"
+                    value={`${stats.slaHealth}%`}
+                    color={stats.slaHealth >= 90 ? 'teal' : stats.slaHealth >= 70 ? 'yellow' : 'red'}
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <Panel title="Queue health">
                     <div className="grid grid-cols-2 gap-3 mb-3">
-                      <div className={`rounded-lg p-3 ${stats.oldestWaitMinutes > 10 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-700'}`}>
+                      <div className={`rounded-lg p-3 ${stats.oldestWaitMinutes > 3 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-gray-50 dark:bg-gray-700'}`}>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Oldest waiting</p>
-                        <p className={`text-2xl font-bold mt-0.5 ${stats.oldestWaitMinutes > 10 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-white'}`}>
+                        <p className={`text-2xl font-bold mt-0.5 ${stats.oldestWaitMinutes > 3 ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-white'}`}>
                           {stats.oldestWaitMinutes > 0 ? `${stats.oldestWaitMinutes}m` : '—'}
                         </p>
                       </div>
-                      <div className={`rounded-lg p-3 ${stats.waitingOver10 > 0 ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'bg-gray-50 dark:bg-gray-700'}`}>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Waiting &gt;10 min</p>
-                        <p className={`text-2xl font-bold mt-0.5 ${stats.waitingOver10 > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-800 dark:text-white'}`}>
-                          {stats.waitingOver10}
+                      <div className={`rounded-lg p-3 ${stats.waitingOver3 > 0 ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'bg-gray-50 dark:bg-gray-700'}`}>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Waiting &gt;3 min</p>
+                        <p className={`text-2xl font-bold mt-0.5 ${stats.waitingOver3 > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-800 dark:text-white'}`}>
+                          {stats.waitingOver3}
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Dept Distribution Bar */}
+                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                      <p className="text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-wider">DSC vs FOT Distribution</p>
+                      <div className="h-2 w-full bg-teal-500 rounded-full overflow-hidden flex">
+                        <div
+                          className="h-full bg-purple-500 transition-all duration-500"
+                          style={{ width: `${Math.round((stats.dscCount / (stats.total || 1)) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between mt-1.5">
+                        <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">
+                          ● DSC {Math.round((stats.dscCount / (stats.total || 1)) * 100)}%
+                        </span>
+                        <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400">
+                          ● FOT {Math.round((stats.fotCount / (stats.total || 1)) * 100)}%
+                        </span>
                       </div>
                     </div>
                     {stats.total > 0 && (

@@ -165,7 +165,17 @@ app.get('/api/stats', async (req, res) => {
       const age = now - new Date(t.createdAt);
       return age > min ? age : min;
     }, 0);
-    const waitingOver10 = queueTickets.filter((t) => (now - new Date(t.createdAt)) > 600000).length;
+    const waitingOver3 = queueTickets.filter((t) => (now - new Date(t.createdAt)) > 180000).length;
+
+    // SLA Health: % of tickets with response time <= 3 minutes
+    const resolvedTickets = filteredTickets.filter(t => t.expertJoinedAt);
+    const compliantTickets = resolvedTickets.filter(t => {
+      const responseTime = new Date(t.expertJoinedAt) - new Date(t.createdAt);
+      return responseTime <= 180000;
+    }).length;
+    const slaHealth = resolvedTickets.length > 0
+      ? Math.round((compliantTickets / resolvedTickets.length) * 100)
+      : 100;
 
     // Global ratings filter
     let ratings = db.ratings || [];
@@ -196,7 +206,8 @@ app.get('/api/stats', async (req, res) => {
       expertStats,
       agentStats,
       oldestWaitMinutes: Math.round(oldest / 60000),
-      waitingOver10,
+      waitingOver3,
+      slaHealth,
       avgRating: ratings.length > 0
         ? Math.round(((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length) * 10)) / 10
         : null,
