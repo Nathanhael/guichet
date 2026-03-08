@@ -3,6 +3,7 @@ import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import ChatWindow from '../components/ChatWindow';
+import TicketPreview from '../components/TicketPreview';
 import DarkModeToggle from '../components/DarkModeToggle';
 
 const DEPT_COLOR = {
@@ -68,83 +69,6 @@ function StatusPicker({ value, onChange }) {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function TicketPreview({ ticket, messages, onJoin, onClose, t, joinDisabled }) {
-  return (
-    <div className="h-full flex flex-col p-4">
-      <div className="bg-white dark:bg-brand-800 rounded-xl shadow-sm border border-gray-200 dark:border-brand-700 flex flex-col h-full">
-        {/* Preview header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-brand-700 bg-gray-50 dark:bg-brand-900 rounded-t-xl">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${DEPT_COLOR[ticket.dept]}`}>
-              {ticket.dept}
-            </span>
-            <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{ticket.agentName}</span>
-            {ticket.cdbId && (
-              <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">
-                CDBID: {ticket.cdbId}
-              </span>
-            )}
-            {ticket.dareRef && (
-              <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded">
-                Dare Ref: {ticket.dareRef}
-              </span>
-            )}
-            <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded font-medium shrink-0">
-              Preview — read only
-            </span>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg leading-none ml-2">×</button>
-        </div>
-
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-1">
-          {messages.length === 0 ? (
-            <p className="text-center text-gray-400 text-sm mt-8">{t('no_messages')}</p>
-          ) : (
-            messages.map((msg) => (
-              <div key={msg.id} className="flex gap-3 px-2 py-1">
-                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200 shrink-0">
-                  {(msg.senderName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{msg.senderName}</span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(msg.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700 dark:text-gray-200 break-words whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-                  {msg.mediaUrl && (
-                    <img src={msg.mediaUrl} alt="screenshot" className="mt-2 rounded-lg max-w-sm max-h-48 object-contain border border-gray-200 dark:border-brand-600" />
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Join bar */}
-        <div className="px-4 py-3 border-t border-gray-100 dark:border-brand-700 bg-gray-50 dark:bg-brand-900 rounded-b-xl flex items-center justify-between gap-4">
-          {ticket.status === 'closed' ? (
-            <p className="text-sm text-gray-400 italic">This conversation has been closed.</p>
-          ) : (
-            <>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{t('waiting_for_expert')}</p>
-              <button
-                onClick={onJoin}
-                disabled={joinDisabled}
-                className="bg-brand-500 text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-              >
-                {t('join')}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -238,7 +162,7 @@ export default function ExpertView() {
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveDept, setArchiveDept] = useState('all');
   const [focusedTicketId, setFocusedTicketId] = useState(null);
-  const ARCHIVE_LIMIT = 20;
+  const ARCHIVE_LIMIT = 25;
 
   useEffect(() => {
     fetch('/api/tickets')
@@ -270,6 +194,17 @@ export default function ExpertView() {
   function handleStatusChange(status) {
     setMyStatus(status);
     getSocket().emit('status:set', { status });
+
+    // Auto-leave active chats on break or lunch
+    if (status === 'break' || status === 'lunch') {
+      [...expertOpenTickets].forEach((ticketId) => {
+        getSocket().emit('expert:leave', { ticketId, expertId: user.id, expertName: user.name });
+        removeExpertOpenTicket(ticketId);
+        clearUnread(ticketId);
+        if (focusedTicketId === ticketId) setFocusedTicketId(null);
+      });
+      setActiveTab(null);
+    }
   }
 
   function toggleSound() {
@@ -333,8 +268,14 @@ export default function ExpertView() {
   const atMaxChats = openTabTickets.length >= 4;
 
   function selectTicket(ticket) {
-    if (expertOpenTickets.includes(ticket.id)) {
+    const isParticipant = ticket.participants?.some(p => p.id === user.id);
+    if (expertOpenTickets.includes(ticket.id) || isParticipant) {
+      if (!expertOpenTickets.includes(ticket.id)) {
+        addExpertOpenTicket(ticket.id);
+        getSocket().emit('expert:join', { ticketId: ticket.id, expertId: user.id, expertName: user.name, expertLang: user.lang });
+      }
       switchTab(ticket.id);
+      setPreviewTicketId(null);
     } else if (!atMaxChats) {
       setPreviewTicketId(ticket.id);
     }
@@ -419,8 +360,8 @@ export default function ExpertView() {
                     key={d}
                     onClick={() => setFilterDept(d)}
                     className={`flex-1 text-xs py-1 rounded-md transition-colors font-medium ${filterDept === d
-                        ? 'bg-brand-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                      ? 'bg-brand-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                       }`}
                   >
                     {d === 'all' ? t('all') : d}
@@ -463,8 +404,8 @@ export default function ExpertView() {
                         key={ticket.id}
                         onClick={() => selectTicket(ticket)}
                         className={`p-3.5 mt-1 mx-2 rounded-xl cursor-pointer transition-all duration-200 ${isPreviewed || alreadyOpen
-                            ? 'glass-card border-l-[4px] border-l-accent-500 shadow-md'
-                            : 'bg-white/40 dark:bg-brand-800/40 hover:bg-white/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
+                          ? 'glass-card border-l-[4px] border-l-accent-500 shadow-md'
+                          : 'bg-white/40 dark:bg-brand-800/40 hover:bg-white/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
                           } ${isHandled && !alreadyOpen ? 'opacity-70' : ''}`}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -519,8 +460,8 @@ export default function ExpertView() {
                               onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
                               disabled={atMaxChats}
                               className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shrink-0 shadow-sm hover:translate-y-px ${isHandled
-                                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md'
-                                  : 'bg-gradient-to-r from-accent-500 to-rose-500 text-white hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed'
+                                ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md'
+                                : 'bg-gradient-to-r from-accent-500 to-rose-500 text-white hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed'
                                 }`}
                             >
                               {isHandled ? t('jump_in') : t('join')}
@@ -553,8 +494,8 @@ export default function ExpertView() {
                       key={d}
                       onClick={() => setArchiveDept(d)}
                       className={`flex-1 text-xs py-1 rounded-md transition-colors font-medium ${archiveDept === d
-                          ? 'bg-brand-500 text-white'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        ? 'bg-brand-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
                         }`}
                     >
                       {d === 'all' ? 'All' : d}
@@ -582,8 +523,8 @@ export default function ExpertView() {
                             key={ticket.id}
                             onClick={() => setPreviewTicketId(ticket.id)}
                             className={`p-3 cursor-pointer transition-colors ${isPreviewed
-                                ? 'bg-brand-50 dark:bg-brand-900/20 border-l-2 border-brand-500'
-                                : 'hover:bg-gray-50 dark:hover:bg-brand-700 border-l-2 border-transparent'
+                              ? 'bg-brand-50 dark:bg-brand-900/20 border-l-2 border-brand-500'
+                              : 'hover:bg-gray-50 dark:hover:bg-brand-700 border-l-2 border-transparent'
                               }`}
                           >
                             <div className="flex items-center gap-1.5 mb-1">
@@ -651,8 +592,8 @@ export default function ExpertView() {
             <button
               onClick={() => switchSidebarTab(sidebarTab === 'archive' ? 'queue' : 'archive')}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${sidebarTab === 'archive'
-                  ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-brand-700'
+                ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400'
+                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-brand-700'
                 }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -681,10 +622,10 @@ export default function ExpertView() {
                         key={ticket.id}
                         onClick={() => switchTab(ticket.id)}
                         className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === ticket.id
-                            ? 'border-brand-500 text-brand-600 dark:text-brand-400'
-                            : hasUnread
-                              ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 animate-pulse'
-                              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                          ? 'border-brand-500 text-brand-600 dark:text-brand-400'
+                          : hasUnread
+                            ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 animate-pulse'
+                            : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                           }`}
                       >
                         {hasUnread && <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0 animate-bounce" />}
@@ -779,10 +720,10 @@ export default function ExpertView() {
                             key={t.id}
                             onClick={() => isFocused ? null : setFocusedTicketId(t.id)}
                             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${isFocused
-                                ? 'bg-brand-500 text-white'
-                                : hasUnread
-                                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 animate-pulse'
-                                  : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                              ? 'bg-brand-500 text-white'
+                              : hasUnread
+                                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 animate-pulse'
+                                : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                               }`}
                           >
                             <span className={`text-[10px] px-1 py-0.5 rounded ${DEPT_COLOR[t.dept]}`}>{t.dept}</span>

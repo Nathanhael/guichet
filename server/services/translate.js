@@ -23,7 +23,7 @@ export async function translate(text, fromLang, toLang) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'translategemma:12b',
+      model: 'gemmatranslate4b',
       stream: false,
       prompt: `Translate the following text from ${langNames[fromLang]} to ${langNames[toLang]}.
 Return ONLY the translation, nothing else. No explanation, no quotes.

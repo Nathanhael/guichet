@@ -7,7 +7,7 @@ const DEPT_COLOR = {
 };
 
 const STATUS_COLOR = {
-  open:   'bg-yellow-100 text-yellow-700',
+  open: 'bg-yellow-100 text-yellow-700',
   active: 'bg-green-100 text-green-700',
   closed: 'bg-gray-100 text-gray-500',
 };
@@ -30,11 +30,10 @@ export default function TicketList({ tickets, onSelect, activeId }) {
           <li
             key={ticket.id}
             onClick={() => onSelect(ticket)}
-            className={`p-4 cursor-pointer transition-colors hover:bg-brand-50 dark:hover:bg-brand-700 ${
-              activeId === ticket.id
-                ? 'bg-brand-50 dark:bg-gray-700 border-l-4 border-brand-500'
-                : ''
-            }`}
+            className={`p-4 cursor-pointer transition-colors hover:bg-brand-50 dark:hover:bg-brand-700 ${activeId === ticket.id
+              ? 'bg-brand-50 dark:bg-gray-700 border-l-4 border-brand-500'
+              : ''
+              }`}
           >
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
@@ -48,11 +47,21 @@ export default function TicketList({ tickets, onSelect, activeId }) {
               <span className="text-xs text-gray-400">{date} {time}</span>
             </div>
 
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{ticket.title}</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+              {ticket.title || (ticket.dareRef ? `DARE: ${ticket.dareRef}` : ticket.cdbId ? `CDBID: ${ticket.cdbId}` : t('No title'))}
+            </p>
 
             <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
               <span>{LANG_FLAG[ticket.agentLang]} {ticket.agentLang?.toUpperCase()}</span>
-              {ticket.expertName && <span className="text-green-600 dark:text-green-400">• {ticket.expertName}</span>}
+              {ticket.participants && ticket.participants.length > 0 ? (
+                <span className="text-green-600 dark:text-green-400 truncate max-w-[150px]" title={ticket.participants.map(p => p.name).join(', ')}>
+                  • {ticket.participants.map(p => p.name).join(', ')}
+                </span>
+              ) : ticket.expertName ? (
+                <span className="text-green-600 dark:text-green-400 truncate max-w-[150px]" title={ticket.expertName}>
+                  • {ticket.expertName}
+                </span>
+              ) : null}
             </div>
           </li>
         );

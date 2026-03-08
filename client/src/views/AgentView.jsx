@@ -129,8 +129,11 @@ export default function AgentView() {
                       type="text"
                       inputMode="numeric"
                       value={form.refValue}
-                      onChange={(e) => setForm((f) => ({ ...f, refValue: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
-                      placeholder={form.dept === 'FOT' ? 'e.g. 123456789' : 'e.g. 123456'}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/[^0-9]/g, '');
+                        setForm((f) => ({ ...f, refValue: digits.slice(0, 15) }));
+                      }}
+                      placeholder={form.dept === 'FOT' ? 'e.g. 1234567890' : 'e.g. 123456'}
                       className="input-field"
                     />
                   </div>

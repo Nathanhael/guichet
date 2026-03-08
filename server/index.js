@@ -63,45 +63,73 @@ app.get('/api/users', async (_req, res) => {
 });
 
 // GET /api/stats — manager statistics
-app.get('/api/stats', async (_req, res) => {
+app.get('/api/stats', async (req, res) => {
   try {
     const db = await readDb();
+    const { dateFrom, dateTo, dept } = req.query;
     const now = new Date();
     const today = now.toISOString().slice(0, 10);
 
-    const todayTickets = db.tickets.filter((t) => t.createdAt.startsWith(today));
+    // Filter tickets based on global dashboard filters
+    let filteredTickets = db.tickets || [];
+
+    if (dept && dept !== 'all') {
+      filteredTickets = filteredTickets.filter(t => t.dept === dept);
+    }
+    if (dateFrom) {
+      filteredTickets = filteredTickets.filter(t => t.createdAt >= dateFrom);
+    }
+    if (dateTo) {
+      const toStr = dateTo.includes('T') ? dateTo : `${dateTo}T23:59:59`;
+      filteredTickets = filteredTickets.filter(t => t.createdAt <= toStr);
+    }
+
+    const todayTickets = filteredTickets.filter((t) => t.createdAt.startsWith(today));
 
     // Avg time to expert join
-    const withJoin = db.tickets.filter((t) => t.closedAt && t.expertJoinedAt);
+    const withJoin = filteredTickets.filter((t) => t.closedAt && t.expertJoinedAt);
     const avgResponseMs = withJoin.length > 0
       ? withJoin.reduce((s, t) => s + (new Date(t.expertJoinedAt) - new Date(t.createdAt)), 0) / withJoin.length
       : 0;
 
     // Avg chat duration (create → close)
-    const closedWithDuration = db.tickets.filter((t) => t.status === 'closed' && t.closedAt);
+    const closedWithDuration = filteredTickets.filter((t) => t.status === 'closed' && t.closedAt);
     const avgDurationMs = closedWithDuration.length > 0
       ? closedWithDuration.reduce((s, t) => s + (new Date(t.closedAt) - new Date(t.createdAt)), 0) / closedWithDuration.length
       : 0;
 
     // Abandoned = closed without expert ever joining
-    const abandonedCount = db.tickets.filter((t) => t.status === 'closed' && !t.expertJoinedAt).length;
+    const abandonedCount = filteredTickets.filter((t) => t.status === 'closed' && !t.expertJoinedAt).length;
 
-    // Hourly distribution (all tickets, by creation hour)
+    // Hourly distribution (filtered tickets, by creation hour)
     const hourlyMap = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
-    db.tickets.forEach((t) => {
+    filteredTickets.forEach((t) => {
       const h = new Date(t.createdAt).getHours();
       hourlyMap[h].count++;
     });
 
-    // Daily trend — last 30 days
-    const days = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(d.getDate() - i);
-      days.push(d.toISOString().slice(0, 10));
+    // Daily trend
+    let days = [];
+    if (dateFrom && dateTo) {
+      // Determine days in selected range
+      const start = new Date(dateFrom);
+      const end = new Date(dateTo);
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        days.push(d.toISOString().slice(0, 10));
+      }
+      // Cap at reasonable limit if range is huge? (e.g. 90 days)
+      if (days.length > 90) days = days.slice(-90);
+    } else {
+      // Default last 30 days
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        days.push(d.toISOString().slice(0, 10));
+      }
     }
+
     const dailyTrend = days.map((date) => {
-      const dayTickets = db.tickets.filter((t) => t.createdAt.startsWith(date));
+      const dayTickets = filteredTickets.filter((t) => t.createdAt.startsWith(date));
       return {
         date: date.slice(5), // MM-DD
         total: dayTickets.length,
@@ -112,7 +140,7 @@ app.get('/api/stats', async (_req, res) => {
 
     // Expert stats
     const expertMap = {};
-    db.tickets.forEach((t) => {
+    filteredTickets.forEach((t) => {
       if (!t.expertName) return;
       if (!expertMap[t.expertName]) expertMap[t.expertName] = { name: t.expertName, total: 0, today: 0 };
       expertMap[t.expertName].total++;
@@ -129,13 +157,29 @@ app.get('/api/stats', async (_req, res) => {
     });
     const agentStats = Object.values(agentMap).sort((a, b) => b.today - a.today).slice(0, 6);
 
-    // Queue health
-    const openUnhandled = db.tickets.filter((t) => t.status !== 'closed' && !t.expertJoinedAt);
-    const oldest = openUnhandled.reduce((min, t) => {
+    // Queue health (independent of filters usually, but we apply dept filter if present)
+    let queueTickets = db.tickets.filter((t) => t.status !== 'closed' && !t.expertJoinedAt);
+    if (dept && dept !== 'all') queueTickets = queueTickets.filter(t => t.dept === dept);
+
+    const oldest = queueTickets.reduce((min, t) => {
       const age = now - new Date(t.createdAt);
       return age > min ? age : min;
     }, 0);
-    const waitingOver10 = openUnhandled.filter((t) => (now - new Date(t.createdAt)) > 600000).length;
+    const waitingOver10 = queueTickets.filter((t) => (now - new Date(t.createdAt)) > 600000).length;
+
+    // Global ratings filter
+    let ratings = db.ratings || [];
+    if (dept && dept !== 'all') {
+      const deptTickets = db.tickets.filter(t => t.dept === dept).map(t => t.id);
+      ratings = ratings.filter(r => deptTickets.includes(r.ticketId));
+    }
+    if (dateFrom) {
+      ratings = ratings.filter(r => r.createdAt >= dateFrom);
+    }
+    if (dateTo) {
+      const toStr = dateTo.includes('T') ? dateTo : `${dateTo}T23:59:59`;
+      ratings = ratings.filter(r => r.createdAt <= toStr);
+    }
 
     res.json({
       todayTotal: todayTickets.length,
@@ -144,20 +188,91 @@ app.get('/api/stats', async (_req, res) => {
       avgResponseMinutes: Math.round(avgResponseMs / 60000),
       avgDurationMinutes: Math.round(avgDurationMs / 60000),
       abandonedCount,
-      dscCount: db.tickets.filter((t) => t.dept === 'DSC').length,
-      fotCount: db.tickets.filter((t) => t.dept === 'FOT').length,
-      total: db.tickets.length,
+      dscCount: filteredTickets.filter((t) => t.dept === 'DSC').length,
+      fotCount: filteredTickets.filter((t) => t.dept === 'FOT').length,
+      total: filteredTickets.length,
       hourlyDistribution: hourlyMap,
       dailyTrend,
       expertStats,
       agentStats,
       oldestWaitMinutes: Math.round(oldest / 60000),
       waitingOver10,
-      avgRating: (db.ratings || []).length > 0
-        ? Math.round(((db.ratings.reduce((s, r) => s + r.rating, 0) / db.ratings.length) * 10)) / 10
+      avgRating: ratings.length > 0
+        ? Math.round(((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length) * 10)) / 10
         : null,
-      totalRatings: (db.ratings || []).length,
+      totalRatings: ratings.length,
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// GET /api/export
+app.get('/api/export', async (req, res) => {
+  try {
+    const db = await readDb();
+    const { status, dept, search, dateFrom, dateTo } = req.query;
+
+    let ticketsToExport = db.tickets;
+
+    if (status) ticketsToExport = ticketsToExport.filter((t) => t.status === status);
+    if (dept && dept !== 'all') ticketsToExport = ticketsToExport.filter((t) => t.dept === dept);
+    if (search) {
+      const q = search.toLowerCase();
+      ticketsToExport = ticketsToExport.filter((t) =>
+        t.agentName?.toLowerCase().includes(q) ||
+        t.cdbId?.toLowerCase().includes(q) ||
+        t.dareRef?.toLowerCase().includes(q) ||
+        t.expertName?.toLowerCase().includes(q)
+      );
+    }
+    if (dateFrom) ticketsToExport = ticketsToExport.filter((t) => t.createdAt >= dateFrom);
+    if (dateTo) {
+      // Add end of day if only YYYY-MM-DD is provided
+      const toDate = dateTo.includes('T') ? dateTo : `${dateTo}T23:59:59`;
+      ticketsToExport = ticketsToExport.filter((t) => t.createdAt <= toDate);
+    }
+
+    // Set headers for CSV download
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="ikanbi_report.csv"');
+
+    // Header row
+    let csv = 'ID,Department,AgentName,AgentLang,ExpertName,ExpertLang,CDBID,DareRef,Status,CreatedAt,ClosedAt,DurationMinutes,Labels,Participants\n';
+
+    // Data rows
+    ticketsToExport.forEach(t => {
+      const created = new Date(t.createdAt);
+      const closed = t.closedAt ? new Date(t.closedAt) : null;
+      let durationMinutes = '';
+      if (closed) {
+        durationMinutes = Math.round((closed - created) / 60000);
+      }
+
+      const labels = (t.labels || []).join(';');
+      const participants = (t.participants || []).map(p => p.name).join(';');
+
+      // Escape commas in strings and build row
+      const row = [
+        t.id,
+        t.dept,
+        `"${t.agentName || ''}"`,
+        t.agentLang || '',
+        `"${t.expertName || ''}"`,
+        t.expertLang || '',
+        `"${t.cdbId || ''}"`,
+        `"${t.dareRef || ''}"`,
+        t.status,
+        created.toISOString(),
+        closed ? closed.toISOString() : '',
+        durationMinutes,
+        `"${labels}"`,
+        `"${participants}"`
+      ];
+
+      csv += row.join(',') + '\n';
+    });
+
+    res.send(csv);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -315,6 +430,14 @@ io.on('connection', (socket) => {
       // Notify everyone in the room
       io.to(`ticket:${ticketId}`).emit('expert:joined', { ticketId, expertName, participants: ticket.participants });
 
+      // Broadcast to all (for queue/sidebar updates)
+      io.emit('ticket:updated', {
+        ticketId,
+        status: 'active',
+        expertName: ticket.expertName,
+        participants: ticket.participants
+      });
+
       console.log(`[ticket] expert ${expertName} joined ${ticketId}`);
     } catch (err) {
       console.error('[expert:join] error:', err.message);
@@ -398,6 +521,49 @@ io.on('connection', (socket) => {
 
   socket.on('typing:stop', ({ ticketId, senderName }) => {
     socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName, typing: false });
+  });
+
+  // expert:leave — expert/manager leaves a ticket without closing it
+  socket.on('expert:leave', async ({ ticketId, expertId, expertName }) => {
+    try {
+      const db = await readDb();
+      const ticket = db.tickets.find((t) => t.id === ticketId);
+      if (!ticket) return;
+
+      // Remove from participants
+      if (ticket.participants) {
+        ticket.participants = ticket.participants.filter((p) => p.id !== expertId);
+      }
+
+      // If this was the primary expert, clear those fields so someone else can take over
+      if (ticket.expertId === expertId) {
+        ticket.expertId = null;
+        ticket.expertName = null;
+        ticket.expertLang = null;
+        ticket.expertJoinedAt = null;
+      }
+
+      await writeDb(db);
+
+      // Leave the socket room
+      socket.leave(`ticket:${ticketId}`);
+
+      // Notify remaining participants
+      io.to(`ticket:${ticketId}`).emit('expert:left', { ticketId, expertName, participants: ticket.participants || [] });
+
+      // Broadcast updated ticket to all
+      io.emit('ticket:updated', {
+        ticketId,
+        participants: ticket.participants || [],
+        expertId: ticket.expertId,
+        expertName: ticket.expertName,
+        expertJoinedAt: ticket.expertJoinedAt
+      });
+
+      console.log(`[ticket] expert ${expertName} left ${ticketId}`);
+    } catch (err) {
+      console.error('[expert:leave] error:', err.message);
+    }
   });
 
   // ticket:close — close a ticket

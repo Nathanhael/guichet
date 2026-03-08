@@ -26,6 +26,7 @@ const translations = {
     // Chat window
     waiting_for_expert: 'Waiting for an expert...',
     close: 'Close',
+    leave: 'Leave',
     no_messages: 'No messages yet.',
     ticket_closed_notice: 'This ticket has been closed.',
     close_ticket_title: 'Close ticket?',
@@ -89,6 +90,7 @@ const translations = {
     col_expert: 'Expert',
     col_created: 'Created',
     col_closed: 'Closed',
+    export_csv: 'Export to CSV',
 
     // Feedback
     feedback: 'Feedback',
@@ -131,6 +133,7 @@ const translations = {
 
     waiting_for_expert: "En attente d'un expert...",
     close: 'Fermer',
+    leave: 'Quitter',
     no_messages: 'Aucun message pour l\u2019instant.',
     ticket_closed_notice: 'Ce ticket a \u00e9t\u00e9 ferm\u00e9.',
     close_ticket_title: 'Fermer le ticket\u00a0?',
@@ -187,6 +190,7 @@ const translations = {
     col_expert: 'Expert',
     col_created: 'Cr\u00e9\u00e9',
     col_closed: 'Ferm\u00e9',
+    export_csv: 'Exporter en CSV',
 
     feedback: 'Feedback',
     feedback_desc: 'Partagez vos suggestions ou signalez un probl\u00e8me.',
@@ -226,6 +230,7 @@ const translations = {
 
     waiting_for_expert: 'Wachten op een expert...',
     close: 'Sluiten',
+    leave: 'Verlaten',
     no_messages: 'Nog geen berichten.',
     ticket_closed_notice: 'Dit ticket is gesloten.',
     close_ticket_title: 'Ticket sluiten?',
@@ -282,6 +287,7 @@ const translations = {
     col_expert: 'Expert',
     col_created: 'Aangemaakt',
     col_closed: 'Gesloten',
+    export_csv: 'Exporteer naar CSV',
 
     feedback: 'Feedback',
     feedback_desc: 'Deel je suggesties of meld een probleem.',
