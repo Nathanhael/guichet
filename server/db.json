@@ -1,0 +1,17 @@
+{
+  "users": [
+    { "id": "u1", "name": "Agent Jan", "role": "agent", "dept": "DSC", "lang": "nl" },
+    { "id": "u2", "name": "Agent Marie", "role": "agent", "dept": "FOT", "lang": "fr" },
+    { "id": "u3", "name": "Agent Tom", "role": "agent", "dept": "DSC", "lang": "en" },
+    { "id": "u4", "name": "Expert Piet", "role": "expert", "dept": "DSC", "lang": "nl" },
+    { "id": "u5", "name": "Expert Sophie", "role": "expert", "dept": "FOT", "lang": "fr" },
+    { "id": "u6", "name": "Expert Alex", "role": "expert", "dept": "FOT", "lang": "en" },
+    { "id": "u7", "name": "Manager Dirk", "role": "manager", "dept": "DSC", "lang": "nl" }
+  ],
+  "tickets": [],
+  "messages": [],
+  "translations_cache": [],
+  "ratings": [],
+  "feedback": [],
+  "labels": []
+}

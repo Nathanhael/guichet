@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec:*)",
+      "Bash(docker:*)",
+      "Bash(git remote:*)",
+      "Bash(git pull:*)",
+      "Bash(git:*)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

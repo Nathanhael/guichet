@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans tracking-tight min-h-screen transition-colors duration-300;
+  }
+
+  body:not(.dark) {
+    @apply bg-slate-50 text-slate-900;
+    background-image: radial-gradient(circle at 50% 0%, theme('colors.slate.100') 0%, theme('colors.slate.50') 100%);
+  }
+
+  .dark body {
+    @apply bg-brand-900 text-slate-100;
+    background-image: radial-gradient(circle at 50% 0%, theme('colors.brand.800') 0%, theme('colors.brand.900') 100%);
+  }
+
+  /* Smooth scrollbar global */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/80 dark:bg-brand-800/60 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl shadow-brand-900/5 dark:shadow-black/20 rounded-2xl;
+  }
+
+  .glass-panel {
+    @apply bg-white/60 dark:bg-brand-900/60 backdrop-blur-lg border border-white/20 dark:border-white/5 shadow-lg shadow-brand-900/5 dark:shadow-black/20;
+  }
+
+  .btn-primary {
+    @apply bg-gradient-to-r from-accent-500 to-rose-500 text-white shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 font-medium rounded-xl px-4 py-2;
+  }
+
+  .btn-secondary {
+    @apply bg-white dark:bg-brand-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-brand-700 hover:bg-slate-50 dark:hover:bg-brand-700 hover:border-slate-300 dark:hover:border-brand-600 shadow-sm hover:shadow active:translate-y-[1px] transition-all duration-200 font-medium rounded-xl px-4 py-2;
+  }
+
+  .input-field {
+    @apply w-full border border-slate-200 dark:border-brand-700 bg-white/70 dark:bg-brand-800/70 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 dark:focus:border-accent-400 transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+}
