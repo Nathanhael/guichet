@@ -61,6 +61,28 @@ export default function ManagerView() {
   const [statsDept, setStatsDept] = useState('all');
   const [statsDateFrom, setStatsDateFrom] = useState('');
   const [statsDateTo, setStatsDateTo] = useState('');
+  const [activePreset, setActivePreset] = useState(null);
+
+  function applyPreset(key) {
+    const now = new Date();
+    const toStr = now.toISOString().slice(0, 10);
+    let fromStr;
+    if (key === 'today') {
+      fromStr = toStr;
+    } else if (key === '7d') {
+      const d = new Date(now); d.setDate(d.getDate() - 6);
+      fromStr = d.toISOString().slice(0, 10);
+    } else if (key === '14d') {
+      const d = new Date(now); d.setDate(d.getDate() - 13);
+      fromStr = d.toISOString().slice(0, 10);
+    } else if (key === '30d') {
+      const d = new Date(now); d.setDate(d.getDate() - 29);
+      fromStr = d.toISOString().slice(0, 10);
+    }
+    setStatsDateFrom(fromStr);
+    setStatsDateTo(toStr);
+    setActivePreset(key);
+  }
 
   const fetchStats = () => {
     const params = new URLSearchParams();
@@ -199,15 +221,29 @@ export default function ManagerView() {
                     ))}
                   </div>
                   <div className="w-px h-6 bg-slate-200 dark:bg-brand-700 mx-1 invisible md:visible" />
+                  <div className="flex gap-1">
+                    {[
+                      { key: 'today', label: 'Today' },
+                      { key: '7d', label: '7D' },
+                      { key: '14d', label: '14D' },
+                      { key: '30d', label: '30D' },
+                    ].map(({ key, label }) => (
+                      <button key={key} onClick={() => applyPreset(key)}
+                        className={`px-2.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 ${activePreset === key ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20' : 'text-slate-500 dark:text-gray-400 hover:bg-white dark:hover:bg-brand-700'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="w-px h-6 bg-slate-200 dark:bg-brand-700 mx-1 invisible md:visible" />
                   <div className="flex items-center gap-2">
-                    <input type="date" value={statsDateFrom} onChange={(e) => setStatsDateFrom(e.target.value)}
+                    <input type="date" value={statsDateFrom} onChange={(e) => { setStatsDateFrom(e.target.value); setActivePreset(null); }}
                       className="border-none bg-white/80 dark:bg-gray-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-gray-200 focus:ring-2 focus:ring-brand-500 outline-none" />
                     <span className="text-slate-400 text-xs">→</span>
-                    <input type="date" value={statsDateTo} onChange={(e) => setStatsDateTo(e.target.value)}
+                    <input type="date" value={statsDateTo} onChange={(e) => { setStatsDateTo(e.target.value); setActivePreset(null); }}
                       className="border-none bg-white/80 dark:bg-gray-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 dark:text-gray-200 focus:ring-2 focus:ring-brand-500 outline-none" />
                     {(statsDept !== 'all' || statsDateFrom || statsDateTo) && (
                       <button
-                        onClick={() => { setStatsDept('all'); setStatsDateFrom(''); setStatsDateTo(''); }}
+                        onClick={() => { setStatsDept('all'); setStatsDateFrom(''); setStatsDateTo(''); setActivePreset(null); }}
                         className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg transition-colors"
                         title="Clear all filters"
                       >
@@ -223,15 +259,16 @@ export default function ManagerView() {
               {!stats ? <p className="text-slate-400">{t('loading')}</p> : (<>
                 {/* KPI row */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <StatCard label="Total Tickets" value={stats.total} color="dark" />
-                  <StatCard label="Response Time" value={stats.avgResponseMinutes > 0 ? `${stats.avgResponseMinutes}m` : '—'} color="gray" />
-                  <StatCard label="Avg Duration" value={stats.avgDurationMinutes > 0 ? `${stats.avgDurationMinutes}m` : '—'} color="gray" />
-                  <StatCard label="Satisfaction" value={stats.avgRating > 0 ? `${stats.avgRating} ⭐` : '—'} color="yellow" />
-                  <StatCard label="Abandoned" value={stats.abandonedCount} color="red" />
+                  <StatCard label="Total Tickets" value={stats.total} color="dark" prev={stats.previousPeriod?.total} />
+                  <StatCard label="Response Time" value={stats.avgResponseMinutes > 0 ? `${stats.avgResponseMinutes}m` : '—'} color="gray" prev={stats.previousPeriod?.avgResponseMinutes > 0 ? `${stats.previousPeriod.avgResponseMinutes}m` : undefined} invertTrend />
+                  <StatCard label="Avg Duration" value={stats.avgDurationMinutes > 0 ? `${stats.avgDurationMinutes}m` : '—'} color="gray" prev={stats.previousPeriod?.avgDurationMinutes > 0 ? `${stats.previousPeriod.avgDurationMinutes}m` : undefined} invertTrend />
+                  <StatCard label="Satisfaction" value={stats.avgRating > 0 ? `${stats.avgRating}` : '—'} color="yellow" prev={stats.previousPeriod?.avgRating} />
+                  <StatCard label="Abandoned" value={stats.abandonedCount} color="red" prev={stats.previousPeriod?.abandonedCount} invertTrend />
                   <StatCard
                     label="SLA Health"
                     value={`${stats.slaHealth}%`}
                     color={stats.slaHealth >= 90 ? 'teal' : stats.slaHealth >= 70 ? 'yellow' : 'red'}
+                    prev={stats.previousPeriod?.slaHealth != null ? `${stats.previousPeriod.slaHealth}%` : undefined}
                   />
                 </div>
 
@@ -270,19 +307,6 @@ export default function ManagerView() {
                         </span>
                       </div>
                     </div>
-                    {stats.total > 0 && (
-                      <>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-1.5">DSC vs FOT Distribution</p>
-                        <div className="flex rounded-full overflow-hidden h-3">
-                          <div className="bg-purple-400" style={{ width: `${(stats.dscCount / stats.total) * 100}%` }} />
-                          <div className="bg-teal-400" style={{ width: `${(stats.fotCount / stats.total) * 100}%` }} />
-                        </div>
-                        <div className="flex gap-4 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400 inline-block" /> DSC {Math.round((stats.dscCount / stats.total) * 100)}%</span>
-                          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-teal-400 inline-block" /> FOT {Math.round((stats.fotCount / stats.total) * 100)}%</span>
-                        </div>
-                      </>
-                    )}
                   </Panel>
 
                   <Panel title={`Online now (${onlineExperts.length})`}>
@@ -306,7 +330,7 @@ export default function ManagerView() {
                   </Panel>
                 </div>
 
-                <Panel title={`Tickets Trend (${stats.dailyTrend.length} days)`}>
+                <Panel title={`Tickets Trend (${stats.trendGranularity === 'weekly' ? `${stats.dailyTrend.length} weeks` : stats.trendGranularity === 'monthly' ? `${stats.dailyTrend.length} months` : `${stats.dailyTrend.length} days`})`}>
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={stats.dailyTrend} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -320,6 +344,23 @@ export default function ManagerView() {
                     </LineChart>
                   </ResponsiveContainer>
                 </Panel>
+
+                {/* Satisfaction by Department */}
+                {stats.ratingsByDept && Object.keys(stats.ratingsByDept).length > 0 && (
+                  <Panel title="Satisfaction by Department">
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.entries(stats.ratingsByDept).map(([dept, data]) => (
+                        <div key={dept} className={`rounded-xl p-4 border ${dept === 'DSC' ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800'}`}>
+                          <p className={`text-xs font-bold uppercase tracking-wider ${dept === 'DSC' ? 'text-purple-500' : 'text-teal-500'}`}>{dept}</p>
+                          <p className={`text-3xl font-bold mt-1 ${dept === 'DSC' ? 'text-purple-700 dark:text-purple-300' : 'text-teal-700 dark:text-teal-300'}`}>
+                            {data.avg != null ? data.avg : '—'}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{data.count} rating{data.count !== 1 ? 's' : ''}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </Panel>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <Panel title="Expert performance">
@@ -340,6 +381,26 @@ export default function ManagerView() {
                     )}
                   </Panel>
 
+                  <Panel title="Agent performance">
+                    {stats.agentStats.length === 0 ? (
+                      <p className="text-sm text-gray-400">No data yet</p>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={Math.max(160, stats.agentStats.length * 40)}>
+                        <BarChart data={stats.agentStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+                          <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
+                          <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
+                          <Tooltip />
+                          <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
+                          <Bar dataKey="total" fill="#f59e0b" radius={[0, 3, 3, 0]} name="Total Tickets" />
+                          <Bar dataKey="today" fill="#fcd34d" radius={[0, 3, 3, 0]} name="Today" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    )}
+                  </Panel>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <Panel title="Peak Hours Distribution">
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart data={stats.hourlyDistribution} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -1458,7 +1519,7 @@ function Panel({ title, children }) {
   );
 }
 
-function StatCard({ label, value, color }) {
+function StatCard({ label, value, color, prev, invertTrend }) {
   const colors = {
     red: 'bg-gradient-to-br from-rose-50 to-rose-100/50 text-rose-600 border-rose-200/50 dark:from-rose-900/30 dark:to-transparent dark:text-rose-400 dark:border-rose-900/50',
     yellow: 'bg-gradient-to-br from-amber-50 to-amber-100/50 text-amber-700 border-amber-200/50 dark:from-amber-900/30 dark:to-transparent dark:text-amber-400 dark:border-amber-900/50',
@@ -1468,10 +1529,33 @@ function StatCard({ label, value, color }) {
     gray: 'bg-gradient-to-br from-slate-50 to-slate-100/50 text-slate-600 border-slate-200/50 dark:from-slate-800/50 dark:to-transparent dark:text-slate-300 dark:border-slate-700/50',
     dark: 'bg-gradient-to-br from-slate-800 to-slate-900 text-white border-slate-700/50 shadow-md',
   };
+
+  // Compute trend arrow
+  let trendEl = null;
+  if (prev !== undefined && prev !== null) {
+    // Extract numeric from value (could be "12m", "85%", "4.2", 42, etc.)
+    const current = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
+    const prevNum = typeof prev === 'number' ? prev : parseFloat(String(prev).replace(/[^0-9.-]/g, ''));
+    if (!isNaN(current) && !isNaN(prevNum) && prevNum !== 0) {
+      const delta = current - prevNum;
+      const pct = Math.round((delta / prevNum) * 100);
+      if (delta !== 0) {
+        const isUp = delta > 0;
+        const isGood = invertTrend ? !isUp : isUp;
+        trendEl = (
+          <span className={`inline-flex items-center gap-0.5 text-xs font-bold mt-1 ${isGood ? 'text-emerald-500' : 'text-rose-500'}`}>
+            {isUp ? '\u25B2' : '\u25BC'} {Math.abs(pct)}%
+          </span>
+        );
+      }
+    }
+  }
+
   return (
     <div className={`rounded-xl border p-5 shadow-sm hover:-translate-y-1 hover:shadow-md transition-all duration-300 ${colors[color] || colors.gray}`}>
       <p className="text-sm font-medium opacity-80 tracking-tight">{label}</p>
       <p className="text-3xl font-bold mt-1.5">{value}</p>
+      {trendEl}
     </div>
   );
 }
