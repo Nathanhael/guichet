@@ -162,11 +162,13 @@ Click on a demo user to log in (simulated auth — no real authentication).
 
 - **Statistics dashboard** (Dynamic filtering by date range & department):
   - **Global Filter Bar** — Real-time recalculation of all metrics and charts
-  - **KPI Cards** — Visual overview of 6 key metrics (Total Tickets, Response Time, Avg Duration, Satisfaction, Abandoned Count, Dept Health)
-  - **Tickets Trend** — Line chart with DSC/FOT breakdown per day
+  - **Preset Date Ranges** — Quick filters: Today, 7D, 14D, 30D
+  - **KPI Cards with Trend Arrows** — 6 key metrics (Total Tickets, Response Time, Avg Duration, Satisfaction, Abandoned, SLA Health) with previous-period comparison indicators (green = improvement, red = regression)
+  - **Smart Trend Grouping** — Daily points (<=30 days), weekly aggregation (31–90 days), or monthly aggregation (>90 days), with dynamic chart title
+  - **Satisfaction by Department** — DSC vs FOT rating breakdown with dept-colored cards
   - **Peak Hours** — Hourly distribution bar chart
-  - **Performance** — Expert task counts and peak active agent rankings
-  - **Queue health** — Monitor oldest waiting time and SLA breaches (>10 min)
+  - **Expert & Agent Performance** — Side-by-side bar charts with total + today breakdown
+  - **Queue health** — Monitor oldest waiting time and SLA breaches (>3 min)
 - **Real-time Synchronization** — Monitor open tickets and see participant changes immediately
 - Join tickets as observer (full read + chat access)
 - Search archived tickets (by agent, expert, date range, reference, department, or labels)
@@ -207,7 +209,7 @@ Same language → no Ollama call.
 | GET | `/api/messages` | All messages (optional filter: `ticketId`) |
 | GET | `/api/tickets/:id/messages` | Messages for a ticket |
 | POST | `/api/uploads` | Upload screenshot |
-| GET | `/api/stats` | Manager statistics |
+| GET | `/api/stats` | Manager statistics (merges live + historical data, supports `dateFrom`, `dateTo`, `dept`) |
 | GET | `/api/online/:userId` | Check user online status |
 | GET | `/api/ratings` | All satisfaction ratings |
 | GET | `/api/feedback` | Feedback entries |
@@ -255,6 +257,18 @@ Same language → no Ollama call.
 | `rating:saved` | Rating confirmation to agent |
 | `hours:closed` | Outside business hours rejection |
 
+## GDPR Data Retention
+
+Individual customer data (tickets, messages, ratings with names/CDBIDs) is automatically purged after **30 days**. Before deletion, data is aggregated into anonymized daily statistics (`db.dailyStats`) that are retained for longer historical analysis.
+
+| Data | Retention |
+|---|---|
+| Individual tickets, messages, ratings | 30 days |
+| Anonymized daily aggregates (`dailyStats`) | Indefinite |
+| Translation cache (MD5 hashes) | Indefinite (already anonymized) |
+
+The purge runs automatically on server startup and every 24 hours. The stats endpoint seamlessly merges live data (last 30 days) with historical aggregates for trend charts spanning the boundary.
+
 ## Constants & Limits
 
 | Constant | Value |
@@ -269,3 +283,5 @@ Same language → no Ollama call.
 | Reaction emojis | 6 types |
 | Expert statuses | available, break, lunch, meeting |
 | Ticket statuses | open, active, closed |
+| GDPR data retention | 30 days (individual data) |
+| GDPR purge interval | Every 24 hours + on startup |
