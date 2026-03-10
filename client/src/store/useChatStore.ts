@@ -59,7 +59,7 @@ interface ChatState {
   t: (key: keyof typeof translations['en']) => string;
 }
 
-export const useChatStore = create<ChatState>((set, get) => ({
+export const useChatStore = create<ChatState>()((set, get: () => ChatState) => ({
   messages: [
     {
       id: '1',
@@ -84,13 +84,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     ],
   })),
 
-  setLanguage: (language) => set({ language }),
-  setTheme: (theme) => set({ theme }),
+  setLanguage: (language: Language) => set({ language }),
+  setTheme: (theme: Theme) => set({ theme }),
   toggleDyslexicMode: () => set((state) => ({ dyslexicMode: !state.dyslexicMode })),
-  setTyping: (isTyping) => set({ isTyping }),
+  setTyping: (isTyping: boolean) => set({ isTyping }),
 
-  t: (key) => {
-    const { language } = get();
-    return translations[language][key] || key;
+  t: (key: keyof typeof translations['en']) => {
+    const { language } = (get as any)() as ChatState;
+    return (translations[language] as any)[key] || key;
   },
 }));

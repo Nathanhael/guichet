@@ -53,18 +53,24 @@ SQLite with WAL mode for concurrency. Schema defined in `server/db/schema.sql`.
 
 ### Tables
 
+### Tables
+
 ```sql
 users              (id, name, role, dept, lang, password)
-tickets            (id, dept, agentId, expertId, status, createdAt, closedAt,
-                    closingNotes, closedBy, expertJoinedAt, participants)
-messages           (id, ticketId, senderId, text, translatedText, mediaUrl,
-                    whisper, system, createdAt, deliveredAt, readAt, reactions)
+tickets            (id, dept, agentId, agentName, agentLang, cdbId, dareRef, status, 
+                    expertId, expertName, expertLang, expertJoinedAt, createdAt, 
+                    closedAt, closingNotes, closedBy, participants, summary)
+messages           (id, ticketId, senderId, senderName, text, translatedText, 
+                    mediaUrl, whisper, system, createdAt, deliveredAt, readAt, 
+                    reactions, senderRole, senderLang, originalText, improvedText, 
+                    processedText, translationSkipped, fallback, timestamp)
 ratings            (id, ticketId, agentId, expertId, rating, comment, createdAt)
 app_feedback       (id, userId, text, treated, createdAt)
 labels             (id, name, color)
 ticket_labels      (ticketId, labelId)          -- composite PK, ON DELETE CASCADE
 daily_stats        (date, total, closed, abandoned, avgResponseMs, avgDurationMs,
-                    avgRating, slaResolved, slaCompliant, deptCounts, ratingsByDept, hourly)
+                    avgRating, ratingCount, slaResolved, slaCompliant, 
+                    deptCounts, ratingsByDept, hourly)
 translations_cache (key, value, fromLang, toLang, createdAt)
 llm_summaries      (period, sentiment, questions, summary, updatedAt)
 canned_responses   (id, shortcut, text)

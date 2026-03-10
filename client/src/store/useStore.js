@@ -44,6 +44,8 @@ const useStore = create((set) => ({
 
   tickets: [],
   setTickets: (tickets) => set({ tickets }),
+  archivedTickets: [],
+  setArchivedTickets: (archived) => set({ archivedTickets: archived }),
   addTicket: (ticket) =>
     set((state) => ({
       tickets: state.tickets.some((t) => t.id === ticket.id)
@@ -209,6 +211,9 @@ const useStore = create((set) => ({
         labels: (t.labels || []).filter((id) => id !== labelId),
       })),
     })),
+  
+  queuePosition: null, // { position, etaMins }
+  setQueuePosition: (pos) => set({ queuePosition: pos }),
 }));
 
 export default useStore;

@@ -8,7 +8,7 @@ import CannedResponsePicker from './CannedResponsePicker';
 const LANG_FLAG = { nl: '🇧🇪', fr: '🇫🇷', en: '🇬🇧' };
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
-  const { user, token, messages, typingUsers, agentOnline, setAgentOnline, updateTicket, toggleTicketLabel, tickets } = useStore();
+  const { user, token, messages, typingUsers, agentOnline, setAgentOnline, updateTicket, toggleTicketLabel, tickets, queuePosition } = useStore();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
@@ -18,20 +18,24 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
   const [mediaUrl, setMediaUrl] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [blockedNotice, setBlockedNotice] = useState(null);
+  const [aiStatus, setAiStatus] = useState('online'); 
+  const [showLabelsMenu, setShowLabelsMenu] = useState(false);
+
   const bottomRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const fileRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const queuePosition = useStore((s) => s.queuePosition);
-
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const isNearBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
-  const [showLabelsMenu, setShowLabelsMenu] = useState(false);
   const labelsMenuRef = useRef(null);
+  const initialScrollDoneRef = useRef(null);
+
+  if (!ticket) return null;
 
   const ticketMessages = messages[ticket.id] || [];
   const whoIsTyping = Object.keys(typingUsers[ticket.id] || {});
@@ -70,8 +74,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
       getSocket().emit('typing:stop', { ticketId: ticket.id, senderName: user.name });
     }
   }
-
-  const initialScrollDoneRef = useRef(null);
 
   // Reset initial-scroll tracker when switching tickets
   useEffect(() => {
@@ -190,6 +192,30 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [ticketMessages, ticket.id, user.id]);
+
+  // Guard Blocked Listener
+  useEffect(() => {
+    const socket = getSocket();
+    function onBlocked({ code }) {
+      setBlockedNotice(code);
+      setTimeout(() => setBlockedNotice(null), 5000);
+    }
+    socket.on('message:blocked', onBlocked);
+    return () => socket.off('message:blocked', onBlocked);
+  }, []);
+
+  // AI Health Check
+  useEffect(() => {
+    const check = () => {
+      fetch('/api/health/ai', { headers: { 'Authorization': `Bearer ${token}` }})
+        .then(r => r.json())
+        .then(data => setAiStatus(data.status))
+        .catch(() => setAiStatus('offline'));
+    };
+    check();
+    const interval = setInterval(check, 30000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   async function uploadFile(file) {
     setMediaPreview(URL.createObjectURL(file));
@@ -531,7 +557,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
           />
           {searchQuery && (
             <span className="text-xs text-brand-500 font-medium px-2 py-0.5 bg-brand-50 dark:bg-brand-900/30 rounded mr-2">
-              {ticketMessages.filter(m => m.text.toLowerCase().includes(searchQuery.toLowerCase())).length} matches
+              {ticketMessages.filter(m => (m.processedText || m.text || '').toLowerCase().includes(searchQuery.toLowerCase())).length} matches
             </span>
           )}
           <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1">
@@ -601,6 +627,28 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
         </button>
       )}
 
+
+      {/* Blocked Notice */}
+      {blockedNotice && (
+        <div className="absolute top-16 left-4 right-4 z-[60] animate-slide-up">
+          <div className="bg-red-50 dark:bg-red-900/80 border border-red-200 dark:border-red-800 p-3 rounded-xl shadow-xl flex items-start gap-3">
+            <div className="p-1.5 bg-red-100 dark:bg-red-900 rounded-lg text-red-600 dark:text-red-400">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-bold text-red-800 dark:text-red-200">{t('guard_blocked_title')}</h4>
+              <p className="text-xs text-red-700 dark:text-red-300 mt-0.5">{t(blockedNotice)}</p>
+            </div>
+            <button onClick={() => setBlockedNotice(null)} className="text-red-400 hover:text-red-600 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       {!isClosed && (

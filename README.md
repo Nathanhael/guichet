@@ -9,6 +9,10 @@ For a detailed look at the system architecture, tech stack, and usage:
 - **[TECH_STACK.md](./TECH_STACK.md)** -- Dependencies, database schema, and authentication details.
 - **[USER_GUIDE.md](./USER_GUIDE.md)** -- Guide for demo personas and cognitive features.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** -- Aesthetic (Solaris) and coding standards.
+- **[AGENT.md](./AGENT.md)** -- High-level AI assistant manual (Rules of Engagement).
+- **[GUARDS_FEATURE.md](./GUARDS_FEATURE.md)** -- Content safety rules & quality filters.
+- **[TRANSLATION_FEATURE.md](./TRANSLATION_FEATURE.md)** -- AI translation & message improvement logic.
+- **[SECURITY_ANALYSIS.md](./SECURITY_ANALYSIS.md)** -- Prompt injection & PII protection measures.
 
 | Layer | Technology |
 |---|---|

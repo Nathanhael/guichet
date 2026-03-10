@@ -18,16 +18,44 @@ db.pragma('foreign_keys = ON');
 const schema = fs.readFileSync(path.join(path.dirname(config.DB_PATH), 'db', 'schema.sql'), 'utf8');
 db.exec(schema);
 
-// Migration: ensure users table has password column
+// Migrations
 try {
     const tableInfo = db.prepare('PRAGMA table_info(users)').all();
-    const hasPassword = tableInfo.some(col => col.name === 'password');
-    if (!hasPassword) {
+    if (!tableInfo.some(col => col.name === 'password')) {
         logger.info('Migrating users table: adding password column');
         db.prepare('ALTER TABLE users ADD COLUMN password TEXT').run();
     }
+
+    const messageInfo = db.prepare('PRAGMA table_info(messages)').all();
+    const messageCols = [
+        { name: 'senderRole', type: 'TEXT' },
+        { name: 'senderLang', type: 'TEXT' },
+        { name: 'originalText', type: 'TEXT' },
+        { name: 'improvedText', type: 'TEXT' },
+        { name: 'processedText', type: 'TEXT' },
+        { name: 'translationSkipped', type: 'INTEGER DEFAULT 0' },
+        { name: 'fallback', type: 'INTEGER DEFAULT 0' },
+        { name: 'timestamp', type: 'TEXT' }
+    ];
+    messageCols.forEach(col => {
+        if (!messageInfo.some(c => c.name === col.name)) {
+            logger.info(`Migrating messages table: adding ${col.name} column`);
+            db.prepare(`ALTER TABLE messages ADD COLUMN ${col.name} ${col.type}`).run();
+        }
+    });
+
+    // Populate timestamp if it was missing and createdAt exists
+    if (messageInfo.some(c => c.name === 'createdAt') && messageInfo.some(c => c.name === 'timestamp')) {
+        db.prepare("UPDATE messages SET timestamp = createdAt WHERE timestamp IS NULL").run();
+    }
+
+    const ticketInfo = db.prepare('PRAGMA table_info(tickets)').all();
+    if (!ticketInfo.some(col => col.name === 'summary')) {
+        logger.info('Migrating tickets table: adding summary column');
+        db.prepare('ALTER TABLE tickets ADD COLUMN summary TEXT').run();
+    }
 } catch (err) {
-    logger.error({ err: err.message }, 'Failed to migrate users table');
+    logger.error({ err: err.message }, 'Migration failed');
 }
 
 export { db };

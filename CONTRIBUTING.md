@@ -2,6 +2,9 @@
 
 To maintain the high-fidelity aesthetic and real-time performance of this prototype, please follow these guidelines.
 
+> [!TIP]
+> **AI Assistants**: Please refer to **[AGENT.md](./AGENT.md)** for specific "Rules of Engagement" regarding Docker usage and design standards.
+
 ## Solaris Design System
 
 The app uses a custom "Solaris" theme. All new components must adhere to these visual rules:

@@ -111,6 +111,19 @@ const translations = {
 
     // Reactions
     add_reaction: 'Add reaction',
+
+    // Guards
+    guard_blocked_title: 'Message not sent',
+    guard_too_short: 'Your message is too short. Please provide more details.',
+    guard_too_long: 'Your message is too long (max. 2000 characters).',
+    guard_all_caps_notice: 'Your message has been converted to normal text casing.',
+    guard_repetition: 'You have sent the same message multiple times. Please rephrase or wait for a reply.',
+    guard_offensive: 'Your message contains inappropriate language and was not sent. Please communicate professionally.',
+    guard_threat: 'Your message contains threatening language and was not sent. This behavior is being logged.',
+    guard_discrimination: 'Your message contains discriminatory language and was not sent. This behavior is being logged.',
+    guard_off_topic: 'Your message does not appear to be related to telecom support. Please only ask about internet, TV, telephony, billing, or technical issues.',
+    guard_injection: 'Your message contains content that cannot be processed. Please rephrase your question.',
+    guard_pii_blocked: '[Message blocked due to sensitive data]',
   },
 
   fr: {
@@ -209,7 +222,21 @@ const translations = {
     skip: 'Passer',
     rating_saved: 'Merci pour votre \u00e9valuation\u00a0!',
 
+    // Reactions
     add_reaction: 'Ajouter une r\u00e9action',
+
+    // Guards
+    guard_blocked_title: 'Message non envoy\u00e9',
+    guard_too_short: 'Votre message est trop court. Veuillez donner plus de d\u00e9tails.',
+    guard_too_long: 'Votre message est trop long (max. 2000 caract\u00e8res).',
+    guard_all_caps_notice: "Votre message a \u00e9t\u00e9 converti en casse normale.",
+    guard_repetition: 'Vous avez envoy\u00e9 le m\u00eame message plusieurs fois. Veuillez reformuler ou attendre une r\u00e9ponse.',
+    guard_offensive: 'Votre message contient un langage inappropri\u00e9 et n\u2019a pas \u00e9t\u00e9 envoy\u00e9. Veuillez communiquer de mani\u00e8re professionnelle.',
+    guard_threat: 'Votre message contient un langage mena\u00e7ant et n\u2019a pas \u00e9t\u00e9 envoy\u00e9. Ce comportement est enregistr\u00e9.',
+    guard_discrimination: 'Votre message contient un langage discriminatoire et n\u2019a pas \u00e9t\u00e9 envoy\u00e9. Ce comportement est enregistr\u00e9.',
+    guard_off_topic: "Votre message ne semble pas \u00eatre li\u00e9 au support t\u00e9l\u00e9com. Veuillez uniquement poser des questions sur l'internet, la TV, la t\u00e9l\u00e9phonie, la facturation ou les probl\u00e8mes techniques.",
+    guard_injection: 'Votre message contient un contenu qui ne peut pas \u00eatre trait\u00e9. Veuillez reformuler votre question.',
+    guard_pii_blocked: '[Message bloqu\u00e9 en raison de donn\u00e9es sensibles]',
   },
 
   nl: {
@@ -308,7 +335,21 @@ const translations = {
     skip: 'Overslaan',
     rating_saved: 'Bedankt voor je beoordeling!',
 
+    // Reactions
     add_reaction: 'Reactie toevoegen',
+
+    // Guards
+    guard_blocked_title: 'Bericht niet verstuurd',
+    guard_too_short: 'Uw bericht is te kort. Gelieve meer details te geven.',
+    guard_too_long: 'Uw bericht is te lang (max. 2000 tekens).',
+    guard_all_caps_notice: 'Uw bericht is omgezet naar normale tekstopmaak.',
+    guard_repetition: 'U heeft hetzelfde bericht meerdere keren verstuurd. Gelieve uw vraag te herformuleren of te wachten op een antwoord.',
+    guard_offensive: 'Uw bericht bevat ongepaste taal en werd niet verstuurd. Gelieve professioneel te communiceren.',
+    guard_threat: 'Uw bericht bevat bedreigende taal en werd niet verstuurd. Dit gedrag wordt geregistreerd.',
+    guard_discrimination: 'Uw bericht bevat discriminerende taal en werd niet verstuurd. Dit gedrag wordt geregistreerd.',
+    guard_off_topic: 'Uw bericht lijkt niet gerelateerd te zijn aan telecom-ondersteuning. Gelieve enkel vragen te stellen over internet, TV, telefonie, facturatie of technische problemen.',
+    guard_injection: 'Uw bericht bevat inhoud die niet verwerkt kan worden. Gelieve uw vraag anders te formuleren.',
+    guard_pii_blocked: '[Bericht geblokkeerd wegens gevoelige gegevens]',
   },
 };
 
