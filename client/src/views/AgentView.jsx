@@ -7,9 +7,10 @@ import ChatWindow from '../components/ChatWindow';
 import DarkModeToggle from '../components/DarkModeToggle';
 import RatingModal from '../components/RatingModal';
 import FeedbackModal from '../components/FeedbackModal';
+import { requestNotificationPermission } from '../utils/notifications';
 
 export default function AgentView() {
-  const { user, tickets, setTickets, activeTicketId, setActiveTicketId, logout } = useStore();
+  const { user, tickets, setTickets, activeTicketId, setActiveTicketId, logout, notificationsEnabled, setNotificationsEnabled } = useStore();
   const t = useT();
   const [form, setForm] = useState({ dept: 'DSC', refValue: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -17,11 +18,20 @@ export default function AgentView() {
   const pendingNavigate = useRef(false);
 
   useEffect(() => {
-    fetch(`/api/tickets?agentId=${user.id}`)
+    const { token } = useStore.getState();
+    fetch(`/api/tickets?agentId=${user.id}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then((r) => r.json())
       .then((data) => setTickets(data))
       .catch(console.error);
   }, [user.id]);
+
+  useEffect(() => {
+    if (notificationsEnabled) {
+      requestNotificationPermission();
+    }
+  }, [notificationsEnabled]);
 
   const myTickets = tickets.filter((t) => t.agentId === user.id);
   const activeTicket = myTickets.find((t) => t.id === activeTicketId);
@@ -57,7 +67,7 @@ export default function AgentView() {
       <div className="h-screen flex flex-col overflow-hidden bg-transparent animate-fade-in">
         <nav className="bg-brand-900/95 backdrop-blur-md text-white px-6 py-3 flex items-center justify-between shadow-lg sticky top-0 z-50 border-b border-brand-800">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-xl tracking-tight">iKanbi</span>
+            <span className="font-bold text-xl tracking-tight">M&P Support</span>
             <span className="text-xs bg-gradient-to-r from-accent-500 to-rose-500 px-2.5 py-1 rounded-md font-semibold tracking-wide shadow-sm">Agent</span>
           </div>
           <div className="flex items-center gap-3">
@@ -80,6 +90,23 @@ export default function AgentView() {
               </svg>
               {t('feedback')}
             </button>
+
+            <button
+              onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+              title={notificationsEnabled ? 'Disable notifications' : 'Enable notifications'}
+              className={`p-2 shadow-sm rounded-lg flex items-center justify-center transition-colors ${notificationsEnabled ? 'bg-brand-100 dark:bg-brand-900/50 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-700/50' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 border border-gray-200 dark:border-brand-700/50 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+            >
+              {notificationsEnabled ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+              )}
+            </button>
+
             <DarkModeToggle />
             <button onClick={logout} className="text-gray-400 hover:text-white text-sm">{t('sign_out')}</button>
           </div>
@@ -87,9 +114,9 @@ export default function AgentView() {
 
         <div className="flex-1 overflow-hidden flex flex-col">
           {activeTicket ? (
-            <div className="flex-1 px-4 py-4 min-h-0 animate-fade-in w-full max-w-5xl mx-auto">
-              <div className="glass-card h-full flex flex-col overflow-hidden shadow-2xl">
-                <ChatWindow ticket={activeTicket} onClose={() => setActiveTicketId(null)} />
+            <div className="flex-1 min-h-0 w-full animate-fade-in">
+              <div className="h-full flex flex-col overflow-hidden bg-white/50 backdrop-blur-md dark:bg-brand-900/40">
+                <ChatWindow key={activeTicket.id} ticket={activeTicket} onClose={() => setActiveTicketId(null)} />
               </div>
             </div>
           ) : (

@@ -2,6 +2,9 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
+import { fileTypeFromFile } from 'file-type';
+import config from '../config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = path.join(__dirname, '..', 'uploads');
@@ -15,23 +18,46 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req, file, cb) => {
-  const allowed = ['image/png', 'image/jpeg', 'image/webp'];
-  if (allowed.includes(file.mimetype)) {
+  if (config.UPLOAD_ALLOWED_TYPES.includes(file.mimetype)) {
     cb(null, true);
   } else {
     cb(new Error('Alleen PNG, JPG en WEBP zijn toegestaan'), false);
   }
 };
 
-const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
+const upload = multer({ storage, fileFilter, limits: { fileSize: config.UPLOAD_MAX_SIZE } });
 
 const router = Router();
 
 // POST /api/uploads
-router.post('/', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Geen bestand ontvangen' });
-  const url = `/uploads/${req.file.filename}`;
-  res.json({ url });
+router.post('/', (req, res) => {
+  upload.single('file')(req, res, async (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ error: `Bestand te groot (max ${config.UPLOAD_MAX_SIZE / 1024 / 1024}MB)` });
+      }
+      return res.status(400).json({ error: err.message });
+    } else if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+
+    if (!req.file) return res.status(400).json({ error: 'Geen bestand ontvangen' });
+
+    // Magic Byte validation
+    try {
+      const meta = await fileTypeFromFile(req.file.path);
+      if (!meta || !config.UPLOAD_ALLOWED_TYPES.includes(meta.mime)) {
+        fs.unlinkSync(req.file.path); // Delete the invalid file
+        return res.status(400).json({ error: 'Ongeldig bestandstype' });
+      }
+    } catch (e) {
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+      return res.status(500).json({ error: 'Fout bij het controleren van het bestand' });
+    }
+
+    const url = `/uploads/${req.file.filename}`;
+    res.json({ url });
+  });
 });
 
 export default router;

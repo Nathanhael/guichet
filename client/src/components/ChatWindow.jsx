@@ -3,15 +3,17 @@ import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
+import CannedResponsePicker from './CannedResponsePicker';
 
 const LANG_FLAG = { nl: '🇧🇪', fr: '🇫🇷', en: '🇬🇧' };
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
-  const { user, messages, typingUsers, agentOnline, setAgentOnline } = useStore();
+  const { user, token, messages, typingUsers, agentOnline, setAgentOnline, updateTicket, toggleTicketLabel, tickets } = useStore();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  const [closingNotes, setClosingNotes] = useState('');
   const [whisperMode, setWhisperMode] = useState(false);
   const [mediaUrl, setMediaUrl] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
@@ -22,16 +24,18 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
   const typingTimeoutRef = useRef(null);
   const isTypingRef = useRef(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const queuePosition = useStore((s) => s.queuePosition);
+
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const isNearBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
-  const [allLabels, setAllLabels] = useState([]);
-  const [ticketLabels, setTicketLabels] = useState(ticket.labels || []);
   const [showLabelsMenu, setShowLabelsMenu] = useState(false);
   const labelsMenuRef = useRef(null);
 
   const ticketMessages = messages[ticket.id] || [];
   const whoIsTyping = Object.keys(typingUsers[ticket.id] || {});
-  const isExpert = user.role === 'expert' || user.role === 'manager';
+  const isExpert = user.role === 'expert' || user.role === 'admin';
   const agentIsOnline = agentOnline[ticket.id] ?? true;
 
   // Track scroll position
@@ -78,42 +82,49 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
 
   // Fetch agent online status when expert opens ticket
   useEffect(() => {
-    if (!isExpert || !ticket.agentId) return;
-    fetch(`/api/online/${ticket.agentId}`)
+    if (!isExpert || !ticket?.agentId) return;
+    fetch(`/api/online/${ticket.agentId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then((r) => r.json())
       .then(({ online }) => setAgentOnline(ticket.id, online))
       .catch(() => { });
+  }, [ticket?.id, ticket?.agentId]);
 
-    // Fetch all available labels
-    fetch('/api/labels')
-      .then(r => r.json())
-      .then(setAllLabels)
-      .catch(console.error);
+  const allLabels = useStore(s => s.allLabels);
 
-    // Sync ticket labels
-    setTicketLabels(ticket.labels || []);
-  }, [ticket.id, ticket.labels]);
+  // Sync ticket labels
+  // Local state removed, using ticket.labels directly
 
   // Handle outside click for labels menu
   useEffect(() => {
     function onOutsideClick(e) {
       if (labelsMenuRef.current && !labelsMenuRef.current.contains(e.target)) {
+        // Only close if it's truly outside the menu
         setShowLabelsMenu(false);
       }
     }
-    document.addEventListener('mousedown', onOutsideClick);
-    return () => document.removeEventListener('mousedown', onOutsideClick);
+    // Listen on capture phase so we can stop it inside
+    document.addEventListener('mousedown', onOutsideClick, true);
+    return () => document.removeEventListener('mousedown', onOutsideClick, true);
   }, []);
 
+  const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
+
   const toggleLabel = (labelId) => {
-    const next = ticketLabels.includes(labelId)
-      ? ticketLabels.filter(id => id !== labelId)
-      : [...ticketLabels, labelId];
-    setTicketLabels(next);
-    getSocket().emit('ticket:labels:update', { ticketId: ticket.id, labels: next });
+    console.log(`[ChatWindow] toggleLabel called for ticket: ${ticket.id}, label: ${labelId}`);
+    // Update global store optimistically
+    toggleTicketLabel(ticket.id, labelId);
+
+    // After state update, get fresh labels to send to backend
+    const updatedLabels = useStore.getState().tickets.find(t => t.id === ticket.id)?.labels || [];
+    console.log(`[ChatWindow] broadcasting labels for ${ticket.id}:`, updatedLabels);
+
+    // Inform backend via socket
+    getSocket().emit('ticket:labels:update', { ticketId: ticket.id, labels: updatedLabels });
   };
 
-  const getLabelInfo = (id) => allLabels.find(l => l.id === id);
+  const getLabelInfo = (id) => (allLabels || []).find(l => l.id === id);
 
   useEffect(() => {
     const count = ticketMessages.length;
@@ -140,10 +151,45 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
     if (isNearBottomRef.current || lastMsg?.senderId === user.id) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
       setUnreadCount(0);
+
+      // Mark received unread messages as read
+      const unreadIds = ticketMessages
+        .filter(m => m.senderId !== user.id && !m.readAt)
+        .map(m => m.id);
+
+      if (unreadIds.length > 0 && document.hasFocus()) {
+        getSocket().emit('message:read', { ticketId: ticket.id, messageIds: unreadIds });
+      }
     } else {
       setUnreadCount((prev) => prev + newMessages);
     }
-  }, [ticketMessages.length]);
+  }, [ticketMessages.length, ticket.id, user.id]);
+
+  // Handle auto-closing the chat window after 2 seconds when closed
+  useEffect(() => {
+    if (ticket.status === 'closed' && onClose) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [ticket.status, onClose]);
+
+  // Mark all as read when window regains focus
+  useEffect(() => {
+    function onFocus() {
+      const unreadIds = ticketMessages
+        .filter(m => m.senderId !== user.id && !m.readAt)
+        .map(m => m.id);
+
+      if (unreadIds.length > 0) {
+        getSocket().emit('message:read', { ticketId: ticket.id, messageIds: unreadIds });
+        setUnreadCount(0);
+      }
+    }
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [ticketMessages, ticket.id, user.id]);
 
   async function uploadFile(file) {
     setMediaPreview(URL.createObjectURL(file));
@@ -151,8 +197,17 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch('/api/uploads', { method: 'POST', body: form });
+      const res = await fetch('/api/uploads', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: form
+      });
       const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Upload failed');
+        setMediaPreview(null);
+        return;
+      }
       setMediaUrl(data.url);
     } catch {
       setMediaPreview(null);
@@ -191,6 +246,20 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
     const trimmed = text.trim();
     if (!trimmed && !mediaUrl) return;
 
+    const optimisticMsg = {
+      id: `pending-${Date.now()}`,
+      ticketId: ticket.id,
+      senderId: user.id,
+      senderName: user.name,
+      senderLang: user.lang,
+      text: trimmed || '📎',
+      mediaUrl,
+      whisper: whisperMode,
+      pending: true,
+      createdAt: new Date().toISOString(),
+    };
+    useStore.getState().addMessage(ticket.id, optimisticMsg);
+
     getSocket().emit('message:send', {
       ticketId: ticket.id,
       senderId: user.id,
@@ -205,9 +274,24 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
   }
 
   function closeTicket() {
+    if (closing) return;
     setClosing(true);
-    getSocket().emit('ticket:close', { ticketId: ticket.id });
+
+    setTimeout(() => {
+      getSocket().emit('ticket:close', {
+        ticketId: ticket.id,
+        closingNotes: closingNotes.trim(),
+        closedBy: user.name
+      });
+    }, 1000);
+
+    // Close overlay immediately
     setShowCloseConfirm(false);
+
+    // Safety reset if server never responds
+    setTimeout(() => {
+      setClosing(false);
+    }, 10000);
   }
 
   function leaveTicket() {
@@ -216,13 +300,13 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
     if (onClose) onClose();
   }
 
-  const canClose = user.role === 'expert' || user.role === 'manager';
+  const canClose = user.role === 'expert' || user.role === 'admin';
   const isClosed = ticket.status === 'closed';
 
   return (
-    <div className="relative flex flex-col h-full glass-card rounded-xl shadow-soft border-white/40 dark:border-brand-700/50 overflow-hidden animate-fade-in">
+    <div className="relative flex flex-col h-full glass-card rounded-xl shadow-soft border-white/40 dark:border-brand-700/50 flex-1 min-h-0 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/20 dark:border-brand-700/50 bg-white/40 dark:bg-brand-800/40 backdrop-blur-sm">
+      <div className="relative z-50 flex items-center justify-between px-4 py-3 border-b border-white/20 dark:border-brand-700/50 bg-white/30 dark:bg-brand-800/40 backdrop-blur-sm rounded-t-xl">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${ticket.dept === 'DSC' ? 'bg-purple-100 text-purple-700' : 'bg-teal-100 text-teal-700'
@@ -237,11 +321,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
                   className={`w-2 h-2 rounded-full shrink-0 animate-pulse ${agentIsOnline ? 'bg-green-400' : 'bg-gray-400 dark:bg-gray-500'}`}
                 />
               )}
-              {ticket.agentLang && (
-                <span className="text-sm ml-1" title={ticket.agentLang.toUpperCase()}>
-                  {LANG_FLAG[ticket.agentLang]}
-                </span>
-              )}
             </span>
             {ticket.cdbId && (
               <span className="text-xs font-mono bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded shrink-0">
@@ -253,33 +332,33 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
                 Dare Ref: {ticket.dareRef}
               </span>
             )}
+            {/* Active Labels Display - moved next to refs/status */}
+            {liveTicket.labels && liveTicket.labels.length > 0 && (
+              <div className="flex flex-wrap gap-1 focus-within:ring-0">
+                {liveTicket.labels.map(id => {
+                  const info = (allLabels || []).find(l => l.id === id);
+                  if (!info) return null;
+                  return (
+                    <span
+                      key={id}
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-${info.color}-500/10 text-${info.color}-600 dark:text-${info.color}-400 border border-${info.color}-500/20`}
+                    >
+                      {info.text}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             {ticket.participants && ticket.participants.length > 0 ? (
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {ticket.participants.map((p) => p.name).join(', ')}
+                {ticket.participants.map((p) => (typeof p === 'object' && p !== null ? p.name : p)).join(', ')}
               </span>
             ) : (
               <span className="text-xs text-gray-400">{t('waiting_for_expert')}</span>
             )}
           </div>
-          {/* Active Labels Display */}
-          {ticketLabels.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1.5 focus-within:ring-0">
-              {ticketLabels.map(id => {
-                const info = getLabelInfo(id);
-                if (!info) return null;
-                return (
-                  <span
-                    key={id}
-                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-${info.color}-500/10 text-${info.color}-600 dark:text-${info.color}-400 border border-${info.color}-500/20`}
-                  >
-                    {info.text}
-                  </span>
-                );
-              })}
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -289,14 +368,14 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
               <button
                 onClick={() => setShowLabelsMenu(!showLabelsMenu)}
                 title="Manage Labels"
-                className={`p-2 rounded-xl transition-all shadow-sm ${showLabelsMenu ? 'bg-brand-500 text-white shadow-brand-500/20' : 'bg-white/50 dark:bg-brand-900/50 text-gray-500 dark:text-gray-400 hover:text-brand-500 hover:bg-white dark:hover:bg-brand-850 hover:shadow-md'} active:scale-95`}
+                className={`p-2 rounded-xl transition-all shadow-sm ${showLabelsMenu ? 'bg-brand-500 text-white shadow-brand-500/20' : 'bg-white/40 dark:bg-brand-900/50 text-gray-500 dark:text-gray-400 hover:text-brand-500 hover:bg-white/80 dark:hover:bg-brand-800 hover:shadow-md'} active:scale-95`}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                 </svg>
               </button>
               {showLabelsMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-brand-800 border border-gray-100 dark:border-brand-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-slide-up">
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-brand-800 border border-gray-100 dark:border-brand-700 rounded-xl shadow-2xl z-[100] animate-slide-up pointer-events-auto">
                   <div className="px-3 py-2 border-b border-gray-50 dark:border-brand-700 bg-gray-50/50 dark:bg-brand-900/30">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Labels</span>
                   </div>
@@ -307,12 +386,18 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
                       allLabels.map(l => (
                         <button
                           key={l.id}
-                          onClick={() => toggleLabel(l.id)}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log(`[ChatWindow] label button mousedown: ${l.id}`);
+                            toggleLabel(l.id);
+                          }}
                           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium hover:bg-gray-50 dark:hover:bg-brand-700 transition-colors group"
                         >
                           <div className={`w-2.5 h-2.5 rounded-full bg-${l.color}-500 shrink-0`} />
                           <span className="flex-1 text-left dark:text-gray-200">{l.text}</span>
-                          {ticketLabels.includes(l.id) && (
+                          {(liveTicket.labels || []).includes(l.id) && (
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
@@ -342,31 +427,120 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
               )}
             </button>
           )}
+          {/* Search Toggle */}
+          <button
+            onClick={() => setShowSearch(!showSearch)}
+            title="Search in chat"
+            className={`p-1.5 rounded-lg transition-colors shrink-0 ${showSearch
+              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
+              : 'text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-brand-700'
+              }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+
           {canClose && !isClosed && (
             <div className="flex items-center gap-1.5">
               <button
                 onClick={leaveTicket}
                 title={t('leave')}
-                className="text-sm bg-orange-50/80 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900/60 px-4 py-2 rounded-xl font-bold transition-all border border-orange-100 dark:border-orange-900 shadow-sm hover:shadow-md active:scale-95"
+                className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-10 py-2 rounded-xl font-bold transition-all border border-amber-200 dark:border-amber-800 shadow-sm active:scale-95"
               >
                 {t('leave') || 'Leave'}
               </button>
               <button
-                onClick={() => setShowCloseConfirm(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  closeTicket(); // Trigger immediate close
+                }}
                 disabled={closing}
-                className="text-sm bg-red-50/80 dark:bg-red-900/40 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/60 px-4 py-2 rounded-xl font-bold transition-all border border-red-100 dark:border-red-900 shadow-sm hover:shadow-md active:scale-95"
+                className="text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-10 py-2 rounded-xl font-bold transition-all border border-red-200 dark:border-red-800 shadow-sm active:scale-95 flex items-center gap-2"
               >
+                {closing && (
+                  <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                )}
                 {t('close')}
               </button>
             </div>
           )}
-          {onClose && (
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-lg leading-none">
-              ×
+          {onClose && !(canClose && !isClosed) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-brand-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             </button>
           )}
         </div>
       </div>
+
+      {user.role === 'agent' && !ticket.expertName && !isClosed && queuePosition && (
+        <div className="bg-gradient-to-r from-blue-500/10 to-brand-500/10 border-b border-blue-200 dark:border-blue-900/50 px-4 py-2.5 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-semibold tracking-wide">
+              Position #{queuePosition.position} in queue
+            </span>
+          </div>
+          <div className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-white/50 dark:bg-black/20 px-2 py-1 rounded-md">
+            ~{queuePosition.etaMins} min ETA
+          </div>
+        </div>
+      )}
+
+      {user.role === 'agent' && !ticket.expertName && !isClosed && queuePosition && (
+        <div className="bg-gradient-to-r from-blue-500/10 to-brand-500/10 border-b border-blue-200 dark:border-blue-900/50 px-4 py-2.5 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm font-semibold tracking-wide">
+              Position #{queuePosition.position} in queue
+            </span>
+          </div>
+          <div className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-white/50 dark:bg-black/20 px-2 py-1 rounded-md">
+            ~{queuePosition.etaMins} min ETA
+          </div>
+        </div>
+      )}
+
+      {showSearch && (
+        <div className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-brand-700 px-4 py-2 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+          </svg>
+          <input
+            type="text"
+            autoFocus
+            placeholder="Search messages..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-gray-800 dark:text-gray-200 focus:outline-none placeholder-gray-400"
+          />
+          {searchQuery && (
+            <span className="text-xs text-brand-500 font-medium px-2 py-0.5 bg-brand-50 dark:bg-brand-900/30 rounded mr-2">
+              {ticketMessages.filter(m => m.text.toLowerCase().includes(searchQuery.toLowerCase())).length} matches
+            </span>
+          )}
+          <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Messages */}
       <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 scrollbar-thin relative">
@@ -375,7 +549,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
             <p className="text-center text-gray-400 text-sm mt-8">{t('no_messages')}</p>
           )}
           {ticketMessages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} ticketId={ticket.id} />
+            <MessageBubble key={msg.id} message={msg} ticketId={ticket.id} searchQuery={searchQuery} />
           ))}
 
           {!ticket.expertName && !isClosed && (
@@ -423,23 +597,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
         </button>
       )}
 
-      {/* Close confirmation overlay */}
-      {showCloseConfirm && (
-        <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center z-10">
-          <div className="bg-white dark:bg-brand-800 rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full border border-gray-200 dark:border-brand-700">
-            <h3 className="text-base font-semibold text-gray-800 dark:text-white mb-1">{t('close_ticket_title')}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">{t('close_ticket_body')}</p>
-            <div className="flex gap-3">
-              <button onClick={closeTicket} className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-                {t('yes_close')}
-              </button>
-              <button onClick={() => setShowCloseConfirm(false)} className="flex-1 border border-gray-200 dark:border-brand-600 text-gray-600 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-brand-700 transition-colors">
-                {t('cancel')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Input */}
       {!isClosed && (
@@ -470,7 +627,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
           )}
 
           <div className="flex items-end gap-2">
-            {(user.role === 'expert' || user.role === 'manager') && (
+            {(user.role === 'expert' || user.role === 'admin') && (
               <button
                 type="button"
                 onClick={() => setWhisperMode((v) => !v)}
@@ -485,6 +642,11 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
                 </svg>
               </button>
             )}
+
+            {isExpert && (
+              <CannedResponsePicker onSelect={(val) => setText((prev) => prev ? `${prev} ${val}` : val)} />
+            )}
+
             <label className="cursor-pointer text-gray-500 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition-colors p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-brand-700 shrink-0" title="Screenshot (Ctrl+V)">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -507,7 +669,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
               onPaste={handlePaste}
               placeholder={t('type_message')}
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-white/40 dark:border-brand-600/50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 bg-white/80 dark:bg-brand-800/80 backdrop-blur-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm transition-all duration-200"
+              className="flex-1 resize-none rounded-xl border border-white/40 dark:border-brand-600/50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 bg-white/60 dark:bg-brand-800/80 backdrop-blur-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 shadow-sm transition-all duration-200"
             />
 
             <button

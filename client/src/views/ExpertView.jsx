@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
+import { MAX_OPEN_CHATS, ARCHIVE_PAGE_SIZE } from '../config';
 import ChatWindow from '../components/ChatWindow';
 import TicketPreview from '../components/TicketPreview';
 import DarkModeToggle from '../components/DarkModeToggle';
+import CannedResponsePicker from '../components/CannedResponsePicker';
+import { requestNotificationPermission, notify } from '../utils/notifications';
 
 const DEPT_COLOR = {
   DSC: 'bg-purple-100 text-purple-700',
@@ -97,27 +100,6 @@ function VSplitIcon() {
   );
 }
 
-function playChime() {
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  function tone(freq, start, duration) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, start);
-    gain.gain.linearRampToValueAtTime(0.25, start + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-    osc.start(start);
-    osc.stop(start + duration);
-  }
-  const t = ctx.currentTime;
-  tone(523, t, 0.18);
-  tone(659, t + 0.18, 0.22);
-  tone(784, t + 0.38, 0.3);
-}
-
 function BellIcon({ muted }) {
   return muted ? (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -144,13 +126,14 @@ function vsplitGridClass(count) {
 }
 
 export default function ExpertView() {
-  const { user, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, onlineExperts, unreadTickets, clearUnread } = useStore();
+  const { user, token, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, onlineExperts, unreadTickets, clearUnread } = useStore();
   const t = useT();
   const [myStatus, setMyStatus] = useState('available');
   const [activeTab, setActiveTab] = useState(null);
   const [filterDept, setFilterDept] = useState('all');
   const [viewMode, setViewMode] = useState('tabs');
-  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem('expertSound') !== 'off');
+  const notificationsEnabled = useStore((s) => s.notificationsEnabled);
+  const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
   const prevWaitingRef = useRef(null);
   const [previewTicketId, setPreviewTicketId] = useState(null);
   const [previewMessages, setPreviewMessages] = useState([]);
@@ -162,18 +145,50 @@ export default function ExpertView() {
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveDept, setArchiveDept] = useState('all');
   const [focusedTicketId, setFocusedTicketId] = useState(null);
-  const ARCHIVE_LIMIT = 25;
+  const [toast, setToast] = useState(null);
+  const ARCHIVE_LIMIT = ARCHIVE_PAGE_SIZE;
 
   useEffect(() => {
-    fetch('/api/tickets')
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const setAllLabels = useStore(s => s.setAllLabels);
+  const allLabels = useStore(s => s.allLabels);
+
+  useEffect(() => {
+    fetch('/api/tickets', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then((r) => r.json())
       .then((data) => setTickets(data.filter((t) => t.status !== 'closed')))
       .catch(console.error);
-  }, []);
+
+    fetch('/api/labels', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(setAllLabels)
+      .catch(console.error);
+
+    fetch('/api/canned-responses', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(useStore.getState().setCannedResponses)
+      .catch(console.error);
+
+    if (notificationsEnabled) {
+      requestNotificationPermission();
+    }
+  }, [notificationsEnabled]);
 
   useEffect(() => {
     if (!previewTicketId) return;
-    fetch(`/api/messages?ticketId=${previewTicketId}`)
+    fetch(`/api/messages?ticketId=${previewTicketId}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then((r) => r.json())
       .then((msgs) => setPreviewMessages(msgs.filter((m) => !m.whisper)))
       .catch(() => setPreviewMessages([]));
@@ -185,11 +200,8 @@ export default function ExpertView() {
       prevWaitingRef.current = count;
       return;
     }
-    if (soundEnabled && count > prevWaitingRef.current) {
-      playChime();
-    }
     prevWaitingRef.current = count;
-  }, [tickets]);
+  }, [tickets, notificationsEnabled]);
 
   function handleStatusChange(status) {
     setMyStatus(status);
@@ -207,12 +219,6 @@ export default function ExpertView() {
     }
   }
 
-  function toggleSound() {
-    const next = !soundEnabled;
-    setSoundEnabled(next);
-    localStorage.setItem('expertSound', next ? 'on' : 'off');
-  }
-
   function fetchArchive({ offset = 0, search = archiveSearch, dept = archiveDept, append = false }) {
     setArchiveLoading(true);
     const params = new URLSearchParams({
@@ -222,7 +228,9 @@ export default function ExpertView() {
       ...(dept !== 'all' && { dept }),
       ...(search.trim() && { search: search.trim() }),
     });
-    fetch(`/api/tickets?${params}`)
+    fetch(`/api/tickets?${params}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then((r) => r.json())
       .then(({ tickets, total }) => {
         setArchivedTickets((prev) => append ? [...prev, ...tickets] : tickets);
@@ -254,23 +262,32 @@ export default function ExpertView() {
     return () => clearTimeout(timer);
   }, [archiveSearch, archiveDept]);
 
-  const activeTickets = tickets.filter((t) => t.status !== 'closed');
+  const activeTickets = tickets
+    .filter((t) => t.status !== 'closed')
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   const waitingTickets = activeTickets.filter((t) => !t.expertName);
   const handledTickets = activeTickets.filter((t) => t.expertName);
   const queueFiltered = filterDept === 'all' ? activeTickets : activeTickets.filter((t) => t.dept === filterDept);
-  const openTabTickets = expertOpenTickets.map((id) => tickets.find((t) => t.id === id)).filter(Boolean).slice(0, 4);
+  const openTabTickets = expertOpenTickets
+    .map((id) => tickets.find((t) => t.id === id))
+    .filter(Boolean)
+    .slice(0, MAX_OPEN_CHATS);
 
   const previewTicket = previewTicketId
     ? (tickets.find((t) => t.id === previewTicketId) || archivedTickets.find((t) => t.id === previewTicketId))
     : null;
   const showPreview = !!previewTicket && !expertOpenTickets.includes(previewTicketId);
 
-  const atMaxChats = openTabTickets.length >= 4;
+  const atMaxChats = openTabTickets.length >= MAX_OPEN_CHATS;
 
   function selectTicket(ticket) {
     const isParticipant = ticket.participants?.some(p => p.id === user.id);
     if (expertOpenTickets.includes(ticket.id) || isParticipant) {
       if (!expertOpenTickets.includes(ticket.id)) {
+        if (atMaxChats) {
+          setToast(t('max_chats_reached') || 'You can only have up to 4 active chats at a time.');
+          return;
+        }
         addExpertOpenTicket(ticket.id);
         getSocket().emit('expert:join', { ticketId: ticket.id, expertId: user.id, expertName: user.name, expertLang: user.lang });
       }
@@ -278,10 +295,16 @@ export default function ExpertView() {
       setPreviewTicketId(null);
     } else if (!atMaxChats) {
       setPreviewTicketId(ticket.id);
+    } else {
+      setToast(t('max_chats_reached') || 'You can only have up to 4 active chats at a time.');
     }
   }
 
   function joinTicket(ticket) {
+    if (atMaxChats) {
+      setToast(t('max_chats_reached') || 'You can only have up to 4 active chats at a time.');
+      return;
+    }
     getSocket().emit('expert:join', {
       ticketId: ticket.id,
       expertId: user.id,
@@ -310,10 +333,20 @@ export default function ExpertView() {
   }
 
   return (
-    <div className="h-screen bg-transparent animate-fade-in flex flex-col overflow-hidden">
+    <div className="h-screen bg-transparent animate-fade-in flex flex-col overflow-hidden relative">
+      {/* Custom Toast Notification Overlay */}
+      <div
+        className={`absolute top-20 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 ease-out flex items-center gap-3 bg-red-600/90 backdrop-blur-md text-white px-5 py-3 rounded-full shadow-2xl shadow-red-600/20 border border-red-500 max-w-md w-full sm:w-auto ${toast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
+          }`}
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <span className="text-sm font-semibold tracking-wide">{toast}</span>
+      </div>
       <nav className="bg-brand-900/95 backdrop-blur-md text-white px-6 py-3 flex items-center justify-between shadow-lg sticky top-0 z-50 border-b border-brand-800">
         <div className="flex items-center gap-3">
-          <span className="font-bold text-xl tracking-tight">iKanbi</span>
+          <span className="font-bold text-xl tracking-tight">M&P Support</span>
           <span className="text-xs bg-brand-800 border border-brand-700 px-2.5 py-1 rounded-md font-semibold tracking-wide">Expert</span>
         </div>
         <div className="flex items-center gap-4">
@@ -324,11 +357,11 @@ export default function ExpertView() {
           <div className="h-4 w-px bg-brand-700"></div>
 
           <button
-            onClick={toggleSound}
-            title={soundEnabled ? 'Sound on — click to mute' : 'Sound off — click to enable'}
-            className={`transition-all duration-200 hover:scale-110 ${soundEnabled ? 'text-accent-400 hover:text-accent-300' : 'text-gray-500 hover:text-gray-300'}`}
+            onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+            title={notificationsEnabled ? 'Notifications on — click to mute' : 'Notifications off — click to enable'}
+            className={`transition-all duration-200 hover:scale-110 ${notificationsEnabled ? 'text-accent-400 hover:text-accent-300' : 'text-gray-500 hover:text-gray-300'}`}
           >
-            <BellIcon muted={!soundEnabled} />
+            <BellIcon muted={!notificationsEnabled} />
           </button>
           <DarkModeToggle />
           <button onClick={logout} className="text-brand-200 hover:text-white text-sm font-medium transition-colors">{t('sign_out')}</button>
@@ -345,11 +378,11 @@ export default function ExpertView() {
                 <h2 className="font-semibold text-gray-700 dark:text-gray-300 text-sm uppercase tracking-wide">{t('queue')}</h2>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                    {waitingTickets.length} {t('waiting')}
+                    {queueFiltered.filter(t => !t.expertName).length} {t('waiting')}
                   </span>
-                  {handledTickets.length > 0 && (
+                  {queueFiltered.filter(t => t.expertName).length > 0 && (
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                      {handledTickets.length} {t('active')}
+                      {queueFiltered.filter(t => t.expertName).length} {t('active')}
                     </span>
                   )}
                 </div>
@@ -393,88 +426,155 @@ export default function ExpertView() {
               {queueFiltered.length === 0 ? (
                 <p className="text-center text-gray-400 text-sm py-8">{t('no_open_tickets')}</p>
               ) : (
-                <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {queueFiltered.map((ticket) => {
-                    const alreadyOpen = expertOpenTickets.includes(ticket.id);
-                    const isHandled = !!ticket.expertName;
-                    const isPreviewed = previewTicketId === ticket.id;
-                    const time = new Date(ticket.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-                    return (
-                      <li
-                        key={ticket.id}
-                        onClick={() => selectTicket(ticket)}
-                        className={`p-3.5 mt-1 mx-2 rounded-xl cursor-pointer transition-all duration-200 ${isPreviewed || alreadyOpen
-                          ? 'glass-card border-l-[4px] border-l-accent-500 shadow-md'
-                          : 'bg-white/40 dark:bg-brand-800/40 hover:bg-white/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
-                          } ${isHandled && !alreadyOpen ? 'opacity-70' : ''}`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${DEPT_COLOR[ticket.dept]}`}>{ticket.dept}</span>
-                              {isHandled
-                                ? <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded-full">{t('in_progress')}</span>
-                                : <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded-full">{t('waiting_badge')}</span>
-                              }
-                              <span className="text-xs text-gray-400">{time}</span>
-                            </div>
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{ticket.agentName}</p>
-                            {ticket.cdbId && (
-                              <p className="text-xs font-mono text-brand-600 dark:text-brand-400 mt-0.5">CDBID: {ticket.cdbId}</p>
-                            )}
-                            {ticket.dareRef && (
-                              <p className="text-xs font-mono text-brand-600 dark:text-brand-400 mt-0.5">Dare Ref: {ticket.dareRef}</p>
-                            )}
-                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <span className="text-xs text-gray-400">
-                                {t('lang_label')}: {ticket.agentLang?.toUpperCase()}
-                              </span>
-                              {ticket.participants && ticket.participants.length > 0 && (
-                                <div className="flex items-center gap-1">
-                                  <div className="flex -space-x-1">
-                                    {ticket.participants.slice(0, 3).map((p) => (
-                                      <div
-                                        key={p.id}
-                                        title={p.name}
-                                        className="w-4 h-4 rounded-full bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[9px] font-bold ring-1 ring-white dark:ring-gray-800"
-                                      >
-                                        {p.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                                      </div>
-                                    ))}
-                                  </div>
-                                  {ticket.participants.length > 1 && (
-                                    <span className="text-xs text-brand-500 dark:text-brand-400 font-medium">
-                                      {ticket.participants.length} experts
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          {alreadyOpen ? (
-                            <span className="text-xs px-2.5 py-1.5 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shrink-0 shadow-sm border border-brand-200 dark:border-brand-800">
-                              {t('open')}
-                            </span>
-                          ) : (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
-                              disabled={atMaxChats}
-                              className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shrink-0 shadow-sm hover:translate-y-px ${isHandled
-                                ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md'
-                                : 'bg-gradient-to-r from-accent-500 to-rose-500 text-white hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed'
+                <div className="space-y-4 pb-4">
+                  {/* Waiting Queue */}
+                  {queueFiltered.filter(t => !t.expertName).length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 pt-3 pb-1">
+                        {t('waiting_badge')}
+                      </h3>
+                      <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {queueFiltered.filter(t => !t.expertName).map((ticket) => {
+                          const alreadyOpen = expertOpenTickets.includes(ticket.id);
+                          const isPreviewed = previewTicketId === ticket.id;
+                          const created = new Date(ticket.createdAt);
+                          const isToday = new Date().toDateString() === created.toDateString();
+                          const tStr = created.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                          const dStr = created.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                          const time = isToday ? tStr : `${dStr} ${tStr}`;
+                          return (
+                            <li
+                              key={ticket.id}
+                              onClick={() => selectTicket(ticket)}
+                              className={`p-3.5 mt-1 mx-2 rounded-xl cursor-pointer transition-all duration-200 ${isPreviewed || alreadyOpen
+                                ? 'glass-card border-l-[4px] border-l-accent-500 shadow-md'
+                                : 'bg-white/40 dark:bg-brand-800/40 hover:bg-white/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
                                 }`}
                             >
-                              {isHandled ? t('jump_in') : t('join')}
-                            </button>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0 pr-2">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept]}`}>{ticket.dept}</span>
+                                    <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{time}</span>
+                                  </div>
+                                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate mb-2">{ticket.agentName}</p>
+
+                                  {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      {ticket.participants.map((p, idx) => {
+                                        const isObj = typeof p === 'object' && p !== null;
+                                        const pId = isObj ? p.id : p;
+                                        const pName = isObj ? p.name : (pId || 'Unknown');
+                                        return (
+                                          <div
+                                            key={`${pId}-${idx}`}
+                                            title={pName}
+                                            className="w-5 h-5 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-800 dark:to-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[9px] font-bold shadow-sm"
+                                          >
+                                            {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                                {alreadyOpen ? (
+                                  <span className="text-xs px-2.5 py-1.5 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shrink-0 shadow-sm border border-brand-200 dark:border-brand-800">
+                                    {t('open')}
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
+                                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shrink-0 shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
+                                      } bg-gradient-to-r from-accent-500 to-rose-500 text-white hover:shadow-md`}
+                                  >
+                                    {t('join')}
+                                  </button>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Handled Queue */}
+                  {queueFiltered.filter(t => t.expertName).length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-4 pt-3 pb-1">
+                        {t('in_progress')}
+                      </h3>
+                      <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {queueFiltered.filter(t => t.expertName).map((ticket) => {
+                          const alreadyOpen = expertOpenTickets.includes(ticket.id);
+                          const isPreviewed = previewTicketId === ticket.id;
+                          const created = new Date(ticket.createdAt);
+                          const isToday = new Date().toDateString() === created.toDateString();
+                          const tStr = created.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                          const dStr = created.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+                          const time = isToday ? tStr : `${dStr} ${tStr}`;
+                          return (
+                            <li
+                              key={ticket.id}
+                              onClick={() => selectTicket(ticket)}
+                              className={`p-3.5 mt-1 mx-2 rounded-xl cursor-pointer transition-all duration-200 ${isPreviewed || alreadyOpen
+                                ? 'glass-card border-l-[4px] border-l-accent-500 shadow-md'
+                                : 'bg-white/40 dark:bg-brand-800/40 hover:bg-white/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
+                                } opacity-70`}
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0 pr-2">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept]}`}>{ticket.dept}</span>
+                                    <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{time}</span>
+                                  </div>
+                                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate mb-2">{ticket.agentName}</p>
+
+                                  {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      {ticket.participants.map((p, idx) => {
+                                        const isObj = typeof p === 'object' && p !== null;
+                                        const pId = isObj ? p.id : p;
+                                        const pName = isObj ? p.name : (pId || 'Unknown');
+                                        return (
+                                          <div
+                                            key={`${pId}-${idx}`}
+                                            title={pName}
+                                            className="w-5 h-5 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-800 dark:to-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[9px] font-bold shadow-sm"
+                                          >
+                                            {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                                {alreadyOpen ? (
+                                  <span className="text-xs px-2.5 py-1.5 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shrink-0 shadow-sm border border-brand-200 dark:border-brand-800">
+                                    {t('open')}
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
+                                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shrink-0 shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
+                                      } bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md`}
+                                  >
+                                    {t('jump_in')}
+                                  </button>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          )}
+          )
+          }
 
           {/* Archive */}
           {sidebarTab === 'archive' && (
@@ -527,14 +627,25 @@ export default function ExpertView() {
                               : 'hover:bg-gray-50 dark:hover:bg-brand-700 border-l-2 border-transparent'
                               }`}
                           >
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${DEPT_COLOR[ticket.dept]}`}>{ticket.dept}</span>
-                              <span className="text-xs text-gray-400">{closedTime}</span>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept]}`}>{ticket.dept}</span>
+                              <span className="text-[10px] font-medium text-gray-400 dark:text-gray-500">{closedTime}</span>
                             </div>
-                            <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{ticket.agentName}</p>
-                            {ticket.cdbId && <p className="text-xs font-mono text-brand-600 dark:text-brand-400 mt-0.5">CDBID: {ticket.cdbId}</p>}
-                            {ticket.dareRef && <p className="text-xs font-mono text-brand-600 dark:text-brand-400 mt-0.5">Dare Ref: {ticket.dareRef}</p>}
-                            {ticket.expertName && <p className="text-xs text-gray-400 mt-0.5">{ticket.expertName}</p>}
+                            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate mb-1 bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300">{ticket.agentName}</p>
+
+                            {(ticket.cdbId || ticket.dareRef) && (
+                              <div className="flex items-center gap-2 text-[11px] font-mono text-gray-500 dark:text-gray-400 mb-1">
+                                {ticket.cdbId && <span title="CDBID">#{ticket.cdbId}</span>}
+                                {ticket.cdbId && ticket.dareRef && <span className="text-gray-300 dark:text-gray-600">•</span>}
+                                {ticket.dareRef && <span title="Dare Ref">{ticket.dareRef}</span>}
+                              </div>
+                            )}
+                            {ticket.expertName && <p className="text-[11px] text-gray-400 font-medium">Expert: {ticket.expertName}</p>}
+                            {ticket.closingNotes && (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 italic line-clamp-2 border-l-2 border-amber-300 dark:border-amber-700 pl-2">
+                                "{ticket.closingNotes}"
+                              </p>
+                            )}
                           </li>
                         );
                       })}
@@ -612,7 +723,7 @@ export default function ExpertView() {
 
           {/* Tab bar + view toggle */}
           {openTabTickets.length > 0 && (
-            <div className="bg-white dark:bg-brand-800 border-b border-gray-200 dark:border-brand-700 flex items-center">
+            <div className="bg-white/50 backdrop-blur-md dark:bg-brand-800 border-b border-gray-200 dark:border-brand-700 flex items-center">
               {viewMode === 'tabs' && (
                 <div className="flex overflow-x-auto flex-1">
                   {openTabTickets.map((ticket) => {
@@ -702,7 +813,7 @@ export default function ExpertView() {
                 {(() => {
                   const ticket = tickets.find((t) => t.id === activeTab) || openTabTickets[0];
                   return ticket
-                    ? <ChatWindow ticket={ticket} onClose={() => closeTab(ticket.id)} />
+                    ? <ChatWindow key={ticket.id} ticket={ticket} onClose={() => closeTab(ticket.id)} />
                     : null;
                 })()}
               </div>
@@ -744,6 +855,7 @@ export default function ExpertView() {
 
                   <div className="flex-1 min-h-0 p-2">
                     <ChatWindow
+                      key={focusedTicketId}
                       ticket={openTabTickets.find((t) => t.id === focusedTicketId)}
                       onClose={() => closeTab(focusedTicketId)}
                       onFocus={() => setFocusedTicketId(null)}
@@ -767,8 +879,8 @@ export default function ExpertView() {
             )}
           </div>
         </main>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
 

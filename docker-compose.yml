@@ -6,8 +6,8 @@ services:
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
     volumes:
-      - ./server/db.json:/app/db.json
-      - ./server/uploads:/app/uploads
+      - ./server:/app
+      - /app/node_modules
     extra_hosts:
       - "host.docker.internal:host-gateway"
 

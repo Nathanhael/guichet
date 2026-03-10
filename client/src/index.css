@@ -8,8 +8,8 @@
   }
 
   body:not(.dark) {
-    @apply bg-slate-50 text-slate-900;
-    background-image: radial-gradient(circle at 50% 0%, theme('colors.slate.100') 0%, theme('colors.slate.50') 100%);
+    @apply bg-brand-50 text-slate-800;
+    background-image: radial-gradient(circle at 50% 0%, theme('colors.white') 0%, theme('colors.brand.50') 100%);
   }
 
   .dark body {
@@ -38,11 +38,11 @@
 
 @layer components {
   .glass-card {
-    @apply bg-white/80 dark:bg-brand-800/60 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl shadow-brand-900/5 dark:shadow-black/20 rounded-2xl;
+    @apply bg-white/70 dark:bg-brand-800/60 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl shadow-brand-900/5 dark:shadow-black/20 rounded-2xl;
   }
 
   .glass-panel {
-    @apply bg-white/60 dark:bg-brand-900/60 backdrop-blur-lg border border-white/20 dark:border-white/5 shadow-lg shadow-brand-900/5 dark:shadow-black/20;
+    @apply bg-white/40 dark:bg-brand-900/60 backdrop-blur-lg border border-white/20 dark:border-white/5 shadow-lg shadow-brand-900/5 dark:shadow-black/20;
   }
 
   .btn-primary {

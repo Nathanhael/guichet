@@ -3,7 +3,7 @@ import useStore from '../store/useStore';
 import { useT } from '../i18n';
 
 export default function FeedbackModal({ onClose }) {
-  const { user } = useStore();
+  const { user, token } = useStore();
   const t = useT();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -16,7 +16,10 @@ export default function FeedbackModal({ onClose }) {
     try {
       await fetch('/api/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           userId: user.id,
           userName: user.name,

@@ -1,46 +1,94 @@
-import { Router } from 'express';
-import { readDb } from '../db.js';
+import express from 'express';
+import { query, get } from '../db.js';
+import logger from '../utils/logger.js';
+import { query as queryVal } from 'express-validator';
+import { validate } from '../middleware/validator.js';
 
-const router = Router();
+const router = express.Router();
 
 // GET /api/tickets — all tickets (for manager/expert)
-// Supports: agentId, status, dept, search, limit, offset
-// When limit is provided, returns { tickets, total } instead of array
-router.get('/', async (req, res) => {
+router.get('/', [
+  queryVal('status').optional().isIn(['open', 'pending', 'closed']),
+  queryVal('dept').optional().isString(),
+  queryVal('dateFrom').optional().isISO8601(),
+  queryVal('dateTo').optional().isISO8601(),
+  queryVal('limit').optional().isInt({ min: 1 }),
+  queryVal('offset').optional().isInt({ min: 0 }),
+  validate
+], async (req, res) => {
   try {
-    const db = await readDb();
     const { agentId, status, dept, search, limit, offset, dateFrom, dateTo } = req.query;
-    let tickets = db.tickets;
 
-    if (agentId) tickets = tickets.filter((t) => t.agentId === agentId);
-    if (status) tickets = tickets.filter((t) => t.status === status);
-    if (dept && dept !== 'all') tickets = tickets.filter((t) => t.dept === dept);
-    if (search) {
-      const q = search.toLowerCase();
-      tickets = tickets.filter((t) =>
-        t.agentName?.toLowerCase().includes(q) ||
-        t.cdbId?.toLowerCase().includes(q) ||
-        t.dareRef?.toLowerCase().includes(q) ||
-        t.expertName?.toLowerCase().includes(q)
-      );
+    let sql = 'SELECT * FROM tickets WHERE 1=1';
+    let countSql = 'SELECT COUNT(*) as total FROM tickets WHERE 1=1';
+    const params = [];
+
+    if (agentId) {
+      sql += ' AND agentId = ?';
+      countSql += ' AND agentId = ?';
+      params.push(agentId);
     }
-    if (dateFrom) tickets = tickets.filter((t) => t.createdAt >= dateFrom);
-    if (dateTo)   tickets = tickets.filter((t) => t.createdAt <= dateTo + 'T23:59:59');
+    if (status) {
+      sql += ' AND status = ?';
+      countSql += ' AND status = ?';
+      params.push(status);
+    }
+    if (dept && dept !== 'all') {
+      sql += ' AND dept = ?';
+      countSql += ' AND dept = ?';
+      params.push(dept);
+    }
+    if (search) {
+      const q = `%${search}%`;
+      const searchClause = ' AND (agentName LIKE ? OR cdbId LIKE ? OR dareRef LIKE ? OR expertName LIKE ?)';
+      sql += searchClause;
+      countSql += searchClause;
+      params.push(q, q, q, q);
+    }
+    if (dateFrom) {
+      sql += ' AND createdAt >= ?';
+      countSql += ' AND createdAt >= ?';
+      params.push(dateFrom);
+    }
+    if (dateTo) {
+      const end = dateTo + 'T23:59:59';
+      sql += ' AND createdAt <= ?';
+      countSql += ' AND createdAt <= ?';
+      params.push(end);
+    }
 
-    // Sort closed tickets newest-first
+    // Sorting
     if (status === 'closed') {
-      tickets = [...tickets].sort((a, b) => new Date(b.closedAt) - new Date(a.closedAt));
+      sql += ' ORDER BY closedAt DESC';
+    } else {
+      sql += ' ORDER BY createdAt ASC';
     }
 
     if (limit !== undefined) {
-      const total = tickets.length;
-      const start = parseInt(offset) || 0;
-      const end = start + parseInt(limit);
-      return res.json({ tickets: tickets.slice(start, end), total });
+      const total = get(countSql, params).total;
+      sql += ' LIMIT ? OFFSET ?';
+      const result = query(sql, [...params, parseInt(limit), parseInt(offset) || 0]);
+
+      // Map participants and labels (Legacy support/Frontend expects objects)
+      const tickets = result.map(t => ({
+        ...t,
+        participants: JSON.parse(t.participants || '[]'),
+        labels: query('SELECT labelId FROM ticket_labels WHERE ticketId = ?', [t.id]).map(l => l.labelId)
+      }));
+
+      return res.json({ tickets, total });
     }
+
+    const result = query(sql, params);
+    const tickets = result.map(t => ({
+      ...t,
+      participants: JSON.parse(t.participants || '[]'),
+      labels: query('SELECT labelId FROM ticket_labels WHERE ticketId = ?', [t.id]).map(l => l.labelId)
+    }));
 
     res.json(tickets);
   } catch (err) {
+    logger.error({ err: err.message, query: req.query }, 'Error fetching tickets');
     res.status(500).json({ error: err.message });
   }
 });
@@ -48,10 +96,14 @@ router.get('/', async (req, res) => {
 // GET /api/tickets/:id/messages
 router.get('/:id/messages', async (req, res) => {
   try {
-    const db = await readDb();
-    const messages = db.messages.filter((m) => m.ticketId === req.params.id);
-    res.json(messages);
+    const messages = query('SELECT * FROM messages WHERE ticketId = ? ORDER BY createdAt ASC', [req.params.id]);
+    res.json(messages.map(m => ({
+      ...m,
+      whisper: !!m.whisper,
+      system: !!m.system
+    })));
   } catch (err) {
+    logger.error({ err: err.message, query: req.query }, 'Error fetching tickets');
     res.status(500).json({ error: err.message });
   }
 });

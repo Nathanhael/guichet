@@ -1,6 +1,20 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  safelist: [
+    {
+      pattern: /(bg|text|border|shadow)-(rose|blue|amber|emerald|purple|indigo|cyan|orange|teal|pink)-(400|500|600|700)/,
+    },
+    {
+      pattern: /bg-(rose|blue|amber|emerald|purple|indigo|cyan|orange|teal|pink)-500\/10/,
+    },
+    {
+      pattern: /shadow-(rose|blue|amber|emerald|purple|indigo|cyan|orange|teal|pink)-500\/40/,
+    },
+    {
+      pattern: /border-(rose|blue|amber|emerald|purple|indigo|cyan|orange|teal|pink)-500\/20/,
+    },
+  ],
   darkMode: 'class',
   theme: {
     extend: {
