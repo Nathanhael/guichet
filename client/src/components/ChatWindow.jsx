@@ -543,7 +543,11 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
       )}
 
       {/* Messages */}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 scrollbar-thin relative">
+      <div 
+        ref={scrollContainerRef} 
+        onScroll={handleScroll} 
+        className="flex-1 overflow-y-auto p-4 scrollbar-thin relative"
+      >
         <div className="space-y-1">
           {ticketMessages.length === 0 && (
             <p className="text-center text-gray-400 text-sm mt-8">{t('no_messages')}</p>
@@ -600,7 +604,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }) {
 
       {/* Input */}
       {!isClosed && (
-        <form onSubmit={sendMessage} className={`border-t p-3 backdrop-blur-md transition-colors duration-300 ${whisperMode
+        <form onSubmit={sendMessage} className={`border-t p-3 backdrop-blur-md ${whisperMode
           ? 'border-violet-200/50 dark:border-violet-800/50 bg-violet-50/80 dark:bg-violet-950/40'
           : 'border-white/20 dark:border-brand-700/50 bg-white/60 dark:bg-brand-800/60'
           }`}>

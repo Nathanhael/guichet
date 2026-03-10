@@ -28,11 +28,13 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 
 ### Frontend (client/package.json)
 
-| Package | Version | Purpose |
+|Package | Version | Purpose |
 |---|---|---|
 | react | ^18.2.0 | UI framework |
 | react-dom | ^18.2.0 | DOM rendering |
 | tailwindcss | ^3.4.1 | Utility-first CSS |
+| typescript | ^5.9.3 | Type-safe development |
+| framer-motion | ^12.35.2 | Physics-based animations |
 | zustand | ^4.5.2 | State management |
 | socket.io-client | ^4.7.4 | Socket.io client |
 | recharts | ^2.12.7 | Data visualization |
@@ -109,97 +111,9 @@ Client                          Server
 - JWT tokens expire after 24h (configurable via `JWT_EXPIRY`)
 - Role-based access: `authorize(['agent', 'expert', 'admin'])` middleware guards endpoints
 
-## Architecture
+## System Architecture
 
-### Server Layers
-
-```
-index.js                    Entry point, starts HTTP server
-  └── app.js                Express app + Socket.io setup
-        ├── config.js       Centralized env-based config
-        ├── middleware/
-        │   ├── auth.js     JWT verify + RBAC
-        │   └── validator.js  express-validator wrapper
-        ├── routes/         REST endpoints (auth, tickets, messages, labels, canned_responses, etc.)
-        ├── services/
-        │   ├── translate.js  Ollama translation + content-string cache
-        │   └── llm.js       Ollama sentiment analysis + caching
-        ├── db/
-        │   ├── sqlite.js   DB init, query/get/run/transaction helpers
-        │   ├── schema.sql  Table definitions + indexes
-        │   └── seed.js     Demo data population
-        └── utils/
-            └── logger.js   Pino logger instance
-```
-
-### Socket.io Middleware Pipeline
-
-1. **Business hours check** -- Rejects connections outside configured hours
-2. **User identification** -- `socket:identify` registers userId, role, name on the socket
-3. **Room management** -- Users join ticket-specific rooms on `expert:join`
-4. **Translation** -- Messages auto-translated via Ollama before broadcast
-5. **Whisper filtering** -- Whisper messages only sent to non-agent sockets in the room
-6. **Delivery tracking** -- `message:delivered` / `message:read` events update timestamps and broadcast status
-
-### Modular Admin Dashboard
-
-The Admin View is a component-based architecture:
-
-- **Orchestrator**: `AdminView.jsx` handles tab routing and global filter state
-- **Feature Modules**:
-  - `Stats/` -- KPI cards (StatsOverview), queue health (QueueHealth), online experts (OnlineExperts), trend charts (PerformanceTrends), satisfaction breakdown (SatisfactionByDept), department distribution (DeptDistribution), staffing demand (StaffingDemand), hour spotlight (HourSpotlight), day summary (DaySummary), AI perspective (LLMSummary)
-  - `Performance/` -- Expert/agent leaderboards, peak hours
-  - `Archive/` -- Searchable history with chat preview drawer
-  - `Feedback/` -- Feedback management and CSAT breakdown
-  - `Labels/` -- Tag management
-- **Shared Library**: `StatCard`, `Panel`, `Stars`, `Icons`, `ChartTooltip`
-- **Ticket Operations**: `TicketOperations.jsx` for direct ticket management
-
-### Advanced UX & Real-time Features
-
-- **Connection Management**: Socket.io auto-reconnect with exponential backoff (1s-5s), connection status tracked in Zustand (`connected`/`reconnecting`/`disconnected`), auto re-identification on reconnect
-- **Message Receipts**: `deliveredAt` and `readAt` timestamps trigger real-time `message:status` socket events, with WhatsApp-style checkmark indicators in `MessageBubble`
-- **Queue Position**: `queue:position` events broadcast live wait time estimates to agents based on queue size and average resolution time
-- **In-chat Search**: Client-side message filtering with `<mark>` tag highlighting in message bubbles
-- **Canned Responses**: `/` shortcut opens a quick-insert menu for experts, fetching from the `canned_responses` table
-- **Closing Notes**: Experts can add resolution notes when closing a ticket, stored in `tickets.closingNotes`
-- **Audio Notifications**: Chime for new tickets (expert) and new messages, with toggle controls
-
-### Data Flow
-
-1. **Unidirectional State** -- Zustand store -> React components
-2. **Real-time Sync** -- Socket.io events update the store, which triggers re-renders
-3. **Optimistic Updates** -- UI reflects changes immediately (e.g., feedback treatment)
-4. **Stats Merging** -- The `/api/stats` endpoint merges live data (last 30 days) with pre-aggregated `daily_stats` for seamless historical charts
-
-### Translation & Caching Strategy
-
-1. Message arrives via `message:send` socket event
-2. If sender and receiver languages differ, call Ollama REST API (10s timeout)
-3. Translation result is cached in `translations_cache` table keyed by content string `${fromLang}:${toLang}:${text}`
-4. Subsequent identical translations are served from cache (no LLM call)
-5. Same-language messages skip translation entirely
-6. On Ollama failure, original text is shown with "(translation unavailable)" indicator
-
-### GDPR Purge Cycle
-
-Runs on startup + every 24 hours:
-
-1. Find tickets older than `GDPR_RETENTION_DAYS`
-2. Aggregate their metrics into `daily_stats` rows (one per day)
-3. Delete individual tickets, messages, and ratings
-4. `daily_stats` rows are anonymized and retained indefinitely
-
-### Error Handling & Security
-
-- **Rate Limiting**: `express-rate-limit` guards `/api` (100/min), `/api/auth` (5/min), and `/api/stats/summary` (10/min)
-- **Security Headers**: `helmet` enforces Content-Security-Policy, X-Content-Type-Options, etc.
-- **Upload Validation**: `file-type` checks magic bytes on image uploads (not just MIME type)
-- **Input Validation**: `express-validator` rejects malformed input at the route level with 400 responses
-- **CSV Escaping**: Export function escapes formula-injection characters (`=`, `+`, `-`, `@`)
-- **Backend Logging**: Express error middleware logs via pino and returns structured JSON errors
-- **Frontend Fallbacks**: `ErrorBoundary.jsx` catches render errors. Socket disconnects show status indicators until restored
-- **LLM Graceful Degradation**: Ollama translations timeout after 10s and fall back gracefully
+For a detailed breakdown of the system design, real-time flows, and modular architecture, see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
 ## Testing
 

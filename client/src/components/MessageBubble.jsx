@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
+import BionicText from './BionicText';
 
 const LANG_LABEL = { nl: 'NL', fr: 'FR', en: 'EN' };
 
@@ -29,7 +30,7 @@ function Avatar({ name, isMine }) {
 }
 
 export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
-  const { user } = useStore();
+  const { user, dyslexicMode, bionicReading } = useStore();
   const t = useT();
   const [showOriginal, setShowOriginal] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -147,14 +148,24 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
           </span>
         </div>
 
-        <div className={`relative group p-3 rounded-2xl shadow-sm transition-all duration-200 rounded-tl-none ${isWhisper
-          ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-900 dark:text-violet-100 border border-violet-200 dark:border-violet-800'
-          : isMine
-            ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-900 dark:text-brand-100 border border-brand-200/50 dark:border-brand-700/50'
-            : 'bg-white/90 dark:bg-brand-800/90 text-gray-800 dark:text-gray-100 border border-white/20 dark:border-brand-700/50'
+        <div className={`relative group p-3 rounded-2xl shadow-sm transition-all duration-200 rounded-tl-none ${dyslexicMode
+          ? isWhisper
+            ? 'bg-amber-100 dark:bg-slate-900 border-2 border-violet-400 dark:border-violet-500 text-slate-900 dark:text-slate-100 shadow-none bubble-dyslexic'
+            : isMine
+              ? 'bg-amber-100 dark:bg-slate-900 border-2 border-brand-500 dark:border-brand-400 text-slate-900 dark:text-slate-100 shadow-none bubble-dyslexic'
+              : 'bg-amber-50 dark:bg-slate-900 border-2 border-slate-400 dark:border-slate-500 text-slate-900 dark:text-slate-100 shadow-none bubble-dyslexic'
+          : isWhisper
+            ? 'glass-bubble bg-violet-100/40 dark:bg-violet-900/40 text-violet-900 dark:text-violet-100'
+            : isMine
+              ? 'glass-bubble bg-brand-50/40 dark:bg-brand-900/30 text-brand-900 dark:text-brand-100'
+              : 'glass-bubble bg-white/40 dark:bg-brand-800/40 text-gray-800 dark:text-gray-100'
           }`}>
           <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">
-            {highlightText(displayText, searchQuery)}
+            {bionicReading ? (
+              <BionicText text={highlightText(displayText, searchQuery)} />
+            ) : (
+              highlightText(displayText, searchQuery)
+            )}
           </p>
 
           {message.mediaUrl && (
