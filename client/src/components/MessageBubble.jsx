@@ -20,15 +20,15 @@ function Avatar({ name, isMine }) {
     : '?';
   return (
     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 select-none shadow-sm ${isMine
-        ? 'bg-gradient-to-br from-brand-500 to-brand-600 text-white'
-        : 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-200'
+      ? 'bg-gradient-to-br from-brand-500 to-brand-600 text-white'
+      : 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-200'
       }`}>
       {initials}
     </div>
   );
 }
 
-export default function MessageBubble({ message, ticketId }) {
+export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
   const { user } = useStore();
   const t = useT();
   const [showOriginal, setShowOriginal] = useState(false);
@@ -55,7 +55,14 @@ export default function MessageBubble({ message, ticketId }) {
     );
   }
 
+  const allTickets = useStore(s => s.tickets || []);
+  const allArchived = useStore(s => s.archivedTickets || []);
+  const ticket = allTickets.find(t => t.id === ticketId) || allArchived.find(t => t.id === ticketId);
+
   const isMine = message.senderId === user.id;
+  const isAgent = ticket && message.senderId === ticket.agentId;
+  const isExpertParticipant = ticket && message.senderId !== ticket.agentId && !message.system;
+
   const hasTranslation = message.translatedText && message.translatedText !== message.text;
   const isWhisper = message.whisper;
   const senderName = message.senderName || message.senderId;
@@ -72,30 +79,138 @@ export default function MessageBubble({ message, ticketId }) {
     minute: '2-digit',
   });
 
+  // Highlight search matching
+  const highlightText = (text, query) => {
+    if (!query) return text;
+    const regex = new RegExp(`(${query})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) =>
+      regex.test(part) ? <mark key={i} className="bg-yellow-200 dark:bg-yellow-900/60 text-inherit rounded px-0.5 font-medium">{part}</mark> : part
+    );
+  };
+
+  let nameColorClass = 'text-gray-500 dark:text-gray-400';
+  if (isMine) {
+    nameColorClass = 'text-brand-600 dark:text-brand-400';
+  } else if (isAgent) {
+    nameColorClass = 'text-teal-600 dark:text-teal-400';
+  } else if (isExpertParticipant) {
+    nameColorClass = 'text-violet-600 dark:text-violet-400';
+  }
+
   return (
-    <div className={`flex gap-3 px-3 py-2 -mx-1 rounded-xl group transition-all duration-200 hover:bg-white/60 dark:hover:bg-brand-800/60 animate-fade-in ${isWhisper ? 'bg-violet-50/50 dark:bg-violet-950/20 hover:bg-violet-100/50 dark:hover:bg-violet-950/30 border border-violet-100/50 dark:border-violet-900/30' : 'border border-transparent'
-      }`}>
+    <div className={`flex gap-3 px-3 py-1 items-start animate-fade-in flex-row`}>
       <Avatar name={senderName} isMine={isMine} />
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 mb-0.5">
-          <span className={`text-sm font-semibold ${isMine ? 'text-brand-600 dark:text-brand-400' : 'text-gray-800 dark:text-gray-100'
-            }`}>
-            {isMine ? `${senderName} (you)` : senderName}
+      <div className={`flex flex-col max-w-[85%] items-start`}>
+        <div className={`flex items-baseline gap-2 mb-1 flex-row`}>
+          <span className={`text-[10px] font-bold uppercase tracking-wider ${nameColorClass}`}>
+            {isMine ? t('you') || 'You' : senderName}
           </span>
-          <span className="text-xs text-gray-400">{time}</span>
-          <div className="relative inline-flex" ref={pickerRef}>
+          <span className="text-[10px] text-gray-400 flex items-center gap-1">
+            {time}
+            {isMine && !isWhisper && (
+              <span className="flex items-center" title={
+                message.readAt ? `Read ${new Date(message.readAt).toLocaleTimeString()}` :
+                  message.deliveredAt ? `Delivered ${new Date(message.deliveredAt).toLocaleTimeString()}` :
+                    message.pending ? 'Sending...' : 'Sent'
+              }>
+                {message.pending ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-gray-400 animate-spin-slow" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : message.readAt ? (
+                  <div className="flex -space-x-1.5 translate-y-[0.5px]">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-500 animate-fade-in" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-blue-500 animate-fade-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ animationDelay: '100ms' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : message.deliveredAt ? (
+                  <div className="flex -space-x-1.5 translate-y-[0.5px]">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </span>
+            )}
+          </span>
+        </div>
+
+        <div className={`relative group p-3 rounded-2xl shadow-sm transition-all duration-200 rounded-tl-none ${isWhisper
+          ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-900 dark:text-violet-100 border border-violet-200 dark:border-violet-800'
+          : isMine
+            ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-900 dark:text-brand-100 border border-brand-200/50 dark:border-brand-700/50'
+            : 'bg-white/90 dark:bg-brand-800/90 text-gray-800 dark:text-gray-100 border border-white/20 dark:border-brand-700/50'
+          }`}>
+          <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">
+            {highlightText(displayText, searchQuery)}
+          </p>
+
+          {message.mediaUrl && (
+            <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+              <img
+                src={message.mediaUrl}
+                alt="screenshot"
+                className="rounded-lg max-w-full max-h-64 object-contain"
+              />
+            </a>
+          )}
+
+          {/* Reactions display nested in bubble for better look */}
+          {message.reactions && Object.keys(message.reactions).length > 0 && (
+            <div className={`flex flex-wrap gap-1 mt-2 justify-start`}>
+              {Object.entries(message.reactions).map(([key, userIds]) => {
+                const emojiObj = REACTION_EMOJIS.find((e) => e.key === key);
+                if (!emojiObj || userIds.length === 0) return null;
+                const iReacted = userIds.includes(user.id);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      getSocket().emit('reaction:toggle', {
+                        ticketId,
+                        messageId: message.id,
+                        emoji: key,
+                        userId: user.id,
+                      });
+                    }}
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] border transition-colors ${iReacted
+                      ? 'bg-brand-400/30 border-brand-400/40 text-brand-700 dark:text-brand-300'
+                      : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-brand-600 text-gray-600 dark:text-gray-300'
+                      }`}
+                  >
+                    <span>{emojiObj.emoji}</span>
+                    <span>{userIds.length}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Reaction Picker Button */}
+          <div className={`absolute top-0 -right-10 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1`} ref={pickerRef}>
             <button
               onClick={() => setShowPicker((v) => !v)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              className="p-1.5 rounded-full bg-white dark:bg-brand-800 shadow-md border border-gray-100 dark:border-brand-700 text-gray-400 hover:text-brand-500 transition-colors"
               title={t('add_reaction')}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </button>
             {showPicker && (
-              <div className="absolute left-0 top-full mt-1 bg-white dark:bg-brand-800 border border-gray-200 dark:border-brand-600 rounded-lg shadow-lg flex gap-0.5 p-1 z-20">
+              <div className={`absolute left-0 top-full mt-1 bg-white/95 backdrop-blur-md dark:bg-brand-800 border border-gray-200 dark:border-brand-600 rounded-xl shadow-xl flex gap-1 p-1.5 z-20`}>
                 {REACTION_EMOJIS.map((e) => (
                   <button
                     key={e.key}
@@ -103,12 +218,12 @@ export default function MessageBubble({ message, ticketId }) {
                       getSocket().emit('reaction:toggle', {
                         ticketId,
                         messageId: message.id,
-                        emoji: e.key,
+                        emoji: key,
                         userId: user.id,
                       });
                       setShowPicker(false);
                     }}
-                    className="hover:bg-gray-100 dark:hover:bg-brand-700 rounded p-1 text-base transition-colors"
+                    className="hover:bg-gray-100 dark:hover:bg-brand-700 rounded-lg p-1.5 text-lg transition-transform hover:scale-125 focus:scale-125"
                   >
                     {e.emoji}
                   </button>
@@ -116,79 +231,32 @@ export default function MessageBubble({ message, ticketId }) {
               </div>
             )}
           </div>
-          {isWhisper && (
-            <span className="text-xs text-violet-500 dark:text-violet-400 font-medium flex items-center gap-0.5">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-              </svg>
-              {t('whisper_label')}
-            </span>
-          )}
         </div>
 
-        <p className={`text-sm break-words whitespace-pre-wrap leading-relaxed ${isWhisper
-            ? 'text-violet-700 dark:text-violet-300 italic'
-            : 'text-gray-700 dark:text-gray-200'
-          }`}>
-          {displayText}
-        </p>
-
-        {message.mediaUrl && (
-          <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
-            <img
-              src={message.mediaUrl}
-              alt="screenshot"
-              className="rounded-lg max-w-sm max-h-48 object-contain border border-gray-200 dark:border-brand-600"
-            />
-          </a>
-        )}
-
-        {(hasTranslation) && (
-          <div className="mt-1">
-            <button
-              onClick={() => setShowOriginal((v) => !v)}
-              className="text-xs text-brand-500 hover:text-brand-700 dark:hover:text-brand-300 underline"
-            >
-              {showOriginal ? t('translation') : `${t('original')} (${LANG_LABEL[message.senderLang]})`}
-            </button>
-            {isMine && (
-              <span className="text-xs text-gray-400 ml-2">{t('translated_for_recipient')}</span>
+        {(hasTranslation || isWhisper) && (
+          <div className={`mt-1 flex items-center gap-2 flex-row`}>
+            {hasTranslation && (
+              <button
+                onClick={() => setShowOriginal((v) => !v)}
+                className="text-[10px] font-bold text-brand-500 hover:text-brand-700 dark:hover:text-brand-300 underline uppercase tracking-tight"
+              >
+                {showOriginal ? t('translation') : `${t('original')}${message.senderLang ? ` (${LANG_LABEL[message.senderLang] || message.senderLang.toUpperCase()})` : ''}`}
+              </button>
+            )}
+            {isWhisper && (
+              <span className="text-[10px] text-violet-500 dark:text-violet-400 font-bold uppercase tracking-wider flex items-center gap-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                </svg>
+                {t('whisper_label')}
+              </span>
+            )}
+            {isMine && hasTranslation && (
+              <span className="text-[10px] text-gray-400 italic">{t('translated_for_recipient')}</span>
             )}
           </div>
         )}
-
-        {/* Reactions display */}
-        {message.reactions && Object.keys(message.reactions).length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {Object.entries(message.reactions).map(([key, userIds]) => {
-              const emojiObj = REACTION_EMOJIS.find((e) => e.key === key);
-              if (!emojiObj || userIds.length === 0) return null;
-              const iReacted = userIds.includes(user.id);
-              return (
-                <button
-                  key={key}
-                  onClick={() => {
-                    getSocket().emit('reaction:toggle', {
-                      ticketId,
-                      messageId: message.id,
-                      emoji: key,
-                      userId: user.id,
-                    });
-                  }}
-                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${iReacted
-                      ? 'bg-brand-50 dark:bg-brand-900/30 border-brand-300 dark:border-brand-700'
-                      : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-brand-600 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                >
-                  <span>{emojiObj.emoji}</span>
-                  <span className="text-gray-600 dark:text-gray-300">{userIds.length}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
-
     </div>
   );
 }

@@ -44,8 +44,8 @@
     },
     {
       "id": "u7",
-      "name": "Manager Dirk",
-      "role": "manager",
+      "name": "Admin Dirk",
+      "role": "admin",
       "dept": "DSC",
       "lang": "nl"
     }

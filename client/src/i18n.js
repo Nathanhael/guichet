@@ -32,6 +32,8 @@ const translations = {
     close_ticket_title: 'Close ticket?',
     close_ticket_body: 'The chat will be closed for both the agent and the expert. This cannot be undone.',
     yes_close: 'Yes, close',
+    closing_notes_label: 'Closing Notes (Optional)',
+    summarize_resolution: 'Summarize the resolution...',
     type_message: 'Type a message... (Ctrl+V to paste screenshot)',
     send: 'Send',
     uploading: 'Uploading\u2026',
@@ -71,7 +73,7 @@ const translations = {
     whisper_hint: 'Only visible to experts & managers',
     whisper_label: 'whisper',
 
-    // Manager view
+    // Admin view
     statistics: 'Statistics',
     open_tickets: 'Open tickets',
     archive: 'Archive',
@@ -139,6 +141,8 @@ const translations = {
     close_ticket_title: 'Fermer le ticket\u00a0?',
     close_ticket_body: "Le chat sera ferm\u00e9 pour l'agent et l'expert. Cette action est irr\u00e9versible.",
     yes_close: 'Oui, fermer',
+    closing_notes_label: 'Notes de clôture (optionnel)',
+    summarize_resolution: 'Résumez la résolution...',
     type_message: 'Tapez un message... (Ctrl+V pour coller une capture)',
     send: 'Envoyer',
     uploading: 'T\u00e9l\u00e9chargement\u2026',
@@ -156,7 +160,7 @@ const translations = {
     no_users: 'Aucun utilisateur trouv\u00e9.',
 
     whisper_mode: 'Mode chuchotement',
-    whisper_hint: 'Visible uniquement aux experts & managers',
+    whisper_hint: 'Visible uniquement aux experts & admins',
     whisper_label: 'chuchotement',
 
     queue: 'File d\u2019attente',
@@ -236,6 +240,8 @@ const translations = {
     close_ticket_title: 'Ticket sluiten?',
     close_ticket_body: 'De chat wordt afgesloten voor zowel de agent als de expert. Dit kan niet ongedaan worden gemaakt.',
     yes_close: 'Ja, sluiten',
+    closing_notes_label: 'Afsluitnotities (optioneel)',
+    summarize_resolution: 'Vat de oplossing samen...',
     type_message: 'Typ een bericht... (Ctrl+V voor screenshot)',
     send: 'Stuur',
     uploading: 'Uploaden\u2026',
@@ -253,7 +259,7 @@ const translations = {
     no_users: 'Geen gebruikers gevonden.',
 
     whisper_mode: 'Fluistermodus',
-    whisper_hint: 'Alleen zichtbaar voor experts & managers',
+    whisper_hint: 'Alleen zichtbaar voor experts & admins',
     whisper_label: 'fluister',
 
     queue: 'Wachtrij',

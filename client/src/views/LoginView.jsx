@@ -3,11 +3,11 @@ import useStore from '../store/useStore';
 import { tBrowser } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
 
-const ROLE_LABEL = { agent: 'Agent', expert: 'Expert', manager: 'Manager' };
+const ROLE_LABEL = { agent: 'Agent', expert: 'Expert', admin: 'Admin' };
 const ROLE_BADGE = {
   agent: 'bg-brand-50 text-brand-600',
   expert: 'bg-brand-100 text-brand-700',
-  manager: 'bg-brand-800 text-white',
+  admin: 'bg-brand-800 text-white',
 };
 const LANG_FLAG = { nl: '🇧🇪 NL', fr: '🇫🇷 FR', en: '🇬🇧 EN' };
 
@@ -36,12 +36,12 @@ export default function LoginView() {
 
       <div className="glass-card w-full max-w-lg overflow-hidden animate-slide-up relative z-10">
         <div className="bg-gradient-to-r from-brand-800 to-brand-900 px-8 py-8 text-white">
-          <h1 className="text-3xl font-bold tracking-tight">iKanbi Expert Chat</h1>
+          <h1 className="text-3xl font-bold tracking-tight">iKanbi M&P Support</h1>
           <p className="text-brand-200 text-sm mt-2 opacity-90">{tBrowser('select_user')}</p>
         </div>
 
         <div className="flex border-b border-gray-100 dark:border-brand-800 px-4 pt-4 bg-white/50 dark:bg-brand-900/50">
-          {['all', 'agent', 'expert', 'manager'].map((role) => (
+          {['all', 'agent', 'expert', 'admin'].map((role) => (
             <button
               key={role}
               onClick={() => setFilter(role)}
@@ -64,7 +64,24 @@ export default function LoginView() {
             {filtered.map((u) => (
               <li key={u.id}>
                 <button
-                  onClick={() => setUser(u)}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: u.id, password: 'password123' })
+                      });
+                      if (res.ok) {
+                        const data = await res.json();
+                        useStore.getState().setToken(data.token);
+                        setUser(data.user);
+                      } else {
+                        alert('Login failed. Please ensure the user has the default password.');
+                      }
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
                   className="w-full text-left p-4 rounded-xl border border-white/60 dark:border-brand-700 hover:border-accent-400 dark:hover:border-accent-500 bg-white/60 dark:bg-brand-800/60 hover:shadow-lg hover:-translate-y-1 hover:bg-white dark:hover:bg-brand-800 transition-all duration-300 group"
                 >
                   <div className="flex items-center justify-between">
