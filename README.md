@@ -2,13 +2,18 @@
 
 Local prototype of a live chat web app for telecom customer support (iKanbi M&P Support). Agents can create support tickets and chat with experts in real-time, with automatic translation between Dutch, French, and English via a local LLM (Ollama).
 
-## Tech Stack
+## Documentation & Design
 
-For a detailed breakdown of the architecture, database schema, and auth flow, see [TECH_STACK.md](./TECH_STACK.md).
+For a detailed look at the system architecture, tech stack, and usage:
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** -- System design, real-time flows, and AI pipeline.
+- **[TECH_STACK.md](./TECH_STACK.md)** -- Dependencies, database schema, and authentication details.
+- **[USER_GUIDE.md](./USER_GUIDE.md)** -- Guide for demo personas and cognitive features.
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)** -- Aesthetic (Solaris) and coding standards.
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 + Vite 5 + Tailwind CSS 3 |
+| Frontend | React 18 + Vite 5 + Tailwind CSS 3 + Framer Motion |
+| Language | TypeScript |
 | State | Zustand |
 | Realtime | Socket.io |
 | Backend | Node 20 (ESM), Express.js |
@@ -22,7 +27,8 @@ For a detailed breakdown of the architecture, database schema, and auth flow, se
 | Icons | lucide-react |
 | Upload | Multer (max 5 MB -- PNG/JPG/WEBP, magic byte verified) |
 | Timezone | date-fns + date-fns-tz (Europe/Brussels) |
-| i18n | Custom i18n (NL, FR, EN) |
+| i18n | Custom i18n (NL, FR, EN) + Language Switcher |
+| Accessibility | **Neuro-Inclusive**: Dyslexic Mode (Lexend), Bionic Reading |
 | Testing | Vitest + supertest + @testing-library/react |
 | DevOps | Docker Compose, Concurrently |
 
@@ -262,9 +268,18 @@ All settings are configurable via environment variables. See `.env.example` for 
 Chat is available daily during configured hours (default **07:30-22:30**, Europe/Brussels).
 Enforced both server-side (Socket.io middleware) and client-side.
 
+## Neuro-Inclusive Design
+
+The application features a dedicated "Cognitive & Neuro-Inclusive Cockpit" accessible from the header:
+
+- **Dyslexic Mode**: Uses the **Lexend** font family, which was specifically designed to reduce visual stress and improve reading performance for dyslexic readers. It also increases line height and character spacing.
+- **Bionic Reading**: Implements fixation points by bolding the first few letters of each word. This guides the eye through the text, making reading more efficient and reducing cognitive load.
+- **Language-Specific Bionic Reading**: Adjusts fixation points based on the selected language (EN, NL, FR) for optimal brain processing.
+- **Calm UI**: High-contrast dark mode support and balanced color palettes to minimize anxiety and visual overstimulation.
+
 ## Languages & Translation
 
-Agents and experts each have their own language (NL, FR, EN). Messages are automatically translated via Ollama when sender and receiver languages differ. Translations are cached in the `translations_cache` table keyed by `{fromLang}:{toLang}:{text}` to avoid repeated LLM calls. When Ollama is unavailable, the original message is shown with a "(translation unavailable)" note.
+Agents and experts each have their own language (NL, FR, EN). A **Language Switcher** in the header allows users to change their preferred interface language at any time. Messages are automatically translated via Ollama when sender and receiver languages differ. Translations are cached in the `translations_cache` table keyed by `{fromLang}:{toLang}:{text}` to avoid repeated LLM calls. When Ollama is unavailable, the original message is shown with a "(translation unavailable)" note.
 
 Same language = no Ollama call.
 

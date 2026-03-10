@@ -53,55 +53,16 @@ cd client && npm run build    # Vite production build
 cd client && npm run preview  # Preview production build
 ```
 
-## Architecture
+## System Architecture
 
-### Backend (server/)
-
-**Entry**: `index.js` → `app.js`. The app.js file is large — it contains Express setup, all Socket.io event handlers, stats/export endpoints, and the GDPR purge scheduler.
-
-**Database**: SQLite via `better-sqlite3` with WAL mode. Use the helpers from `db.js`:
-- `query(sql, params)` — returns all rows
-- `get(sql, params)` — returns one row
-- `run(sql, params)` — execute INSERT/UPDATE/DELETE
-- `transaction(fn)` — wraps in atomic transaction
-
-Schema is in `db/schema.sql` and auto-applied on startup. Tables are indexed on common query columns.
-
-**Auth**: JWT tokens via `middleware/auth.js`. Two middleware functions:
-- `auth` — verifies Bearer token, attaches `req.user = { userId, role }`
-- `authorize(['agent', 'expert', 'admin'])` — checks role
-
-**Config**: All env vars centralized in `config.js` with defaults. Key: `OLLAMA_HOST`, `JWT_SECRET`, `BUSINESS_HOURS_*`, `SLA_THRESHOLD_MS`, `GDPR_RETENTION_DAYS`.
-
-**Rate limiting**: Three tiers applied in app.js — global (100/min), auth (5/min), LLM (10/min).
-
-### Frontend (client/)
-
-**Routing**: `App.jsx` reads `user.role` from Zustand and renders `AgentView`, `ExpertView`, or `AdminView`.
-
-**State**: Single Zustand store in `store/useStore.js`. Key slices:
-- `user`, `token` — auth state (token persisted to localStorage)
-- `tickets[]`, `messages{}` — tickets array and messages keyed by ticketId
-- `connectionStatus` — socket connection state
-- `onlineExperts[]`, `typingUsers{}` — real-time presence
-
-**Socket**: `hooks/useSocket.js` manages the Socket.io connection with auto-reconnect (infinite retries, 1-5s backoff). Re-identifies user on every reconnect. All socket event listeners are registered here and update the Zustand store.
-
-**Admin dashboard**: `components/admin/` is modular — `Stats/`, `Performance/`, `Archive/`, `Feedback/`, `Labels/`, `shared/`. The orchestrator is `AdminView.jsx`.
-
-### Real-time Flow
-
-1. Client emits socket event (e.g., `message:send`)
-2. Server handler in `app.js` processes it (translates via Ollama if needed)
-3. Server broadcasts to room (e.g., `message:new`)
-4. `useSocket.js` listener updates Zustand store
-5. React components re-render
-
-### Translation
-
-`services/translate.js` calls Ollama REST API. Cache key is `${fromLang}:${toLang}:${text}` stored in `translations_cache` table. Same-language messages skip translation. Ollama failures degrade gracefully (original text shown).
+For detailed architectural diagrams, real-time message flows, and the AI translation pipeline, refer to **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
 ### Key Conventions
+
+- **Roles**: `agent`, `expert`, `admin`.
+- **Departments**: `DSC` (Billing & Sales), `FOT` (Technical).
+- **Aesthetics**: Follow the "Solaris" design system (glassmorphism, vibrant gradients). See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for styling rules.
+- **Safety**: Business hours are enforced on both server and client. GDPR purge runs every 24h.
 
 - Roles are `agent`, `expert`, `admin` (not "manager")
 - Departments: `DSC` (Billing & Sales), `FOT` (Technical)

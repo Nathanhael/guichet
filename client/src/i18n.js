@@ -313,8 +313,10 @@ const translations = {
 };
 
 export function useT() {
-  const { user } = useStore();
-  const lang = user?.lang && translations[user.lang] ? user.lang : 'en';
+  const { user, selectedLang } = useStore();
+  const lang = (selectedLang || user?.lang) && translations[selectedLang || user?.lang] 
+    ? (selectedLang || user?.lang) 
+    : 'en';
   return (key) => translations[lang][key] ?? translations.en[key] ?? key;
 }
 

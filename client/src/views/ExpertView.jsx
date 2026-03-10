@@ -6,6 +6,8 @@ import { MAX_OPEN_CHATS, ARCHIVE_PAGE_SIZE } from '../config';
 import ChatWindow from '../components/ChatWindow';
 import TicketPreview from '../components/TicketPreview';
 import DarkModeToggle from '../components/DarkModeToggle';
+import NeuroToggle from '../components/NeuroToggle';
+import LanguageSwitcher from '../components/LanguageSwitcher';
 import CannedResponsePicker from '../components/CannedResponsePicker';
 import { requestNotificationPermission, notify } from '../utils/notifications';
 
@@ -350,21 +352,31 @@ export default function ExpertView() {
           <span className="text-xs bg-brand-800 border border-brand-700 px-2.5 py-1 rounded-md font-semibold tracking-wide">Expert</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-brand-100">{user.name} · {user.lang.toUpperCase()}</span>
+          <span className="text-sm font-medium text-brand-100">{user.name}</span>
+          
+          <div className="flex items-center gap-3">
+            <StatusPicker value={myStatus} onChange={handleStatusChange} />
+            
+            <div className="flex items-center gap-2 bg-black/10 dark:bg-white/5 p-1 rounded-xl border border-white/10 ml-2">
+              <LanguageSwitcher />
+              <NeuroToggle />
+              <DarkModeToggle />
+              
+              <button
+                onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                title={notificationsEnabled ? 'Notifications on — click to mute' : 'Notifications off — click to enable'}
+                className={`p-2 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                  notificationsEnabled 
+                    ? 'text-accent-400 bg-white/10 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                <BellIcon muted={!notificationsEnabled} />
+              </button>
+            </div>
 
-          <StatusPicker value={myStatus} onChange={handleStatusChange} />
-
-          <div className="h-4 w-px bg-brand-700"></div>
-
-          <button
-            onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-            title={notificationsEnabled ? 'Notifications on — click to mute' : 'Notifications off — click to enable'}
-            className={`transition-all duration-200 hover:scale-110 ${notificationsEnabled ? 'text-accent-400 hover:text-accent-300' : 'text-gray-500 hover:text-gray-300'}`}
-          >
-            <BellIcon muted={!notificationsEnabled} />
-          </button>
-          <DarkModeToggle />
-          <button onClick={logout} className="text-brand-200 hover:text-white text-sm font-medium transition-colors">{t('sign_out')}</button>
+            <button onClick={logout} className="text-brand-200 hover:text-rose-400 text-sm font-medium ml-2 transition-colors">{t('sign_out')}</button>
+          </div>
         </div>
       </nav>
 

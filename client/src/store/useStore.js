@@ -6,6 +6,9 @@ const useStore = create((set) => ({
   user: null,
   token: localStorage.getItem('token') || null,
   appConfig: null, // Stores limits & business hours from server
+  dyslexicMode: localStorage.getItem('dyslexicMode') === 'true',
+  bionicReading: localStorage.getItem('bionicReading') === 'true',
+  selectedLang: localStorage.getItem('selectedLang') || null,
 
   cannedResponses: [],
   setCannedResponses: (responses) => set({ cannedResponses: responses }),
@@ -170,6 +173,25 @@ const useStore = create((set) => ({
       localStorage.setItem('darkMode', next);
       return { darkMode: next };
     }),
+
+  toggleDyslexicMode: () =>
+    set((state) => {
+      const next = !state.dyslexicMode;
+      localStorage.setItem('dyslexicMode', next);
+      return { dyslexicMode: next };
+    }),
+
+  toggleBionicReading: () =>
+    set((state) => {
+      const next = !state.bionicReading;
+      localStorage.setItem('bionicReading', next);
+      return { bionicReading: next };
+    }),
+
+  setSelectedLang: (lang) => {
+    localStorage.setItem('selectedLang', lang);
+    set({ selectedLang: lang });
+  },
 
   // Connection status
   connectionStatus: 'connected',

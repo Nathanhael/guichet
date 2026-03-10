@@ -30,8 +30,11 @@ function ConnectionBanner() {
   );
 }
 
+
+
 export default function App() {
   const { user, darkMode, setAppConfig } = useStore();
+  
   useSocket();
 
   useEffect(() => {
@@ -43,11 +46,22 @@ export default function App() {
   }, [darkMode]);
 
   useEffect(() => {
+    const { dyslexicMode } = useStore.getState();
+    if (dyslexicMode) {
+      document.documentElement.classList.add('dyslexic-mode');
+    } else {
+      document.documentElement.classList.remove('dyslexic-mode');
+    }
+  }, [useStore((s) => s.dyslexicMode)]);
+
+  useEffect(() => {
     fetch('/api/config')
       .then((res) => res.json())
       .then((config) => setAppConfig(config))
       .catch((err) => console.error('Failed to load app config:', err));
   }, [setAppConfig]);
+
+
 
   const renderView = () => {
     if (!user) return <LoginView />;
