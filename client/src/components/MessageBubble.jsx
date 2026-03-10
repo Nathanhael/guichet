@@ -64,24 +64,33 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
   const isAgent = ticket && message.senderId === ticket.agentId;
   const isExpertParticipant = ticket && message.senderId !== ticket.agentId && !message.system;
 
-  const hasTranslation = message.translatedText && message.translatedText !== message.text;
   const isWhisper = message.whisper;
   const senderName = message.senderName || message.senderId;
 
-  const displayText =
-    isMine || !hasTranslation
-      ? message.text
-      : showOriginal
-        ? message.text
-        : message.translatedText;
+  // AI Logic
+  const hasImproved = message.improvedText && message.improvedText !== message.originalText;
+  const hasTranslated = !message.translationSkipped && message.processedText !== message.improvedText;
+  const isFallback = !!message.fallback;
 
-  const time = new Date(message.createdAt).toLocaleTimeString('en-GB', {
+  // Decide what to show
+  let mainText = message.processedText || message.text || '';
+  if (isMine) {
+    mainText = message.originalText || message.text || '';
+  } else if (showOriginal) {
+    mainText = message.originalText || message.text || '';
+  }
+
+  const displayText = mainText;
+
+  const time = new Date(message.timestamp || message.createdAt).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
   // Highlight search matching
   const highlightText = (text, query) => {
+    if (!text) return '';
+    if (typeof text !== 'string') return text;
     if (!query) return text;
     const regex = new RegExp(`(${query})`, 'gi');
     const parts = text.split(regex);
@@ -160,11 +169,20 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
               ? 'glass-bubble bg-brand-50/40 dark:bg-brand-900/30 text-brand-900 dark:text-brand-100'
               : 'glass-bubble bg-white/40 dark:bg-brand-800/40 text-gray-800 dark:text-gray-100'
           }`}>
+          
           <p className="text-sm break-words whitespace-pre-wrap leading-relaxed">
             {bionicReading ? (
               <BionicText text={highlightText(displayText, searchQuery)} />
             ) : (
               highlightText(displayText, searchQuery)
+            )}
+            
+            {/* AI Indicators */}
+            {!isMine && !isWhisper && !showOriginal && (hasImproved || hasTranslated) && (
+              <span className="ml-1 text-xs text-brand-500/60 select-none" title={hasTranslated ? t('translated_for_recipient') : 'Improved by AI'}>✦</span>
+            )}
+            {isFallback && !isMine && !isWhisper && !showOriginal && (
+              <span className="ml-1 text-xs text-amber-500/60 select-none" title="AI processing unavailable - showing raw text">⚠</span>
             )}
           </p>
 
@@ -178,7 +196,6 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
             </a>
           )}
 
-          {/* Reactions display nested in bubble for better look */}
           {message.reactions && Object.keys(message.reactions).length > 0 && (
             <div className={`flex flex-wrap gap-1 mt-2 justify-start`}>
               {Object.entries(message.reactions).map(([key, userIds]) => {
@@ -229,7 +246,7 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
                       getSocket().emit('reaction:toggle', {
                         ticketId,
                         messageId: message.id,
-                        emoji: key,
+                        emoji: e.key,
                         userId: user.id,
                       });
                       setShowPicker(false);
@@ -244,16 +261,15 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
           </div>
         </div>
 
-        {(hasTranslation || isWhisper) && (
+        {(!isMine && !isWhisper && (hasImproved || hasTranslated)) && (
           <div className={`mt-1 flex items-center gap-2 flex-row`}>
-            {hasTranslation && (
-              <button
-                onClick={() => setShowOriginal((v) => !v)}
-                className="text-[10px] font-bold text-brand-500 hover:text-brand-700 dark:hover:text-brand-300 underline uppercase tracking-tight"
-              >
-                {showOriginal ? t('translation') : `${t('original')}${message.senderLang ? ` (${LANG_LABEL[message.senderLang] || message.senderLang.toUpperCase()})` : ''}`}
-              </button>
-            )}
+            <button
+              onClick={() => setShowOriginal((v) => !v)}
+              className="text-[10px] font-bold text-brand-500 hover:text-brand-700 dark:hover:text-brand-300 underline uppercase tracking-tight"
+            >
+              {showOriginal ? t('translation') : `${t('original')}${message.senderLang ? ` (${LANG_LABEL[message.senderLang] || message.senderLang.toUpperCase()})` : ''}`}
+            </button>
+            
             {isWhisper && (
               <span className="text-[10px] text-violet-500 dark:text-violet-400 font-bold uppercase tracking-wider flex items-center gap-1">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -262,9 +278,13 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }) {
                 {t('whisper_label')}
               </span>
             )}
-            {isMine && hasTranslation && (
-              <span className="text-[10px] text-gray-400 italic">{t('translated_for_recipient')}</span>
-            )}
+          </div>
+        )}
+        {isMine && !isWhisper && (hasImproved || hasTranslated) && (
+          <div className="mt-1">
+             <span className="text-[10px] text-gray-400 italic">
+               {hasTranslated ? t('translated_for_recipient') : 'Clarified for recipient'}
+             </span>
           </div>
         )}
       </div>

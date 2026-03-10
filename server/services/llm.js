@@ -2,14 +2,14 @@ import { get, run, query } from '../db.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 
+const MODEL = config.OLLAMA_MODEL || 'gemmatranslate4b';
+
 export async function getLLMSummary(periodType, periodValue) {
     const periodKey = `${periodType}:${periodValue}`;
 
     // Check cache first
     const cached = get('SELECT * FROM llm_summaries WHERE period = ?', [periodKey]);
     if (cached) {
-        // If it's a "day" summary for today, maybe we want to refresh if it's old?
-        // For now, let's just return cached.
         return {
             sentiment: cached.sentiment,
             questions: JSON.parse(cached.questions || '[]'),
@@ -40,11 +40,11 @@ async function generateLLMSummary(periodType, periodValue) {
         return { sentiment: 'No data', questions: [], summary: 'No tickets found for this period.', updatedAt: new Date().toISOString() };
     }
 
-    // 2. Prepare text for LLM (limit to avoid token overflow)
+    // 2. Prepare text for LLM
     const textToAnalyze = messages
-        .map(m => `${m.senderName}: ${m.text}`)
+        .map(m => `${m.senderName}: ${m.processedText || m.text || ''}`)
         .join('\n')
-        .slice(0, 4000); // Simple limit
+        .slice(0, 4000);
 
     // 3. Call Ollama
     try {
@@ -53,7 +53,7 @@ async function generateLLMSummary(periodType, periodValue) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'gemmatranslate4b',
+                model: MODEL,
                 stream: false,
                 format: 'json',
                 prompt: `Analyze the following support ticket messages:
@@ -71,24 +71,20 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
         const rawResponse = data.response;
 
         try {
-            // More robust JSON extraction
             const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('No JSON object found in response');
-
             result = JSON.parse(jsonMatch[0]);
 
-            // Validate required keys
             if (!result.sentiment || !result.summary) {
                 throw new Error('Missing required keys in LLM response');
             }
-            // Ensure top3Questions is an array
             result.top3Questions = Array.isArray(result.top3Questions) ? result.top3Questions.slice(0, 3) : [];
         } catch (e) {
             logger.error({ err: e.message, response: rawResponse }, 'Failed to parse LLM JSON response');
             result = {
                 sentiment: 'Mixed',
                 top3Questions: [],
-                summary: 'The AI provided a complex response that could not be summarized. Sentiment appears mixed.'
+                summary: 'The AI provided a complex response that could not be summarized.'
             };
         }
 
@@ -105,15 +101,68 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
     }
 }
 
-// Helper functions for date ranges
 async function getMessagesForDay(date) {
-    return query('SELECT text, senderName FROM messages WHERE substr(createdAt, 1, 10) = ? AND system = 0 AND whisper = 0', [date]);
+    return query('SELECT text, processedText, senderName FROM messages WHERE substr(createdAt, 1, 10) = ? AND system = 0 AND whisper = 0', [date]);
 }
 
 async function getMessagesForWeek(weekStr) {
-    return query("SELECT text, senderName FROM messages WHERE strftime('%Y-%W', createdAt) = ? AND system = 0 AND whisper = 0", [weekStr]);
+    return query("SELECT text, processedText, senderName FROM messages WHERE strftime('%Y-%W', createdAt) = ? AND system = 0 AND whisper = 0", [weekStr]);
 }
 
 async function getMessagesForMonth(monthStr) {
-    return query('SELECT text, senderName FROM messages WHERE substr(createdAt, 1, 7) = ? AND system = 0 AND whisper = 0', [monthStr]);
+    return query('SELECT text, processedText, senderName FROM messages WHERE substr(createdAt, 1, 7) = ? AND system = 0 AND whisper = 0', [monthStr]);
+}
+
+export async function summarizeConversation(ticketId) {
+    logger.info({ ticketId }, 'Summarizing conversation');
+    
+    const messages = query(
+        'SELECT senderName, originalText FROM messages WHERE ticketId = ? AND system = 0 AND whisper = 0 ORDER BY timestamp ASC',
+        [ticketId]
+    );
+
+    if (!messages || messages.length === 0) {
+        return 'No conversation recorded.';
+    }
+
+    const textToAnalyze = messages
+        .map(m => `${m.senderName}: ${m.originalText}`)
+        .join('\n')
+        .slice(0, 4000);
+
+    const start = Date.now();
+    try {
+        const ollamaHost = config.OLLAMA_HOST;
+        const response = await fetch(`${ollamaHost}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: MODEL,
+                stream: false,
+                prompt: `Summarize the following support chat between a customer agent and an expert. 
+Focus on the technical problem and the final resolution. 
+Be concise (2-3 sentences max).
+Return ONLY the summary, no preamble.
+
+Chat:
+${textToAnalyze}`,
+            }),
+        });
+
+        if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
+
+        const data = await response.json();
+        const summary = data.response?.trim();
+        const duration = Date.now() - start;
+
+        logger.info({ ticketId, duration }, 'Conversation summary generated');
+
+        if (!summary) throw new Error('Ollama returned empty summary');
+
+        run('UPDATE tickets SET summary = ? WHERE id = ?', [summary, ticketId]);
+        return summary;
+    } catch (err) {
+        logger.error({ ticketId, err: err.message }, 'Failed to summarize conversation');
+        return 'Summary unavailable.';
+    }
 }

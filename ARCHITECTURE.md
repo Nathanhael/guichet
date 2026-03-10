@@ -16,7 +16,8 @@ graph TD
     subgraph Backend
         EX[Express.js] --> DB[(SQLite/better-sqlite3)]
         EX --> SI[Socket.io Server]
-        SI --> TR[Translation Service]
+        SI --> GS[Guards Service]
+        GS --> TR[Translation Service]
         TR --> OL[Ollama LLM]
     end
 
@@ -37,11 +38,12 @@ sequenceDiagram
     participant E as Expert
 
     A->>S: ticket:new (Dept, Ref)
-    S-->>E: ticket:created (Broadcast)
+    A-->>E: ticket:created (Broadcast)
     E->>S: expert:join (TicketId)
     S-->>A: expert:joined (Ticket Participants)
     Note over A,E: Real-time Chat Active
     A->>S: message:send (Text)
+    S->>S: Message Guards (Safety/Quality)
     S->>S: AI Translation Cache/API
     S-->>E: message:new (Translated)
     E->>S: message:send (Whisper/Normal)

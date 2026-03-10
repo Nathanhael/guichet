@@ -16,17 +16,43 @@ import feedbackRoutes from './routes/feedback.js';
 import labelRoutes from './routes/labels.js';
 import cannedRoutes from './routes/canned_responses.js';
 import authRoutes from './routes/auth.js';
-import { translate } from './services/translate.js';
-import { getLLMSummary } from './services/llm.js';
+import { processMessage } from './services/translate.js';
+import { getLLMSummary, summarizeConversation } from './services/llm.js';
+import { runGuards, resetRepetition } from './services/guards.js';
 import { db, query, get, run, transaction } from './db.js';
 import config from './config.js';
 import logger from './utils/logger.js';
 import { auth, authorize } from './middleware/auth.js';
 
+// PII Scanner
+function containsPII(text) {
+  if (!text) return false;
+  const patterns = [
+    /\b[A-Z]{2}\d{2}[\s]?\d{4}[\s]?\d{4}[\s]?\d{4}[\s]?\d{2}\b/,  // IBAN
+    /\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b/,               // credit card
+    /\b\d{2}[.\-]\d{2}[.\-]\d{2}[.\-]\d{3}[.\-]\d{2}\b/,           // Belgian NRN
+  ];
+  return patterns.some((p) => p.test(text));
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 export { app };
+
+app.get('/api/health/ai', auth, async (req, res) => {
+  try {
+    const OLLAMA_HOST = config.OLLAMA_HOST || 'http://localhost:11434';
+    const response = await fetch(`${OLLAMA_HOST}/api/tags`, { signal: AbortSignal.timeout(2000) });
+    if (response.ok) {
+      res.json({ status: 'online' });
+    } else {
+      res.json({ status: 'degraded' });
+    }
+  } catch (err) {
+    res.json({ status: 'offline' });
+  }
+});
 
 const httpServer = createServer(app);
 export { httpServer };
@@ -906,6 +932,19 @@ function broadcastAgentStatus(agentId, online) {
   }
 }
 
+function broadcastQueuePositions() {
+  try {
+    const openTickets = query("SELECT id, agentId FROM tickets WHERE status = 'open' AND expertId IS NULL ORDER BY createdAt ASC");
+    openTickets.forEach((t, index) => {
+      const position = index + 1;
+      const etaMins = position * 2;
+      io.to(`ticket:${t.id}`).emit('queue:update', { position, etaMins });
+    });
+  } catch (err) {
+    logger.error({ err: err.message }, '[broadcastQueuePositions] error');
+  }
+}
+
 // Socket.io
 io.on('connection', (socket) => {
   console.log(`[socket] connected: ${socket.id}`);
@@ -926,6 +965,8 @@ io.on('connection', (socket) => {
       broadcastAgentStatus(userId, true);
     }
   });
+
+  // ─── Ticket Management ─────────────────────────────────────────────────────
 
   socket.on('ticket:new', async (data) => {
     if (!isWithinBusinessHours()) {
@@ -970,21 +1011,43 @@ io.on('connection', (socket) => {
 
       let message = null;
       if (text && text.trim()) {
+        const messageId = uuidv4();
+        const now = new Date().toISOString();
+        
+        // For the very first message in a ticket, we don't run guards/translation yet 
+        // to keep ticket creation snappy, or we can run them. 
+        // Let's run guards at least for the first message.
+        const guard = await runGuards(text, agentId);
+        const safeText = guard.ok ? guard.text : text;
+
         message = {
-          id: uuidv4(),
+          id: messageId,
           ticketId: ticket.id,
           senderId: agentId,
           senderName: agentName,
+          senderRole: 'agent',
           senderLang: agentLang,
-          text,
-          translatedText: null,
+          originalText: text,
+          improvedText: safeText,
+          processedText: safeText,
           mediaUrl: mediaUrl || null,
-          createdAt: new Date().toISOString(),
+          whisper: 0,
+          system: 0,
+          translationSkipped: 1,
+          fallback: 0,
+          timestamp: now,
           reactions: '{}'
         };
+
         run(
-          'INSERT INTO messages (id, ticketId, senderId, senderName, text, translatedText, mediaUrl, createdAt, reactions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [message.id, message.ticketId, message.senderId, message.senderName, message.text, message.translatedText, message.mediaUrl, message.createdAt, message.reactions]
+          `INSERT INTO messages 
+          (id, ticketId, senderId, senderName, senderRole, senderLang, originalText, improvedText, processedText, text, translatedText, mediaUrl, whisper, system, translationSkipped, fallback, timestamp, reactions) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            message.id, message.ticketId, message.senderId, message.senderName, message.senderRole, message.senderLang,
+            message.originalText, message.improvedText, message.processedText, message.originalText, message.processedText, message.mediaUrl, 
+            message.whisper, message.system, message.translationSkipped, message.fallback, message.timestamp, message.reactions
+          ]
         );
       }
 
@@ -1002,6 +1065,8 @@ io.on('connection', (socket) => {
       socket.emit('error', { message: 'Failed to create ticket' });
     }
   });
+
+  // ─── Expert Interaction ───────────────────────────────────────────────────
 
   socket.on('expert:join', async ({ ticketId, expertId, expertName, expertLang }) => {
     try {
@@ -1027,10 +1092,17 @@ io.on('connection', (socket) => {
       socket.join(`ticket:${ticketId}`);
 
       const isAgentSocket = socket.data.role === 'agent';
-      const messagesResult = query('SELECT * FROM messages WHERE ticketId = ? ORDER BY createdAt ASC', [ticketId]);
+      const messagesResult = query('SELECT * FROM messages WHERE ticketId = ? ORDER BY timestamp ASC', [ticketId]);
       const messages = messagesResult
         .filter(m => !isAgentSocket || !m.whisper)
-        .map(m => ({ ...m, whisper: !!m.whisper, system: !!m.system, reactions: JSON.parse(m.reactions || '{}') }));
+        .map(m => ({ 
+          ...m, 
+          whisper: !!m.whisper, 
+          system: !!m.system, 
+          fallback: !!m.fallback,
+          translationSkipped: !!m.translationSkipped,
+          reactions: JSON.parse(m.reactions || '{}') 
+        }));
 
       const labels = query('SELECT labelId FROM ticket_labels WHERE ticketId = ?', [ticketId]).map(l => l.labelId);
 
@@ -1052,6 +1124,8 @@ io.on('connection', (socket) => {
     }
   });
 
+  // ─── Chat Flow & AI Pipeline ──────────────────────────────────────────────
+
   socket.on('message:send', async ({ ticketId, senderId, senderLang, text, mediaUrl, whisper }) => {
     try {
       if (!ticketId || !senderId || !text) {
@@ -1060,52 +1134,81 @@ io.on('connection', (socket) => {
       const ticket = get('SELECT * FROM tickets WHERE id = ?', [ticketId]);
       if (!ticket || ticket.status === 'closed') return;
 
-      let translatedText = null;
-      if (whisper) {
-        translatedText = text;
-      } else {
-        const isAgent = ticket.agentId === senderId;
-        const receiverLang = isAgent ? ticket.expertLang || 'nl' : ticket.agentLang;
-        try {
-          const cacheKey = `${senderLang}:${receiverLang}:${text}`;
-          const cached = get('SELECT value FROM translations_cache WHERE key = ?', [cacheKey]);
+      const senderUser = onlineUsers.get(senderId) || get('SELECT name, role FROM users WHERE id = ?', [senderId]);
+      const senderRole = senderUser?.role || 'agent';
+      const senderName = senderUser?.name || senderId;
 
-          if (cached) {
-            translatedText = cached.value;
-          } else {
-            translatedText = await translate(text, senderLang, receiverLang);
-            run(
-              'INSERT OR REPLACE INTO translations_cache (key, value, fromLang, toLang, createdAt) VALUES (?, ?, ?, ?, ?)',
-              [cacheKey, translatedText, senderLang, receiverLang, new Date().toISOString()]
-            );
-          }
-        } catch (translateErr) {
-          console.error('[translate] error:', translateErr.message);
-          translatedText = text;
+      // ── Step 1: Guards ──────────────────────────────────────────────────────
+      if (!whisper) {
+        const guard = await runGuards(text, senderId);
+        if (!guard.ok) {
+          socket.emit('message:blocked', {
+            code:    guard.code,
+            // Translation will happen on frontend via useT() or similar if we send the code
+          });
+          return;
+        }
+        text = guard.text; // Use sanitized text (e.g. CAPS fix)
+        resetRepetition(senderId);
+      }
+
+      let result = { 
+        processedText: text, 
+        improvedText: text, 
+        translationSkipped: true, 
+        fallback: false 
+      };
+
+      if (!whisper) {
+        const recipientLang = senderRole === 'agent' ? (ticket.expertLang || 'nl') : ticket.agentLang;
+        result = await processMessage(text, senderRole, senderLang, recipientLang);
+        
+        // PII Scanning on AI output
+        if (!result.fallback && containsPII(result.processedText)) {
+          logger.warn({ ticketId, senderId }, 'PII detected in processed text, blocking');
+          result.processedText = 'guard_pii_blocked'; // Key for i18n
+          result.fallback = true; // Mark as compromised
         }
       }
 
-      const senderUser = get('SELECT name FROM users WHERE id = ?', [senderId]);
       const message = {
         id: uuidv4(),
         ticketId,
         senderId,
-        senderName: senderUser?.name || senderId,
+        senderName,
+        senderRole,
         senderLang,
-        text,
-        translatedText,
+        originalText: text,
+        improvedText: result.improvedText,
+        processedText: result.processedText,
         mediaUrl: mediaUrl || null,
         whisper: whisper ? 1 : 0,
-        createdAt: new Date().toISOString(),
+        system: 0,
+        translationSkipped: result.translationSkipped ? 1 : 0,
+        fallback: result.fallback ? 1 : 0,
+        timestamp: new Date().toISOString(),
         reactions: '{}'
       };
 
       run(
-        'INSERT INTO messages (id, ticketId, senderId, senderName, text, translatedText, mediaUrl, whisper, createdAt, reactions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [message.id, message.ticketId, message.senderId, message.senderName, message.text, message.translatedText, message.mediaUrl, message.whisper, message.createdAt, message.reactions]
+        `INSERT INTO messages 
+        (id, ticketId, senderId, senderName, senderRole, senderLang, originalText, improvedText, processedText, text, translatedText, mediaUrl, whisper, system, translationSkipped, fallback, timestamp, reactions) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          message.id, message.ticketId, message.senderId, message.senderName, message.senderRole, message.senderLang,
+          message.originalText, message.improvedText, message.processedText, message.originalText, message.processedText, message.mediaUrl, 
+          message.whisper, message.system, message.translationSkipped, message.fallback, message.timestamp, message.reactions
+        ]
       );
 
-      const messageToEmit = { ...message, whisper: !!message.whisper, system: false, reactions: {} };
+      const messageToEmit = { 
+        ...message, 
+        whisper: !!message.whisper, 
+        system: false, 
+        fallback: !!message.fallback,
+        translationSkipped: !!message.translationSkipped,
+        reactions: {} 
+      };
 
       if (whisper) {
         const roomSockets = await io.in(`ticket:${ticketId}`).fetchSockets();
@@ -1223,6 +1326,9 @@ io.on('connection', (socket) => {
     } catch (err) {
       logger.error({ err: err.message }, '[ticket:close] error');
     }
+
+    // Trigger AI summary in background
+    summarizeConversation(ticketId).catch(err => logger.error({ err: err.message }, 'Background summary failed'));
   });
 
   socket.on('rating:submit', async ({ ticketId, agentId, expertId, rating, comment }) => {
