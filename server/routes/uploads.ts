@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -17,11 +17,11 @@ const storage = multer.diskStorage({
   },
 });
 
-const fileFilter = (_req, file, cb) => {
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   if (config.UPLOAD_ALLOWED_TYPES.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Alleen PNG, JPG en WEBP zijn toegestaan'), false);
+    cb(new Error('Alleen PNG, JPG en WEBP zijn toegestaan'));
   }
 };
 
@@ -29,9 +29,8 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: config.UPLOAD_M
 
 const router = Router();
 
-// POST /api/uploads
-router.post('/', (req, res) => {
-  upload.single('file')(req, res, async (err) => {
+router.post('/', (req: Request, res: Response) => {
+  upload.single('file')(req, res, async (err: any) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: `Bestand te groot (max ${config.UPLOAD_MAX_SIZE / 1024 / 1024}MB)` });
@@ -43,11 +42,10 @@ router.post('/', (req, res) => {
 
     if (!req.file) return res.status(400).json({ error: 'Geen bestand ontvangen' });
 
-    // Magic Byte validation
     try {
       const meta = await fileTypeFromFile(req.file.path);
       if (!meta || !config.UPLOAD_ALLOWED_TYPES.includes(meta.mime)) {
-        fs.unlinkSync(req.file.path); // Delete the invalid file
+        fs.unlinkSync(req.file.path);
         return res.status(400).json({ error: 'Ongeldig bestandstype' });
       }
     } catch (e) {

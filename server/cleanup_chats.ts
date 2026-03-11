@@ -1,4 +1,3 @@
-
 import { db } from './db/sqlite.js';
 
 console.log('Cleaning chat-related data...');
@@ -19,7 +18,7 @@ db.transaction(() => {
         try {
             const result = db.prepare(`DELETE FROM ${table}`).run();
             console.log(`Cleared ${result.changes} rows from ${table}.`);
-        } catch (err) {
+        } catch (err: any) {
             console.error(`Error clearing ${table}:`, err.message);
         }
     }

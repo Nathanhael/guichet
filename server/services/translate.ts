@@ -2,13 +2,14 @@ import crypto from 'crypto';
 import { get, run } from '../db.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
+import { TranslationResult, ProcessedMessageResult } from '../types/index.js';
 
 const OLLAMA_HOST = config.OLLAMA_HOST || 'http://localhost:11434';
 const MODEL = config.OLLAMA_MODEL || 'gemmatranslate4b';
 
 // ─── Cache setup ─────────────────────────────────────────────────────────────
 
-function cacheKey(...parts) {
+function cacheKey(...parts: string[]): string {
   return crypto.createHash('sha256').update(parts.join('|')).digest('hex');
 }
 
@@ -20,7 +21,7 @@ function cacheKey(...parts) {
  * @param {string} type - Descriptive type for logging (e.g. 'translate', 'improve').
  * @returns {Promise<string>} The generated response text.
  */
-async function callOllama(prompt, type) {
+async function callOllama(prompt: string, type: string): Promise<string> {
   const start = Date.now();
   try {
     const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
@@ -32,7 +33,7 @@ async function callOllama(prompt, type) {
 
     if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
 
-    const data = await response.json();
+    const data: any = await response.json();
     const result = data.response?.trim();
     const duration = Date.now() - start;
     
@@ -40,7 +41,7 @@ async function callOllama(prompt, type) {
     
     if (!result) throw new Error('Ollama returned empty response');
     return result;
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ type, err: err.message }, 'Ollama call failed');
     throw err;
   }
@@ -48,8 +49,8 @@ async function callOllama(prompt, type) {
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
-function buildAgentImprovementPrompt(text, lang) {
-  const langNames = { nl: 'Dutch', fr: 'French', en: 'English' };
+function buildAgentImprovementPrompt(text: string, lang: string): string {
+  const langNames: Record<string, string> = { nl: 'Dutch', fr: 'French', en: 'English' };
   const langName = langNames[lang] || lang;
 
   return `You are a telecom support assistant helping agents communicate clearly with technical experts.
@@ -68,8 +69,8 @@ Your task:
 <agent_message>${text}</agent_message>`;
 }
 
-function buildExpertImprovementPrompt(text, lang) {
-  const langNames = { nl: 'Dutch', fr: 'French', en: 'English' };
+function buildExpertImprovementPrompt(text: string, lang: string): string {
+  const langNames: Record<string, string> = { nl: 'Dutch', fr: 'French', en: 'English' };
   const langName = langNames[lang] || lang;
 
   return `You are a telecom support assistant helping experts communicate with non-technical agents.
@@ -88,8 +89,8 @@ Your task:
 <expert_message>${text}</expert_message>`;
 }
 
-function buildTranslationPrompt(text, fromLang, toLang) {
-  const langNames = { nl: 'Dutch', fr: 'French', en: 'English' };
+function buildTranslationPrompt(text: string, fromLang: string, toLang: string): string {
+  const langNames: Record<string, string> = { nl: 'Dutch', fr: 'French', en: 'English' };
   const from = langNames[fromLang] || fromLang;
   const to   = langNames[toLang]   || toLang;
 
@@ -104,10 +105,10 @@ Return ONLY the translated text — no explanation, no quotes, no preamble.
 
 // ─── Improve ──────────────────────────────────────────────────────────────────
 
-async function improve(text, lang, senderRole) {
+async function improve(text: string, lang: string, senderRole: 'agent'|'expert'): Promise<TranslationResult> {
   const key = cacheKey('improve', senderRole, lang, text);
 
-  const cached = get('SELECT value FROM translations_cache WHERE key = ?', [key]);
+  const cached = await get('SELECT value FROM translations_cache WHERE key = $1', [key]) as { value: string } | undefined;
   if (cached) return { text: cached.value, fromCache: true };
 
   const prompt = senderRole === 'agent'
@@ -115,8 +116,8 @@ async function improve(text, lang, senderRole) {
     : buildExpertImprovementPrompt(text, lang);
 
   const improved = await callOllama(prompt, 'improve');
-  run(
-    'INSERT OR REPLACE INTO translations_cache (key, value, fromLang, toLang, createdAt) VALUES (?, ?, ?, ?, ?)',
+  await run(
+    'INSERT INTO translations_cache (key, value, from_lang, to_lang, created_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, created_at = EXCLUDED.created_at',
     [key, improved, lang, lang, new Date().toISOString()]
   );
   return { text: improved, fromCache: false };
@@ -124,18 +125,18 @@ async function improve(text, lang, senderRole) {
 
 // ─── Translate ────────────────────────────────────────────────────────────────
 
-export async function translate(text, fromLang, toLang) {
+export async function translate(text: string, fromLang: string, toLang: string): Promise<TranslationResult> {
   if (fromLang === toLang) return { text, fromCache: false };
 
   const key = cacheKey('translate', fromLang, toLang, text);
 
-  const cached = get('SELECT value FROM translations_cache WHERE key = ?', [key]);
+  const cached = await get('SELECT value FROM translations_cache WHERE key = $1', [key]) as { value: string } | undefined;
   if (cached) return { text: cached.value, fromCache: true };
 
   const prompt = buildTranslationPrompt(text, fromLang, toLang);
   const translated = await callOllama(prompt, 'translate');
-  run(
-    'INSERT OR REPLACE INTO translations_cache (key, value, fromLang, toLang, createdAt) VALUES (?, ?, ?, ?, ?)',
+  await run(
+    'INSERT INTO translations_cache (key, value, from_lang, to_lang, created_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, created_at = EXCLUDED.created_at',
     [key, translated, fromLang, toLang, new Date().toISOString()]
   );
   return { text: translated, fromCache: false };
@@ -150,14 +151,9 @@ export async function translate(text, fromLang, toLang) {
  * @param {'agent'|'expert'} senderRole - The role of the person sending the message.
  * @param {string} [fromLang] - The sender's language code (e.g. 'nl').
  * @param {string} [toLang] - The recipient's preferred language code.
- * @returns {Promise<{
- *   processedText: string,
- *   improvedText: string,
- *   translationSkipped: boolean,
- *   fallback: boolean
- * }>}
+ * @returns {Promise<ProcessedMessageResult>}
  */
-export async function processMessage(text, senderRole, fromLang, toLang) {
+export async function processMessage(text: string, senderRole: 'agent'|'expert', fromLang?: string, toLang?: string): Promise<ProcessedMessageResult> {
   const from = (fromLang || 'nl').toLowerCase().slice(0, 2);
   const to   = (toLang   || 'nl').toLowerCase().slice(0, 2);
 
@@ -184,7 +180,7 @@ export async function processMessage(text, senderRole, fromLang, toLang) {
       fallback:           false,
     };
 
-  } catch (err) {
+  } catch (err: any) {
     logger.warn({ err: err.message }, '[processMessage] Ollama unavailable, falling back');
     return {
       processedText:      text,

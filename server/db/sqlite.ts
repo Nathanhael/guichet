@@ -8,25 +8,23 @@ import config from '../config.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dbPath = config.DB_PATH;
 
-// Initialize database
 logger.info({ dbPath }, 'Initializing SQLite database');
 const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-// Initialize schema
-const schema = fs.readFileSync(path.join(path.dirname(config.DB_PATH), 'db', 'schema.sql'), 'utf8');
+const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
+const schema = fs.readFileSync(schemaPath, 'utf8');
 db.exec(schema);
 
-// Migrations
 try {
-    const tableInfo = db.prepare('PRAGMA table_info(users)').all();
+    const tableInfo = db.prepare('PRAGMA table_info(users)').all() as any[];
     if (!tableInfo.some(col => col.name === 'password')) {
         logger.info('Migrating users table: adding password column');
         db.prepare('ALTER TABLE users ADD COLUMN password TEXT').run();
     }
 
-    const messageInfo = db.prepare('PRAGMA table_info(messages)').all();
+    const messageInfo = db.prepare('PRAGMA table_info(messages)').all() as any[];
     const messageCols = [
         { name: 'senderRole', type: 'TEXT' },
         { name: 'senderLang', type: 'TEXT' },
@@ -44,53 +42,52 @@ try {
         }
     });
 
-    // Populate timestamp if it was missing and createdAt exists
     if (messageInfo.some(c => c.name === 'createdAt') && messageInfo.some(c => c.name === 'timestamp')) {
         db.prepare("UPDATE messages SET timestamp = createdAt WHERE timestamp IS NULL").run();
     }
 
-    const ticketInfo = db.prepare('PRAGMA table_info(tickets)').all();
+    const ticketInfo = db.prepare('PRAGMA table_info(tickets)').all() as any[];
     if (!ticketInfo.some(col => col.name === 'summary')) {
         logger.info('Migrating tickets table: adding summary column');
         db.prepare('ALTER TABLE tickets ADD COLUMN summary TEXT').run();
     }
-} catch (err) {
+} catch (err: any) {
     logger.error({ err: err.message }, 'Migration failed');
 }
 
 export { db };
 
-export function query(sql, params = []) {
+export function query(sql: string, params: any[] = []): any[] {
     try {
         return db.prepare(sql).all(params);
-    } catch (err) {
+    } catch (err: any) {
         logger.error({ err: err.message, sql, params }, 'Database query error');
         throw err;
     }
 }
 
-export function get(sql, params = []) {
+export function get(sql: string, params: any[] = []): any {
     try {
         return db.prepare(sql).get(params);
-    } catch (err) {
+    } catch (err: any) {
         logger.error({ err: err.message, sql, params }, 'Database get error');
         throw err;
     }
 }
 
-export function run(sql, params = []) {
+export function run(sql: string, params: any[] = []): Database.RunResult {
     try {
         return db.prepare(sql).run(params);
-    } catch (err) {
+    } catch (err: any) {
         logger.error({ err: err.message, sql, params }, 'Database run error');
         throw err;
     }
 }
 
-export function transaction(fn) {
+export function transaction<T>(fn: () => T): T {
     try {
         return db.transaction(fn)();
-    } catch (err) {
+    } catch (err: any) {
         logger.error({ err: err.message }, 'Database transaction error');
         throw err;
     }

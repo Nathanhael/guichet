@@ -1,14 +1,21 @@
 import { get, run, query } from '../db.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
+import { MessagePipeline } from '../../shared/pipeline.js';
 
 const MODEL = config.OLLAMA_MODEL || 'gemmatranslate4b';
 
-export async function getLLMSummary(periodType, periodValue) {
+export interface LLMSummaryResult {
+    sentiment: string;
+    questions: string[];
+    summary: string;
+    updatedAt: string;
+}
+
+export async function getLLMSummary(periodType: string, periodValue: string): Promise<LLMSummaryResult> {
     const periodKey = `${periodType}:${periodValue}`;
 
-    // Check cache first
-    const cached = get('SELECT * FROM llm_summaries WHERE period = ?', [periodKey]);
+    const cached = await get('SELECT * FROM llm_summaries WHERE period = ?', [periodKey]);
     if (cached) {
         return {
             sentiment: cached.sentiment,
@@ -18,16 +25,14 @@ export async function getLLMSummary(periodType, periodValue) {
         };
     }
 
-    // If not cached, generate it
     return await generateLLMSummary(periodType, periodValue);
 }
 
-async function generateLLMSummary(periodType, periodValue) {
+async function generateLLMSummary(periodType: string, periodValue: string): Promise<LLMSummaryResult> {
     const periodKey = `${periodType}:${periodValue}`;
     logger.info({ periodKey }, 'Generating LLM summary');
 
-    // 1. Fetch messages for the period
-    let messages;
+    let messages: any[] = [];
     if (periodType === 'day') {
         messages = await getMessagesForDay(periodValue);
     } else if (periodType === 'week') {
@@ -40,13 +45,11 @@ async function generateLLMSummary(periodType, periodValue) {
         return { sentiment: 'No data', questions: [], summary: 'No tickets found for this period.', updatedAt: new Date().toISOString() };
     }
 
-    // 2. Prepare text for LLM
     const textToAnalyze = messages
         .map(m => `${m.senderName}: ${m.processedText || m.text || ''}`)
         .join('\n')
         .slice(0, 4000);
 
-    // 3. Call Ollama
     try {
         const ollamaHost = config.OLLAMA_HOST;
         const response = await fetch(`${ollamaHost}/api/generate`, {
@@ -67,7 +70,7 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
         });
 
         const data = await response.json();
-        let result;
+        let result: any;
         const rawResponse = data.response;
 
         try {
@@ -79,7 +82,7 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
                 throw new Error('Missing required keys in LLM response');
             }
             result.top3Questions = Array.isArray(result.top3Questions) ? result.top3Questions.slice(0, 3) : [];
-        } catch (e) {
+        } catch (e: any) {
             logger.error({ err: e.message, response: rawResponse }, 'Failed to parse LLM JSON response');
             result = {
                 sentiment: 'Mixed',
@@ -88,36 +91,35 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
             };
         }
 
-        // 4. Cache it
-        run(
-            'INSERT OR REPLACE INTO llm_summaries (period, sentiment, questions, summary, updatedAt) VALUES (?, ?, ?, ?, ?)',
+        await run(
+            'INSERT INTO llm_summaries (period, sentiment, questions, summary, "updatedAt") VALUES ($1, $2, $3, $4, $5) ON CONFLICT (period) DO UPDATE SET sentiment = EXCLUDED.sentiment, questions = EXCLUDED.questions, summary = EXCLUDED.summary, "updatedAt" = EXCLUDED."updatedAt"',
             [periodKey, result.sentiment, JSON.stringify(result.top3Questions), result.summary, new Date().toISOString()]
         );
 
-        return { ...result, questions: result.top3Questions, updatedAt: new Date().toISOString() };
-    } catch (err) {
+        return { sentiment: result.sentiment, questions: result.top3Questions, summary: result.summary, updatedAt: new Date().toISOString() };
+    } catch (err: any) {
         logger.error({ err: err.message }, 'LLM generation failed');
         return { sentiment: 'Error', questions: [], summary: 'AI summary currently unavailable.', updatedAt: new Date().toISOString() };
     }
 }
 
-async function getMessagesForDay(date) {
-    return query('SELECT text, processedText, senderName FROM messages WHERE substr(createdAt, 1, 10) = ? AND system = 0 AND whisper = 0', [date]);
+async function getMessagesForDay(date: string) {
+    return query('SELECT text, "processedText", "senderName" FROM messages WHERE substring("createdAt" from 1 for 10) = $1 AND system = 0 AND whisper = 0', [date]);
 }
 
-async function getMessagesForWeek(weekStr) {
-    return query("SELECT text, processedText, senderName FROM messages WHERE strftime('%Y-%W', createdAt) = ? AND system = 0 AND whisper = 0", [weekStr]);
+async function getMessagesForWeek(weekStr: string) {
+    return query(`SELECT text, "processedText", "senderName" FROM messages WHERE to_char(to_timestamp("createdAt", 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr]);
 }
 
-async function getMessagesForMonth(monthStr) {
-    return query('SELECT text, processedText, senderName FROM messages WHERE substr(createdAt, 1, 7) = ? AND system = 0 AND whisper = 0', [monthStr]);
+async function getMessagesForMonth(monthStr: string) {
+    return query('SELECT text, "processedText", "senderName" FROM messages WHERE substring("createdAt" from 1 for 7) = $1 AND system = 0 AND whisper = 0', [monthStr]);
 }
 
-export async function summarizeConversation(ticketId) {
+export async function summarizeConversation(ticketId: string): Promise<string> {
     logger.info({ ticketId }, 'Summarizing conversation');
     
-    const messages = query(
-        'SELECT senderName, originalText FROM messages WHERE ticketId = ? AND system = 0 AND whisper = 0 ORDER BY timestamp ASC',
+    const messages = await query(
+        'SELECT "senderName", "originalText" FROM messages WHERE "ticketId" = $1 AND system = 0 AND whisper = 0 ORDER BY timestamp ASC',
         [ticketId]
     );
 
@@ -126,7 +128,7 @@ export async function summarizeConversation(ticketId) {
     }
 
     const textToAnalyze = messages
-        .map(m => `${m.senderName}: ${m.originalText}`)
+        .map((m: any) => `${m.senderName}: ${m.originalText}`)
         .join('\n')
         .slice(0, 4000);
 
@@ -159,9 +161,9 @@ ${textToAnalyze}`,
 
         if (!summary) throw new Error('Ollama returned empty summary');
 
-        run('UPDATE tickets SET summary = ? WHERE id = ?', [summary, ticketId]);
+        await run('UPDATE tickets SET summary = $1 WHERE id = $2', [summary, ticketId]);
         return summary;
-    } catch (err) {
+    } catch (err: any) {
         logger.error({ ticketId, err: err.message }, 'Failed to summarize conversation');
         return 'Summary unavailable.';
     }
