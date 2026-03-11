@@ -1,3 +1,5 @@
+import React from 'react';
+import Panel from '../shared/Panel';
 import { Statistics } from '../../../types';
 
 interface DaySummaryProps {

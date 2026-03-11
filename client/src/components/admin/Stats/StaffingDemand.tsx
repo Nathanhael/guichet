@@ -1,3 +1,18 @@
+import React from 'react';
+import { 
+    ResponsiveContainer, 
+    ComposedChart, 
+    CartesianGrid, 
+    ReferenceArea, 
+    XAxis, 
+    YAxis, 
+    Tooltip, 
+    Legend, 
+    Bar, 
+    Line, 
+    Cell 
+} from 'recharts';
+import Panel from '../shared/Panel';
 import { HourlyStat } from '../../../types';
 
 interface StaffingDemandProps {
