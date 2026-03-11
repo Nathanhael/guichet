@@ -6,10 +6,10 @@ This guide helps you explore the neuro-inclusive and real-time features of the i
 
 When you open the app at `http://localhost:5173`, select one of the following personas:
 
-- **Alice Agent (EN)**: Best for testing DSC department ticket creation and receiving translations.
-- **Bob Agent (NL)**: Best for testing FOT department tickets in Dutch.
-- **Expert Zoe (FR)**: A multi-tasking expert. Open her in a separate tab to handle incoming tickets.
-- **Dirk Admin (NL)**: Monitor the entire system and manage labels.
+- **Agent Jan (NL)**: Best for testing DSC department ticket creation in Dutch.
+- **Agent Marie (FR)**: Best for testing FOT department tickets in French.
+- **Expert Piet (NL)**: A multi-tasking expert in Dutch.
+- **Admin Dirk (NL)**: Monitor the entire system and manage labels.
 
 ## The Cognitive Cockpit
 

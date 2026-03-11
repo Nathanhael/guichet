@@ -14,7 +14,7 @@ graph TD
     end
 
     subgraph Backend
-        EX[Express.js] --> DB[(SQLite/better-sqlite3)]
+        EX[Express.js] --> DB[(PostgreSQL/pg)]
         EX --> SI[Socket.io Server]
         SI --> GS[Guards Service]
         GS --> TR[Translation Service]

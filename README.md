@@ -22,7 +22,7 @@ For a detailed look at the system architecture, tech stack, and usage:
 | Realtime | Socket.io |
 | Backend | Node 20 (ESM), Express.js |
 | Security | Helmet, express-rate-limit, file-type |
-| Database | SQLite via better-sqlite3 |
+| Database | PostgreSQL (pg) |
 | Auth | JWT (jsonwebtoken) + bcrypt |
 | Validation | express-validator + CSV escaping |
 | Logging | pino (+ pino-pretty in dev) |
@@ -84,11 +84,10 @@ mp-support/
 │   ├── config.js                       # Centralized configuration (env vars + defaults)
 │   ├── db.js                           # SQLite wrapper export
 │   ├── db/
-│   │   ├── sqlite.js                   # SQLite initialization & query helpers
-│   │   ├── schema.sql                  # Database schema (11 tables, indexed)
-│   │   ├── seed.js                     # Demo data seeding
-│   │   ├── migrate.js                  # JSON -> SQLite migration
-│   │   └── apply_schema_updates.js     # Schema evolution script
+│   │   ├── postgres.ts                 # PostgreSQL connection & helpers
+│   │   ├── schema.ts                   # Drizzle schema definition
+│   │   ├── schema.sql                  # PostgreSQL table definitions
+│   │   └── sqlite.ts                   # Legacy SQLite helpers (deprecated)
 │   ├── middleware/
 │   │   ├── auth.js                     # JWT authentication + RBAC
 │   │   └── validator.js                # Input validation middleware
@@ -201,7 +200,7 @@ All settings are configurable via environment variables. See `.env.example` for 
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | Ollama API endpoint |
 | `JWT_SECRET` | `super-secret-key-replace-in-prod` | JWT signing secret |
 | `JWT_EXPIRY` | `24h` | JWT token lifetime |
-| `DB_PATH` | `./database.sqlite` | SQLite database path |
+| `DATABASE_URL` | `postgres://user:password@localhost:5432/i_pxs_support` | PostgreSQL connection string |
 | `GDPR_RETENTION_DAYS` | `30` | Days before individual data is purged |
 | `LOG_LEVEL` | `info` | Pino log level |
 | `BUSINESS_HOURS_START` | `07:30` | Chat availability start (Europe/Brussels) |
@@ -291,20 +290,13 @@ Same language = no Ollama call.
 
 | Name | Role | Language | Department |
 |---|---|---|---|
-| Alice Agent | Agent | EN | DSC |
-| Bob Agent | Agent | NL | FOT |
-| Charlie Agent | Agent | NL | DSC |
-| David Agent | Agent | FR | FOT |
-| Eva Agent | Agent | EN | DSC |
-| Frank Agent | Agent | NL | FOT |
-| Grace Agent | Agent | FR | DSC |
-| Harry Agent | Agent | EN | FOT |
-| Ivy Agent | Agent | NL | DSC |
-| Jack Agent | Agent | FR | FOT |
-| Expert Zoe | Expert | FR | -- |
-| Expert Yann | Expert | EN | -- |
-| Expert Xander | Expert | NL | -- |
-| Dirk Admin | Admin | NL | -- |
+| Agent Jan | Agent | NL | DSC |
+| Agent Marie | Agent | FR | FOT |
+| Agent Tom | Agent | EN | DSC |
+| Expert Piet | Expert | NL | DSC |
+| Expert Sophie | Expert | FR | FOT |
+| Expert Alex | Expert | EN | FOT |
+| Admin Dirk | Admin | NL | DSC |
 
 ## API Endpoints
 
