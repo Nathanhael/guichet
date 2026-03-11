@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useChatStore } from '../store/useChatStore';
+import useStore from '../store/useStore';
 
 interface BionicTextProps {
   text: string;
@@ -7,9 +7,11 @@ interface BionicTextProps {
 }
 
 const BionicText: React.FC<BionicTextProps> = ({ text, className = '' }) => {
-  const language = useChatStore((state) => state.language);
+  const language = useStore((state) => state.selectedLang || 'en');
 
   const bionicContent = useMemo(() => {
+    if (!text) return null;
+    
     // Split by spaces but preserve them
     const words = text.split(/(\s+)/);
     
@@ -25,7 +27,6 @@ const BionicText: React.FC<BionicTextProps> = ({ text, className = '' }) => {
         fixationLength = Math.ceil(len * 0.6);
       } else if (language === 'nl') {
         // Dutch: Compound word aware fixation
-        // Heuristic: if word is long (>10 chars), it's likely compound, bold more
         fixationLength = len > 10 ? Math.ceil(len * 0.55) : Math.ceil(len * 0.45);
       } else {
         // English: Standard 45% fixation

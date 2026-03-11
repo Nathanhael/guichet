@@ -43,7 +43,7 @@ router.delete('/:id', [auth, authorize(['admin'])], async (req: AuthRequest, res
         const { id } = req.params;
 
         await transaction(async () => {
-            await run('DELETE FROM ticket_labels WHERE "labelId" = $1', [id]);
+            await run('DELETE FROM ticket_labels WHERE label_id = $1', [id]);
             await run('DELETE FROM labels WHERE id = $1', [id]);
         });
 

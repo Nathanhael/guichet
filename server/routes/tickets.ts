@@ -25,8 +25,8 @@ router.get('/', [
     let pIdx = 1;
 
     if (agentId) {
-      sql += ` AND "agentId" = $${pIdx}`;
-      countSql += ` AND "agentId" = $${pIdx}`;
+      sql += ` AND agent_id = $${pIdx}`;
+      countSql += ` AND agent_id = $${pIdx}`;
       params.push(agentId);
       pIdx++;
     }
@@ -44,30 +44,30 @@ router.get('/', [
     }
     if (search) {
       const q = `%${search}%`;
-      const searchClause = ` AND ("agentName" ILIKE $${pIdx} OR "cdbId" ILIKE $${pIdx} OR "dareRef" ILIKE $${pIdx} OR "expertName" ILIKE $${pIdx})`;
+      const searchClause = ` AND (agent_name ILIKE $${pIdx} OR cdb_id ILIKE $${pIdx} OR dare_ref ILIKE $${pIdx} OR expert_name ILIKE $${pIdx})`;
       sql += searchClause;
       countSql += searchClause;
       params.push(q);
       pIdx++;
     }
     if (dateFrom) {
-      sql += ` AND "createdAt" >= $${pIdx}`;
-      countSql += ` AND "createdAt" >= $${pIdx}`;
+      sql += ` AND created_at >= $${pIdx}`;
+      countSql += ` AND created_at >= $${pIdx}`;
       params.push(dateFrom);
       pIdx++;
     }
     if (dateTo) {
       const end = dateTo + 'T23:59:59';
-      sql += ` AND "createdAt" <= $${pIdx}`;
-      countSql += ` AND "createdAt" <= $${pIdx}`;
+      sql += ` AND created_at <= $${pIdx}`;
+      countSql += ` AND created_at <= $${pIdx}`;
       params.push(end);
       pIdx++;
     }
 
     if (status === 'closed') {
-      sql += ' ORDER BY "closedAt" DESC';
+      sql += ' ORDER BY closed_at DESC';
     } else {
-      sql += ' ORDER BY "createdAt" ASC';
+      sql += ' ORDER BY created_at ASC';
     }
 
     if (limit !== undefined) {
@@ -80,7 +80,7 @@ router.get('/', [
       const tickets = await Promise.all(result.map(async t => ({
         ...t,
         participants: JSON.parse(t.participants || '[]'),
-        labels: (await query('SELECT "labelId" FROM ticket_labels WHERE "ticketId" = $1', [t.id])).map((l: any) => l.labelId)
+        labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [t.id])).map((l: any) => l.labelId)
       })));
 
       return res.json({ tickets, total: totalCount });
@@ -90,7 +90,7 @@ router.get('/', [
     const tickets = await Promise.all(result.map(async t => ({
       ...t,
       participants: JSON.parse(t.participants || '[]'),
-      labels: (await query('SELECT "labelId" FROM ticket_labels WHERE "ticketId" = $1', [t.id])).map((l: any) => l.labelId)
+      labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [t.id])).map((l: any) => l.labelId)
     })));
 
     res.json(tickets);
@@ -102,7 +102,7 @@ router.get('/', [
 
 router.get('/:id/messages', async (req: Request, res: Response) => {
   try {
-    const messages = await query('SELECT * FROM messages WHERE "ticketId" = $1 ORDER BY "createdAt" ASC', [req.params.id]) as any[];
+    const messages = await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [req.params.id]) as any[];
     res.json(messages.map(m => ({
       ...m,
       whisper: !!m.whisper,
