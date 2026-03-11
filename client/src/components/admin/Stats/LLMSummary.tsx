@@ -8,9 +8,9 @@ interface LLMSummaryProps {
 }
 
 export default function LLMSummary({ periodType, periodValue }: LLMSummaryProps) {
-    const [summary, setSummary] = useState<LLMSummaryData | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [summary, setSummary] = React.useState<LLMSummaryData | null>(null);
+    const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
 
     useEffect(() => {
         if (!periodType || !periodValue) return;
