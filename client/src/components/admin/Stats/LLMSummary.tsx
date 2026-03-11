@@ -1,3 +1,5 @@
+import React, { useState, useEffect } from 'react';
+import Panel from '../shared/Panel';
 import { LLMSummaryData } from '../../../types';
 
 interface LLMSummaryProps {

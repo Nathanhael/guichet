@@ -1,3 +1,7 @@
+import React from 'react';
+import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
+import Panel from '../shared/Panel';
+import ChartTooltip from '../shared/ChartTooltip';
 import { AgentStat } from '../../../types';
 
 interface AgentPerformanceProps {
