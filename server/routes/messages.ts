@@ -1,30 +1,31 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { query } from '../db.js';
 import logger from '../utils/logger.js';
+import { Message } from '../types/index.js';
 
 const router = Router();
 
-// GET /api/messages?ticketId=...
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const { ticketId } = req.query;
     let sql = 'SELECT * FROM messages';
-    const params = [];
+    const params: any[] = [];
 
     if (ticketId) {
-      sql += ' WHERE ticketId = ?';
+      sql += ' WHERE "ticketId" = $1';
       params.push(ticketId);
     }
 
-    sql += ' ORDER BY createdAt ASC';
-    const messages = query(sql, params);
+    sql += ' ORDER BY "createdAt" ASC';
+    const messages = await query(sql, params) as any[];
 
     res.json(messages.map(m => ({
       ...m,
       whisper: !!m.whisper,
-      system: !!m.system
+      system: !!m.system,
+      reactions: JSON.parse(m.reactions || '{}')
     })));
-  } catch (err) {
+  } catch (err: any) {
     logger.error({ err: err.message, query: req.query }, 'Error fetching messages');
     res.status(500).json({ error: err.message });
   }

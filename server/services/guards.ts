@@ -1,17 +1,18 @@
 import config from '../config.js';
+import { GuardResult } from '../types/index.js';
 
 const OLLAMA_HOST = config.OLLAMA_HOST || 'http://localhost:11434';
 const MODEL       = config.OLLAMA_MODEL || 'gemmatranslate4b';
 
 // ─── Guard result helpers ─────────────────────────────────────────────────────
 
-function block(code) {
+function block(code: string): GuardResult {
   return { ok: false, code, sanitized: null };
 }
-function modify(code, sanitized) {
+function modify(code: string, sanitized: string): GuardResult {
   return { ok: true, code, sanitized };
 }
-function pass() {
+function pass(): GuardResult {
   return { ok: true, code: 'PASS', sanitized: null };
 }
 
@@ -22,7 +23,7 @@ function pass() {
  * @param {string} text - Raw input.
  * @returns {GuardResult}
  */
-export function guardLength(text) {
+export function guardLength(text: string): GuardResult {
   const trimmed = text?.trim() ?? '';
   if (trimmed.length < 3) {
     return block('guard_too_short');
@@ -35,7 +36,7 @@ export function guardLength(text) {
 
 // ─── 2. ALL CAPS ─────────────────────────────────────────────────────────────
 
-export function guardCaps(text) {
+export function guardCaps(text: string): GuardResult {
   const letters = text.replace(/[^a-zA-Z]/g, '');
   if (letters.length > 10 && letters === letters.toUpperCase()) {
     const fixed = text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
@@ -46,9 +47,9 @@ export function guardCaps(text) {
 
 // ─── 3. Repetition detection ─────────────────────────────────────────────────
 
-const repetitionStore = new Map();
+const repetitionStore = new Map<string, { text: string; count: number }>();
 
-export function guardRepetition(text, senderId) {
+export function guardRepetition(text: string, senderId: string): GuardResult {
   const normalized = text.trim().toLowerCase();
   const entry = repetitionStore.get(senderId);
 
@@ -64,7 +65,7 @@ export function guardRepetition(text, senderId) {
   return pass();
 }
 
-export function resetRepetition(senderId) {
+export function resetRepetition(senderId: string): void {
   repetitionStore.delete(senderId);
 }
 
@@ -83,7 +84,7 @@ const swearRegex = new RegExp(
   'gi'
 );
 
-export function guardSwearing(text) {
+export function guardSwearing(text: string): GuardResult {
   swearRegex.lastIndex = 0;
   if (swearRegex.test(text)) {
     return block('guard_offensive');
@@ -105,7 +106,7 @@ const THREAT_PATTERNS = [
   /\bwatch\s+your\s+back\b/i,
 ];
 
-export function guardThreats(text) {
+export function guardThreats(text: string): GuardResult {
   for (const pattern of THREAT_PATTERNS) {
     if (pattern.test(text)) {
       return block('guard_threat');
@@ -124,7 +125,7 @@ const DISCRIMINATION_PATTERNS = [
   /\b(all\s+)?(blacks|jews|muslims|gays)\s+(should|must|deserve)\b/i,
 ];
 
-export function guardDiscrimination(text) {
+export function guardDiscrimination(text: string): GuardResult {
   for (const pattern of DISCRIMINATION_PATTERNS) {
     if (pattern.test(text)) {
       return block('guard_discrimination');
@@ -145,7 +146,7 @@ const INJECTION_PATTERNS = [
   /\[INST\]|\[\/INST\]|<\|im_start\|>/i,
 ];
 
-export function guardInjection(text) {
+export function guardInjection(text: string): GuardResult {
   for (const pattern of INJECTION_PATTERNS) {
     if (pattern.test(text)) {
       return block('guard_injection');
@@ -156,7 +157,7 @@ export function guardInjection(text) {
 
 // ─── 8. Telecom topic filter (Ollama) ────────────────────────────────────────
 
-const TOPIC_PROMPT = (text) =>
+const TOPIC_PROMPT = (text: string) =>
 `You are a content moderator for a professional telecom support chat system.
 
 Determine if the following message is related to telecom support topics.
@@ -181,7 +182,7 @@ Respond with ONLY one word: ALLOWED or BLOCKED.
 
 Message: ${text}`;
 
-export async function guardTopic(text) {
+export async function guardTopic(text: string): Promise<GuardResult> {
   const trimmed = text.trim().toLowerCase();
   const QUICK_PASS = [
     'ok', 'oke', 'oké', 'ja', 'nee', 'oui', 'non', 'yes', 'no',
@@ -206,7 +207,7 @@ export async function guardTopic(text) {
 
     if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
 
-    const data    = await response.json();
+    const data: any = await response.json();
     const verdict = data.response?.trim().toUpperCase();
 
     if (verdict === 'BLOCKED') {
@@ -215,7 +216,7 @@ export async function guardTopic(text) {
 
     return pass();
 
-  } catch (err) {
+  } catch (err: any) {
     console.warn('[guardTopic] Ollama unavailable, skipping topic check:', err.message);
     return pass();
   }
@@ -230,13 +231,9 @@ export async function guardTopic(text) {
  * 
  * @param {string} text - The raw message text.
  * @param {string} senderId - ID of the sender for rate-limiting/repetition checks.
- * @returns {Promise<{
- *   ok: boolean,
- *   code: string,
- *   text: string
- * }>} Result of the guard check and the final (possibly sanitized) text.
+ * @returns {Promise<GuardResult & { text: string }>} Result of the guard check and the final (possibly sanitized) text.
  */
-export async function runGuards(text, senderId) {
+export async function runGuards(text: string, senderId: string): Promise<GuardResult & { text: string }> {
   let current = text;
 
   // 1. Length

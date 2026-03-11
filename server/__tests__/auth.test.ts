@@ -1,12 +1,9 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { app } from '../app.js';
 import { db } from '../db/sqlite.js';
-import fs from 'fs';
-import path from 'path';
 
 describe('Authentication API', () => {
-    // Clear data before tests
     beforeAll(() => {
         db.prepare('DELETE FROM app_feedback').run();
         db.prepare('DELETE FROM ratings').run();
@@ -17,10 +14,10 @@ describe('Authentication API', () => {
     });
 
     const testUser = {
-        id: 'test_manager',
-        name: 'Test Manager',
+        id: 'test_admin',
+        name: 'Test Admin',
         password: 'Password123!',
-        role: 'manager',
+        role: 'admin',
         dept: 'DSC'
     };
 
@@ -31,7 +28,6 @@ describe('Authentication API', () => {
 
         expect(res.status).toBe(201);
         expect(res.body).toHaveProperty('message', 'User registered successfully');
-        // Implementation doesn't return user object in register
     });
 
     it('should not register a user with existing ID', async () => {

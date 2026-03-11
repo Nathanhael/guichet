@@ -4,14 +4,14 @@ import { app } from '../app.js';
 import { db } from '../db/sqlite.js';
 
 describe('Protected API Routes', () => {
-    let managerToken;
-    let agentToken;
+    let adminToken: string;
+    let agentToken: string;
 
-    const managerUser = {
-        id: 'manager_api_test',
-        name: 'API Manager',
+    const adminUser = {
+        id: 'admin_api_test',
+        name: 'API Admin',
         password: 'Password123!',
-        role: 'manager'
+        role: 'admin'
     };
 
     const agentUser = {
@@ -27,15 +27,15 @@ describe('Protected API Routes', () => {
         db.prepare('DELETE FROM labels').run();
         db.prepare('DELETE FROM users').run();
 
-        // Register and login a manager
-        await request(app).post('/api/auth/register').send(managerUser);
-        const mLogin = await request(app).post('/api/auth/login').send({ id: managerUser.id, password: managerUser.password });
-        managerToken = mLogin.body.token;
+        // Register and login an admin
+        await request(app).post('/api/auth/register').send(adminUser);
+        const aLogin = await request(app).post('/api/auth/login').send({ id: adminUser.id, password: adminUser.password });
+        adminToken = aLogin.body.token;
 
         // Register and login an agent
         await request(app).post('/api/auth/register').send(agentUser);
-        const aLogin = await request(app).post('/api/auth/login').send({ id: agentUser.id, password: agentUser.password });
-        agentToken = aLogin.body.token;
+        const agLogin = await request(app).post('/api/auth/login').send({ id: agentUser.id, password: agentUser.password });
+        agentToken = agLogin.body.token;
     });
 
     describe('GET /api/stats', () => {
@@ -44,10 +44,10 @@ describe('Protected API Routes', () => {
             expect(res.status).toBe(401);
         });
 
-        it('should succeed with manager token', async () => {
+        it('should succeed with admin token', async () => {
             const res = await request(app)
                 .get('/api/stats')
-                .set('Authorization', `Bearer ${managerToken}`);
+                .set('Authorization', `Bearer ${adminToken}`);
             expect(res.status).toBe(200);
             expect(res.body).toHaveProperty('total');
         });
@@ -69,10 +69,10 @@ describe('Protected API Routes', () => {
             expect(res.status).toBe(403);
         });
 
-        it('should succeed with manager token', async () => {
+        it('should succeed with admin token', async () => {
             const res = await request(app)
                 .post('/api/labels')
-                .set('Authorization', `Bearer ${managerToken}`)
+                .set('Authorization', `Bearer ${adminToken}`)
                 .send({ text: 'API Test Label', color: '#e11d48' });
             expect(res.status).toBe(201);
             expect(res.body).toHaveProperty('text', 'API Test Label');

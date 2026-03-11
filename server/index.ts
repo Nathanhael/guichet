@@ -1,4 +1,4 @@
-import { httpServer } from './app.js'; // Updated at 2026-03-10
+import { httpServer } from './app.js';
 import config from './config.js';
 import logger from './utils/logger.js';
 
@@ -7,7 +7,7 @@ if (process.env.NODE_ENV === 'production' && config.JWT_SECRET === 'super-secret
   process.exit(1);
 }
 
-const PORT = config.PORT;
+const PORT = config.PORT || 3001;
 httpServer.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT}`);
 });
