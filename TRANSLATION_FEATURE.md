@@ -44,6 +44,6 @@ Three distinct optimized prompts are used:
 3.  **Translation**: Focuses on high-fidelity linguistic transfer while preserving technical terms (Modem, ONT, CDBID, etc.).
 
 ### Integration Details
-- **Backend Service**: `server/services/translate.js`.
+- **Backend Service**: `server/services/translate.ts`.
 - **LLM Interface**: Local Ollama REST API (`translategemma:4b`).
 - **Caching**: Results are cached in the `translations_cache` table to ensure near-instant responses for repeated or common phrases.

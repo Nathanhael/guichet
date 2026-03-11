@@ -34,7 +34,7 @@ This document serves as a high-level "Rules of Engagement" for any AI agent work
 - **GDPR**: Retention is 30 days. PII is purged while aggregated stats are kept.
 
 ## 📂 6. Documentation Map
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Logic flows and DB schema.
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: Logic flows and PostgreSQL schema.
 - **[TECH_STACK.md](./TECH_STACK.md)**: Dependency list and versions.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)**: Coding and CSS standards.
 - **[CLAUDE.md](./CLAUDE.md)**: Tool-specific instructions for Claude.

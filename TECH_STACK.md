@@ -10,7 +10,8 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 |---|---|---|
 | express | ^4.18.3 | REST API framework |
 | socket.io | ^4.7.4 | Real-time communication |
-| better-sqlite3 | ^11.5.0 | SQLite database driver |
+| pg | ^8.20.0 | PostgreSQL database driver |
+| drizzle-orm | ^0.45.1 | TypeScript ORM |
 | jsonwebtoken | ^9.0.2 | JWT authentication |
 | bcrypt | ^5.1.1 | Password hashing |
 | cors | ^2.8.5 | CORS middleware |
@@ -49,7 +50,7 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 
 ## Database Schema
 
-SQLite with WAL mode for concurrency. Schema defined in `server/db/schema.sql`.
+PostgreSQL via Drizzle ORM. Schema defined in `server/db/schema.ts`.
 
 ### Tables
 
@@ -90,9 +91,8 @@ idx_messages_ticketId   ON messages(ticketId)
 
 ### Migration & Seeding
 
-- `server/db/migrate.js` -- One-time migration from legacy `db.json` to SQLite
-- `server/db/seed.js` -- Populates demo users (10 agents, 3 experts, 1 admin)
-- `server/db/apply_schema_updates.js` -- Applies schema evolution (new columns, indexes)
+- `server/sqlite-to-pg.ts` -- Migration script from SQLite to PostgreSQL
+- `server/scripts/migrate_users_json.ts` -- Imports users from `db.json` to PostgreSQL
 
 ## Authentication Flow
 
@@ -140,5 +140,6 @@ services:
 ```
 
 - Ollama runs on the host; Docker containers reach it via `host.docker.internal:11434`
-- SQLite database file is persisted via Docker volume or bind mount
+- PostgreSQL runs in a dedicated container; configured via environment variables
+- Database data is persisted via Docker volumes
 - Uploads directory is shared between server container and static file serving
