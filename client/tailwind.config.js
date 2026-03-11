@@ -1,6 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: ['./index.html', './src/**/*.{js,jsx}'],
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   safelist: [
     {
       pattern: /(bg|text|border|shadow)-(rose|blue|amber|emerald|purple|indigo|cyan|orange|teal|pink)-(400|500|600|700)/,
