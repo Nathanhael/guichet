@@ -15,13 +15,13 @@ export interface LLMSummaryResult {
 export async function getLLMSummary(periodType: string, periodValue: string): Promise<LLMSummaryResult> {
     const periodKey = `${periodType}:${periodValue}`;
 
-    const cached = await get('SELECT * FROM llm_summaries WHERE period = ?', [periodKey]);
+    const cached = await get('SELECT * FROM llm_summaries WHERE period = $1', [periodKey]);
     if (cached) {
         return {
             sentiment: cached.sentiment,
             questions: JSON.parse(cached.questions || '[]'),
             summary: cached.summary,
-            updatedAt: cached.updatedAt
+            updatedAt: cached.updated_at
         };
     }
 
@@ -92,7 +92,7 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
         }
 
         await run(
-            'INSERT INTO llm_summaries (period, sentiment, questions, summary, "updatedAt") VALUES ($1, $2, $3, $4, $5) ON CONFLICT (period) DO UPDATE SET sentiment = EXCLUDED.sentiment, questions = EXCLUDED.questions, summary = EXCLUDED.summary, "updatedAt" = EXCLUDED."updatedAt"',
+            'INSERT INTO llm_summaries (period, sentiment, questions, summary, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (period) DO UPDATE SET sentiment = EXCLUDED.sentiment, questions = EXCLUDED.questions, summary = EXCLUDED.summary, updated_at = EXCLUDED.updated_at',
             [periodKey, result.sentiment, JSON.stringify(result.top3Questions), result.summary, new Date().toISOString()]
         );
 
@@ -104,15 +104,15 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
 }
 
 async function getMessagesForDay(date: string) {
-    return query('SELECT text, "processedText", "senderName" FROM messages WHERE substring("createdAt" from 1 for 10) = $1 AND system = 0 AND whisper = 0', [date]);
+    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE substring(created_at from 1 for 10) = $1 AND system = 0 AND whisper = 0', [date]);
 }
 
 async function getMessagesForWeek(weekStr: string) {
-    return query(`SELECT text, "processedText", "senderName" FROM messages WHERE to_char(to_timestamp("createdAt", 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr]);
+    return query(`SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE to_char(to_timestamp(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr]);
 }
 
 async function getMessagesForMonth(monthStr: string) {
-    return query('SELECT text, "processedText", "senderName" FROM messages WHERE substring("createdAt" from 1 for 7) = $1 AND system = 0 AND whisper = 0', [monthStr]);
+    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE substring(created_at from 1 for 7) = $1 AND system = 0 AND whisper = 0', [monthStr]);
 }
 
 export async function summarizeConversation(ticketId: string): Promise<string> {

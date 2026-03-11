@@ -707,14 +707,9 @@ app.get('/api/stats/summary', [auth, authorize(['admin']), llmLimiter], async (r
   try {
     const { periodType, periodValue } = req.query as any;
     if (!periodType || !periodValue) return res.status(400).json({ error: 'periodType and periodValue are required.' });
-    const existing = await get("SELECT * FROM llm_summaries WHERE period = $1", [periodValue]) as any;
-    if (existing) return res.json(JSON.parse(existing.sentiment));
-    const messages = await getLLMSummary(periodType, periodValue) as any;
-    // if (!messages.length) return res.status(404).json({ error: 'No messages found for this period.' }); 
-    // ^ getLLMSummary returns LLMSummaryResult which has sentiment, summary, etc.
-    const analysis = await summarizeConversation(messages);
-    await run("INSERT INTO llm_summaries (period, sentiment, summary, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (period) DO UPDATE SET sentiment = EXCLUDED.sentiment, summary = EXCLUDED.summary, updated_at = EXCLUDED.updated_at", [periodValue, JSON.stringify(analysis), analysis.summary, new Date().toISOString()]);
-    res.json(analysis);
+    
+    const result = await getLLMSummary(periodType, periodValue);
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
