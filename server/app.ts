@@ -162,15 +162,15 @@ async function runDailyPurge() {
     const cutoffDate = cutoff.toISOString().slice(0, 10);
 
     const datesToAggregate = await query(
-      `SELECT DISTINCT SUBSTRING("created_at" FROM 1 FOR 10) as date 
+      `SELECT DISTINCT SUBSTRING(created_at FROM 1 FOR 10) as date 
        FROM tickets 
-       WHERE "created_at" < $1 
-         AND SUBSTRING("created_at" FROM 1 FOR 10) NOT IN (SELECT date FROM daily_stats)`,
+       WHERE created_at < $1 
+         AND SUBSTRING(created_at FROM 1 FOR 10) NOT IN (SELECT date FROM daily_stats)`,
       [cutoffDate]
     ) as { date: string }[];
 
     for (const { date } of datesToAggregate) {
-      const dayTickets = await query('SELECT * FROM tickets WHERE "created_at" LIKE $1', [`${date}%`]) as Ticket[];
+      const dayTickets = await query('SELECT * FROM tickets WHERE created_at LIKE $1', [`${date}%`]) as Ticket[];
       const ticketIds = dayTickets.map(t => t.id);
       let dayRatings: any[] = [];
       if (ticketIds.length > 0) {
@@ -208,10 +208,10 @@ async function runDailyPurge() {
     }
 
     await transaction(async () => {
-      await run('DELETE FROM messages WHERE "ticket_id" IN (SELECT id FROM tickets WHERE "created_at" < $1)', [cutoffDate]);
-      await run('DELETE FROM ratings WHERE "ticket_id" IN (SELECT id FROM tickets WHERE "created_at" < $1)', [cutoffDate]);
-      await run('DELETE FROM ticket_labels WHERE "ticket_id" IN (SELECT id FROM tickets WHERE "created_at" < $1)', [cutoffDate]);
-      await run('DELETE FROM tickets WHERE "created_at" < $1', [cutoffDate]);
+      await run('DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < $1)', [cutoffDate]);
+      await run('DELETE FROM ratings WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < $1)', [cutoffDate]);
+      await run('DELETE FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < $1)', [cutoffDate]);
+      await run('DELETE FROM tickets WHERE created_at < $1', [cutoffDate]);
     });
 
     logger.info(`[purge] GDPR purge complete for data older than ${cutoffDate}.`);
@@ -361,7 +361,7 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
     }
 
     const historicalStats = await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2', [rangeStart, rangeEnd]) as any[];
-    const ticketsSql = `SELECT * FROM tickets WHERE SUBSTRING("created_at" FROM 1 FOR 10) >= $1 AND SUBSTRING("created_at" FROM 1 FOR 10) <= $2`;
+    const ticketsSql = `SELECT * FROM tickets WHERE SUBSTRING(created_at FROM 1 FOR 10) >= $1 AND SUBSTRING(created_at FROM 1 FOR 10) <= $2`;
     const allLiveTicketsRaw = await query(ticketsSql, [rangeStart, rangeEnd]) as Ticket[];
     const allLiveTickets = (excludeWeekends === 'true')
       ? allLiveTicketsRaw.filter(t => {
@@ -559,7 +559,7 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
     }
 
     const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-    const waitingTickets = await query('SELECT "created_at" FROM tickets WHERE status = $1 AND "expert_id" IS NULL AND "created_at" >= $2', ['open', thirtyMinsAgo]) as { createdAt: string }[];
+    const waitingTickets = await query('SELECT created_at FROM tickets WHERE status = $1 AND expert_id IS NULL AND created_at >= $2', ['open', thirtyMinsAgo]) as { createdAt: string }[];
     let oldest = 0;
     waitingTickets.forEach(t => { oldest = Math.max(oldest, now.getTime() - new Date(t.createdAt).getTime()); });
 
@@ -641,13 +641,11 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
     const prevStartStr = prevStart.toISOString().slice(0, 10);
     const prevEndStr = prevEnd.toISOString().slice(0, 10);
 
-    let prevHistSql = `SELECT SUM(total) as total, AVG("avg_response_ms") as "avgResp", AVG("avg_duration_ms") as "avgDur", SUM(abandoned) as abandoned, AVG("sla_resolved") as "slaRes", AVG("sla_compliant") as "slaComp" 
+    let prevHistSql = `SELECT SUM(total) as total, AVG(avg_response_ms) as "avgResp", AVG(avg_duration_ms) as "avgDur", SUM(abandoned) as abandoned, AVG(sla_resolved) as "slaRes", AVG(sla_compliant) as "slaComp" 
                        FROM daily_stats 
                        WHERE date >= $1 AND date <= $2`;
     if (excludeWeekends === 'true') {
         const res = await query(`SELECT date FROM daily_stats WHERE date >= $1 AND date <= $2`, [prevStartStr, prevEndStr]) as any[];
-        // Actually easier to just filter by weekday in standard SQL but let's keep it simple for now if possible
-        // Postgres has extract(dow from date::date)
         prevHistSql += " AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)";
     }
     const prevHist = await query(prevHistSql, [prevStartStr, prevEndStr]) as any[];
@@ -686,9 +684,9 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
       daySummary: await (async () => {
         const labelsSql = `SELECT l.name, t.dept, COUNT(*) as count 
                            FROM ticket_labels tl 
-                           JOIN labels l ON tl."label_id" = l.id 
-                           JOIN tickets t ON tl."ticket_id" = t.id 
-                           WHERE SUBSTRING(t."created_at" FROM 1 FOR 10) >= $1 AND SUBSTRING(t."created_at" FROM 1 FOR 10) <= $2 
+                           JOIN labels l ON tl.label_id = l.id 
+                           JOIN tickets t ON tl.ticket_id = t.id 
+                           WHERE SUBSTRING(t.created_at FROM 1 FOR 10) >= $1 AND SUBSTRING(t.created_at FROM 1 FOR 10) <= $2 
                            GROUP BY l.name, t.dept 
                            ORDER BY t.dept, count DESC`;
         const labelCounts = await query(labelsSql, [rangeStart, rangeEnd]) as any[];
@@ -737,14 +735,14 @@ function broadcastOnlineExperts() {
 
 async function broadcastAgentStatus(agentId: string, online: boolean) {
   try {
-    const openTickets = await query('SELECT id FROM tickets WHERE "agent_id" = $1 AND status != $2', [agentId, 'closed']) as { id: string }[];
+    const openTickets = await query('SELECT id FROM tickets WHERE agent_id = $1 AND status != $2', [agentId, 'closed']) as { id: string }[];
     for (const ticket of openTickets) io.to(`ticket:${ticket.id}`).emit('agent:status', { ticketId: ticket.id, agentId, online });
   } catch (err: any) { logger.error({ err: err.message }, '[agent:status] error'); }
 }
 
 async function broadcastQueuePositions() {
   try {
-    const openTickets = await query('SELECT id FROM tickets WHERE status = $1 AND "expert_id" IS NULL ORDER BY "created_at" ASC', ['open']) as { id: string }[];
+    const openTickets = await query('SELECT id FROM tickets WHERE status = $1 AND expert_id IS NULL ORDER BY created_at ASC', ['open']) as { id: string }[];
     openTickets.forEach((t, index) => {
       const position = index + 1;
       io.to(`ticket:${t.id}`).emit('queue:update', { position, etaMins: position * 2 });
@@ -795,7 +793,7 @@ io.on('connection', (socket: Socket) => {
       await run('UPDATE tickets SET expert_id = $1, expert_name = $2, expert_lang = $3, expert_joined_at = $4, participants = $5, status = $6 WHERE id = $7', [ticket.expertId || expertId, ticket.expertName || expertName, ticket.expertLang || expertLang, ticket.expertJoinedAt || new Date().toISOString(), JSON.stringify(participants), 'active', ticketId]);
       socket.join(`ticket:${ticketId}`);
       const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as any[]).map(m => ({ ...m, whisper: !!m.whisper, system: !!m.system, reactions: JSON.parse(m.reactions || '{}') }));
-      socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE "ticket_id" = $1', [ticketId])).map((l: any) => l.label_id) });
+      socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId])).map((l: any) => l.label_id) });
       io.to(`ticket:${ticketId}`).emit('expert:joined', { ticketId, expertName, participants });
       await broadcastQueuePositions();
     } catch (err: any) { logger.error({ err: err.message }, '[expert:join] error'); }

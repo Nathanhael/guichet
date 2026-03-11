@@ -12,11 +12,11 @@ router.get('/', async (req: Request, res: Response) => {
     const params: any[] = [];
 
     if (ticketId) {
-      sql += ' WHERE "ticketId" = $1';
+      sql += ' WHERE ticket_id = $1';
       params.push(ticketId);
     }
 
-    sql += ' ORDER BY "createdAt" ASC';
+    sql += ' ORDER BY created_at ASC';
     const messages = await query(sql, params) as any[];
 
     res.json(messages.map(m => ({

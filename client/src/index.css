@@ -9,9 +9,8 @@
   }
 
   body:not(.dark) {
-    background-color: #FDF6E3;
-    @apply text-slate-800;
-    background-image: radial-gradient(circle at 50% 0%, #ffffff 0%, #FDF6E3 100%);
+    @apply bg-solarized-base3 text-solarized-base00;
+    background-image: radial-gradient(circle at 50% 0%, theme('colors.solarized.base2') 0%, theme('colors.solarized.base3') 100%);
   }
 
   .dark body {
@@ -47,11 +46,11 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-300/50 rounded-full;
+    @apply bg-solarized-base2 rounded-full;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-slate-400/50;
+    @apply bg-solarized-base1;
   }
 }
 
@@ -61,11 +60,11 @@
   }
 
   .glass-card {
-    @apply bg-white/70 dark:bg-brand-800/60 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl shadow-brand-900/5 dark:shadow-black/20 rounded-2xl;
+    @apply bg-solarized-base3/80 dark:bg-brand-800/60 backdrop-blur-md border border-white/40 dark:border-white/10 shadow-xl shadow-brand-900/5 dark:shadow-black/20 rounded-2xl;
   }
 
   .glass-panel {
-    @apply bg-white/40 dark:bg-brand-900/60 backdrop-blur-lg border border-white/20 dark:border-white/5 shadow-lg shadow-brand-900/5 dark:shadow-black/20;
+    @apply bg-solarized-base2/60 dark:bg-brand-900/60 backdrop-blur-lg border border-white/20 dark:border-white/5 shadow-lg shadow-brand-900/5 dark:shadow-black/20;
   }
 
   .btn-primary {
@@ -73,11 +72,11 @@
   }
 
   .btn-secondary {
-    @apply bg-white dark:bg-brand-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-brand-700 hover:bg-slate-50 dark:hover:bg-brand-700 hover:border-slate-300 dark:hover:border-brand-600 shadow-sm hover:shadow active:translate-y-[1px] transition-all duration-300 font-medium rounded-xl px-4 py-2;
+    @apply bg-solarized-base3 dark:bg-brand-800 text-solarized-base01 dark:text-slate-200 border border-solarized-base2 dark:border-brand-700 hover:bg-solarized-base2 dark:hover:bg-brand-700 hover:border-solarized-base1 dark:hover:border-brand-600 shadow-sm hover:shadow active:translate-y-[1px] transition-all duration-200 font-medium rounded-xl px-4 py-2;
   }
 
   .input-field {
-    @apply w-full border border-slate-200 dark:border-brand-700 bg-white/70 dark:bg-brand-800/70 text-slate-900 dark:text-slate-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 dark:focus:border-accent-400 transition-all duration-300;
+    @apply w-full border border-solarized-base2 dark:border-brand-700 bg-solarized-base3/70 dark:bg-brand-800/70 text-solarized-base00 dark:text-slate-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 dark:focus:border-accent-400 transition-all duration-200;
   }
 }
 
