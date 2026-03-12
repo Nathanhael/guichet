@@ -40,79 +40,90 @@ For a detailed look at the system architecture, tech stack, and usage:
 
 ```
 mp-support/
-├── client/                              # React frontend
+├── client/                              # React frontend (TypeScript)
 │   ├── src/
-│   │   ├── App.jsx                     # Main entry, role-based routing
-│   │   ├── config.js                   # Frontend constants (socket URL, limits)
-│   │   ├── i18n.js                     # UI translations (EN, FR, NL)
+│   │   ├── App.tsx                     # Main entry, role-based routing
+│   │   ├── config.ts                   # Frontend constants (socket URL, limits)
+│   │   ├── i18n.ts                     # UI translations (EN, FR, NL)
+│   │   ├── types/
+│   │   │   └── index.ts                # Shared TypeScript interfaces
 │   │   ├── views/
-│   │   │   ├── LoginView.jsx           # User selection + login
-│   │   │   ├── AgentView.jsx           # Ticket creation + chat
-│   │   │   ├── ExpertView.jsx          # Queue + multi-chat
-│   │   │   └── AdminView.jsx           # Modular dashboard orchestrator
+│   │   │   ├── LoginView.tsx           # User selection + login
+│   │   │   ├── AgentView.tsx           # Ticket creation + chat
+│   │   │   ├── ExpertView.tsx          # Queue + multi-chat
+│   │   │   ├── AdminView.tsx           # Full dashboard orchestrator
+│   │   │   └── ManagerView.tsx         # Department manager dashboard
 │   │   ├── components/
-│   │   │   ├── ChatWindow.jsx          # Main chat interface (search, canned responses)
-│   │   │   ├── CannedResponsePicker.jsx # Quick-insert menu for experts
-│   │   │   ├── MessageBubble.jsx       # Message with translation + delivery status
-│   │   │   ├── TicketList.jsx          # Queue list
-│   │   │   ├── TicketPreview.jsx       # Ticket preview
-│   │   │   ├── BusinessHoursGuard.jsx  # Hours enforcement
-│   │   │   ├── RatingModal.jsx         # Post-chat satisfaction rating
-│   │   │   ├── FeedbackModal.jsx       # User feedback form
-│   │   │   ├── ErrorBoundary.jsx       # React error boundary
-│   │   │   ├── DarkModeToggle.jsx
-│   │   │   └── admin/                  # Specialized dashboard modules
-│   │   │       ├── TicketOperations.jsx
-│   │   │       ├── Stats/              # KPI cards, queue health, trends, AI summaries
-│   │   │       ├── Performance/        # Leaderboards, peak hours
-│   │   │       ├── Archive/            # History & chat preview drawer
-│   │   │       ├── Feedback/           # CSAT & feedback management
-│   │   │       ├── Labels/             # Tag management
-│   │   │       └── shared/             # Common UI (StatCard, Panel, Icons, etc.)
+│   │   │   ├── ChatWindow.tsx          # Main chat interface (search, canned responses)
+│   │   │   ├── CannedResponsePicker.tsx # Quick-insert menu for experts
+│   │   │   ├── MessageBubble.tsx       # Message with translation + delivery status
+│   │   │   ├── TicketList.tsx          # Queue list
+│   │   │   ├── TicketPreview.tsx       # Ticket preview
+│   │   │   ├── BusinessHoursGuard.tsx  # Hours enforcement
+│   │   │   ├── RatingModal.tsx         # Post-chat satisfaction rating
+│   │   │   ├── FeedbackModal.tsx       # User feedback form
+│   │   │   ├── ErrorBoundary.tsx       # React error boundary
+│   │   │   ├── DarkModeToggle.tsx
+│   │   │   ├── admin/                  # Admin dashboard modules
+│   │   │   │   ├── TicketOperations.tsx
+│   │   │   │   ├── Stats/              # KPI cards, queue health, trends, AI summaries
+│   │   │   │   ├── Performance/        # Leaderboards, peak hours
+│   │   │   │   ├── Archive/            # History & chat preview drawer
+│   │   │   │   ├── Feedback/           # CSAT & feedback management
+│   │   │   │   ├── Labels/             # Tag management
+│   │   │   │   └── shared/             # Common UI (StatCard, Panel, Icons, etc.)
+│   │   │   └── manager/                # Manager dashboard modules
+│   │   │       ├── ManagerStats.tsx
+│   │   │       ├── ManagerTickets.tsx
+│   │   │       ├── ManagerArchive.tsx
+│   │   │       ├── ManagerFeedback.tsx
+│   │   │       ├── ManagerLabels.tsx
+│   │   │       └── DashboardHelpers.tsx
 │   │   ├── store/
-│   │   │   └── useStore.js             # Zustand state management
+│   │   │   └── useStore.ts             # Zustand state management
 │   │   ├── hooks/
-│   │   │   └── useSocket.js            # Socket.io connection + events + reconnection
+│   │   │   └── useSocket.ts            # Socket.io connection + events + reconnection
 │   │   └── test/
-│   │       └── setup.js                # Test configuration
+│   │       └── setup.ts                # Test configuration
 │   ├── vite.config.js
 │   ├── tailwind.config.js
 │   └── package.json
-├── server/                              # Express + Socket.io backend
-│   ├── index.js                        # Server entry point
-│   ├── app.js                          # Express app, Socket.io, stats, export, GDPR purge
-│   ├── config.js                       # Centralized configuration (env vars + defaults)
-│   ├── db.js                           # SQLite wrapper export
+├── server/                              # Express + Socket.io backend (TypeScript)
+│   ├── index.ts                        # Server entry point
+│   ├── app.ts                          # Express app, Socket.io, stats, export, GDPR purge
+│   ├── config.ts                       # Centralized configuration (env vars + defaults)
+│   ├── db.ts                           # PostgreSQL re-export
 │   ├── db/
-│   │   ├── postgres.ts                 # PostgreSQL connection & helpers
-│   │   ├── schema.ts                   # Drizzle schema definition
-│   │   ├── schema.sql                  # PostgreSQL table definitions
-│   │   └── sqlite.ts                   # Legacy SQLite helpers (deprecated)
+│   │   ├── postgres.ts                 # PostgreSQL connection & helpers (pg + Drizzle)
+│   │   ├── schema.ts                   # Drizzle ORM schema definition
+│   │   ├── schema.sql                  # SQL table definitions
+│   │   └── schema_pg.sql               # PostgreSQL-specific DDL
 │   ├── middleware/
-│   │   ├── auth.js                     # JWT authentication + RBAC
-│   │   └── validator.js                # Input validation middleware
+│   │   ├── auth.ts                     # JWT authentication + RBAC
+│   │   └── validator.ts                # Input validation middleware
 │   ├── routes/
-│   │   ├── auth.js                     # Register & login endpoints
-│   │   ├── tickets.js                  # Ticket listing + filters
-│   │   ├── messages.js                 # Message history
-│   │   ├── uploads.js                  # File upload (magic byte validated)
-│   │   ├── feedback.js                 # Feedback submission
-│   │   ├── labels.js                   # Ticket labels
-│   │   └── canned_responses.js         # Canned response management
+│   │   ├── auth.ts                     # Register & login endpoints
+│   │   ├── tickets.ts                  # Ticket listing + filters
+│   │   ├── messages.ts                 # Message history
+│   │   ├── uploads.ts                  # File upload (magic byte validated)
+│   │   ├── feedback.ts                 # Feedback submission
+│   │   ├── labels.ts                   # Ticket labels
+│   │   └── canned_responses.ts         # Canned response management
 │   ├── services/
-│   │   ├── translate.js                # Ollama translation + cache (graceful fallback)
-│   │   └── llm.js                      # Ollama LLM sentiment analysis
+│   │   ├── translate.ts                # Ollama translation + cache (graceful fallback)
+│   │   ├── guards.ts                   # Message safety & quality guards
+│   │   └── llm.ts                      # Ollama LLM sentiment analysis
 │   ├── utils/
-│   │   └── logger.js                   # Pino structured logging
+│   │   └── logger.ts                   # Pino structured logging
 │   ├── __tests__/                      # Backend test suites
-│   │   ├── api.test.js
-│   │   ├── auth.test.js
-│   │   └── stats.test.js
+│   │   ├── api.test.ts
+│   │   ├── auth.test.ts
+│   │   └── stats.test.ts
 │   ├── uploads/                        # Screenshot storage
 │   ├── Dockerfile
 │   └── package.json
 ├── .env.example                         # Environment variable template
-├── docker-compose.yml
+├── docker-compose.yml                   # PostgreSQL + Server + Client
 └── package.json                         # Root (concurrently)
 ```
 
@@ -215,8 +226,8 @@ All settings are configurable via environment variables. See `.env.example` for 
 - Chat with assigned expert in real-time
 - Messages auto-translated to expert's language
 - Toggle translation visibility on received messages (show original vs translated)
-- Message reactions (6 emoji types)
-- Typing indicators
+- **Integrated Message Reactions**: Click the permanently visible smiley icon on any bubble to open a centered, horizontal reaction picker.
+- **Clean Chat Layout**: Individual sender names are removed from bubbles to focus on content and prepare for future identity integration.
 - Unread message count badge
 - Message delivery indicators (sent / delivered / read)
 - Rate expert (1-5 stars + comment) after closing a ticket
@@ -242,6 +253,14 @@ All settings are configurable via environment variables. See `.env.example` for 
 - Archive tab with search and department filter (paginated, 25 per load)
 - Close tickets
 - Participants list on each ticket with real-time status
+
+### Manager
+
+- **Department-scoped dashboard** with stats, tickets, archive, feedback, and labels tabs
+- View active tickets and monitor real-time activity
+- Browse archived tickets with search and filtering
+- Review and manage user feedback
+- Manage ticket labels (create, edit, delete)
 
 ### Admin
 
@@ -295,8 +314,19 @@ Same language = no Ollama call.
 | Agent Tom | Agent | EN | DSC |
 | Expert Piet | Expert | NL | DSC |
 | Expert Sophie | Expert | FR | FOT |
-| Expert Alex | Expert | EN | FOT |
-| Admin Dirk | Admin | NL | DSC |
+- **Expert Alex (EN)**: An English-speaking FOT expert.
+- **Admin Dirk (NL)**: Monitor the entire system, manage labels, and review feedback.
+
+## In-Chat Interactions
+
+Specialized features for agents and experts:
+
+1. **Reactions**: Click the permanently visible smiley icon on any bubble to open a centered, horizontal reaction picker. Existing reactions appear at the bottom-right of the bubble.
+2. **Canned Responses (Expert Only)**: Type `/` in the message input to trigger the response picker. Select a shortcut to insert pre-defined text.
+3. **Whisper Mode (Expert Only)**: Use the toggle above the input field to send private notes (colored differntly) that agents cannot see.
+4. **Labels**: Experts can assign labels to active tickets via the "Labels" section in the ticket sidebar. Admins can manage the global label list.
+
+## The Cognitive Cockpit
 
 ## API Endpoints
 

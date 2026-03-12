@@ -8,6 +8,7 @@ import { toZonedTime } from 'date-fns-tz';
 import { v4 as uuidv4 } from 'uuid';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import fs from 'fs';
 
 import ticketRoutes from './routes/tickets.js';
 import messageRoutes from './routes/messages.js';
@@ -365,6 +366,7 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
     const allLiveTicketsRaw = await query(ticketsSql, [rangeStart, rangeEnd]) as Ticket[];
     const allLiveTickets = (excludeWeekends === 'true')
       ? allLiveTicketsRaw.filter(t => {
+        if (!t.createdAt) return false;
         const dateStr = t.createdAt.substring(0, 10);
         const checkDate = new Date(dateStr + 'T12:00:00Z');
         const day = checkDate.getUTCDay();
@@ -457,11 +459,11 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
           };
         }
       } else {
-        const dayTickets = liveTickets.filter(t => t.createdAt.startsWith(date));
+        const dayTickets = liveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
         const dayRatings = liveRatings.filter(r => dayTickets.some(t => t.id === r.ticketId));
         dayData = computeLiveDayStats(dayTickets, dayRatings, dept);
 
-        const allDayTickets = allLiveTickets.filter(t => t.createdAt.startsWith(date));
+        const allDayTickets = allLiveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
         globalDsc += allDayTickets.filter(t => t.dept === 'DSC').length;
         globalFot += allDayTickets.filter(t => t.dept === 'FOT').length;
       }
@@ -561,7 +563,11 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
     const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
     const waitingTickets = await query('SELECT created_at FROM tickets WHERE status = $1 AND expert_id IS NULL AND created_at >= $2', ['open', thirtyMinsAgo]) as { createdAt: string }[];
     let oldest = 0;
-    waitingTickets.forEach(t => { oldest = Math.max(oldest, now.getTime() - new Date(t.createdAt).getTime()); });
+    waitingTickets.forEach(t => { 
+      if (t.createdAt) {
+        oldest = Math.max(oldest, now.getTime() - new Date(t.createdAt).getTime()); 
+      }
+    });
 
     const avgResponseMs = totalResponseCount > 0 ? totalResponseSum / totalResponseCount : 0;
     const avgDurationMs = totalDurationCount > 0 ? totalDurationSum / totalDurationCount : 0;
@@ -584,7 +590,7 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
       const d = t.dept || 'Unknown';
       if (!expert.deptStats[d]) expert.deptStats[d] = { sum: 0, count: 0, tickets: 0 };
       expert.deptStats[d].tickets++;
-      const dateKey = t.createdAt.substring(0, 10);
+      const dateKey = t.createdAt ? t.createdAt.substring(0, 10) : '';
       if (dateKey === today) expert.today++;
       if (!expert.trendMap[dateKey]) expert.trendMap[dateKey] = 0;
       expert.trendMap[dateKey]++;
@@ -621,7 +627,7 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
     allLiveTickets.forEach(t => {
       if (!agentMap[t.agentName]) agentMap[t.agentName] = { name: t.agentName, total: 0, today: 0, trendMap: {} };
       agentMap[t.agentName].total++;
-      const dateKey = t.createdAt.substring(0, 10);
+      const dateKey = t.createdAt ? t.createdAt.substring(0, 10) : '';
       if (dateKey === today) agentMap[t.agentName].today++;
       if (!agentMap[t.agentName].trendMap[dateKey]) agentMap[t.agentName].trendMap[dateKey] = 0;
       agentMap[t.agentName].trendMap[dateKey]++;
@@ -641,7 +647,7 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
     const prevStartStr = prevStart.toISOString().slice(0, 10);
     const prevEndStr = prevEnd.toISOString().slice(0, 10);
 
-    let prevHistSql = `SELECT SUM(total) as total, AVG(avg_response_ms) as "avgResp", AVG(avg_duration_ms) as "avgDur", SUM(abandoned) as abandoned, AVG(sla_resolved) as "slaRes", AVG(sla_compliant) as "slaComp" 
+    let prevHistSql = `SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(sla_resolved) as slares, AVG(sla_compliant) as slacomp 
                        FROM daily_stats 
                        WHERE date >= $1 AND date <= $2`;
     if (excludeWeekends === 'true') {
@@ -649,19 +655,19 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
         prevHistSql += " AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)";
     }
     const prevHist = await query(prevHistSql, [prevStartStr, prevEndStr]) as any[];
-
+ 
     const previousPeriod = {
       total: prevHist[0]?.total || 0,
-      avgResponseMinutes: Math.round((prevHist[0]?.avgResp || 0) / 60000),
-      avgDurationMinutes: Math.round((prevHist[0]?.avgDur || 0) / 60000),
+      avgResponseMinutes: Math.round((prevHist[0]?.avgresp || 0) / 60000),
+      avgDurationMinutes: Math.round((prevHist[0]?.avgdur || 0) / 60000),
       abandonedCount: prevHist[0]?.abandoned || 0,
-      slaHealth: prevHist[0]?.slaRes > 0 ? Math.round((prevHist[0]?.slaComp / prevHist[0]?.slaRes) * 100) : 100,
+      slaHealth: prevHist[0]?.slares > 0 ? Math.round((prevHist[0]?.slacomp / prevHist[0]?.slares) * 100) : 100,
     };
 
     const responseData = {
-      todayTotal: liveTickets.filter(t => t.createdAt.startsWith(today)).length,
-      todayOpen: liveTickets.filter(t => t.status !== 'closed' && t.createdAt.startsWith(today)).length,
-      todayClosed: liveTickets.filter(t => t.status === 'closed' && t.createdAt.startsWith(today)).length,
+      todayTotal: liveTickets.filter(t => t.createdAt && t.createdAt.startsWith(today)).length,
+      todayOpen: liveTickets.filter(t => t.status !== 'closed' && t.createdAt && t.createdAt.startsWith(today)).length,
+      todayClosed: liveTickets.filter(t => t.status === 'closed' && t.createdAt && t.createdAt.startsWith(today)).length,
       avgResponseMinutes: Math.round(avgResponseMs / 60000),
       avgDurationMinutes: Math.round(avgDurationMs / 60000),
       abandonedCount: totalAbandoned,
@@ -674,7 +680,7 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
         slaHealth: h.slaResolved > 0 ? Math.round((h.slaCompliant / h.slaResolved) * 100) : 100
       })).sort((a, b) => a.hour - b.hour),
       dailyTrend, trendGranularity, expertStats, agentStats, slaHealth, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
-      waitingOver3: waitingTickets.filter(t => (now.getTime() - new Date(t.createdAt).getTime()) > 3 * 60 * 1000).length,
+      waitingOver3: waitingTickets.filter(t => t.createdAt && (now.getTime() - new Date(t.createdAt).getTime()) > 3 * 60 * 1000).length,
       dscCount: totalDsc, fotCount: totalFot, globalDscCount: globalDsc, globalFotCount: globalFot, resolutionRate: totalCount > 0 ? Math.round((totalClosed / totalCount) * 100) : 0,
       avgConcurrency: expertIdsAgg.size > 0 ? Math.round((totalCount / expertIdsAgg.size) * 10) / 10 : 0,
       deptSla: {
@@ -699,6 +705,11 @@ app.get('/api/stats', [auth, authorize(['admin', 'expert'])], async (req: Reques
 
     res.json(responseData);
   } catch (err: any) {
+    logger.error({ err: err.message, stack: err.stack }, 'FATAL ERROR in /api/stats');
+    // Also write to a file we can read
+    try {
+       fs.appendFileSync('d:/Projects_Coding/i-pxs-support/server/error_log.txt', `[${new Date().toISOString()}] ${err.message}\n${err.stack}\n\n`);
+    } catch(e) {}
     res.status(500).json({ error: err.message });
   }
 });
@@ -788,7 +799,7 @@ io.on('connection', (socket: Socket) => {
       await run('UPDATE tickets SET expert_id = $1, expert_name = $2, expert_lang = $3, expert_joined_at = $4, participants = $5, status = $6 WHERE id = $7', [ticket.expertId || expertId, ticket.expertName || expertName, ticket.expertLang || expertLang, ticket.expertJoinedAt || new Date().toISOString(), JSON.stringify(participants), 'active', ticketId]);
       socket.join(`ticket:${ticketId}`);
       const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as any[]).map(m => ({ ...m, whisper: !!m.whisper, system: !!m.system, reactions: JSON.parse(m.reactions || '{}') }));
-      socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId])).map((l: any) => l.label_id) });
+      socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId])).map((l: any) => l.labelId) });
       io.to(`ticket:${ticketId}`).emit('expert:joined', { ticketId, expertName, participants });
       await broadcastQueuePositions();
     } catch (err: any) { logger.error({ err: err.message }, '[expert:join] error'); }
@@ -813,6 +824,46 @@ io.on('connection', (socket: Socket) => {
       await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [messageId, ticketId, senderId, sender.name, text, processedText, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}']);
       io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, text: processedText, originalText: text, improvedText, mediaUrl, whisper: !!whisper, system: false, timestamp: now, reactions: {}, translationSkipped, fallback });
     } catch (err: any) { logger.error({ err: err.message }, '[message:send] error'); }
+  });
+
+  socket.on('reaction:toggle', async ({ ticketId, messageId, emoji, userId }: any) => {
+    try {
+      if (!ticketId || !messageId || !emoji || !userId) return;
+      const message = await get('SELECT reactions FROM messages WHERE id = $1', [messageId]) as Message;
+      if (!message) return;
+      
+      const reactions = JSON.parse(message.reactions || '{}');
+      if (!reactions[emoji]) reactions[emoji] = [];
+      
+      const index = reactions[emoji].indexOf(userId);
+      if (index > -1) {
+        reactions[emoji].splice(index, 1);
+        if (reactions[emoji].length === 0) delete reactions[emoji];
+      } else {
+        reactions[emoji].push(userId);
+      }
+      
+      const reactionsStr = JSON.stringify(reactions);
+      await run('UPDATE messages SET reactions = $1 WHERE id = $2', [reactionsStr, messageId]);
+      io.to(`ticket:${ticketId}`).emit('reaction:updated', { ticketId, messageId, reactions });
+    } catch (err: any) {
+      logger.error({ err: err.message, messageId }, '[reaction:toggle] error');
+    }
+  });
+
+  socket.on('ticket:labels:update', async ({ ticketId, labels }: { ticketId: string, labels: string[] }) => {
+    try {
+      if (!ticketId || !Array.isArray(labels)) return;
+      await transaction(async () => {
+        await run('DELETE FROM ticket_labels WHERE ticket_id = $1', [ticketId]);
+        for (const labelId of labels) {
+          await run('INSERT INTO ticket_labels (ticket_id, label_id) VALUES ($1, $2)', [ticketId, labelId]);
+        }
+      });
+      io.to(`ticket:${ticketId}`).emit('ticket:labels:updated', { ticketId, labels });
+    } catch (err: any) {
+      logger.error({ err: err.message, ticketId }, '[ticket:labels:update] error');
+    }
   });
 
   socket.on('disconnect', () => {

@@ -1,11 +1,10 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import useStore from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import LoginView from './views/LoginView';
 import AgentView from './views/AgentView';
 import ExpertView from './views/ExpertView';
 import AdminView from './views/AdminView';
-import ManagerView from './views/ManagerView';
 import { WifiOff, AlertCircle } from 'lucide-react';
 
 function ConnectionBanner() {
@@ -32,7 +31,7 @@ function ConnectionBanner() {
 }
 
 export default function App() {
-  const { user, darkMode, setAppConfig } = useStore();
+  const { user, darkMode, dyslexicMode, setAppConfig } = useStore();
   
   useSocket();
 
@@ -45,13 +44,12 @@ export default function App() {
   }, [darkMode]);
 
   useEffect(() => {
-    const { dyslexicMode } = useStore.getState();
     if (dyslexicMode) {
       document.documentElement.classList.add('dyslexic-mode');
     } else {
       document.documentElement.classList.remove('dyslexic-mode');
     }
-  }, [useStore((s) => s.dyslexicMode)]);
+  }, [dyslexicMode]);
 
   useEffect(() => {
     fetch('/api/config')
@@ -64,7 +62,6 @@ export default function App() {
     if (!user) return <LoginView />;
     if (user.role === 'agent') return <AgentView />;
     if (user.role === 'expert') return <ExpertView />;
-    if (user.role === 'manager') return <ManagerView />;
     if (user.role === 'admin') return <AdminView />;
     return <LoginView />;
   };

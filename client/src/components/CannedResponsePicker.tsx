@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useStore from '../store/useStore';
-import { useT } from '../i18n';
 
 interface CannedResponse {
   id: string;
@@ -14,7 +13,6 @@ interface CannedResponsePickerProps {
 
 export default function CannedResponsePicker({ onSelect }: CannedResponsePickerProps) {
     const { cannedResponses } = useStore();
-    const t = useT();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef<HTMLDivElement>(null);

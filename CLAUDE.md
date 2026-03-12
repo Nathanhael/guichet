@@ -42,6 +42,9 @@ Via Docker:
 ```bash
 docker-compose exec server npm test
 docker-compose exec client npm test
+
+> [!TIP]
+> Use `docker-compose exec` over `docker exec` when possible for cleaner environment variable inheritance and simpler syntax.
 ```
 
 Vitest supports filtering: `npx vitest run auth` runs only files matching "auth".
@@ -62,11 +65,7 @@ For detailed architectural diagrams, real-time message flows, and the AI transla
 - **Roles**: `agent`, `expert`, `admin`.
 - **Departments**: `DSC` (Billing & Sales), `FOT` (Technical).
 - **Aesthetics**: Follow the "Solaris" design system (glassmorphism, vibrant gradients). See **[CONTRIBUTING.md](./CONTRIBUTING.md)** for styling rules.
-- **Safety**: Business hours are enforced on both server and client. GDPR purge runs every 24h.
-
-- Roles are `agent`, `expert`, `admin` (not "manager")
-- Departments: `DSC` (Billing & Sales), `FOT` (Technical)
-- Business hours enforced both server-side (socket middleware) and client-side
+- **Safety**: Business hours enforced both server-side (socket middleware) and client-side. GDPR purge runs every 24h.
 - Uploads validated by magic bytes (`file-type` package), not just MIME
 - CSV exports escape formula-injection characters (`=`, `+`, `-`, `@`)
 - GDPR: individual data purged after 30 days, aggregated into `daily_stats` first

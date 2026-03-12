@@ -23,13 +23,13 @@ This document serves as a high-level "Rules of Engagement" for any AI agent work
 - **Fallback**: Always ensure that the `nl` translation key is the most robust and complete.
 
 ## 🧠 4. State Management (Zustand)
-- **File**: `client/src/store/useStore.js`
+- **File**: `client/src/store/useStore.ts`
 - **Pitfall**: The `messages` and `typingUsers` stores are keyed by `ticketId`. Avoid wiping them during partial updates.
 - **Immutability**: Always use functional updates or shallow copies when modifying nested ticket properties.
 
 ## 🛡️ 5. Domain Knowledge & Constraints
-- **Roles**: `agent` (creates tickets), `expert` (joins from queue), `admin` (dashboard).
-- **Business Hours**: Enforced in `server/middleware/auth.js` and `client/src/components/BusinessHoursGuard.jsx`. Do not bypass these without explicit reason.
+- **Roles**: `agent` (creates tickets), `expert` (joins from queue), `admin` (full dashboard, labels, archive, feedback).
+- **Business Hours**: Enforced in `server/middleware/auth.ts` and `client/src/components/BusinessHoursGuard.tsx`. Do not bypass these without explicit reason.
 - **Translation**: Uses a local Ollama instance. If the LLM is down, the system **must** fallback gracefully to original text.
 - **GDPR**: Retention is 30 days. PII is purged while aggregated stats are kept.
 

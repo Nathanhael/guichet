@@ -1,10 +1,10 @@
-import React from 'react';
+import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
 import { Ticket, Message } from '../types';
 
 const DEPT_COLOR: Record<string, string> = {
-  DSC: 'bg-purple-100 text-purple-700',
-  FOT: 'bg-teal-100 text-teal-700',
+  DSC: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  FOT: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
 };
 
 interface TicketPreviewProps {
@@ -12,11 +12,11 @@ interface TicketPreviewProps {
   messages: Message[];
   onJoin: () => void;
   onClose: () => void;
-  t: (key: string) => string;
   joinDisabled?: boolean;
 }
 
-export default function TicketPreview({ ticket, messages, onJoin, onClose, t, joinDisabled }: TicketPreviewProps) {
+export default function TicketPreview({ ticket, messages, onJoin, onClose, joinDisabled }: TicketPreviewProps) {
+  const t = useT();
   return (
     <div className="h-full flex flex-col p-4">
       <div className="bg-solarized-base3 dark:bg-brand-800 rounded-xl shadow-sm border border-solarized-base2 dark:border-brand-700 flex flex-col h-full">

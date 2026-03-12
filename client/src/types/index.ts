@@ -136,6 +136,7 @@ export interface StoreState {
   setConnectionStatus: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
   setAllLabels: (labels: Label[]) => void;
   removeLabelGlobally: (labelId: string) => void;
+  addLabelGlobally: (label: Label) => void;
   setQueuePosition: (pos: { position: number; etaMins: number } | null) => void;
 }
 
@@ -208,7 +209,7 @@ export interface DeptRating {
   count: number;
 }
 
-export interface ManagerStats {
+export interface AdminStats {
   total: number;
   avgResponseMinutes: number;
   avgDurationMinutes: number;
@@ -229,10 +230,10 @@ export interface ManagerStats {
   agentStats: { name: string; total: number; today: number }[];
   hourlyDistribution: { hour: number; count: number }[];
   hourlyStaffing?: { hour: number; count: number; capacity?: number; staffing?: number; demand?: number }[];
-  previousPeriod?: Partial<ManagerStats>;
+  previousPeriod?: Partial<AdminStats>;
 }
 
-export interface Statistics extends ManagerStats {}
+export interface Statistics extends AdminStats {}
 
 export interface FeedbackItem {
   id: string;

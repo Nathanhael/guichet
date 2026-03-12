@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { StoreState, User, Ticket, Message, Label, AppConfig } from '../types';
+import { StoreState, Label } from '../types';
 
 const savedDark = localStorage.getItem('darkMode') === 'true';
 
@@ -84,7 +84,7 @@ const useStore = create<StoreState>((set) => ({
     set((state) => {
       const existing = state.messages[ticketId] || [];
       if (!message.pending) {
-        const optimisticIndex = existing.findIndex(m => m.pending && m.text === message.text && m.sender_id === message.sender_id);
+        const optimisticIndex = existing.findIndex(m => m.pending && m.text === message.text && m.senderId === message.senderId);
         if (optimisticIndex !== -1) {
           const next = [...existing];
           next[optimisticIndex] = message;
@@ -172,11 +172,24 @@ const useStore = create<StoreState>((set) => ({
     set((state) => {
       const next = !state.dyslexicMode;
       localStorage.setItem('dyslexicMode', String(next));
+      
+      // Enforce hierarchy: Bionic can only be ON if Dyslexic is ON
+      if (!next && state.bionicReading) {
+        localStorage.setItem('bionicReading', 'false');
+        return { dyslexicMode: next, bionicReading: false };
+      }
+      
       return { dyslexicMode: next };
     }),
 
   toggleBionicReading: () =>
     set((state) => {
+      // Safety check: Don't allow Bionic if Dyslexic is OFF
+      if (!state.dyslexicMode) {
+        localStorage.setItem('bionicReading', 'false');
+        return { bionicReading: false };
+      }
+
       const next = !state.bionicReading;
       localStorage.setItem('bionicReading', String(next));
       return { bionicReading: next };
@@ -202,6 +215,13 @@ const useStore = create<StoreState>((set) => ({
       })),
     })),
   
+  addLabelGlobally: (label: Label) =>
+    set((state) => {
+      const existing = state.allLabels || [];
+      if (existing.some((l) => l.id === label.id)) return state;
+      return { allLabels: [...existing, label].sort((a, b) => a.text.localeCompare(b.text)) };
+    }),
+
   queuePosition: null,
   setQueuePosition: (pos) => set({ queuePosition: pos }),
 }));

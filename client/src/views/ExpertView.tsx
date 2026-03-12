@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
@@ -10,6 +10,7 @@ import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { requestNotificationPermission } from '../utils/notifications';
 import { Ticket, Message, UserRole } from '../types';
+import { getTicketTime } from '../utils/dateUtils';
 
 const DEPT_COLOR: Record<string, string> = {
   DSC: 'bg-purple-100 text-purple-700',
@@ -368,7 +369,7 @@ export default function ExpertView() {
           <div className="flex items-center gap-3">
             <StatusPicker value={myStatus} onChange={handleStatusChange} />
             
-            <div className="flex items-center gap-2 bg-black/10 dark:bg-white/5 p-1 rounded-xl border border-white/10 ml-2">
+            <div className="flex items-center gap-1 bg-black/10 dark:bg-white/5 p-0.5 rounded-lg border border-white/5 ml-2">
               <LanguageSwitcher />
               <NeuroToggle />
               <DarkModeToggle />
@@ -376,10 +377,10 @@ export default function ExpertView() {
               <button
                 onClick={() => setNotificationsEnabled(!notificationsEnabled)}
                 title={notificationsEnabled ? 'Notifications on — click to mute' : 'Notifications off — click to enable'}
-                className={`p-2 rounded-lg flex items-center justify-center transition-all duration-300 ${
+                className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 flex items-center justify-center border border-transparent ${
                   notificationsEnabled 
-                    ? 'text-accent-400 bg-white/10 shadow-sm' 
-                    : 'text-solarized-base1 hover:text-solarized-base2 hover:bg-white/5'
+                    ? 'bg-white/20 dark:bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
                 }`}
               >
                 <BellIcon muted={!notificationsEnabled} />
@@ -451,7 +452,7 @@ export default function ExpertView() {
               ) : (
                 <div className="space-y-4 pb-4">
                   {/* Waiting Queue */}
-                  {queueFiltered.filter(tk => !tk.expert_name).length > 0 && (
+                  {queueFiltered.filter(tk => !tk.expertName).length > 0 && (
                     <div>
                       <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
                         {t('waiting_badge')}
@@ -460,11 +461,7 @@ export default function ExpertView() {
                         {queueFiltered.filter(tk => !tk.expertName).map((ticket) => {
                           const alreadyOpen = expertOpenTickets.includes(ticket.id);
                           const isPreviewed = previewTicketId === ticket.id;
-                          const created = new Date(ticket.createdAt);
-                          const isToday = new Date().toDateString() === created.toDateString();
-                          const tStr = created.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-                          const dStr = created.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-                          const time = isToday ? tStr : `${dStr} ${tStr}`;
+                          const time = getTicketTime(ticket.createdAt);
                           return (
                             <li
                               key={ticket.id}
@@ -531,11 +528,7 @@ export default function ExpertView() {
                         {queueFiltered.filter(tk => tk.expertName).map((ticket) => {
                           const alreadyOpen = expertOpenTickets.includes(ticket.id);
                           const isPreviewed = previewTicketId === ticket.id;
-                          const created = new Date(ticket.createdAt);
-                          const isToday = new Date().toDateString() === created.toDateString();
-                          const tStr = created.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-                          const dStr = created.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
-                          const time = isToday ? tStr : `${dStr} ${tStr}`;
+                          const time = getTicketTime(ticket.createdAt);
                           return (
                             <li
                               key={ticket.id}
@@ -635,9 +628,7 @@ export default function ExpertView() {
                     <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
                       {archivedTickets.map((ticket) => {
                         const isPreviewed = previewTicketId === ticket.id;
-                        const closedTime = ticket.closedAt
-                          ? new Date(ticket.closedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-                          : '';
+                        const closedTime = getTicketTime(ticket.closedAt);
                         return (
                           <li
                             key={ticket.id}
@@ -663,7 +654,7 @@ export default function ExpertView() {
                             {ticket.expertName && <p className="text-[11px] text-solarized-base1 font-medium">Expert: {ticket.expertName}</p>}
                             {ticket.closingNotes && (
                               <p className="text-xs text-solarized-base1 mt-1.5 italic line-clamp-2 border-l-2 border-amber-300 dark:border-amber-700 pl-2">
-                                "{ticket.closingNotes}"
+                                {ticket.closingNotes}
                               </p>
                             )}
                           </li>
@@ -811,7 +802,7 @@ export default function ExpertView() {
           <div className="flex-1 overflow-hidden">
             {showPreview ? (
               <TicketPreview
-                ticket={previewTicket!}
+                ticket={previewTicket}
                 messages={previewMessages}
                 onJoin={() => joinTicket(previewTicket!)}
                 onClose={() => setPreviewTicketId(null)}
@@ -857,7 +848,7 @@ export default function ExpertView() {
                               }`}
                           >
                             <span className={`text-[10px] px-1 py-0.5 rounded ${DEPT_COLOR[tk.dept] || 'bg-slate-100 text-slate-700'}`}>{tk.dept}</span>
-                            <span className="max-w-20 truncate">{tk.agent_name}</span>
+                            <span className="max-w-20 truncate">{tk.agentName}</span>
                             {hasUnread && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />}
                           </button>
                         );
@@ -875,8 +866,8 @@ export default function ExpertView() {
                   <div className="flex-1 min-h-0 p-2">
                     <ChatWindow
                       key={focusedTicketId}
-                      ticket={openTabTickets.find((tk) => tk.id === focusedTicketId)!}
-                      onClose={() => closeTab(focusedTicketId!)}
+                      ticket={focusedTicketId ? openTabTickets.find((tk) => tk.id === focusedTicketId) : undefined}
+                      onClose={() => focusedTicketId && closeTab(focusedTicketId)}
                       onFocus={() => setFocusedTicketId(null)}
                       focused
                     />

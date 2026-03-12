@@ -1,17 +1,19 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Label } from '../../types';
+import useStore from '../../store/useStore';
 
-export default function ManagerLabels() {
+export default function AdminLabels() {
+  const { token } = useStore();
   const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);
   const [newText, setNewText] = useState('');
-  const [newColor, setNewColor] = useState('rose');
+  const [newColor, setNewColor] = useState('indigo');
   const [error, setError] = useState<string | null>(null);
 
   const fetchLabels = () => {
     setLoading(true);
     setError(null);
-    fetch('/api/labels')
+    fetch('/api/labels', { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => {
         if (!r.ok) throw new Error(`Server returned ${r.status}. Please check if the server is running and routes are updated.`);
         return r.json();
@@ -31,7 +33,7 @@ export default function ManagerLabels() {
     try {
       const res = await fetch('/api/labels', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ text: newText, color: newColor }),
       });
       if (res.ok) {
@@ -39,7 +41,8 @@ export default function ManagerLabels() {
         setLabels([...labels, added]);
         setNewText('');
       } else {
-        setError(`Failed to add label: ${res.status} ${res.statusText}`);
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || `Failed to add label: ${res.status} ${res.statusText}`);
       }
     } catch (err: any) {
       setError(`Network error: ${err.message}`);
@@ -48,7 +51,7 @@ export default function ManagerLabels() {
 
   const deleteLabel = async (id: string) => {
     try {
-      const res = await fetch(`/api/labels/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/labels/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
         setLabels(labels.filter((l) => l.id !== id));
       }
@@ -58,12 +61,18 @@ export default function ManagerLabels() {
   };
 
   const colors = [
-    { key: 'rose', bg: 'bg-rose-500', text: 'text-rose-500' },
     { key: 'blue', bg: 'bg-blue-500', text: 'text-blue-500' },
-    { key: 'amber', bg: 'bg-amber-500', text: 'text-amber-500' },
-    { key: 'emerald', bg: 'bg-emerald-500', text: 'text-emerald-500' },
-    { key: 'purple', bg: 'bg-purple-500', text: 'text-purple-500' },
     { key: 'indigo', bg: 'bg-indigo-500', text: 'text-indigo-500' },
+    { key: 'purple', bg: 'bg-purple-500', text: 'text-purple-500' },
+    { key: 'emerald', bg: 'bg-emerald-500', text: 'text-emerald-500' },
+    { key: 'teal', bg: 'bg-teal-500', text: 'text-teal-500' },
+    { key: 'cyan', bg: 'bg-cyan-500', text: 'text-cyan-500' },
+    { key: 'sky', bg: 'bg-sky-500', text: 'text-sky-500' },
+    { key: 'amber', bg: 'bg-amber-500', text: 'text-amber-500' },
+    { key: 'orange', bg: 'bg-orange-500', text: 'text-orange-500' },
+    { key: 'rose', bg: 'bg-rose-500', text: 'text-rose-500' },
+    { key: 'pink', bg: 'bg-pink-500', text: 'text-pink-500' },
+    { key: 'slate', bg: 'bg-slate-500', text: 'text-slate-500' },
   ];
 
   return (

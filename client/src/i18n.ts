@@ -78,7 +78,7 @@ const translations: Translations = {
 
     // Whisper
     whisper_mode: 'Whisper mode',
-    whisper_hint: 'Only visible to experts & managers',
+    whisper_hint: 'Only visible to experts & admins',
     whisper_label: 'whisper',
 
     // Admin view

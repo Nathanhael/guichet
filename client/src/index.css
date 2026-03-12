@@ -19,12 +19,6 @@
     background-image: radial-gradient(circle at 50% 0%, #161b22 0%, #0D1117 100%);
   }
   
-  /* Dyslexic Mode Overrides */
-  .dyslexic-mode {
-    font-family: 'Lexend', sans-serif !important;
-    line-height: 1.75 !important;
-  }
-  
   .dyslexic-mode body:not(.dark) {
     background-color: #FFFBEB !important;
     background-image: none !important;
@@ -84,4 +78,22 @@
   .scrollbar-thin {
     scrollbar-width: thin;
   }
+
+  .whatsapp-bg {
+    background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+    background-repeat: repeat;
+    background-size: 400px;
+    background-attachment: local;
+  }
+
+  .dark .whatsapp-bg {
+    background-blend-mode: overlay;
+    background-color: #0d1418 !important;
+  }
+}
+
+/* Dyslexic Mode Overrides - Forced Priority */
+.dyslexic-mode, .dyslexic-mode body, .dyslexic-mode * {
+  font-family: 'Lexend', sans-serif !important;
+  line-height: 1.75 !important;
 }

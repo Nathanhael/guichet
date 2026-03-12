@@ -22,7 +22,7 @@ The system is designed to be invisible and non-confrontational:
 
 - **Sender View**: The sender always sees their **own original message**. They are never corrected or told their grammar was poor.
 - **Recipient View**: The recipient sees the **improved and translated** version.
-- **Peek Feature**: A toggle in `MessageBubble.jsx` allows the recipient to peek at the `originalText` if they want to see precisely what the other party typed.
+- **Peek Feature**: A toggle in `MessageBubble.tsx` allows the recipient to peek at the `originalText` if they want to see precisely what the other party typed.
 - **Fallback**: If the AI service is offline, the system falls back to displaying the original text on both sides, with a subtle warning: *"Verwerking tijdelijk niet beschikbaar"*.
 
 ---

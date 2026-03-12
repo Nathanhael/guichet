@@ -1,10 +1,10 @@
-import React from 'react';
 import { useT } from '../i18n';
 import { Ticket } from '../types';
+import { getTicketTime } from '../utils/dateUtils';
 
 const DEPT_COLOR: Record<string, string> = {
-  DSC: 'bg-purple-100 text-purple-700',
-  FOT: 'bg-teal-100 text-teal-700',
+  DSC: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  FOT: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -30,8 +30,7 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
   return (
     <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
       {tickets.map((ticket) => {
-        const time = new Date(ticket.created_at).toLocaleTimeString('nl-BE', { hour: '2-digit', minute: '2-digit' });
-        const date = new Date(ticket.created_at).toLocaleDateString('nl-BE', { day: '2-digit', month: '2-digit' });
+        const time = getTicketTime(ticket.createdAt);
 
         const getParticipantName = (p: string | { name: string }) => typeof p === 'string' ? p : p.name;
         const participantNames = (ticket.participants || []).map(getParticipantName).join(', ');
@@ -54,22 +53,22 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
                   {ticket.status}
                 </span>
               </div>
-              <span className="text-xs text-solarized-base1">{date} {time}</span>
+              <span className="text-xs text-solarized-base1">{time}</span>
             </div>
 
             <p className="text-sm font-medium text-solarized-base01 dark:text-gray-100 truncate">
-              {ticket.title || (ticket.dare_ref ? `DARE: ${ticket.dare_ref}` : ticket.cdb_id ? `CDBID: ${ticket.cdb_id}` : t('No title'))}
+              {ticket.title || (ticket.dareRef ? `DARE: ${ticket.dareRef}` : ticket.cdbId ? `CDBID: ${ticket.cdbId}` : t('No title'))}
             </p>
 
             <div className="flex items-center gap-2 mt-1 text-xs text-solarized-base1 dark:text-gray-400">
-              <span>{LANG_FLAG[ticket.agent_lang as keyof typeof LANG_FLAG]} {ticket.agent_lang?.toUpperCase()}</span>
+              <span>{LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]} {ticket.agentLang?.toUpperCase()}</span>
               {participantNames ? (
                 <span className="text-green-600 dark:text-green-400 truncate max-w-[150px]" title={participantNames}>
                   • {participantNames}
                 </span>
-              ) : ticket.expert_name ? (
-                <span className="text-green-600 dark:text-green-400 truncate max-w-[150px]" title={ticket.expert_name}>
-                  • {ticket.expert_name}
+              ) : ticket.expertName ? (
+                <span className="text-green-600 dark:text-green-400 truncate max-w-[150px]" title={ticket.expertName}>
+                  • {ticket.expertName}
                 </span>
               ) : null}
             </div>

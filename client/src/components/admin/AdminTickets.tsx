@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import useStore from '../../store/useStore';
 import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
@@ -7,7 +7,10 @@ import TicketPreview from '../TicketPreview';
 import TicketList from '../TicketList';
 import { Ticket } from '../../types';
 
-const DEPT_COLOR: Record<string, string> = { DSC: 'bg-purple-100 text-purple-700', FOT: 'bg-teal-100 text-teal-700' };
+const DEPT_COLOR: Record<string, string> = {
+  DSC: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  FOT: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+};
 
 function TabIcon() {
   return (
@@ -46,8 +49,8 @@ function vsplitGridClass(count: number) {
   return 'grid-cols-4';
 }
 
-export default function ManagerTickets() {
-  const { user, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, unreadTickets, clearUnread } = useStore();
+export default function AdminTickets() {
+  const { user, token, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, unreadTickets, clearUnread } = useStore();
   const t = useT();
 
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -57,12 +60,12 @@ export default function ManagerTickets() {
   const [previewMessages, setPreviewMessages] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch('/api/tickets').then((r) => r.json()).then(setTickets).catch(console.error);
+    fetch('/api/tickets', { headers: { 'Authorization': `Bearer ${token}` } }).then((r) => r.json()).then(setTickets).catch(console.error);
   }, [setTickets]);
 
   useEffect(() => {
     if (!previewTicketId) return;
-    fetch(`/api/messages?ticketId=${previewTicketId}`)
+    fetch(`/api/messages?ticketId=${previewTicketId}`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setPreviewMessages)
       .catch(() => setPreviewMessages([]));
@@ -135,7 +138,6 @@ export default function ManagerTickets() {
             messages={previewMessages}
             onJoin={() => joinAsObserver(previewTicket)}
             onClose={() => setPreviewTicketId(null)}
-            t={t}
             joinDisabled={atMaxChats}
           />
         ) : openTabTickets.length === 0 ? (

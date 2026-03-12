@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useT } from '../../i18n';
 import useStore from '../../store/useStore';
-import { ManagerStats as IManagerStats, OnlineExpert } from '../../types';
+import { AdminStats as AdminStatsType, OnlineExpert } from '../../types';
 import { Panel, StatCard } from './DashboardHelpers';
 import {
   ResponsiveContainer,
@@ -16,10 +16,10 @@ import {
   Legend,
 } from 'recharts';
 
-export default function ManagerStats() {
+export default function AdminStats() {
   const t = useT();
-  const { onlineExperts } = useStore();
-  const [stats, setStats] = useState<IManagerStats | null>(null);
+  const { onlineExperts, token } = useStore();
+  const [stats, setStats] = useState<AdminStatsType | null>(null);
   const [statsDept, setStatsDept] = useState('all');
   const [statsDateFrom, setStatsDateFrom] = useState('');
   const [statsDateTo, setStatsDateTo] = useState('');
@@ -52,7 +52,9 @@ export default function ManagerStats() {
     if (statsDept !== 'all') params.set('dept', statsDept);
     if (statsDateFrom) params.set('dateFrom', statsDateFrom);
     if (statsDateTo) params.set('dateTo', statsDateTo);
-    fetch(`/api/stats?${params.toString()}`)
+    fetch(`/api/stats?${params.toString()}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
       .then((r) => r.json())
       .then(setStats)
       .catch(console.error);
@@ -210,17 +212,17 @@ export default function ManagerStats() {
             </div>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-solarized-base2 dark:border-gray-700">
+            <div className="mt-4 pt-4 border-t border-solarized-base2 dark:border-gray-700">
             <p className="text-[10px] uppercase font-bold text-solarized-base1 mb-2 tracking-wider">DSC vs FOT Distribution</p>
-            <div className="h-2 w-full bg-teal-500 rounded-full overflow-hidden flex">
+            <div className="h-2 w-full bg-indigo-500 rounded-full overflow-hidden flex">
               <div
-                className="h-full bg-purple-500 transition-all duration-500"
+                className="h-full bg-amber-500 transition-all duration-500"
                 style={{ width: `${Math.round((stats.dscCount / (stats.total || 1)) * 100)}%` }}
               />
             </div>
             <div className="flex justify-between mt-1.5">
-              <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400">● DSC {Math.round((stats.dscCount / (stats.total || 1)) * 100)}%</span>
-              <span className="text-[10px] font-bold text-teal-600 dark:text-teal-400">● FOT {Math.round((stats.fotCount / (stats.total || 1)) * 100)}%</span>
+              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">● DSC {Math.round((stats.dscCount / (stats.total || 1)) * 100)}%</span>
+              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">● FOT {Math.round((stats.fotCount / (stats.total || 1)) * 100)}%</span>
             </div>
           </div>
         </Panel>
@@ -270,8 +272,8 @@ export default function ManagerStats() {
             <Tooltip />
             <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
             <Line type="monotone" dataKey="total" stroke="#e24e1b" strokeWidth={2} dot={false} name="Total" />
-            <Line type="monotone" dataKey="dsc" stroke="#a855f7" strokeWidth={1.5} dot={false} name="DSC" />
-            <Line type="monotone" dataKey="fot" stroke="#14b8a6" strokeWidth={1.5} dot={false} name="FOT" />
+            <Line type="monotone" dataKey="dsc" stroke="#f59e0b" strokeWidth={1.5} dot={false} name="DSC" />
+            <Line type="monotone" dataKey="fot" stroke="#6366f1" strokeWidth={1.5} dot={false} name="FOT" />
           </LineChart>
         </ResponsiveContainer>
       </Panel>
@@ -284,12 +286,12 @@ export default function ManagerStats() {
                 key={dept}
                 className={`rounded-xl p-4 border ${
                   dept === 'DSC'
-                    ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800'
-                    : 'bg-teal-50 dark:bg-teal-900/20 border-teal-200 dark:border-teal-800'
+                    ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800'
+                    : 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800'
                 }`}
               >
-                <p className={`text-xs font-bold uppercase tracking-wider ${dept === 'DSC' ? 'text-purple-500' : 'text-teal-500'}`}>{dept}</p>
-                <p className={`text-3xl font-bold mt-1 ${dept === 'DSC' ? 'text-purple-700 dark:text-purple-300' : 'text-teal-700 dark:text-teal-300'}`}>
+                <p className={`text-xs font-bold uppercase tracking-wider ${dept === 'DSC' ? 'text-amber-500' : 'text-indigo-500'}`}>{dept}</p>
+                <p className={`text-3xl font-bold mt-1 ${dept === 'DSC' ? 'text-amber-700 dark:text-amber-300' : 'text-indigo-700 dark:text-indigo-300'}`}>
                   {data.avg != null ? data.avg : '—'}
                 </p>
                 <p className="text-xs text-solarized-base1 dark:text-gray-400 mt-0.5">
