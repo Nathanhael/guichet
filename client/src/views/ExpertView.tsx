@@ -471,45 +471,61 @@ export default function ExpertView() {
                                 : 'bg-solarized-base3/40 dark:bg-brand-800/40 hover:bg-solarized-base3/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
                                 }`}
                             >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0 pr-2">
-                                  <div className="flex items-center justify-between mb-1">
+                              <div className="flex justify-between gap-3">
+                                {/* Left side: Info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
                                     <span className="text-[10px] font-medium text-solarized-base1">{time}</span>
                                   </div>
-                                  <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate mb-2">{ticket.agentName}</p>
+                                  <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">{ticket.agentName}</p>
+                                </div>
+
+                                {/* Right side: Actions & Bubbles */}
+                                <div className="flex flex-col items-end shrink-0 gap-2">
+                                  {alreadyOpen ? (
+                                    <span 
+                                      className="text-xs px-2.5 py-1 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shadow-sm border border-brand-200 dark:border-brand-800"
+                                      onClick={(e) => { e.stopPropagation(); switchTab(ticket.id); }}
+                                    >
+                                      {t('open')}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
+                                      disabled={atMaxChats}
+                                      className={`text-xs px-3 py-1 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
+                                        } bg-gradient-to-r from-accent-500 to-rose-500 text-white hover:shadow-md`}
+                                    >
+                                      {t('join')}
+                                    </button>
+                                  )}
 
                                   {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
-                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                    <div className="flex items-center -space-x-1.5 overflow-hidden">
                                       {ticket.participants.map((p, idx) => {
-                                        const pName = typeof p === 'object' ? p.name : (p || 'Unknown');
+                                        const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
+                                        const pName = pObj.name;
+                                        const pAvatar = (pObj as any).avatar;
                                         return (
                                           <div
                                             key={idx}
                                             title={pName}
-                                            className="w-5 h-5 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-800 dark:to-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[9px] font-bold shadow-sm"
+                                            className="w-6 h-6 rounded-full border-2 border-white dark:border-brand-800 bg-brand-50 dark:bg-brand-900 flex items-center justify-center text-[10px] font-bold shadow-sm overflow-hidden"
                                           >
-                                            {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                            {pAvatar ? (
+                                              <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
+                                            ) : (
+                                              <span className="text-brand-700 dark:text-brand-300">
+                                                {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                              </span>
+                                            )}
                                           </div>
                                         );
                                       })}
                                     </div>
                                   )}
                                 </div>
-                                {alreadyOpen ? (
-                                  <span className="text-xs px-2.5 py-1.5 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shrink-0 shadow-sm border border-brand-200 dark:border-brand-800">
-                                    {t('open')}
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
-                                    disabled={atMaxChats}
-                                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shrink-0 shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
-                                      } bg-gradient-to-r from-accent-500 to-rose-500 text-white hover:shadow-md`}
-                                  >
-                                    {t('join')}
-                                  </button>
-                                )}
                               </div>
                             </li>
                           );
@@ -538,45 +554,61 @@ export default function ExpertView() {
                                 : 'bg-solarized-base3/40 dark:bg-brand-800/40 hover:bg-solarized-base3/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
                                 } opacity-70`}
                             >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0 pr-2">
-                                  <div className="flex items-center justify-between mb-1">
+                              <div className="flex justify-between gap-3">
+                                {/* Left side: Info */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
                                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
                                     <span className="text-[10px] font-medium text-solarized-base1">{time}</span>
                                   </div>
-                                  <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate mb-2">{ticket.agentName}</p>
+                                  <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">{ticket.agentName}</p>
+                                </div>
+
+                                {/* Right side: Actions & Bubbles */}
+                                <div className="flex flex-col items-end shrink-0 gap-2">
+                                  {alreadyOpen ? (
+                                    <span 
+                                      className="text-xs px-2.5 py-1 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shadow-sm border border-brand-200 dark:border-brand-800"
+                                      onClick={(e) => { e.stopPropagation(); switchTab(ticket.id); }}
+                                    >
+                                      {t('open')}
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
+                                      disabled={atMaxChats}
+                                      className={`text-xs px-3 py-1 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
+                                        } bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md`}
+                                    >
+                                      {t('jump_in')}
+                                    </button>
+                                  )}
 
                                   {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
-                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                    <div className="flex items-center -space-x-1.5 overflow-hidden">
                                       {ticket.participants.map((p, idx) => {
-                                        const pName = typeof p === 'object' ? p.name : (p || 'Unknown');
+                                        const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
+                                        const pName = pObj.name;
+                                        const pAvatar = (pObj as any).avatar;
                                         return (
                                           <div
                                             key={idx}
                                             title={pName}
-                                            className="w-5 h-5 rounded-full bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-800 dark:to-brand-900 text-brand-700 dark:text-brand-300 flex items-center justify-center text-[9px] font-bold shadow-sm"
+                                            className="w-6 h-6 rounded-full border-2 border-white dark:border-brand-800 bg-brand-50 dark:bg-brand-900 flex items-center justify-center text-[10px] font-bold shadow-sm overflow-hidden"
                                           >
-                                            {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                            {pAvatar ? (
+                                              <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
+                                            ) : (
+                                              <span className="text-brand-700 dark:text-brand-300">
+                                                {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                              </span>
+                                            )}
                                           </div>
                                         );
                                       })}
                                     </div>
                                   )}
                                 </div>
-                                {alreadyOpen ? (
-                                  <span className="text-xs px-2.5 py-1.5 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shrink-0 shadow-sm border border-brand-200 dark:border-brand-800">
-                                    {t('open')}
-                                  </span>
-                                ) : (
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
-                                    disabled={atMaxChats}
-                                    className={`text-xs px-3 py-1.5 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shrink-0 shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
-                                      } bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md`}
-                                  >
-                                    {t('jump_in')}
-                                  </button>
-                                )}
                               </div>
                             </li>
                           );

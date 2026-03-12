@@ -32,9 +32,6 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
       {tickets.map((ticket) => {
         const time = getTicketTime(ticket.createdAt);
 
-        const getParticipantName = (p: string | { name: string }) => typeof p === 'string' ? p : p.name;
-        const participantNames = (ticket.participants || []).map(getParticipantName).join(', ');
-
         return (
           <li
             key={ticket.id}
@@ -44,33 +41,59 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
               : ''
               }`}
           >
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${DEPT_COLOR[ticket.dept] || 'bg-gray-100 text-gray-700'}`}>
-                  {ticket.dept}
-                </span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[ticket.status] || STATUS_COLOR.open}`}>
-                  {ticket.status}
-                </span>
+            <div className="flex justify-between gap-3">
+              {/* Left side: Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${DEPT_COLOR[ticket.dept] || 'bg-gray-100 text-gray-700'}`}>
+                    {ticket.dept}
+                  </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_COLOR[ticket.status] || STATUS_COLOR.open}`}>
+                    {ticket.status}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">
+                  {ticket.title || (ticket.dareRef ? `DARE: ${ticket.dareRef}` : ticket.cdbId ? `CDBID: ${ticket.cdbId}` : t('No title'))}
+                </p>
+                {ticket.agentName && ticket.agentName !== ticket.title && (
+                  <p className="text-[11px] text-solarized-base1 dark:text-gray-400 mt-0.5">
+                    {ticket.agentName}
+                  </p>
+                )}
+                <div className="mt-1 text-xs text-solarized-base1 dark:text-gray-400 flex items-center gap-2">
+                  <span>{LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]} {ticket.agentLang?.toUpperCase()}</span>
+                  <span className="text-solarized-base1 opacity-50">•</span>
+                  <span>{time}</span>
+                </div>
               </div>
-              <span className="text-xs text-solarized-base1">{time}</span>
-            </div>
 
-            <p className="text-sm font-medium text-solarized-base01 dark:text-gray-100 truncate">
-              {ticket.title || (ticket.dareRef ? `DARE: ${ticket.dareRef}` : ticket.cdbId ? `CDBID: ${ticket.cdbId}` : t('No title'))}
-            </p>
-
-            <div className="flex items-center gap-2 mt-1 text-xs text-solarized-base1 dark:text-gray-400">
-              <span>{LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]} {ticket.agentLang?.toUpperCase()}</span>
-              {participantNames ? (
-                <span className="text-green-600 dark:text-green-400 truncate max-w-[150px]" title={participantNames}>
-                  • {participantNames}
-                </span>
-              ) : ticket.expertName ? (
-                <span className="text-green-600 dark:text-green-400 truncate max-w-[150px]" title={ticket.expertName}>
-                  • {ticket.expertName}
-                </span>
-              ) : null}
+              {/* Right side: Actions/Bubbles */}
+              <div className="flex flex-col items-end shrink-0 gap-2">
+                {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
+                  <div className="flex items-center -space-x-1.5 overflow-hidden">
+                    {ticket.participants.map((p, idx) => {
+                      const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
+                      const pName = pObj.name;
+                      const pAvatar = (pObj as any).avatar;
+                      return (
+                        <div
+                          key={idx}
+                          title={pName}
+                          className="w-5 h-5 rounded-full border border-white dark:border-gray-700 bg-brand-50 dark:bg-brand-900 flex items-center justify-center text-[9px] font-bold shadow-sm overflow-hidden"
+                        >
+                          {pAvatar ? (
+                            <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-brand-700 dark:text-brand-300">
+                              {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </li>
         );
