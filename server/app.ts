@@ -805,6 +805,35 @@ io.on('connection', (socket: Socket) => {
     } catch (err: any) { logger.error({ err: err.message }, '[expert:join] error'); }
   });
 
+  socket.on('status:set', ({ status }: { status: string }) => {
+    const userId = socket.data.userId;
+    if (userId && onlineUsers.has(userId)) {
+      onlineUsers.get(userId).status = status;
+      broadcastOnlineExperts();
+    }
+  });
+
+  socket.on('expert:leave', async ({ ticketId, expertId, expertName }: any) => {
+    try {
+      const ticket = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as Ticket;
+      if (!ticket) return;
+      let participants = JSON.parse(ticket.participants || '[]');
+      participants = participants.filter((p: any) => p.id !== expertId);
+      await run('UPDATE tickets SET participants = $1 WHERE id = $2', [JSON.stringify(participants), ticketId]);
+      socket.leave(`ticket:${ticketId}`);
+      io.to(`ticket:${ticketId}`).emit('expert:left', { ticketId, expertId, expertName, participants });
+    } catch (err: any) { logger.error({ err: err.message }, '[expert:leave] error'); }
+  });
+
+  socket.on('ticket:close', async ({ ticketId, closedBy, closingNotes }: any) => {
+    try {
+      const now = new Date().toISOString();
+      await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, closedBy || 'System', closingNotes || '', ticketId]);
+      io.to(`ticket:${ticketId}`).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: closedBy || 'System' });
+      await broadcastQueuePositions();
+    } catch (err: any) { logger.error({ err: err.message }, '[ticket:close] error'); }
+  });
+
   socket.on('message:send', async ({ ticketId, senderId, text, mediaUrl, whisper }: any) => {
     try {
       if (!ticketId || !senderId || !text) return;
