@@ -20,6 +20,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+        lexend: ['Lexend', 'sans-serif'],
       },
       colors: {
         brand: {

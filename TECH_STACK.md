@@ -8,12 +8,12 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 
 | Package | Version | Purpose |
 |---|---|---|
-| express | ^4.18.3 | REST API framework |
+| express | ^4.22.1 | REST API framework |
 | socket.io | ^4.7.4 | Real-time communication |
 | pg | ^8.20.0 | PostgreSQL database driver |
 | drizzle-orm | ^0.45.1 | TypeScript ORM |
 | jsonwebtoken | ^9.0.2 | JWT authentication |
-| bcrypt | ^5.1.1 | Password hashing |
+| bcrypt | ^6.0.0 | Password hashing |
 | cors | ^2.8.5 | CORS middleware |
 | express-validator | ^7.2.1 | Input validation |
 | express-rate-limit | ^8.3.1 | Request throttling |
@@ -24,8 +24,8 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 | date-fns-tz | ^3.1.3 | Timezone handling |
 | pino | ^9.6.0 | Structured logging |
 | pino-pretty | ^13.0.0 | Pretty-printed logs (dev) |
-| vitest | ^1.3.1 | Test runner (dev) |
-| supertest | ^6.3.4 | HTTP assertion library (dev) |
+| vitest | ^4.0.18 | Test runner (dev) |
+| supertest | ^7.2.2 | HTTP assertion library (dev) |
 
 ### Frontend (client/package.json)
 
@@ -51,8 +51,6 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 ## Database Schema
 
 PostgreSQL via Drizzle ORM. Schema defined in `server/db/schema.ts`.
-
-### Tables
 
 ### Tables
 
@@ -125,9 +123,9 @@ For a detailed breakdown of the system design, real-time flows, and modular arch
 
 | Suite | Location | Stack | Coverage |
 |---|---|---|---|
-| API integration | `server/__tests__/api.test.js` | vitest + supertest | Ticket, message, feedback, label CRUD |
-| Auth flow | `server/__tests__/auth.test.js` | vitest + supertest | Register, login, JWT validation, RBAC |
-| Statistics | `server/__tests__/stats.test.js` | vitest + supertest | Stats endpoint, date filtering, dept filtering |
+| API integration | `server/__tests__/api.test.ts` | vitest + supertest | Ticket, message, feedback, label CRUD |
+| Auth flow | `server/__tests__/auth.test.ts` | vitest + supertest | Register, login, JWT validation, RBAC |
+| Statistics | `server/__tests__/stats.test.ts` | vitest + supertest | Stats endpoint, date filtering, dept filtering |
 | UI components | `client/src/components/admin/shared/__tests__/` | vitest + @testing-library/react | StatCard rendering |
 
 ## Deployment (Docker)
@@ -135,7 +133,8 @@ For a detailed breakdown of the system design, real-time flows, and modular arch
 ```yaml
 # docker-compose.yml
 services:
-  server:   # Node 20 + Express + SQLite (port 3001)
+  db:       # PostgreSQL 16 (port 5432)
+  server:   # Node 20 + Express + PostgreSQL (port 3001)
   client:   # Vite dev server (port 5173, proxies /api to server)
 ```
 

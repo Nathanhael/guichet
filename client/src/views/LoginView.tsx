@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useStore from '../store/useStore';
 import { tBrowser } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
@@ -9,7 +9,6 @@ const ROLE_BADGE: Record<string, string> = {
   agent: 'bg-solarized-base2 text-solarized-base1',
   expert: 'bg-solarized-base2 text-brand-600',
   admin: 'bg-solarized-base02 text-accent-500',
-  manager: 'bg-solarized-base02 text-solarized-base2',
 };
 const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR', en: '🇬🇧 EN' };
 

@@ -28,11 +28,11 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 ## Coding Standards
 
 ### State Management (Zustand)
-- All shared UI state (modes, language, notifications) belongs in `useChatStore.ts`.
+- All shared UI state (modes, language, notifications) belongs in `useStore.ts`.
 - Use descriptive setters (e.g., `setDyslexicMode` instead of `toggleMode`).
 
 ### Real-Time Events
-- Socket events should be registered in `useSocket.js`.
+- Socket events should be registered in `useSocket.ts`.
 - Always implement a clean teardown in `useEffect` for listeners.
 
 ### TypeScript & Types

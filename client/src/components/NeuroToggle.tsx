@@ -1,29 +1,26 @@
-import React from 'react';
 import useStore from '../store/useStore';
-import { useT } from '../i18n';
 import { Type, Zap } from 'lucide-react';
 
 export default function NeuroToggle() {
   const { dyslexicMode, toggleDyslexicMode, bionicReading, toggleBionicReading } = useStore();
-  const t = useT();
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1 rounded-xl bg-black/10 dark:bg-white/5 backdrop-blur-sm border border-white/10">
+    <div className="flex items-center p-0.5 rounded-lg bg-black/10 dark:bg-white/5 border border-white/5">
       {/* Dyslexic Mode Button */}
       <button
         onClick={toggleDyslexicMode}
-        title={dyslexicMode ? 'Standaard lettertype' : 'Dyslectisch-vriendelijk lettertype'}
-        className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-300 group relative ${
+        title={dyslexicMode ? 'Standard font' : 'Dyslexic-friendly font'}
+        className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 group relative ${
           dyslexicMode 
-            ? 'bg-amber-400 text-amber-950 shadow-lg shadow-amber-500/20 scale-105' 
-            : 'text-slate-400 hover:text-slate-200 hover:bg-white/10'
+            ? 'bg-white/20 dark:bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
+            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
         }`}
       >
-        <Type size={18} strokeWidth={dyslexicMode ? 3 : 2} />
+        <Type size={12} strokeWidth={dyslexicMode ? 3 : 2} />
         {dyslexicMode && (
-          <span className="absolute -top-1 -right-1 flex h-2 w-2">
+          <span className="absolute -top-0.5 -right-0.5 flex h-1.5 w-1.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
           </span>
         )}
       </button>
@@ -32,14 +29,14 @@ export default function NeuroToggle() {
       {dyslexicMode && (
         <button
           onClick={toggleBionicReading}
-          title={bionicReading ? 'Standaard tekst' : 'Bionisch lezen'}
-          className={`w-9 h-9 flex items-center justify-center rounded-lg transition-all duration-500 animate-in fade-in zoom-in slide-in-from-left-4 ${
+          title={bionicReading ? 'Standard text' : 'Bionic reading'}
+          className={`px-2 py-1 rounded-md text-[10px] font-bold ml-0.5 transition-all duration-500 animate-in fade-in zoom-in slide-in-from-left-4 ${
             bionicReading 
-              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-105' 
-              : 'bg-white/5 text-indigo-300 hover:text-white hover:bg-white/10'
+              ? 'bg-white/20 dark:bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
+              : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
           }`}
         >
-          <Zap size={18} fill={bionicReading ? "currentColor" : "none"} strokeWidth={bionicReading ? 2.5 : 2} />
+          <Zap size={12} fill={bionicReading ? "currentColor" : "none"} strokeWidth={bionicReading ? 2.5 : 2} />
         </button>
       )}
     </div>

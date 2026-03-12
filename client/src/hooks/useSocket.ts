@@ -3,7 +3,7 @@ import { playChime } from '../utils/notifications';
 import { io, Socket } from 'socket.io-client';
 import useStore from '../store/useStore';
 import { SOCKET_URL } from '../config';
-import { Ticket, Message, OnlineExpert } from '../types';
+import { Ticket, Message, OnlineExpert, Label } from '../types';
 
 let socket: Socket | null = null;
 
@@ -29,7 +29,8 @@ export function useSocket(): Socket {
     setMessages, 
     setBusinessHoursOpen, 
     setTyping, 
-    setOnlineExperts 
+    setOnlineExperts,
+    addLabelGlobally,
   } = useStore();
   
   const listenersAttached = useRef(false);
@@ -116,7 +117,7 @@ export function useSocket(): Socket {
     });
 
     // Agent online/offline status
-    s.on('agent:status', ({ ticketId, agentId, online }: { ticketId: string; agentId: string; online: boolean }) => {
+    s.on('agent:status', ({ ticketId, agentId: _agentId, online }: { ticketId: string; agentId: string; online: boolean }) => {
       const state = useStore.getState();
       state.setAgentOnline(ticketId, online);
       // Add a system message to the chat
@@ -187,6 +188,10 @@ export function useSocket(): Socket {
       useStore.getState().removeLabelGlobally(id);
     });
 
+    s.on('label:created', (label: Label) => {
+      useStore.getState().addLabelGlobally(label);
+    });
+
     // Outside business hours
     s.on('hours:closed', () => {
       setBusinessHoursOpen(false);
@@ -212,6 +217,7 @@ export function useSocket(): Socket {
       s.off('reaction:updated');
       s.off('rating:saved');
       s.off('label:deleted');
+      s.off('label:created');
       listenersAttached.current = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineExperts, setTyping, updateTicket, setBusinessHoursOpen]);

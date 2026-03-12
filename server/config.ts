@@ -1,7 +1,4 @@
-import path from 'path';
-import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface Config {
     PORT: number | string;
@@ -12,7 +9,6 @@ export interface Config {
     SLA_THRESHOLD_MS: number;
     GDPR_RETENTION_DAYS: number;
     PURGE_INTERVAL_MS: number;
-    DB_PATH: string;
     JWT_SECRET: string;
     JWT_EXPIRY: string;
     MAX_EXPERTS_SHOWN: number;
@@ -31,7 +27,6 @@ const config: Config = {
     SLA_THRESHOLD_MS: Number(process.env.SLA_THRESHOLD_MS) || 180000,
     GDPR_RETENTION_DAYS: Number(process.env.GDPR_RETENTION_DAYS) || 30,
     PURGE_INTERVAL_MS: Number(process.env.PURGE_INTERVAL_MS) || 24 * 60 * 60 * 1000,
-    DB_PATH: process.env.DB_PATH || path.join(__dirname, 'database.sqlite'),
     JWT_SECRET: process.env.JWT_SECRET || 'super-secret-key-replace-in-prod',
     JWT_EXPIRY: process.env.JWT_EXPIRY || '24h',
     MAX_EXPERTS_SHOWN: Number(process.env.MAX_EXPERTS_SHOWN) || 8,

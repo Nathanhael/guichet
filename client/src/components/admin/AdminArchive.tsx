@@ -1,11 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useT } from '../../i18n';
 import { Ticket, Message, Label } from '../../types';
+import useStore from '../../store/useStore';
 
 const LIMIT = 25;
-const DEPT_COLOR: Record<string, string> = { DSC: 'bg-purple-100 text-purple-700', FOT: 'bg-teal-100 text-teal-700' };
+const DEPT_COLOR: Record<string, string> = {
+  DSC: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  FOT: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+};
 
-export default function ManagerArchive() {
+export default function AdminArchive() {
+  const { token } = useStore();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -28,7 +33,7 @@ export default function ManagerArchive() {
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
 
-    fetch(`/api/tickets?${params}`)
+    fetch(`/api/tickets?${params}`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then(({ tickets: rows, total: tCount }) => {
         setTickets((prev) => (reset ? rows : [...prev, ...rows]));
@@ -44,7 +49,7 @@ export default function ManagerArchive() {
   // initial load
   useEffect(() => {
     fetchTickets({ reset: true });
-    fetch('/api/labels')
+    fetch('/api/labels', { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setAllLabels)
       .catch(console.error);
@@ -58,7 +63,7 @@ export default function ManagerArchive() {
 
   useEffect(() => {
     if (!preview) return;
-    fetch(`/api/messages?ticketId=${preview.id}`)
+    fetch(`/api/messages?ticketId=${preview.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then(setMessages)
       .catch(() => setMessages([]));

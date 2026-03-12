@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
@@ -10,7 +10,7 @@ import FeedbackModal from '../components/FeedbackModal';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { requestNotificationPermission } from '../utils/notifications';
-import { Ticket } from '../types';
+
 
 export default function AgentView() {
   const { user, tickets, setTickets, activeTicketId, setActiveTicketId, logout, notificationsEnabled, setNotificationsEnabled } = useStore();
@@ -151,7 +151,9 @@ export default function AgentView() {
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, dept: d }))}
                         className={`flex-1 py-4 rounded-xl border-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-1 ${form.dept === d
-                          ? 'border-accent-500 bg-gradient-to-b from-accent-50/50 to-solarized-base3 dark:from-accent-900/30 dark:to-brand-800 text-accent-600 dark:text-accent-400 shadow-md'
+                          ? d === 'DSC'
+                            ? 'border-amber-500 bg-gradient-to-b from-amber-50/50 to-solarized-base3 dark:from-amber-900/30 dark:to-brand-800 text-amber-600 dark:text-amber-400 shadow-md'
+                            : 'border-indigo-500 bg-gradient-to-b from-indigo-50/50 to-solarized-base3 dark:from-indigo-900/30 dark:to-brand-800 text-indigo-600 dark:text-indigo-400 shadow-md'
                           : 'border-solarized-base2 dark:border-brand-700 bg-solarized-base3/50 dark:bg-brand-800/50 text-solarized-base01 dark:text-slate-400 hover:border-accent-300 dark:hover:border-accent-500 hover:shadow-sm'
                           }`}
                       >

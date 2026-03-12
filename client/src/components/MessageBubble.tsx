@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import BionicText from './BionicText';
-import { Message, UserRole, Ticket } from '../types';
+import { Message } from '../types';
 
 const LANG_LABEL: Record<string, string> = { nl: 'NL', fr: 'FR', en: 'EN' };
 
@@ -41,7 +41,7 @@ interface MessageBubbleProps {
   searchQuery?: string;
 }
 
-export default function MessageBubble({ message, ticketId, searchQuery = '' }: MessageBubbleProps) {
+export default function MessageBubble({ message, ticketId, searchQuery: _searchQuery = '' }: MessageBubbleProps) {
   const { user, dyslexicMode, bionicReading } = useStore();
   const t = useT();
   const [showOriginal, setShowOriginal] = useState(false);
@@ -68,114 +68,100 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }: M
     );
   }
 
-  const allTickets = useStore(s => s.tickets || []);
-  const allArchived = useStore(s => s.archivedTickets || []);
-  const ticket = allTickets.find(t => t.id === ticketId) || allArchived.find(t => t.id === ticketId);
 
-  const isMine = message.sender_id === user?.id;
-  const isAgent = ticket && message.sender_id === ticket.agent_id;
-  const isExpertParticipant = ticket && message.sender_id !== ticket.agent_id && !message.system;
+
+
+  const isMine = message.senderId === user?.id;
 
   const isWhisper = !!message.whisper;
-  const senderName = message.sender_name || message.sender_id;
+  const senderName = message.senderName || message.senderId;
 
   // AI Logic
-  const hasImproved = message.improved_text && message.improved_text !== message.original_text;
-  const hasTranslated = !message.translation_skipped && message.processed_text !== message.improved_text;
-  const isFallback = !!message.fallback;
+  const hasImproved = message.improvedText && message.improvedText !== message.originalText;
+  const hasTranslated = !message.translationSkipped && message.processedText !== message.improvedText;
 
   // Decide what to show
-  let mainText = message.processed_text || message.text || '';
+  let mainText = message.processedText || message.text || '';
   if (isMine) {
-    mainText = message.original_text || message.text || '';
+    mainText = message.originalText || message.text || '';
   } else if (showOriginal) {
-    mainText = message.original_text || message.text || '';
+    mainText = message.originalText || message.text || '';
   }
 
   const displayText = mainText;
 
-  const time = new Date(message.timestamp || message.created_at).toLocaleTimeString('en-GB', {
+  const time = new Date(message.timestamp || message.createdAt).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
 
   return (
-    <div className={`flex gap-3 px-3 py-2 -mx-1 rounded-xl group transition-all duration-200 hover:bg-solarized-base2/60 dark:hover:bg-brand-800/60 animate-fade-in ${isWhisper ? 'bg-violet-50/50 dark:bg-violet-950/20 hover:bg-violet-100/50 dark:hover:bg-violet-950/30 border border-violet-100/50 dark:border-violet-900/30' : 'border border-transparent'
-      }`}>
-      <Avatar name={senderName} isMine={isMine} />
+    <div className={`flex w-full mb-2 px-1 animate-fade-in justify-start`}>
+      {!isMine && !message.system && (
+        <div className="flex flex-col justify-end pb-1 mr-1">
+          <Avatar name={senderName} isMine={isMine} />
+        </div>
+      )}
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-baseline gap-2 mb-0.5">
-          <span className={`text-sm font-semibold ${isMine ? 'text-brand-600 dark:text-brand-400' : 'text-solarized-base01 dark:text-gray-100'
-            }`}>
-            {isMine ? `${senderName} (you)` : senderName}
-          </span>
-          <span className="text-xs text-solarized-base1">{time}</span>
-          <div className="relative inline-flex" ref={pickerRef}>
+      <div className={`relative max-w-[85%] min-w-[80px] group transition-all duration-200 ${
+        isMine 
+          ? 'bg-[#dcf8c6] dark:bg-[#056162] text-slate-900 dark:text-slate-100 rounded-2xl rounded-tl-none shadow-sm' 
+          : isWhisper 
+            ? 'bg-violet-100 dark:bg-violet-900/40 text-violet-900 dark:text-violet-100 rounded-2xl rounded-tl-none shadow-sm border border-violet-200/50 dark:border-violet-700/50'
+            : 'bg-white dark:bg-[#262d31] text-slate-900 dark:text-slate-100 rounded-2xl rounded-tl-none shadow-sm'
+      } px-3 py-1.5 mb-1`}>
+        
+
+        <div className="relative pr-2">
+          <p className={`text-[14px] break-words whitespace-pre-wrap leading-tight ${
+            isWhisper ? 'italic opacity-90' : ''
+          } ${dyslexicMode ? 'font-lexend' : ''}`}>
+            {bionicReading ? (
+              <BionicText text={displayText} />
+            ) : (
+              displayText
+            )}
+          </p>
+
+          {message.mediaUrl && (
+            <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+              <img
+                src={message.mediaUrl}
+                alt="screenshot"
+                className="rounded-lg max-w-full h-auto border border-black/5 dark:border-white/5"
+              />
+            </a>
+          )}
+        </div>
+
+        {/* Footer with AI toggles and Timestamp */}
+        <div className="flex items-center justify-end gap-2 mt-1 -mr-1">
+          {(!isMine && !isWhisper && (hasImproved || hasTranslated)) && (
             <button
-              onClick={() => setShowPicker((v) => !v)}
-              className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-solarized-base2 dark:hover:bg-gray-600 text-solarized-base1 hover:text-solarized-base01 dark:hover:text-gray-200"
-              title={t('add_reaction')}
+              onClick={() => setShowOriginal((v) => !v)}
+              className="text-[9px] font-bold text-brand-500/80 hover:text-brand-700 dark:hover:text-brand-300 underline uppercase transition-colors"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              {showOriginal ? t('translation') : `${t('original')}${message.senderLang ? ` (${LANG_LABEL[message.senderLang] || message.senderLang.toUpperCase()})` : ''}`}
             </button>
-            {showPicker && (
-              <div className="absolute left-0 top-full mt-1 bg-white/95 backdrop-blur-md dark:bg-brand-800 border border-solarized-base2 dark:border-brand-600 rounded-xl shadow-xl flex gap-1 p-1.5 z-20">
-                {REACTION_EMOJIS.map((e) => (
-                  <button
-                    key={e.key}
-                    onClick={() => {
-                      getSocket().emit('reaction:toggle', {
-                        ticketId,
-                        messageId: message.id,
-                        emoji: e.key,
-                        userId: user?.id,
-                      });
-                      setShowPicker(false);
-                    }}
-                    className="hover:bg-solarized-base2 dark:hover:bg-brand-700 rounded-lg p-1.5 text-lg transition-transform hover:scale-125 focus:scale-125"
-                  >
-                    {e.emoji}
-                  </button>
-                ))}
-              </div>
+          )}
+          
+          <div className="flex items-center gap-1">
+            <span className={`text-[10px] select-none ${
+              isMine ? 'text-slate-500 dark:text-brand-200/70' : 'text-slate-400 dark:text-slate-500'
+            }`}>
+              {time}
+            </span>
+            {isMine && (
+              <svg viewBox="0 0 16 11" width="13" height="13" className={`fill-current ${message.readAt ? 'text-sky-500' : 'text-slate-400 dark:text-brand-200/50'}`}>
+                <path d="M11.022 1.132L5.808 6.643 3.65 4.363l-.71.67 2.868 3.033 5.922-6.265zM14.991 1.132l-5.214 5.511-.321-.34-.71.671.677.716 5.568-5.888-.71-.67zM7.051 8.066l-.71-.67-.354.374.71.67.354-.374z" />
+              </svg>
             )}
           </div>
         </div>
 
-        <p className={`text-sm break-words whitespace-pre-wrap leading-relaxed ${isWhisper
-          ? 'text-violet-700 dark:text-violet-300 italic'
-          : 'text-solarized-base00 dark:text-gray-200'
-          }`}>
-          {displayText}
-        </p>
-
-        {message.mediaUrl && (
-          <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block">
-            <img
-              src={message.mediaUrl}
-              alt="screenshot"
-              className="rounded-lg max-w-sm max-h-48 object-contain border border-solarized-base2 dark:border-brand-600"
-            />
-          </a>
-        )}
-
-        {(!isMine && !isWhisper && (hasImproved || hasTranslated)) && (
-          <div className={`mt-1 flex items-center gap-2 flex-row`}>
-            <button
-              onClick={() => setShowOriginal((v) => !v)}
-              className="text-[10px] font-bold text-brand-500 hover:text-brand-700 dark:hover:text-brand-300 underline uppercase tracking-tight"
-            >
-              {showOriginal ? t('translation') : `${t('original')}${message.sender_lang ? ` (${LANG_LABEL[message.sender_lang] || message.sender_lang.toUpperCase()})` : ''}`}
-            </button>
-          </div>
-        )}
-
-        {/* Reactions display */}
+        {/* Integrated Reactions Display — No longer absolute overlay to avoid clipping */}
         {message.reactions && typeof message.reactions === 'object' && Object.keys(message.reactions).length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-1 mt-1.5 pt-1.5 border-t border-black/5 dark:border-white/5">
             {Object.entries(message.reactions as Record<string, string[]>).map(([key, userIds]) => {
               const emojiObj = REACTION_EMOJIS.find((e) => e.key === key);
               if (!emojiObj || userIds.length === 0) return null;
@@ -191,18 +177,56 @@ export default function MessageBubble({ message, ticketId, searchQuery = '' }: M
                       userId: user?.id,
                     });
                   }}
-                  className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${iReacted
-                      ? 'bg-brand-50 dark:bg-brand-900/30 border-brand-300 dark:border-brand-700'
-                      : 'bg-solarized-base3 dark:bg-gray-700 border-solarized-base2 dark:border-brand-600 hover:bg-solarized-base2 dark:hover:bg-gray-600'
-                    }`}
+                  className={`flex items-center px-1.5 py-0.5 rounded-full text-[10px] border shadow-xs transition-all ${
+                    iReacted
+                      ? 'bg-brand-50 dark:bg-brand-900 border-brand-200 dark:border-brand-700'
+                      : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                  }`}
+                  title={userIds.length > 1 ? `${userIds.length} reactions` : undefined}
                 >
                   <span>{emojiObj.emoji}</span>
-                  <span className="text-solarized-base01 dark:text-gray-300">{userIds.length}</span>
+                  {userIds.length > 1 && <span className="ml-0.5 font-bold opacity-80">{userIds.length}</span>}
                 </button>
               );
             })}
           </div>
         )}
+
+        {/* Reaction Picker — Triggered by click, horizontal layout */}
+        <div className="absolute top-1/2 -translate-y-1/2 -right-10 transition-opacity z-50">
+          <div className="relative" ref={pickerRef}>
+            <button
+              onClick={() => setShowPicker(!showPicker)}
+              className="p-1.5 rounded-full bg-white/50 dark:bg-black/20 hover:bg-white dark:hover:bg-black/40 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-all shadow-sm"
+              title={t('add_reaction')}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            {showPicker && (
+              <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-white dark:bg-slate-800 border border-black/20 dark:border-white/20 rounded-2xl shadow-2xl flex flex-row gap-1 p-1.5 z-[100] animate-soft-bounce">
+                {REACTION_EMOJIS.map((e) => (
+                  <button
+                    key={e.key}
+                    onClick={() => {
+                      getSocket().emit('reaction:toggle', {
+                        ticketId,
+                        messageId: message.id,
+                        emoji: e.key,
+                        userId: user?.id,
+                      });
+                      setShowPicker(false);
+                    }}
+                    className="hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full p-1.5 text-base transition-transform hover:scale-135"
+                  >
+                    {e.emoji}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

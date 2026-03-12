@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Stars } from './DashboardHelpers';
 import { Rating, FeedbackItem, User } from '../../types';
+import useStore from '../../store/useStore';
 
 interface ExpertRatings {
   [key: string]: {
@@ -18,7 +19,8 @@ interface ExpertRatings {
   };
 }
 
-export default function ManagerFeedback() {
+export default function AdminFeedback() {
+  const { token } = useStore();
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [loadingFeedback, setLoadingFeedback] = useState(true);
@@ -29,19 +31,19 @@ export default function ManagerFeedback() {
   const [selectedExpert, setSelectedExpert] = useState('ALL');
 
   useEffect(() => {
-    fetch('/api/feedback')
+    fetch('/api/feedback', { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => setFeedback(data.sort((a: FeedbackItem, b: FeedbackItem) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
       .catch(() => {})
       .finally(() => setLoadingFeedback(false));
 
-    fetch('/api/ratings')
+    fetch('/api/ratings', { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => setRatings(data.sort((a: Rating, b: Rating) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
       .catch(() => {})
       .finally(() => setLoadingRatings(false));
 
-    fetch('/api/users')
+    fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => setUsers(data))
       .catch(() => {});
@@ -49,7 +51,7 @@ export default function ManagerFeedback() {
 
   const markTreated = async (id: string) => {
     try {
-      const res = await fetch(`/api/feedback/${id}/treat`, { method: 'PATCH' });
+      const res = await fetch(`/api/feedback/${id}/treat`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } });
       if (res.ok) {
         setFeedback(feedback.map((f) => (f.id === id ? { ...f, treated: true } : f)));
       }

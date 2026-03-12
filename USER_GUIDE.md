@@ -8,7 +8,10 @@ When you open the app at `http://localhost:5173`, select one of the following pe
 
 - **Agent Jan (NL)**: Best for testing DSC department ticket creation in Dutch.
 - **Agent Marie (FR)**: Best for testing FOT department tickets in French.
-- **Expert Piet (NL)**: A multi-tasking expert in Dutch.
+- **Agent Tom (EN)**: Best for testing DSC department tickets in English.
+- **Expert Piet (NL)**: A multi-tasking expert in Dutch (DSC).
+- **Expert Sophie (FR)**: A French-speaking FOT expert.
+- **Expert Alex (EN)**: An English-speaking FOT expert.
 - **Admin Dirk (NL)**: Monitor the entire system and manage labels.
 
 ## The Cognitive Cockpit
@@ -23,25 +26,33 @@ Every view features a **Cognitive & Neuro-Inclusive Cockpit** in the header. Use
 ## Real-Time Scenarios to Try
 
 ### Scenario 1: Multi-Language Chat
-1. Log in as **Alice Agent** (English).
-2. Create a ticket.
-3. In a new tab/window, log in as **Expert Zoe** (French).
-4. Join the ticket as Zoe.
-5. Send a message as Zoe in French; Alice will see it auto-translated to English.
+1. Log in as **Agent Jan** (Dutch).
+2. Create a ticket in the DSC department.
+3. In a new tab/window, log in as **Expert Sophie** (French).
+4. Join the ticket as Sophie.
+5. Send a message as Sophie in French; Jan will see it auto-translated to Dutch.
 
 ### Scenario 2: Expert Multi-Tasking
-1. Log in as **Expert Zoe**.
-2. Have multiple Agents (Alice, Bob, David) create tickets.
-3. As Zoe, join all tickets.
+1. Log in as **Expert Piet**.
+2. Have multiple Agents (Jan, Marie, Tom) create tickets.
+3. As Piet, join all tickets.
 4. Use the layout toggle (next to your status) to switch between **Tabs**, **Split Vertical**, or **2x2 Grid** views.
 
-### Scenario 3: Admin Monitoring
-1. Log in as **Dirk Admin**.
+### Scenario 3: Admin Monitoring & Labeling
+1. Log in as **Admin Dirk**.
 2. View real-time KPIs and trend charts.
-3. Use the **Date Range** and **Department** filters to narrow down statistics.
-4. Open the **Archive** tab to search and export past conversations to CSV.
+3. Navigate to **Label Management**.
+4. Create a new label (e.g., "Critical" with red color).
+5. Delete an obsolete label and notice it disappears immediately from all views.
+6. Open the **Archive** tab to search and export past conversations to CSV.
+
+### Scenario 4: Reactions & Whispers
+1. As an **Expert**, click the permanently visible smiley face icon next to an Agent's message.
+2. Select a "Thumbs Up" emoji from the **centered, horizontal picker** that appears below the icon.
+3. Toggle **Whisper Mode** above the text input.
+4. Send a message and notice it is highlighted in a distinct color, signifying agents cannot see it.
 
 ## Troubleshooting
 
 - **Socket Disconnected?** Check the indicator next to the logout button. The app will auto-reconnect.
-- **Translation Unvailable?** Ensure **Ollama** is running on your host machine with the `gemmatranslate4b` model pulled.
+- **Translation Unavailable?** Ensure **Ollama** is running on your host machine with the `gemmatranslate4b` model pulled.

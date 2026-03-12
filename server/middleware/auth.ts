@@ -3,12 +3,17 @@ import config from '../config.js';
 import { Request, Response, NextFunction } from 'express';
 import { User, UserRole } from '../types/index.js';
 
-export interface AuthRequest extends Request {
+export type AuthRequest<
+  P = any,
+  ResBody = any,
+  ReqBody = any,
+  ReqQuery = any
+> = Request<P, ResBody, ReqBody, ReqQuery> & {
   user?: {
     id: string;
     role: UserRole;
   };
-}
+};
 
 export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;

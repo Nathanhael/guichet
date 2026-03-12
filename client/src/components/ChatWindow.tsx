@@ -9,19 +9,18 @@ import { Ticket, Message, Label } from '../types';
 const LANG_FLAG: Record<string, string> = { nl: '🇧🇪', fr: '🇫🇷', en: '🇬🇧' };
 
 interface ChatWindowProps {
-  ticket: Ticket;
+  ticket?: Ticket;
   onClose?: () => void;
   onFocus?: () => void;
   focused?: boolean;
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, token, messages, typingUsers, agentOnline, setAgentOnline, updateTicket, toggleTicketLabel, tickets, queuePosition, allLabels } = useStore();
+  const { user, token, messages, typingUsers, agentOnline, setAgentOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode } = useStore();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
-  const [closingNotes, setClosingNotes] = useState('');
   const [whisperMode, setWhisperMode] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
@@ -30,7 +29,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [blockedNotice, setBlockedNotice] = useState<string | null>(null);
-  const [aiStatus, setAiStatus] = useState('online'); 
   const [showLabelsMenu, setShowLabelsMenu] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -66,12 +64,12 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   function emitTyping() {
     if (!isTypingRef.current) {
       isTypingRef.current = true;
-      getSocket().emit('typing:start', { ticketId: ticket.id, senderName: user?.name });
+      getSocket().emit('typing:start', { ticketId: ticket!.id, senderName: user?.name });
     }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       isTypingRef.current = false;
-      getSocket().emit('typing:stop', { ticketId: ticket.id, senderName: user?.name });
+      getSocket().emit('typing:stop', { ticketId: ticket!.id, senderName: user?.name });
     }, 2000);
   }
 
@@ -79,7 +77,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (isTypingRef.current) {
       isTypingRef.current = false;
-      getSocket().emit('typing:stop', { ticketId: ticket.id, senderName: user?.name });
+      getSocket().emit('typing:stop', { ticketId: ticket!.id, senderName: user?.name });
     }
   }
 
@@ -177,7 +175,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
         .map(m => m.id);
 
       if (unreadIds.length > 0) {
-        getSocket().emit('message:read', { ticketId: ticket.id, messageIds: unreadIds });
+        getSocket().emit('message:read', { ticketId: ticket!.id, messageIds: unreadIds });
         setUnreadCount(0);
       }
     }
@@ -195,17 +193,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     return () => { socket.off('message:blocked', onBlocked); };
   }, []);
 
-  useEffect(() => {
-    const check = () => {
-      fetch('/api/health/ai', { headers: { 'Authorization': `Bearer ${token}` }})
-        .then(r => r.json())
-        .then(data => setAiStatus(data.status))
-        .catch(() => setAiStatus('offline'));
-    };
-    check();
-    const interval = setInterval(check, 30000);
-    return () => clearInterval(interval);
-  }, [token]);
+
 
   async function uploadFile(file: File) {
     setMediaPreview(URL.createObjectURL(file));
@@ -264,7 +252,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
     const optimisticMsg: Message = {
       id: `pending-${Object.keys(messages).length}-${Date.now()}`,
-      ticketId: ticket.id,
+      ticketId: ticket!.id,
       senderId: user?.id || '',
       senderName: user?.name || '',
       senderRole: user?.role || 'agent',
@@ -275,10 +263,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       pending: true,
       createdAt: new Date().toISOString(),
     };
-    useStore.getState().addMessage(ticket.id, optimisticMsg);
+    useStore.getState().addMessage(ticket!.id, optimisticMsg);
 
     getSocket().emit('message:send', {
-      ticketId: ticket.id,
+      ticketId: ticket!.id,
       senderId: user?.id,
       senderLang: user?.lang,
       text: trimmed || '📎',
@@ -295,8 +283,8 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     setClosing(true);
 
     getSocket().emit('ticket:close', {
-      ticketId: ticket.id,
-      closingNotes: closingNotes.trim(),
+      ticketId: ticket!.id,
+      closingNotes: '',
       closedBy: user?.name
     });
 
@@ -309,7 +297,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
   function leaveTicket() {
     if (!isExpert) return;
-    getSocket().emit('expert:leave', { ticketId: ticket.id, expertId: user?.id, expertName: user?.name });
+    getSocket().emit('expert:leave', { ticketId: ticket!.id, expertId: user?.id, expertName: user?.name });
     if (onClose) onClose();
   }
 
@@ -320,36 +308,35 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     <div className="relative flex flex-col h-full glass-card rounded-xl shadow-soft border-white/40 dark:border-brand-700/50 flex-1 min-h-0 animate-fade-in">
       {/* Header */}
       <div className="relative z-50 flex items-center justify-between px-4 py-3 border-b border-white/20 dark:border-brand-700/50 bg-white/30 dark:bg-brand-800/40 backdrop-blur-sm rounded-t-xl">
-        <div className="min-w-0">
+        <div className="min-w-0 pr-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${ticket.dept === 'DSC' ? 'bg-solarized-violet/20 text-solarized-violet' : 'bg-solarized-cyan/20 text-solarized-cyan'
-              }`}>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-tighter ${
+              ticket.dept === 'DSC' 
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' 
+                : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+            }`}>
               {ticket.dept}
             </span>
-            <span className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate flex items-center gap-1.5">
+            <span className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate flex items-center gap-1.5 min-w-0 max-w-[120px]">
               {ticket.agentName}
               {isExpert && !isClosed && (
                 <span
                   title={agentIsOnline ? 'Agent online' : 'Agent offline'}
-                  className={`w-2 h-2 rounded-full shrink-0 animate-pulse ${agentIsOnline ? 'bg-solarized-green' : 'bg-solarized-base1 dark:bg-gray-500'}`}
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${agentIsOnline ? 'bg-solarized-green' : 'bg-solarized-base1 dark:bg-gray-500'}`}
                 />
-              )}
-              {ticket.agentLang && (
-                <span className="text-sm ml-1" title={ticket.agentLang.toUpperCase()}>
-                  {LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]}
-                </span>
               )}
             </span>
             {ticket.cdbId && (
-              <span className="text-xs font-mono bg-solarized-base2 dark:bg-gray-700 text-solarized-base01 dark:text-gray-300 px-2 py-0.5 rounded shrink-0">
+              <span className="text-[10px] font-mono bg-solarized-base2/50 dark:bg-gray-700/50 text-solarized-base1 dark:text-gray-400 px-1.5 py-0.5 rounded shrink-0 hidden sm:inline-block">
                 CDBID: {ticket.cdbId}
               </span>
             )}
-            {ticket.dareRef && (
-              <span className="text-xs font-mono bg-solarized-base2 dark:bg-gray-700 text-solarized-base01 dark:text-gray-300 px-2 py-0.5 rounded shrink-0">
-                Dare Ref: {ticket.dareRef}
+            {ticket.agentLang && (
+              <span className="text-xs shrink-0" title={ticket.agentLang.toUpperCase()}>
+                {LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]}
               </span>
             )}
+            
             {/* Active Labels Display */}
             {liveTicket.labels && liveTicket.labels.length > 0 && (
               <div className="flex flex-wrap gap-1 focus-within:ring-0">
@@ -361,7 +348,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                       key={id}
                       className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-${info.color}-500/10 text-${info.color}-600 dark:text-${info.color}-400 border border-${info.color}-500/20`}
                     >
-                      {info.name}
+                      {info.text}
                     </span>
                   );
                 })}
@@ -379,7 +366,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Labels Menu Button */}
           {isExpert && !isClosed && (
             <div className="relative" ref={labelsMenuRef}>
@@ -409,7 +396,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium hover:bg-solarized-base2 dark:hover:bg-brand-700 transition-colors group"
                         >
                           <div className={`w-2.5 h-2.5 rounded-full bg-${l.color}-500 shrink-0`} />
-                          <span className="flex-1 text-left text-solarized-base1 dark:text-gray-200">{l.name}</span>
+                          <span className="flex-1 text-left text-solarized-base1 dark:text-gray-200">{l.text}</span>
                           {(liveTicket.labels || []).includes(l.id) && (
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -459,7 +446,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               <button
                 onClick={leaveTicket}
                 title={t('leave')}
-                className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-10 py-2 rounded-xl font-bold transition-all border border-amber-200 dark:border-amber-800 shadow-sm active:scale-95"
+                className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-3 py-2 rounded-xl font-bold transition-all border border-amber-200 dark:border-amber-800 shadow-sm active:scale-95 whitespace-nowrap hidden sm:block"
               >
                 {t('leave') || 'Leave'}
               </button>
@@ -469,7 +456,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   closeTicket();
                 }}
                 disabled={closing}
-                className="text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-10 py-2 rounded-xl font-bold transition-all border border-red-200 dark:border-red-800 shadow-sm active:scale-95 flex items-center gap-2"
+                className="text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-2 rounded-xl font-bold transition-all border border-red-200 dark:border-red-800 shadow-sm active:scale-95 flex items-center gap-2 whitespace-nowrap"
               >
                 {closing && (
                   <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24">
@@ -543,9 +530,13 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       <div 
         ref={scrollContainerRef} 
         onScroll={handleScroll} 
-        className="flex-1 overflow-y-auto p-4 scrollbar-thin relative"
+        className={`flex-1 overflow-y-auto p-4 scrollbar-thin relative transition-colors duration-500 ${
+          darkMode 
+            ? 'whatsapp-bg bg-[#0d1418]' 
+            : 'bg-solarized-base3/20'
+        }`}
       >
-        <div className="space-y-1">
+        <div className="space-y-2 mb-4">
           {ticketMessages.length === 0 && (
             <p className="text-center text-solarized-base1 text-sm mt-8">{t('no_messages')}</p>
           )}
