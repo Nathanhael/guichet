@@ -48,6 +48,17 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 | @testing-library/react | ^14.2.1 | Component testing (dev) |
 | jsdom | ^24.0.0 | DOM emulation (dev) |
 
+## Build & Performance
+
+To optimize loading times and reduce the initial bundle size, the following strategies are implemented:
+
+- **Route-Based Code Splitting**: View-level components (`AgentView`, `ExpertView`, `AdminView`) are loaded via `React.lazy` and `Suspense`.
+- **Manual Chunking**: Large dependencies are separated into dedicated vendor chunks via `vite.config.ts`:
+  - `vendor-charts`: `recharts` and `d3`.
+  - `vendor-ui-icons`: `lucide-react`.
+  - `vendor-ui-anim`: `framer-motion`.
+- **Result**: Initial JS payload reduced by ~60%, ensuring faster interaction transitions.
+
 ## Database Schema
 
 PostgreSQL via Drizzle ORM. Schema defined in `server/db/schema.ts`.

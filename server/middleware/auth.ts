@@ -17,9 +17,11 @@ export type AuthRequest<
 
 export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+  const queryToken = req.query.token as string;
+  
+  if (!authHeader && !queryToken) return res.status(401).json({ error: 'No token provided' });
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader ? authHeader.split(' ')[1] : queryToken;
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET) as { userId: string; role: UserRole };
     req.user = { id: decoded.userId, role: decoded.role };

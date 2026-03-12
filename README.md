@@ -345,7 +345,7 @@ Specialized features for agents and experts:
 | GET | `/api/health` | Service health (DB + Ollama status) |
 | GET | `/api/users` | All demo users |
 | GET | `/api/tickets` | Tickets (filter: `agentId`, `status`, `dept`, `search`, `limit`, `offset`, `dateFrom`, `dateTo`) |
-| GET | `/api/export` | Export tickets as CSV (same filters as `/api/tickets`) |
+| GET | `/api/tickets/export` | Export tickets as CSV (same filters as `/api/tickets`) |
 | GET | `/api/messages` | All messages (optional filter: `ticketId`) |
 | GET | `/api/tickets/:id/messages` | Messages for a ticket |
 | POST | `/api/uploads` | Upload screenshot (magic byte validated) |

@@ -1,11 +1,26 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import useStore from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import LoginView from './views/LoginView';
-import AgentView from './views/AgentView';
-import ExpertView from './views/ExpertView';
-import AdminView from './views/AdminView';
-import { WifiOff, AlertCircle } from 'lucide-react';
+import { WifiOff, AlertCircle, Loader2 } from 'lucide-react';
+
+// Lazy load large view components
+const AgentView = lazy(() => import('./views/AgentView'));
+const ExpertView = lazy(() => import('./views/ExpertView'));
+const AdminView = lazy(() => import('./views/AdminView'));
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-solarized-base3 dark:bg-solarized-base03 flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="w-10 h-10 text-solarized-blue animate-spin" />
+        <p className="text-solarized-base01 dark:text-solarized-base1 font-medium animate-pulse">
+          Loading workspace...
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function ConnectionBanner() {
   const { connectionStatus } = useStore();
@@ -60,10 +75,14 @@ export default function App() {
 
   const renderView = () => {
     if (!user) return <LoginView />;
-    if (user.role === 'agent') return <AgentView />;
-    if (user.role === 'expert') return <ExpertView />;
-    if (user.role === 'admin') return <AdminView />;
-    return <LoginView />;
+    
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        {user.role === 'agent' && <AgentView />}
+        {user.role === 'expert' && <ExpertView />}
+        {user.role === 'admin' && <AdminView />}
+      </Suspense>
+    );
   };
 
   return (

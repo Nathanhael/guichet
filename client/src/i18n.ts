@@ -82,6 +82,7 @@ const translations: Translations = {
     whisper_label: 'whisper',
 
     // Admin view
+    active_tickets: 'Active tickets',
     statistics: 'Statistics',
     open_tickets: 'Open tickets',
     archive: 'Archive',
@@ -104,6 +105,7 @@ const translations: Translations = {
 
     // Feedback
     feedback: 'Feedback',
+    labels: 'Labels',
     feedback_desc: 'Share your suggestions or report an issue.',
     feedback_placeholder: 'What would you like to share?',
     submit_feedback: 'Send',
@@ -197,6 +199,7 @@ const translations: Translations = {
     ready_to_help: 'Pr\u00eat \u00e0 aider',
     select_ticket_hint: 'S\u00e9lectionnez un ticket dans la file et cliquez sur \u00ab\u00a0Rejoindre\u00a0\u00bb.',
 
+    active_tickets: 'Tickets actifs',
     statistics: 'Statistiques',
     open_tickets: 'Tickets ouverts',
     archive: 'Archive',
@@ -218,6 +221,7 @@ const translations: Translations = {
     export_csv: 'Exporter en CSV',
 
     feedback: 'Feedback',
+    labels: '\u00c9tiquettes',
     feedback_desc: 'Partagez vos suggestions ou signalez un probl\u00e8me.',
     feedback_placeholder: 'Que souhaitez-vous partager\u00a0?',
     submit_feedback: 'Envoyer',
@@ -310,6 +314,7 @@ const translations: Translations = {
     ready_to_help: 'Klaar om te helpen',
     select_ticket_hint: 'Selecteer een ticket uit de wachtrij en klik op "Join".',
 
+    active_tickets: 'Actieve tickets',
     statistics: 'Statistieken',
     open_tickets: 'Open tickets',
     archive: 'Archief',
@@ -331,6 +336,7 @@ const translations: Translations = {
     export_csv: 'Exporteer naar CSV',
 
     feedback: 'Feedback',
+    labels: 'Labels',
     feedback_desc: 'Deel je suggesties of meld een probleem.',
     feedback_placeholder: 'Wat wil je delen?',
     submit_feedback: 'Verstuur',

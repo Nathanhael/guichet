@@ -229,7 +229,8 @@ export interface AdminStats {
   expertStats: { name: string; total: number; today: number }[];
   agentStats: { name: string; total: number; today: number }[];
   hourlyDistribution: { hour: number; count: number }[];
-  hourlyStaffing?: { hour: number; count: number; capacity?: number; staffing?: number; demand?: number }[];
+  hourlyStaffing?: { hour: number; tickets: number; experts: number; slaHealth: number }[];
+  daySummary?: Record<string, string[]>;
   previousPeriod?: Partial<AdminStats>;
 }
 
