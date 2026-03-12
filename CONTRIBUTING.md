@@ -36,7 +36,7 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 - Always implement a clean teardown in `useEffect` for listeners.
 
 ### TypeScript & Types
-- This project is transitioning to TypeScript.
+- This project is 100% TypeScript for application logic and configuration.
 - **Avoid `any`**: Document your interfaces in specialized `.d.ts` or at the top of the file.
 - Use the `useT` hook for all UI strings.
 

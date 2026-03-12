@@ -81,6 +81,14 @@ The system manages a hybrid data model to balance historical analysis with priva
 3. **Anonymized Aggregation**: Before deletion, key metrics (volumes, response times, ratings) are summarized into the `daily_stats` table.
 4. **Permanent Storage**: `daily_stats` are retained indefinitely for long-term trend analysis.
 
+## Build & Optimization Strategy
+
+The frontend build pipeline (Vite) is configured for optimal production performance:
+
+1. **Lazy Loading**: Route-level code splitting ensures that code for "Admin" or "Expert" views is only downloaded when the user logs in with those roles.
+2. **Vendor Separation**: Heavy libraries like Recharts and Framer Motion are moved to separate chunks. This allows the browser to cache these stable libraries while only re-downloading the app logic when it changes.
+3. **i18n Localization**: Labels and UI text are managed via a centralized `i18n.ts` file, ensuring zero-latency switching between languages.
+
 ## Security & Reliability
 
 - **RBAC**: Role-Based Access Control enforced at the Socket and Route levels.

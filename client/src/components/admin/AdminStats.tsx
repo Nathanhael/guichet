@@ -15,6 +15,9 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import LLMSummary from './Stats/LLMSummary';
+import TopicSummary from './Stats/TopicSummary';
+import StaffingDemand from './Stats/StaffingDemand';
 
 export default function AdminStats() {
   const t = useT();
@@ -24,6 +27,7 @@ export default function AdminStats() {
   const [statsDateFrom, setStatsDateFrom] = useState('');
   const [statsDateTo, setStatsDateTo] = useState('');
   const [activePreset, setActivePreset] = useState<string | null>(null);
+  const [activeHour, setActiveHour] = useState<number | null>(null);
 
   function applyPreset(key: string) {
     const now = new Date();
@@ -179,6 +183,13 @@ export default function AdminStats() {
         />
       </div>
 
+      <div className="grid grid-cols-1 gap-6">
+        <LLMSummary 
+          periodType={activePreset || (statsDateFrom ? 'custom' : '30d')} 
+          periodValue={activePreset ? activePreset : (statsDateFrom ? `${statsDateFrom}|${statsDateTo}` : '30d')} 
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel title="Queue health">
           <div className="grid grid-cols-2 gap-3 mb-3">
@@ -278,6 +289,18 @@ export default function AdminStats() {
         </ResponsiveContainer>
       </Panel>
 
+      {stats.hourlyStaffing && (
+        <StaffingDemand 
+          hourlyStaffing={stats.hourlyStaffing} 
+          activeHour={activeHour} 
+          onHourClick={setActiveHour} 
+        />
+      )}
+
+      {stats.daySummary && (
+        <TopicSummary daySummary={stats.daySummary} />
+      )}
+
       {stats.ratingsByDept && Object.keys(stats.ratingsByDept).length > 0 && (
         <Panel title="Satisfaction by Department">
           <div className="grid grid-cols-2 gap-4">
@@ -338,20 +361,6 @@ export default function AdminStats() {
               </BarChart>
             </ResponsiveContainer>
           )}
-        </Panel>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Panel title="Peak Hours Distribution">
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={stats.hourlyDistribution} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#93a1a1" />
-              <XAxis dataKey="hour" tick={{ fontSize: 10 }} tickFormatter={(h) => `${h}h`} />
-              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-              <Tooltip formatter={(v: number) => [v, 'Tickets']} labelFormatter={(h) => `${h}:00`} />
-              <Bar dataKey="count" fill="#e24e1b" radius={[3, 3, 0, 0]} name="Tickets" />
-            </BarChart>
-          </ResponsiveContainer>
         </Panel>
       </div>
     </div>

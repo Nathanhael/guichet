@@ -1,7 +1,6 @@
 import { get, run, query } from '../db.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
-import { MessagePipeline } from '../../shared/pipeline.js';
 
 const MODEL = config.OLLAMA_MODEL || 'gemmatranslate4b';
 

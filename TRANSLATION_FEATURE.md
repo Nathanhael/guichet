@@ -23,6 +23,7 @@ The system is designed to be invisible and non-confrontational:
 - **Sender View**: The sender always sees their **own original message**. They are never corrected or told their grammar was poor.
 - **Recipient View**: The recipient sees the **improved and translated** version.
 - **Peek Feature**: A toggle in `MessageBubble.tsx` allows the recipient to peek at the `originalText` if they want to see precisely what the other party typed.
+- **Polished Interface**: Core navigation labels (e.g., "Active tickets", "Feedback", "Labels") are fully localized to ensure a professional experience in all supported languages.
 - **Fallback**: If the AI service is offline, the system falls back to displaying the original text on both sides, with a subtle warning: *"Verwerking tijdelijk niet beschikbaar"*.
 
 ---
@@ -45,5 +46,5 @@ Three distinct optimized prompts are used:
 
 ### Integration Details
 - **Backend Service**: `server/services/translate.ts`.
-- **LLM Interface**: Local Ollama REST API (`translategemma:4b`).
+- **LLM Interface**: Local Ollama REST API (`gemmatranslate4b`).
 - **Caching**: Results are cached in the `translations_cache` table to ensure near-instant responses for repeated or common phrases.

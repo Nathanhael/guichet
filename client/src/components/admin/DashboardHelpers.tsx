@@ -18,10 +18,17 @@ export function Stars({ value }: { value: number }) {
   );
 }
 
-export function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+export function Panel({ title, badge, className = '', children }: { title: string; badge?: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className="glass-card p-5 shadow-soft border-solarized-base2 dark:border-brand-700/50 hover:shadow-lg transition-shadow duration-300">
-      <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-300 mb-4 tracking-wide uppercase">{title}</p>
+    <div className={`glass-card p-5 shadow-soft border-solarized-base2 dark:border-brand-700/50 hover:shadow-lg transition-shadow duration-300 ${className}`}>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-300 tracking-wide uppercase">{title}</p>
+        {badge && (
+          <span className="px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-500 text-[10px] font-bold uppercase tracking-widest border border-brand-500/20">
+            {badge}
+          </span>
+        )}
+      </div>
       {children}
     </div>
   );

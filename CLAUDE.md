@@ -54,6 +54,9 @@ Vitest supports filtering: `npx vitest run auth` runs only files matching "auth"
 ```bash
 cd client && npm run build    # Vite production build
 cd client && npm run preview  # Preview production build
+
+> [!IMPORTANT]
+> **Build Check**: Always run `npm run build` after major UI or dependency changes to ensure the bundle splitting and manual chunking are still effective and don't produce warnings.
 ```
 
 ## System Architecture

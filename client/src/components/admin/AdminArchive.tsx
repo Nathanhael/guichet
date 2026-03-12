@@ -91,7 +91,8 @@ export default function AdminArchive() {
               if (search.trim()) params.set('search', search.trim());
               if (dateFrom) params.set('dateFrom', dateFrom);
               if (dateTo) params.set('dateTo', dateTo);
-              window.open(`/api/export?${params.toString()}`, '_blank');
+              params.set('token', token || '');
+              window.open(`/api/tickets/export?${params.toString()}`, '_blank');
             }}
             className="flex items-center gap-2 bg-solarized-base2 dark:bg-brand-900/40 hover:bg-solarized-base2 hover:text-solarized-base01 text-brand-700 dark:text-brand-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-solarized-base2 dark:border-brand-700/50 mr-2 shadow-sm"
             title={t('export_csv')}
