@@ -27,7 +27,8 @@ const STATUSES: StatusOption[] = [
   { key: 'available', label: 'Available', dot: 'bg-green-400' },
   { key: 'break', label: 'Break', dot: 'bg-yellow-400' },
   { key: 'lunch', label: 'Lunch', dot: 'bg-orange-400' },
-  { key: 'meeting', label: 'Meeting', dot: 'bg-solarized-base1' },
+  { key: 'meeting', label: 'Meeting', dot: 'bg-red-400' },
+  { key: 'training', label: 'Training / Focus', dot: 'bg-blue-400' },
 ];
 
 function statusDot(status: string) {

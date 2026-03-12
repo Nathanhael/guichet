@@ -25,6 +25,7 @@ import config from './config.js';
 import logger from './utils/logger.js';
 import { auth, authorize } from './middleware/auth.js';
 import { Ticket, Message, User, TicketStatus, UserRole } from './types/index.js';
+import * as presenceService from './services/presence.js';
 
 // PII Scanner
 function containsPII(text: string): boolean {
@@ -64,6 +65,7 @@ const io = new Server(httpServer, {
 });
 export { io };
 app.set('io', io);
+presenceService.setIo(io);
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -78,6 +80,8 @@ const globalLimiter = rateLimit({
 });
 app.use('/api', globalLimiter);
 
+
+
 export const authLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 5,
@@ -90,7 +94,7 @@ export const llmLimiter = rateLimit({
   message: { error: 'Too many LLM requests, please try again later.' }
 });
 
-const onlineUsers = new Map<string, any>();
+
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   logger.info({ method: req.method, url: req.url }, `Incoming ${req.method} request`);
@@ -143,7 +147,7 @@ app.get('/api/ratings', async (_req: Request, res: Response) => {
 });
 
 app.get('/api/online/:userId', (_req: Request, res: Response) => {
-  const online = onlineUsers.has(_req.params.userId);
+  const online = presenceService.getOnlineUsers().has(_req.params.userId);
   res.json({ online });
 });
 
@@ -734,10 +738,16 @@ function isWithinBusinessHours(): boolean {
   return currentMinutes >= (startH * 60 + startM) && currentMinutes < (endH * 60 + endM);
 }
 
-function broadcastOnlineExperts() {
-  const list = [...onlineUsers.values()].filter(u => u.role === 'expert').map(({ userId, name, status }) => ({ userId, name, status: status || 'available' }));
-  io.emit('experts:online', list);
-}
+app.post('/api/presence/status', [auth, authorize(['admin', 'expert'])], (req: Request, res: Response) => {
+  const { userId, status } = req.body;
+  if (!userId || !status) return res.status(400).json({ error: 'userId and status are required' });
+  const updated = presenceService.setUserStatus(userId, status);
+  if (updated) {
+    res.json({ success: true, userId, status });
+  } else {
+    res.status(404).json({ error: 'User not online' });
+  }
+});
 
 async function broadcastAgentStatus(agentId: string, online: boolean) {
   try {
@@ -763,8 +773,8 @@ io.on('connection', (socket: Socket) => {
     socket.data.userId = userId;
     socket.data.role = role;
     socket.data.name = name;
-    if (onlineUsers.has(userId)) onlineUsers.get(userId).count++; else onlineUsers.set(userId, { userId, name, role, status: 'available', count: 1 });
-    if (role === 'expert' || role === 'admin') broadcastOnlineExperts();
+    presenceService.identifyUser(userId, role, name);
+    if (role === 'expert' || role === 'admin') presenceService.broadcastOnlineExperts();
     if (role === 'agent') broadcastAgentStatus(userId, true);
   });
 
@@ -807,9 +817,8 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('status:set', ({ status }: { status: string }) => {
     const userId = socket.data.userId;
-    if (userId && onlineUsers.has(userId)) {
-      onlineUsers.get(userId).status = status;
-      broadcastOnlineExperts();
+    if (userId) {
+      presenceService.setUserStatus(userId, status);
     }
   });
 
@@ -839,7 +848,7 @@ io.on('connection', (socket: Socket) => {
       if (!ticketId || !senderId || !text) return;
       const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as Ticket;
       if (!ticket || ticket.status === 'closed') return;
-      const sender = onlineUsers.get(senderId) || await get('SELECT name, role FROM users WHERE id = $1', [senderId]);
+      const sender = presenceService.getOnlineUsers().get(senderId) || await get('SELECT name, role FROM users WHERE id = $1', [senderId]);
       if (!whisper) {
         const guard = await runGuards(text, senderId);
         if (!guard.ok) return socket.emit('message:blocked', { code: guard.code });
@@ -897,12 +906,10 @@ io.on('connection', (socket: Socket) => {
 
   socket.on('disconnect', () => {
     const userId = socket.data.userId;
-    if (userId && onlineUsers.has(userId)) {
-      const u = onlineUsers.get(userId);
-      u.count--;
-      if (u.count <= 0) {
-        onlineUsers.delete(userId);
-        if (u.role === 'agent') broadcastAgentStatus(userId, false);
+    if (userId) {
+      const result = presenceService.decrementUserCount(userId);
+      if (result && result.removed && result.role === 'agent') {
+        broadcastAgentStatus(userId, false);
       }
     }
   });
