@@ -1,0 +1,37 @@
+import { initTRPC, TRPCError } from '@trpc/server';
+import { Context } from './context.js';
+import { UserRole } from '../types/index.js';
+
+const t = initTRPC.context<Context>().create();
+
+export const router = t.router;
+export const publicProcedure = t.procedure;
+
+// Middleware for authenticated users
+export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+  return next({
+    ctx: {
+      user: ctx.user,
+    },
+  });
+});
+
+// Middleware for admin users
+export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (ctx.user.role !== 'admin') {
+    throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+  return next();
+});
+
+// Helper for dynamic role checks
+export const roleProcedure = (roles: UserRole[]) => 
+  protectedProcedure.use(({ ctx, next }) => {
+    if (!roles.includes(ctx.user.role)) {
+      throw new TRPCError({ code: 'FORBIDDEN' });
+    }
+    return next();
+  });

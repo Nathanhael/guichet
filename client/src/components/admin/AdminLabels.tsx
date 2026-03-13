@@ -1,63 +1,32 @@
-import { useState, useEffect } from 'react';
-import { Label } from '../../types';
-import useStore from '../../store/useStore';
+import { useState } from 'react';
+import { trpc } from '../../utils/trpc';
 
 export default function AdminLabels() {
-  const { token } = useStore();
-  const [labels, setLabels] = useState<Label[]>([]);
-  const [loading, setLoading] = useState(true);
   const [newText, setNewText] = useState('');
   const [newColor, setNewColor] = useState('indigo');
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchLabels = () => {
-    setLoading(true);
-    setError(null);
-    fetch('/api/labels', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((r) => {
-        if (!r.ok) throw new Error(`Server returned ${r.status}. Please check if the server is running and routes are updated.`);
-        return r.json();
-      })
-      .then(setLabels)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
+  const { data: labels, isLoading, error: fetchError, refetch } = trpc.label.list.useQuery();
+  
+  const createMutation = trpc.label.create.useMutation({
+    onSuccess: () => {
+      setNewText('');
+      refetch();
+    },
+  });
 
-  useEffect(() => {
-    fetchLabels();
-  }, []);
+  const deleteMutation = trpc.label.delete.useMutation({
+    onSuccess: () => {
+      refetch();
+    },
+  });
 
-  const addLabel = async () => {
+  const addLabel = () => {
     if (!newText.trim()) return;
-    setError(null);
-    try {
-      const res = await fetch('/api/labels', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ text: newText, color: newColor }),
-      });
-      if (res.ok) {
-        const added = await res.json();
-        setLabels([...labels, added]);
-        setNewText('');
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setError(data.error || `Failed to add label: ${res.status} ${res.statusText}`);
-      }
-    } catch (err: any) {
-      setError(`Network error: ${err.message}`);
-    }
+    createMutation.mutate({ text: newText, color: newColor });
   };
 
-  const deleteLabel = async (id: string) => {
-    try {
-      const res = await fetch(`/api/labels/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) {
-        setLabels(labels.filter((l) => l.id !== id));
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  const deleteLabel = (id: string) => {
+    deleteMutation.mutate(id);
   };
 
   const colors = [
@@ -75,6 +44,8 @@ export default function AdminLabels() {
     { key: 'slate', bg: 'bg-slate-500', text: 'text-slate-500' },
   ];
 
+  const error = fetchError?.message || createMutation.error?.message || deleteMutation.error?.message;
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between">
@@ -83,11 +54,11 @@ export default function AdminLabels() {
           <p className="text-sm text-solarized-base1">Manage tags for experts to categorize chats.</p>
         </div>
         <button
-          onClick={fetchLabels}
+          onClick={() => refetch()}
           className="p-2 rounded-lg bg-solarized-base2 dark:bg-brand-900/50 text-solarized-base1 hover:text-brand-500 transition-colors"
           title="Refresh Labels"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>
@@ -129,23 +100,23 @@ export default function AdminLabels() {
           </div>
           <button
             onClick={addLabel}
-            disabled={!newText.trim()}
+            disabled={!newText.trim() || createMutation.isPending}
             className="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2 rounded-xl text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-brand-500/20"
           >
-            Add Label
+            {createMutation.isPending ? 'Adding...' : 'Add Label'}
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {loading ? (
+        {isLoading ? (
           <p className="text-solarized-base1">Loading labels...</p>
-        ) : labels.length === 0 ? (
+        ) : !labels || labels.length === 0 ? (
           <p className="col-span-2 text-center py-12 text-solarized-base1 bg-solarized-base2 dark:bg-brand-900/40 rounded-2xl border-2 border-dashed border-solarized-base2 dark:border-brand-700">
             No labels created yet. Add one above!
           </p>
         ) : (
-          labels.map((l: Label) => (
+          labels.map((l) => (
             <div
               key={l.id}
               className="bg-solarized-base3 dark:bg-brand-800 rounded-2xl border border-solarized-base2 dark:border-brand-700 p-4 flex items-center justify-between group hover:shadow-md transition-all animate-slide-up"
@@ -156,7 +127,8 @@ export default function AdminLabels() {
               </div>
               <button
                 onClick={() => deleteLabel(l.id)}
-                className="opacity-0 group-hover:opacity-100 p-2 text-solarized-base1 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                disabled={deleteMutation.isPending}
+                className="opacity-0 group-hover:opacity-100 p-2 text-solarized-base1 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-50"
                 title="Delete Label"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

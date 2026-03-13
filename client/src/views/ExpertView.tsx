@@ -11,6 +11,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import { requestNotificationPermission } from '../utils/notifications';
 import { Ticket, Message, UserRole } from '../types';
 import { getTicketTime } from '../utils/dateUtils';
+import { trpc } from '../utils/trpc';
 
 const DEPT_COLOR: Record<string, string> = {
   DSC: 'bg-purple-100 text-purple-700',
@@ -143,7 +144,7 @@ interface OnlineExpertInfo {
 }
 
 export default function ExpertView() {
-  const { user, token, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, unreadTickets, clearUnread } = useStore();
+  const { user, token, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses } = useStore();
   const onlineExperts = useStore(s => s.onlineExperts as unknown as OnlineExpertInfo[]);
   const t = useT();
   const [myStatus, setMyStatus] = useState('available');
@@ -165,13 +166,19 @@ export default function ExpertView() {
   const [toast, setToast] = useState<string | null>(null);
   const ARCHIVE_LIMIT = ARCHIVE_PAGE_SIZE;
 
+  // tRPC data
+  trpc.label.list.useQuery(undefined, {
+    onSuccess: (data) => setAllLabels(data),
+  });
+  trpc.cannedResponse.list.useQuery(undefined, {
+    onSuccess: (data) => setCannedResponses(data),
+  });
+
   useEffect(() => {
     if (!toast) return;
     const tim = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(tim);
   }, [toast]);
-
-  const setAllLabels = useStore(s => s.setAllLabels);
 
   useEffect(() => {
     fetch('/api/tickets', {
@@ -181,24 +188,10 @@ export default function ExpertView() {
       .then((data) => setTickets((data as Ticket[]).filter((tk) => tk.status !== 'closed')))
       .catch(console.error);
 
-    fetch('/api/labels', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(setAllLabels)
-      .catch(console.error);
-
-    fetch('/api/canned-responses', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(r => r.json())
-      .then(useStore.getState().setCannedResponses)
-      .catch(console.error);
-
     if (notificationsEnabled) {
       requestNotificationPermission();
     }
-  }, [notificationsEnabled, token, setTickets, setAllLabels]);
+  }, [notificationsEnabled, token, setTickets]);
 
   useEffect(() => {
     if (!previewTicketId) return;

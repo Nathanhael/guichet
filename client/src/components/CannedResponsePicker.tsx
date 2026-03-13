@@ -1,23 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import useStore from '../store/useStore';
-
-interface CannedResponse {
-  id: string;
-  shortcut: string;
-  text: string;
-}
+import { trpc } from '../utils/trpc';
 
 interface CannedResponsePickerProps {
   onSelect: (text: string) => void;
 }
 
 export default function CannedResponsePicker({ onSelect }: CannedResponsePickerProps) {
-    const { cannedResponses } = useStore();
+    const { data: cannedResponses, isLoading } = trpc.cannedResponse.list.useQuery();
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef<HTMLDivElement>(null);
 
-    const filtered = (cannedResponses as CannedResponse[]).filter(r =>
+    const filtered = (cannedResponses || []).filter(r =>
         r.shortcut.toLowerCase().includes(search.toLowerCase()) ||
         r.text.toLowerCase().includes(search.toLowerCase())
     );
@@ -30,7 +24,7 @@ export default function CannedResponsePicker({ onSelect }: CannedResponsePickerP
         return () => document.removeEventListener('mousedown', onOutsideClick);
     }, []);
 
-    if (cannedResponses.length === 0) return null;
+    if (isLoading || !cannedResponses || cannedResponses.length === 0) return null;
 
     return (
         <div ref={ref} className="relative inline-block">
