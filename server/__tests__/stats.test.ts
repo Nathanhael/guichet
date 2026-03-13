@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeLiveDayStats } from '../app.js';
+import { computeLiveDayStats } from '../services/stats.js';
 import { Ticket } from '../types/index.js';
 
 describe('computeLiveDayStats', () => {
