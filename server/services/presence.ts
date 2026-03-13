@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { pubClient } from '../app.js';
+import { getRedisClients } from '../utils/redis.js';
 import logger from '../utils/logger.js';
 
 export interface OnlineUser {
@@ -20,6 +20,7 @@ export function setIo(socketIo: Server) {
 }
 
 export async function broadcastOnlineExperts(partnerId: string) {
+  const { pubClient } = getRedisClients();
   if (!io || !pubClient) return;
   
   try {
@@ -45,6 +46,7 @@ export async function broadcastOnlineExperts(partnerId: string) {
 }
 
 export async function identifyUser(userId: string, role: string, name: string, partnerId: string) {
+  const { pubClient } = getRedisClients();
   if (!pubClient) return;
   
   const key = `${REDIS_PREFIX}${userId}`;
@@ -74,6 +76,7 @@ export async function identifyUser(userId: string, role: string, name: string, p
 }
 
 export async function setUserStatus(userId: string, status: string) {
+  const { pubClient } = getRedisClients();
   if (!pubClient) return false;
   
   const key = `${REDIS_PREFIX}${userId}`;
@@ -92,6 +95,7 @@ export async function setUserStatus(userId: string, status: string) {
 }
 
 export async function decrementUserCount(userId: string) {
+  const { pubClient } = getRedisClients();
   if (!pubClient) return null;
   
   const key = `${REDIS_PREFIX}${userId}`;
@@ -118,6 +122,7 @@ export async function decrementUserCount(userId: string) {
  * Helper to get all online users for a specific partner (used by internal services)
  */
 export async function getOnlineUsersForPartner(partnerId: string): Promise<OnlineUser[]> {
+  const { pubClient } = getRedisClients();
   if (!pubClient) return [];
   const keys = await pubClient.keys(`${REDIS_PREFIX}*`);
   const list: OnlineUser[] = [];

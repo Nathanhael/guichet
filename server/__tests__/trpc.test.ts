@@ -52,7 +52,7 @@ describe('tRPC Integration Tests', () => {
 
       const result = await caller.user.list();
       expect(result).toEqual(mockUsers);
-      expect(dbModule.query).toHaveBeenCalledWith(expect.stringContaining('SELECT id, name, role, dept, lang FROM users'));
+      expect(dbModule.query).toHaveBeenCalledWith(expect.stringContaining('SELECT u.id, u.name, u.lang, m.role, m.dept'));
     });
   });
 
@@ -63,7 +63,7 @@ describe('tRPC Integration Tests', () => {
     });
 
     it('list should return tickets for authenticated user', async () => {
-      const user = { id: 'agent-1', role: 'agent' as const };
+      const user = { id: 'agent-1', role: 'agent' as const, partnerId: 'p1', isPlatformOperator: false };
       const caller = createCaller(user);
       
       const result = await caller.ticket.list({ agentId: 'agent-1' });
@@ -73,13 +73,11 @@ describe('tRPC Integration Tests', () => {
   });
 
   describe('statsRouter', () => {
-    it('getGlobalStats should require admin or expert role', async () => {
-      const agentCaller = createCaller({ id: 'agent-1', role: 'agent' as const });
+    it('getGlobalStats should require admin or support role', async () => {
+      const agentCaller = createCaller({ id: 'agent-1', role: 'agent' as const, partnerId: 'p1', isPlatformOperator: false });
       await expect(agentCaller.stats.getGlobalStats({})).rejects.toThrow(TRPCError);
 
-      const adminCaller = createCaller({ id: 'admin-1', role: 'admin' as const });
-      // Mocking computeLiveDayStats would be needed for a full test, 
-      // but here we just check if it doesn't throw a FORBIDDEN error immediately
+      const adminCaller = createCaller({ id: 'admin-1', role: 'admin' as const, partnerId: 'p1', isPlatformOperator: false });
       (dbModule.query as any).mockResolvedValue([]);
       (dbModule.get as any).mockResolvedValue({ total: 0 });
       

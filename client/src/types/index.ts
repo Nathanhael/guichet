@@ -17,6 +17,7 @@ export interface Membership {
   role: UserRole | 'manager' | 'platform_operator';
   dept?: string;
   manifest: PartnerManifest;
+  avatarUrl?: string;
 }
 
 export interface User {
@@ -24,6 +25,7 @@ export interface User {
   name: string;
   lang: 'nl' | 'fr' | 'en';
   isPlatformOperator: boolean;
+  avatarUrl?: string;
 }
 
 export interface StoreState {

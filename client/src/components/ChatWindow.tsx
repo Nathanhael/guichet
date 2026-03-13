@@ -548,15 +548,37 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             : 'bg-solarized-base3/20'
         }`}
       >
-        <div className="space-y-2 mb-4">
+        <div className="space-y-0.5 mb-4">
           {ticketMessages.length === 0 && (
             <p className="text-center text-solarized-base1 text-sm mt-8">{t('no_messages')}</p>
           )}
-          {ticketMessages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} ticketId={ticket.id} searchQuery={searchQuery} />
-          ))}
+          {ticketMessages.map((msg, idx) => {
+            const prevMsg = ticketMessages[idx - 1];
+            const nextMsg = ticketMessages[idx + 1];
 
-          {!ticket.expertName && !isClosed && (
+            const isSameSenderAsPrev = prevMsg && prevMsg.senderId === msg.senderId && !prevMsg.system && !msg.system;
+            const isSameSenderAsNext = nextMsg && nextMsg.senderId === msg.senderId && !nextMsg.system && !msg.system;
+
+            // Grouping logic: same sender and within 2 minutes
+            const timeDiffPrev = prevMsg ? (new Date(msg.timestamp || msg.createdAt).getTime() - new Date(prevMsg.timestamp || prevMsg.createdAt).getTime()) : 0;
+            const timeDiffNext = nextMsg ? (new Date(nextMsg.timestamp || nextMsg.createdAt).getTime() - new Date(msg.timestamp || msg.createdAt).getTime()) : 0;
+
+            const isGroupStart = !isSameSenderAsPrev || timeDiffPrev > 120000;
+            const isGroupEnd = !isSameSenderAsNext || timeDiffNext > 120000;
+
+            return (
+              <MessageBubble 
+                key={msg.id} 
+                message={msg} 
+                ticketId={ticket.id} 
+                searchQuery={searchQuery}
+                isGroupStart={isGroupStart}
+                isGroupEnd={isGroupEnd}
+              />
+            );
+          })}
+
+          {!ticket.supportName && !isClosed && (
             <div className="flex items-center justify-center gap-2 py-4 text-sm text-solarized-base1">
               <span className="animate-spin text-brand-400">⟳</span>
               {t('waiting_for_expert')}

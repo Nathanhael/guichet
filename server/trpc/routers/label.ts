@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { router, publicProcedure, adminProcedure } from '../trpc.js';
+import { router, adminProcedure, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { labels, ticketLabels } from '../../db/schema.js';
-import { eq, asc } from 'drizzle-orm';
+import { eq, and, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import type { Server } from 'socket.io';
 import logger from '../../utils/logger.js';
