@@ -155,7 +155,6 @@ export default function ExpertView() {
   const notificationsEnabled = useStore((s) => s.notificationsEnabled);
   const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
   const [previewTicketId, setPreviewTicketId] = useState<string | null>(null);
-  const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
   const [sidebarTab, setSidebarTab] = useState<'queue' | 'archive'>('queue');
   const [archivedTickets, setArchivedTickets] = useState<Ticket[]>([]);
   const [archiveTotal, setArchiveTotal] = useState(0);
@@ -189,13 +188,12 @@ export default function ExpertView() {
   );
 
   // tRPC: Preview Messages
-  const { data: previewMessagesData } = trpc.message.list.useQuery(
+  const { data: previewMessages = [] } = trpc.message.list.useQuery(
     { ticketId: previewTicketId || '' },
     {
       enabled: !!previewTicketId,
     }
   );
-  const previewMessages = previewMessagesData || [];
 
   // tRPC: Set Status
   const setStatusMutation = trpc.presence.setStatus.useMutation();
@@ -772,11 +770,12 @@ export default function ExpertView() {
               )}
             </button>
           </div>
-        </aside>
+            </motion.aside>
+          )}
+        </AnimatePresence>
 
         {/* Main */}
         <main className="flex-1 flex flex-col overflow-hidden">
-
           {/* Tab bar + view toggle */}
           {openTabTickets.length > 0 && (
             <div className="bg-solarized-base3 dark:bg-brand-800 border-b border-solarized-base2 dark:border-brand-700 flex items-center">
@@ -945,7 +944,7 @@ export default function ExpertView() {
             )}
           </div>
         </main>
-      </div>
+      </motion.div>
     </div>
   );
 }

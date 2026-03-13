@@ -248,6 +248,6 @@ export default function MessageBubble({ message, ticketId, searchQuery: _searchQ
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

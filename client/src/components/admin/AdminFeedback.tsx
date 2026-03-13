@@ -22,7 +22,6 @@ interface ExpertRatings {
 
 export default function AdminFeedback() {
   const { token } = useStore();
-  const [users, setUsers] = useState<User[]>([]);
   const [tab, setTab] = useState<'feedback' | 'ratings'>('feedback');
   const [showDismissed, setShowDismissed] = useState(false);
   const [selectedExpert, setSelectedExpert] = useState('ALL');
