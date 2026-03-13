@@ -1,114 +1,36 @@
 export type UserRole = 'agent' | 'expert' | 'admin';
 
+export interface PartnerManifest {
+  industry: string;
+  primaryColor: string;
+  secondaryColor: string;
+  ref1Label: string;
+  ref2Label: string;
+  departments: { id: string; label: string }[];
+  aiRules?: string;
+}
+
+export interface Membership {
+  id: string;
+  partnerId: string;
+  partnerName: string;
+  role: UserRole | 'manager' | 'platform_operator';
+  dept?: string;
+  manifest: PartnerManifest;
+}
+
 export interface User {
   id: string;
   name: string;
-  role: UserRole;
-  dept: string;
   lang: 'nl' | 'fr' | 'en';
-}
-
-export interface Label {
-  id: string;
-  text: string;
-  color: string;
-}
-
-export interface Participant {
-  id?: string;
-  name: string;
-}
-
-export interface Message {
-  id: string;
-  ticketId: string;
-  senderId: string;
-  senderName: string;
-  text: string;
-  translatedText?: string;
-  mediaUrl?: string;
-  whisper?: boolean | number;
-  system?: boolean | number;
-  createdAt: string;
-  deliveredAt?: string;
-  readAt?: string;
-  reactions?: any;
-  senderRole?: UserRole;
-  senderLang?: string;
-  originalText?: string;
-  improvedText?: string;
-  processedText?: string;
-  translationSkipped?: boolean | number;
-  fallback?: boolean | number;
-  timestamp?: string;
-  pending?: boolean;
-}
-
-export interface Ticket {
-  id: string;
-  dept: string;
-  agentId: string;
-  agentName: string;
-  agentLang: string;
-  cdbId?: string;
-  dareRef?: string;
-  status: 'open' | 'active' | 'closed';
-  expertId?: string;
-  expertName?: string;
-  expertLang?: string;
-  expertJoinedAt?: string;
-  createdAt: string;
-  closedAt?: string;
-  closingNotes?: string;
-  closedBy?: string;
-  participants: (string | Participant)[];
-  summary?: string;
-  labels?: string[];
-  title?: string;
-}
-
-export interface AppConfigLimits {
-  MAX_TICKETS_PER_EXPERT: number;
-  MAX_MESSAGE_LENGTH: number;
-}
-
-export interface AppConfigBusinessHours {
-  start: string;
-  end: string;
-  timezone: string;
-}
-
-export interface AppConfig {
-  limits: AppConfigLimits;
-  businessHours: AppConfigBusinessHours;
-}
-
-export interface CannedResponse {
-  id: string;
-  dept: string;
-  title: string;
-  text: string;
-}
-
-export interface RatingPromptData {
-  ticketId: string;
-  expertId: string;
-  expertName: string;
-}
-
-export interface OnlineExpert {
-  userId: string;
-  name: string;
-  status?: 'available' | 'break' | 'lunch' | 'meeting';
-}
-
-export interface ZenSettings {
-  autoBionic: boolean;
-  notificationShield: boolean;
+  isPlatformOperator: boolean;
 }
 
 export interface StoreState {
   user: User | null;
+  memberships: Membership[];
+  activeMembershipId: string | null;
+  activePartnerId: string | null;
   token: string | null;
   appConfig: AppConfig | null;
   dyslexicMode: boolean;
@@ -135,6 +57,8 @@ export interface StoreState {
   allLabels: Label[];
   queuePosition: { position: number; etaMins: number } | null;
 
+  setMemberships: (memberships: Membership[]) => void;
+  setActiveMembershipId: (id: string | null) => void;
   setCannedResponses: (responses: CannedResponse[]) => void;
   updateMessageState: (ticketId: string, messageId: string, updates: Partial<Message>) => void;
   setNotificationsEnabled: (enabled: boolean) => void;

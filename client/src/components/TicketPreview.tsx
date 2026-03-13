@@ -1,4 +1,5 @@
 import { useT } from '../i18n';
+import { usePartner } from '../hooks/usePartner';
 import MessageBubble from './MessageBubble';
 import { Ticket, Message } from '../types';
 
@@ -17,24 +18,21 @@ interface TicketPreviewProps {
 
 export default function TicketPreview({ ticket, messages, onJoin, onClose, joinDisabled }: TicketPreviewProps) {
   const t = useT();
+  const { manifest } = usePartner();
+  
   return (
     <div className="h-full flex flex-col p-4">
       <div className="bg-solarized-base3 dark:bg-brand-800 rounded-xl shadow-sm border border-solarized-base2 dark:border-brand-700 flex flex-col h-full">
         {/* Preview header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-solarized-base2 dark:border-brand-700 bg-solarized-base2/50 dark:bg-brand-900 rounded-t-xl">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${DEPT_COLOR[ticket.dept] || 'bg-gray-100 text-gray-700'}`}>
+             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${DEPT_COLOR[ticket.dept] || DEPT_COLOR[ticket.dept.toUpperCase()] || 'bg-gray-100 text-gray-700'}`}>
               {ticket.dept}
             </span>
             <span className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">{ticket.agentName}</span>
-            {ticket.cdbId && (
+            {(ticket.ref1 || (ticket as any).cdbId) && (
               <span className="text-xs font-mono bg-solarized-base2 dark:bg-gray-700 text-solarized-base01 dark:text-gray-300 px-2 py-0.5 rounded">
-                CDBID: {ticket.cdbId}
-              </span>
-            )}
-            {ticket.dareRef && (
-              <span className="text-xs font-mono bg-solarized-base2 dark:bg-gray-700 text-solarized-base01 dark:text-gray-300 px-2 py-0.5 rounded">
-                Dare Ref: {ticket.dareRef}
+                {ticket.dept === 'FOT' || ticket.dept === 'fot' ? manifest.ref2Label : manifest.ref1Label}: {ticket.ref1 || (ticket as any).cdbId}
               </span>
             )}
             <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded font-medium shrink-0">

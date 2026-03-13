@@ -7,6 +7,9 @@ import { UserRole } from '../types/index.js';
 export interface JwtPayload {
   userId: string;
   role: UserRole;
+  partnerId?: string;
+  membershipId?: string;
+  isPlatformOperator?: boolean;
   iat?: number;
   exp?: number;
 }
@@ -14,6 +17,9 @@ export interface JwtPayload {
 export interface TRPCUser {
   id: string;
   role: UserRole;
+  partnerId?: string;
+  membershipId?: string;
+  isPlatformOperator: boolean;
 }
 
 export async function createContext({ req, res }: CreateExpressContextOptions) {
@@ -26,6 +32,9 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
       user = {
         id: decoded.userId,
         role: decoded.role,
+        partnerId: decoded.partnerId,
+        membershipId: decoded.membershipId,
+        isPlatformOperator: !!decoded.isPlatformOperator
       };
     } catch (err) {
       // Ignore invalid tokens for base context

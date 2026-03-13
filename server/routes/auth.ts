@@ -58,8 +58,31 @@ router.post('/login', [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Fetch memberships and partner details
+        const userMemberships = await (await import('../db.js')).query(
+            `SELECT m.*, p.name as partner_name, p.industry, p.primary_color, p.secondary_color, p.ref_1_label, p.ref_2_label, p.departments, p.ai_rules
+             FROM memberships m
+             JOIN partners p ON m.partner_id = p.id
+             WHERE m.user_id = $1`,
+            [user.id]
+        ) as any[];
+
+        if (userMemberships.length === 0 && !user.isPlatformOperator) {
+            return res.status(403).json({ error: 'User has no active memberships' });
+        }
+
+        // Default to first membership for now
+        const activeMembership = userMemberships[0];
+
         const token = jwt.sign(
-            { userId: user.id, role: user.role, dept: user.dept },
+            { 
+                userId: user.id, 
+                role: activeMembership?.role || 'platform_operator', 
+                dept: activeMembership?.dept,
+                partnerId: activeMembership?.partner_id,
+                membershipId: activeMembership?.id,
+                isPlatformOperator: user.isPlatformOperator
+            },
             config.JWT_SECRET,
             { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
         );
@@ -69,14 +92,79 @@ router.post('/login', [
             user: {
                 id: user.id,
                 name: user.name,
-                role: user.role,
-                dept: user.dept,
-                lang: user.lang
-            }
+                lang: user.lang,
+                isPlatformOperator: user.isPlatformOperator
+            },
+            memberships: userMemberships.map(m => ({
+                id: m.id,
+                partnerId: m.partner_id,
+                partnerName: m.partner_name,
+                role: m.role,
+                dept: m.dept,
+                manifest: {
+                    industry: m.industry,
+                    primaryColor: m.primary_color,
+                    secondaryColor: m.secondary_color,
+                    ref1Label: m.ref_1_label,
+                    ref2Label: m.ref_2_label,
+                    departments: JSON.parse(m.departments || '[]'),
+                    aiRules: m.ai_rules
+                }
+            })),
+            activePartnerId: activeMembership?.partner_id
         });
     } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Login error');
         res.status(500).json({ error: 'Server error during login' });
+    }
+});
+
+router.post('/switch-partner', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
+    try {
+        const { membershipId } = req.body;
+        const userId = req.user.id;
+
+        const membership = await get(
+            `SELECT m.*, p.name as partner_name, p.industry, p.primary_color, p.secondary_color, p.ref_1_label, p.ref_2_label, p.departments, p.ai_rules
+             FROM memberships m
+             JOIN partners p ON m.partner_id = p.id
+             WHERE m.id = $1 AND m.user_id = $2`,
+            [membershipId, userId]
+        ) as any;
+
+        if (!membership) {
+            return res.status(403).json({ error: 'Invalid membership for this user' });
+        }
+
+        const token = jwt.sign(
+            { 
+                userId: userId, 
+                role: membership.role, 
+                dept: membership.dept,
+                partnerId: membership.partner_id,
+                membershipId: membership.id,
+                isPlatformOperator: req.user.isPlatformOperator
+            },
+            config.JWT_SECRET,
+            { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
+        );
+
+        res.json({
+            token,
+            activePartnerId: membership.partner_id,
+            manifest: {
+                industry: membership.industry,
+                primaryColor: membership.primary_color,
+                secondaryColor: membership.secondary_color,
+                ref1Label: membership.ref_1_label,
+                ref2Label: membership.ref_2_label,
+                departments: JSON.parse(membership.departments || '[]'),
+                aiRules: membership.ai_rules
+            }
+        });
+    } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Switch partner error');
+        res.status(500).json({ error: 'Server error during partner switch' });
     }
 });
 

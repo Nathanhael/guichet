@@ -4,6 +4,7 @@ import { useT } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import PartnerSwitcher from '../components/PartnerSwitcher';
 import AdminStats from '../components/admin/AdminStats';
 import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
@@ -116,6 +117,8 @@ export default function AdminView() {
             <span className="text-sm font-bold text-white">{user.name}</span>
             <span className="text-[10px] text-brand-300 font-medium uppercase tracking-wider">{user.role}</span>
           </div>
+
+          <PartnerSwitcher />
 
           <div className="flex items-center gap-2 bg-black/10 dark:bg-white/5 p-1 rounded-xl border border-white/10">
             <LanguageSwitcher />

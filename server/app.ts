@@ -36,13 +36,16 @@ const io = new Server(httpServer, {
   cors: { origin: config.CORS_ORIGIN, methods: ['GET', 'POST'] },
 });
 
+let pubClient: any = null;
+let subClient: any = null;
+
 // Redis Adapter Initialization
 if (config.REDIS_URL) {
-  const pubClient = createClient({ url: config.REDIS_URL });
-  const subClient = pubClient.duplicate();
+  pubClient = createClient({ url: config.REDIS_URL });
+  subClient = pubClient.duplicate();
 
-  pubClient.on('error', (err) => logger.error({ err }, 'Redis Pub Client Error'));
-  subClient.on('error', (err) => logger.error({ err }, 'Redis Sub Client Error'));
+  pubClient.on('error', (err: any) => logger.error({ err }, 'Redis Pub Client Error'));
+  subClient.on('error', (err: any) => logger.error({ err }, 'Redis Sub Client Error'));
 
   try {
     await Promise.all([pubClient.connect(), subClient.connect()]);
@@ -53,7 +56,7 @@ if (config.REDIS_URL) {
   }
 }
 
-export { io };
+export { io, pubClient, subClient };
 app.set('io', io);
 presenceService.setIo(io);
 setBusinessHoursIo(io);

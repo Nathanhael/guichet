@@ -6,8 +6,9 @@ import { WifiOff, AlertCircle, Loader2 } from 'lucide-react';
 
 // Lazy load large view components
 const AgentView = lazy(() => import('./views/AgentView'));
-const ExpertView = lazy(() => import('./views/ExpertView'));
+const SupportView = lazy(() => import('./views/SupportView'));
 const AdminView = lazy(() => import('./views/AdminView'));
+const PlatformView = lazy(() => import('./views/PlatformView'));
 
 function LoadingFallback() {
   return (
@@ -46,9 +47,20 @@ function ConnectionBanner() {
 }
 
 export default function App() {
-  const { user, darkMode, dyslexicMode, highContrastMode, setAppConfig } = useStore();
+  const { user, darkMode, dyslexicMode, highContrastMode, setAppConfig, memberships, activeMembershipId } = useStore();
   
   useSocket();
+
+  // Dynamic Theming
+  useEffect(() => {
+    const activeMembership = memberships.find(m => m.id === activeMembershipId);
+    if (activeMembership?.manifest) {
+      const { primaryColor, secondaryColor } = activeMembership.manifest;
+      document.documentElement.style.setProperty('--brand-primary', primaryColor);
+      document.documentElement.style.setProperty('--brand-secondary', secondaryColor);
+      // Update Tailwind-compatible RGB if needed, but for now hex is fine for basic vars
+    }
+  }, [memberships, activeMembershipId]);
 
   useEffect(() => {
     if (darkMode) {
@@ -84,11 +96,26 @@ export default function App() {
   const renderView = () => {
     if (!user) return <LoginView />;
     
+    // Determine active role based on membership
+    const { memberships, activeMembershipId } = useStore.getState();
+    const activeMembership = memberships.find(m => m.id === activeMembershipId);
+    
+    // If user is Platform Operator and no specific membership selected, show Platform View
+    if (user.isPlatformOperator && !activeMembershipId) {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <PlatformView />
+        </Suspense>
+      );
+    }
+
+    const role = activeMembership?.role;
+
     return (
       <Suspense fallback={<LoadingFallback />}>
-        {user.role === 'agent' && <AgentView />}
-        {user.role === 'expert' && <ExpertView />}
-        {user.role === 'admin' && <AdminView />}
+        {role === 'agent' && <AgentView />}
+        {role === 'support' && <SupportView />}
+        {(role === 'admin' || role === 'manager') && <AdminView />}
       </Suspense>
     );
   };

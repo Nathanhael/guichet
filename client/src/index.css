@@ -2,10 +2,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
 @layer base {
   :root {
     --glass-opacity: 0.8;
+    --brand-primary: #a855f7;
+    --brand-secondary: #3b82f6;
+  }
     --glass-blur: 12px;
     --glass-saturate: 150%;
     --glass-border: rgba(255, 255, 255, 0.4);

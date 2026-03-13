@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
+import { usePartner } from '../hooks/usePartner';
 import { useT } from '../i18n';
 import BusinessHoursGuard from '../components/BusinessHoursGuard';
 import ChatWindow from '../components/ChatWindow';
 import DarkModeToggle from '../components/DarkModeToggle';
 import RatingModal from '../components/RatingModal';
 import FeedbackModal from '../components/FeedbackModal';
+import PartnerSwitcher from '../components/PartnerSwitcher';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { requestNotificationPermission } from '../utils/notifications';
@@ -15,11 +17,19 @@ import { trpc } from '../utils/trpc';
 
 export default function AgentView() {
   const { user, tickets, setTickets, activeTicketId, setActiveTicketId, logout, notificationsEnabled, setNotificationsEnabled } = useStore();
+  const { manifest, partnerName } = usePartner();
   const t = useT();
-  const [form, setForm] = useState({ dept: 'DSC', refValue: '' });
+  const [form, setForm] = useState({ dept: '', refValue: '' });
   const [submitting, setSubmitting] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
   const pendingNavigate = useRef(false);
+
+  // Initialize form with first department
+  useEffect(() => {
+    if (manifest.departments.length > 0 && !form.dept) {
+      setForm(f => ({ ...f, dept: manifest.departments[0].id }));
+    }
+  }, [manifest.departments, form.dept]);
 
   // tRPC Ticket List
   const { data: ticketList, isLoading } = trpc.ticket.list.useQuery(
@@ -57,13 +67,12 @@ export default function AgentView() {
       dept: form.dept,
       agentId: user.id,
       agentLang: user.lang,
-      cdbId: form.dept === 'DSC' ? form.refValue.trim() : null,
-      dareRef: form.dept === 'FOT' ? form.refValue.trim() : null,
+      ref1: form.refValue.trim(),
       text: '',
       mediaUrl: null,
     });
 
-    setForm({ dept: 'DSC', refValue: '' });
+    setForm({ dept: manifest.departments[0]?.id || '', refValue: '' });
   };
 
   if (!user) return null;
@@ -73,11 +82,12 @@ export default function AgentView() {
     <div className="h-screen flex flex-col overflow-hidden bg-transparent animate-fade-in">
         <nav className="bg-brand-900/95 backdrop-blur-md text-white px-6 py-3 flex items-center justify-between shadow-lg sticky top-0 z-50 border-b border-brand-800">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-xl tracking-tight">M&P Support</span>
+            <span className="font-bold text-xl tracking-tight">{partnerName} Support</span>
             <span className="text-xs bg-gradient-to-r from-accent-500 to-rose-500 px-2.5 py-1 rounded-md font-semibold tracking-wide shadow-sm">Agent</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-solarized-base1">{user.name} · {user.lang.toUpperCase()}</span>
+            <PartnerSwitcher />
             {activeTicket && (
               <button
                 onClick={() => setActiveTicketId(null)}
@@ -147,21 +157,21 @@ export default function AgentView() {
 
                   <form onSubmit={submitTicket} className="space-y-4">
                     <div className="flex gap-3">
-                      {['DSC', 'FOT'].map((d) => (
+                      {manifest.departments.map((d) => (
                         <button
-                          key={d}
+                          key={d.id}
                           type="button"
-                          onClick={() => setForm((f) => ({ ...f, dept: d }))}
-                          className={`flex-1 py-4 rounded-xl border-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-1 ${form.dept === d
-                            ? d === 'DSC'
+                          onClick={() => setForm((f) => ({ ...f, dept: d.id }))}
+                          className={`flex-1 py-4 rounded-xl border-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-1 ${form.dept === d.id
+                            ? d.id === 'dsc' || d.id === 'DSC'
                               ? 'border-amber-500 bg-gradient-to-b from-amber-50/50 to-solarized-base3 dark:from-amber-900/30 dark:to-brand-800 text-amber-600 dark:text-amber-400 shadow-md'
                               : 'border-indigo-500 bg-gradient-to-b from-indigo-50/50 to-solarized-base3 dark:from-indigo-900/30 dark:to-brand-800 text-indigo-600 dark:text-indigo-400 shadow-md'
                             : 'border-solarized-base2 dark:border-brand-700 bg-solarized-base3/50 dark:bg-brand-800/50 text-solarized-base01 dark:text-slate-400 hover:border-accent-300 dark:hover:border-accent-500 hover:shadow-sm'
                             }`}
                         >
-                          <span className="block text-lg font-bold tracking-tight">{d}</span>
+                          <span className="block text-lg font-bold tracking-tight">{d.id.toUpperCase()}</span>
                           <span className="block text-xs font-medium opacity-80 mt-1">
-                            {d === 'DSC' ? 'Billing & Sales' : t('technical')}
+                            {d.label}
                           </span>
                         </button>
                       ))}
@@ -169,7 +179,7 @@ export default function AgentView() {
 
                     <div>
                       <label className="block text-sm font-semibold text-solarized-base01 dark:text-gray-300 mb-2">
-                        {form.dept === 'FOT' ? 'Dare Ref' : 'CDBID'}{' '}
+                        {form.dept === 'FOT' || form.dept === 'fot' ? manifest.ref2Label : manifest.ref1Label}{' '}
                         <span className="text-solarized-base1 font-normal">(optional)</span>
                       </label>
                       <input
@@ -180,7 +190,7 @@ export default function AgentView() {
                           const digits = e.target.value.replace(/[^0-9]/g, '');
                           setForm((f) => ({ ...f, refValue: digits.slice(0, 15) }));
                         }}
-                        placeholder={form.dept === 'FOT' ? 'e.g. 1234567890' : 'e.g. 123456'}
+                        placeholder={`e.g. 123456`}
                         className="input-field"
                       />
                     </div>

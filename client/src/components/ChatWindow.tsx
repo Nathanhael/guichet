@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
+import { usePartner } from '../hooks/usePartner';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
 import CannedResponsePicker from './CannedResponsePicker';
@@ -18,6 +19,7 @@ interface ChatWindowProps {
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
   const { user, messages, typingUsers, agentOnline, setAgentOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode, setMessages } = useStore();
+  const { manifest } = usePartner();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
@@ -321,7 +323,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
         <div className="min-w-0 pr-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-tighter ${
-              ticket.dept === 'DSC' 
+              ticket.dept === 'DSC' || ticket.dept === 'dsc'
                 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' 
                 : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
             }`}>
@@ -336,9 +338,9 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 />
               )}
             </span>
-            {ticket.cdbId && (
+            {(ticket.ref1 || (ticket as any).cdbId) && (
               <span className="text-[10px] font-mono bg-solarized-base2/50 dark:bg-gray-700/50 text-solarized-base1 dark:text-gray-400 px-1.5 py-0.5 rounded shrink-0 hidden sm:inline-block">
-                CDBID: {ticket.cdbId}
+                {ticket.dept === 'FOT' || ticket.dept === 'fot' ? manifest.ref2Label : manifest.ref1Label}: {ticket.ref1 || (ticket as any).cdbId}
               </span>
             )}
             {ticket.agentLang && (

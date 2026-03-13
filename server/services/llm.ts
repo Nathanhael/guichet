@@ -32,45 +32,47 @@ export interface LLMSummaryResult {
     updatedAt: string;
 }
 
-export async function getLLMSummary(periodType: string, periodValue: string): Promise<LLMSummaryResult> {
+export async function getLLMSummary(periodType: string, periodValue: string, partnerId: string): Promise<LLMSummaryResult> {
     const periodKey = `${periodType}:${periodValue}`;
-
-    const cached = await get('SELECT * FROM llm_summaries WHERE period = $1', [periodKey]) as Record<string, string> | undefined;
-    if (cached) {
-        return {
-            sentiment: cached.sentiment,
-            questions: JSON.parse(cached.questions || '[]'),
-            summary: cached.summary,
-            updatedAt: cached.updated_at
-        };
-    }
-
-    return await generateLLMSummary(periodType, periodValue);
-}
-
-async function generateLLMSummary(periodType: string, periodValue: string): Promise<LLMSummaryResult> {
-    const periodKey = `${periodType}:${periodValue}`;
-    logger.info({ periodKey }, 'Generating LLM summary');
-
-    let messages: MessageRow[] = [];
-    if (periodType === 'day') {
-        messages = await getMessagesForDay(periodValue);
-    } else if (periodType === 'week') {
-        messages = await getMessagesForWeek(periodValue);
-    } else if (periodType === 'month') {
-        messages = await getMessagesForMonth(periodValue);
-    }
-
-    if (!messages || messages.length === 0) {
-        return { sentiment: 'No data', questions: [], summary: 'No tickets found for this period.', updatedAt: new Date().toISOString() };
-    }
-
-    const textToAnalyze = messages
-        .map(m => `${m.senderName}: ${m.processedText || m.text || ''}`)
-        .join('\n')
-        .slice(0, 4000);
+    logger.info({ periodKey, partnerId }, 'Generating LLM summary');
 
     try {
+        const existing = await get('SELECT * FROM llm_summaries WHERE period = $1 AND partner_id = $2', [periodKey, partnerId]) as any;
+        if (existing) {
+            const updatedAt = new Date(existing.updated_at);
+            const now = new Date();
+            const diffMs = now.getTime() - updatedAt.getTime();
+            if (diffMs < 30 * 60 * 1000) { // 30 min cache
+                return { 
+                    sentiment: existing.sentiment, 
+                    questions: JSON.parse(existing.questions || '[]'), 
+                    summary: existing.summary, 
+                    updatedAt: existing.updated_at 
+                };
+            }
+        }
+
+        let messages: MessageRow[] = [];
+        if (periodType === 'day') {
+            messages = await getMessagesForDay(periodValue, partnerId);
+        } else if (periodType === 'week') {
+            messages = await getMessagesForWeek(periodValue, partnerId);
+        } else if (periodType === 'month') {
+            messages = await getMessagesForMonth(periodValue, partnerId);
+        }
+
+        if (!messages || messages.length === 0) {
+            return { sentiment: 'No data', questions: [], summary: 'No tickets found for this period.', updatedAt: new Date().toISOString() };
+        }
+
+        const partner = await get('SELECT * FROM partners WHERE id = $1', [partnerId]) as any;
+        const aiRules = partner?.ai_rules || 'You are a professional support expert.';
+
+        const textToAnalyze = messages
+            .map(m => `${m.senderName}: ${m.processedText || m.text || ''}`)
+            .join('\n')
+            .slice(0, 4000);
+
         const ollamaHost = config.OLLAMA_HOST;
         const response = await fetch(`${ollamaHost}/api/generate`, {
             method: 'POST',
@@ -79,7 +81,8 @@ async function generateLLMSummary(periodType: string, periodValue: string): Prom
                 model: MODEL,
                 stream: false,
                 format: 'json',
-                prompt: `Analyze the following support ticket messages:
+                prompt: `${aiRules}
+        Analyze the following support ticket messages for the ${partner?.industry || 'general'} industry:
         
 ${textToAnalyze}
 
@@ -112,8 +115,8 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
         }
 
         await run(
-            'INSERT INTO llm_summaries (period, sentiment, questions, summary, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (period) DO UPDATE SET sentiment = EXCLUDED.sentiment, questions = EXCLUDED.questions, summary = EXCLUDED.summary, updated_at = EXCLUDED.updated_at',
-            [periodKey, result.sentiment, JSON.stringify(result.top3Questions), result.summary, new Date().toISOString()]
+            'INSERT INTO llm_summaries (period, partner_id, sentiment, questions, summary, updated_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (period, partner_id) DO UPDATE SET sentiment = EXCLUDED.sentiment, questions = EXCLUDED.questions, summary = EXCLUDED.summary, updated_at = EXCLUDED.updated_at',
+            [periodKey, partnerId, result.sentiment, JSON.stringify(result.top3Questions), result.summary, new Date().toISOString()]
         );
 
         return { sentiment: result.sentiment, questions: result.top3Questions, summary: result.summary, updatedAt: new Date().toISOString() };
@@ -151,16 +154,16 @@ Return a JSON object with a single key "score" which is a float between -1.0 (Ve
     }
 }
 
-async function getMessagesForDay(date: string): Promise<MessageRow[]> {
-    return (await query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::date = $1 AND system = 0 AND whisper = 0', [date])) as unknown as Promise<MessageRow[]>;
+async function getMessagesForDay(date: string, partnerId: string): Promise<MessageRow[]> {
+    return (await query('SELECT m.text, m.translated_text as "processedText", m.sender_name as "senderName" FROM messages m JOIN tickets t ON m.ticket_id = t.id WHERE t.created_at::date = $1 AND t.partner_id = $2 AND m.system = 0 AND m.whisper = 0', [date, partnerId])) as unknown as Promise<MessageRow[]>;
 }
 
-async function getMessagesForWeek(weekStr: string): Promise<MessageRow[]> {
-    return (await query(`SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE to_char(created_at, 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr])) as unknown as Promise<MessageRow[]>;
+async function getMessagesForWeek(weekStr: string, partnerId: string): Promise<MessageRow[]> {
+    return (await query(`SELECT m.text, m.translated_text as "processedText", m.sender_name as "senderName" FROM messages m JOIN tickets t ON m.ticket_id = t.id WHERE to_char(t.created_at, 'YYYY-WW') = $1 AND t.partner_id = $2 AND m.system = 0 AND m.whisper = 0`, [weekStr, partnerId])) as unknown as Promise<MessageRow[]>;
 }
 
-async function getMessagesForMonth(monthStr: string): Promise<MessageRow[]> {
-    return (await query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::text LIKE $1 AND system = 0 AND whisper = 0', [`${monthStr}%`])) as unknown as Promise<MessageRow[]>;
+async function getMessagesForMonth(monthStr: string, partnerId: string): Promise<MessageRow[]> {
+    return (await query('SELECT m.text, m.translated_text as "processedText", m.sender_name as "senderName" FROM messages m JOIN tickets t ON m.ticket_id = t.id WHERE t.created_at::text LIKE $1 AND t.partner_id = $2 AND m.system = 0 AND m.whisper = 0', [`${monthStr}%`, partnerId])) as unknown as Promise<MessageRow[]>;
 }
 
 export async function summarizeConversation(ticketId: string): Promise<string> {

@@ -19,9 +19,17 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
-// Middleware for admin users
+// Middleware for Platform Operators (Developers)
+export const platformProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (!ctx.user.isPlatformOperator) {
+    throw new TRPCError({ code: 'FORBIDDEN', message: 'Platform Operator role required' });
+  }
+  return next();
+});
+
+// Middleware for admin users (Partner Admins)
 export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== 'admin') {
+  if (ctx.user.role !== 'admin' && !ctx.user.isPlatformOperator) {
     throw new TRPCError({ code: 'FORBIDDEN' });
   }
   return next();
