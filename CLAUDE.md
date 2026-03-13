@@ -130,23 +130,23 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 **Code splitting** (`vite.config.ts` manual chunks):
 - `vendor-charts` (Recharts + D3), `vendor-ui-icons` (Lucide), `vendor-ui-anim` (Framer Motion), `vendor` (other deps).
 
-**Admin views** (`components/admin/Stats/`): `StaffingDemand.tsx`, `LLMSummary.tsx`, `TopicSummary.tsx` — compose into `AdminStats.tsx`.
+**Admin views** (`components/admin/`): 
+- **Operational Dashboard** (`AdminStats.tsx`): Focuses on real-time performance (Response times, SLA health, Staffing demand).
+- **AI Intelligence Hub** (`AdminAIStats.tsx`): Dedicated qualitative workspace (Sentiment trends, Topic clustering, LLM summaries).
 
 ### Key Conventions
 
 - **Roles**: `agent`, `expert`, `admin`. **Departments**: `DSC` (Billing & Sales), `FOT` (Technical).
-- **Aesthetics**: Solaris design system — glassmorphism, vibrant gradients. Two themes: **Solaris Light** (soft, premium whitespace) and **Liquid Dark** (deep blues/purples with glass overlays). Never use plain Tailwind colors like `bg-blue-500`. Use `.glass-card` for primary containers, `.glass-panel` for sidebars/headers (always with `backdrop-blur`). Theme color tokens (defined in `index.css`): Solaris Purple `rgba(168, 85, 247, 0.4)`, Solaris Blue `rgba(59, 130, 246, 0.4)`. Use `bg-gradient-to-br` for background surfaces.
+- **Aesthetics**: Solaris design system — glassmorphism, vibrant gradients. 
+  - **Zen Mode**: Immersive focus environment for experts using `.zen-glass` (high blur/contrast) and `AmbientBackground.tsx` (slow-pulsing gradients).
+  - **Themes**: Solaris Light and Liquid Dark. Never use plain Tailwind colors. Use `.glass-card` / `.glass-panel`.
 - **Fonts**: `Lexend` for dyslexic mode; `Outfit`/`Inter` for standard UI.
-- **Localization**: Use the `useT` hook for all UI strings. Hardcoded strings (e.g. guard messages) are currently Dutch but the goal is full language agnosticism — avoid adding new Dutch-hardcoded strings and prefer i18n keys instead.
-- **BionicText**: Wrap text-heavy components with `<BionicText />` to support bionic reading mode.
-- **Safety**: Business hours enforced server-side (`server/services/businessHours.ts`) and client-side (`BusinessHoursGuard.tsx`). GDPR purge every 24h.
-- **Zustand pitfall**: `messages` and `typingUsers` in `useStore.ts` are keyed by `ticketId` — never wipe them during partial updates; always use functional updates or shallow copies for nested ticket properties. Use descriptive setters (e.g., `setDyslexicMode` not `toggleMode`).
-- **TypeScript**: Avoid `any` — define interfaces in `client/src/types/index.ts` (canonical type source) or at the top of the relevant file.
-- **Socket room membership**: Socket.io rooms are in-memory and lost on reconnect. Agents auto-rejoin their active ticket rooms on `socket:identify` (handlers.ts). Experts explicitly re-join via `expert:join` when clicking a ticket. Any new role/feature that needs real-time events must join the relevant room.
-- **pg type parsers**: `server/db/postgres.ts` sets `types.setTypeParser(1114/1184)` to return `timestamptz`/`timestamp` columns as raw strings. Raw `pool.query()` calls bypass Drizzle's `mode: 'string'` — without these parsers, Date objects are returned and `.startsWith()` calls on timestamps will crash.
-- **`message:new` socket payload**: Server emits a flat `Message` object (no wrapper). Client listener is `s.on('message:new', (message: Message) => ...)` — not `({ message })`.
-- **AdminStats error handling**: Always check `r.ok` before calling `setStats` — a 500 error body is truthy and will be set as stats, causing a render crash with no ErrorBoundary (blank screen).
-- **Socket listeners**: Always implement a cleanup teardown in `useEffect` for any listeners registered outside `useSocket.ts`.
-- **Ollama**: `http://host.docker.internal:11434`, model `gemmatranslate4b`. Always handle the offline case.
-- **Config**: All env vars live in `server/config.ts` (PORT, CORS_ORIGIN, JWT_SECRET, SLA_THRESHOLD_MS, etc.).
-- **Vite proxy**: `/api` and `/uploads` proxied to `localhost:3001` (configured in `vite.config.ts`).
+- **Localization**: Use the `useT` hook for all UI strings. Avoid hardcoded Dutch strings.
+- **AI Pipeline**:
+  - **Sentiment**: Every non-whisper message is asynchronously scored via Ollama (`llm.ts`) and updated in the DB.
+  - **Summarization**: Batch ticket analysis for recurring issues.
+- **Safety**: Business hours enforced. GDPR purge every 24h (aggregates into `daily_stats`).
+- **TypeScript**: Avoid `any` — maintain 100% type safety in `client/src/types/index.ts`.
+- **Socket**: Redis adapter for horizontal scaling. Always implement cleanup in `useEffect` for listeners.
+- **pg type parsers**: Raw `pool.query()` requires the timestamp parsers in `server/db/postgres.ts` to return ISO strings.
+- **Ollama**: `http://host.docker.internal:11434`, model `gemmatranslate4b`. Handle offline cases gracefully.

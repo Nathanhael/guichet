@@ -20,7 +20,7 @@ Every view features a **Cognitive & Neuro-Inclusive Cockpit** in the header. Use
 
 1. **Dyslexic Mode (🔤)**: Switches the font to **Lexend** and optimizes spacing.
 2. **Bionic Reading (👁️)**: Highlights word fixation points to improve reading focus.
-3. **Zen Mode (⚡)**: (Expert only) Collapses the sidebar and dims inactive chats to maximize focus on the active conversation.
+3. **Zen Mode (⚡)**: (Expert only) An immersive "Flow State" environment with adaptive glassmorphism, slow-pulsing ambient gradients, and notification shielding.
 4. **Language Switcher (🌐)**: Instantly switch between English, Dutch, and French.
 5. **Dark Mode (🌗)**: Toggle between Solaris Dark and High-Contrast Light modes.
 
@@ -33,19 +33,25 @@ Every view features a **Cognitive & Neuro-Inclusive Cockpit** in the header. Use
 4. Join the ticket as Sophie.
 5. Send a message as Sophie in French; Jan will see it auto-translated to Dutch.
 
-### Scenario 2: Expert Multi-Tasking
+### Scenario 2: Expert Multi-Tasking & Zen
 1. Log in as **Expert Piet**.
 2. Have multiple Agents (Jan, Marie, Tom) create tickets.
 3. As Piet, join all tickets.
 4. Use the layout toggle (next to your status) to switch between **Tabs**, **Split Vertical**, or **2x2 Grid** views.
+5. Toggle **Zen Mode** in the header to experience the immersive focus environment.
 
-### Scenario 3: Admin Monitoring & Labeling
+### Scenario 3: Admin Operational Monitoring
 1. Log in as **Admin Dirk**.
-2. View real-time KPIs and trend charts.
-3. Navigate to **Label Management**.
-4. Create a new label (e.g., "Critical" with red color).
-5. Delete an obsolete label and notice it disappears immediately from all views.
-6. Open the **Archive** tab to search and export past conversations to CSV.
+2. Open the **Operational Dashboard**.
+3. View real-time KPIs like **p95 Response Time** and **SLA Health**.
+4. Monitor **Staffing Demand** to see if expert coverage matches current volume.
+
+### Scenario 4: AI Strategic Insights
+1. As **Admin Dirk**, navigate to the **AI Intelligence Hub**.
+2. Observe the **Global Sentiment Score** and **Historical Sentiment Trends**.
+3. Review the **Resolution Quality (Re-open Rate)** to identify recurring friction.
+4. Read the **AI Qualitative Summary** to understand the "why" behind the numbers.
+5. Use **Topic Clustering** to see which subjects are currently driving sentiment.
 
 ### Scenario 4: Reactions & Whispers
 1. As an **Expert**, click the permanently visible smiley face icon next to an Agent's message.

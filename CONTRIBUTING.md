@@ -26,6 +26,11 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 - **Bionic Reading**: Any text-heavy component should utilize the `<BionicText />` wrapper.
 - **High Contrast Mode**: Components must respond to the `high-contrast-mode` class by switching to a simplified, high-visibility color palette (typically pure black and white).
 
+### Zen Mode Utilities
+- **.zen-glass**: Higher blur (40px) and saturation for deep focus environments.
+- **.zen-dim**: Applied to background elements to de-prioritize non-focused content.
+- **AmbientBackground.tsx**: Standard component for the slow-pulsing background gradients used in Zen mode and AI insights.
+
 ### Identity-Integrated Chat
 - **Bubble Alignment**: Identity is indicated primarily by alignment (right for the current user, left for others).
 - **Bubble Tails**: Use `.bubble-tail-mine` and `.bubble-tail-other` for visual hierarchy.

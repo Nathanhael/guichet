@@ -14,6 +14,11 @@ Every message that passes the [Message Guards](./GUARDS_FEATURE.md) enters the p
     *   Performs high-fidelity translation using the local Ollama instance.
     *   Skips this step if both parties use the same language.
 
+3.  **Sentiment Scoring (Asynchronous)**:
+    *   Triggered immediately after storage.
+    *   Analyzes the emotional tone of the original message (-1.0 to +1.0).
+    *   Results are used by the **AI Intelligence Hub** for real-time monitoring and historical trend analysis.
+
 ---
 
 ## User Experience Design
