@@ -88,7 +88,7 @@ export function useSocket(): Socket {
     });
 
     // New message in any open ticket
-    s.on('message:new', ({ message }: { message: Message }) => {
+    s.on('message:new', (message: Message) => {
       addMessage(message.ticketId, message);
       // Mark unread and play sound if not the sender's own message
       const state = useStore.getState();

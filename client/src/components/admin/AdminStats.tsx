@@ -59,7 +59,10 @@ export default function AdminStats() {
     fetch(`/api/stats?${params.toString()}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`Stats fetch failed: ${r.status}`);
+        return r.json();
+      })
       .then(setStats)
       .catch(console.error);
   };
