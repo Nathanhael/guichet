@@ -31,14 +31,14 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: config.UPLOAD_M
 const router = Router();
 
 router.post('/', auth, (req: Request, res: Response) => {
-  upload.single('file')(req, res, async (err: Error | multer.MulterError | undefined) => {
+  upload.single('file')(req, res, async (err: unknown) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: `Bestand te groot (max ${config.UPLOAD_MAX_SIZE / 1024 / 1024}MB)` });
       }
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ error: (err as Error).message });
     } else if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ error: (err as Error).message });
     }
 
     if (!req.file) return res.status(400).json({ error: 'Geen bestand ontvangen' });

@@ -3,15 +3,16 @@ import { appRouter } from '../trpc/router.js';
 import { TRPCError } from '@trpc/server';
 import jwt from 'jsonwebtoken';
 import config from '../config.js';
+import { User } from '../types/index.js';
 
 // Mock the database
-const mockQueryBuilder: any = {
+const mockQueryBuilder = {
   where: vi.fn().mockReturnThis(),
   orderBy: vi.fn().mockReturnThis(),
   limit: vi.fn().mockReturnThis(),
   offset: vi.fn().mockReturnThis(),
-  then: (onFullfilled: any) => Promise.resolve([]).then(onFullfilled),
-  catch: (onRejected: any) => Promise.resolve([]).catch(onRejected),
+  then: (onFullfilled: (val: any) => any) => Promise.resolve([]).then(onFullfilled),
+  catch: (onRejected: (err: any) => any) => Promise.resolve([]).catch(onRejected),
 };
 
 vi.mock('../db.js', () => ({
@@ -32,9 +33,9 @@ vi.mock('../db.js', () => ({
 import * as dbModule from '../db.js';
 
 describe('tRPC Integration Tests', () => {
-  const createCaller = (user: any = null) => {
+  const createCaller = (user: Partial<User> | null = null) => {
     return appRouter.createCaller({
-      user,
+      user: user as User,
       token: user ? jwt.sign(user, config.JWT_SECRET) : null,
     });
   };
@@ -62,7 +63,7 @@ describe('tRPC Integration Tests', () => {
     });
 
     it('list should return tickets for authenticated user', async () => {
-      const user = { id: 'agent-1', role: 'agent' };
+      const user = { id: 'agent-1', role: 'agent' as const };
       const caller = createCaller(user);
       
       const result = await caller.ticket.list({ agentId: 'agent-1' });
@@ -73,10 +74,10 @@ describe('tRPC Integration Tests', () => {
 
   describe('statsRouter', () => {
     it('getGlobalStats should require admin or expert role', async () => {
-      const agentCaller = createCaller({ id: 'agent-1', role: 'agent' });
+      const agentCaller = createCaller({ id: 'agent-1', role: 'agent' as const });
       await expect(agentCaller.stats.getGlobalStats({})).rejects.toThrow(TRPCError);
 
-      const adminCaller = createCaller({ id: 'admin-1', role: 'admin' });
+      const adminCaller = createCaller({ id: 'admin-1', role: 'admin' as const });
       // Mocking computeLiveDayStats would be needed for a full test, 
       // but here we just check if it doesn't throw a FORBIDDEN error immediately
       (dbModule.query as any).mockResolvedValue([]);
@@ -84,23 +85,23 @@ describe('tRPC Integration Tests', () => {
       
       try {
         await adminCaller.stats.getGlobalStats({});
-      } catch (err: any) {
-        expect(err.code).not.toBe('FORBIDDEN');
+      } catch (err: unknown) {
+        expect((err as TRPCError).code).not.toBe('FORBIDDEN');
       }
     });
   });
 
   describe('messageRouter', () => {
     it('list should block agents from other tickets', async () => {
-      const agentCaller = createCaller({ id: 'agent-2', role: 'agent' });
+      const agentCaller = createCaller({ id: 'agent-2', role: 'agent' as const });
       
       // Mock the ownership check select
       // We need to return a different agentId to trigger FORBIDDEN
-      const mockOwnershipBuilder: any = {
+      const mockOwnershipBuilder = {
         from: vi.fn().mockReturnThis(),
         where: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
-        then: (onFullfilled: any) => Promise.resolve([{ agentId: 'agent-1' }]).then(onFullfilled),
+        then: (onFullfilled: (val: any) => any) => Promise.resolve([{ agentId: 'agent-1' }]).then(onFullfilled),
       };
       
       (dbModule.db.select as any).mockReturnValueOnce(mockOwnershipBuilder);
@@ -111,7 +112,7 @@ describe('tRPC Integration Tests', () => {
 
   describe('presenceRouter', () => {
     it('setStatus should update user status', async () => {
-      const expert = { id: 'expert-1', role: 'expert' };
+      const expert = { id: 'expert-1', role: 'expert' as const };
       const caller = createCaller(expert);
 
       // We don't mock the presence service here, so it might fail if setUserStatus is called,
@@ -119,7 +120,7 @@ describe('tRPC Integration Tests', () => {
       // In a real integration test, we might mock the presence service too.
       
       // Let's just verify it rejects for unauthorized users
-      const agentCaller = createCaller({ id: 'agent-1', role: 'agent' });
+      const agentCaller = createCaller({ id: 'agent-1', role: 'agent' as const });
       await expect(agentCaller.presence.setStatus({ userId: 'expert-1', status: 'break' })).rejects.toThrow(TRPCError);
     });
   });

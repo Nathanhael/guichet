@@ -26,11 +26,11 @@ interface StatusOption {
 }
 
 const STATUSES: StatusOption[] = [
-  { key: 'available', label: 'Available', dot: 'bg-green-400' },
-  { key: 'break', label: 'Break', dot: 'bg-yellow-400' },
-  { key: 'lunch', label: 'Lunch', dot: 'bg-orange-400' },
-  { key: 'meeting', label: 'Meeting', dot: 'bg-red-400' },
-  { key: 'training', label: 'Training / Focus', dot: 'bg-blue-400' },
+  { key: 'available', label: 'status_available', dot: 'bg-green-400' },
+  { key: 'break', label: 'status_break', dot: 'bg-yellow-400' },
+  { key: 'lunch', label: 'status_lunch', dot: 'bg-orange-400' },
+  { key: 'meeting', label: 'status_meeting', dot: 'bg-red-400' },
+  { key: 'training', label: 'status_training', dot: 'bg-blue-400' },
 ];
 
 function statusDot(status: string) {
@@ -58,7 +58,7 @@ function StatusPicker({ value, onChange }: { value: string; onChange: (v: string
         className="flex items-center gap-2 bg-brand-700 hover:bg-brand-600 rounded-lg px-2.5 py-1.5 transition-colors"
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${current.dot}`} />
-        <span className="text-xs font-medium text-white">{current.label}</span>
+        <span className="text-xs font-medium text-white">{t(current.label)}</span>
         <svg xmlns="http://www.w3.org/2000/svg" className={`h-3 w-3 text-solarized-base1 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
@@ -74,7 +74,7 @@ function StatusPicker({ value, onChange }: { value: string; onChange: (v: string
                 }`}
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
-              {s.label}
+              {t(s.label)}
               {s.key === value && (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-auto text-brand-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -360,7 +360,7 @@ export default function ExpertView() {
               <LanguageSwitcher />
               <button
                 onClick={toggleFocusMode}
-                title={focusMode ? 'Exit Zen Mode' : 'Enter Zen Mode (Focus)'}
+                title={focusMode ? t('exit_zen_mode') : t('enter_zen_mode')}
                 aria-label="Toggle Zen Mode"
                 className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 flex items-center justify-center border border-transparent ${
                   focusMode 
@@ -377,8 +377,8 @@ export default function ExpertView() {
               
               <button
                 onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                title={notificationsEnabled ? 'Notifications on — click to mute' : 'Notifications off — click to enable'}
-                aria-label={notificationsEnabled ? 'Mute notifications' : 'Enable notifications'}
+                title={notificationsEnabled ? t('notifications_on') : t('notifications_off')}
+                aria-label={notificationsEnabled ? t('mute_notifications') : t('enable_notifications')}
                 className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 flex items-center justify-center border border-transparent ${
                   notificationsEnabled 
                     ? 'bg-white/20 dark:bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
@@ -445,13 +445,13 @@ export default function ExpertView() {
                   <button
                     onClick={() => switchSidebarTab('queue')}
                     className="text-solarized-base1 hover:text-brand-500 transition-colors"
-                    title="Back to queue"
+                    title={t('back_to_queue')}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                   </button>
-                  <h2 className="font-semibold text-solarized-base01 dark:text-solarized-base1 text-sm uppercase tracking-wide">Archive</h2>
+                  <h2 className="font-semibold text-solarized-base01 dark:text-solarized-base1 text-sm uppercase tracking-wide">{t('archive')}</h2>
                 </div>
               )}
     
@@ -517,7 +517,7 @@ export default function ExpertView() {
                                           {ticket.participants.map((p, idx) => {
                                             const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
                                             const pName = pObj.name;
-                                            const pAvatar = (pObj as any).avatar;
+                                            const pAvatar = (pObj as {avatar?: string}).avatar;
                                             return (
                                               <div
                                                 key={idx}
@@ -600,7 +600,7 @@ export default function ExpertView() {
                                           {ticket.participants.map((p, idx) => {
                                             const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
                                             const pName = pObj.name;
-                                            const pAvatar = (pObj as any).avatar;
+                                            const pAvatar = (pObj as {avatar?: string}).avatar;
                                             return (
                                               <div
                                                 key={idx}
@@ -641,7 +641,7 @@ export default function ExpertView() {
                       type="text"
                       value={archiveSearch}
                       onChange={(e) => { setArchiveOffset(0); setArchiveSearch(e.target.value); }}
-                      placeholder="Search name, CDBID, Dare Ref…"
+                      placeholder={t('archive_search_placeholder')}
                       className="w-full text-xs border border-solarized-base2 dark:border-brand-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white dark:bg-gray-700 text-solarized-base01 dark:text-gray-100 placeholder-solarized-base1"
                     />
                     <div className="flex gap-1">
@@ -654,7 +654,7 @@ export default function ExpertView() {
                             : 'bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base1 dark:hover:bg-gray-600'
                             }`}
                         >
-                          {d === 'all' ? 'All' : d}
+                          {d === 'all' ? t('all') : d}
                         </button>
                       ))}
                     </div>
@@ -662,12 +662,12 @@ export default function ExpertView() {
     
                   <div className="flex-1 overflow-y-auto">
                     {archiveQuery.isLoading && archivedTickets.length === 0 ? (
-                      <p className="text-center text-solarized-base1 text-sm py-8">Loading…</p>
+                      <p className="text-center text-solarized-base1 text-sm py-8">{t('loading')}</p>
                     ) : archivedTickets.length === 0 ? (
-                      <p className="text-center text-solarized-base1 text-sm py-8">No results.</p>
+                      <p className="text-center text-solarized-base1 text-sm py-8">{t('no_results')}</p>
                     ) : (
                       <>
-                        <p className="text-xs text-solarized-base1 px-3 py-2">{archiveTotal} total</p>
+                        <p className="text-xs text-solarized-base1 px-3 py-2">{archiveTotal} {t('total_count')}</p>
                         <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
                           {archivedTickets.map((ticket) => {
                             const isPreviewed = previewTicketId === ticket.id;
@@ -694,7 +694,7 @@ export default function ExpertView() {
                                     {ticket.dareRef && <span title="Dare Ref">{ticket.dareRef}</span>}
                                   </div>
                                 )}
-                                {ticket.expertName && <p className="text-[11px] text-solarized-base1 font-medium">Expert: {ticket.expertName}</p>}
+                                {ticket.expertName && <p className="text-[11px] text-solarized-base1 font-medium">{t('expert_prefix')} {ticket.expertName}</p>}
                                 {ticket.closingNotes && (
                                   <p className="text-xs text-solarized-base1 mt-1.5 italic line-clamp-2 border-l-2 border-amber-300 dark:border-amber-700 pl-2">
                                     {ticket.closingNotes}
@@ -712,7 +712,7 @@ export default function ExpertView() {
                               disabled={archiveQuery.isFetching}
                               className="w-full text-xs py-1.5 rounded-lg border border-gray-200 dark:border-brand-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-brand-700 disabled:opacity-40 transition-colors"
                             >
-                              {archiveQuery.isFetching ? 'Loading…' : `Load more (${archiveTotal - archivedTickets.length} remaining)`}
+                              {archiveQuery.isFetching ? t('loading') : `${t('load_more')} (${archiveTotal - archivedTickets.length} ${t('remaining')})`}
                             </button>
                           </div>
                         )}
@@ -725,16 +725,16 @@ export default function ExpertView() {
               {/* Online experts */}
               <div className="border-t border-solarized-base2 dark:border-brand-700 px-3 py-2 shrink-0">
                 <p className="text-xs text-solarized-base1 uppercase tracking-wide mb-1.5 px-1">
-                  Online experts {onlineExperts.length > 0 && <span className="text-green-500">· {onlineExperts.length}</span>}
+                  {t('online_experts')} {onlineExperts.length > 0 && <span className="text-green-500">· {onlineExperts.length}</span>}
                 </p>
                 {onlineExperts.length === 0 ? (
-                  <p className="text-xs text-solarized-base1 px-1">No experts online</p>
+                  <p className="text-xs text-solarized-base1 px-1">{t('no_experts_online')}</p>
                 ) : (
                   <div className="flex flex-wrap gap-1 px-1">
                     {onlineExperts.slice(0, 12).map((e) => (
                       <div
                         key={e.userId}
-                        title={`${e.name}${e.status && e.status !== 'available' ? ` · ${e.status}` : ''}`}
+                        title={`${e.name}${e.status && e.status !== 'available' ? ` · ${t(STATUSES.find(s => s.key === e.status)?.label || '')}` : ''}`}
                         className="relative w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center text-xs font-semibold ring-2 ring-white dark:ring-gray-800"
                       >
                         {e.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
@@ -764,9 +764,9 @@ export default function ExpertView() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                   </svg>
-                  Archive
+                  {t('archive')}
                   {sidebarTab === 'archive' && archiveTotal > 0 && (
-                    <span className="ml-auto text-xs text-solarized-base1">{archiveTotal} chats</span>
+                    <span className="ml-auto text-xs text-solarized-base1">{archiveTotal} {t('total_chats')}</span>
                   )}
                 </button>
               </div>
@@ -810,8 +810,8 @@ export default function ExpertView() {
               )}
               {(viewMode === 'split' || viewMode === 'vsplit') && (
                 <div className="flex-1 px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
-                  {openTabTickets.length} {openTabTickets.length === 1 ? 'chat' : 'chats'} open
-                  {openTabTickets.length < 4 && <span className="ml-2 text-solarized-base1">· max 4</span>}
+                  {openTabTickets.length} {openTabTickets.length === 1 ? t('chat') : t('active_tickets')}
+                  {openTabTickets.length < 4 && <span className="ml-2 text-solarized-base1">· {t('max_chats_hint')}</span>}
                 </div>
               )}
 
@@ -819,21 +819,21 @@ export default function ExpertView() {
               <div className="flex items-center gap-1 px-3 border-l border-solarized-base2 dark:border-brand-700 shrink-0">
                 <button
                   onClick={() => setViewMode('tabs')}
-                  title="Tab view"
+                  title={t('tab_view')}
                   className={`p-1.5 rounded-md transition-colors ${viewMode === 'tabs' ? 'bg-solarized-base2 dark:bg-brand-900/30 text-brand-600' : 'text-solarized-base1 hover:text-solarized-base01 hover:bg-solarized-base2 dark:hover:bg-brand-700'}`}
                 >
                   <TabIcon />
                 </button>
                 <button
                   onClick={() => setViewMode('vsplit')}
-                  title="Vertical split (columns)"
+                  title={t('vertical_split')}
                   className={`p-1.5 rounded-md transition-colors ${viewMode === 'vsplit' ? 'bg-solarized-base2 dark:bg-brand-900/30 text-brand-600' : 'text-solarized-base1 hover:text-solarized-base01 hover:bg-solarized-base2 dark:hover:bg-brand-700'}`}
                 >
                   <VSplitIcon />
                 </button>
                 <button
                   onClick={() => setViewMode('split')}
-                  title="Grid split (2×2)"
+                  title={t('grid_split')}
                   className={`p-1.5 rounded-md transition-colors ${viewMode === 'split' ? 'bg-solarized-base2 dark:bg-brand-900/30 text-brand-600' : 'text-solarized-base1 hover:text-solarized-base01 hover:bg-solarized-base2 dark:hover:bg-brand-700'}`}
                 >
                   <SplitIcon />
@@ -905,7 +905,7 @@ export default function ExpertView() {
                         onClick={() => setFocusedTicketId(null)}
                         className="ml-auto text-xs text-solarized-base1 hover:text-solarized-base01 dark:hover:text-gray-200 px-2 py-1 rounded hover:bg-solarized-base2 dark:hover:bg-gray-600 transition-colors"
                       >
-                        Show all
+                        {t('show_all')}
                       </button>
                     </div>
                   )}

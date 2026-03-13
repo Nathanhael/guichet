@@ -155,7 +155,7 @@ describe('useStore', () => {
       expect(useStore.getState().typingUsers['t1']?.['Expert A']).toBe(true);
 
       act(() => useStore.getState().setTyping('t1', 'Expert A', false));
-      expect(useStore.getState().typingUsers['t1']?.['Expert A']).toBe(false);
+      expect(useStore.getState().typingUsers['t1']?.['Expert A']).toBeUndefined();
     });
 
     it('sets online experts', () => {

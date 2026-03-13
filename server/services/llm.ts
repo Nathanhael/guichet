@@ -35,7 +35,7 @@ export interface LLMSummaryResult {
 export async function getLLMSummary(periodType: string, periodValue: string): Promise<LLMSummaryResult> {
     const periodKey = `${periodType}:${periodValue}`;
 
-    const cached = await get('SELECT * FROM llm_summaries WHERE period = $1', [periodKey]);
+    const cached = await get('SELECT * FROM llm_summaries WHERE period = $1', [periodKey]) as Record<string, string> | undefined;
     if (cached) {
         return {
             sentiment: cached.sentiment,
@@ -124,24 +124,24 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
 }
 
 async function getMessagesForDay(date: string): Promise<MessageRow[]> {
-    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::date = $1 AND system = 0 AND whisper = 0', [date]) as Promise<MessageRow[]>;
+    return (await query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::date = $1 AND system = 0 AND whisper = 0', [date])) as unknown as Promise<MessageRow[]>;
 }
 
 async function getMessagesForWeek(weekStr: string): Promise<MessageRow[]> {
-    return query(`SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE to_char(created_at, 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr]) as Promise<MessageRow[]>;
+    return (await query(`SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE to_char(created_at, 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr])) as unknown as Promise<MessageRow[]>;
 }
 
 async function getMessagesForMonth(monthStr: string): Promise<MessageRow[]> {
-    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::text LIKE $1 AND system = 0 AND whisper = 0', [`${monthStr}%`]) as Promise<MessageRow[]>;
+    return (await query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::text LIKE $1 AND system = 0 AND whisper = 0', [`${monthStr}%`])) as unknown as Promise<MessageRow[]>;
 }
 
 export async function summarizeConversation(ticketId: string): Promise<string> {
     logger.info({ ticketId }, 'Summarizing conversation');
     
-    const messages = await query(
+    const messages = (await query(
         'SELECT sender_name as "senderName", text as "originalText" FROM messages WHERE ticket_id = $1 AND system = 0 AND whisper = 0 ORDER BY created_at ASC',
         [ticketId]
-    ) as ConversationMessageRow[];
+    )) as unknown as ConversationMessageRow[];
 
     if (!messages || messages.length === 0) {
         return 'No conversation recorded.';

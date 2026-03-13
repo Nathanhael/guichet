@@ -92,7 +92,7 @@ export function registerSocketHandlers(io: Server) {
       try {
         const { agentId, agentLang, dept, cdbId, dareRef, text, mediaUrl } = data;
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
-        const agentUser = await get('SELECT name FROM users WHERE id = $1', [agentId]) as User;
+        const agentUser = (await get('SELECT name FROM users WHERE id = $1', [agentId])) as unknown as User;
         const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, cdbId: cdbId || null, dareRef: dareRef || null, status: 'open', expertId: null, createdAt: new Date().toISOString(), participants: '[]' };
         await run('INSERT INTO tickets (id, dept, agent_id, agent_name, agent_lang, cdb_id, dare_ref, status, created_at, participants) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)', [ticket.id, ticket.dept, ticket.agentId, ticket.agentName, ticket.agentLang, ticket.cdbId, ticket.dareRef, ticket.status, ticket.createdAt, ticket.participants]);
 
@@ -111,7 +111,7 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('expert:join', async ({ ticketId, expertId, expertName, expertLang }: ExpertJoinPayload) => {
       try {
-        const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as Ticket;
+        const ticket = (await get('SELECT * FROM tickets WHERE id = $1', [ticketId])) as unknown as Ticket;
         if (!ticket) return;
         const participants = JSON.parse(ticket.participants || '[]');
         if (!participants.find((p: Participant) => p.id === expertId)) participants.push({ id: expertId, name: expertName });
@@ -133,7 +133,7 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('expert:leave', async ({ ticketId, expertId, expertName }: ExpertLeavePayload) => {
       try {
-        const ticket = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as Ticket;
+        const ticket = (await get('SELECT participants FROM tickets WHERE id = $1', [ticketId])) as unknown as Ticket;
         if (!ticket) return;
         let participants = JSON.parse(ticket.participants || '[]');
         participants = participants.filter((p: Participant) => p.id !== expertId);
@@ -155,9 +155,9 @@ export function registerSocketHandlers(io: Server) {
     socket.on('message:send', async ({ ticketId, senderId, text, mediaUrl, whisper }: MessageSendPayload) => {
       try {
         if (!ticketId || !senderId || !text) return;
-        const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as Ticket;
+        const ticket = (await get('SELECT * FROM tickets WHERE id = $1', [ticketId])) as unknown as Ticket;
         if (!ticket || ticket.status === 'closed') return;
-        const sender = (presenceService.getOnlineUsers().get(senderId) || await get('SELECT name, role, lang FROM users WHERE id = $1', [senderId])) as SenderInfo;
+        const sender = (presenceService.getOnlineUsers().get(senderId) || (await get('SELECT name, role, lang FROM users WHERE id = $1', [senderId])) as unknown) as SenderInfo;
         if (!whisper) {
           const guard = await runGuards(text, senderId);
           if (!guard.ok) return socket.emit('message:blocked', { code: guard.code });
@@ -165,7 +165,7 @@ export function registerSocketHandlers(io: Server) {
           resetRepetition(senderId);
         }
         const recipientLang = (sender.role === 'agent') ? ticket.expertLang : ticket.agentLang;
-        const { processedText, improvedText, translationSkipped, fallback } = await processMessage(text, sender.role, sender.lang, recipientLang || sender.lang);
+        const { processedText, improvedText, translationSkipped, fallback } = await processMessage(text, sender.role as 'agent' | 'expert', sender.lang, recipientLang || sender.lang);
         const messageId = uuidv4();
         const now = new Date().toISOString();
         await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [messageId, ticketId, senderId, sender.name, text, processedText, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}']);
@@ -176,7 +176,7 @@ export function registerSocketHandlers(io: Server) {
     socket.on('reaction:toggle', async ({ ticketId, messageId, emoji, userId }: ReactionTogglePayload) => {
       try {
         if (!ticketId || !messageId || !emoji || !userId) return;
-        const message = await get('SELECT reactions FROM messages WHERE id = $1', [messageId]) as Message;
+        const message = (await get('SELECT reactions FROM messages WHERE id = $1', [messageId])) as unknown as Message;
         if (!message) return;
 
         const reactions = JSON.parse(message.reactions || '{}');

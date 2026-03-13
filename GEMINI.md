@@ -28,7 +28,7 @@ This file serves as the primary instructional context for Gemini CLI when workin
     - **Correct**: `docker compose exec server npm test`
     - **Incorrect**: `npm test`
 2.  **Solaris Design Standards**: Do not use plain Tailwind colors (e.g., `bg-blue-500`). Use the custom glassmorphism utilities (`.glass-card`, `.glass-panel`) and gradients defined in `client/src/index.css`.
-3.  **Dutch-First Hardcoding**: If a string *must* be hardcoded (e.g., system messages), use **Dutch**. However, prefer using the `useT` hook and `client/src/i18n.ts` for UI strings.
+3.  **Localization-First**: Prefer using the `useT` hook and `client/src/i18n.ts` for all UI strings. The `ExpertView` and `AdminView` are fully localized. If a string *must* be hardcoded (e.g., system messages), use **Dutch**.
 4.  **Graceful AI Fallback**: Always ensure the system remains functional if the Ollama service is offline.
 5.  **State Management**: `client/src/store/useStore.ts` is the single source of truth. Always use functional updates for nested ticket/message objects.
 6.  **tRPC & Drizzle Preference**: New data-fetching logic should use **tRPC procedures** instead of raw Express routes. Database interactions must use **Drizzle ORM**; avoid raw `pool.query()` calls (see `docs/superpowers/specs/`).

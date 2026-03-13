@@ -19,13 +19,13 @@ describe('useT (i18n)', () => {
   it('returns Dutch translation when lang is nl', () => {
     act(() => useStore.getState().setSelectedLang('nl'));
     const { result } = renderHook(() => useT());
-    expect(result.current('sign_out')).toBe('Uitloggen');
+    expect(result.current('sign_out')).toBe('Afmelden');
   });
 
   it('returns French translation when lang is fr', () => {
     act(() => useStore.getState().setSelectedLang('fr'));
     const { result } = renderHook(() => useT());
-    expect(result.current('sign_out')).toBe('Déconnexion');
+    expect(result.current('sign_out')).toBe('Se déconnecter');
   });
 
   it('falls back to English for missing keys in other languages', () => {
