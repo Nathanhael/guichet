@@ -134,20 +134,37 @@ For a detailed breakdown of the system design, real-time flows, and modular arch
 
 | Suite | Location | Stack | Coverage |
 |---|---|---|---|
-| API integration | `server/__tests__/api.test.ts` | vitest + supertest | Ticket, message, feedback, label CRUD |
-| Auth flow | `server/__tests__/auth.test.ts` | vitest + supertest | Register, login, JWT validation, RBAC |
-| Statistics | `server/__tests__/stats.test.ts` | vitest + supertest | Stats endpoint, date filtering, dept filtering |
-| UI components | `client/src/components/admin/shared/__tests__/` | vitest + @testing-library/react | StatCard rendering |
+| Auth middleware | `server/__tests__/auth.test.ts` | vitest | JWT validation, RBAC |
+| Guards | `server/__tests__/guards.test.ts` | vitest | All 7 guards + integration |
+| Statistics | `server/__tests__/stats.test.ts` | vitest | computeLiveDayStats |
+| Translation | `server/__tests__/translate.test.ts` | vitest | Improve, translate, fallback |
 
 ## Deployment (Docker)
 
+### Development
 ```yaml
 # docker-compose.yml
 services:
   db:       # PostgreSQL 16 (port 5432)
-  server:   # Node 20 + Express + PostgreSQL (port 3001)
-  client:   # Vite dev server (port 5173, proxies /api to server)
+  server:   # Node 20 dev server (port 3001)
+  client:   # Vite dev server (port 5173)
 ```
+
+### Production
+```yaml
+# docker-compose.prod.yml
+services:
+  db:       # PostgreSQL 16 with healthcheck
+  server:   # Multi-stage build, non-root user
+  client:   # Multi-stage build with nginx (port 80)
+```
+
+### CI/CD
+GitHub Actions pipeline (`.github/workflows/ci.yml`):
+- TypeScript type checking (server + client)
+- Server tests with PostgreSQL service container
+- Client tests
+- Production build verification
 
 - Ollama runs on the host; Docker containers reach it via `host.docker.internal:11434`
 - PostgreSQL runs in a dedicated container; configured via environment variables

@@ -22,7 +22,7 @@ The system automatically scans AI outputs to prevent the model from echoing sens
 
 - **Stateless AI Calls**: Each request to Ollama is independent. No conversation history is passed to the model, preventing state-leakage between different tickets.
 - **Principle of Least Privilege**: The Ollama container has no network or filesystem access beyond its own API. It cannot interact with the PostgreSQL database.
-- **Role-Based Access (RBAC)**: All socket events and API routes are guarded by JWT-based middleware, ensuring only authenticated Agents, Experts, and Admins can trigger the AI pipeline.
+- **Role-Based Access (RBAC)**: All API routes require JWT authentication. Admin-only endpoints (feedback management, ratings) enforce additional role checks. Socket events are guarded via presence identification.
 
 ## GDPR Compliance
 

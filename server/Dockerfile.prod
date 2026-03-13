@@ -1,0 +1,28 @@
+# Stage 1: Build (needs devDependencies for TypeScript compilation)
+FROM node:20-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache python3 make g++
+COPY package.json package-lock.json* ./
+RUN npm ci
+COPY . .
+RUN npx tsc --project tsconfig.json
+
+# Stage 2: Production dependencies only
+FROM node:20-alpine AS deps
+WORKDIR /app
+RUN apk add --no-cache python3 make g++
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
+
+# Stage 3: Runtime
+FROM node:20-alpine
+WORKDIR /app
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+COPY --from=builder /app/dist ./dist
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+RUN mkdir -p uploads && chown -R nodejs:nodejs /app
+USER nodejs
+EXPOSE 3001
+ENV NODE_ENV=production
+CMD ["node", "dist/app/index.js"]
