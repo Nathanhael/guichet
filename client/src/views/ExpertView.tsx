@@ -6,6 +6,7 @@ import { useT } from '../i18n';
 import { MAX_OPEN_CHATS, ARCHIVE_PAGE_SIZE } from '../config';
 import ChatWindow from '../components/ChatWindow';
 import TicketPreview from '../components/TicketPreview';
+import AmbientBackground from '../components/AmbientBackground';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -334,7 +335,11 @@ export default function ExpertView() {
   if (!user) return null;
 
   return (
-    <div className="h-screen bg-transparent animate-fade-in flex flex-col overflow-hidden relative">
+    <div className={`h-screen bg-transparent animate-fade-in flex flex-col overflow-hidden relative transition-all duration-700 ${focusMode ? 'zen-mode' : ''}`}>
+      <AnimatePresence>
+        {focusMode && <AmbientBackground />}
+      </AnimatePresence>
+
       {/* Custom Toast Notification Overlay */}
       <div
         className={`absolute top-20 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 ease-out flex items-center gap-3 bg-red-600/90 backdrop-blur-md text-white px-5 py-3 rounded-full shadow-2xl shadow-red-600/20 border border-red-500 max-w-md w-full sm:w-auto ${toast ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-4 scale-95 pointer-events-none'
@@ -345,10 +350,16 @@ export default function ExpertView() {
         </svg>
         <span className="text-sm font-semibold tracking-wide">{toast}</span>
       </div>
-      <nav className="bg-brand-900/95 backdrop-blur-md text-white px-6 py-3 flex items-center justify-between shadow-lg sticky top-0 z-50 border-b border-brand-800">
+      <nav className={`px-6 transition-all duration-500 flex items-center justify-between shadow-lg sticky top-0 z-50 border-b ${
+        focusMode 
+          ? 'py-1.5 bg-brand-900/40 backdrop-blur-2xl border-brand-700/50' 
+          : 'py-3 bg-brand-900/95 backdrop-blur-md border-brand-800'
+      } text-white`}>
         <div className="flex items-center gap-3">
-          <span className="font-bold text-xl tracking-tight">M&P Support</span>
-          <span className="text-xs bg-brand-800 border border-brand-700 px-2.5 py-1 rounded-md font-semibold tracking-wide">Expert</span>
+          <span className={`font-bold transition-all duration-500 tracking-tight ${focusMode ? 'text-lg opacity-80' : 'text-xl'}`}>M&P Support</span>
+          {!focusMode && (
+            <span className={`text-xs px-2.5 py-1 rounded-md font-semibold tracking-wide transition-colors bg-brand-800 border border-brand-700`}>Expert</span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium text-solarized-base2">{user.name} · {user.lang.toUpperCase()}</span>
@@ -775,10 +786,16 @@ export default function ExpertView() {
         </AnimatePresence>
 
         {/* Main */}
-        <main className="flex-1 flex flex-col overflow-hidden">
+        <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-700 ${
+          focusMode ? 'm-4 rounded-3xl zen-glass z-10' : ''
+        }`}>
           {/* Tab bar + view toggle */}
           {openTabTickets.length > 0 && (
-            <div className="bg-solarized-base3 dark:bg-brand-800 border-b border-solarized-base2 dark:border-brand-700 flex items-center">
+            <div className={`border-b transition-colors duration-500 flex items-center ${
+              focusMode 
+                ? 'bg-transparent border-white/10' 
+                : 'bg-solarized-base3 dark:bg-brand-800 border-solarized-base2 dark:border-brand-700'
+            }`}>
               {viewMode === 'tabs' && (
                 <div className="flex overflow-x-auto flex-1">
                   {openTabTickets.map((ticket) => {

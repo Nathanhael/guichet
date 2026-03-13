@@ -169,21 +169,23 @@ export default function AdminStats() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard label="Total Tickets" value={stats.total} color="dark" prev={stats.previousPeriod?.total} />
         <StatCard
-          label="Response Time"
-          value={stats.avgResponseMinutes > 0 ? `${stats.avgResponseMinutes}m` : '—'}
-          color="gray"
-          prev={stats.previousPeriod?.avgResponseMinutes && stats.previousPeriod.avgResponseMinutes > 0 ? `${stats.previousPeriod.avgResponseMinutes}m` : undefined}
+          label="p95 Response"
+          value={stats.p95ResponseMinutes != null ? `${stats.p95ResponseMinutes}m` : '—'}
+          color="red"
           invertTrend
         />
         <StatCard
-          label="Avg Duration"
-          value={stats.avgDurationMinutes > 0 ? `${stats.avgDurationMinutes}m` : '—'}
+          label="Re-open Rate"
+          value={stats.reopenRate != null ? `${stats.reopenRate}%` : '—'}
           color="gray"
-          prev={stats.previousPeriod?.avgDurationMinutes && stats.previousPeriod.avgDurationMinutes > 0 ? `${stats.previousPeriod.avgDurationMinutes}m` : undefined}
           invertTrend
         />
+        <StatCard 
+          label="Sentiment" 
+          value={stats.sentimentScore != null ? stats.sentimentScore.toFixed(2) : '—'} 
+          color={stats.sentimentScore != null ? (stats.sentimentScore > 0.2 ? 'teal' : stats.sentimentScore < -0.2 ? 'red' : 'yellow') : 'gray'} 
+        />
         <StatCard label="Satisfaction" value={stats.avgRating > 0 ? `${stats.avgRating}` : '—'} color="yellow" prev={stats.previousPeriod?.avgRating} />
-        <StatCard label="Abandoned" value={stats.abandonedCount} color="red" prev={stats.previousPeriod?.abandonedCount} invertTrend />
         <StatCard
           label="SLA Health"
           value={`${stats.slaHealth}%`}
@@ -276,6 +278,79 @@ export default function AdminStats() {
               ))}
             </div>
           )}
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title="Sentiment by Department">
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={Object.entries((stats as any).sentimentByDept || {}).map(([dept, data]: [string, any]) => ({ dept, score: data.avg || 0 }))}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#93a1a133" />
+                <XAxis dataKey="dept" axisLine={false} tickLine={false} />
+                <YAxis domain={[-1, 1]} axisLine={false} tickLine={false} />
+                <Tooltip 
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+                <Bar 
+                  dataKey="score" 
+                  radius={[4, 4, 4, 4]} 
+                  fill="#6366f1"
+                >
+                  {Object.entries((stats as any).sentimentByDept || {}).map((entry: any, index) => (
+                    <cell key={`cell-${index}`} fill={entry[1].avg > 0.2 ? '#10b981' : entry[1].avg < -0.2 ? '#f43f5e' : '#f59e0b'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-[10px] text-center text-solarized-base1 mt-2 uppercase font-bold tracking-widest">Score range: -1.0 (Critical) to +1.0 (Exceptional)</p>
+        </Panel>
+
+        <Panel title="Resolution quality">
+          <div className="flex items-center justify-center h-[200px]">
+            <div className="text-center">
+              <div className="relative inline-flex items-center justify-center">
+                <svg className="w-32 h-32 transform -rotate-90">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="58"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="transparent"
+                    className="text-slate-200 dark:text-slate-800"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="58"
+                    stroke="currentColor"
+                    strokeWidth="8"
+                    fill="transparent"
+                    strokeDasharray={364.4}
+                    strokeDashoffset={364.4 - (364.4 * (stats.slaHealth || 0)) / 100}
+                    className="text-accent-500 transition-all duration-1000 ease-out"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-3xl font-black text-solarized-base01 dark:text-white leading-none">{stats.slaHealth}%</span>
+                  <span className="text-[10px] font-bold text-solarized-base1 uppercase mt-1">SLA Health</span>
+                </div>
+              </div>
+              <div className="flex gap-6 mt-4">
+                <div className="text-center">
+                  <p className="text-xl font-bold text-solarized-base01 dark:text-white">{(stats as any).reopenRate}%</p>
+                  <p className="text-[10px] font-bold text-solarized-base1 uppercase">Re-open rate</p>
+                </div>
+                <div className="text-center border-l border-solarized-base2 dark:border-gray-700 pl-6">
+                  <p className="text-xl font-bold text-solarized-base01 dark:text-white">{(stats as any).resolutionRate || 0}%</p>
+                  <p className="text-[10px] font-bold text-solarized-base1 uppercase">Resolved</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </Panel>
       </div>
 

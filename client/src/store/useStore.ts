@@ -233,11 +233,26 @@ const useStore = create<StoreState>((set) => ({
   queuePosition: null,
   setQueuePosition: (pos) => set({ queuePosition: pos }),
 
+  zenSettings: JSON.parse(localStorage.getItem('zenSettings') || '{"autoBionic":true,"notificationShield":true}'),
+  updateZenSettings: (updates) =>
+    set((state) => {
+      const next = { ...state.zenSettings, ...updates };
+      localStorage.setItem('zenSettings', JSON.stringify(next));
+      return { zenSettings: next };
+    }),
+
   focusMode: localStorage.getItem('focusMode') === 'true',
   toggleFocusMode: () =>
     set((state) => {
       const next = !state.focusMode;
       localStorage.setItem('focusMode', String(next));
+      
+      // Auto-bionic logic
+      if (next && state.zenSettings.autoBionic && !state.bionicReading && state.dyslexicMode) {
+        localStorage.setItem('bionicReading', 'true');
+        return { focusMode: next, bionicReading: true };
+      }
+      
       return { focusMode: next };
     }),
 }));
