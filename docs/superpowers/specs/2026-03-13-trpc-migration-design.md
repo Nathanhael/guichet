@@ -2,7 +2,7 @@
 
 **Date:** 2026-03-13
 **Status:** Approved, pending implementation
-**Goal:** Replace raw `fetch`-based REST calls with end-to-end typesafe tRPC procedures. Eliminates manual type syncing between server routes and client, gives React Query caching/loading states for free.
+**Goal:** Replace raw `fetch`-based REST calls with end-to-end typesafe tRPC procedures, and migrate raw `pool.query()` calls to Drizzle ORM queries. Eliminates manual type syncing between server routes and client, gives React Query caching/loading states for free, and produces a fully type-safe stack from DB → server → client.
 
 ## Decisions
 
@@ -10,7 +10,8 @@
 - **Keep Express** as HTTP server; tRPC mounts at `/trpc` via the Express adapter
 - **Excluded from migration**: `auth` (will be replaced by Entra ID), `uploads` (multipart, incompatible with tRPC)
 - **Client**: `@trpc/react-query` + `@tanstack/react-query` — replaces raw `fetch`, adds caching and loading states
-- **Migration strategy**: incremental (one route file at a time) + wrapper pattern (existing service/DB logic untouched)
+- **Migration strategy**: incremental (one route file at a time) + replace raw `pool.query()` / `get()` / `run()` calls with Drizzle query builder as each route is migrated
+- **Drizzle**: schema already defined in `server/db/schema.ts`; `db` instance already exported — migrate queries during tRPC work, two birds one stone
 
 ## Package Structure
 
@@ -60,19 +61,25 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 });
 ```
 
-### Procedures (wrapper pattern)
-Existing DB/service logic moves unchanged into procedure handlers:
+### Procedures (wrapper pattern + Drizzle)
+Each procedure replaces both the Express route handler AND its raw SQL calls:
 ```ts
 // packages/trpc/src/routers/tickets.ts
 export const ticketsRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return getTicketsForUser(ctx.user);   // existing service fn
+    // Before: await query('SELECT * FROM tickets WHERE agent_id = $1', [ctx.user.id])
+    return db.select().from(tickets).where(eq(tickets.agentId, ctx.user.id));
   }),
   close: protectedProcedure
     .input(z.object({ ticketId: z.string(), notes: z.string().optional() }))
-    .mutation(async ({ input }) => { ... }),
+    .mutation(async ({ input }) => {
+      await db.update(tickets)
+        .set({ status: 'closed', closingNotes: input.notes })
+        .where(eq(tickets.id, input.ticketId));
+    }),
 });
 ```
+Socket handlers (`server/socket/handlers.ts`) also migrate their raw queries to Drizzle — they're not part of tRPC but touched in the same pass.
 
 ## Client Changes
 
@@ -127,6 +134,7 @@ Remove the corresponding Express route file after each procedure is verified wor
 ## Out of Scope
 - `auth` routes (Entra ID migration planned separately)
 - `uploads` route (multipart, stays as Express)
-- Socket.io layer (untouched)
+- Socket.io real-time events (untouched — only socket handler raw queries migrate to Drizzle)
 - tRPC subscriptions (Socket.io handles real-time)
 - Server-side rendering
+- Drizzle migrations (already managed via drizzle-kit, no changes needed)
