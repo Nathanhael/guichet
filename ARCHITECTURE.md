@@ -69,16 +69,27 @@ To handle multi-language support (EN, NL, FR) without heavy API costs, the syste
    - Fallback to local **Ollama** REST API (Gemma Model).
    - Graceful degradation to original text if AI is unreachable.
 
-2. **Sentiment & Summarization**:
-   - The Admin Dashboard triggers background summarization of ticket batches to identify recurring issues.
+2. **Sentiment Intelligence**:
+   - Every non-whisper message is asynchronously scored for sentiment (-1.0 to +1.0) via Ollama.
+   - Sentiment data is aggregated into historical trends and department-level distribution charts.
+
+3. **Summarization**:
+   - The AI Intelligence Hub triggers background summarization of ticket batches to identify recurring issues.
 
 ## Modular Dashboard Architecture
 
 The **Admin View** and **Expert View** use a highly modular "cockpit" approach.
 
-- **Orchestration**: Layouts are managed by role-specific views (`AdminView.tsx`, `ExpertView.tsx`).
-- **Plugins**: Features like `StatsOverview`, `PerformanceTrends`, and `Labels` are independent components that subscribe to the global store.
-- **Cognitive Tools**: Accessibility features (Dyslexic font, Bionic reading highlighting) are applied globally via a root wrapper observing the store.
+### Dual Dashboard Orchestration
+The Admin experience is split into two specialized interfaces:
+- **Operational Dashboard**: Focused on real-time team performance, queue health, and staffing demand.
+- **AI Intelligence Hub**: Dedicated to qualitative analysis, featuring sentiment trends, topic clustering, and LLM-powered conversation summaries.
+
+### Immersive Zen Mode
+The Expert interface includes a deeply immersive **Zen Mode** that leverages the Solaris design system:
+- **Adaptive Glassmorphism**: High-blur, high-contrast visual isolation for active conversations.
+- **Ambient Focus**: Slow-pulsing background gradients using `framer-motion` to reduce cognitive fatigue.
+- **Automation**: Automatic triggering of Bionic Reading and notification shielding upon entry.
 
 ## Data Lifecycle & Compliance (GDPR)
 

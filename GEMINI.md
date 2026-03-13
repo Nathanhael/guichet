@@ -7,8 +7,14 @@ This file serves as the primary instructional context for Gemini CLI when workin
 
 ### Key Features
 - **Real-Time Communication**: Powered by Socket.io for low-latency chat and status updates.
-- **AI-Powered Translation**: Automatic translation between Dutch (primary), French, and English using a local **Ollama** LLM (Gemma model).
-- **Neuro-Inclusive Design (Solaris)**: Features like Dyslexic Mode (Lexend font) and Bionic Reading to support diverse cognitive needs.
+- **AI-Powered Insights**: Automatic translation, asynchronous sentiment analysis, and qualitative summaries using a local **Ollama** LLM (Gemma model).
+- **Dual Dashboard Orchestration**:
+  - **Operational Dashboard**: Focuses on real-time KPIs, queue health, and staffing.
+  - **AI Intelligence Hub**: Focuses on sentiment trends, topic clustering, and qualitative summaries.
+- **Neuro-Inclusive Design (Solaris)**: 
+  - **Dyslexic Mode**: Lexend font support.
+  - **Bionic Reading**: Fixation-point highlighting.
+  - **Immersive Zen Mode**: Adaptive glassmorphism (`.zen-glass`) and ambient backgrounds for expert focus.
 - **Solaris Design System**: A "glassmorphic" aesthetic with vibrant gradients and reactive animations.
 - **GDPR Compliance**: Automatic 30-day data retention policy with anonymized historical aggregation.
 - **Business Hours**: Enforced availability (07:30–22:30 Europe/Brussels).

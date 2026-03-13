@@ -82,6 +82,7 @@ interface PerDayEntry {
   total: number;
   dsc: number;
   fot: number;
+  sentiment?: number | null;
 }
 
 interface RatingsByDeptAccumulator {
@@ -289,7 +290,8 @@ export const statsRouter = router({
             date,
             total: dayData.total,
             dsc: dayData.deptCounts['DSC'] || 0,
-            fot: dayData.deptCounts['FOT'] || 0
+            fot: dayData.deptCounts['FOT'] || 0,
+            sentiment: dayData.sentimentCount > 0 ? Math.round((dayData.sentimentSum / dayData.sentimentCount) * 100) / 100 : null
           });
           totalCount += dayData.total;
           totalDsc += dayData.deptCounts['DSC'] || 0;

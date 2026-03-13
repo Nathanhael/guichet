@@ -48,15 +48,16 @@ mp-support/
 │   │   ├── i18n.ts                     # UI translations (EN, FR, NL)
 │   │   ├── types/
 │   │   │   └── index.ts                # Shared TypeScript interfaces
-│   │   ├── views/
-│   │   │   ├── LoginView.tsx           # User selection + login
-│   │   │   ├── AgentView.tsx           # Ticket creation + chat
-│   │   │   ├── ExpertView.tsx          # Queue + multi-chat
-│   │   │   └── AdminView.tsx           # Full dashboard orchestrator
-│   │   ├── components/
-│   │   │   ├── ChatWindow.tsx          # Main chat interface (search, canned responses)
-│   │   │   ├── CannedResponsePicker.tsx # Quick-insert menu for experts
-│   │   │   ├── MessageBubble.tsx       # Message with translation + delivery status
+│   ├── views/
+│   │   ├── LoginView.tsx           # User selection + login
+│   │   ├── AgentView.tsx           # Ticket creation + chat
+│   │   ├── ExpertView.tsx          # Queue + multi-chat (Zen Mode)
+│   │   └── AdminView.tsx           # Dashboard orchestrator (Ops & AI Hub)
+│   ├── components/
+│   │   ├── ChatWindow.tsx          # Main chat interface (search, canned responses)
+│   │   ├── AmbientBackground.tsx   # Framer-motion zen backgrounds
+│   │   ├── CannedResponsePicker.tsx # Quick-insert menu for experts
+│   │   ├── MessageBubble.tsx       # Message with translation + delivery status
 │   │   │   ├── TicketList.tsx          # Queue list
 │   │   │   ├── TicketPreview.tsx       # Ticket preview
 │   │   │   ├── BusinessHoursGuard.tsx  # Hours enforcement
@@ -277,26 +278,23 @@ All settings are configurable via environment variables. See `.env.example` for 
 
 ### Admin
 
-- **Statistics dashboard** (Dynamic filtering by date range & department):
-  - **Global Filter Bar** -- Real-time recalculation of all metrics and charts
-  - **Preset Date Ranges** -- Quick filters: Today, 7D, 14D, 30D
-  - **KPI Cards with Trend Arrows** -- 6 key metrics (Total Tickets, Response Time, Avg Duration, Satisfaction, Abandoned, SLA Health) with previous-period comparison indicators (green = improvement, red = regression)
-  - **Smart Trend Grouping** -- Daily points (<=30 days), weekly aggregation (31-90 days), or monthly aggregation (>90 days), with dynamic chart title
-  - **Satisfaction by Department** -- DSC vs FOT rating breakdown with dept-colored cards
-  - **Peak Hours** -- Hourly distribution bar chart
-  - **Department Distribution** -- Visual breakdown of ticket volume by department
-  - **Staffing Demand** -- Insights into expert coverage needs
-  - **Expert & Agent Performance** -- Scrollable side-by-side bar charts with total + today breakdown
-  - **Queue health** -- Monitor oldest waiting time and SLA breaches (>3 min)
-  - **AI Support Perspective** -- Local LLM integration providing automated sentiment analysis, top 3 recurring issues, and qualitative summaries for any selected period
-  - **Topic Summary** -- Qualitative overview showing the most used labels per department
-- **Real-time Synchronization** -- Monitor open tickets and see participant changes immediately
-- Join tickets as observer (full read + chat access)
-- Search archived tickets (by agent, expert, date range, reference, department, or labels)
-- Export filtered archived tickets to CSV (with proper escaping)
-- **Review user feedback**, mark as treated, or hide dismissed entries
-- **Manage and curate ticket labels** (custom text and colors)
-- **Manage canned responses** (predefined text shortcuts for experts)
+- **Dual Dashboard Orchestration**:
+  - **Operational Dashboard** -- Real-time recalculation of all metrics focusing on queue health, staffing demand, and live expert/agent performance.
+  - **AI Intelligence Hub** -- Dedicated qualitative analysis workspace featuring:
+    - **Global Sentiment Score** -- Real-time emotional tone monitoring.
+    - **Sentiment Trends** -- Historical line charts of customer vibe.
+    - **Resolution Quality** -- Re-open rate tracking to identify recurring friction.
+    - **Topic Clustering** -- AI-grouped recurring issues per department.
+    - **AI Summaries** -- Automated qualitative overview for any period.
+- **KPI Cards with Trend Arrows** -- 6 key metrics (Total Tickets, p95 Response, Re-open Rate, Sentiment, Satisfaction, SLA Health) with previous-period comparison indicators.
+- **Smart Trend Grouping** -- Daily points (<=30 days), weekly aggregation (31-90 days), or monthly aggregation (>90 days).
+- **Real-time Synchronization** -- Monitor open tickets and see participant changes immediately.
+- **Join tickets as observer** (full read + chat access).
+- **Search archived tickets** (by agent, expert, date range, reference, department, or labels).
+- **Export filtered archived tickets to CSV**.
+- **Review user feedback**, mark as treated, or hide dismissed entries.
+- **Manage and curate ticket labels** (custom text and colors).
+- **Manage canned responses** (predefined text shortcuts for experts).
 
 ## Business Hours
 

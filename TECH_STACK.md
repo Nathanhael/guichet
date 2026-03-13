@@ -75,18 +75,21 @@ PostgreSQL via Drizzle ORM. Schema defined in `server/db/schema.ts`.
 users              (id, name, role, dept, lang, password)
 tickets            (id, dept, agentId, agentName, agentLang, cdbId, dareRef, status, 
                     expertId, expertName, expertLang, expertJoinedAt, createdAt, 
-                    closedAt, closingNotes, closedBy, participants, summary)
+                    closedAt, closingNotes, closedBy, participants, summary,
+                    reopened, reopenCount)
 messages           (id, ticketId, senderId, senderName, text, translatedText, 
                     mediaUrl, whisper, system, createdAt, deliveredAt, readAt, 
                     reactions, senderRole, senderLang, originalText, improvedText, 
-                    processedText, translationSkipped, fallback, timestamp)
+                    processedText, translationSkipped, fallback, timestamp,
+                    sentiment, cannedResponseId)
 ratings            (id, ticketId, agentId, expertId, rating, comment, createdAt)
 app_feedback       (id, userId, text, treated, createdAt)
 labels             (id, name, color)
 ticket_labels      (ticketId, labelId)          -- composite PK, ON DELETE CASCADE
 daily_stats        (date, total, closed, abandoned, avgResponseMs, avgDurationMs,
                     avgRating, ratingCount, slaResolved, slaCompliant, 
-                    deptCounts, ratingsByDept, hourly)
+                    deptCounts, ratingsByDept, hourly, p95ResponseMs,
+                    reopened, sentimentSum, sentimentCount)
 translations_cache (key, value, fromLang, toLang, createdAt)
 llm_summaries      (period, sentiment, questions, summary, updatedAt)
 canned_responses   (id, shortcut, text)

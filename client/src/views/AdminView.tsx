@@ -10,8 +10,9 @@ import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminLabels from '../components/admin/AdminLabels';
 import AdminCannedResponses from '../components/admin/AdminCannedResponses';
+import AdminAIStats from '../components/admin/AdminAIStats';
 
-type AdminTab = 'dashboard' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
+type AdminTab = 'dashboard' | 'ai_dashboard' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
 
 export default function AdminView() {
   const { user, logout } = useStore();
@@ -50,6 +51,15 @@ export default function AdminView() {
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              }
+            />
+            <NavButton
+              id="ai_dashboard"
+              label="AI Insights"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               }
             />
@@ -126,6 +136,7 @@ export default function AdminView() {
 
       <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-brand-950 p-6 custom-scrollbar">
         {view === 'dashboard' && <AdminStats />}
+        {view === 'ai_dashboard' && <AdminAIStats />}
         {view === 'tickets' && <AdminTickets />}
         {view === 'archive' && <AdminArchive />}
         {view === 'feedback' && <AdminFeedback />}
