@@ -8,12 +8,13 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 
 | Package | Version | Purpose |
 |---|---|---|
-| express | ^4.22.1 | REST API framework |
+| express | ^4.22.1 | Web server host |
+| @trpc/server | ^10.45.1 | Type-safe API framework |
+| zod | ^3.22.4 | Schema validation |
 | socket.io | ^4.7.4 | Real-time communication |
 | pg | ^8.20.0 | PostgreSQL database driver |
 | drizzle-orm | ^0.45.1 | TypeScript ORM |
-| redis | ^4.7.1 | Redis client for horizontal scaling |
-| socket.io | ^4.7.4 | Real-time communication |
+| redis | ^4.7.1 | Redis client for scaling |
 | @socket.io/redis-adapter | ^8.3.0 | Redis adapter for Socket.io |
 | jsonwebtoken | ^9.0.2 | JWT authentication |
 | bcrypt | ^6.0.0 | Password hashing |
@@ -35,7 +36,9 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 |Package | Version | Purpose |
 |---|---|---|
 | react | ^18.2.0 | UI framework |
-| react-dom | ^18.2.0 | DOM rendering |
+| @trpc/client | ^10.45.1 | tRPC client |
+| @trpc/react-query | ^10.45.1 | tRPC React integration |
+| @tanstack/react-query | ^4.36.1 | Data fetching & caching |
 | tailwindcss | ^3.4.1 | Utility-first CSS |
 | typescript | ^5.9.3 | Type-safe development |
 | framer-motion | ^12.35.2 | Physics-based animations |

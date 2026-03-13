@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Stars } from './DashboardHelpers';
+import { Stars, Skeleton } from './DashboardHelpers';
 import { Rating, FeedbackItem, User } from '../../types';
 import useStore from '../../store/useStore';
 import { trpc } from '../../utils/trpc';
@@ -40,13 +40,10 @@ export default function AdminFeedback() {
     }
   });
 
-  useEffect(() => {
-    fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((data) => setUsers(data))
-      .catch(() => {});
-  }, [token]);
+  // tRPC: Users List
+  const { data: usersData } = trpc.user.list.useQuery();
 
+  const users = usersData || [];
   const feedback = feedbackQuery.data || [];
   const ratings = (ratingsQuery.data || []) as Rating[];
   const loadingFeedback = feedbackQuery.isLoading;
@@ -126,7 +123,11 @@ export default function AdminFeedback() {
         <div className="space-y-6 animate-fade-in">
           <div className="space-y-3">
             {loadingFeedback ? (
-              <p className="text-solarized-base1 text-sm">Loading...</p>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-32 w-full rounded-xl" />
+                ))}
+              </div>
             ) : activeFeedback.length === 0 ? (
               <div className="bg-solarized-base3 dark:bg-brand-800 rounded-xl border border-solarized-base2 dark:border-brand-700 p-8 text-center shadow-sm">
                 <svg
@@ -249,7 +250,15 @@ export default function AdminFeedback() {
       {tab === 'ratings' && (
         <div className="space-y-4">
           {loadingRatings ? (
-            <p className="text-solarized-base1 text-sm">Loading...</p>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                ))}
+              </div>
+              <Skeleton className="h-40 w-full rounded-xl" />
+              <Skeleton className="h-64 w-full rounded-xl" />
+            </div>
           ) : ratings.length === 0 ? (
             <div className="bg-solarized-base3 dark:bg-brand-800 rounded-xl border border-solarized-base2 dark:border-brand-700 p-8 text-center">
               <p className="text-solarized-base1 text-sm">No ratings submitted yet.</p>

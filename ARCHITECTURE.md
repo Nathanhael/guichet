@@ -11,18 +11,22 @@ graph TD
     subgraph Frontend
         V[Vite/React] --> S[Zustand Store]
         V --> SC[Socket.io-client]
+        V --> TC[tRPC Client]
     end
 
     subgraph Backend
-        EX[Express.js] --> DB[(PostgreSQL/pg)]
+        EX[Express.js] --> DB[(PostgreSQL/Drizzle)]
+        EX --> TR[tRPC Server]
         EX --> SI[Socket.io Server]
+        TR --> DB
         SI --> GS[Guards Service]
-        GS --> TR[Translation Service]
-        TR --> OL[Ollama LLM]
+        GS --> TRN[Translation Service]
+        TRN --> OL[Ollama LLM]
         SI <--> RD[(Redis)]
     end
 
     SC <--> SI
+    TC <--> TR
     V --> EX
 ```
 
@@ -97,11 +101,13 @@ The frontend build pipeline (Vite) is configured for optimal production performa
 
 After refactoring, the server follows a clean modular architecture:
 
-| Module | File | Responsibility |
+| Module | File/Dir | Responsibility |
 |---|---|---|
-| App Setup | `app.ts` | Express middleware, route mounting, health checks |
-| Socket Handlers | `socket/handlers.ts` | All real-time event handling |
-| Stats Routes | `routes/stats.ts` | KPI dashboard & LLM summary endpoints |
+| App Setup | `app.ts` | Express middleware, health checks, Redis wiring |
+| tRPC Router | `trpc/router.ts` | Root tRPC router (type-safe API) |
+| Domain Routers | `trpc/routers/` | Routers for tickets, messages, stats, users, etc. |
+| Socket Handlers | `socket/handlers.ts` | All real-time event handling (Socket.io) |
+| Database | `db/schema.ts` | Drizzle ORM schema definitions |
 | Stats Service | `services/stats.ts` | `computeLiveDayStats()` computation |
 | GDPR Service | `services/gdpr.ts` | Daily purge cycle with aggregation |
 | Business Hours | `services/businessHours.ts` | Hours check, queue positions, agent status |

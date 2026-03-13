@@ -29,20 +29,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 export { app };
 
-app.get('/api/health/ai', auth, async (req: Request, res: Response) => {
-  try {
-    const OLLAMA_HOST = config.OLLAMA_HOST || 'http://localhost:11434';
-    const response = await fetch(`${OLLAMA_HOST}/api/tags`, { signal: AbortSignal.timeout(2000) });
-    if (response.ok) {
-      res.json({ status: 'online' });
-    } else {
-      res.json({ status: 'degraded' });
-    }
-  } catch (err) {
-    res.json({ status: 'offline' });
-  }
-});
-
 const httpServer = createServer(app);
 export { httpServer };
 
@@ -135,26 +121,6 @@ app.get('/api/health', async (_req: Request, res: Response) => {
   } catch (err) {
     logger.error({ err }, 'Health check failed');
     res.status(503).json({ status: 'error', database: 'disconnected' });
-  }
-});
-
-app.get('/api/users', async (_req: Request, res: Response) => {
-  try {
-    const users = await query('SELECT * FROM users');
-    res.json(users);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/presence/status', [auth, authorize(['admin', 'expert'])], (req: Request, res: Response) => {
-  const { userId, status } = req.body;
-  if (!userId || !status) return res.status(400).json({ error: 'userId and status are required' });
-  const updated = presenceService.setUserStatus(userId, status);
-  if (updated) {
-    res.json({ success: true, userId, status });
-  } else {
-    res.status(404).json({ error: 'User not online' });
   }
 });
 

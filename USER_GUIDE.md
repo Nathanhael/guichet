@@ -20,8 +20,9 @@ Every view features a **Cognitive & Neuro-Inclusive Cockpit** in the header. Use
 
 1. **Dyslexic Mode (🔤)**: Switches the font to **Lexend** and optimizes spacing.
 2. **Bionic Reading (👁️)**: Highlights word fixation points to improve reading focus.
-3. **Language Switcher (🌐)**: Instantly switch between English, Dutch, and French.
-4. **Dark Mode (🌗)**: Toggle between Solaris Dark and High-Contrast Light modes.
+3. **Zen Mode (⚡)**: (Expert only) Collapses the sidebar and dims inactive chats to maximize focus on the active conversation.
+4. **Language Switcher (🌐)**: Instantly switch between English, Dutch, and French.
+5. **Dark Mode (🌗)**: Toggle between Solaris Dark and High-Contrast Light modes.
 
 ## Real-Time Scenarios to Try
 

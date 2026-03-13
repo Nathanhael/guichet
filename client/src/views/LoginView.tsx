@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import useStore from '../store/useStore';
 import { tBrowser } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
-import { User, UserRole } from '../types';
+import { UserRole } from '../types';
+import { trpc } from '../utils/trpc';
 
 const ROLE_LABEL: Record<string, string> = { agent: 'Agent', expert: 'Expert', admin: 'Admin' };
 const ROLE_BADGE: Record<string, string> = {
@@ -14,17 +15,10 @@ const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR'
 
 export default function LoginView() {
   const { setUser, setToken } = useStore();
-  const [users, setUsers] = useState<User[]>([]);
   const [filter, setFilter] = useState<UserRole | 'all'>('all');
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch('/api/users')
-      .then((r) => r.json())
-      .then(setUsers)
-      .catch(() => setUsers([]))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: usersData, isLoading: loading } = trpc.user.list.useQuery();
+  const users = usersData || [];
 
   const filtered = filter === 'all' ? users : users.filter((u) => u.role === filter);
 
