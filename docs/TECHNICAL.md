@@ -1,12 +1,12 @@
 # Technical Documentation: M&P Support
 
-This document provides a comprehensive deep dive into the system design, tech stack, and modular architecture of the M&P Support application.
+This document provides a comprehensive deep dive into the system design, tech stack, and multi-tenant architecture of the M&P Support platform.
 
 ---
 
 ## 1. High-Level Architecture
 
-The application follows a real-time, event-driven architecture designed for high availability and low latency in customer support scenarios.
+The platform follows a real-time, event-driven, multi-tenant architecture designed for high availability and enterprise scalability.
 
 ```mermaid
 graph TD
@@ -25,6 +25,7 @@ graph TD
         GS --> TRN[Translation Service]
         TRN --> OL[Ollama LLM]
         SI <--> RD[(Redis)]
+        PS[Presence Service] <--> RD
     end
 
     SC <--> SI
@@ -37,42 +38,63 @@ graph TD
 |---|---|
 | Frontend | React 18 + Vite 5 + Tailwind CSS 3 + Framer Motion |
 | Communication | **tRPC** (Type-safe API) + Socket.io |
-| Scaling | **Redis** (Socket.io Adapter) |
+| Scaling | **Redis** (Socket.io Adapter + Distributed Presence) |
 | State | Zustand |
 | Backend | Node 20 (ESM), Express.js |
 | Database | PostgreSQL + **Drizzle ORM** |
-| Auth | JWT (jsonwebtoken) + bcrypt |
-| Logging | pino (+ pino-pretty in dev) |
-| Translation | Ollama REST API (graceful fallback) |
-| Charts | Recharts (admin dashboard) |
+| Auth | JWT (Multi-Tenant Memberships) |
+| AI | Ollama REST API (Tenant-Aware Pipeline) |
 
 ---
 
-## 2. Real-Time Engine (Socket.io)
+## 2. Multi-Tenant Architecture
 
-Real-time interactions are the core of the support experience. The server handles room management, broadcast logic, and background processing.
+The platform is designed to be industry-agnostic ("White-Label"). Logic and data are isolated via a Partner/Membership model.
 
-### Horizontal Scaling (Redis Adapter)
-To support multi-instance deployments, the Socket.io server uses the `@socket.io/redis-adapter`. This ensures that events emitted on one instance (e.g., a new message) are broadcast to clients connected to all other instances via a shared **Redis** pub/sub backplane.
+### The Membership Model
+Instead of a static role on a user, access is managed via the `memberships` table. A single user can belong to multiple partners (projects) with different roles in each.
+
+| Entity | Description |
+|---|---|
+| **Partner** | A "Tenant" (e.g., Telecom, Healthcare). Defines branding, labels, and AI rules. |
+| **Membership** | Links a User to a Partner with a specific `role` and `dept`. |
+| **User** | Global identity (Name, Lang). |
+
+### Tenant Manifest
+Every partner has a JSON manifest that dynamically "hydrates" the UI:
+- **Branding**: Primary/Secondary colors (`--brand-primary`).
+- **Labels**: Domain-specific terms (e.g., "Patient ID" vs "CDBID").
+- **Departments**: Dynamic navigation tabs.
+- **AI Rules**: Custom system instructions for the LLM.
+
+---
+
+## 3. Real-Time Engine & Scalability
+
+### Horizontal Scaling (Redis)
+The platform is designed for enterprise scale (1000+ employees):
+1. **Socket.io Redis Adapter**: Syncs chat events across multiple server instances.
+2. **Distributed Presence**: Online user status is stored in **Redis Hashes** rather than local memory. This allows any server instance to know who is online globally.
+3. **Scoped Broadcasts**: Real-time updates (e.g., "Expert joined") are scoped to `partner:{id}` rooms to minimize network overhead.
 
 ### Event Flow: Ticket Creation to Resolution
 
 ```mermaid
 sequenceDiagram
     participant A as Agent
-    participant S as Server
-    participant E as Expert
+    participant S as Server (Redis)
+    participant E as Support Specialist
 
     A->>S: ticket:new (Dept, Ref)
-    A-->>E: ticket:created (Broadcast)
-    E->>S: expert:join (TicketId)
-    S-->>A: expert:joined (Ticket Participants)
+    A-->>E: ticket:created (Scoped Broadcast)
+    E->>S: support:join (TicketId)
+    S-->>A: support:joined (Ticket Participants)
     Note over A,E: Real-time Chat Active
     A->>S: message:send (Text)
     S->>S: Message Guards (Safety/Quality)
-    S->>S: AI Translation Cache/API
+    S->>S: AI Translation (Check ai_enabled)
     S-->>E: message:new (Translated)
-    E->>S: message:send (Whisper/Normal)
+    E->>S: message:send (Internal/Normal)
     S-->>A: message:new (Original)
     E->>S: ticket:close (Notes)
     S-->>A: ticket:closed (Trigger Rating)
@@ -80,90 +102,33 @@ sequenceDiagram
 
 ---
 
-## 3. Modular Dashboard Architecture
-
-The **Admin View** and **Expert View** use a highly modular "cockpit" approach.
-
-### Dual Dashboard Orchestration
-The Admin experience is split into two specialized interfaces:
-- **Operational Dashboard**: Focused on real-time team performance, queue health, and staffing demand.
-- **AI Intelligence Hub**: Dedicated to qualitative analysis, featuring sentiment trends, topic clustering, and LLM-powered conversation summaries.
-
-### Immersive Zen Mode
-The Expert interface includes a deeply immersive **Zen Mode** that leverages the Solaris design system:
-- **Adaptive Glassmorphism**: High-blur, high-contrast visual isolation for active conversations.
-- **Ambient Focus**: Slow-pulsing background gradients using `framer-motion` to reduce cognitive fatigue.
-- **Automation**: Automatic triggering of Bionic Reading and notification shielding upon entry.
-
----
-
 ## 4. Database Schema
 
-PostgreSQL via Drizzle ORM. Schema defined in `server/db/schema.ts`.
-
-### Tables
+### Core Tables
 
 ```sql
-users              (id, name, role, dept, lang, password)
-tickets            (id, dept, agentId, agentName, agentLang, cdbId, dareRef, status, 
-                    expertId, expertName, expertLang, expertJoinedAt, createdAt, 
-                    closedAt, closingNotes, closedBy, participants, summary,
-                    reopened, reopenCount)
-messages           (id, ticketId, senderId, senderName, text, translatedText, 
-                    mediaUrl, whisper, system, createdAt, deliveredAt, readAt, 
-                    reactions, senderRole, senderLang, originalText, improvedText, 
-                    processedText, translationSkipped, fallback, timestamp,
-                    sentiment, cannedResponseId)
-ratings            (id, ticketId, agentId, expertId, rating, comment, createdAt)
-app_feedback       (id, userId, text, treated, createdAt)
-labels             (id, name, color)
-ticket_labels      (ticketId, labelId)          -- composite PK, ON DELETE CASCADE
-daily_stats        (date, total, closed, abandoned, avgResponseMs, avgDurationMs,
-                    avgRating, ratingCount, slaResolved, slaCompliant, 
-                    deptCounts, ratingsByDept, hourly, p95ResponseMs,
-                    reopened, sentimentSum, sentimentCount)
-translations_cache (key, value, fromLang, toLang, createdAt)
-llm_summaries      (period, sentiment, questions, summary, updatedAt)
-canned_responses   (id, shortcut, text)
+partners           (id, name, industry, primary_color, secondary_color, 
+                    ref_1_label, ref_2_label, ai_rules, departments, ai_enabled)
+users              (id, name, lang, password, is_platform_operator)
+memberships        (id, user_id, partner_id, role, dept)
+tickets            (id, partner_id, dept, agent_id, agent_name, agent_lang, 
+                    ref_1, ref_2, status, support_id, support_name, 
+                    support_lang, support_joined_at, created_at, closed_at, 
+                    closing_notes, closed_by, participants, summary)
+messages           (id, ticket_id, sender_id, sender_name, text, translated_text, 
+                    media_url, whisper, system, created_at, reactions, 
+                    sentiment, canned_response_id)
+ratings            (id, ticket_id, agent_id, support_id, rating, comment, created_at)
+daily_stats        (date, partner_id, total, closed, abandoned, avg_response_ms, 
+                    avg_duration_ms, avg_rating, sla_health, p95_response_ms, 
+                    reopened, sentiment_sum, sentiment_count)
 ```
 
-**JSON columns**: `participants`, `reactions`, `deptCounts`, `ratingsByDept`, `hourly`, `questions` are stored as JSON strings and parsed at query time.
-
 ---
 
-## 5. Data Lifecycle & Compliance (GDPR)
+## 5. Security & Reliability
 
-The system manages a hybrid data model to balance historical analysis with privacy compliance.
-
-1. **Live Data (Last 30 Days)**: All tickets, messages, and ratings are stored with full detail.
-2. **Purge Cycle**: Every 24 hours, the server identifies "expired" data.
-3. **Anonymized Aggregation**: Before deletion, key metrics (volumes, response times, ratings) are summarized into the `daily_stats` table.
-4. **Permanent Storage**: `daily_stats` are retained indefinitely for long-term trend analysis.
-
----
-
-## 6. Server Module Structure
-
-| Module | File/Dir | Responsibility |
-|---|---|---|
-| App Setup | `app.ts` | Express middleware, health checks, Redis wiring |
-| tRPC Router | `trpc/router.ts` | Root tRPC router (type-safe API) |
-| Domain Routers | `trpc/routers/` | Routers for tickets, messages, stats, users, etc. |
-| Socket Handlers | `socket/handlers.ts` | All real-time event handling (Socket.io) |
-| Database | `db/schema.ts` | Drizzle ORM schema definition |
-| Stats Service | `services/stats.ts` | Statistics computation logic |
-| GDPR Service | `services/gdpr.ts` | Daily purge cycle with aggregation |
-| Business Hours | `services/businessHours.ts` | Hours check, queue positions, agent status |
-| Presence | `services/presence.ts` | Online user tracking |
-| Translation | `services/translate.ts` | AI improve + translate pipeline |
-| Guards | `services/guards.ts` | Message safety (regex + AI topic filter) |
-| LLM | `services/llm.ts` | Sentiment analysis & conversation summaries |
-
----
-
-## 7. Security & Reliability
-
-- **RBAC**: All API routes require JWT authentication. Admin-only endpoints enforce additional role checks.
-- **Magic Byte Validation**: Image uploads are verified via content headers to prevent spoofing.
-- **Docker Orchestration**: Uses healthchecks and non-root runtimes for all containers.
-- **Graceful Shutdown**: Handles SIGTERM/SIGINT to allow active requests to finish before closing DB pools.
+- **RBAC**: Multi-level roles (`platform_operator`, `admin`, `manager`, `support`, `agent`).
+- **Data Isolation**: Mandatory `partner_id` scoping in all tRPC routers.
+- **AI Toggles**: Partner-level `ai_enabled` flag to bypass LLM processing.
+- **Observability**: Structured logging via **Pino** and distributed state via **Redis**.

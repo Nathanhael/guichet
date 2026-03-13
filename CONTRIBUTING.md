@@ -3,7 +3,7 @@
 To maintain the high-fidelity aesthetic and real-time performance of this prototype, please follow these guidelines.
 
 > [!TIP]
-> **AI Assistants**: Please refer to **[AGENT.md](./AGENT.md)** for specific "Rules of Engagement" regarding Docker usage and design standards.
+> **AI Assistants**: Please refer to **[CLAUDE.md](./CLAUDE.md)** and **[GEMINI.md](./GEMINI.md)** for specific "Rules of Engagement" regarding Docker usage and design standards.
 
 ## Solaris Design System
 
@@ -15,10 +15,11 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 - Always include `backdrop-blur` where appropriate.
 
 ### Color & Gradients
-- Primary theme colors are defined in `index.css`:
-    - **Solaris Purple**: `rgba(168, 85, 247, 0.4)`
-    - **Solaris Blue**: `rgba(59, 130, 246, 0.4)`
-- Use `bg-gradient-to-br` for background surfaces.
+- Brand colors are dynamic and defined via CSS variables in `index.css`:
+    - **Primary**: `var(--brand-primary)`
+    - **Secondary**: `var(--brand-secondary)`
+- Use `bg-gradient-to-br` for background surfaces using these variables.
+- Never use hardcoded Tailwind colors (e.g. `bg-blue-500`).
 
 ### Neuro-Inclusivity
 - **Fonts**: Use the `Lexend` stack for accessibility.
