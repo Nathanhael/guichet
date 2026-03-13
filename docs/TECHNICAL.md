@@ -109,7 +109,7 @@ sequenceDiagram
 ```sql
 partners           (id, name, industry, primary_color, secondary_color, 
                     ref_1_label, ref_2_label, ai_rules, departments, ai_enabled)
-users              (id, name, lang, password, is_platform_operator)
+users              (id, name, lang, password, avatar_url, is_platform_operator)
 memberships        (id, user_id, partner_id, role, dept)
 tickets            (id, partner_id, dept, agent_id, agent_name, agent_lang, 
                     ref_1, ref_2, status, support_id, support_name, 
@@ -124,11 +124,18 @@ daily_stats        (date, partner_id, total, closed, abandoned, avg_response_ms,
                     reopened, sentiment_sum, sentiment_count)
 ```
 
+**JSON columns**: `participants`, `reactions`, `deptCounts`, `ratingsByDept`, `hourly`, `questions` are stored as JSON strings and parsed at query time.
+
 ---
 
-## 5. Security & Reliability
+## 5. Scalability & Distributed State (Azure Ready)
 
-- **RBAC**: Multi-level roles (`platform_operator`, `admin`, `manager`, `support`, `agent`).
-- **Data Isolation**: Mandatory `partner_id` scoping in all tRPC routers.
-- **AI Toggles**: Partner-level `ai_enabled` flag to bypass LLM processing.
-- **Observability**: Structured logging via **Pino** and distributed state via **Redis**.
+The platform is designed for enterprise scale (1000+ employees):
+1. **Socket.io Redis Adapter**: Syncs chat events across multiple server instances.
+2. **Distributed Presence**: Online user status is stored in **Redis Hashes** rather than local memory. This allows any server instance to know who is online globally.
+3. **Redis Utility**: Redis clients are managed via `server/utils/redis.ts` to ensure clean lifecycle management and prevent circular dependencies.
+4. **Scoped Broadcasts**: Real-time updates (e.g., "Expert joined") are scoped to `partner:{id}` rooms to minimize network overhead.
+
+---
+
+## 6. Data Lifecycle & Compliance (GDPR)
