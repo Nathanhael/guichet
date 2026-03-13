@@ -74,9 +74,9 @@ To handle multi-language support (EN, NL, FR) without heavy API costs, the syste
 
 ## Modular Dashboard Architecture
 
-The **Admin View**, **Manager View**, and **Expert View** use a highly modular "cockpit" approach.
+The **Admin View** and **Expert View** use a highly modular "cockpit" approach.
 
-- **Orchestration**: Layouts are managed by role-specific views (`AdminView.tsx`, `ManagerView.tsx`, `ExpertView.tsx`).
+- **Orchestration**: Layouts are managed by role-specific views (`AdminView.tsx`, `ExpertView.tsx`).
 - **Plugins**: Features like `StatsOverview`, `PerformanceTrends`, and `Labels` are independent components that subscribe to the global store.
 - **Cognitive Tools**: Accessibility features (Dyslexic font, Bionic reading highlighting) are applied globally via a root wrapper observing the store.
 
