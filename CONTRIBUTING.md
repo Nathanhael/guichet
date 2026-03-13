@@ -34,8 +34,10 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 
 ### Identity-Integrated Chat
 - **Bubble Alignment**: Identity is indicated primarily by alignment (right for the current user, left for others).
-- **Bubble Tails**: Use `.bubble-tail-mine` and `.bubble-tail-other` for visual hierarchy.
-- **No Avatars**: Avatars should be omitted in the main chat stream to reduce visual noise, except for system messages.
+- **Bubble Tails**: Use `.bubble-tail-mine` and `.bubble-tail-other` for visual hierarchy (only on the first message of a group).
+- **Sequential Grouping**: Messages from the same user within 2 minutes should be grouped visually (hide avatars and names for subsequent messages).
+- **Structured AI Content**: Components should handle `[STEPS]` and `[CUSTOMER_SCRIPT]` tags by rendering them in specialized layout containers (e.g. emerald copy-box for scripts).
+- **Avatars**: Use the `UserAvatar` component. Show avatars for others at the start of a message group. Omit for own messages.
 
 ## Coding Standards
 
