@@ -103,15 +103,15 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
 }
 
 async function getMessagesForDay(date: string) {
-    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE substring(created_at from 1 for 10) = $1 AND system = 0 AND whisper = 0', [date]);
+    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::date = $1 AND system = 0 AND whisper = 0', [date]);
 }
 
 async function getMessagesForWeek(weekStr: string) {
-    return query(`SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE to_char(to_timestamp(created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr]);
+    return query(`SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE to_char(created_at, 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr]);
 }
 
 async function getMessagesForMonth(monthStr: string) {
-    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE substring(created_at from 1 for 7) = $1 AND system = 0 AND whisper = 0', [monthStr]);
+    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::text LIKE $1 AND system = 0 AND whisper = 0', [`${monthStr}%`]);
 }
 
 export async function summarizeConversation(ticketId: string): Promise<string> {

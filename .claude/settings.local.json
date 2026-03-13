@@ -10,7 +10,9 @@
       "Bash(curl:*)",
       "Bash(node:*)",
       "Bash(npx:*)",
-      "Bash(where node:*)"
+      "Bash(where node:*)",
+      "Skill(commit-commands:commit)",
+      "Skill(claude-md-management:revise-claude-md)"
     ]
   }
 }

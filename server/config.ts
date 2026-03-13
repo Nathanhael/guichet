@@ -16,6 +16,7 @@ export interface Config {
     UPLOAD_MAX_SIZE: number;
     UPLOAD_ALLOWED_TYPES: string[];
     OLLAMA_MODEL?: string;
+    REDIS_URL?: string;
 }
 
 const config: Config = {
@@ -34,6 +35,7 @@ const config: Config = {
     UPLOAD_MAX_SIZE: Number(process.env.UPLOAD_MAX_SIZE) || 5 * 1024 * 1024,
     UPLOAD_ALLOWED_TYPES: ['image/png', 'image/jpeg', 'image/webp'],
     OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'gemmatranslate4b',
+    REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
 };
 
 export default config;

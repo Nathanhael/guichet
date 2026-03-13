@@ -49,7 +49,7 @@ router.get('/', [auth, authorize(['admin', 'expert'])], async (req: Request, res
     }
 
     const historicalStats = await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2', [rangeStart, rangeEnd]) as any[];
-    const ticketsSql = `SELECT * FROM tickets WHERE SUBSTRING(created_at FROM 1 FOR 10) >= $1 AND SUBSTRING(created_at FROM 1 FOR 10) <= $2`;
+    const ticketsSql = `SELECT * FROM tickets WHERE created_at::date >= $1 AND created_at::date <= $2`;
     const allLiveTicketsRaw = await query(ticketsSql, [rangeStart, rangeEnd]) as Ticket[];
     const allLiveTickets = (excludeWeekends === 'true')
       ? allLiveTicketsRaw.filter(t => {
@@ -379,7 +379,7 @@ router.get('/', [auth, authorize(['admin', 'expert'])], async (req: Request, res
                            FROM ticket_labels tl
                            JOIN labels l ON tl.label_id = l.id
                            JOIN tickets t ON tl.ticket_id = t.id
-                           WHERE SUBSTRING(t.created_at FROM 1 FOR 10) >= $1 AND SUBSTRING(t.created_at FROM 1 FOR 10) <= $2
+                           WHERE t.created_at::date >= $1 AND t.created_at::date <= $2
                            GROUP BY l.name, t.dept
                            ORDER BY t.dept, count DESC`;
         const labelCounts = await query(labelsSql, [rangeStart, rangeEnd]) as any[];

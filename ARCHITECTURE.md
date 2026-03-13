@@ -19,6 +19,7 @@ graph TD
         SI --> GS[Guards Service]
         GS --> TR[Translation Service]
         TR --> OL[Ollama LLM]
+        SI <--> RD[(Redis)]
     end
 
     SC <--> SI
@@ -28,6 +29,9 @@ graph TD
 ## Real-Time Engine (Socket.io)
 
 Real-time interactions are the core of the support experience. The server handles room management, broadcast logic, and background processing.
+
+### Horizontal Scaling (Redis Adapter)
+To support multi-instance deployments, the Socket.io server uses the `@socket.io/redis-adapter`. This ensures that events emitted on one instance (e.g., a new message) are broadcast to clients connected to all other instances via a shared **Redis** pub/sub backplane.
 
 ### Event Flow: Ticket Creation to Resolution
 

@@ -11,15 +11,15 @@ export async function runDailyPurge() {
     const cutoffDate = cutoff.toISOString().slice(0, 10);
 
     const datesToAggregate = await query(
-      `SELECT DISTINCT SUBSTRING(created_at FROM 1 FOR 10) as date
+      `SELECT DISTINCT created_at::date::text as date
        FROM tickets
        WHERE created_at < $1
-         AND SUBSTRING(created_at FROM 1 FOR 10) NOT IN (SELECT date FROM daily_stats)`,
+         AND created_at::date NOT IN (SELECT date FROM daily_stats)`,
       [cutoffDate]
     ) as { date: string }[];
 
     for (const { date } of datesToAggregate) {
-      const dayTickets = await query('SELECT * FROM tickets WHERE created_at LIKE $1', [`${date}%`]) as Ticket[];
+      const dayTickets = await query('SELECT * FROM tickets WHERE created_at::date = $1', [date]) as Ticket[];
       const ticketIds = dayTickets.map(t => t.id);
       let dayRatings: any[] = [];
       if (ticketIds.length > 0) {

@@ -29,6 +29,19 @@
     background-image: none !important;
   }
 
+  /* High Contrast Mode */
+  .high-contrast-mode body:not(.dark) {
+    background-color: #ffffff !important;
+    background-image: none !important;
+    @apply text-black;
+  }
+
+  .high-contrast-mode.dark body {
+    background-color: #000000 !important;
+    background-image: none !important;
+    @apply text-white;
+  }
+
   /* Smooth scrollbar global */
   ::-webkit-scrollbar {
     width: 6px;
@@ -89,6 +102,26 @@
   .dark .whatsapp-bg {
     background-blend-mode: overlay;
     background-color: #0d1418 !important;
+  }
+
+  .bubble-tail-mine {
+    position: absolute;
+    top: 0;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    background: inherit;
+    clip-path: polygon(0 0, 0 100%, 100% 0);
+  }
+
+  .bubble-tail-other {
+    position: absolute;
+    top: 0;
+    left: -8px;
+    width: 20px;
+    height: 20px;
+    background: inherit;
+    clip-path: polygon(0 0, 100% 100%, 100% 0);
   }
 }
 

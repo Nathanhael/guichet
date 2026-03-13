@@ -6,6 +6,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { createClient } from 'redis';
+import { createAdapter } from '@socket.io/redis-adapter';
 
 import ticketRoutes from './routes/tickets.js';
 import messageRoutes from './routes/messages.js';
@@ -49,6 +51,24 @@ export { httpServer };
 const io = new Server(httpServer, {
   cors: { origin: config.CORS_ORIGIN, methods: ['GET', 'POST'] },
 });
+
+// Redis Adapter Initialization
+if (config.REDIS_URL) {
+  const pubClient = createClient({ url: config.REDIS_URL });
+  const subClient = pubClient.duplicate();
+
+  pubClient.on('error', (err) => logger.error({ err }, 'Redis Pub Client Error'));
+  subClient.on('error', (err) => logger.error({ err }, 'Redis Sub Client Error'));
+
+  try {
+    await Promise.all([pubClient.connect(), subClient.connect()]);
+    io.adapter(createAdapter(pubClient, subClient));
+    logger.info('Socket.io Redis adapter connected');
+  } catch (err) {
+    logger.warn({ err }, 'Failed to connect to Redis. Falling back to in-memory adapter.');
+  }
+}
+
 export { io };
 app.set('io', io);
 presenceService.setIo(io);

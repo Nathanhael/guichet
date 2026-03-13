@@ -46,7 +46,7 @@ function ConnectionBanner() {
 }
 
 export default function App() {
-  const { user, darkMode, dyslexicMode, setAppConfig } = useStore();
+  const { user, darkMode, dyslexicMode, highContrastMode, setAppConfig } = useStore();
   
   useSocket();
 
@@ -65,6 +65,14 @@ export default function App() {
       document.documentElement.classList.remove('dyslexic-mode');
     }
   }, [dyslexicMode]);
+
+  useEffect(() => {
+    if (highContrastMode) {
+      document.documentElement.classList.add('high-contrast-mode');
+    } else {
+      document.documentElement.classList.remove('high-contrast-mode');
+    }
+  }, [highContrastMode]);
 
   useEffect(() => {
     fetch('/api/config')
