@@ -44,4 +44,4 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 
 - **Install**: `npm run install:all`
 - **Dev**: `npm run dev` (Concurrent client/server)
-- **Container**: Use `docker-compose up` for the production environment simulation.
+- **Dev Container**: `docker-compose up` for development. **Production**: `docker-compose -f docker-compose.prod.yml up --build`

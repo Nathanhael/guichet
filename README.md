@@ -85,12 +85,14 @@ mp-support/
 │   │   │   └── useSocket.ts            # Socket.io connection + events + reconnection
 │   │   └── test/
 │   │       └── setup.ts                # Test configuration
-│   ├── vite.config.js
-│   ├── tailwind.config.js
+│   ├── vite.config.ts
+│   ├── tailwind.config.ts
+│   ├── nginx.conf                     # Nginx config for production SPA
+│   ├── Dockerfile.prod                # Multi-stage production build with nginx
 │   └── package.json
 ├── server/                              # Express + Socket.io backend (TypeScript)
 │   ├── index.ts                        # Server entry point
-│   ├── app.ts                          # Express app, Socket.io, stats, export, GDPR purge
+│   ├── app.ts                          # Express app setup, middleware, route mounting
 │   ├── config.ts                       # Centralized configuration (env vars + defaults)
 │   ├── db.ts                           # PostgreSQL re-export
 │   ├── db/
@@ -108,22 +110,33 @@ mp-support/
 │   │   ├── uploads.ts                  # File upload (magic byte validated)
 │   │   ├── feedback.ts                 # Feedback submission
 │   │   ├── labels.ts                   # Ticket labels
+│   │   ├── stats.ts                    # Statistics & LLM summary endpoints
 │   │   └── canned_responses.ts         # Canned response management
+│   ├── socket/
+│   │   └── handlers.ts                 # Socket.IO event handlers
 │   ├── services/
 │   │   ├── translate.ts                # Ollama translation + cache (graceful fallback)
 │   │   ├── guards.ts                   # Message safety & quality guards
-│   │   └── llm.ts                      # Ollama LLM sentiment analysis
+│   │   ├── llm.ts                      # Ollama LLM sentiment analysis
+│   │   ├── stats.ts                    # Statistics computation
+│   │   ├── gdpr.ts                     # GDPR data purge
+│   │   ├── businessHours.ts            # Business hours & queue management
+│   │   └── presence.ts                 # Online user tracking
 │   ├── utils/
 │   │   └── logger.ts                   # Pino structured logging
 │   ├── __tests__/                      # Backend test suites
-│   │   ├── api.test.ts
-│   │   ├── auth.test.ts
-│   │   └── stats.test.ts
+│   │   ├── auth.test.ts               # JWT validation, RBAC
+│   │   ├── guards.test.ts            # All 7 guards + integration (21 tests)
+│   │   ├── stats.test.ts             # computeLiveDayStats
+│   │   └── translate.test.ts         # Improve, translate, fallback
 │   ├── uploads/                        # Screenshot storage
 │   ├── Dockerfile
+│   ├── Dockerfile.prod                 # Multi-stage production build
 │   └── package.json
 ├── .env.example                         # Environment variable template
-├── docker-compose.yml                   # PostgreSQL + Server + Client
+├── docker-compose.yml                   # PostgreSQL + Server + Client (dev)
+├── docker-compose.prod.yml              # Production compose (multi-stage builds)
+├── .github/workflows/ci.yml            # CI/CD pipeline
 └── package.json                         # Root (concurrently)
 ```
 
@@ -337,7 +350,9 @@ Specialized features for agents and experts:
 | POST | `/api/auth/register` | Register a new user (`{ id, name, role, password }`) |
 | POST | `/api/auth/login` | Login, returns JWT token + user object |
 
-### Resources
+### Resources (all require authentication)
+
+> **Note:** `/api/config` and `/api/health` are public (no auth required).
 
 | Method | Path | Description |
 |---|---|---|

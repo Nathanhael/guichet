@@ -72,4 +72,4 @@ For detailed architectural diagrams, real-time message flows, and the AI transla
 - Uploads validated by magic bytes (`file-type` package), not just MIME
 - CSV exports escape formula-injection characters (`=`, `+`, `-`, `@`)
 - GDPR: individual data purged after 30 days, aggregated into `daily_stats` first
-- Vite proxies `/api` and `/uploads` to server (configured in `vite.config.js`)
+- Vite proxies `/api` and `/uploads` to server (configured in `vite.config.ts`)

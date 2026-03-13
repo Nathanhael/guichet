@@ -89,8 +89,25 @@ The frontend build pipeline (Vite) is configured for optimal production performa
 2. **Vendor Separation**: Heavy libraries like Recharts and Framer Motion are moved to separate chunks. This allows the browser to cache these stable libraries while only re-downloading the app logic when it changes.
 3. **i18n Localization**: Labels and UI text are managed via a centralized `i18n.ts` file, ensuring zero-latency switching between languages.
 
+## Server Module Structure
+
+After refactoring, the server follows a clean modular architecture:
+
+| Module | File | Responsibility |
+|---|---|---|
+| App Setup | `app.ts` | Express middleware, route mounting, health checks |
+| Socket Handlers | `socket/handlers.ts` | All real-time event handling |
+| Stats Routes | `routes/stats.ts` | KPI dashboard & LLM summary endpoints |
+| Stats Service | `services/stats.ts` | `computeLiveDayStats()` computation |
+| GDPR Service | `services/gdpr.ts` | Daily purge cycle with aggregation |
+| Business Hours | `services/businessHours.ts` | Hours check, queue positions, agent status |
+| Presence | `services/presence.ts` | Online user tracking |
+| Translation | `services/translate.ts` | AI improve + translate pipeline |
+| Guards | `services/guards.ts` | Message safety (regex + AI topic filter) |
+| LLM | `services/llm.ts` | Sentiment analysis & conversation summaries |
+
 ## Security & Reliability
 
-- **RBAC**: Role-Based Access Control enforced at the Socket and Route levels.
+- **RBAC**: All API routes require JWT authentication. Admin-only endpoints (feedback management, ratings) enforce additional role checks. Socket events are guarded via presence identification.
 - **Magic Byte Validation**: Image uploads are verified via content headers to prevent spoofing.
 - **Connection Resilience**: Automatic socket re-identification on network jitter.
