@@ -154,9 +154,9 @@ export const statsRouter = router({
           }
         }
 
-        const historicalStats = await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2', [rangeStart, rangeEnd]) as HistoricalStatRow[];
+        const historicalStats = (await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2', [rangeStart, rangeEnd])) as unknown as HistoricalStatRow[];
         const ticketsSql = `SELECT * FROM tickets WHERE created_at::date >= $1 AND created_at::date <= $2`;
-        const allLiveTicketsRaw = await query(ticketsSql, [rangeStart, rangeEnd]) as Ticket[];
+        const allLiveTicketsRaw = (await query(ticketsSql, [rangeStart, rangeEnd])) as unknown as Ticket[];
         const allLiveTickets = (excludeWeekends)
           ? allLiveTicketsRaw.filter(t => {
             if (!t.createdAt) return false;
@@ -172,7 +172,7 @@ export const statsRouter = router({
 
         let liveRatings: RatingRow[] = [];
         if (liveTicketIds.length > 0) {
-          liveRatings = await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds) as RatingRow[];
+          liveRatings = (await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds)) as unknown as RatingRow[];
         }
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0;
@@ -222,7 +222,7 @@ export const statsRouter = router({
                 deptResolved: { [dept]: deptRatio * (hist.slaResolved || 0) },
                 deptCompliant: { [dept]: deptRatio * (hist.slaCompliant || 0) },
                 hourly: histHourly.map((h: number) => h * deptRatio),
-              };
+              } as DayData;
             } else {
               dayData = {
                 total: hist.total,
@@ -249,12 +249,12 @@ export const statsRouter = router({
                   ])
                 ),
                 hourly: histHourly,
-              };
+              } as DayData;
             }
           } else {
             const dayTickets = liveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
             const dayRatings = liveRatings.filter(r => dayTickets.some(t => t.id === r.ticketId));
-            dayData = computeLiveDayStats(dayTickets, dayRatings, dept);
+            dayData = computeLiveDayStats(dayTickets, dayRatings, dept) as unknown as DayData;
 
             const allDayTickets = allLiveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
             globalDsc += allDayTickets.filter(t => t.dept === 'DSC').length;
@@ -354,7 +354,7 @@ export const statsRouter = router({
         }
 
         const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-        const waitingTickets = await query('SELECT created_at FROM tickets WHERE status = $1 AND expert_id IS NULL AND created_at >= $2', ['open', thirtyMinsAgo]) as { createdAt: string }[];
+        const waitingTickets = (await query('SELECT created_at FROM tickets WHERE status = $1 AND expert_id IS NULL AND created_at >= $2', ['open', thirtyMinsAgo])) as unknown as { createdAt: string }[];
         let oldest = 0;
         waitingTickets.forEach(t => {
           if (t.createdAt) {
@@ -392,7 +392,7 @@ export const statsRouter = router({
         for (const r of liveRatings) {
           if (!r.expertId) continue;
           if (!expertMap[r.expertId]) {
-            const u = await get('SELECT name FROM users WHERE id = $1', [r.expertId]) as User;
+            const u = (await get('SELECT name FROM users WHERE id = $1', [r.expertId])) as unknown as User;
             expertMap[r.expertId] = { id: r.expertId, name: u?.name || 'Unknown Expert', total: 0, today: 0, trendMap: {}, ratingSum: 0, ratingCount: 0, deptStats: {} };
           }
           const expert = expertMap[r.expertId];
@@ -428,7 +428,7 @@ export const statsRouter = router({
 
         const agentStats = Object.values(agentMap).map(a => {
           const trend = allDays.map(date => ({ date: date.substring(5), count: a.trendMap[date] || 0 }));
-          delete a.trendMap;
+          delete (a as { trendMap?: unknown }).trendMap;
           return { ...a, trend };
         }).sort((a, b) => b.total - a.total);
 
@@ -446,14 +446,17 @@ export const statsRouter = router({
         if (excludeWeekends) {
             prevHistSql += " AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)";
         }
-        const prevHist = await query(prevHistSql, [prevStartStr, prevEndStr]) as PrevHistRow[];
+        const prevHist = (await query(prevHistSql, [prevStartStr, prevEndStr])) as unknown as PrevHistRow[];
+
+        const prevSlares = prevHist[0]?.slares ?? 0;
+        const prevSlacomp = prevHist[0]?.slacomp ?? 0;
 
         const previousPeriod = {
           total: prevHist[0]?.total || 0,
           avgResponseMinutes: Math.round((prevHist[0]?.avgresp || 0) / 60000),
           avgDurationMinutes: Math.round((prevHist[0]?.avgdur || 0) / 60000),
           abandonedCount: prevHist[0]?.abandoned || 0,
-          slaHealth: prevHist[0]?.slares > 0 ? Math.round((prevHist[0]?.slacomp / prevHist[0]?.slares) * 100) : 100,
+          slaHealth: prevSlares > 0 ? Math.round((prevSlacomp / prevSlares) * 100) : 100,
         };
 
         const responseData = {
@@ -487,7 +490,7 @@ export const statsRouter = router({
                                WHERE t.created_at::date >= $1 AND t.created_at::date <= $2
                                GROUP BY l.name, t.dept
                                ORDER BY t.dept, count DESC`;
-            const labelCounts = await query(labelsSql, [rangeStart, rangeEnd]) as LabelCountRow[];
+            const labelCounts = (await query(labelsSql, [rangeStart, rangeEnd])) as unknown as LabelCountRow[];
             const summary: Record<string, string[]> = { DSC: [], FOT: [] };
             labelCounts.forEach(lc => { if (summary[lc.dept] && summary[lc.dept].length < 3) summary[lc.dept].push(lc.name); });
             return summary;

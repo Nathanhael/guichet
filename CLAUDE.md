@@ -66,25 +66,28 @@ For detailed diagrams and AI translation pipeline docs, see **[ARCHITECTURE.md](
 
 **Entry point**: `app.ts` — mounts all routes, initializes Socket.io, starts GDPR purge cycle and queue broadcasting.
 
-**Routes** (`server/routes/`):
-- `auth.ts` — JWT login/register (bcrypt passwords, 24h tokens)
-- `tickets.ts` — Ticket CRUD + CSV export (formula-injection escaped)
-- `messages.ts`, `uploads.ts`, `feedback.ts`, `labels.ts`, `canned-responses.ts`
-- `stats.ts` — Complex KPI aggregation (per-expert/agent performance, SLA, hourly heatmaps, period-over-period comparisons)
+**API Layer**: 
+- **tRPC (Primary)**: The application uses **tRPC** for almost all data fetching and mutations. 
+  - Root router: `server/trpc/router.ts`
+  - Domain routers: `server/trpc/routers/*.ts`
+- **Express Routes (Legacy/Specific)**: 
+  - `auth.ts` — JWT login (bcrypt passwords, 24h tokens)
+  - `tickets.ts` — CSV export
+  - `uploads.ts` — Multer-based file uploads
 
 **Services** (`server/services/`):
 - `translate.ts` — Two-stage Ollama pipeline: Improve text → Translate if langs differ. Results cached in `translations_cache` (SHA256 key). Gracefully degrades if Ollama is down (`fallback: true`).
 - `llm.ts` — Generates sentiment/topic summaries per period (day/week/month), cached in `llm_summaries` table.
 - `businessHours.ts` — Brussels timezone check (configurable range, default 07:30–22:30). Enforced server-side on ticket creation.
 - `gdpr.ts` — Daily purge: aggregates records older than 30 days into `daily_stats`, then deletes in a Drizzle transaction.
-- `stats.ts` — Stats computation logic used by the `/api/stats` route.
+- `stats.ts` — Stats computation logic used by the `stats` tRPC router.
 
 **Socket** (`server/socket/handlers.ts`):
 Registers all real-time event handlers. Tickets use rooms named `ticket:{ticketId}`.
 
 Key events: `socket:identify`, `ticket:new`, `expert:join`, `expert:leave`, `ticket:close`, `message:send`, `status:set`, `reaction:toggle`, `ticket:labels:update`.
 
-**Message pipeline** (on `message:send`):
+**Message pipeline** (integrated in `message.send` tRPC mutation):
 1. Guards (8-tier: length → ALL CAPS → repetition → injection → swearing → threats → discrimination → async Ollama topic check)
 2. Improve (role-specific Ollama prompt)
 3. Translate (if sender/recipient langs differ)

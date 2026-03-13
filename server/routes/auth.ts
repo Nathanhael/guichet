@@ -48,7 +48,7 @@ router.post('/login', [
     try {
         const { id, password } = req.body;
 
-        const user = await get('SELECT * FROM users WHERE id = $1', [id]) as User;
+        const user = (await get('SELECT * FROM users WHERE id = $1', [id])) as unknown as User;
         if (!user || !user.password) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }

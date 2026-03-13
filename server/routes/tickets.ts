@@ -53,7 +53,7 @@ router.get('/export', [
 
     sql += ' ORDER BY closed_at DESC';
 
-    const result = await query(sql, params) as Ticket[];
+    const result = (await query(sql, params)) as unknown as Ticket[];
     
     // Format as CSV
     const headers = ['ID', 'Department', 'Agent', 'CDBID', 'Dare Ref', 'Expert', 'Created At', 'Closed At', 'Status'];

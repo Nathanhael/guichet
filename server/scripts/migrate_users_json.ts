@@ -31,8 +31,8 @@ async function migrateUsers() {
       );
     }
     console.log('✅ User migration completed successfully!');
-  } catch (err: any) {
-    console.error('❌ Migration failed:', err.message);
+  } catch (err: unknown) {
+    console.error('❌ Migration failed:', (err as Error).message);
   } finally {
     await pgPool.end();
   }

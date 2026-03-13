@@ -31,36 +31,36 @@ async function seed() {
                 'INSERT INTO users (id, name, role, dept, lang, password) VALUES ($1, $2, $3, $4, $5, $6)',
                 [user.id, user.name, user.role, user.dept, user.lang, hashedPassword]
             );
-            console.log(`Created user: ${user.name} (${user.id})`);
-        } catch (err: any) {
-            console.error(`Error creating user ${user.id}:`, err.message);
-        }
-    }
+            } catch (err: unknown) {
+                console.error(`Error creating user ${user.id}:`, (err as Error).message);
+            }
+            }
 
-    console.log('Seeding labels...');
-    const demoLabels = [
-        { id: 'label_billing', name: 'Billing', color: '#ef4444' },
-        { id: 'label_technical', name: 'Technical', color: '#3b82f6' },
-        { id: 'label_sales', name: 'Sales', color: '#10b981' }
-    ];
+            console.log('Seeding labels...');
+            const demoLabels = [
+            { id: 'label_billing', name: 'Billing', color: '#ef4444' },
+            { id: 'label_technical', name: 'Technical', color: '#3b82f6' },
+            { id: 'label_sales', name: 'Sales', color: '#10b981' }
+            ];
 
-    for (const label of demoLabels) {
-        try {
-            const existing = await get('SELECT id FROM labels WHERE id = $1', [label.id]);
-            if (existing) continue;
+            for (const label of demoLabels) {
+            try {
+                const existing = await get('SELECT id FROM labels WHERE id = $1', [label.id]);
+                if (existing) continue;
 
-            await run('INSERT INTO labels (id, name, color) VALUES ($1, $2, $3)', [label.id, label.name, label.color]);
-            console.log(`Created label: ${label.name}`);
-        } catch (err: any) {
-             console.error(`Error creating label ${label.name}:`, err.message);
-        }
-    }
+                await run(
+                    'INSERT INTO labels (id, name, color) VALUES ($1, $2, $3)',
+                    [label.id, label.name, label.color]
+                );
+                console.log(`Created label: ${label.name}`);
+            } catch (err: unknown) {
+                console.error(`Error creating label ${label.name}:`, (err as Error).message);
+            }
+            }
 
-    console.log('Database seeding complete.');
-    process.exit(0);
-}
+            console.log('Database seed complete!');
+            }
 
-seed().catch(err => {
-    console.error('Seed failed:', err);
-    process.exit(1);
-});
+            seed().catch((err: unknown) => {
+            console.error('Seed script failed:', (err as Error).message);
+            });

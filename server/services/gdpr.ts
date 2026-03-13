@@ -19,11 +19,11 @@ export async function runDailyPurge() {
     ) as { date: string }[];
 
     for (const { date } of datesToAggregate) {
-      const dayTickets = await query('SELECT * FROM tickets WHERE created_at::date = $1', [date]) as Ticket[];
+      const dayTickets = (await query('SELECT * FROM tickets WHERE created_at::date = $1', [date])) as unknown as Ticket[];
       const ticketIds = dayTickets.map(t => t.id);
       let dayRatings: Rating[] = [];
       if (ticketIds.length > 0) {
-        dayRatings = await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds) as Rating[];
+        dayRatings = (await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds)) as unknown as Rating[];
       }
 
       const stats = computeLiveDayStats(dayTickets, dayRatings);

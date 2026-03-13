@@ -44,22 +44,14 @@ export const ticketRouter = router({
 
         const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-        // Base Query
-        let query = db.select().from(tickets).where(where);
-
-        // Sorting
-        if (input.status === 'closed') {
-          query = query.orderBy(desc(tickets.closedAt));
-        } else {
-          query = query.orderBy(asc(tickets.createdAt));
-        }
-
         // Pagination & Count for Archive
         if (input.limit !== undefined) {
           const countResult = await db.select({ count: sql<number>`count(*)` }).from(tickets).where(where);
           const total = Number(countResult[0]?.count || 0);
 
-          const rows = await query.limit(input.limit).offset(input.offset || 0);
+          const rows = await db.select().from(tickets).where(where)
+             .orderBy(input.status === 'closed' ? desc(tickets.closedAt) : asc(tickets.createdAt))
+             .limit(input.limit).offset(input.offset || 0);
 
           // Fetch labels for each ticket
           const ticketsWithLabels = await Promise.all(rows.map(async (t) => {
@@ -77,7 +69,8 @@ export const ticketRouter = router({
           return { tickets: ticketsWithLabels, total };
         }
 
-        const rows = await query;
+        const rows = await db.select().from(tickets).where(where)
+          .orderBy(input.status === 'closed' ? desc(tickets.closedAt) : asc(tickets.createdAt));
         const ticketsWithLabels = await Promise.all(rows.map(async (t) => {
           const labels = await db.select({ labelId: ticketLabels.labelId })
             .from(ticketLabels)

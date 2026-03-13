@@ -67,9 +67,33 @@ export interface Ticket {
   title?: string;
 }
 
+export interface AppConfigLimits {
+  MAX_TICKETS_PER_EXPERT: number;
+  MAX_MESSAGE_LENGTH: number;
+}
+
+export interface AppConfigBusinessHours {
+  start: string;
+  end: string;
+  timezone: string;
+}
+
 export interface AppConfig {
-  limits: any;
-  businessHours: any;
+  limits: AppConfigLimits;
+  businessHours: AppConfigBusinessHours;
+}
+
+export interface CannedResponse {
+  id: string;
+  dept: string;
+  title: string;
+  text: string;
+}
+
+export interface RatingPromptData {
+  ticketId: string;
+  expertId: string;
+  expertName: string;
 }
 
 export interface OnlineExpert {
@@ -87,7 +111,7 @@ export interface StoreState {
   highContrastMode: boolean;
   focusMode: boolean;
   selectedLang: string | null;
-  cannedResponses: any[];
+  cannedResponses: CannedResponse[];
   notificationsEnabled: boolean;
   tickets: Ticket[];
   archivedTickets: Ticket[];
@@ -96,7 +120,7 @@ export interface StoreState {
   typingUsers: Record<string, Record<string, boolean>>;
   activeTicketId: string | null;
   expertOpenTickets: string[];
-  ratingPrompt: any | null;
+  ratingPrompt: RatingPromptData | null;
   unreadTickets: Set<string>;
   agentOnline: Record<string, boolean>;
   businessHoursOpen: boolean;
@@ -105,7 +129,7 @@ export interface StoreState {
   allLabels: Label[];
   queuePosition: { position: number; etaMins: number } | null;
 
-  setCannedResponses: (responses: any[]) => void;
+  setCannedResponses: (responses: CannedResponse[]) => void;
   updateMessageState: (ticketId: string, messageId: string, updates: Partial<Message>) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
   setAppConfig: (config: AppConfig) => void;
@@ -124,9 +148,9 @@ export interface StoreState {
   setActiveTicketId: (id: string | null) => void;
   addExpertOpenTicket: (ticketId: string) => void;
   removeExpertOpenTicket: (ticketId: string) => void;
-  setRatingPrompt: (data: any) => void;
+  setRatingPrompt: (data: RatingPromptData | null) => void;
   clearRatingPrompt: () => void;
-  updateMessageReaction: (ticketId: string, messageId: string, reactions: any) => void;
+  updateMessageReaction: (ticketId: string, messageId: string, reactions: Record<string, string[]>) => void;
   markUnread: (ticketId: string) => void;
   clearUnread: (ticketId: string) => void;
   setAgentOnline: (ticketId: string, online: boolean) => void;

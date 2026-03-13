@@ -1,20 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { auth, authorize } from '../middleware/auth.js';
+import { describe, it, expect, vi } from 'vitest';
+import { auth, authorize, AuthRequest } from '../middleware/auth.js';
+import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import config from '../config.js';
 
 // Helper to create mock req/res/next
-function mockReqResNext(overrides: any = {}) {
-  const req: any = {
+function mockReqResNext(overrides: Partial<AuthRequest> = {}) {
+  const req = {
     headers: {},
     query: {},
     ...overrides,
-  };
-  const res: any = {
+  } as unknown as AuthRequest;
+
+  const res = {
     status: vi.fn().mockReturnThis(),
     json: vi.fn().mockReturnThis(),
-  };
-  const next = vi.fn();
+  } as unknown as Response;
+
+  const next = vi.fn() as NextFunction;
   return { req, res, next };
 }
 

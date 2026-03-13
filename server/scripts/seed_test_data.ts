@@ -236,7 +236,7 @@ async function seed() {
   for (let i = 0; i < TOTAL; i++) {
     const id = randomUUID();
     const agent = rand(agents);
-    const dept = rand(DEPTS);
+    const dept = rand(DEPTS as unknown as string[]);
     const subject = rand(TICKET_SUBJECTS);
     const dareRef = Math.random() > 0.4 ? `DARE-${randInt(1000, 9999)}` : null;
     const cdbId = Math.random() > 0.3 ? `C-${randInt(100000, 999999)}` : null;
