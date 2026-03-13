@@ -8,6 +8,9 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
+import * as trpcExpress from '@trpc/server/adapters/express';
+import { createContext } from './trpc/context.js';
+import { appRouter } from './trpc/router.js';
 
 import ticketRoutes from './routes/tickets.js';
 import messageRoutes from './routes/messages.js';
@@ -109,6 +112,15 @@ app.use('/api/labels', labelRoutes);
 app.use('/api/canned-responses', cannedRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/stats', statsRoutes);
+
+// tRPC
+app.use(
+  '/api/trpc',
+  trpcExpress.createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  })
+);
 
 app.get('/api/config', (_req: Request, res: Response) => {
   res.json({

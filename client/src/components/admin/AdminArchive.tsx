@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useT } from '../../i18n';
-import { Ticket, Message, Label } from '../../types';
+import { Ticket, Message } from '../../types';
 import useStore from '../../store/useStore';
+import { trpc } from '../../utils/trpc';
 
 const LIMIT = 25;
 const DEPT_COLOR: Record<string, string> = {
@@ -21,9 +22,10 @@ export default function AdminArchive() {
   const [dateTo, setDateTo] = useState('');
   const [preview, setPreview] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [allLabels, setAllLabels] = useState<Label[]>([]);
   const [labelFilter, setLabelFilter] = useState('all');
   const t = useT();
+
+  const { data: allLabels = [] } = trpc.label.list.useQuery();
 
   function fetchTickets({ reset = false, off = 0 } = {}) {
     setLoading(true);
@@ -49,10 +51,6 @@ export default function AdminArchive() {
   // initial load
   useEffect(() => {
     fetchTickets({ reset: true });
-    fetch('/api/labels', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then(setAllLabels)
-      .catch(console.error);
   }, []);
 
   // debounced refetch on filter change
@@ -67,7 +65,7 @@ export default function AdminArchive() {
       .then((r) => r.json())
       .then(setMessages)
       .catch(() => setMessages([]));
-  }, [preview?.id]);
+  }, [preview?.id, token]);
 
   function duration(tk: Ticket) {
     if (!tk.closedAt || !tk.createdAt) return '—';
@@ -190,7 +188,7 @@ export default function AdminArchive() {
                       if (labelFilter === 'all') return true;
                       if (labelFilter === 'none') return !ticket.labels || ticket.labels.length === 0;
                       if (labelFilter === 'any') return ticket.labels && ticket.labels.length > 0;
-                      return ticket.labels && ticket.labels.includes(labelFilter);
+                      return ticket.labels && (ticket.labels as string[]).includes(labelFilter);
                     })
                     .map((ticket) => (
                       <tr
@@ -211,9 +209,9 @@ export default function AdminArchive() {
                           {ticket.expertName || <span className="italic text-solarized-base2">Abandoned</span>}
                         </td>
                         <td className="px-4 py-2.5">
-                          {ticket.labels && ticket.labels.length > 0 ? (
+                          {ticket.labels && (ticket.labels as string[]).length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {ticket.labels.map((id) => {
+                              {(ticket.labels as string[]).map((id) => {
                                 const info = allLabels.find((l) => l.id === id);
                                 if (!info) return null;
                                 return (
@@ -286,9 +284,9 @@ export default function AdminArchive() {
                   </svg>
                   {duration(preview)}
                 </p>
-                {preview.labels && preview.labels.length > 0 && (
+                {preview.labels && (preview.labels as string[]).length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-3">
-                    {preview.labels.map((id) => {
+                    {(preview.labels as string[]).map((id) => {
                       const info = allLabels.find((l) => l.id === id);
                       if (!info) return null;
                       return (

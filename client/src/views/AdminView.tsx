@@ -9,8 +9,9 @@ import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminLabels from '../components/admin/AdminLabels';
+import AdminCannedResponses from '../components/admin/AdminCannedResponses';
 
-type AdminTab = 'dashboard' | 'tickets' | 'archive' | 'feedback' | 'labels';
+type AdminTab = 'dashboard' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
 
 export default function AdminView() {
   const { user, logout } = useStore();
@@ -88,6 +89,15 @@ export default function AdminView() {
                 </svg>
               }
             />
+            <NavButton
+              id="canned"
+              label="Shortcuts"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              }
+            />
           </div>
         </div>
 
@@ -120,6 +130,7 @@ export default function AdminView() {
         {view === 'archive' && <AdminArchive />}
         {view === 'feedback' && <AdminFeedback />}
         {view === 'labels' && <AdminLabels />}
+        {view === 'canned' && <AdminCannedResponses />}
       </main>
     </div>
   );
