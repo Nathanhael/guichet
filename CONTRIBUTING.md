@@ -24,6 +24,12 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 - **Fonts**: Use the `Lexend` stack for accessibility.
 - **Fixed Widths**: Avoid jarring layout shifts; use `min-w` and `max-w` strictly.
 - **Bionic Reading**: Any text-heavy component should utilize the `<BionicText />` wrapper.
+- **High Contrast Mode**: Components must respond to the `high-contrast-mode` class by switching to a simplified, high-visibility color palette (typically pure black and white).
+
+### Identity-Integrated Chat
+- **Bubble Alignment**: Identity is indicated primarily by alignment (right for the current user, left for others).
+- **Bubble Tails**: Use `.bubble-tail-mine` and `.bubble-tail-other` for visual hierarchy.
+- **No Avatars**: Avatars should be omitted in the main chat stream to reduce visual noise, except for system messages.
 
 ## Coding Standards
 

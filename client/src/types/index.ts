@@ -84,6 +84,7 @@ export interface StoreState {
   appConfig: AppConfig | null;
   dyslexicMode: boolean;
   bionicReading: boolean;
+  highContrastMode: boolean;
   selectedLang: string | null;
   cannedResponses: any[];
   notificationsEnabled: boolean;
@@ -132,6 +133,7 @@ export interface StoreState {
   toggleDarkMode: () => void;
   toggleDyslexicMode: () => void;
   toggleBionicReading: () => void;
+  toggleHighContrastMode: () => void;
   setSelectedLang: (lang: string) => void;
   setConnectionStatus: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
   setAllLabels: (labels: Label[]) => void;

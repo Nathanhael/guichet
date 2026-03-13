@@ -1,16 +1,33 @@
 import useStore from '../store/useStore';
-import { Type, Zap } from 'lucide-react';
+import { Type, Zap, Contrast } from 'lucide-react';
 
 export default function NeuroToggle() {
-  const { dyslexicMode, toggleDyslexicMode, bionicReading, toggleBionicReading } = useStore();
+  const { 
+    dyslexicMode, toggleDyslexicMode, 
+    bionicReading, toggleBionicReading,
+    highContrastMode, toggleHighContrastMode 
+  } = useStore();
 
   return (
     <div className="flex items-center p-0.5 rounded-lg bg-black/10 dark:bg-white/5 border border-white/5">
+      {/* High Contrast Mode Button */}
+      <button
+        onClick={toggleHighContrastMode}
+        title={highContrastMode ? 'Calm UI' : 'High Contrast UI'}
+        className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 group relative ${
+          highContrastMode 
+            ? 'bg-white/20 dark:bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
+            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+        }`}
+      >
+        <Contrast size={12} strokeWidth={highContrastMode ? 3 : 2} />
+      </button>
+
       {/* Dyslexic Mode Button */}
       <button
         onClick={toggleDyslexicMode}
         title={dyslexicMode ? 'Standard font' : 'Dyslexic-friendly font'}
-        className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 group relative ${
+        className={`px-2 py-1 rounded-md text-[10px] font-bold ml-0.5 transition-all duration-300 group relative ${
           dyslexicMode 
             ? 'bg-white/20 dark:bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
             : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'

@@ -12,6 +12,9 @@ Detailed technical reference for M&P Support. For a general overview, features, 
 | socket.io | ^4.7.4 | Real-time communication |
 | pg | ^8.20.0 | PostgreSQL database driver |
 | drizzle-orm | ^0.45.1 | TypeScript ORM |
+| redis | ^4.7.1 | Redis client for horizontal scaling |
+| socket.io | ^4.7.4 | Real-time communication |
+| @socket.io/redis-adapter | ^8.3.0 | Redis adapter for Socket.io |
 | jsonwebtoken | ^9.0.2 | JWT authentication |
 | bcrypt | ^6.0.0 | Password hashing |
 | cors | ^2.8.5 | CORS middleware |
@@ -146,6 +149,7 @@ For a detailed breakdown of the system design, real-time flows, and modular arch
 # docker-compose.yml
 services:
   db:       # PostgreSQL 16 (port 5432)
+  redis:    # Redis 7-alpine (port 6379) for Socket.io adapter
   server:   # Node 20 dev server (port 3001)
   client:   # Vite dev server (port 5173)
 ```
@@ -155,6 +159,7 @@ services:
 # docker-compose.prod.yml
 services:
   db:       # PostgreSQL 16 with healthcheck
+  redis:    # Redis 7-alpine for scale
   server:   # Multi-stage build, non-root user
   client:   # Multi-stage build with nginx (port 80)
 ```

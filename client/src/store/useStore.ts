@@ -9,6 +9,7 @@ const useStore = create<StoreState>((set) => ({
   appConfig: null,
   dyslexicMode: localStorage.getItem('dyslexicMode') === 'true',
   bionicReading: localStorage.getItem('bionicReading') === 'true',
+  highContrastMode: localStorage.getItem('highContrastMode') === 'true',
   selectedLang: localStorage.getItem('selectedLang') || null,
 
   cannedResponses: [],
@@ -193,6 +194,13 @@ const useStore = create<StoreState>((set) => ({
       const next = !state.bionicReading;
       localStorage.setItem('bionicReading', String(next));
       return { bionicReading: next };
+    }),
+
+  toggleHighContrastMode: () =>
+    set((state) => {
+      const next = !state.highContrastMode;
+      localStorage.setItem('highContrastMode', String(next));
+      return { highContrastMode: next };
     }),
 
   setSelectedLang: (lang) => {
