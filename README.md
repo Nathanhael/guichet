@@ -1,6 +1,6 @@
 # M&P Support
 
-Local prototype of a real-time live chat application for telecom customer support. Featuring AI-powered translation, asynchronous sentiment analysis, and a neuro-inclusive Solaris design.
+Local prototype of a real-time, multi-tenant live chat application. Featuring project-agnostic "White-Label" architecture, AI-powered insights, asynchronous sentiment analysis, and a neuro-inclusive Solaris design.
 
 ## 🚀 Quick Start
 
@@ -23,14 +23,14 @@ Local prototype of a real-time live chat application for telecom customer suppor
 Explore our structured documentation for deeper insights:
 
 ### 🛠️ Technical & Architecture
-- **[docs/TECHNICAL.md](./docs/TECHNICAL.md)** -- Full tech stack, database schema, and system architecture.
+- **[docs/TECHNICAL.md](./docs/TECHNICAL.md)** -- Multi-tenant system design, database schema, and scalability logic.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** -- Solaris design standards and coding conventions.
 
 ### 🧠 AI & Intelligence
-- **[docs/AI_PIPELINE.md](./docs/AI_PIPELINE.md)** -- Message processing, safety guards, and AI Hub analytics.
+- **[docs/AI_PIPELINE.md](./docs/AI_PIPELINE.md)** -- Message processing, safety guards, and tenant-aware AI Hub analytics.
 
 ### 👥 User Guides
-- **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** -- Role-based walkthroughs and neuro-inclusive features.
+- **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** -- Role-based walkthroughs (Agent, Support, Admin, Platform Operator).
 
 ---
 
@@ -40,8 +40,8 @@ Explore our structured documentation for deeper insights:
 |---|---|
 | **Frontend** | React 18, Vite 5, Tailwind CSS 3, Framer Motion, Zustand |
 | **Backend** | Node 20 (ESM), Express.js, Socket.io, **tRPC** |
-| **Database** | PostgreSQL + **Drizzle ORM**, Redis (Socket scaling) |
-| **AI/ML** | local Ollama (Gemma), Asynchronous Sentiment Scoring |
+| **Database** | PostgreSQL + **Drizzle ORM**, **Redis** (Socket scaling & Presence) |
+| **AI/ML** | local Ollama (Gemma), Tenant-Aware Sentiment Scoring |
 | **DevOps** | Docker Compose, Healthchecks, Non-root containers |
 
 ---

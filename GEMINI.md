@@ -3,21 +3,22 @@
 This file serves as the primary instructional context for Gemini CLI when working in the **i-pxs-support** repository.
 
 ## Project Overview
-**M&P Support** is a high-fidelity prototype of a real-time customer support chat application. It facilitates communication between **Agents** (who create tickets) and **Experts** (who resolve them), with **Admins** and **Managers** overseeing operations.
+**M&P Support** is a high-fidelity prototype of a real-time, multi-tenant customer support platform. It facilitates communication between **Agents** (who create tickets) and **Support Specialists** (who resolve them), with **Admins**, **Managers**, and **Platform Operators** overseeing operations.
 
 ### Key Features
 - **Real-Time Communication**: Powered by Socket.io for low-latency chat and status updates.
-- **AI-Powered Insights**: Automatic translation, asynchronous sentiment analysis, and qualitative summaries using a local **Ollama** LLM (Gemma model).
+- **Multi-Tenant Architecture**: Data isolation and project-agnostic "White-Label" logic via Partners and Memberships.
+- **AI-Powered Insights**: Tenant-aware translation, asynchronous sentiment analysis, and qualitative summaries using a local **Ollama** LLM (Gemma model).
 - **Dual Dashboard Orchestration**:
   - **Operational Dashboard**: Focuses on real-time KPIs, queue health, and staffing.
   - **AI Intelligence Hub**: Focuses on sentiment trends, topic clustering, and qualitative summaries.
 - **Neuro-Inclusive Design (Solaris)**: 
   - **Dyslexic Mode**: Lexend font support.
   - **Bionic Reading**: Fixation-point highlighting.
-  - **Immersive Zen Mode**: Adaptive glassmorphism (`.zen-glass`) and ambient backgrounds for expert focus.
-- **Solaris Design System**: A "glassmorphic" aesthetic with vibrant gradients and reactive animations.
+  - **Immersive Zen Mode**: Adaptive glassmorphism (`.zen-glass`) and ambient backgrounds for **Support Specialist** focus.
+- **Solaris Design System**: A "glassmorphic" aesthetic with dynamic brand variables (`--brand-primary`).
 - **GDPR Compliance**: Automatic 30-day data retention policy with anonymized historical aggregation.
-- **Business Hours**: Enforced availability (07:30–22:30 Europe/Brussels).
+- **Enterprise Scaling**: **Redis-based** distributed presence and horizontal scaling support.
 
 ### Tech Stack
 - **Frontend**: React 18, Vite 5, Tailwind CSS 3, Framer Motion, Zustand (State), Socket.io-client.
@@ -34,10 +35,10 @@ This file serves as the primary instructional context for Gemini CLI when workin
     - **Correct**: `docker compose exec server npm test`
     - **Incorrect**: `npm test`
 2.  **Solaris Design Standards**: Do not use plain Tailwind colors (e.g., `bg-blue-500`). Use the custom glassmorphism utilities (`.glass-card`, `.glass-panel`) and gradients defined in `client/src/index.css`.
-3.  **Localization-First**: Prefer using the `useT` hook and `client/src/i18n.ts` for all UI strings. The `ExpertView` and `AdminView` are fully localized. If a string *must* be hardcoded (e.g., system messages), use **Dutch**.
-4.  **Graceful AI Fallback**: Always ensure the system remains functional if the Ollama service is offline.
+3.  **Localization-First**: Prefer using the `useT` hook and `client/src/i18n.ts` for all UI strings.
+4.  **Graceful AI Fallback**: Always ensure the system remains functional if the Ollama service is offline or if a partner has `ai_enabled: false`.
 5.  **State Management**: `client/src/store/useStore.ts` is the single source of truth. Always use functional updates for nested ticket/message objects.
-6.  **tRPC & Drizzle Preference**: New data-fetching logic should use **tRPC procedures** instead of raw Express routes. Database interactions must use **Drizzle ORM**; avoid raw `pool.query()` calls (see `docs/superpowers/specs/`).
+6.  **tRPC & Drizzle Preference**: New data-fetching logic should use **tRPC procedures** instead of raw Express routes. Database interactions must use **Drizzle ORM**.
 
 ---
 
@@ -46,7 +47,7 @@ This file serves as the primary instructional context for Gemini CLI when workin
 ### Prerequisites
 - Docker & Docker Compose
 - [Ollama](https://ollama.com/) (running on the host machine at port 11434)
-- **Redis**: Required for Socket.io horizontal scaling (included in Docker Compose).
+- **Redis**: Required for Socket.io horizontal scaling and presence tracking.
 
 ### Commands
 | Task | Command |
@@ -63,8 +64,9 @@ This file serves as the primary instructional context for Gemini CLI when workin
 ## Development Conventions
 
 ### Architecture & Patterns
-- **Role-Based Access**: Roles are `agent`, `expert`, and `admin`. Gate endpoints using `middleware/auth.ts`.
-- **Socket Rooms**: Tickets use rooms named `ticket:{ticketId}`.
+- **Role-Based Access**: Roles are `agent`, `support`, `manager`, `admin`, and `platform_operator`. Gate endpoints using `middleware/auth.ts`.
+- **Multi-Tenancy**: All data must be scoped by `partner_id`.
+- **Socket Rooms**: Tickets use rooms named `ticket:{ticketId}`. Broadcasts are scoped to `partner:{partnerId}`.
 - **Message Pipeline**: Every message goes through a sequence of **Guards** (safety/quality) → **Improvement** (AI) → **Translation** (AI).
 - **Data Retention**: The `gdpr.ts` service purges PII every 24 hours for records older than 30 days.
 
@@ -75,72 +77,24 @@ This file serves as the primary instructional context for Gemini CLI when workin
 - **Time**: Always use `Europe/Brussels` timezone for business hours and statistics.
 
 ### File Structure
-- `client/src/views/`: Primary role-based entry points.
+- `client/src/views/`: Primary role-based entry points (`SupportView.tsx`, `PlatformView.tsx`).
 - `client/src/store/`: Zustand state definitions.
 - `server/routes/`: Express API endpoints.
-- `server/services/`: Core business logic (Translation, LLM, Stats, GDPR).
+- `server/services/`: Core business logic (Translation, LLM, Stats, GDPR, Presence).
 - `server/db/schema.ts`: Drizzle ORM schema definitions.
 
 ---
 
-## Documentation References
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)**: System design and real-time flows.
-- **[TECH_STACK.md](./TECH_STACK.md)**: Comprehensive dependency and schema list.
-- **[CONTRIBUTING.md](./CONTRIBUTING.md)**: Detailed Solaris UI rules.
-- **[CLAUDE.md](./CLAUDE.md)**: Tool-specific instructions for AI assistants.
+## Documentation Library
+- **[docs/TECHNICAL.md](./docs/TECHNICAL.md)**: Multi-tenant system design, schema, and scalability.
+- **[docs/AI_PIPELINE.md](./docs/AI_PIPELINE.md)**: Tenant-aware AI processing and analytics.
+- **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)**: User roles and neuro-inclusive walkthroughs.
+- **[CONTRIBUTING.md](./CONTRIBUTING.md)**: Solaris UI standards.
+- **[CLAUDE.md](./CLAUDE.md)**: Detailed guidance for AI coding assistants.
 
 # context-mode — MANDATORY routing rules
 
-You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.
-
-## BLOCKED commands — do NOT attempt these
-
-### curl / wget — BLOCKED
-Any shell command containing `curl` or `wget` will be intercepted and blocked. Do NOT retry.
-Instead use:
-- `mcp__context-mode__ctx_fetch_and_index(url, source)` to fetch and index web pages
-- `mcp__context-mode__ctx_execute(language: "javascript", code: "const r = await fetch(...)")` to run HTTP calls in sandbox
-
-### Inline HTTP — BLOCKED
-Any shell command containing `fetch('http`, `requests.get(`, `requests.post(`, `http.get(`, or `http.request(` will be intercepted and blocked. Do NOT retry with shell.
-Instead use:
-- `mcp__context-mode__ctx_execute(language, code)` to run HTTP calls in sandbox — only stdout enters context
-
-### WebFetch / web browsing — BLOCKED
-Direct web fetching is blocked. Use the sandbox equivalent.
-Instead use:
-- `mcp__context-mode__ctx_fetch_and_index(url, source)` then `mcp__context-mode__ctx_search(queries)` to query the indexed content
-
-## REDIRECTED tools — use sandbox equivalents
-
-### Shell (>20 lines output)
-Shell is ONLY for: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `npm install`, `pip install`, and other short-output commands.
-For everything else, use:
-- `mcp__context-mode__ctx_batch_execute(commands, queries)` — run multiple commands + search in ONE call
-- `mcp__context-mode__ctx_execute(language: "shell", code: "...")` — run in sandbox, only stdout enters context
-
-### read_file (for analysis)
-If you are reading a file to **edit** it → read_file is correct (edit needs content in context).
-If you are reading to **analyze, explore, or summarize** → use `mcp__context-mode__ctx_execute_file(path, language, code)` instead. Only your printed summary enters context.
-
-### grep / search (large results)
-Search results can flood context. Use `mcp__context-mode__ctx_execute(language: "shell", code: "grep ...")` to run searches in sandbox. Only your printed summary enters context.
-
-## Tool selection hierarchy
-
-1. **GATHER**: `mcp__context-mode__ctx_batch_execute(commands, queries)` — Primary tool. Runs all commands, auto-indexes output, returns search results. ONE call replaces 30+ individual calls.
-2. **FOLLOW-UP**: `mcp__context-mode__ctx_search(queries: ["q1", "q2", ...])` — Query indexed content. Pass ALL questions as array in ONE call.
-3. **PROCESSING**: `mcp__context-mode__ctx_execute(language, code)` | `mcp__context-mode__ctx_execute_file(path, language, code)` — Sandbox execution. Only stdout enters context.
-4. **WEB**: `mcp__context-mode__ctx_fetch_and_index(url, source)` then `mcp__context-mode__ctx_search(queries)` — Fetch, chunk, index, query. Raw HTML never enters context.
-5. **INDEX**: `mcp__context-mode__ctx_index(content, source)` — Store content in FTS5 knowledge base for later search.
-
-## Output constraints
-
-- Keep responses under 500 words.
-- Write artifacts (code, configs, PRDs) to FILES — never return them as inline text. Return only: file path + 1-line description.
-- When indexing content, use descriptive source labels so others can `search(source: "label")` later.
-
-## ctx commands
+You have context-mode MCP tools available. These rules are NOT optional.
 
 | Command | Action |
 |---------|--------|

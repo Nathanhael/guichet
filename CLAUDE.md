@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-M&P Support is a real-time chat web app for telecom customer support. Agents create tickets, experts handle them with live translation (Ollama LLM), and admins monitor KPIs. Three roles: `agent`, `expert`, `admin`. All code uses ES modules (`"type": "module"`).
+M&P Support is a real-time, multi-tenant live chat platform. Agents create tickets, support specialists handle them with live translation, and admins monitor qualitative AI insights. Five roles: `agent`, `support`, `manager`, `admin`, `platform_operator`. All code uses ES modules (`"type": "module"`).
 
 ## Commands
 
@@ -130,23 +130,19 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 **Code splitting** (`vite.config.ts` manual chunks):
 - `vendor-charts` (Recharts + D3), `vendor-ui-icons` (Lucide), `vendor-ui-anim` (Framer Motion), `vendor` (other deps).
 
-**Admin views** (`components/admin/`): 
-- **Operational Dashboard** (`AdminStats.tsx`): Focuses on real-time performance (Response times, SLA health, Staffing demand).
-- **AI Intelligence Hub** (`AdminAIStats.tsx`): Dedicated qualitative workspace (Sentiment trends, Topic clustering, LLM summaries).
+**Primary views** (`client/src/views/`):
+- **AgentView**: Ticket creation and requester chat.
+- **SupportView**: Queue management and resolution (Zen Mode).
+- **AdminView**: Operational and AI Dashboards.
+- **PlatformView**: Global partner and membership management (Operator only).
 
 ### Key Conventions
 
-- **Roles**: `agent`, `expert`, `admin`. **Departments**: `DSC` (Billing & Sales), `FOT` (Technical).
-- **Aesthetics**: Solaris design system — glassmorphism, vibrant gradients. 
-  - **Zen Mode**: Immersive focus environment for experts using `.zen-glass` (high blur/contrast) and `AmbientBackground.tsx` (slow-pulsing gradients).
-  - **Themes**: Solaris Light and Liquid Dark. Never use plain Tailwind colors. Use `.glass-card` / `.glass-panel`.
-- **Fonts**: `Lexend` for dyslexic mode; `Outfit`/`Inter` for standard UI.
-- **Localization**: Use the `useT` hook for all UI strings. Avoid hardcoded Dutch strings.
-- **AI Pipeline**:
-  - **Sentiment**: Every non-whisper message is asynchronously scored via Ollama (`llm.ts`) and updated in the DB.
-  - **Summarization**: Batch ticket analysis for recurring issues.
-- **Safety**: Business hours enforced. GDPR purge every 24h (aggregates into `daily_stats`).
-- **TypeScript**: Avoid `any` — maintain 100% type safety in `client/src/types/index.ts`.
-- **Socket**: Redis adapter for horizontal scaling. Always implement cleanup in `useEffect` for listeners.
-- **pg type parsers**: Raw `pool.query()` requires the timestamp parsers in `server/db/postgres.ts` to return ISO strings.
-- **Ollama**: `http://host.docker.internal:11434`, model `gemmatranslate4b`. Handle offline cases gracefully.
+- **Roles**: `agent`, `support`, `manager`, `admin`, `platform_operator`.
+- **Multi-Tenancy**: All data must be scoped by `partner_id`. Never leak cross-partner data.
+- **Transversal**: Users can have multiple `memberships`. Use `usePartner()` hook for active context.
+- **Aesthetics**: Solaris design system — glassmorphism, dynamic CSS variables (`--brand-primary`).
+- **AI Pipeline**: Tenant-aware (checks `ai_enabled`). Scores sentiment and improves/translates via Ollama.
+- **Scaling**: Redis-based Presence and Socket.io adapter. Avoid in-memory state for enterprise scalability.
+- **TypeScript**: 100% type safety. Avoid `any`. Maintain interfaces in `client/src/types/index.ts`.
+- **Ollama**: `http://host.docker.internal:11434`, model `gemmatranslate4b`.
