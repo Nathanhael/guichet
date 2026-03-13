@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
 import { Panel } from '../DashboardHelpers';
-import { LLMSummaryData } from '../../../types';
+import { trpc } from '../../../utils/trpc';
 
 interface LLMSummaryProps {
   periodType: string;
@@ -8,35 +7,13 @@ interface LLMSummaryProps {
 }
 
 export default function LLMSummary({ periodType, periodValue }: LLMSummaryProps) {
-  const [summary, setSummary] = useState<LLMSummaryData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // tRPC: LLM Summary
+  const { data: summary, isLoading, error } = trpc.stats.getLLMSummary.useQuery(
+    { periodType, periodValue },
+    { enabled: !!periodType && !!periodValue }
+  );
 
-  useEffect(() => {
-    if (!periodType || !periodValue) return;
-
-    async function fetchSummary() {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = localStorage.getItem('token');
-        const resp = await fetch(`/api/stats/summary?periodType=${periodType}&periodValue=${periodValue}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!resp.ok) throw new Error('Failed to fetch AI summary');
-        const data = await resp.json();
-        setSummary(data);
-      } catch (err: any) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchSummary();
-  }, [periodType, periodValue]);
-
-  if (loading) return (
+  if (isLoading) return (
     <Panel title="AI Perspective">
       <div className="animate-pulse space-y-4">
         <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
@@ -51,7 +28,7 @@ export default function LLMSummary({ periodType, periodValue }: LLMSummaryProps)
 
   if (error) return (
     <Panel title="AI Perspective">
-      <p className="text-sm text-red-500 font-medium italic">Could not load AI summary: {error}</p>
+      <p className="text-sm text-red-500 font-medium italic">Could not load AI summary: {error.message}</p>
     </Panel>
   );
 
