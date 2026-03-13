@@ -91,9 +91,10 @@ export const ticketRouter = router({
         }));
 
         return ticketsWithLabels;
-      } catch (err: any) {
-        logger.error({ err: err.message, input }, 'tRPC: Error listing tickets');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message, input }, 'tRPC: Error listing tickets');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 
@@ -116,10 +117,11 @@ export const ticketRouter = router({
           participants: JSON.parse(t.participants || '[]'),
           labels: labels.map(l => l.labelId),
         };
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
-        logger.error({ err: err.message, id }, 'tRPC: Error getting ticket');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message, id }, 'tRPC: Error getting ticket');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 });

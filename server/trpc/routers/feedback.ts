@@ -18,9 +18,10 @@ export const feedbackRouter = router({
         ...f,
         treated: !!f.treated,
       }));
-    } catch (err: any) {
-      logger.error({ err: err.message }, 'tRPC: Error listing feedback');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error({ err: message }, 'tRPC: Error listing feedback');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
     }
   }),
 
@@ -46,9 +47,10 @@ export const feedbackRouter = router({
 
         await db.insert(appFeedback).values(entry);
         return entry;
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'tRPC: Error creating feedback');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message }, 'tRPC: Error creating feedback');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 
@@ -61,9 +63,10 @@ export const feedbackRouter = router({
           .where(eq(appFeedback.id, id));
         
         return { success: true };
-      } catch (err: any) {
-        logger.error({ err: err.message, id }, 'tRPC: Error treating feedback');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message, id }, 'tRPC: Error treating feedback');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 });

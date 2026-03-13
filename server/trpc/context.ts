@@ -4,6 +4,13 @@ import jwt from 'jsonwebtoken';
 import config from '../config.js';
 import { UserRole } from '../types/index.js';
 
+export interface JwtPayload {
+  userId: string;
+  role: UserRole;
+  iat?: number;
+  exp?: number;
+}
+
 export interface TRPCUser {
   id: string;
   role: UserRole;
@@ -15,7 +22,7 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, config.JWT_SECRET) as any;
+      const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
       user = {
         id: decoded.userId,
         role: decoded.role,

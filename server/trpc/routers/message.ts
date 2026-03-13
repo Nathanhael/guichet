@@ -48,9 +48,11 @@ export const messageRouter = router({
           system: !!m.system,
           reactions: JSON.parse(m.reactions || '{}'),
         }));
-      } catch (err: any) {
-        logger.error({ err: err.message, ticketId: input.ticketId }, 'tRPC: Error listing messages');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+      } catch (err: unknown) {
+        if (err instanceof TRPCError) throw err;
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message, ticketId: input.ticketId }, 'tRPC: Error listing messages');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 });

@@ -22,10 +22,10 @@ router.get('/export', [
   validate([])
 ], async (req: AuthRequest, res: Response) => {
   try {
-    const { dept, search, dateFrom, dateTo } = req.query as any;
+    const { dept, search, dateFrom, dateTo } = req.query as { dept?: string; search?: string; dateFrom?: string; dateTo?: string };
 
     let sql = "SELECT * FROM tickets WHERE status = 'closed'";
-    const params: any[] = [];
+    const params: unknown[] = [];
     let pIdx = 1;
 
     if (dept && dept !== 'all') {
@@ -78,9 +78,10 @@ router.get('/export', [
     res.setHeader('Content-Disposition', `attachment; filename=tickets_export_${new Date().toISOString().split('T')[0]}.csv`);
     res.status(200).send(csvContent);
 
-  } catch (err: any) {
-    logger.error({ err: err.message, query: req.query }, 'Error exporting tickets');
-    res.status(500).json({ error: err.message });
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    logger.error({ err: errMsg, query: req.query }, 'Error exporting tickets');
+    res.status(500).json({ error: errMsg });
   }
 });
 

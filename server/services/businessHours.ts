@@ -22,7 +22,7 @@ export async function broadcastAgentStatus(agentId: string, online: boolean) {
   try {
     const openTickets = await query('SELECT id FROM tickets WHERE agent_id = $1 AND status != $2', [agentId, 'closed']) as { id: string }[];
     for (const ticket of openTickets) io!.to(`ticket:${ticket.id}`).emit('agent:status', { ticketId: ticket.id, agentId, online });
-  } catch (err: any) { logger.error({ err: err.message }, '[agent:status] error'); }
+  } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[agent:status] error'); }
 }
 
 export async function broadcastQueuePositions() {
@@ -32,5 +32,5 @@ export async function broadcastQueuePositions() {
       const position = index + 1;
       io!.to(`ticket:${t.id}`).emit('queue:update', { position, etaMins: position * 2 });
     });
-  } catch (err: any) { logger.error({ err: err.message }, '[broadcastQueuePositions] error'); }
+  } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[broadcastQueuePositions] error'); }
 }

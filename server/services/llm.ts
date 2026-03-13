@@ -2,6 +2,27 @@ import { get, run, query } from '../db.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 
+interface OllamaResponse {
+    response: string;
+}
+
+interface LLMParsedResult {
+    sentiment: string;
+    top3Questions: string[];
+    summary: string;
+}
+
+interface MessageRow {
+    text: string;
+    processedText: string | null;
+    senderName: string;
+}
+
+interface ConversationMessageRow {
+    senderName: string;
+    originalText: string;
+}
+
 const MODEL = config.OLLAMA_MODEL || 'gemmatranslate4b';
 
 export interface LLMSummaryResult {
@@ -31,7 +52,7 @@ async function generateLLMSummary(periodType: string, periodValue: string): Prom
     const periodKey = `${periodType}:${periodValue}`;
     logger.info({ periodKey }, 'Generating LLM summary');
 
-    let messages: any[] = [];
+    let messages: MessageRow[] = [];
     if (periodType === 'day') {
         messages = await getMessagesForDay(periodValue);
     } else if (periodType === 'week') {
@@ -68,8 +89,8 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
             }),
         });
 
-        const data = await response.json();
-        let result: any;
+        const data = await response.json() as OllamaResponse;
+        let result: LLMParsedResult;
         const rawResponse = data.response;
 
         try {
@@ -81,8 +102,8 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
                 throw new Error('Missing required keys in LLM response');
             }
             result.top3Questions = Array.isArray(result.top3Questions) ? result.top3Questions.slice(0, 3) : [];
-        } catch (e: any) {
-            logger.error({ err: e.message, response: rawResponse }, 'Failed to parse LLM JSON response');
+        } catch (e: unknown) {
+            logger.error({ err: e instanceof Error ? e.message : String(e), response: rawResponse }, 'Failed to parse LLM JSON response');
             result = {
                 sentiment: 'Mixed',
                 top3Questions: [],
@@ -96,22 +117,22 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
         );
 
         return { sentiment: result.sentiment, questions: result.top3Questions, summary: result.summary, updatedAt: new Date().toISOString() };
-    } catch (err: any) {
-        logger.error({ err: err.message }, 'LLM generation failed');
+    } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'LLM generation failed');
         return { sentiment: 'Error', questions: [], summary: 'AI summary currently unavailable.', updatedAt: new Date().toISOString() };
     }
 }
 
-async function getMessagesForDay(date: string) {
-    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::date = $1 AND system = 0 AND whisper = 0', [date]);
+async function getMessagesForDay(date: string): Promise<MessageRow[]> {
+    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::date = $1 AND system = 0 AND whisper = 0', [date]) as Promise<MessageRow[]>;
 }
 
-async function getMessagesForWeek(weekStr: string) {
-    return query(`SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE to_char(created_at, 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr]);
+async function getMessagesForWeek(weekStr: string): Promise<MessageRow[]> {
+    return query(`SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE to_char(created_at, 'YYYY-WW') = $1 AND system = 0 AND whisper = 0`, [weekStr]) as Promise<MessageRow[]>;
 }
 
-async function getMessagesForMonth(monthStr: string) {
-    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::text LIKE $1 AND system = 0 AND whisper = 0', [`${monthStr}%`]);
+async function getMessagesForMonth(monthStr: string): Promise<MessageRow[]> {
+    return query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::text LIKE $1 AND system = 0 AND whisper = 0', [`${monthStr}%`]) as Promise<MessageRow[]>;
 }
 
 export async function summarizeConversation(ticketId: string): Promise<string> {
@@ -120,14 +141,14 @@ export async function summarizeConversation(ticketId: string): Promise<string> {
     const messages = await query(
         'SELECT sender_name as "senderName", text as "originalText" FROM messages WHERE ticket_id = $1 AND system = 0 AND whisper = 0 ORDER BY created_at ASC',
         [ticketId]
-    );
+    ) as ConversationMessageRow[];
 
     if (!messages || messages.length === 0) {
         return 'No conversation recorded.';
     }
 
     const textToAnalyze = messages
-        .map((m: any) => `${m.senderName}: ${m.originalText}`)
+        .map((m) => `${m.senderName}: ${m.originalText}`)
         .join('\n')
         .slice(0, 4000);
 
@@ -152,7 +173,7 @@ ${textToAnalyze}`,
 
         if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
 
-        const data = await response.json();
+        const data = await response.json() as OllamaResponse;
         const summary = data.response?.trim();
         const duration = Date.now() - start;
 
@@ -162,8 +183,8 @@ ${textToAnalyze}`,
 
         await run('UPDATE tickets SET summary = $1 WHERE id = $2', [summary, ticketId]);
         return summary;
-    } catch (err: any) {
-        logger.error({ ticketId, err: err.message }, 'Failed to summarize conversation');
+    } catch (err: unknown) {
+        logger.error({ ticketId, err: err instanceof Error ? err.message : String(err) }, 'Failed to summarize conversation');
         return 'Summary unavailable.';
     }
 }

@@ -7,6 +7,113 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { Ticket, User } from '../../types/index.js';
 
+interface HistoricalStatRow {
+  date: string;
+  total: number;
+  closed: number;
+  abandoned: number;
+  avgResponseMs: number;
+  avgDurationMs: number;
+  avgRating: number | null;
+  ratingCount: number;
+  slaResolved: number;
+  slaCompliant: number;
+  deptCounts: string;
+  ratingsByDept: string;
+  hourly: string;
+}
+
+interface RatingRow {
+  id: string;
+  ticketId: string;
+  expertId: string;
+  rating: number;
+  createdAt: string;
+}
+
+interface DayData {
+  total: number;
+  deptCounts: Record<string, number>;
+  closed: number;
+  abandoned: number;
+  responseSum: number;
+  responseCount: number;
+  durationSum: number;
+  durationCount: number;
+  ratingSum: number;
+  ratingCount: number;
+  ratingsByDept: Record<string, { sum: number; count: number }>;
+  slaResolved: number;
+  slaCompliant: number;
+  deptResolved: Record<string, number>;
+  deptCompliant: Record<string, number>;
+  hourly: number[];
+  hourlyStaffing?: HourlyStaffingItem[];
+  expertIds?: Set<string>;
+}
+
+interface HourlyStaffingItem {
+  hour: number;
+  tickets: number;
+  experts: number;
+  slaResolved?: number;
+  slaCompliant?: number;
+}
+
+interface HourlyStaffingAccumulator {
+  hour: number;
+  tickets: number;
+  experts: number;
+  dayCount: number;
+  slaResolved: number;
+  slaCompliant: number;
+}
+
+interface PerDayEntry {
+  date: string;
+  total: number;
+  dsc: number;
+  fot: number;
+}
+
+interface RatingsByDeptAccumulator {
+  sum: number;
+  count: number;
+}
+
+interface ExpertMapEntry {
+  id: string;
+  name: string;
+  total: number;
+  today: number;
+  trendMap: Record<string, number>;
+  ratingSum: number;
+  ratingCount: number;
+  deptStats: Record<string, { sum: number; count: number; tickets: number }>;
+}
+
+interface AgentMapEntry {
+  name: string;
+  total: number;
+  today: number;
+  trendMap: Record<string, number>;
+}
+
+interface PrevHistRow {
+  total: number | null;
+  avgresp: number | null;
+  avgdur: number | null;
+  abandoned: number | null;
+  slares: number | null;
+  slacomp: number | null;
+}
+
+interface LabelCountRow {
+  name: string;
+  dept: string;
+  count: number;
+}
+
 export const statsRouter = router({
   getGlobalStats: roleProcedure(['admin', 'expert'])
     .input(z.object({
@@ -47,7 +154,7 @@ export const statsRouter = router({
           }
         }
 
-        const historicalStats = await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2', [rangeStart, rangeEnd]) as any[];
+        const historicalStats = await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2', [rangeStart, rangeEnd]) as HistoricalStatRow[];
         const ticketsSql = `SELECT * FROM tickets WHERE created_at::date >= $1 AND created_at::date <= $2`;
         const allLiveTicketsRaw = await query(ticketsSql, [rangeStart, rangeEnd]) as Ticket[];
         const allLiveTickets = (excludeWeekends)
@@ -63,9 +170,9 @@ export const statsRouter = router({
         const liveTickets = (dept && dept !== 'all') ? allLiveTickets.filter(t => t.dept === dept) : allLiveTickets;
         const liveTicketIds = liveTickets.map(t => t.id);
 
-        let liveRatings: any[] = [];
+        let liveRatings: RatingRow[] = [];
         if (liveTicketIds.length > 0) {
-          liveRatings = await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds) as any[];
+          liveRatings = await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds) as RatingRow[];
         }
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0;
@@ -76,15 +183,15 @@ export const statsRouter = router({
         let totalRatingSum = 0, totalRatingCount = 0;
         let totalSlaResolved = 0, totalSlaCompliant = 0;
         const hourlyMap = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
-        const hourlyStaffingMap: Record<number, any> = {};
-        const ratingsByDeptAgg: Record<string, any> = {};
-        const deptResolvedAgg: Record<string, any> = {};
-        const deptCompliantAgg: Record<string, any> = {};
+        const hourlyStaffingMap: Record<number, HourlyStaffingAccumulator> = {};
+        const ratingsByDeptAgg: Record<string, RatingsByDeptAccumulator> = {};
+        const deptResolvedAgg: Record<string, number> = {};
+        const deptCompliantAgg: Record<string, number> = {};
         const expertIdsAgg = new Set<string>();
-        const perDayData: any[] = [];
+        const perDayData: PerDayEntry[] = [];
 
         for (const date of allDays) {
-          let dayData: any;
+          let dayData: DayData;
           const hist = historicalStats.find(s => s.date === date);
 
           if (hist) {
@@ -132,13 +239,13 @@ export const statsRouter = router({
                 slaResolved: hist.slaResolved || 0,
                 slaCompliant: hist.slaCompliant || 0,
                 deptResolved: Object.fromEntries(
-                  Object.entries(histDeptCounts).map(([d, count]: [string, any]) => [
-                    d, (hist.total > 0 ? count / hist.total : 0) * (hist.slaResolved || 0)
+                  Object.entries(histDeptCounts).map(([d, count]) => [
+                    d, (hist.total > 0 ? (count as number) / hist.total : 0) * (hist.slaResolved || 0)
                   ])
                 ),
                 deptCompliant: Object.fromEntries(
-                  Object.entries(histDeptCounts).map(([d, count]: [string, any]) => [
-                    d, (hist.total > 0 ? count / hist.total : 0) * (hist.slaCompliant || 0)
+                  Object.entries(histDeptCounts).map(([d, count]) => [
+                    d, (hist.total > 0 ? (count as number) / hist.total : 0) * (hist.slaCompliant || 0)
                   ])
                 ),
                 hourly: histHourly,
@@ -175,7 +282,7 @@ export const statsRouter = router({
           totalSlaCompliant += dayData.slaCompliant;
 
           if (dayData.hourlyStaffing) {
-            dayData.hourlyStaffing.forEach((item: any) => {
+            dayData.hourlyStaffing.forEach((item: HourlyStaffingItem) => {
               const slot = hourlyMap.find(h => h.hour === item.hour);
               if (slot) {
                 slot.count += item.tickets;
@@ -202,27 +309,27 @@ export const statsRouter = router({
 
           if (dayData.expertIds) dayData.expertIds.forEach((id: string) => expertIdsAgg.add(id));
 
-          Object.entries(dayData.deptResolved || {}).forEach(([d, count]: [string, any]) => {
-            deptResolvedAgg[d] = (deptResolvedAgg[d] || 0) + count;
+          Object.entries(dayData.deptResolved || {}).forEach(([d, count]) => {
+            deptResolvedAgg[d] = (deptResolvedAgg[d] || 0) + (count as number);
           });
-          Object.entries(dayData.deptCompliant || {}).forEach(([d, count]: [string, any]) => {
-            deptCompliantAgg[d] = (deptCompliantAgg[d] || 0) + count;
+          Object.entries(dayData.deptCompliant || {}).forEach(([d, count]) => {
+            deptCompliantAgg[d] = (deptCompliantAgg[d] || 0) + (count as number);
           });
 
-          Object.entries(dayData.ratingsByDept).forEach(([d, stats]: [string, any]) => {
+          Object.entries(dayData.ratingsByDept).forEach(([d, stats]: [string, { sum: number; count: number }]) => {
             if (!ratingsByDeptAgg[d]) ratingsByDeptAgg[d] = { sum: 0, count: 0 };
             ratingsByDeptAgg[d].sum += stats.sum;
             ratingsByDeptAgg[d].count += stats.count;
           });
         }
 
-        let trendGranularity: string, dailyTrend: any[];
+        let trendGranularity: string, dailyTrend: PerDayEntry[];
         if (allDays.length <= 30) {
           trendGranularity = 'daily';
           dailyTrend = perDayData.map(d => ({ ...d, date: d.date.slice(5) }));
         } else if (allDays.length <= 90) {
           trendGranularity = 'weekly';
-          const weeks: any[] = [];
+          const weeks: PerDayEntry[] = [];
           for (let i = 0; i < perDayData.length; i += 7) {
             const chunk = perDayData.slice(i, i + 7);
             weeks.push({
@@ -235,7 +342,7 @@ export const statsRouter = router({
           dailyTrend = weeks;
         } else {
           trendGranularity = 'monthly';
-          const months: Record<string, any> = {};
+          const months: Record<string, PerDayEntry> = {};
           perDayData.forEach(d => {
             const key = d.date.slice(0, 7);
             if (!months[key]) months[key] = { date: key, total: 0, dsc: 0, fot: 0 };
@@ -260,12 +367,12 @@ export const statsRouter = router({
         const avgRating = totalRatingCount > 0 ? Math.round((totalRatingSum / totalRatingCount) * 10) / 10 : null;
         const slaHealth = totalSlaResolved > 0 ? Math.round((totalSlaCompliant / totalSlaResolved) * 100) : 100;
 
-        const ratingsByDeptOut: Record<string, any> = {};
+        const ratingsByDeptOut: Record<string, { avg: number | null; count: number }> = {};
         Object.entries(ratingsByDeptAgg).forEach(([d, stats]) => {
           ratingsByDeptOut[d] = { avg: stats.count > 0 ? Math.round((stats.sum / stats.count) * 10) / 10 : null, count: stats.count };
         });
 
-        const expertMap: Record<string, any> = {};
+        const expertMap: Record<string, ExpertMapEntry> = {};
         allLiveTickets.forEach(t => {
           if (!t.expertName || !t.expertId) return;
           if (!expertMap[t.expertId]) {
@@ -298,18 +405,18 @@ export const statsRouter = router({
           expert.deptStats[d].count++;
         }
 
-        const expertStats = await Promise.all(Object.values(expertMap).map(async (e: any) => {
+        const expertStats = await Promise.all(Object.values(expertMap).map(async (e) => {
           const trend = allDays.map(date => ({ date: date.substring(5), count: e.trendMap[date] || 0 }));
           const avgRating = e.ratingCount > 0 ? Math.round((e.ratingSum / e.ratingCount) * 10) / 10 : null;
-          const deptRatings: Record<string, any> = {};
-          Object.entries(e.deptStats).forEach(([dept, s]: [string, any]) => {
+          const deptRatings: Record<string, number | null> = {};
+          Object.entries(e.deptStats).forEach(([dept, s]) => {
             deptRatings[dept] = s.count > 0 ? Math.round((s.sum / s.count) * 10) / 10 : null;
           });
           return { name: e.name, total: e.total, today: e.today, trend, avgRating, deptRatings, depts: Object.keys(e.deptStats).sort() };
         }));
         expertStats.sort((a, b) => b.total - a.total);
 
-        const agentMap: Record<string, any> = {};
+        const agentMap: Record<string, AgentMapEntry> = {};
         allLiveTickets.forEach(t => {
           if (!agentMap[t.agentName]) agentMap[t.agentName] = { name: t.agentName, total: 0, today: 0, trendMap: {} };
           agentMap[t.agentName].total++;
@@ -339,7 +446,7 @@ export const statsRouter = router({
         if (excludeWeekends) {
             prevHistSql += " AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)";
         }
-        const prevHist = await query(prevHistSql, [prevStartStr, prevEndStr]) as any[];
+        const prevHist = await query(prevHistSql, [prevStartStr, prevEndStr]) as PrevHistRow[];
 
         const previousPeriod = {
           total: prevHist[0]?.total || 0,
@@ -380,8 +487,8 @@ export const statsRouter = router({
                                WHERE t.created_at::date >= $1 AND t.created_at::date <= $2
                                GROUP BY l.name, t.dept
                                ORDER BY t.dept, count DESC`;
-            const labelCounts = await query(labelsSql, [rangeStart, rangeEnd]) as any[];
-            const summary: any = { DSC: [], FOT: [] };
+            const labelCounts = await query(labelsSql, [rangeStart, rangeEnd]) as LabelCountRow[];
+            const summary: Record<string, string[]> = { DSC: [], FOT: [] };
             labelCounts.forEach(lc => { if (summary[lc.dept] && summary[lc.dept].length < 3) summary[lc.dept].push(lc.name); });
             return summary;
           })(),
@@ -389,9 +496,11 @@ export const statsRouter = router({
         };
 
         return responseData;
-      } catch (err: any) {
-        logger.error({ err: err.message, stack: err.stack }, 'tRPC: FATAL ERROR in getGlobalStats');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        const stack = err instanceof Error ? err.stack : undefined;
+        logger.error({ err: message, stack }, 'tRPC: FATAL ERROR in getGlobalStats');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 
@@ -403,9 +512,10 @@ export const statsRouter = router({
     .query(async ({ input }) => {
       try {
         return await getLLMSummary(input.periodType, input.periodValue);
-      } catch (err: any) {
-        logger.error({ err: err.message }, 'tRPC: Error in getLLMSummary');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message }, 'tRPC: Error in getLLMSummary');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 });
