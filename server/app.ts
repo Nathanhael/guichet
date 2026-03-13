@@ -24,6 +24,8 @@ import { setIo as setBusinessHoursIo } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 
+import { initRedis, getRedisClients } from './utils/redis.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
@@ -36,27 +38,14 @@ const io = new Server(httpServer, {
   cors: { origin: config.CORS_ORIGIN, methods: ['GET', 'POST'] },
 });
 
-let pubClient: any = null;
-let subClient: any = null;
-
 // Redis Adapter Initialization
-if (config.REDIS_URL) {
-  pubClient = createClient({ url: config.REDIS_URL });
-  subClient = pubClient.duplicate();
-
-  pubClient.on('error', (err: any) => logger.error({ err }, 'Redis Pub Client Error'));
-  subClient.on('error', (err: any) => logger.error({ err }, 'Redis Sub Client Error'));
-
-  try {
-    await Promise.all([pubClient.connect(), subClient.connect()]);
-    io.adapter(createAdapter(pubClient, subClient));
-    logger.info('Socket.io Redis adapter connected');
-  } catch (err) {
-    logger.warn({ err }, 'Failed to connect to Redis. Falling back to in-memory adapter.');
-  }
+const { pubClient, subClient } = await initRedis();
+if (pubClient && subClient) {
+  io.adapter(createAdapter(pubClient, subClient));
+  logger.info('Socket.io Redis adapter connected');
 }
 
-export { io, pubClient, subClient };
+export { io };
 app.set('io', io);
 presenceService.setIo(io);
 setBusinessHoursIo(io);

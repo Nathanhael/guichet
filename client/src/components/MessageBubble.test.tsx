@@ -54,7 +54,7 @@ describe('MessageBubble Component', () => {
   it('renders whisper indicator for whispers', () => {
     const whisperMsg = { ...mockMessage, whisper: true };
     render(<MessageBubble message={whisperMsg} ticketId="t1" />);
-    expect(screen.getByText(/Internal Whisper/i)).toBeInTheDocument();
+    expect(screen.getByText(/Internal mode/i)).toBeInTheDocument();
   });
 
   it('toggles original/translated text', () => {
@@ -66,19 +66,20 @@ describe('MessageBubble Component', () => {
       improvedText: 'Hello world',
       translationSkipped: false 
     };
-    useStore.getState().setUser({ id: 'u2', name: 'Expert X', role: 'expert', dept: 'DSC', lang: 'nl' });
+    useStore.getState().setUser({ id: 'u2', name: 'Expert X', role: 'expert', dept: 'DSC', lang: 'nl', isPlatformOperator: false });
     
     render(<MessageBubble message={translatedMsg} ticketId="t1" />);
     
     // Shows translation by default
     expect(screen.getByText('Hallo wereld')).toBeInTheDocument();
     
-    // Find original toggle button
-    const toggleBtn = screen.getByRole('button', { name: /Original/i });
+    // Find AI toggle button (titles "Original" when showing translation)
+    const toggleBtn = screen.getByTitle(/Original/i);
     fireEvent.click(toggleBtn);
     
     expect(screen.getByText('Hello world')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Translation/i })).toBeInTheDocument();
+    // After click, title changes to "Translation"
+    expect(screen.getByTitle(/Translation/i)).toBeInTheDocument();
   });
 
   it('shows reaction picker when clicking reaction button', () => {

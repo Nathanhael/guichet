@@ -19,6 +19,7 @@ export const users = pgTable('users', {
   name: text('name').notNull(),
   lang: text('lang').default('nl'), // Global preferred language
   password: text('password'),
+  avatarUrl: text('avatar_url'),
   isPlatformOperator: boolean('is_platform_operator').default(false),
 });
 

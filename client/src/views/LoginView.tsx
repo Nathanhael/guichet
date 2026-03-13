@@ -70,9 +70,10 @@ export default function LoginView() {
                         const data = await res.json();
                         setToken(data.token);
                         setUser(data.user);
-                        useStore.getState().setMemberships(data.memberships);
-                        if (data.memberships.length > 0) {
-                          useStore.getState().setActiveMembershipId(data.memberships[0].id);
+                        const memberships = data.memberships || [];
+                        useStore.getState().setMemberships(memberships);
+                        if (memberships.length > 0) {
+                          useStore.getState().setActiveMembershipId(memberships[0].id);
                         }
                       } else {
                         alert('Login failed. Please ensure the user has the default password.');
