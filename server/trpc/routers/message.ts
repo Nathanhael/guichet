@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { messages } from '../../db/schema.js';
+import { messages, tickets } from '../../db/schema.js';
 import { eq, and, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
@@ -14,6 +14,18 @@ export const messageRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const isExpert = ctx.user.role === 'expert' || ctx.user.role === 'admin';
+
+        // Ownership check for agents
+        if (!isExpert) {
+          const ticketResult = await db.select({ agentId: tickets.agentId })
+            .from(tickets)
+            .where(eq(tickets.id, input.ticketId))
+            .limit(1);
+          
+          if (ticketResult.length === 0 || ticketResult[0].agentId !== ctx.user.id) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to view these messages' });
+          }
+        }
         
         let query = db.select().from(messages).where(eq(messages.ticketId, input.ticketId));
 

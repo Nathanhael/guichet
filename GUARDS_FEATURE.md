@@ -47,5 +47,5 @@ When a message is blocked, only the sender sees the warning. The following error
 ## Technical Details
 
 - **Backend logic**: Located in `server/services/guards.ts`.
-- **Integration**: Called within the `message:send` handler in `server/app.ts`.
-- **Frontend notice**: Handled in `client/src/components/ChatWindow.tsx` via the `message:blocked` socket event.
+- **Integration**: Called within the `message.send` tRPC mutation in `server/trpc/routers/message.ts`.
+- **Frontend notice**: Handled in `client/src/components/ChatWindow.tsx` via the `message:blocked` socket event (broadcast by the tRPC procedure).

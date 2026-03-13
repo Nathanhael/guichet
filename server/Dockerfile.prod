@@ -17,12 +17,12 @@ RUN npm ci --omit=dev
 # Stage 3: Runtime
 FROM node:20-alpine
 WORKDIR /app
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+RUN apk add --no-cache curl
 COPY --from=builder /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
-RUN mkdir -p uploads && chown -R nodejs:nodejs /app
-USER nodejs
+RUN mkdir -p uploads && chown -R node:node /app
+USER node
 EXPOSE 3001
 ENV NODE_ENV=production
-CMD ["node", "dist/app/index.js"]
+CMD ["node", "dist/server/index.js"]

@@ -141,9 +141,23 @@ For a detailed breakdown of the system design, real-time flows, and modular arch
 | Suite | Location | Stack | Coverage |
 |---|---|---|---|
 | Auth middleware | `server/__tests__/auth.test.ts` | vitest | JWT validation, RBAC |
+| tRPC Routers | `server/__tests__/trpc.test.ts` | vitest | Ownership, RBAC, Data |
 | Guards | `server/__tests__/guards.test.ts` | vitest | All 7 guards + integration |
 | Statistics | `server/__tests__/stats.test.ts` | vitest | computeLiveDayStats |
 | Translation | `server/__tests__/translate.test.ts` | vitest | Improve, translate, fallback |
+
+## DevOps & Security
+
+### Container Security
+- **Non-root Runtime**: Containers for both `server` and `client` execute as the `node` user (UID 1000).
+- **Distroless Pattern**: Minimal Alpine-based images used to reduce attack surface.
+
+### Service Orchestration
+- **Docker Healthchecks**: 
+  - `db`: Uses `pg_isready` to signal availability.
+  - `redis`: Uses `redis-cli ping`.
+  - `server`: Self-monitors via `/api/health`.
+- **Graceful Shutdown**: Node.js listener handles OS signals to ensure zero data loss during restarts.
 
 ## Deployment (Docker)
 

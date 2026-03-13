@@ -32,9 +32,10 @@ For a detailed look at the system architecture, tech stack, and usage:
 | Upload | Multer (max 5 MB -- PNG/JPG/WEBP, magic byte verified) |
 | Timezone | date-fns + date-fns-tz (Europe/Brussels) |
 | i18n | Custom i18n (NL, FR, EN) + Language Switcher |
-| Accessibility | **Neuro-Inclusive**: Dyslexic Mode (Lexend), Bionic Reading |
+| Accessibility | **Neuro-Inclusive**: Dyslexic Mode (Lexend), Bionic Reading, Zen Mode |
 | Testing | Vitest + supertest + @testing-library/react |
-| DevOps | Docker Compose, Concurrently |
+| Security | **Non-root containers**, JWT, RBAC, Drizzle ORM |
+| DevOps | Docker Compose, **Healthchecks**, Graceful Shutdown |
 
 ## Project Structure
 
@@ -51,8 +52,7 @@ mp-support/
 │   │   │   ├── LoginView.tsx           # User selection + login
 │   │   │   ├── AgentView.tsx           # Ticket creation + chat
 │   │   │   ├── ExpertView.tsx          # Queue + multi-chat
-│   │   │   ├── AdminView.tsx           # Full dashboard orchestrator
-│   │   │   └── ManagerView.tsx         # Department manager dashboard
+│   │   │   └── AdminView.tsx           # Full dashboard orchestrator
 │   │   ├── components/
 │   │   │   ├── ChatWindow.tsx          # Main chat interface (search, canned responses)
 │   │   │   ├── CannedResponsePicker.tsx # Quick-insert menu for experts
