@@ -1,4 +1,4 @@
-import { pgTable, text, integer, real, primaryKey, index, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
@@ -21,9 +21,9 @@ export const tickets = pgTable('tickets', {
   expertId: text('expert_id').references(() => users.id),
   expertName: text('expert_name'),
   expertLang: text('expert_lang'),
-  expertJoinedAt: text('expert_joined_at'),
-  createdAt: text('created_at').notNull(),
-  closedAt: text('closed_at'),
+  expertJoinedAt: timestamp('expert_joined_at', { mode: 'string' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  closedAt: timestamp('closed_at', { mode: 'string' }),
   closingNotes: text('closing_notes'),
   closedBy: text('closed_by'),
   participants: text('participants').default('[]'),
@@ -45,9 +45,9 @@ export const messages = pgTable('messages', {
   mediaUrl: text('media_url'),
   whisper: integer('whisper').default(0),
   system: integer('system').default(0),
-  createdAt: text('created_at').notNull(),
-  deliveredAt: text('delivered_at'),
-  readAt: text('read_at'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  deliveredAt: timestamp('delivered_at', { mode: 'string' }),
+  readAt: timestamp('read_at', { mode: 'string' }),
   reactions: text('reactions').default('{}'),
 }, (table) => ({
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
@@ -60,7 +60,7 @@ export const ratings = pgTable('ratings', {
   expertId: text('expert_id').references(() => users.id, { onDelete: 'cascade' }),
   rating: integer('rating').notNull(),
   comment: text('comment'),
-  createdAt: text('created_at').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
 });
 
 export const appFeedback = pgTable('app_feedback', {
@@ -70,7 +70,7 @@ export const appFeedback = pgTable('app_feedback', {
   role: text('role'),
   text: text('text').notNull(),
   treated: integer('treated').default(0),
-  createdAt: text('created_at').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
 });
 
 export const labels = pgTable('labels', {
@@ -87,7 +87,7 @@ export const ticketLabels = pgTable('ticket_labels', {
 }));
 
 export const dailyStats = pgTable('daily_stats', {
-  date: text('date').primaryKey(),
+  date: date('date', { mode: 'string' }).primaryKey(),
   total: integer('total').default(0),
   closed: integer('closed').default(0),
   abandoned: integer('abandoned').default(0),
@@ -107,7 +107,7 @@ export const translationsCache = pgTable('translations_cache', {
   value: text('value').notNull(),
   fromLang: text('from_lang').notNull(),
   toLang: text('to_lang').notNull(),
-  createdAt: text('created_at').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
 });
 
 export const llmSummaries = pgTable('llm_summaries', {
@@ -115,7 +115,7 @@ export const llmSummaries = pgTable('llm_summaries', {
   sentiment: text('sentiment'),
   questions: text('questions'), // JSON array
   summary: text('summary'),
-  updatedAt: text('updated_at').notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull(),
 });
 
 export const cannedResponses = pgTable('canned_responses', {
