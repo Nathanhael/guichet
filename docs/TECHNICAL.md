@@ -1,8 +1,10 @@
-# System Architecture: M&P Support
+# Technical Documentation: M&P Support
 
-This document provides a deep dive into the system design, data flows, and modular components of the M&P Support application. For dependencies and technical stack details, see [TECH_STACK.md](./TECH_STACK.md).
+This document provides a comprehensive deep dive into the system design, tech stack, and modular architecture of the M&P Support application.
 
-## High-Level Overview
+---
+
+## 1. High-Level Architecture
 
 The application follows a real-time, event-driven architecture designed for high availability and low latency in customer support scenarios.
 
@@ -30,7 +32,23 @@ graph TD
     V --> EX
 ```
 
-## Real-Time Engine (Socket.io)
+### Core Technologies
+| Layer | Technology |
+|---|---|
+| Frontend | React 18 + Vite 5 + Tailwind CSS 3 + Framer Motion |
+| Communication | **tRPC** (Type-safe API) + Socket.io |
+| Scaling | **Redis** (Socket.io Adapter) |
+| State | Zustand |
+| Backend | Node 20 (ESM), Express.js |
+| Database | PostgreSQL + **Drizzle ORM** |
+| Auth | JWT (jsonwebtoken) + bcrypt |
+| Logging | pino (+ pino-pretty in dev) |
+| Translation | Ollama REST API (graceful fallback) |
+| Charts | Recharts (admin dashboard) |
+
+---
+
+## 2. Real-Time Engine (Socket.io)
 
 Real-time interactions are the core of the support experience. The server handles room management, broadcast logic, and background processing.
 
@@ -60,23 +78,9 @@ sequenceDiagram
     S-->>A: ticket:closed (Trigger Rating)
 ```
 
-## AI & Translation Pipeline
+---
 
-To handle multi-language support (EN, NL, FR) without heavy API costs, the system uses a localized AI strategy.
-
-1. **Translation Service**:
-   - Checks `translations_cache` first.
-   - Fallback to local **Ollama** REST API (Gemma Model).
-   - Graceful degradation to original text if AI is unreachable.
-
-2. **Sentiment Intelligence**:
-   - Every non-whisper message is asynchronously scored for sentiment (-1.0 to +1.0) via Ollama.
-   - Sentiment data is aggregated into historical trends and department-level distribution charts.
-
-3. **Summarization**:
-   - The AI Intelligence Hub triggers background summarization of ticket batches to identify recurring issues.
-
-## Modular Dashboard Architecture
+## 3. Modular Dashboard Architecture
 
 The **Admin View** and **Expert View** use a highly modular "cockpit" approach.
 
@@ -91,7 +95,43 @@ The Expert interface includes a deeply immersive **Zen Mode** that leverages the
 - **Ambient Focus**: Slow-pulsing background gradients using `framer-motion` to reduce cognitive fatigue.
 - **Automation**: Automatic triggering of Bionic Reading and notification shielding upon entry.
 
-## Data Lifecycle & Compliance (GDPR)
+---
+
+## 4. Database Schema
+
+PostgreSQL via Drizzle ORM. Schema defined in `server/db/schema.ts`.
+
+### Tables
+
+```sql
+users              (id, name, role, dept, lang, password)
+tickets            (id, dept, agentId, agentName, agentLang, cdbId, dareRef, status, 
+                    expertId, expertName, expertLang, expertJoinedAt, createdAt, 
+                    closedAt, closingNotes, closedBy, participants, summary,
+                    reopened, reopenCount)
+messages           (id, ticketId, senderId, senderName, text, translatedText, 
+                    mediaUrl, whisper, system, createdAt, deliveredAt, readAt, 
+                    reactions, senderRole, senderLang, originalText, improvedText, 
+                    processedText, translationSkipped, fallback, timestamp,
+                    sentiment, cannedResponseId)
+ratings            (id, ticketId, agentId, expertId, rating, comment, createdAt)
+app_feedback       (id, userId, text, treated, createdAt)
+labels             (id, name, color)
+ticket_labels      (ticketId, labelId)          -- composite PK, ON DELETE CASCADE
+daily_stats        (date, total, closed, abandoned, avgResponseMs, avgDurationMs,
+                    avgRating, ratingCount, slaResolved, slaCompliant, 
+                    deptCounts, ratingsByDept, hourly, p95ResponseMs,
+                    reopened, sentimentSum, sentimentCount)
+translations_cache (key, value, fromLang, toLang, createdAt)
+llm_summaries      (period, sentiment, questions, summary, updatedAt)
+canned_responses   (id, shortcut, text)
+```
+
+**JSON columns**: `participants`, `reactions`, `deptCounts`, `ratingsByDept`, `hourly`, `questions` are stored as JSON strings and parsed at query time.
+
+---
+
+## 5. Data Lifecycle & Compliance (GDPR)
 
 The system manages a hybrid data model to balance historical analysis with privacy compliance.
 
@@ -100,17 +140,9 @@ The system manages a hybrid data model to balance historical analysis with priva
 3. **Anonymized Aggregation**: Before deletion, key metrics (volumes, response times, ratings) are summarized into the `daily_stats` table.
 4. **Permanent Storage**: `daily_stats` are retained indefinitely for long-term trend analysis.
 
-## Build & Optimization Strategy
+---
 
-The frontend build pipeline (Vite) is configured for optimal production performance:
-
-1. **Lazy Loading**: Route-level code splitting ensures that code for "Admin" or "Expert" views is only downloaded when the user logs in with those roles.
-2. **Vendor Separation**: Heavy libraries like Recharts and Framer Motion are moved to separate chunks. This allows the browser to cache these stable libraries while only re-downloading the app logic when it changes.
-3. **i18n Localization**: Labels and UI text are managed via a centralized `i18n.ts` file, ensuring zero-latency switching between languages.
-
-## Server Module Structure
-
-After refactoring, the server follows a clean modular architecture:
+## 6. Server Module Structure
 
 | Module | File/Dir | Responsibility |
 |---|---|---|
@@ -118,8 +150,8 @@ After refactoring, the server follows a clean modular architecture:
 | tRPC Router | `trpc/router.ts` | Root tRPC router (type-safe API) |
 | Domain Routers | `trpc/routers/` | Routers for tickets, messages, stats, users, etc. |
 | Socket Handlers | `socket/handlers.ts` | All real-time event handling (Socket.io) |
-| Database | `db/schema.ts` | Drizzle ORM schema definitions |
-| Stats Service | `services/stats.ts` | `computeLiveDayStats()` computation |
+| Database | `db/schema.ts` | Drizzle ORM schema definition |
+| Stats Service | `services/stats.ts` | Statistics computation logic |
 | GDPR Service | `services/gdpr.ts` | Daily purge cycle with aggregation |
 | Business Hours | `services/businessHours.ts` | Hours check, queue positions, agent status |
 | Presence | `services/presence.ts` | Online user tracking |
@@ -127,23 +159,11 @@ After refactoring, the server follows a clean modular architecture:
 | Guards | `services/guards.ts` | Message safety (regex + AI topic filter) |
 | LLM | `services/llm.ts` | Sentiment analysis & conversation summaries |
 
-## Security & Reliability
+---
 
-- **RBAC**: All API routes require JWT authentication. Admin-only endpoints (feedback management, ratings) enforce additional role checks. Socket events are guarded via presence identification.
+## 7. Security & Reliability
+
+- **RBAC**: All API routes require JWT authentication. Admin-only endpoints enforce additional role checks.
 - **Magic Byte Validation**: Image uploads are verified via content headers to prevent spoofing.
-- **Connection Resilience**: Automatic socket re-identification on network jitter.
-
-## Infrastructure & Reliability
-
-The application is designed for stable, predictable deployments:
-
-1. **Docker Orchestration**:
-   - **Healthchecks**: Database and Redis services must be "healthy" before the server attempts to connect.
-   - **Service Coordination**: The server uses a retry-aware connection strategy, supported by Docker's `condition: service_healthy` dependency mapping.
-
-2. **Security Hardening**:
-   - **Non-Root Runtime**: All containers (Server, Client) run as the `node` user instead of `root`, minimizing potential escalation risks.
-   - **Permission Management**: Directory permissions are strictly scoped to the application's runtime needs (e.g., `uploads/` volume).
-
-3. **Graceful Shutdown**:
-   - The server handles `SIGTERM` and `SIGINT` signals by stopping the HTTP listener and allowing active requests to finish before closing database pools.
+- **Docker Orchestration**: Uses healthchecks and non-root runtimes for all containers.
+- **Graceful Shutdown**: Handles SIGTERM/SIGINT to allow active requests to finish before closing DB pools.
