@@ -53,6 +53,13 @@ export interface Message {
   reactions: string; // JSON string
 }
 
+export interface Rating {
+  id: string;
+  ticketId: string;
+  rating: number;
+  createdAt?: string;
+}
+
 export interface GuardResult {
   ok: boolean;
   code: string;

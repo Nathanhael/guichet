@@ -13,9 +13,10 @@ export const cannedResponseRouter = router({
         .from(cannedResponses)
         .orderBy(asc(cannedResponses.shortcut));
       return data;
-    } catch (err: any) {
-      logger.error({ err: err.message }, 'tRPC: Error fetching canned responses');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error({ err: message }, 'tRPC: Error fetching canned responses');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
     }
   }),
 
@@ -33,12 +34,13 @@ export const cannedResponseRouter = router({
           text: input.text,
         });
         return { id, ...input };
-      } catch (err: any) {
-        if (err.code === '23505') {
+      } catch (err: unknown) {
+        if (err instanceof Error && 'code' in err && (err as Error & { code: string }).code === '23505') {
           throw new TRPCError({ code: 'CONFLICT', message: 'Shortcut already exists' });
         }
-        logger.error({ err: err.message }, 'tRPC: Error creating canned response');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message }, 'tRPC: Error creating canned response');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 
@@ -48,9 +50,10 @@ export const cannedResponseRouter = router({
       try {
         const result = await db.delete(cannedResponses).where(eq(cannedResponses.id, id));
         return { success: true };
-      } catch (err: any) {
-        logger.error({ err: err.message, id }, 'tRPC: Error deleting canned response');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message, id }, 'tRPC: Error deleting canned response');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 });

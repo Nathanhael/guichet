@@ -4,7 +4,12 @@ import { db } from '../../db.js';
 import { labels, ticketLabels } from '../../db/schema.js';
 import { eq, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import type { Server } from 'socket.io';
 import logger from '../../utils/logger.js';
+
+interface RequestWithSocketIO {
+  app: { get(key: 'io'): Server | undefined; get(key: string): unknown };
+}
 
 export const labelRouter = router({
   list: publicProcedure.query(async () => {
@@ -18,9 +23,10 @@ export const labelRouter = router({
       .orderBy(asc(labels.name));
       
       return data;
-    } catch (err: any) {
-      logger.error({ err: err.message }, 'tRPC: Error fetching labels');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error({ err: message }, 'tRPC: Error fetching labels');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
     }
   }),
 
@@ -38,18 +44,19 @@ export const labelRouter = router({
           color: input.color,
         });
 
-        const io = (ctx.req as any).app.get('io');
+        const io = (ctx.req as unknown as RequestWithSocketIO).app.get('io');
         if (io) {
           io.emit('label:created', { id, text: input.text, color: input.color });
         }
 
         return { id, ...input };
-      } catch (err: any) {
-        if (err.code === '23505') {
+      } catch (err: unknown) {
+        if (err instanceof Error && 'code' in err && (err as Error & { code: string }).code === '23505') {
           throw new TRPCError({ code: 'CONFLICT', message: 'Label name already exists' });
         }
-        logger.error({ err: err.message }, 'tRPC: Error creating label');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message }, 'tRPC: Error creating label');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 
@@ -62,15 +69,16 @@ export const labelRouter = router({
           await tx.delete(labels).where(eq(labels.id, id));
         });
 
-        const io = (ctx.req as any).app.get('io');
+        const io = (ctx.req as unknown as RequestWithSocketIO).app.get('io');
         if (io) {
           io.emit('label:deleted', { id });
         }
 
         return { success: true };
-      } catch (err: any) {
-        logger.error({ err: err.message, labelId: id }, 'tRPC: Error deleting label');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message, labelId: id }, 'tRPC: Error deleting label');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
 });

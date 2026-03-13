@@ -4,6 +4,10 @@ import config from '../config.js';
 import logger from '../utils/logger.js';
 import { TranslationResult, ProcessedMessageResult } from '../types/index.js';
 
+interface OllamaResponse {
+  response: string;
+}
+
 const OLLAMA_HOST = config.OLLAMA_HOST || 'http://localhost:11434';
 const MODEL = config.OLLAMA_MODEL || 'gemmatranslate4b';
 
@@ -33,7 +37,7 @@ async function callOllama(prompt: string, type: string): Promise<string> {
 
     if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
 
-    const data: any = await response.json();
+    const data = await response.json() as OllamaResponse;
     const result = data.response?.trim();
     const duration = Date.now() - start;
     
@@ -41,8 +45,8 @@ async function callOllama(prompt: string, type: string): Promise<string> {
     
     if (!result) throw new Error('Ollama returned empty response');
     return result;
-  } catch (err: any) {
-    logger.error({ type, err: err.message }, 'Ollama call failed');
+  } catch (err: unknown) {
+    logger.error({ type, err: err instanceof Error ? err.message : String(err) }, 'Ollama call failed');
     throw err;
   }
 }
@@ -180,8 +184,8 @@ export async function processMessage(text: string, senderRole: 'agent'|'expert',
       fallback:           false,
     };
 
-  } catch (err: any) {
-    logger.warn({ err: err.message }, '[processMessage] Ollama unavailable, falling back');
+  } catch (err: unknown) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, '[processMessage] Ollama unavailable, falling back');
     return {
       processedText:      text,
       improvedText:       text,

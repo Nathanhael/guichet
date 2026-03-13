@@ -26,9 +26,9 @@ function toCamelCase(str: string): string {
   return str.toLowerCase().replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
 }
 
-function camelCaseRows(rows: any[]): any[] {
+function camelCaseRows(rows: Record<string, unknown>[]): Record<string, unknown>[] {
   return rows.map(row => {
-    const out: any = {};
+    const out: Record<string, unknown> = {};
     for (const key of Object.keys(row)) {
       out[toCamelCase(key)] = row[key];
     }
@@ -37,30 +37,30 @@ function camelCaseRows(rows: any[]): any[] {
 }
 
 // Helper for traditional query patterns if needed, though drizzle is preferred
-export const query = async (text: string, params?: any[]) => {
+export const query = async (text: string, params?: unknown[]) => {
   const start = Date.now();
   try {
     const res = await pool.query(text, params);
     const duration = Date.now() - start;
     logger.debug({ text, duration, rows: res.rowCount }, 'Executed query');
     return camelCaseRows(res.rows);
-  } catch (err: any) {
-    logger.error({ err: err.message, text, params }, 'Database query error');
+  } catch (err: unknown) {
+    logger.error({ err: err instanceof Error ? err.message : String(err), text, params }, 'Database query error');
     throw err;
   }
 };
 
-export const get = async (text: string, params?: any[]) => {
+export const get = async (text: string, params?: unknown[]) => {
   const rows = await query(text, params);
   return rows[0];
 };
 
-export const run = async (text: string, params?: any[]) => {
+export const run = async (text: string, params?: unknown[]) => {
   const res = await pool.query(text, params);
   return { changes: res.rowCount };
 };
 
-export const transaction = async <T>(cb: (tx: any) => Promise<T>): Promise<T> => {
+export const transaction = async <T>(cb: (tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) => Promise<T>): Promise<T> => {
   return await db.transaction(async (tx) => {
     return await cb(tx);
   });

@@ -2,7 +2,7 @@ import { query, run, transaction } from '../db.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
-import { Ticket } from '../types/index.js';
+import { Ticket, Rating } from '../types/index.js';
 
 export async function runDailyPurge() {
   try {
@@ -21,9 +21,9 @@ export async function runDailyPurge() {
     for (const { date } of datesToAggregate) {
       const dayTickets = await query('SELECT * FROM tickets WHERE created_at::date = $1', [date]) as Ticket[];
       const ticketIds = dayTickets.map(t => t.id);
-      let dayRatings: any[] = [];
+      let dayRatings: Rating[] = [];
       if (ticketIds.length > 0) {
-        dayRatings = await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds) as any[];
+        dayRatings = await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds) as Rating[];
       }
 
       const stats = computeLiveDayStats(dayTickets, dayRatings);

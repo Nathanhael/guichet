@@ -13,9 +13,10 @@ export const ratingRouter = router({
         .orderBy(desc(ratings.createdAt));
       
       return data;
-    } catch (err: any) {
-      logger.error({ err: err.message }, 'tRPC: Error listing ratings');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: err.message });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      logger.error({ err: message }, 'tRPC: Error listing ratings');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
     }
   }),
 });

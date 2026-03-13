@@ -1,6 +1,10 @@
 import config from '../config.js';
 import { GuardResult } from '../types/index.js';
 
+interface OllamaResponse {
+  response: string;
+}
+
 const OLLAMA_HOST = config.OLLAMA_HOST || 'http://localhost:11434';
 const MODEL       = config.OLLAMA_MODEL || 'gemmatranslate4b';
 
@@ -207,7 +211,7 @@ export async function guardTopic(text: string): Promise<GuardResult> {
 
     if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
 
-    const data: any = await response.json();
+    const data = await response.json() as OllamaResponse;
     const verdict = data.response?.trim().toUpperCase();
 
     if (verdict === 'BLOCKED') {
@@ -216,8 +220,8 @@ export async function guardTopic(text: string): Promise<GuardResult> {
 
     return pass();
 
-  } catch (err: any) {
-    console.warn('[guardTopic] Ollama unavailable, skipping topic check:', err.message);
+  } catch (err: unknown) {
+    console.warn('[guardTopic] Ollama unavailable, skipping topic check:', err instanceof Error ? err.message : String(err));
     return pass();
   }
 }

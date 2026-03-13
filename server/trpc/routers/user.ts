@@ -8,10 +8,10 @@ export const userRouter = router({
       try {
         const users = await query('SELECT id, name, role, dept, lang FROM users');
         return users;
-      } catch (err: any) {
-        throw new TRPCError({ 
-          code: 'INTERNAL_SERVER_ERROR', 
-          message: err.message 
+      } catch (err: unknown) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: err instanceof Error ? err.message : String(err)
         });
       }
     }),

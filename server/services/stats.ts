@@ -1,7 +1,7 @@
 import config from '../config.js';
-import { Ticket } from '../types/index.js';
+import { Ticket, Rating } from '../types/index.js';
 
-export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: any[], deptFilter?: string) {
+export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], deptFilter?: string) {
   let tickets = dayTickets;
   let ratings = dayRatings;
   if (deptFilter && deptFilter !== 'all') {

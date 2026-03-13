@@ -34,8 +34,8 @@ router.post('/register', [
         );
 
         res.status(201).json({ message: 'User registered successfully' });
-    } catch (err: any) {
-        logger.error({ err: err.message }, 'Registration error');
+    } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Registration error');
         res.status(500).json({ error: 'Server error during registration' });
     }
 });
@@ -61,7 +61,7 @@ router.post('/login', [
         const token = jwt.sign(
             { userId: user.id, role: user.role, dept: user.dept },
             config.JWT_SECRET,
-            { expiresIn: config.JWT_EXPIRY } as any
+            { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
         );
 
         res.json({
@@ -74,8 +74,8 @@ router.post('/login', [
                 lang: user.lang
             }
         });
-    } catch (err: any) {
-        logger.error({ err: err.message }, 'Login error');
+    } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'Login error');
         res.status(500).json({ error: 'Server error during login' });
     }
 });
