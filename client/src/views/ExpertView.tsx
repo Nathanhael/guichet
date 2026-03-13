@@ -144,7 +144,7 @@ interface OnlineExpertInfo {
 }
 
 export default function ExpertView() {
-  const { user, token, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses } = useStore();
+  const { user, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses } = useStore();
   const onlineExperts = useStore(s => s.onlineExperts as unknown as OnlineExpertInfo[]);
   const t = useT();
   const [myStatus, setMyStatus] = useState('available');
@@ -166,13 +166,35 @@ export default function ExpertView() {
   const [toast, setToast] = useState<string | null>(null);
   const ARCHIVE_LIMIT = ARCHIVE_PAGE_SIZE;
 
-  // tRPC data
+  // tRPC: Labels & Canned Responses
   trpc.label.list.useQuery(undefined, {
     onSuccess: (data) => setAllLabels(data),
   });
   trpc.cannedResponse.list.useQuery(undefined, {
     onSuccess: (data) => setCannedResponses(data),
   });
+
+  // tRPC: Active Tickets
+  trpc.ticket.list.useQuery(
+    {}, // Open/Pending
+    {
+      onSuccess: (data) => {
+        if (Array.isArray(data)) {
+          setTickets(data.filter((tk) => tk.status !== 'closed') as any);
+        }
+      },
+      refetchInterval: 30000,
+    }
+  );
+
+  // tRPC: Preview Messages
+  trpc.message.list.useQuery(
+    { ticketId: previewTicketId || '' },
+    {
+      enabled: !!previewTicketId,
+      onSuccess: (data) => setPreviewMessages(data as any),
+    }
+  );
 
   useEffect(() => {
     if (!toast) return;
@@ -181,27 +203,10 @@ export default function ExpertView() {
   }, [toast]);
 
   useEffect(() => {
-    fetch('/api/tickets', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then((r) => r.json())
-      .then((data) => setTickets((data as Ticket[]).filter((tk) => tk.status !== 'closed')))
-      .catch(console.error);
-
     if (notificationsEnabled) {
       requestNotificationPermission();
     }
-  }, [notificationsEnabled, token, setTickets]);
-
-  useEffect(() => {
-    if (!previewTicketId) return;
-    fetch(`/api/messages?ticketId=${previewTicketId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then((r) => r.json())
-      .then((msgs: Message[]) => setPreviewMessages(msgs.filter((m) => !m.whisper)))
-      .catch(() => setPreviewMessages([]));
-  }, [previewTicketId, token]);
+  }, [notificationsEnabled]);
 
   function handleStatusChange(status: string) {
     if (!user) return;
@@ -220,48 +225,34 @@ export default function ExpertView() {
     }
   }
 
-  function fetchArchive({ offset = 0, search = archiveSearch, dept = archiveDept, append = false }: { offset?: number; search?: string; dept?: string; append?: boolean }) {
-    setArchiveLoading(true);
-    const params = new URLSearchParams({
+  // paginated fetch for archive using tRPC
+  const archiveQuery = trpc.ticket.list.useQuery(
+    {
       status: 'closed',
-      limit: ARCHIVE_LIMIT.toString(),
-      offset: offset.toString(),
-      ...(dept !== 'all' && { dept }),
-      ...(search.trim() && { search: search.trim() }),
-    });
-    fetch(`/api/tickets?${params}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then((r) => r.json())
-      .then(({ tickets, total }: { tickets: Ticket[]; total: number }) => {
-        setArchivedTickets((prev) => append ? [...prev, ...tickets] : tickets);
-        setArchiveTotal(total);
-        setArchiveOffset(offset + tickets.length);
-      })
-      .catch(() => { if (!append) setArchivedTickets([]); })
-      .finally(() => setArchiveLoading(false));
-  }
+      limit: ARCHIVE_LIMIT,
+      offset: archiveOffset,
+      dept: archiveDept === 'all' ? undefined : archiveDept,
+      search: archiveSearch.trim() || undefined,
+    },
+    {
+      enabled: sidebarTab === 'archive',
+      onSuccess: (data: any) => {
+        if (data.tickets) {
+          setArchivedTickets((prev) => archiveOffset === 0 ? data.tickets : [...prev, ...data.tickets]);
+          setArchiveTotal(data.total);
+        }
+      }
+    }
+  );
 
   function switchSidebarTab(tab: 'queue' | 'archive') {
     setSidebarTab(tab);
     if (tab === 'archive') {
-      setArchivedTickets([]);
       setArchiveOffset(0);
       setArchiveSearch('');
       setArchiveDept('all');
-      fetchArchive({ offset: 0, search: '', dept: 'all' });
     }
   }
-
-  useEffect(() => {
-    if (sidebarTab !== 'archive') return;
-    const timer = setTimeout(() => {
-      setArchivedTickets([]);
-      setArchiveOffset(0);
-      fetchArchive({ offset: 0, search: archiveSearch, dept: archiveDept });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [archiveSearch, archiveDept, sidebarTab]);
 
   const activeTicketsList = tickets
     .filter((tk) => tk.status !== 'closed')
@@ -623,7 +614,7 @@ export default function ExpertView() {
                 <input
                   type="text"
                   value={archiveSearch}
-                  onChange={(e) => setArchiveSearch(e.target.value)}
+                  onChange={(e) => { setArchiveOffset(0); setArchiveSearch(e.target.value); }}
                   placeholder="Search name, CDBID, Dare Ref…"
                   className="w-full text-xs border border-solarized-base2 dark:border-brand-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white dark:bg-gray-700 text-solarized-base01 dark:text-gray-100 placeholder-solarized-base1"
                 />
@@ -631,7 +622,7 @@ export default function ExpertView() {
                   {['all', 'DSC', 'FOT'].map((d) => (
                     <button
                       key={d}
-                      onClick={() => setArchiveDept(d)}
+                      onClick={() => { setArchiveOffset(0); setArchiveDept(d); }}
                       className={`flex-1 text-xs py-1 rounded-md transition-colors font-medium ${archiveDept === d
                         ? 'bg-brand-500 text-white'
                         : 'bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base1 dark:hover:bg-gray-600'
@@ -644,7 +635,7 @@ export default function ExpertView() {
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                {archiveLoading && archivedTickets.length === 0 ? (
+                {archiveQuery.isLoading && archivedTickets.length === 0 ? (
                   <p className="text-center text-solarized-base1 text-sm py-8">Loading…</p>
                 ) : archivedTickets.length === 0 ? (
                   <p className="text-center text-solarized-base1 text-sm py-8">No results.</p>
@@ -691,11 +682,11 @@ export default function ExpertView() {
                     {archivedTickets.length < archiveTotal && (
                       <div className="px-3 py-3">
                         <button
-                          onClick={() => fetchArchive({ offset: archiveOffset, append: true })}
-                          disabled={archiveLoading}
+                          onClick={() => setArchiveOffset(archivedTickets.length)}
+                          disabled={archiveQuery.isFetching}
                           className="w-full text-xs py-1.5 rounded-lg border border-gray-200 dark:border-brand-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-brand-700 disabled:opacity-40 transition-colors"
                         >
-                          {archiveLoading ? 'Loading…' : `Load more (${archiveTotal - archivedTickets.length} remaining)`}
+                          {archiveQuery.isFetching ? 'Loading…' : `Load more (${archiveTotal - archivedTickets.length} remaining)`}
                         </button>
                       </div>
                     )}

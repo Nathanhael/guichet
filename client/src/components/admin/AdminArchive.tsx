@@ -15,57 +15,51 @@ export default function AdminArchive() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
-  const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [dept, setDept] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [preview, setPreview] = useState<Ticket | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
   const [labelFilter, setLabelFilter] = useState('all');
   const t = useT();
 
   const { data: allLabels = [] } = trpc.label.list.useQuery();
 
-  function fetchTickets({ reset = false, off = 0 } = {}) {
-    setLoading(true);
-    const params = new URLSearchParams({ status: 'closed', limit: String(LIMIT), offset: String(off) });
-    if (dept !== 'all') params.set('dept', dept);
-    if (search.trim()) params.set('search', search.trim());
-    if (dateFrom) params.set('dateFrom', dateFrom);
-    if (dateTo) params.set('dateTo', dateTo);
+  // Paginated Ticket List using tRPC
+  const ticketsQuery = trpc.ticket.list.useQuery(
+    {
+      status: 'closed',
+      limit: LIMIT,
+      offset: offset,
+      dept: dept === 'all' ? undefined : dept,
+      search: search.trim() || undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+    },
+    {
+      onSuccess: (data: any) => {
+        if (data.tickets) {
+          setTickets((prev) => offset === 0 ? data.tickets : [...prev, ...data.tickets]);
+          setTotal(data.total);
+        }
+      }
+    }
+  );
 
-    fetch(`/api/tickets?${params}`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then(({ tickets: rows, total: tCount }) => {
-        setTickets((prev) => (reset ? rows : [...prev, ...rows]));
-        setTotal(tCount);
-        setOffset(off + rows.length);
-      })
-      .catch(() => {
-        if (reset) setTickets([]);
-      })
-      .finally(() => setLoading(false));
-  }
+  // Message Preview using tRPC
+  trpc.message.list.useQuery(
+    { ticketId: preview?.id || '' },
+    {
+      enabled: !!preview?.id,
+      onSuccess: (data) => setPreviewMessages(data as any),
+    }
+  );
 
-  // initial load
+  // Reset offset when filters change
   useEffect(() => {
-    fetchTickets({ reset: true });
-  }, []);
-
-  // debounced refetch on filter change
-  useEffect(() => {
-    const timer = setTimeout(() => fetchTickets({ reset: true, off: 0 }), 300);
-    return () => clearTimeout(timer);
+    setOffset(0);
   }, [search, dept, dateFrom, dateTo]);
-
-  useEffect(() => {
-    if (!preview) return;
-    fetch(`/api/messages?ticketId=${preview.id}`, { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then(setMessages)
-      .catch(() => setMessages([]));
-  }, [preview?.id, token]);
 
   function duration(tk: Ticket) {
     if (!tk.closedAt || !tk.createdAt) return '—';
@@ -76,6 +70,8 @@ export default function AdminArchive() {
   function fmt(iso?: string) {
     return iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
   }
+
+  const loading = ticketsQuery.isFetching;
 
   return (
     <div className="flex gap-4 items-start">
@@ -199,7 +195,7 @@ export default function AdminArchive() {
                         }`}
                       >
                         <td className="px-4 py-2.5">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DEPT_COLOR[ticket.dept]}`}>{ticket.dept}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
                         </td>
                         <td className="px-4 py-2.5 font-medium text-solarized-base01 dark:text-gray-100">{ticket.agentName}</td>
                         <td className="px-4 py-2.5 font-mono text-xs text-brand-600 dark:text-brand-400">
@@ -244,7 +240,7 @@ export default function AdminArchive() {
             </span>
             {tickets.length < total && (
               <button
-                onClick={() => fetchTickets({ off: offset })}
+                onClick={() => setOffset(tickets.length)}
                 disabled={loading}
                 className="text-xs px-3 py-1.5 rounded-lg border border-solarized-base2 dark:border-brand-600 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base2 dark:hover:bg-brand-700 disabled:opacity-40 transition-colors"
               >
@@ -262,7 +258,7 @@ export default function AdminArchive() {
             <div className="px-6 py-4 border-b border-solarized-base2 dark:border-brand-700 flex items-start justify-between gap-3 shrink-0 bg-solarized-base2/50 dark:bg-brand-900/20">
               <div>
                 <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${DEPT_COLOR[preview.dept]}`}>{preview.dept}</span>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${DEPT_COLOR[preview.dept] || 'bg-slate-100 text-slate-700'}`}>{preview.dept}</span>
                   <span className="text-base font-bold text-solarized-base01 dark:text-gray-100">{preview.agentName}</span>
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs font-mono text-solarized-base1 dark:text-gray-400">
@@ -316,10 +312,10 @@ export default function AdminArchive() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-solarized-base3/10 dark:bg-transparent">
-              {messages.length === 0 ? (
+              {previewMessages.length === 0 ? (
                 <p className="text-center text-solarized-base1 text-sm mt-8">No messages.</p>
               ) : (
-                messages.map((msg) => (
+                previewMessages.map((msg) => (
                   <div
                     key={msg.id}
                     className={`flex gap-3 px-3 py-2 rounded-xl border border-transparent ${

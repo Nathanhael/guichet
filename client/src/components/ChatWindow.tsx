@@ -4,7 +4,8 @@ import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
 import CannedResponsePicker from './CannedResponsePicker';
-import { Ticket, Message, Label } from '../types';
+import { Ticket, Message } from '../types';
+import { trpc } from '../utils/trpc';
 
 const LANG_FLAG: Record<string, string> = { nl: '🇧🇪', fr: '🇫🇷', en: '🇬🇧' };
 
@@ -16,7 +17,7 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, token, messages, typingUsers, agentOnline, setAgentOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode } = useStore();
+  const { user, messages, typingUsers, agentOnline, setAgentOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode, setMessages } = useStore();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
@@ -43,9 +44,29 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
   if (!ticket) return null;
 
+  // tRPC: Message History
+  trpc.message.list.useQuery(
+    { ticketId: ticket.id },
+    { 
+      enabled: !!ticket.id,
+      onSuccess: (data) => setMessages(ticket.id, data as any),
+    }
+  );
+
+  const isExpert = user?.role === 'expert' || user?.role === 'admin';
+
+  // tRPC: Agent Presence
+  trpc.presence.getOnlineStatus.useQuery(
+    { userId: ticket.agentId || '' },
+    {
+      enabled: isExpert && !!ticket.agentId && ticket.status !== 'closed',
+      onSuccess: (data) => setAgentOnline(ticket.id, data.online),
+      refetchInterval: 10000, // Check every 10s
+    }
+  );
+
   const ticketMessages = messages[ticket.id] || [];
   const whoIsTyping = Object.keys(typingUsers[ticket.id] || {});
-  const isExpert = user?.role === 'expert' || user?.role === 'admin';
   const agentIsOnline = agentOnline[ticket.id] ?? true;
 
   // Track scroll position
@@ -88,17 +109,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     setUnreadCount(0);
   }, [ticket.id]);
 
-  // Fetch agent online status when expert opens ticket
-  useEffect(() => {
-    if (!isExpert || !ticket?.agentId) return;
-    fetch(`/api/online/${ticket.agentId}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then((r) => r.json())
-      .then(({ online }) => setAgentOnline(ticket.id, online))
-      .catch(() => { });
-  }, [ticket?.id, ticket?.agentId, token, isExpert]);
-
   // Handle outside click for labels menu
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
@@ -114,14 +124,13 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
   const toggleLabel = (labelId: string) => {
     toggleTicketLabel(ticket.id, labelId);
-    // Note: This is an optimistic update, we'll see the labels in the next render cycle of liveTicket
     setTimeout(() => {
        const updatedLabels = useStore.getState().tickets.find(t => t.id === ticket.id)?.labels || [];
        getSocket().emit('ticket:labels:update', { ticketId: ticket.id, labels: updatedLabels });
     }, 0);
   };
 
-  const getLabelInfo = (id: string) => (allLabels || []).find((l: Label) => l.id === id);
+  const getLabelInfo = (id: string) => (allLabels || []).find((l) => l.id === id);
 
   useEffect(() => {
     const count = ticketMessages.length;
@@ -196,6 +205,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
 
   async function uploadFile(file: File) {
+    const { token } = useStore.getState();
     setMediaPreview(URL.createObjectURL(file));
     setUploading(true);
     try {
