@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
@@ -144,7 +145,7 @@ interface OnlineExpertInfo {
 }
 
 export default function ExpertView() {
-  const { user, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses } = useStore();
+  const { user, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses, focusMode, toggleFocusMode } = useStore();
   const onlineExperts = useStore(s => s.onlineExperts as unknown as OnlineExpertInfo[]);
   const t = useT();
   const [myStatus, setMyStatus] = useState('available');
@@ -188,13 +189,16 @@ export default function ExpertView() {
   );
 
   // tRPC: Preview Messages
-  trpc.message.list.useQuery(
+  const { data: previewMessagesData } = trpc.message.list.useQuery(
     { ticketId: previewTicketId || '' },
     {
       enabled: !!previewTicketId,
-      onSuccess: (data) => setPreviewMessages(data as any),
     }
   );
+  const previewMessages = previewMessagesData || [];
+
+  // tRPC: Set Status
+  const setStatusMutation = trpc.presence.setStatus.useMutation();
 
   useEffect(() => {
     if (!toast) return;
@@ -211,7 +215,7 @@ export default function ExpertView() {
   function handleStatusChange(status: string) {
     if (!user) return;
     setMyStatus(status);
-    getSocket().emit('status:set', { status });
+    setStatusMutation.mutate({ userId: user.id, status });
 
     // Auto-leave active chats on break or lunch
     if (status === 'break' || status === 'lunch') {
@@ -356,12 +360,27 @@ export default function ExpertView() {
             
             <div className="flex items-center gap-1 bg-black/10 dark:bg-white/5 p-0.5 rounded-lg border border-white/5 ml-2">
               <LanguageSwitcher />
+              <button
+                onClick={toggleFocusMode}
+                title={focusMode ? 'Exit Zen Mode' : 'Enter Zen Mode (Focus)'}
+                aria-label="Toggle Zen Mode"
+                className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 flex items-center justify-center border border-transparent ${
+                  focusMode 
+                    ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/20 ring-1 ring-brand-400' 
+                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${focusMode ? 'animate-pulse' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
               <NeuroToggle />
               <DarkModeToggle />
               
               <button
                 onClick={() => setNotificationsEnabled(!notificationsEnabled)}
                 title={notificationsEnabled ? 'Notifications on — click to mute' : 'Notifications off — click to enable'}
+                aria-label={notificationsEnabled ? 'Mute notifications' : 'Enable notifications'}
                 className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 flex items-center justify-center border border-transparent ${
                   notificationsEnabled 
                     ? 'bg-white/20 dark:bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
@@ -377,10 +396,19 @@ export default function ExpertView() {
         </div>
       </nav>
 
-      <div className="flex flex-1 overflow-hidden">
+      <motion.div layout className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-80 min-h-0 glass-panel border-r border-white/20 dark:border-brand-700/50 flex flex-col z-10 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl">
-          {/* Queue header */}
+        <AnimatePresence mode="popLayout">
+          {!focusMode && (
+            <motion.aside
+              layout
+              initial={{ width: 0, opacity: 0 }}
+              animate={{ width: 320, opacity: 1 }}
+              exit={{ width: 0, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              className="min-h-0 glass-panel border-r border-white/20 dark:border-brand-700/50 flex flex-col z-10 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl overflow-hidden"
+            >
+              {/* Queue header */}
           {sidebarTab === 'queue' && (
             <div className="px-4 py-3 border-b border-solarized-base2 dark:border-brand-700">
               <div className="flex items-center justify-between mb-2">
@@ -840,7 +868,11 @@ export default function ExpertView() {
                 {(() => {
                   const ticket = tickets.find((tk) => tk.id === activeTab) || openTabTickets[0];
                   return ticket
-                    ? <ChatWindow key={ticket.id} ticket={ticket} onClose={() => closeTab(ticket.id)} />
+                    ? (
+                      <motion.div layout layoutId={`chat-container-${ticket.id}`} className="h-full">
+                        <ChatWindow key={ticket.id} ticket={ticket} onClose={() => closeTab(ticket.id)} />
+                      </motion.div>
+                    )
                     : null;
                 })()}
               </div>
@@ -891,17 +923,24 @@ export default function ExpertView() {
                   </div>
                 </div>
               ) : (
-                <div className={`h-full grid gap-2 p-2 ${viewMode === 'vsplit' ? vsplitGridClass(openTabTickets.length) : splitGridClass(openTabTickets.length)}`}>
+                <motion.div layout className={`h-full grid gap-2 p-2 ${viewMode === 'vsplit' ? vsplitGridClass(openTabTickets.length) : splitGridClass(openTabTickets.length)} ${focusMode ? 'focus-dim' : ''}`}>
                   {openTabTickets.map((ticket) => (
-                    <div key={ticket.id} className="min-h-0 overflow-hidden">
+                    <motion.div 
+                      layout
+                      layoutId={`chat-container-${ticket.id}`}
+                      key={ticket.id} 
+                      className={`min-h-0 overflow-hidden transition-all duration-500 ${
+                        focusMode && focusedTicketId && focusedTicketId !== ticket.id ? 'opacity-30 grayscale-[0.5] scale-[0.98] blur-[1px]' : 'opacity-100'
+                      }`}
+                    >
                       <ChatWindow
                         ticket={ticket}
                         onClose={() => closeTab(ticket.id)}
                         onFocus={() => setFocusedTicketId(ticket.id)}
                       />
-                    </div>
+                    </motion.div>
                   ))}
-                </div>
+                </motion.div>
               )
             )}
           </div>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
@@ -41,7 +42,11 @@ export default function MessageBubble({ message, ticketId, searchQuery: _searchQ
   // System messages
   if (message.system) {
     return (
-      <div className="flex justify-center py-1.5">
+      <motion.div 
+        initial={{ opacity: 0, y: 5 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex justify-center py-1.5"
+      >
         <span className={`text-[10px] uppercase tracking-wider px-3 py-1 rounded-full font-bold shadow-sm ${
           highContrastMode
             ? 'bg-black text-white dark:bg-white dark:text-black border-2 border-black dark:border-white'
@@ -49,7 +54,7 @@ export default function MessageBubble({ message, ticketId, searchQuery: _searchQ
         }`}>
           {message.text}
         </span>
-      </div>
+      </motion.div>
     );
   }
 
@@ -88,7 +93,12 @@ export default function MessageBubble({ message, ticketId, searchQuery: _searchQ
   }
 
   return (
-    <div className={`flex w-full mb-1.5 px-2 animate-fade-in ${isMine ? 'justify-end' : 'justify-start'}`}>
+    <motion.div 
+      initial={{ opacity: 0, x: isMine ? 20 : -20, scale: 0.95 }}
+      animate={{ opacity: 1, x: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      className={`flex w-full mb-1.5 px-2 ${isMine ? 'justify-end' : 'justify-start'}`}
+    >
       <div className={`relative max-w-[85%] min-w-[100px] group transition-all duration-200 px-3 py-1.5 rounded-2xl ${
         isMine ? 'rounded-tr-none ml-12' : 'rounded-tl-none mr-12'
       } ${bubbleClasses}`}>

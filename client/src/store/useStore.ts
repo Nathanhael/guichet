@@ -232,6 +232,14 @@ const useStore = create<StoreState>((set) => ({
 
   queuePosition: null,
   setQueuePosition: (pos) => set({ queuePosition: pos }),
+
+  focusMode: localStorage.getItem('focusMode') === 'true',
+  toggleFocusMode: () =>
+    set((state) => {
+      const next = !state.focusMode;
+      localStorage.setItem('focusMode', String(next));
+      return { focusMode: next };
+    }),
 }));
 
 export default useStore;

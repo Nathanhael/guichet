@@ -18,11 +18,11 @@ For a detailed look at the system architecture, tech stack, and usage:
 |---|---|
 | Frontend | React 18 + Vite 5 + Tailwind CSS 3 + Framer Motion |
 | Language | TypeScript |
+| Communication | **tRPC** (Type-safe API) + Socket.io |
+| Scaling | **Redis** (Socket.io Adapter) |
 | State | Zustand |
-| Realtime | Socket.io |
 | Backend | Node 20 (ESM), Express.js |
-| Security | Helmet, express-rate-limit, file-type |
-| Database | PostgreSQL (pg) |
+| Database | PostgreSQL + **Drizzle ORM** |
 | Auth | JWT (jsonwebtoken) + bcrypt |
 | Validation | express-validator + CSV escaping |
 | Logging | pino (+ pino-pretty in dev) |
@@ -310,7 +310,8 @@ The application features a dedicated "Cognitive & Neuro-Inclusive Cockpit" acces
 - **Dyslexic Mode**: Uses the **Lexend** font family, which was specifically designed to reduce visual stress and improve reading performance for dyslexic readers. It also increases line height and character spacing.
 - **Bionic Reading**: Implements fixation points by bolding the first few letters of each word. This guides the eye through the text, making reading more efficient and reducing cognitive load.
 - **Language-Specific Bionic Reading**: Adjusts fixation points based on the selected language (EN, NL, FR) for optimal brain processing.
-- **Calm UI**: High-contrast dark mode support and balanced color palettes to minimize anxiety and visual overstimulation.
+- **Zen Mode (Focus Mode)**: Allows experts to collapse all non-essential UI elements and dim inactive conversations to minimize distraction.
+- **Calm UI**: High-contrast dark mode support and glassmorphic aesthetic designed to minimize anxiety and visual overstimulation.
 
 ## Languages & Translation
 
@@ -341,42 +342,31 @@ Specialized features for agents and experts:
 
 ## The Cognitive Cockpit
 
-## API Endpoints
+## API Endpoints (tRPC & REST)
 
-### Authentication
+The application has migrated to **tRPC** for all primary data operations, providing end-to-end type safety.
+
+### tRPC Procedures
+
+| Router | Procedures |
+|---|---|
+| `ticket` | `list`, `get`, `create`, `close`, `updateLabels` |
+| `message` | `list`, `send` |
+| `presence` | `getOnlineStatus`, `setStatus` |
+| `stats` | `getGlobalStats`, `getLLMSummary` |
+| `feedback` | `list`, `create`, `markTreated` |
+| `label` | `list`, `create`, `delete` |
+| `user` | `list` (Public for LoginView) |
+
+### Remaining REST Endpoints
 
 | Method | Path | Description |
 |---|---|---|
-| POST | `/api/auth/register` | Register a new user (`{ id, name, role, password }`) |
 | POST | `/api/auth/login` | Login, returns JWT token + user object |
-
-### Resources (all require authentication)
-
-> **Note:** `/api/config` and `/api/health` are public (no auth required).
-
-| Method | Path | Description |
-|---|---|---|
-| GET | `/api/config` | Frontend configuration (limits, hours) |
-| GET | `/api/health` | Service health (DB + Ollama status) |
-| GET | `/api/users` | All demo users |
-| GET | `/api/tickets` | Tickets (filter: `agentId`, `status`, `dept`, `search`, `limit`, `offset`, `dateFrom`, `dateTo`) |
-| GET | `/api/tickets/export` | Export tickets as CSV (same filters as `/api/tickets`) |
-| GET | `/api/messages` | All messages (optional filter: `ticketId`) |
-| GET | `/api/tickets/:id/messages` | Messages for a ticket |
 | POST | `/api/uploads` | Upload screenshot (magic byte validated) |
-| GET | `/api/stats` | Admin statistics (merges live + historical data, supports `dateFrom`, `dateTo`, `dept`) |
-| GET | `/api/stats/summary` | LLM sentiment analysis + summary for selected period |
-| GET | `/api/online/:userId` | Check user online status |
-| GET | `/api/ratings` | All satisfaction ratings |
-| GET | `/api/feedback` | Feedback entries |
-| POST | `/api/feedback` | Submit feedback (`{ userId, userName, role, text }`) |
-| PATCH | `/api/feedback/:id/treat` | Mark feedback as treated |
-| GET | `/api/labels` | Available ticket labels |
-| POST | `/api/labels` | Create a new label (`{ text, color }`) |
-| DELETE | `/api/labels/:id` | Delete a label (cascades to ticket_labels) |
-| GET | `/api/canned-responses` | Available canned responses |
-| POST | `/api/canned-responses` | Create a canned response (`{ shortcut, text }`) |
-| DELETE | `/api/canned-responses/:id` | Delete a canned response |
+| GET | `/api/tickets/export` | Export tickets as CSV |
+| GET | `/api/config` | Frontend configuration (limits, hours) |
+| GET | `/api/health` | Service health (DB + Ollama + Redis status) |
 | GET | `/uploads/:filename` | Retrieve uploaded image |
 
 ## Socket.io Events

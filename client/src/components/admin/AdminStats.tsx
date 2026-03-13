@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useT } from '../../i18n';
 import useStore from '../../store/useStore';
 import { OnlineExpert } from '../../types';
-import { Panel, StatCard } from './DashboardHelpers';
+import { Panel, StatCard, Skeleton } from './DashboardHelpers';
 import {
   ResponsiveContainer,
   BarChart,
@@ -63,7 +63,26 @@ export default function AdminStats() {
     }
   );
 
-  if (isLoading || !stats) return <p className="text-slate-400 p-8 animate-pulse">{t('loading')} dashboard data...</p>;
+  if (isLoading || !stats) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto p-4 animate-fade-in">
+        <div className="flex justify-between items-center mb-8">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-12 w-96 rounded-2xl" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-24 rounded-2xl" />
+          ))}
+        </div>
+        <Skeleton className="h-64 rounded-2xl w-full" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-80 rounded-2xl" />
+          <Skeleton className="h-80 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-slide-up pb-10">

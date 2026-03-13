@@ -84,22 +84,4 @@ router.get('/export', [
   }
 });
 
-/**
- * LEGACY MESSAGES ROUTE
- * Kept temporarily for components that might still fetch via REST (e.g. specialized previews)
- */
-router.get('/:id/messages', auth, async (req: any, res: Response) => {
-  try {
-    const messages = await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [req.params.id]) as any[];
-    res.json(messages.map(m => ({
-      ...m,
-      whisper: !!m.whisper,
-      system: !!m.system
-    })));
-  } catch (err: any) {
-    logger.error({ err: err.message, params: req.params }, 'Error fetching messages');
-    res.status(500).json({ error: err.message });
-  }
-});
-
 export default router;

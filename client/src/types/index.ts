@@ -85,6 +85,7 @@ export interface StoreState {
   dyslexicMode: boolean;
   bionicReading: boolean;
   highContrastMode: boolean;
+  focusMode: boolean;
   selectedLang: string | null;
   cannedResponses: any[];
   notificationsEnabled: boolean;
@@ -134,6 +135,7 @@ export interface StoreState {
   toggleDyslexicMode: () => void;
   toggleBionicReading: () => void;
   toggleHighContrastMode: () => void;
+  toggleFocusMode: () => void;
   setSelectedLang: (lang: string) => void;
   setConnectionStatus: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
   setAllLabels: (labels: Label[]) => void;
