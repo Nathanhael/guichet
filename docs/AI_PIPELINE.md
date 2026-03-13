@@ -28,7 +28,12 @@ If `ai_enabled` is true, messages are enhanced for clarity.
 - **Standard Tier**: If AI is disabled, this stage is bypassed for zero latency.
 
 ### Stage 3: Sentiment Analysis
-Every non-whisper message is asynchronously scored for sentiment (-1.0 to +1.0). These scores drive the real-time "vibe" charts in the AI Intelligence Hub.
+Every non-whisper message is asynchronously scored for sentiment (-1.0 to +1.0) via Ollama. These scores drive the real-time "vibe" charts in the AI Intelligence Hub.
+
+### Stage 4: Visual Intelligence (Premium Bubbles)
+The UI provides immediate feedback on AI processing:
+- **Sentiment Glow**: Bubbles feature a subtle outer glow based on sentiment (Red for frustration, Green for satisfaction).
+- **AI Sparkle (✨)**: Messages improved or translated by AI feature a "Sparkle" icon. Hovering/clicking reveals the original text instantly.
 
 ---
 
