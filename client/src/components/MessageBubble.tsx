@@ -152,15 +152,89 @@ export default function MessageBubble({ message, ticketId, searchQuery: _searchQ
         )}
 
         <div className="relative">
-          <p className={`text-[14px] break-words whitespace-pre-wrap leading-snug ${
-            isWhisper ? 'italic' : ''
-          } ${dyslexicMode ? 'font-lexend' : ''}`}>
-            {bionicReading ? (
-              <BionicText text={displayText} />
-            ) : (
-              displayText
-            )}
-          </p>
+          {isWhisper || showOriginal || isMine ? (
+            <p className={`text-[14px] break-words whitespace-pre-wrap leading-snug ${
+              isWhisper ? 'italic' : ''
+            } ${dyslexicMode ? 'font-lexend' : ''}`}>
+              {bionicReading ? <BionicText text={displayText} /> : displayText}
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {/* Parse structured response if present */}
+              {(() => {
+                const text = displayText;
+                const hasSteps = text.includes('[STEPS]');
+                const hasScript = text.includes('[CUSTOMER_SCRIPT]');
+                const hasSummary = text.includes('[SUMMARY]');
+
+                if (!hasSteps && !hasScript && !hasSummary) {
+                  return (
+                    <p className={`text-[14px] break-words whitespace-pre-wrap leading-snug ${dyslexicMode ? 'font-lexend' : ''}`}>
+                      {bionicReading ? <BionicText text={text} /> : text}
+                    </p>
+                  );
+                }
+
+                // Split by tags
+                const parts = text.split(/(\[STEPS\]|\[CUSTOMER_SCRIPT\]|\[SUMMARY\])/);
+                let currentTag = '';
+                const sections: Record<string, string> = {};
+
+                parts.forEach(p => {
+                  if (p === '[STEPS]' || p === '[CUSTOMER_SCRIPT]' || p === '[SUMMARY]') {
+                    currentTag = p;
+                  } else if (currentTag && p.trim()) {
+                    sections[currentTag] = p.trim();
+                  }
+                });
+
+                return (
+                  <div className="space-y-3 py-1">
+                    {sections['[SUMMARY]'] && (
+                      <p className="text-[14px] font-bold text-brand-700 dark:text-brand-300 leading-tight">
+                        {sections['[SUMMARY]']}
+                      </p>
+                    )}
+                    
+                    {sections['[STEPS]'] && (
+                      <div className="bg-black/5 dark:bg-white/5 rounded-xl p-3 border border-black/5 dark:border-white/5">
+                        <div className="flex items-center gap-2 mb-2 text-[10px] font-black uppercase tracking-widest opacity-50">
+                          <LifeBuoy size={12} />
+                          Internal Procedure
+                        </div>
+                        <div className="text-[13px] leading-relaxed whitespace-pre-wrap">
+                          {bionicReading ? <BionicText text={sections['[STEPS]']} /> : sections['[STEPS]']}
+                        </div>
+                      </div>
+                    )}
+
+                    {sections['[CUSTOMER_SCRIPT]'] && (
+                      <div className="bg-emerald-500/10 dark:bg-emerald-500/20 rounded-xl p-3 border border-emerald-500/20 dark:border-emerald-500/30">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+                            <Sparkles size={12} />
+                            Tell the Customer
+                          </div>
+                          <button 
+                            onClick={() => {
+                              navigator.clipboard.writeText(sections['[CUSTOMER_SCRIPT]']);
+                              // We could add a "Copied!" toast here
+                            }}
+                            className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded hover:bg-emerald-600 transition-colors"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                        <p className="text-[13px] text-emerald-900 dark:text-emerald-100 font-medium leading-snug italic">
+                          "{sections['[CUSTOMER_SCRIPT]']}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           {message.mediaUrl && (
             <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">

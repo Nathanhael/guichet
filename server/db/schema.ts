@@ -9,6 +9,9 @@ export const partners = pgTable('partners', {
   ref1Label: text('ref_1_label').default('Reference 1'),
   ref2Label: text('ref_2_label').default('Reference 2'),
   aiRules: text('ai_rules'),
+  agentPromptStrategy: text('agent_prompt_strategy'),
+  supportPromptStrategy: text('support_prompt_strategy'),
+  enableActionableAi: boolean('enable_actionable_ai').default(false),
   departments: text('departments').default('[]'), // JSON array
   aiEnabled: boolean('ai_enabled').default(true),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
