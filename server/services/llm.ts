@@ -166,8 +166,8 @@ async function getMessagesForMonth(monthStr: string, partnerId: string): Promise
     return (await query('SELECT m.text, m.translated_text as "processedText", m.sender_name as "senderName" FROM messages m JOIN tickets t ON m.ticket_id = t.id WHERE t.created_at::text LIKE $1 AND t.partner_id = $2 AND m.system = 0 AND m.whisper = 0', [`${monthStr}%`, partnerId])) as unknown as Promise<MessageRow[]>;
 }
 
-export async function summarizeConversation(ticketId: string): Promise<string> {
-    logger.info({ ticketId }, 'Summarizing conversation');
+export async function summarizeConversation(ticketId: string, partnerId: string): Promise<string> {
+    logger.info({ ticketId, partnerId }, 'Summarizing conversation');
     
     const messages = (await query(
         'SELECT sender_name as "senderName", text as "originalText" FROM messages WHERE ticket_id = $1 AND system = 0 AND whisper = 0 ORDER BY created_at ASC',
@@ -177,6 +177,9 @@ export async function summarizeConversation(ticketId: string): Promise<string> {
     if (!messages || messages.length === 0) {
         return 'No conversation recorded.';
     }
+
+    const partner = await get('SELECT industry, ai_rules FROM partners WHERE id = $1', [partnerId]) as any;
+    const aiRules = partner?.ai_rules || 'You are a professional support expert.';
 
     const textToAnalyze = messages
         .map((m) => `${m.senderName}: ${m.originalText}`)
@@ -192,10 +195,11 @@ export async function summarizeConversation(ticketId: string): Promise<string> {
             body: JSON.stringify({
                 model: MODEL,
                 stream: false,
-                prompt: `Summarize the following support chat between a customer agent and an expert. 
-Focus on the technical problem and the final resolution. 
-Be concise (2-3 sentences max).
-Return ONLY the summary, no preamble.
+                prompt: `${aiRules}
+        Summarize the following support chat between a customer agent and a support specialist for the ${partner?.industry || 'general'} industry. 
+        Focus on the technical problem and the final resolution. 
+        Be concise (2-3 sentences max).
+        Return ONLY the summary, no preamble.
 
 Chat:
 ${textToAnalyze}`,

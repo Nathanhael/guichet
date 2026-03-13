@@ -46,6 +46,12 @@ The UI provides immediate feedback on AI processing:
 - **AI Sparkle (✨)**: Messages improved or translated by AI feature a "Sparkle" icon. Hovering/clicking reveals the original text instantly.
 - **Structured Rendering**: For Support messages, the UI renders `[STEPS]` and `[CUSTOMER_SCRIPT]` in distinct, beautiful boxes with a **"Copy to Clipboard"** button.
 
+### Stage 5: Automatic Conversation Summarization
+When a ticket is closed, if `ai_enabled` is true:
+- The system triggers a background task to summarize the entire conversation.
+- The summary focuses on the technical problem and the final resolution.
+- Results are stored in the `summary` column of the `tickets` table and are visible in the **Archive** and **AI Intelligence Hub**.
+
 ---
 
 ## 2. AI Intelligence Hub (Admin & Manager)

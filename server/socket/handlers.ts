@@ -174,6 +174,17 @@ export function registerSocketHandlers(io: Server) {
         await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, closedBy || 'System', closingNotes || '', ticketId]);
         io.to(`ticket:${ticketId}`).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: closedBy || 'System' });
         await broadcastQueuePositions();
+
+        // Trigger AI Summary
+        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as any;
+        if (ticket) {
+          const partner = await get('SELECT ai_enabled FROM partners WHERE id = $1', [ticket.partner_id]) as any;
+          if (partner?.ai_enabled) {
+            summarizeConversation(ticketId, ticket.partner_id).catch(err => {
+              logger.error({ err, ticketId }, 'Background summarization failed');
+            });
+          }
+        }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
     });
 
