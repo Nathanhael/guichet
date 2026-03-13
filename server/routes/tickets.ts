@@ -9,6 +9,7 @@ import { auth, authorize, AuthRequest } from '../middleware/auth.js';
 const router = express.Router();
 
 router.get('/', [
+  auth,
   queryVal('status').optional().isIn(['open', 'pending', 'closed']),
   queryVal('dept').optional().isString(),
   queryVal('dateFrom').optional().isISO8601(),
@@ -173,7 +174,7 @@ router.get('/export', [
   }
 });
 
-router.get('/:id/messages', async (req: Request, res: Response) => {
+router.get('/:id/messages', auth, async (req: Request, res: Response) => {
   try {
     const messages = await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [req.params.id]) as any[];
     res.json(messages.map(m => ({

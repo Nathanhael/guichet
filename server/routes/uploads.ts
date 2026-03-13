@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { fileTypeFromFile } from 'file-type';
 import config from '../config.js';
+import { auth } from '../middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = path.join(__dirname, '..', 'uploads');
@@ -29,7 +30,7 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: config.UPLOAD_M
 
 const router = Router();
 
-router.post('/', (req: Request, res: Response) => {
+router.post('/', auth, (req: Request, res: Response) => {
   upload.single('file')(req, res, async (err: any) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
