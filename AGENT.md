@@ -29,7 +29,9 @@ This document serves as a high-level "Rules of Engagement" for any AI agent work
 
 ## 🛡️ 5. Domain Knowledge & Constraints
 - **Roles**: `agent` (creates tickets), `expert` (joins from queue), `admin` (full dashboard, labels, archive, feedback).
-- **Business Hours**: Enforced in `server/middleware/auth.ts` and `client/src/components/BusinessHoursGuard.tsx`. Do not bypass these without explicit reason.
+- **Business Hours**: Enforced in tRPC procedures and `client/src/components/BusinessHoursGuard.tsx`. Do not bypass these without explicit reason.
+- **Neuro-Inclusive Features**: `Dyslexic Mode`, `Bionic Reading`, and `Zen Mode` (Focus Mode for Experts).
+- **API**: Powered by **tRPC** for type-safety. Avoid adding new raw Express routes unless necessary (e.g., file uploads).
 - **Translation**: Uses a local Ollama instance. If the LLM is down, the system **must** fallback gracefully to original text.
 - **GDPR**: Retention is 30 days. PII is purged while aggregated stats are kept.
 

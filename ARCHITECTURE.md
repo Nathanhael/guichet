@@ -121,3 +121,18 @@ After refactoring, the server follows a clean modular architecture:
 - **RBAC**: All API routes require JWT authentication. Admin-only endpoints (feedback management, ratings) enforce additional role checks. Socket events are guarded via presence identification.
 - **Magic Byte Validation**: Image uploads are verified via content headers to prevent spoofing.
 - **Connection Resilience**: Automatic socket re-identification on network jitter.
+
+## Infrastructure & Reliability
+
+The application is designed for stable, predictable deployments:
+
+1. **Docker Orchestration**:
+   - **Healthchecks**: Database and Redis services must be "healthy" before the server attempts to connect.
+   - **Service Coordination**: The server uses a retry-aware connection strategy, supported by Docker's `condition: service_healthy` dependency mapping.
+
+2. **Security Hardening**:
+   - **Non-Root Runtime**: All containers (Server, Client) run as the `node` user instead of `root`, minimizing potential escalation risks.
+   - **Permission Management**: Directory permissions are strictly scoped to the application's runtime needs (e.g., `uploads/` volume).
+
+3. **Graceful Shutdown**:
+   - The server handles `SIGTERM` and `SIGINT` signals by stopping the HTTP listener and allowing active requests to finish before closing database pools.
