@@ -118,7 +118,7 @@ export async function summarizeConversation(ticketId: string): Promise<string> {
     logger.info({ ticketId }, 'Summarizing conversation');
     
     const messages = await query(
-        'SELECT "senderName", "originalText" FROM messages WHERE "ticketId" = $1 AND system = 0 AND whisper = 0 ORDER BY timestamp ASC',
+        'SELECT sender_name as "senderName", text as "originalText" FROM messages WHERE ticket_id = $1 AND system = 0 AND whisper = 0 ORDER BY created_at ASC',
         [ticketId]
     );
 
