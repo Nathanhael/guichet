@@ -14,7 +14,7 @@ export async function runDailyPurge() {
       `SELECT DISTINCT created_at::date::text as date
        FROM tickets
        WHERE created_at < $1
-         AND created_at::date NOT IN (SELECT date FROM daily_stats)`,
+         AND created_at::date::text NOT IN (SELECT date::text FROM daily_stats)`,
       [cutoffDate]
     ) as { date: string }[];
 
