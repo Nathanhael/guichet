@@ -12,14 +12,13 @@ import * as trpcExpress from '@trpc/server/adapters/express';
 import { createContext } from './trpc/context.js';
 import { appRouter } from './trpc/router.js';
 
-import ticketRoutes from './routes/tickets.js';
-import messageRoutes from './routes/messages.js';
 import uploadRoutes from './routes/uploads.js';
 import feedbackRoutes from './routes/feedback.js';
 import labelRoutes from './routes/labels.js';
 import cannedRoutes from './routes/canned_responses.js';
 import authRoutes from './routes/auth.js';
 import statsRoutes from './routes/stats.js';
+import ticketRoutes from './routes/tickets.js'; // Kept for export route support
 import { query } from './db.js';
 import config from './config.js';
 import logger from './utils/logger.js';
@@ -104,8 +103,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/api/tickets', ticketRoutes);
-app.use('/api/messages', messageRoutes);
+app.use('/api/tickets', ticketRoutes); // Kept for export support
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/labels', labelRoutes);

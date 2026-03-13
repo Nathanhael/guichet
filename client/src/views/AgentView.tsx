@@ -10,6 +10,7 @@ import FeedbackModal from '../components/FeedbackModal';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import { requestNotificationPermission } from '../utils/notifications';
+import { trpc } from '../utils/trpc';
 
 
 export default function AgentView() {
@@ -20,16 +21,14 @@ export default function AgentView() {
   const [showFeedback, setShowFeedback] = useState(false);
   const pendingNavigate = useRef(false);
 
-  useEffect(() => {
-    if (!user) return;
-    const { token } = useStore.getState();
-    fetch(`/api/tickets?agentId=${user.id}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then((r) => r.json())
-      .then((data) => setTickets(data))
-      .catch(console.error);
-  }, [user?.id, setTickets]);
+  // tRPC Ticket List
+  const { data: ticketList, isLoading } = trpc.ticket.list.useQuery(
+    { agentId: user?.id },
+    { 
+      enabled: !!user?.id,
+      onSuccess: (data) => setTickets(data as any),
+    }
+  );
 
   useEffect(() => {
     if (notificationsEnabled) {
@@ -137,63 +136,67 @@ export default function AgentView() {
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center p-6">
-              <div className="glass-panel p-10 w-full max-w-lg animate-slide-up border border-white/20 dark:border-brand-700/50 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl rounded-3xl shadow-2xl">
-                <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white mb-2">
-                  {t('hello')}, <span className="text-accent-500">{user.name.split(' ')[1] || user.name}</span>
-                </h2>
-                <p className="text-sm text-solarized-base00 dark:text-slate-400 mb-8 font-medium">{t('choose_dept_desc')}</p>
+              {isLoading && !tickets.length ? (
+                <div className="text-solarized-base1 animate-pulse">Loading your tickets...</div>
+              ) : (
+                <div className="glass-panel p-10 w-full max-w-lg animate-slide-up border border-white/20 dark:border-brand-700/50 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl rounded-3xl shadow-2xl">
+                  <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white mb-2">
+                    {t('hello')}, <span className="text-accent-500">{user.name.split(' ')[1] || user.name}</span>
+                  </h2>
+                  <p className="text-sm text-solarized-base00 dark:text-slate-400 mb-8 font-medium">{t('choose_dept_desc')}</p>
 
-                <form onSubmit={submitTicket} className="space-y-4">
-                  <div className="flex gap-3">
-                    {['DSC', 'FOT'].map((d) => (
+                  <form onSubmit={submitTicket} className="space-y-4">
+                    <div className="flex gap-3">
+                      {['DSC', 'FOT'].map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setForm((f) => ({ ...f, dept: d }))}
+                          className={`flex-1 py-4 rounded-xl border-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-1 ${form.dept === d
+                            ? d === 'DSC'
+                              ? 'border-amber-500 bg-gradient-to-b from-amber-50/50 to-solarized-base3 dark:from-amber-900/30 dark:to-brand-800 text-amber-600 dark:text-amber-400 shadow-md'
+                              : 'border-indigo-500 bg-gradient-to-b from-indigo-50/50 to-solarized-base3 dark:from-indigo-900/30 dark:to-brand-800 text-indigo-600 dark:text-indigo-400 shadow-md'
+                            : 'border-solarized-base2 dark:border-brand-700 bg-solarized-base3/50 dark:bg-brand-800/50 text-solarized-base01 dark:text-slate-400 hover:border-accent-300 dark:hover:border-accent-500 hover:shadow-sm'
+                            }`}
+                        >
+                          <span className="block text-lg font-bold tracking-tight">{d}</span>
+                          <span className="block text-xs font-medium opacity-80 mt-1">
+                            {d === 'DSC' ? 'Billing & Sales' : t('technical')}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-semibold text-solarized-base01 dark:text-gray-300 mb-2">
+                        {form.dept === 'FOT' ? 'Dare Ref' : 'CDBID'}{' '}
+                        <span className="text-solarized-base1 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={form.refValue}
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/[^0-9]/g, '');
+                          setForm((f) => ({ ...f, refValue: digits.slice(0, 15) }));
+                        }}
+                        placeholder={form.dept === 'FOT' ? 'e.g. 1234567890' : 'e.g. 123456'}
+                        className="input-field"
+                      />
+                    </div>
+
+                    <div className="pt-2">
                       <button
-                        key={d}
-                        type="button"
-                        onClick={() => setForm((f) => ({ ...f, dept: d }))}
-                        className={`flex-1 py-4 rounded-xl border-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-1 ${form.dept === d
-                          ? d === 'DSC'
-                            ? 'border-amber-500 bg-gradient-to-b from-amber-50/50 to-solarized-base3 dark:from-amber-900/30 dark:to-brand-800 text-amber-600 dark:text-amber-400 shadow-md'
-                            : 'border-indigo-500 bg-gradient-to-b from-indigo-50/50 to-solarized-base3 dark:from-indigo-900/30 dark:to-brand-800 text-indigo-600 dark:text-indigo-400 shadow-md'
-                          : 'border-solarized-base2 dark:border-brand-700 bg-solarized-base3/50 dark:bg-brand-800/50 text-solarized-base01 dark:text-slate-400 hover:border-accent-300 dark:hover:border-accent-500 hover:shadow-sm'
-                          }`}
+                        type="submit"
+                        disabled={submitting}
+                        className="btn-primary w-full py-3.5 text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
                       >
-                        <span className="block text-lg font-bold tracking-tight">{d}</span>
-                        <span className="block text-xs font-medium opacity-80 mt-1">
-                          {d === 'DSC' ? 'Billing & Sales' : t('technical')}
-                        </span>
+                        {submitting ? t('connecting') : t('connect_with_expert')}
                       </button>
-                    ))}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-solarized-base01 dark:text-gray-300 mb-2">
-                      {form.dept === 'FOT' ? 'Dare Ref' : 'CDBID'}{' '}
-                      <span className="text-solarized-base1 font-normal">(optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={form.refValue}
-                      onChange={(e) => {
-                        const digits = e.target.value.replace(/[^0-9]/g, '');
-                        setForm((f) => ({ ...f, refValue: digits.slice(0, 15) }));
-                      }}
-                      placeholder={form.dept === 'FOT' ? 'e.g. 1234567890' : 'e.g. 123456'}
-                      className="input-field"
-                    />
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="btn-primary w-full py-3.5 text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
-                    >
-                      {submitting ? t('connecting') : t('connect_with_expert')}
-                    </button>
-                  </div>
-                </form>
-              </div>
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           )}
         </div>
