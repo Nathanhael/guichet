@@ -12,14 +12,22 @@ interface RequestWithSocketIO {
 }
 
 export const labelRouter = router({
-  list: publicProcedure.query(async () => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     try {
+      if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) return [];
+
+      const conditions = [];
+      if (!ctx.user.isPlatformOperator) {
+        conditions.push(eq(labels.partnerId, ctx.user.partnerId!));
+      }
+
       const data = await db.select({
         id: labels.id,
         text: labels.name,
         color: labels.color,
       })
       .from(labels)
+      .where(conditions.length > 0 ? conditions[0] : undefined)
       .orderBy(asc(labels.name));
       
       return data;
@@ -37,22 +45,26 @@ export const labelRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
+        if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
+
         const id = 'l' + Date.now();
         await db.insert(labels).values({
           id,
+          partnerId: ctx.user.partnerId,
           name: input.text,
           color: input.color,
         });
 
         const io = (ctx.req as unknown as RequestWithSocketIO).app.get('io');
         if (io) {
-          io.emit('label:created', { id, text: input.text, color: input.color });
+          // Emit only to partner-specific room if we implement that later, for now global is fine but scoped is better
+          io.to(`partner:${ctx.user.partnerId}`).emit('label:created', { id, text: input.text, color: input.color });
         }
 
         return { id, ...input };
       } catch (err: unknown) {
         if (err instanceof Error && 'code' in err && (err as Error & { code: string }).code === '23505') {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Label name already exists' });
+          throw new TRPCError({ code: 'CONFLICT', message: 'Label name already exists for this partner' });
         }
         const message = err instanceof Error ? err.message : String(err);
         logger.error({ err: message }, 'tRPC: Error creating label');
@@ -64,18 +76,28 @@ export const labelRouter = router({
     .input(z.string())
     .mutation(async ({ input: id, ctx }) => {
       try {
+        const conditions = [eq(labels.id, id)];
+        if (!ctx.user.isPlatformOperator) {
+          conditions.push(eq(labels.partnerId, ctx.user.partnerId!));
+        }
+
         await db.transaction(async (tx) => {
+          // Verify ownership first
+          const existing = await tx.select().from(labels).where(and(...conditions)).limit(1);
+          if (existing.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Label not found or access denied' });
+
           await tx.delete(ticketLabels).where(eq(ticketLabels.labelId, id));
           await tx.delete(labels).where(eq(labels.id, id));
         });
 
         const io = (ctx.req as unknown as RequestWithSocketIO).app.get('io');
-        if (io) {
-          io.emit('label:deleted', { id });
+        if (io && ctx.user.partnerId) {
+          io.to(`partner:${ctx.user.partnerId}`).emit('label:deleted', { id });
         }
 
         return { success: true };
       } catch (err: unknown) {
+        if (err instanceof TRPCError) throw err;
         const message = err instanceof Error ? err.message : String(err);
         logger.error({ err: message, labelId: id }, 'tRPC: Error deleting label');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });

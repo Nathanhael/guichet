@@ -18,9 +18,15 @@ export const ticketRouter = router({
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         const conditions = [];
+
+        // Scope by partner
+        if (!ctx.user.isPlatformOperator) {
+          if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+          conditions.push(eq(tickets.partnerId, ctx.user.partnerId));
+        }
 
         if (input.agentId) conditions.push(eq(tickets.agentId, input.agentId));
         if (input.status) conditions.push(eq(tickets.status, input.status));
@@ -30,8 +36,8 @@ export const ticketRouter = router({
           const q = `%${input.search}%`;
           conditions.push(or(
             ilike(tickets.agentName, q),
-            ilike(tickets.cdbId, q),
-            ilike(tickets.dareRef, q),
+            ilike(tickets.ref1, q),
+            ilike(tickets.ref2, q),
             ilike(tickets.expertName, q)
           ));
         }
@@ -93,9 +99,15 @@ export const ticketRouter = router({
 
   getById: protectedProcedure
     .input(z.string())
-    .query(async ({ input: id }) => {
+    .query(async ({ input: id, ctx }) => {
       try {
-        const result = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+        const conditions = [eq(tickets.id, id)];
+        if (!ctx.user.isPlatformOperator) {
+          if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+          conditions.push(eq(tickets.partnerId, ctx.user.partnerId));
+        }
+
+        const result = await db.select().from(tickets).where(and(...conditions)).limit(1);
         if (result.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Ticket not found' });
         }

@@ -1,27 +1,52 @@
 import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date } from 'drizzle-orm/pg-core';
 
+export const partners = pgTable('partners', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  industry: text('industry').default('general'),
+  primaryColor: text('primary_color').default('#a855f7'),
+  secondaryColor: text('secondary_color').default('#3b82f6'),
+  ref1Label: text('ref_1_label').default('Reference 1'),
+  ref2Label: text('ref_2_label').default('Reference 2'),
+  aiRules: text('ai_rules'),
+  departments: text('departments').default('[]'), // JSON array
+  aiEnabled: boolean('ai_enabled').default(true),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+});
+
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  role: text('role').notNull(),
-  dept: text('dept'),
-  lang: text('lang').default('nl'),
+  lang: text('lang').default('nl'), // Global preferred language
   password: text('password'),
+  isPlatformOperator: boolean('is_platform_operator').default(false),
 });
+
+export const memberships = pgTable('memberships', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(), // 'agent', 'expert', 'admin', 'manager'
+  dept: text('dept'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+}, (table) => ({
+  userPartnerIdx: index('idx_memberships_user_partner').on(table.userId, table.partnerId),
+}));
 
 export const tickets = pgTable('tickets', {
   id: text('id').primaryKey(),
+  partnerId: text('partner_id').notNull().references(() => partners.id),
   dept: text('dept').notNull(),
   agentId: text('agent_id').notNull().references(() => users.id),
   agentName: text('agent_name'),
   agentLang: text('agent_lang'),
-  cdbId: text('cdb_id'),
-  dareRef: text('dare_ref'),
+  ref1: text('ref_1'), // Genericized from cdb_id
+  ref2: text('ref_2'), // Genericized from dare_ref
   status: text('status').default('open'),
-  expertId: text('expert_id').references(() => users.id),
-  expertName: text('expert_name'),
-  expertLang: text('expert_lang'),
-  expertJoinedAt: timestamp('expert_joined_at', { mode: 'string' }),
+  supportId: text('support_id').references(() => users.id),
+  supportName: text('support_name'),
+  supportLang: text('support_lang'),
+  supportJoinedAt: timestamp('support_joined_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
   closedAt: timestamp('closed_at', { mode: 'string' }),
   closingNotes: text('closing_notes'),
@@ -31,6 +56,7 @@ export const tickets = pgTable('tickets', {
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
 }, (table) => ({
+  partnerIdIdx: index('idx_tickets_partner_id').on(table.partnerId),
   agentIdIdx: index('idx_tickets_agent_id').on(table.agentId),
   statusIdx: index('idx_tickets_status').on(table.status),
   deptIdx: index('idx_tickets_dept').on(table.dept),
@@ -61,7 +87,7 @@ export const ratings = pgTable('ratings', {
   id: text('id').primaryKey(),
   ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
   agentId: text('agent_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  expertId: text('expert_id').references(() => users.id, { onDelete: 'cascade' }),
+  supportId: text('support_id').references(() => users.id, { onDelete: 'cascade' }),
   rating: integer('rating').notNull(),
   comment: text('comment'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
@@ -79,9 +105,12 @@ export const appFeedback = pgTable('app_feedback', {
 
 export const labels = pgTable('labels', {
   id: text('id').primaryKey(),
-  name: text('name').notNull().unique(),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
   color: text('color').notNull(),
-});
+}, (table) => ({
+  partnerNameIdx: index('idx_labels_partner_name').on(table.partnerId, table.name),
+}));
 
 export const ticketLabels = pgTable('ticket_labels', {
   ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
@@ -91,7 +120,8 @@ export const ticketLabels = pgTable('ticket_labels', {
 }));
 
 export const dailyStats = pgTable('daily_stats', {
-  date: date('date', { mode: 'string' }).primaryKey(),
+  date: date('date', { mode: 'string' }).notNull(),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   total: integer('total').default(0),
   closed: integer('closed').default(0),
   abandoned: integer('abandoned').default(0),
@@ -108,7 +138,9 @@ export const dailyStats = pgTable('daily_stats', {
   deptCounts: text('dept_counts'), // JSON string
   ratingsByDept: text('ratings_by_dept'), // JSON string
   hourly: text('hourly'), // JSON string
-});
+}, (table) => ({
+  pk: primaryKey({ columns: [table.date, table.partnerId] }),
+}));
 
 export const translationsCache = pgTable('translations_cache', {
   key: text('key').primaryKey(),
@@ -119,15 +151,21 @@ export const translationsCache = pgTable('translations_cache', {
 });
 
 export const llmSummaries = pgTable('llm_summaries', {
-  period: text('period').primaryKey(),
+  period: text('period').notNull(),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   sentiment: text('sentiment'),
   questions: text('questions'), // JSON array
   summary: text('summary'),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull(),
-});
+}, (table) => ({
+  pk: primaryKey({ columns: [table.period, table.partnerId] }),
+}));
 
 export const cannedResponses = pgTable('canned_responses', {
   id: text('id').primaryKey(),
-  shortcut: text('shortcut').notNull().unique(),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  shortcut: text('shortcut').notNull(),
   text: text('text').notNull(),
-});
+}, (table) => ({
+  partnerShortcutIdx: index('idx_canned_partner_shortcut').on(table.partnerId, table.shortcut),
+}));

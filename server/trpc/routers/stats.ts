@@ -131,9 +131,12 @@ export const statsRouter = router({
       dept: z.string().optional(),
       excludeWeekends: z.boolean().optional(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
         const { dateFrom, dateTo, dept, excludeWeekends } = input;
+        if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+        const partnerId = ctx.user.partnerId!;
+
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
 
@@ -163,9 +166,9 @@ export const statsRouter = router({
           }
         }
 
-        const historicalStats = (await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2', [rangeStart, rangeEnd])) as unknown as HistoricalStatRow[];
-        const ticketsSql = `SELECT * FROM tickets WHERE created_at::date >= $1 AND created_at::date <= $2`;
-        const allLiveTicketsRaw = (await query(ticketsSql, [rangeStart, rangeEnd])) as unknown as Ticket[];
+        const historicalStats = (await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2 AND partner_id = $3', [rangeStart, rangeEnd, partnerId])) as unknown as HistoricalStatRow[];
+        const ticketsSql = `SELECT * FROM tickets WHERE created_at::date >= $1 AND created_at::date <= $2 AND partner_id = $3`;
+        const allLiveTicketsRaw = (await query(ticketsSql, [rangeStart, rangeEnd, partnerId])) as unknown as Ticket[];
         const allLiveTickets = (excludeWeekends)
           ? allLiveTicketsRaw.filter(t => {
             if (!t.createdAt) return false;
@@ -584,9 +587,11 @@ export const statsRouter = router({
       periodType: z.string(),
       periodValue: z.string(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
       try {
-        return await getLLMSummary(input.periodType, input.periodValue);
+        if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+        // We'll update the service signature next
+        return await (await import('../../services/llm.js')).getLLMSummary(input.periodType, input.periodValue, ctx.user.partnerId!);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         logger.error({ err: message }, 'tRPC: Error in getLLMSummary');

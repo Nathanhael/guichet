@@ -8,6 +8,7 @@ import { feedbackRouter } from './routers/feedback.js';
 import { ratingRouter } from './routers/rating.js';
 import { statsRouter } from './routers/stats.js';
 import { userRouter } from './routers/user.js';
+import { platformRouter } from './routers/platform.js';
 
 export const appRouter = router({
   label: labelRouter,
@@ -19,6 +20,7 @@ export const appRouter = router({
   rating: ratingRouter,
   stats: statsRouter,
   user: userRouter,
+  platform: platformRouter,
 });
 
 export type AppRouter = typeof appRouter;

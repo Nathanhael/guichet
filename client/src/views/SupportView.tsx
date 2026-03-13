@@ -10,6 +10,7 @@ import AmbientBackground from '../components/AmbientBackground';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import PartnerSwitcher from '../components/PartnerSwitcher';
 import { requestNotificationPermission } from '../utils/notifications';
 import { Ticket, Message, UserRole } from '../types';
 import { getTicketTime } from '../utils/dateUtils';
@@ -145,7 +146,7 @@ interface OnlineExpertInfo {
   status?: string;
 }
 
-export default function ExpertView() {
+export default function SupportView() {
   const { user, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses, focusMode, toggleFocusMode } = useStore();
   const onlineExperts = useStore(s => s.onlineExperts as unknown as OnlineExpertInfo[]);
   const t = useT();
@@ -356,7 +357,7 @@ export default function ExpertView() {
           : 'py-3 bg-brand-900/95 backdrop-blur-md border-brand-800'
       } text-white`}>
         <div className="flex items-center gap-3">
-          <span className={`font-bold transition-all duration-500 tracking-tight ${focusMode ? 'text-lg opacity-80' : 'text-xl'}`}>M&P Support</span>
+          <span className={`font-bold transition-all duration-500 tracking-tight ${focusMode ? 'text-lg opacity-80' : 'text-xl'}`}>{partnerName} Support</span>
           {!focusMode && (
             <span className={`text-xs px-2.5 py-1 rounded-md font-semibold tracking-wide transition-colors bg-brand-800 border border-brand-700`}>Expert</span>
           )}
@@ -365,6 +366,7 @@ export default function ExpertView() {
           <span className="text-sm font-medium text-solarized-base2">{user.name} · {user.lang.toUpperCase()}</span>
           
           <div className="flex items-center gap-3">
+            <PartnerSwitcher />
             <StatusPicker value={myStatus} onChange={handleStatusChange} />
             
             <div className="flex items-center gap-1 bg-black/10 dark:bg-white/5 p-0.5 rounded-lg border border-white/5 ml-2">
