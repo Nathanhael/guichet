@@ -1,43 +1,38 @@
 import React, { useState } from 'react';
 import useStore from '../store/useStore';
 import { useT } from '../i18n';
+import { trpc } from '../utils/trpc';
 
 interface FeedbackModalProps {
   onClose: () => void;
 }
 
 export default function FeedbackModal({ onClose }: FeedbackModalProps) {
-  const { user, token } = useStore();
+  const { user } = useStore();
   const t = useT();
   const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim() || !user || !token) return;
-    setSending(true);
-    try {
-      const res = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          userName: user.name,
-          role: user.role,
-          text: text.trim(),
-        }),
-      });
-      if (!res.ok) throw new Error('Feedback failed');
+  const createMutation = trpc.feedback.create.useMutation({
+    onSuccess: () => {
       setSent(true);
       setTimeout(onClose, 1500);
-    } catch {
-      setSending(false);
     }
+  });
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!text.trim() || !user) return;
+    
+    createMutation.mutate({
+      userId: user.id,
+      userName: user.name,
+      role: user.role as 'agent' | 'expert',
+      text: text.trim(),
+    });
   }
+
+  const sending = createMutation.isPending;
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -71,7 +66,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
                 disabled={!text.trim() || sending}
                 className="flex-1 bg-brand-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {t('submit_feedback')}
+                {sending ? 'Sending...' : t('submit_feedback')}
               </button>
               <button
                 type="button"

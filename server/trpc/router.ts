@@ -4,6 +4,9 @@ import { cannedResponseRouter } from './routers/cannedResponse.js';
 import { ticketRouter } from './routers/ticket.js';
 import { messageRouter } from './routers/message.js';
 import { presenceRouter } from './routers/presence.js';
+import { feedbackRouter } from './routers/feedback.js';
+import { ratingRouter } from './routers/rating.js';
+import { statsRouter } from './routers/stats.js';
 
 export const appRouter = router({
   label: labelRouter,
@@ -11,6 +14,9 @@ export const appRouter = router({
   ticket: ticketRouter,
   message: messageRouter,
   presence: presenceRouter,
+  feedback: feedbackRouter,
+  rating: ratingRouter,
+  stats: statsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Stars } from './DashboardHelpers';
 import { Rating, FeedbackItem, User } from '../../types';
 import useStore from '../../store/useStore';
+import { trpc } from '../../utils/trpc';
 
 interface ExpertRatings {
   [key: string]: {
@@ -21,43 +22,38 @@ interface ExpertRatings {
 
 export default function AdminFeedback() {
   const { token } = useStore();
-  const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
-  const [ratings, setRatings] = useState<Rating[]>([]);
-  const [loadingFeedback, setLoadingFeedback] = useState(true);
-  const [loadingRatings, setLoadingRatings] = useState(true);
   const [users, setUsers] = useState<User[]>([]);
   const [tab, setTab] = useState<'feedback' | 'ratings'>('feedback');
   const [showDismissed, setShowDismissed] = useState(false);
   const [selectedExpert, setSelectedExpert] = useState('ALL');
 
+  // tRPC: Feedback List
+  const feedbackQuery = trpc.feedback.list.useQuery();
+  
+  // tRPC: Ratings List
+  const ratingsQuery = trpc.rating.list.useQuery();
+
+  // tRPC: Mark Treated
+  const markTreatedMutation = trpc.feedback.markTreated.useMutation({
+    onSuccess: () => {
+      feedbackQuery.refetch();
+    }
+  });
+
   useEffect(() => {
-    fetch('/api/feedback', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((data) => setFeedback(data.sort((a: FeedbackItem, b: FeedbackItem) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
-      .catch(() => {})
-      .finally(() => setLoadingFeedback(false));
-
-    fetch('/api/ratings', { headers: { 'Authorization': `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((data) => setRatings(data.sort((a: Rating, b: Rating) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())))
-      .catch(() => {})
-      .finally(() => setLoadingRatings(false));
-
     fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => setUsers(data))
       .catch(() => {});
-  }, []);
+  }, [token]);
+
+  const feedback = feedbackQuery.data || [];
+  const ratings = (ratingsQuery.data || []) as Rating[];
+  const loadingFeedback = feedbackQuery.isLoading;
+  const loadingRatings = ratingsQuery.isLoading;
 
   const markTreated = async (id: string) => {
-    try {
-      const res = await fetch(`/api/feedback/${id}/treat`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } });
-      if (res.ok) {
-        setFeedback(feedback.map((f) => (f.id === id ? { ...f, treated: true } : f)));
-      }
-    } catch (err) {
-      console.error('Failed to mark treated', err);
-    }
+    markTreatedMutation.mutate(id);
   };
 
   const agentDeptMap: Record<string, string> = {};
@@ -69,7 +65,7 @@ export default function AdminFeedback() {
 
   const expertRatings: ExpertRatings = {};
   ratings.forEach((r) => {
-    const name = expertNameMap[r.expertId] || r.expertId || 'Unknown';
+    const name = expertNameMap[r.expertId || ''] || r.expertId || 'Unknown';
     if (!expertRatings[name]) {
       expertRatings[name] = {
         total: 0,
@@ -169,7 +165,8 @@ export default function AdminFeedback() {
                     </div>
                     <button
                       onClick={() => markTreated(f.id)}
-                      className="flex items-center gap-1.5 text-xs font-medium text-solarized-base1 hover:text-green-600 bg-solarized-base2 hover:bg-green-50 dark:bg-brand-900/30 dark:hover:bg-green-900/30 dark:border-brand-800 border border-solarized-base2 px-3 py-1.5 rounded-lg transition-all shadow-sm"
+                      disabled={markTreatedMutation.isPending}
+                      className="flex items-center gap-1.5 text-xs font-medium text-solarized-base1 hover:text-green-600 bg-solarized-base2 hover:bg-green-50 dark:bg-brand-900/30 dark:hover:bg-green-900/30 dark:border-brand-800 border border-solarized-base2 px-3 py-1.5 rounded-lg transition-all shadow-sm disabled:opacity-50"
                       title="Mark as treated"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -179,7 +176,7 @@ export default function AdminFeedback() {
                           clipRule="evenodd"
                         />
                       </svg>
-                      Dismiss
+                      {markTreatedMutation.isPending ? 'Processing...' : 'Dismiss'}
                     </button>
                   </div>
                   <p className="text-[15px] text-solarized-base01 dark:text-gray-300 leading-relaxed pl-13">{f.text}</p>
@@ -501,7 +498,7 @@ export default function AdminFeedback() {
                 <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-300 px-4 py-3 border-b border-solarized-base2 dark:border-brand-700">
                   Recent ratings
                 </p>
-                <div className="divide-y divide-solarized-base2 dark:divide-gray-700">
+                <div className="divide-y divide-solarized-base2 dark:divide-brand-700">
                   {ratings.slice(0, 50).map((r) => (
                     <div key={r.id} className="px-4 py-3 flex items-start gap-3">
                       <Stars value={r.rating} />

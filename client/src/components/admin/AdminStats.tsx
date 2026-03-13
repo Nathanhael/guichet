@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useT } from '../../i18n';
 import useStore from '../../store/useStore';
-import { AdminStats as AdminStatsType, OnlineExpert } from '../../types';
+import { OnlineExpert } from '../../types';
 import { Panel, StatCard } from './DashboardHelpers';
 import {
   ResponsiveContainer,
@@ -18,11 +18,11 @@ import {
 import LLMSummary from './Stats/LLMSummary';
 import TopicSummary from './Stats/TopicSummary';
 import StaffingDemand from './Stats/StaffingDemand';
+import { trpc } from '../../utils/trpc';
 
 export default function AdminStats() {
   const t = useT();
-  const { onlineExperts, token } = useStore();
-  const [stats, setStats] = useState<AdminStatsType | null>(null);
+  const { onlineExperts } = useStore();
   const [statsDept, setStatsDept] = useState('all');
   const [statsDateFrom, setStatsDateFrom] = useState('');
   const [statsDateTo, setStatsDateTo] = useState('');
@@ -51,32 +51,19 @@ export default function AdminStats() {
     setActivePreset(key);
   }
 
-  const fetchStats = () => {
-    const params = new URLSearchParams();
-    if (statsDept !== 'all') params.set('dept', statsDept);
-    if (statsDateFrom) params.set('dateFrom', statsDateFrom);
-    if (statsDateTo) params.set('dateTo', statsDateTo);
-    fetch(`/api/stats?${params.toString()}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`Stats fetch failed: ${r.status}`);
-        return r.json();
-      })
-      .then(setStats)
-      .catch(console.error);
-  };
+  // tRPC: Global Stats
+  const { data: stats, isLoading, refetch } = trpc.stats.getGlobalStats.useQuery(
+    {
+      dept: statsDept === 'all' ? undefined : statsDept,
+      dateFrom: statsDateFrom || undefined,
+      dateTo: statsDateTo || undefined,
+    },
+    {
+      refetchInterval: 30000,
+    }
+  );
 
-  useEffect(() => {
-    fetchStats();
-  }, [statsDept, statsDateFrom, statsDateTo]);
-
-  useEffect(() => {
-    const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
-  }, [statsDept, statsDateFrom, statsDateTo]);
-
-  if (!stats) return <p className="text-slate-400">{t('loading')}</p>;
+  if (isLoading || !stats) return <p className="text-slate-400 p-8 animate-pulse">{t('loading')} dashboard data...</p>;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto animate-slide-up pb-10">
@@ -246,7 +233,7 @@ export default function AdminStats() {
             <p className="text-sm text-solarized-base1">No experts online</p>
           ) : (
             <div className="flex flex-wrap gap-2">
-              {onlineExperts.map((e: OnlineExpert) => (
+              {onlineExperts.map((e: any) => (
                 <div
                   key={e.userId}
                   title={`${e.name} · ${e.status || 'available'}`}
@@ -255,7 +242,7 @@ export default function AdminStats() {
                   <div className="w-6 h-6 rounded-full bg-solarized-base3/50 dark:bg-brand-900/50 flex items-center justify-center text-xs font-bold text-brand-600 dark:text-brand-400 shrink-0">
                     {e.name
                       .split(' ')
-                      .map((w) => w[0])
+                      .map((w: string) => w[0])
                       .join('')
                       .slice(0, 2)
                       .toUpperCase()}
@@ -307,7 +294,7 @@ export default function AdminStats() {
       {stats.ratingsByDept && Object.keys(stats.ratingsByDept).length > 0 && (
         <Panel title="Satisfaction by Department">
           <div className="grid grid-cols-2 gap-4">
-            {Object.entries(stats.ratingsByDept).map(([dept, data]) => (
+            {Object.entries(stats.ratingsByDept).map(([dept, data]: [string, any]) => (
               <div
                 key={dept}
                 className={`rounded-xl p-4 border ${

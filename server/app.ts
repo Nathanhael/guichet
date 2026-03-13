@@ -13,11 +13,7 @@ import { createContext } from './trpc/context.js';
 import { appRouter } from './trpc/router.js';
 
 import uploadRoutes from './routes/uploads.js';
-import feedbackRoutes from './routes/feedback.js';
-import labelRoutes from './routes/labels.js';
-import cannedRoutes from './routes/canned_responses.js';
 import authRoutes from './routes/auth.js';
-import statsRoutes from './routes/stats.js';
 import ticketRoutes from './routes/tickets.js'; // Kept for export route support
 import { query } from './db.js';
 import config from './config.js';
@@ -105,11 +101,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/tickets', ticketRoutes); // Kept for export support
 app.use('/api/uploads', uploadRoutes);
-app.use('/api/feedback', feedbackRoutes);
-app.use('/api/labels', labelRoutes);
-app.use('/api/canned-responses', cannedRoutes);
 app.use('/api/auth', authLimiter, authRoutes);
-app.use('/api/stats', statsRoutes);
 
 // tRPC
 app.use(
@@ -144,20 +136,6 @@ app.get('/api/health', async (_req: Request, res: Response) => {
     logger.error({ err }, 'Health check failed');
     res.status(503).json({ status: 'error', database: 'disconnected' });
   }
-});
-
-app.get('/api/ratings', [auth, authorize(['admin', 'expert'])], async (_req: Request, res: Response) => {
-  try {
-    const ratings = await query('SELECT * FROM ratings ORDER BY "created_at" DESC');
-    res.json(ratings);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.get('/api/online/:userId', [auth], (_req: Request, res: Response) => {
-  const online = presenceService.getOnlineUsers().has(_req.params.userId);
-  res.json({ online });
 });
 
 app.get('/api/users', async (_req: Request, res: Response) => {
