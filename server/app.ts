@@ -130,7 +130,7 @@ app.get('/api/online/:userId', [auth], (_req: Request, res: Response) => {
   res.json({ online });
 });
 
-app.get('/api/users', [auth], async (_req: Request, res: Response) => {
+app.get('/api/users', async (_req: Request, res: Response) => {
   try {
     const users = await query('SELECT * FROM users');
     res.json(users);
