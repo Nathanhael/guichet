@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as presenceService from '../services/presence.js';
 import { runGuards, resetRepetition } from '../services/guards.js';
 import { processMessage } from '../services/translate.js';
+import { analyzeSentiment } from '../services/llm.js';
 import { query, get, run, transaction } from '../db.js';
 import { isWithinBusinessHours, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
@@ -92,9 +93,21 @@ export function registerSocketHandlers(io: Server) {
       try {
         const { agentId, agentLang, dept, cdbId, dareRef, text, mediaUrl } = data;
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
+        
+        // Re-open detection
+        let reopened = false;
+        let reopenCount = 0;
+        if (cdbId || dareRef) {
+          const existing = await get('SELECT id, reopen_count FROM tickets WHERE (cdb_id = $1 OR dare_ref = $2) AND status = $3 ORDER BY created_at DESC LIMIT 1', [cdbId || null, dareRef || null, 'closed']) as any;
+          if (existing) {
+            reopened = true;
+            reopenCount = (existing.reopen_count || 0) + 1;
+          }
+        }
+
         const agentUser = (await get('SELECT name FROM users WHERE id = $1', [agentId])) as unknown as User;
         const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, cdbId: cdbId || null, dareRef: dareRef || null, status: 'open', expertId: null, createdAt: new Date().toISOString(), participants: '[]' };
-        await run('INSERT INTO tickets (id, dept, agent_id, agent_name, agent_lang, cdb_id, dare_ref, status, created_at, participants) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)', [ticket.id, ticket.dept, ticket.agentId, ticket.agentName, ticket.agentLang, ticket.cdbId, ticket.dareRef, ticket.status, ticket.createdAt, ticket.participants]);
+        await run('INSERT INTO tickets (id, dept, agent_id, agent_name, agent_lang, cdb_id, dare_ref, status, created_at, participants, reopened, reopen_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)', [ticket.id, ticket.dept, ticket.agentId, ticket.agentName, ticket.agentLang, ticket.cdbId, ticket.dareRef, ticket.status, ticket.createdAt, ticket.participants, reopened, reopenCount]);
 
         let message: Message | null = null;
         if (text?.trim()) {
@@ -170,6 +183,17 @@ export function registerSocketHandlers(io: Server) {
         const now = new Date().toISOString();
         await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [messageId, ticketId, senderId, sender.name, text, processedText, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}']);
         io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, text: processedText, originalText: text, improvedText, mediaUrl, whisper: !!whisper, system: false, timestamp: now, reactions: {}, translationSkipped, fallback });
+
+        // Background Sentiment Analysis
+        if (!whisper && text.length > 5) {
+          analyzeSentiment(text).then(score => {
+            run('UPDATE messages SET sentiment = $1 WHERE id = $2', [score, messageId]).catch(err => {
+              logger.error({ err, messageId }, 'Failed to update message sentiment');
+            });
+          }).catch(err => {
+            logger.error({ err, messageId }, 'Sentiment analysis background task failed');
+          });
+        }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
     });
 

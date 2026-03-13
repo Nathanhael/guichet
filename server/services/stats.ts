@@ -1,22 +1,33 @@
 import config from '../config.js';
-import { Ticket, Rating } from '../types/index.js';
+import { Ticket, Rating, Message } from '../types/index.js';
 
-export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], deptFilter?: string) {
+export function calculatePercentile(values: number[], percentile: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.ceil((percentile / 100) * sorted.length) - 1;
+  return sorted[index];
+}
+
+export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], deptFilter?: string, dayMessages: Message[] = []) {
   let tickets = dayTickets;
   let ratings = dayRatings;
+  let messages = dayMessages;
+
   if (deptFilter && deptFilter !== 'all') {
     tickets = tickets.filter(t => t.dept === deptFilter);
     const tIds = new Set(tickets.map(t => t.id));
     ratings = ratings.filter(r => tIds.has(r.ticketId));
+    messages = messages.filter(m => tIds.has(m.ticketId));
   }
 
   const deptCounts: Record<string, number> = {};
   const hourly = Array(24).fill(0);
   const hourlyExperts: Record<string, number>[] = Array.from({ length: 24 }, () => ({}));
   const hourlySla = Array.from({ length: 24 }, () => ({ resolved: 0, compliant: 0 }));
-  let closed = 0, abandoned = 0;
+  let closed = 0, abandoned = 0, reopened = 0;
   let responseSum = 0, responseCount = 0;
   let durationSum = 0, durationCount = 0;
+  const responseTimes: number[] = [];
   const ratingsByDept: Record<string, { sum: number; count: number }> = {};
   const deptResolved: Record<string, number> = {};
   const deptCompliant: Record<string, number> = {};
@@ -38,10 +49,13 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
       if (!t.expertJoinedAt) abandoned++;
     }
 
+    if ((t as any).reopened) reopened++;
+
     if (t.expertJoinedAt) {
       const responseTime = new Date(t.expertJoinedAt).getTime() - createdAt.getTime();
       responseSum += responseTime;
       responseCount++;
+      responseTimes.push(responseTime);
       deptResolved[t.dept] = (deptResolved[t.dept] || 0) + 1;
 
       const isCompliant = responseTime <= config.SLA_THRESHOLD_MS;
@@ -65,6 +79,9 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
     ratingsByDept[d].count++;
   });
 
+  const sentimentSum = messages.reduce((s, m) => s + ((m as any).sentiment || 0), 0);
+  const sentimentCount = messages.filter(m => (m as any).sentiment !== undefined && (m as any).sentiment !== null).length;
+
   const resolved = tickets.filter(t => t.expertJoinedAt);
   const compliant = resolved.filter(t => (new Date(t.expertJoinedAt!).getTime() - new Date(t.createdAt).getTime()) <= config.SLA_THRESHOLD_MS).length;
 
@@ -73,13 +90,17 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
     deptCounts,
     closed,
     abandoned,
+    reopened,
     responseSum,
     responseCount,
+    p95ResponseMs: calculatePercentile(responseTimes, 95),
     durationSum,
     durationCount,
     ratingSum: ratings.reduce((s, r) => s + r.rating, 0),
     ratingCount: ratings.length,
     ratingsByDept,
+    sentimentSum,
+    sentimentCount,
     slaResolved: resolved.length,
     slaCompliant: compliant,
     deptResolved,

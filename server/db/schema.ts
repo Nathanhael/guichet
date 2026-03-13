@@ -28,6 +28,8 @@ export const tickets = pgTable('tickets', {
   closedBy: text('closed_by'),
   participants: text('participants').default('[]'),
   summary: text('summary'),
+  reopened: boolean('reopened').default(false),
+  reopenCount: integer('reopen_count').default(0),
 }, (table) => ({
   agentIdIdx: index('idx_tickets_agent_id').on(table.agentId),
   statusIdx: index('idx_tickets_status').on(table.status),
@@ -49,6 +51,8 @@ export const messages = pgTable('messages', {
   deliveredAt: timestamp('delivered_at', { mode: 'string' }),
   readAt: timestamp('read_at', { mode: 'string' }),
   reactions: text('reactions').default('{}'),
+  sentiment: real('sentiment'),
+  cannedResponseId: text('canned_response_id'),
 }, (table) => ({
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
 }));
@@ -97,6 +101,10 @@ export const dailyStats = pgTable('daily_stats', {
   ratingCount: integer('rating_count').default(0),
   slaResolved: integer('sla_resolved').default(0),
   slaCompliant: integer('sla_compliant').default(0),
+  p95ResponseMs: integer('p95_response_ms').default(0),
+  reopened: integer('reopened').default(0),
+  sentimentSum: real('sentiment_sum').default(0),
+  sentimentCount: integer('sentiment_count').default(0),
   deptCounts: text('dept_counts'), // JSON string
   ratingsByDept: text('ratings_by_dept'), // JSON string
   hourly: text('hourly'), // JSON string

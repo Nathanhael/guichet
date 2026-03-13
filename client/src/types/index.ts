@@ -102,6 +102,11 @@ export interface OnlineExpert {
   status?: 'available' | 'break' | 'lunch' | 'meeting';
 }
 
+export interface ZenSettings {
+  autoBionic: boolean;
+  notificationShield: boolean;
+}
+
 export interface StoreState {
   user: User | null;
   token: string | null;
@@ -110,6 +115,7 @@ export interface StoreState {
   bionicReading: boolean;
   highContrastMode: boolean;
   focusMode: boolean;
+  zenSettings: ZenSettings;
   selectedLang: string | null;
   cannedResponses: CannedResponse[];
   notificationsEnabled: boolean;
@@ -160,6 +166,7 @@ export interface StoreState {
   toggleBionicReading: () => void;
   toggleHighContrastMode: () => void;
   toggleFocusMode: () => void;
+  updateZenSettings: (updates: Partial<ZenSettings>) => void;
   setSelectedLang: (lang: string) => void;
   setConnectionStatus: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
   setAllLabels: (labels: Label[]) => void;
@@ -241,6 +248,9 @@ export interface AdminStats {
   total: number;
   avgResponseMinutes: number;
   avgDurationMinutes: number;
+  p95ResponseMinutes?: number;
+  reopenRate?: number;
+  sentimentScore?: number;
   avgRating: number;
   abandonedCount: number;
   slaHealth: number;

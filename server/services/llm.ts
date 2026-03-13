@@ -123,6 +123,34 @@ Summary should be 1-2 sentences focusing on what agents are struggling with.`,
     }
 }
 
+export async function analyzeSentiment(text: string): Promise<number> {
+    if (!text || text.length < 5) return 0;
+
+    try {
+        const ollamaHost = config.OLLAMA_HOST;
+        const response = await fetch(`${ollamaHost}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: MODEL,
+                stream: false,
+                format: 'json',
+                prompt: `Analyze the sentiment of this support message: "${text}"
+Return a JSON object with a single key "score" which is a float between -1.0 (Very Negative/Angry) and 1.0 (Very Positive/Happy). 0.0 is Neutral.`,
+            }),
+        });
+
+        const data = await response.json() as OllamaResponse;
+        const jsonMatch = data.response.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return 0;
+        const result = JSON.parse(jsonMatch[0]);
+        return typeof result.score === 'number' ? result.score : 0;
+    } catch (err) {
+        logger.error({ err }, 'Sentiment analysis failed');
+        return 0;
+    }
+}
+
 async function getMessagesForDay(date: string): Promise<MessageRow[]> {
     return (await query('SELECT text, translated_text as "processedText", sender_name as "senderName" FROM messages WHERE created_at::date = $1 AND system = 0 AND whisper = 0', [date])) as unknown as Promise<MessageRow[]>;
 }

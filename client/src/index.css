@@ -126,9 +126,45 @@
   .glass-skeleton {
     @apply animate-pulse bg-solarized-base2 dark:bg-brand-700/50 rounded-xl;
   }
+
+  .zen-glass {
+    backdrop-filter: blur(40px) saturate(200%);
+    background-color: rgba(253, 246, 227, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .zen-glass {
+    background-color: rgba(2, 6, 23, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  .zen-dim {
+    @apply opacity-30 grayscale-[0.5] scale-[0.98] blur-[2px] transition-all duration-700;
+  }
+
+  .zen-mode .chat-window {
+    @apply bg-transparent border-none shadow-none !important;
+  }
+
+  .zen-mode .chat-messages {
+    @apply px-8 !important;
+  }
 }
 
 @layer utilities {
+  .animate-gradient-slow {
+    background-size: 400% 400%;
+    animation: gradient-slow 15s ease infinite;
+  }
+
+  @keyframes gradient-slow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
   .scrollbar-thin {
     scrollbar-width: thin;
   }
