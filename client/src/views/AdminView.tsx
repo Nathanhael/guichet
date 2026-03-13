@@ -12,8 +12,9 @@ import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminLabels from '../components/admin/AdminLabels';
 import AdminCannedResponses from '../components/admin/AdminCannedResponses';
 import AdminAIStats from '../components/admin/AdminAIStats';
+import AdminAISettings from '../components/admin/AdminAISettings';
 
-type AdminTab = 'dashboard' | 'ai_dashboard' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
+type AdminTab = 'dashboard' | 'ai_dashboard' | 'ai_persona' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
 
 export default function AdminView() {
   const { user, logout } = useStore();
@@ -61,6 +62,15 @@ export default function AdminView() {
               icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              }
+            />
+            <NavButton
+              id="ai_persona"
+              label="AI Persona"
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               }
             />
@@ -140,6 +150,7 @@ export default function AdminView() {
       <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-brand-950 p-6 custom-scrollbar">
         {view === 'dashboard' && <AdminStats />}
         {view === 'ai_dashboard' && <AdminAIStats />}
+        {view === 'ai_persona' && <AdminAISettings />}
         {view === 'tickets' && <AdminTickets />}
         {view === 'archive' && <AdminArchive />}
         {view === 'feedback' && <AdminFeedback />}

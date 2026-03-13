@@ -25,6 +25,9 @@ export const platformRouter = router({
       ref1Label: z.string(),
       ref2Label: z.string(),
       aiRules: z.string().optional(),
+      agentPromptStrategy: z.string().optional(),
+      supportPromptStrategy: z.string().optional(),
+      enableActionableAi: z.boolean().default(true),
       departments: z.string(), // JSON string
       aiEnabled: z.boolean().default(true),
     }))
@@ -43,6 +46,9 @@ export const platformRouter = router({
             ref1Label: input.ref1Label,
             ref2Label: input.ref2Label,
             aiRules: input.aiRules,
+            agentPromptStrategy: input.agentPromptStrategy,
+            supportPromptStrategy: input.supportPromptStrategy,
+            enableActionableAi: input.enableActionableAi,
             departments: input.departments,
             aiEnabled: input.aiEnabled,
           }

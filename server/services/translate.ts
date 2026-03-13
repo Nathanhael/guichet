@@ -54,24 +54,25 @@ async function callOllama(prompt: string, type: string): Promise<string> {
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
 async function getAIPrefix(partnerId: string): Promise<string> {
-  const partner = await get('SELECT industry, ai_rules FROM partners WHERE id = $1', [partnerId]) as any;
+  const partner = await get('SELECT industry, ai_rules, agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai FROM partners WHERE id = $1', [partnerId]) as any;
   if (!partner) return 'You are a professional support assistant.';
-  return `${partner.ai_rules || `You are a professional ${partner.industry} support assistant.`}`;
+  return partner;
 }
 
-async function buildAgentImprovementPrompt(text: string, lang: string, partnerId: string): Promise<string> {
+async function buildAgentImprovementPrompt(text: string, lang: string, partner: any): Promise<string> {
   const langNames: Record<string, string> = { nl: 'Dutch', fr: 'French', en: 'English' };
   const langName = langNames[lang] || lang;
-  const prefix = await getAIPrefix(partnerId);
+  const prefix = partner.ai_rules || `You are a professional ${partner.industry} support assistant.`;
+  const strategy = partner.agent_prompt_strategy || 'Fix any spelling or grammar mistakes. Make the problem description clear and specific.';
 
   return `${prefix}
 
 The agent sent this message in ${langName}. It may contain spelling errors, incomplete sentences, or vague descriptions.
 
+Your strategy:
+${strategy}
+
 Your task:
-- Fix any spelling or grammar mistakes
-- Make the problem description clear and specific
-- Keep the same language (${langName})
 - Keep technical terms and industry-specific terminology unchanged
 - Keep it concise — do not add information that was not in the original
 - If the message is already clear and correct, return it unchanged
@@ -80,38 +81,50 @@ Your task:
 <agent_message>${text}</agent_message>`;
 }
 
-async function buildExpertImprovementPrompt(text: string, lang: string, partnerId: string): Promise<string> {
+async function buildExpertImprovementPrompt(text: string, lang: string, partner: any): Promise<string> {
   const langNames: Record<string, string> = { nl: 'Dutch', fr: 'French', en: 'English' };
   const langName = langNames[lang] || lang;
-  const prefix = await getAIPrefix(partnerId);
+  const prefix = partner.ai_rules || `You are a professional ${partner.industry} support assistant.`;
+  const strategy = partner.support_prompt_strategy || 'If the message contains a procedure, rewrite it as clear numbered steps.';
 
-  return `${prefix}
-
-The expert sent this message in ${langName}. It may be a long explanation, use technical jargon, or be structured as a paragraph.
-
-Your task:
-- If the message contains a procedure or multiple actions, rewrite it as clear numbered steps
-- Replace technical jargon with plain language the agent can understand and relay to the customer
+  let taskList = `
 - Keep technical product names unchanged
 - Keep the same language (${langName})
 - If the message is a short answer or question (not a procedure), return it as-is with minor cleanup only
-- Do not add information that was not in the original
+- Do not add information that was not in the original`;
+
+  if (partner.enable_actionable_ai) {
+    taskList += `
+- ENFORCE STRUCTURE: If providing a solution, always include a [CUSTOMER_SCRIPT] section with text the agent can tell the customer.
+- Use [STEPS] for internal procedures.
+- Use [SUMMARY] for a one-sentence overview.`;
+  }
+
+  return `${prefix}
+
+The support specialist sent this message in ${langName}. It may be a long explanation, use technical jargon, or be structured as a paragraph.
+
+Your strategy:
+${strategy}
+
+Your task:
+${taskList}
 - Return ONLY the improved message, no explanation, no preamble, no quotes
 
-<expert_message>${text}</expert_message>`;
+<support_message>${text}</expert_message>`;
 }
 
-async function buildTranslationPrompt(text: string, fromLang: string, toLang: string, partnerId: string): Promise<string> {
+async function buildTranslationPrompt(text: string, fromLang: string, toLang: string, partner: any): Promise<string> {
   const langNames: Record<string, string> = { nl: 'Dutch', fr: 'French', en: 'English' };
   const from = langNames[fromLang] || fromLang;
   const to   = langNames[toLang]   || toLang;
-  const prefix = await getAIPrefix(partnerId);
+  const prefix = partner.ai_rules || `You are a professional ${partner.industry} translator.`;
 
   return `${prefix}
 You are a professional translator.
 Translate the following ${from} text to ${to}.
 Keep technical and industry terms unchanged.
-If the text contains numbered steps, preserve the numbering exactly.
+If the text contains numbered steps or special tags like [CUSTOMER_SCRIPT], preserve them exactly.
 Return ONLY the translated text — no explanation, no quotes, no preamble.
 
 <text_to_translate>${text}</text_to_translate>`;
@@ -119,15 +132,15 @@ Return ONLY the translated text — no explanation, no quotes, no preamble.
 
 // ─── Improve ──────────────────────────────────────────────────────────────────
 
-async function improve(text: string, lang: string, senderRole: 'agent'|'expert', partnerId: string): Promise<TranslationResult> {
+async function improve(text: string, lang: string, senderRole: 'agent'|'expert', partner: any, partnerId: string): Promise<TranslationResult> {
   const key = cacheKey('improve', senderRole, lang, text, partnerId);
 
   const cached = await get('SELECT value FROM translations_cache WHERE key = $1', [key]) as { value: string } | undefined;
   if (cached) return { text: cached.value, fromCache: true };
 
   const prompt = senderRole === 'agent'
-    ? await buildAgentImprovementPrompt(text, lang, partnerId)
-    : await buildExpertImprovementPrompt(text, lang, partnerId);
+    ? await buildAgentImprovementPrompt(text, lang, partner)
+    : await buildExpertImprovementPrompt(text, lang, partner);
 
   const improved = await callOllama(prompt, 'improve');
   await run(
@@ -139,7 +152,7 @@ async function improve(text: string, lang: string, senderRole: 'agent'|'expert',
 
 // ─── Translate ────────────────────────────────────────────────────────────────
 
-export async function translate(text: string, fromLang: string, toLang: string, partnerId: string): Promise<TranslationResult> {
+export async function translate(text: string, fromLang: string, toLang: string, partner: any, partnerId: string): Promise<TranslationResult> {
   if (fromLang === toLang) return { text, fromCache: false };
 
   const key = cacheKey('translate', fromLang, toLang, text, partnerId);
@@ -147,7 +160,7 @@ export async function translate(text: string, fromLang: string, toLang: string, 
   const cached = await get('SELECT value FROM translations_cache WHERE key = $1', [key]) as { value: string } | undefined;
   if (cached) return { text: cached.value, fromCache: true };
 
-  const prompt = await buildTranslationPrompt(text, fromLang, toLang, partnerId);
+  const prompt = await buildTranslationPrompt(text, fromLang, toLang, partner);
   const translated = await callOllama(prompt, 'translate');
   await run(
     'INSERT INTO translations_cache (key, value, from_lang, to_lang, created_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, created_at = EXCLUDED.created_at',
@@ -166,9 +179,10 @@ export async function processMessage(text: string, senderRole: 'agent'|'expert',
   const to   = (toLang   || 'nl').toLowerCase().slice(0, 2);
 
   try {
+    const partner = await getAIPrefix(partnerId);
+    
     // Check if AI is enabled for this partner
-    const partner = await get('SELECT ai_enabled FROM partners WHERE id = $1', [partnerId]) as any;
-    if (partner && !partner.ai_enabled) {
+    if (partner && partner.ai_enabled === false) {
       return {
         processedText:      text,
         improvedText:       text,
@@ -178,7 +192,7 @@ export async function processMessage(text: string, senderRole: 'agent'|'expert',
     }
 
     // Step 1: Improve
-    const { text: improved } = await improve(text, from, senderRole, partnerId);
+    const { text: improved } = await improve(text, from, senderRole, partner, partnerId);
 
     // Step 2: Translate (skip if same language)
     if (from === to) {
@@ -190,7 +204,7 @@ export async function processMessage(text: string, senderRole: 'agent'|'expert',
       };
     }
 
-    const { text: translated } = await translate(improved, from, to, partnerId);
+    const { text: translated } = await translate(improved, from, to, partner, partnerId);
 
     return {
       processedText:      translated,
