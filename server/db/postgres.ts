@@ -4,7 +4,12 @@ import * as schema from './schema.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 
-const { Pool } = pg;
+const { Pool, types } = pg;
+
+// Return timestamp/timestamptz columns as raw strings instead of Date objects.
+// The codebase treats these as ISO strings (matching Drizzle's `mode: 'string'`).
+types.setTypeParser(1114, (val: string) => val); // timestamp
+types.setTypeParser(1184, (val: string) => val); // timestamptz
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/i_pxs_support',

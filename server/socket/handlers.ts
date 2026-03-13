@@ -12,13 +12,20 @@ export function registerSocketHandlers(io: Server) {
   io.on('connection', (socket: Socket) => {
     console.log(`[socket] connected: ${socket.id}`);
 
-    socket.on('socket:identify', ({ userId, role, name }: { userId: string, role: string, name: string }) => {
+    socket.on('socket:identify', async ({ userId, role, name }: { userId: string, role: string, name: string }) => {
       socket.data.userId = userId;
       socket.data.role = role;
       socket.data.name = name;
       presenceService.identifyUser(userId, role, name);
       if (role === 'expert' || role === 'admin') presenceService.broadcastOnlineExperts();
-      if (role === 'agent') broadcastAgentStatus(userId, true);
+      if (role === 'agent') {
+        broadcastAgentStatus(userId, true);
+        // Re-join active ticket rooms so the agent receives message:new after login/reconnect
+        try {
+          const activeTickets = await query("SELECT id FROM tickets WHERE agent_id = $1 AND status != 'closed'", [userId]);
+          for (const t of activeTickets) socket.join(`ticket:${t.id}`);
+        } catch (err: any) { logger.error({ err: err.message }, '[socket:identify] failed to rejoin ticket rooms'); }
+      }
     });
 
     socket.on('ticket:new', async (data: any) => {
