@@ -8,14 +8,17 @@ This file serves as the primary instructional context for Gemini CLI when workin
 ### Key Features
 - **Real-Time Communication**: Powered by Socket.io for low-latency chat and status updates.
 - **Multi-Tenant Architecture**: Data isolation and project-agnostic "White-Label" logic via Partners and Memberships.
-- **AI-Powered Insights**: Tenant-aware translation, asynchronous sentiment analysis, and qualitative summaries using a local **Ollama** LLM (Gemma model).
+- **Asymmetric AI Pipeline**: Role-based improvement strategies (`agent` vs `support`).
+- **Actionable AI**: Automatic generation of customer scripts and internal procedures.
+- **AI-Powered Insights**: Tenant-aware translation, sentiment analysis, and qualitative summaries.
 - **Dual Dashboard Orchestration**:
   - **Operational Dashboard**: Focuses on real-time KPIs, queue health, and staffing.
-  - **AI Intelligence Hub**: Focuses on sentiment trends, topic clustering, and qualitative summaries.
+  - **AI Intelligence Hub**: Focuses on sentiment trends and topic clustering.
+- **AI Persona**: Admin-facing configuration for industry-specific context and rules.
 - **Neuro-Inclusive Design (Solaris)**: 
   - **Dyslexic Mode**: Lexend font support.
   - **Bionic Reading**: Fixation-point highlighting.
-  - **Immersive Zen Mode**: Adaptive glassmorphism (`.zen-glass`) and ambient backgrounds for **Support Specialist** focus.
+  - **Immersive Zen Mode**: Adaptive glassmorphism (`.zen-glass`) and ambient backgrounds.
 - **Solaris Design System**: A "glassmorphic" aesthetic with dynamic brand variables (`--brand-primary`).
 - **GDPR Compliance**: Automatic 30-day data retention policy with anonymized historical aggregation.
 - **Enterprise Scaling**: **Redis-based** distributed presence and horizontal scaling support.

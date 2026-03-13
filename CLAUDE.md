@@ -133,7 +133,7 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 **Primary views** (`client/src/views/`):
 - **AgentView**: Ticket creation and requester chat.
 - **SupportView**: Queue management and resolution (Zen Mode).
-- **AdminView**: Operational and AI Dashboards.
+- **AdminView**: Operational and AI Dashboards, and AI Persona configuration.
 - **PlatformView**: Global partner and membership management (Operator only).
 
 ### Key Conventions
@@ -142,7 +142,10 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 - **Multi-Tenancy**: All data must be scoped by `partner_id`. Never leak cross-partner data.
 - **Transversal**: Users can have multiple `memberships`. Use `usePartner()` hook for active context.
 - **Aesthetics**: Solaris design system — glassmorphism, dynamic CSS variables (`--brand-primary`).
-- **AI Pipeline**: Tenant-aware (checks `ai_enabled`). Scores sentiment and improves/translates via Ollama.
+- **AI Pipeline**: Tenant-aware (checks `ai_enabled`). 
+  - **Asymmetric**: Different improvement strategies for `agent` vs `support`.
+  - **Actionable**: Structured support replies (`[STEPS]`, `[CUSTOMER_SCRIPT]`).
+  - **Sentiment**: Every non-whisper message is asynchronously scored via Ollama (`llm.ts`).
 - **Scaling**: Redis-based Presence and Socket.io adapter. Avoid in-memory state for enterprise scalability.
 - **TypeScript**: 100% type safety. Avoid `any`. Maintain interfaces in `client/src/types/index.ts`.
 - **Ollama**: `http://host.docker.internal:11434`, model `gemmatranslate4b`.

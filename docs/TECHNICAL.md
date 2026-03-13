@@ -108,7 +108,8 @@ sequenceDiagram
 
 ```sql
 partners           (id, name, industry, primary_color, secondary_color, 
-                    ref_1_label, ref_2_label, ai_rules, departments, ai_enabled)
+                    ref_1_label, ref_2_label, ai_rules, departments, ai_enabled,
+                    agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai)
 users              (id, name, lang, password, avatar_url, is_platform_operator)
 memberships        (id, user_id, partner_id, role, dept)
 tickets            (id, partner_id, dept, agent_id, agent_name, agent_lang, 

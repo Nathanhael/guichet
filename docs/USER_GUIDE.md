@@ -32,6 +32,12 @@ Admins and Managers can toggle between two specialized views:
 - **Operational Dashboard**: Real-time KPIs (p95 Response, SLA Health, Staffing).
 - **AI Intelligence Hub**: Qualitative analysis (Sentiment trends, Topic clustering, LLM summaries).
 
+### 4. AI Persona & Strategy
+Admins can fine-tune the AI for their specific project in the **AI Persona** tab:
+- **Industry Context**: Define technical terms and domain-specific rules.
+- **Asymmetric Strategies**: Define how the AI should improve Agent messages vs. how it should transform Support replies.
+- **Actionable Toggles**: Enable "Actionable AI" to have the system automatically generate customer scripts and internal procedures.
+
 ---
 
 ## Scenarios to Try
@@ -42,7 +48,14 @@ Admins and Managers can toggle between two specialized views:
 3. Create a new "Healthcare" partner with custom colors and labels (e.g., "Patient ID").
 4. Switch back to the Healthcare workspace and notice the UI transformation.
 
-### Scenario 2: Support Flow & Zen
+### Scenario 2: Support Flow & Actionable AI
+1. As an Admin, go to **AI Persona** and enable **Actionable AI**.
+2. Log in as a **Support Specialist**.
+3. Reply to a technical ticket with jargon (e.g., "Reset the DHCP lease on the node").
+4. Notice how the AI transforms your message into **[STEPS]** for the agent and a **[CUSTOMER SCRIPT]** for the customer.
+5. The Agent can now just click **"Copy"** on the emerald script box.
+
+### Scenario 3: Focus & Zen
 1. Log in as a **Support Specialist**.
 2. Join multiple active tickets.
 3. Toggle **Zen Mode** to experience the "Flow State" environment.
