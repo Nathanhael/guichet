@@ -2,10 +2,11 @@ import { Router, Request, Response } from 'express';
 import { query } from '../db.js';
 import logger from '../utils/logger.js';
 import { Message } from '../types/index.js';
+import { auth } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', auth, async (req: Request, res: Response) => {
   try {
     const { ticketId } = req.query;
     let sql = 'SELECT * FROM messages';

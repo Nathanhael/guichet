@@ -4,10 +4,12 @@ import { query, run } from '../db.js';
 import logger from '../utils/logger.js';
 import { body } from 'express-validator';
 import { validate } from '../middleware/validator.js';
+import { auth, authorize } from '../middleware/auth.js';
 
 const router = express.Router();
 
 router.post('/', [
+  auth,
   body('userId').notEmpty().withMessage('User ID is required'),
   body('userName').notEmpty().withMessage('User Name is required'),
   body('role').isIn(['agent', 'expert']),
@@ -40,7 +42,7 @@ router.post('/', [
   }
 });
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', [auth, authorize(['admin'])], async (_req: Request, res: Response) => {
   try {
     const feedback = await query('SELECT * FROM app_feedback ORDER BY created_at DESC') as any[];
     res.json(feedback.map(f => ({ ...f, treated: !!f.treated })));
@@ -50,7 +52,7 @@ router.get('/', async (_req: Request, res: Response) => {
   }
 });
 
-router.patch('/:id/treat', async (req: Request, res: Response) => {
+router.patch('/:id/treat', [auth, authorize(['admin'])], async (req: Request, res: Response) => {
   try {
     const result = await run('UPDATE app_feedback SET treated = 1 WHERE id = $1', [req.params.id]);
     if (result.changes === 0) return res.status(404).json({ error: 'Feedback not found' });
