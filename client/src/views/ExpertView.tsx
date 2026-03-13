@@ -406,370 +406,370 @@ export default function ExpertView() {
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               className="min-h-0 glass-panel border-r border-white/20 dark:border-brand-700/50 flex flex-col z-10 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl overflow-hidden"
             >
-              {/* Queue header */}
-          {sidebarTab === 'queue' && (
-            <div className="px-4 py-3 border-b border-solarized-base2 dark:border-brand-700">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="font-semibold text-solarized-base01 dark:text-solarized-base1 text-sm uppercase tracking-wide">{t('queue')}</h2>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                    {queueFiltered.filter(tk => !tk.expertName).length} {t('waiting')}
-                  </span>
-                  {queueFiltered.filter(tk => tk.expertName).length > 0 && (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                      {queueFiltered.filter(tk => tk.expertName).length} {t('active')}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-1">
-                {['all', 'DSC', 'FOT'].map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setFilterDept(d)}
-                    className={`flex-1 text-xs py-1 rounded-md transition-colors font-medium ${filterDept === d
-                      ? 'bg-brand-500 text-white'
-                      : 'bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base1 dark:hover:bg-gray-600'
-                      }`}
-                  >
-                    {d === 'all' ? t('all') : d}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Archive header */}
-          {sidebarTab === 'archive' && (
-            <div className="px-4 py-3 border-b border-solarized-base2 dark:border-brand-700 flex items-center gap-2">
-              <button
-                onClick={() => switchSidebarTab('queue')}
-                className="text-solarized-base1 hover:text-brand-500 transition-colors"
-                title="Back to queue"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-              </button>
-              <h2 className="font-semibold text-solarized-base01 dark:text-solarized-base1 text-sm uppercase tracking-wide">Archive</h2>
-            </div>
-          )}
-
-          {/* Queue */}
-          {sidebarTab === 'queue' && (
-            <div className="flex-1 overflow-y-auto">
-              {queueFiltered.length === 0 ? (
-                <p className="text-center text-solarized-base1 text-sm py-8">{t('no_open_tickets')}</p>
-              ) : (
-                <div className="space-y-4 pb-4">
-                  {/* Waiting Queue */}
-                  {queueFiltered.filter(tk => !tk.expertName).length > 0 && (
-                    <div>
-                      <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
-                        {t('waiting_badge')}
-                      </h3>
-                      <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
-                        {queueFiltered.filter(tk => !tk.expertName).map((ticket) => {
-                          const alreadyOpen = expertOpenTickets.includes(ticket.id);
-                          const isPreviewed = previewTicketId === ticket.id;
-                          const time = getTicketTime(ticket.createdAt);
-                          return (
-                            <li
-                              key={ticket.id}
-                              onClick={() => selectTicket(ticket)}
-                              className={`p-3.5 mt-1 mx-2 rounded-xl cursor-pointer transition-all duration-200 ${isPreviewed || alreadyOpen
-                                ? 'bg-white dark:bg-brand-800 border-l-[4px] border-l-accent-500 shadow-md'
-                                : 'bg-solarized-base3/40 dark:bg-brand-800/40 hover:bg-solarized-base3/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
-                                }`}
-                            >
-                              <div className="flex justify-between gap-3">
-                                {/* Left side: Info */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
-                                    <span className="text-[10px] font-medium text-solarized-base1">{time}</span>
-                                  </div>
-                                  <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">{ticket.agentName}</p>
-                                </div>
-
-                                {/* Right side: Actions & Bubbles */}
-                                <div className="flex flex-col items-end shrink-0 gap-2">
-                                  {alreadyOpen ? (
-                                    <span 
-                                      className="text-xs px-2.5 py-1 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shadow-sm border border-brand-200 dark:border-brand-800"
-                                      onClick={(e) => { e.stopPropagation(); switchTab(ticket.id); }}
-                                    >
-                                      {t('open')}
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
-                                      disabled={atMaxChats}
-                                      className={`text-xs px-3 py-1 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
-                                        } bg-gradient-to-r from-accent-500 to-rose-500 text-white hover:shadow-md`}
-                                    >
-                                      {t('join')}
-                                    </button>
-                                  )}
-
-                                  {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
-                                    <div className="flex items-center -space-x-1.5 overflow-hidden">
-                                      {ticket.participants.map((p, idx) => {
-                                        const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
-                                        const pName = pObj.name;
-                                        const pAvatar = (pObj as any).avatar;
-                                        return (
-                                          <div
-                                            key={idx}
-                                            title={pName}
-                                            className="w-6 h-6 rounded-full border-2 border-white dark:border-brand-800 bg-brand-50 dark:bg-brand-900 flex items-center justify-center text-[10px] font-bold shadow-sm overflow-hidden"
-                                          >
-                                            {pAvatar ? (
-                                              <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
-                                            ) : (
-                                              <span className="text-brand-700 dark:text-brand-300">
-                                                {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                                              </span>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
+                  {/* Queue header */}
+              {sidebarTab === 'queue' && (
+                <div className="px-4 py-3 border-b border-solarized-base2 dark:border-brand-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="font-semibold text-solarized-base01 dark:text-solarized-base1 text-sm uppercase tracking-wide">{t('queue')}</h2>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
+                        {queueFiltered.filter(tk => !tk.expertName).length} {t('waiting')}
+                      </span>
+                      {queueFiltered.filter(tk => tk.expertName).length > 0 && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                          {queueFiltered.filter(tk => tk.expertName).length} {t('active')}
+                        </span>
+                      )}
                     </div>
-                  )}
-
-                  {/* Handled Queue */}
-                  {queueFiltered.filter(tk => tk.expertName).length > 0 && (
-                    <div>
-                      <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
-                        {t('in_progress')}
-                      </h3>
-                      <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
-                        {queueFiltered.filter(tk => tk.expertName).map((ticket) => {
-                          const alreadyOpen = expertOpenTickets.includes(ticket.id);
-                          const isPreviewed = previewTicketId === ticket.id;
-                          const time = getTicketTime(ticket.createdAt);
-                          return (
-                            <li
-                              key={ticket.id}
-                              onClick={() => selectTicket(ticket)}
-                              className={`p-3.5 mt-1 mx-2 rounded-xl cursor-pointer transition-all duration-200 ${isPreviewed || alreadyOpen
-                                ? 'bg-white dark:bg-brand-800 border-l-[4px] border-l-accent-500 shadow-md'
-                                : 'bg-solarized-base3/40 dark:bg-brand-800/40 hover:bg-solarized-base3/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
-                                } opacity-70`}
-                            >
-                              <div className="flex justify-between gap-3">
-                                {/* Left side: Info */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
-                                    <span className="text-[10px] font-medium text-solarized-base1">{time}</span>
-                                  </div>
-                                  <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">{ticket.agentName}</p>
-                                </div>
-
-                                {/* Right side: Actions & Bubbles */}
-                                <div className="flex flex-col items-end shrink-0 gap-2">
-                                  {alreadyOpen ? (
-                                    <span 
-                                      className="text-xs px-2.5 py-1 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shadow-sm border border-brand-200 dark:border-brand-800"
-                                      onClick={(e) => { e.stopPropagation(); switchTab(ticket.id); }}
-                                    >
-                                      {t('open')}
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
-                                      disabled={atMaxChats}
-                                      className={`text-xs px-3 py-1 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
-                                        } bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md`}
-                                    >
-                                      {t('jump_in')}
-                                    </button>
-                                  )}
-
-                                  {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
-                                    <div className="flex items-center -space-x-1.5 overflow-hidden">
-                                      {ticket.participants.map((p, idx) => {
-                                        const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
-                                        const pName = pObj.name;
-                                        const pAvatar = (pObj as any).avatar;
-                                        return (
-                                          <div
-                                            key={idx}
-                                            title={pName}
-                                            className="w-6 h-6 rounded-full border-2 border-white dark:border-brand-800 bg-brand-50 dark:bg-brand-900 flex items-center justify-center text-[10px] font-bold shadow-sm overflow-hidden"
-                                          >
-                                            {pAvatar ? (
-                                              <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
-                                            ) : (
-                                              <span className="text-brand-700 dark:text-brand-300">
-                                                {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                                              </span>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
+                  </div>
+                  <div className="flex gap-1">
+                    {['all', 'DSC', 'FOT'].map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => setFilterDept(d)}
+                        className={`flex-1 text-xs py-1 rounded-md transition-colors font-medium ${filterDept === d
+                          ? 'bg-brand-500 text-white'
+                          : 'bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base1 dark:hover:bg-gray-600'
+                          }`}
+                      >
+                        {d === 'all' ? t('all') : d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+    
+              {/* Archive header */}
+              {sidebarTab === 'archive' && (
+                <div className="px-4 py-3 border-b border-solarized-base2 dark:border-brand-700 flex items-center gap-2">
+                  <button
+                    onClick={() => switchSidebarTab('queue')}
+                    className="text-solarized-base1 hover:text-brand-500 transition-colors"
+                    title="Back to queue"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <h2 className="font-semibold text-solarized-base01 dark:text-solarized-base1 text-sm uppercase tracking-wide">Archive</h2>
+                </div>
+              )}
+    
+              {/* Queue */}
+              {sidebarTab === 'queue' && (
+                <div className="flex-1 overflow-y-auto">
+                  {queueFiltered.length === 0 ? (
+                    <p className="text-center text-solarized-base1 text-sm py-8">{t('no_open_tickets')}</p>
+                  ) : (
+                    <div className="space-y-4 pb-4">
+                      {/* Waiting Queue */}
+                      {queueFiltered.filter(tk => !tk.expertName).length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
+                            {t('waiting_badge')}
+                          </h3>
+                          <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
+                            {queueFiltered.filter(tk => !tk.expertName).map((ticket) => {
+                              const alreadyOpen = expertOpenTickets.includes(ticket.id);
+                              const isPreviewed = previewTicketId === ticket.id;
+                              const time = getTicketTime(ticket.createdAt);
+                              return (
+                                <li
+                                  key={ticket.id}
+                                  onClick={() => selectTicket(ticket)}
+                                  className={`p-3.5 mt-1 mx-2 rounded-xl cursor-pointer transition-all duration-200 ${isPreviewed || alreadyOpen
+                                    ? 'bg-white dark:bg-brand-800 border-l-[4px] border-l-accent-500 shadow-md'
+                                    : 'bg-solarized-base3/40 dark:bg-brand-800/40 hover:bg-solarized-base3/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
+                                    }`}
+                                >
+                                  <div className="flex justify-between gap-3">
+                                    {/* Left side: Info */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
+                                        <span className="text-[10px] font-medium text-solarized-base1">{time}</span>
+                                      </div>
+                                      <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">{ticket.agentName}</p>
                                     </div>
-                                  )}
-                                </div>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
+    
+                                    {/* Right side: Actions & Bubbles */}
+                                    <div className="flex flex-col items-end shrink-0 gap-2">
+                                      {alreadyOpen ? (
+                                        <span 
+                                          className="text-xs px-2.5 py-1 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shadow-sm border border-brand-200 dark:border-brand-800"
+                                          onClick={(e) => { e.stopPropagation(); switchTab(ticket.id); }}
+                                        >
+                                          {t('open')}
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
+                                          disabled={atMaxChats}
+                                          className={`text-xs px-3 py-1 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
+                                            } bg-gradient-to-r from-accent-500 to-rose-500 text-white hover:shadow-md`}
+                                        >
+                                          {t('join')}
+                                        </button>
+                                      )}
+    
+                                      {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
+                                        <div className="flex items-center -space-x-1.5 overflow-hidden">
+                                          {ticket.participants.map((p, idx) => {
+                                            const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
+                                            const pName = pObj.name;
+                                            const pAvatar = (pObj as any).avatar;
+                                            return (
+                                              <div
+                                                key={idx}
+                                                title={pName}
+                                                className="w-6 h-6 rounded-full border-2 border-white dark:border-brand-800 bg-brand-50 dark:bg-brand-900 flex items-center justify-center text-[10px] font-bold shadow-sm overflow-hidden"
+                                              >
+                                                {pAvatar ? (
+                                                  <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
+                                                ) : (
+                                                  <span className="text-brand-700 dark:text-brand-300">
+                                                    {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+    
+                      {/* Handled Queue */}
+                      {queueFiltered.filter(tk => tk.expertName).length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
+                            {t('in_progress')}
+                          </h3>
+                          <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
+                            {queueFiltered.filter(tk => tk.expertName).map((ticket) => {
+                              const alreadyOpen = expertOpenTickets.includes(ticket.id);
+                              const isPreviewed = previewTicketId === ticket.id;
+                              const time = getTicketTime(ticket.createdAt);
+                              return (
+                                <li
+                                  key={ticket.id}
+                                  onClick={() => selectTicket(ticket)}
+                                  className={`p-3.5 mt-1 mx-2 rounded-xl cursor-pointer transition-all duration-200 ${isPreviewed || alreadyOpen
+                                    ? 'bg-white dark:bg-brand-800 border-l-[4px] border-l-accent-500 shadow-md'
+                                    : 'bg-solarized-base3/40 dark:bg-brand-800/40 hover:bg-solarized-base3/80 dark:hover:bg-brand-800/80 border border-transparent hover:shadow-sm hover:-translate-y-0.5'
+                                    } opacity-70`}
+                                >
+                                  <div className="flex justify-between gap-3">
+                                    {/* Left side: Info */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
+                                        <span className="text-[10px] font-medium text-solarized-base1">{time}</span>
+                                      </div>
+                                      <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">{ticket.agentName}</p>
+                                    </div>
+    
+                                    {/* Right side: Actions & Bubbles */}
+                                    <div className="flex flex-col items-end shrink-0 gap-2">
+                                      {alreadyOpen ? (
+                                        <span 
+                                          className="text-xs px-2.5 py-1 rounded-lg font-bold bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 shadow-sm border border-brand-200 dark:border-brand-800"
+                                          onClick={(e) => { e.stopPropagation(); switchTab(ticket.id); }}
+                                        >
+                                          {t('open')}
+                                        </span>
+                                      ) : (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); joinTicket(ticket); }}
+                                          disabled={atMaxChats}
+                                          className={`text-xs px-3 py-1 rounded-lg font-semibold transition-all duration-200 whitespace-nowrap shadow-sm hover:translate-y-px ${atMaxChats ? 'opacity-50' : ''
+                                            } bg-gradient-to-r from-amber-400 to-amber-500 text-white hover:shadow-md`}
+                                        >
+                                          {t('jump_in')}
+                                        </button>
+                                      )}
+    
+                                      {ticket.participants && Array.isArray(ticket.participants) && ticket.participants.length > 0 && (
+                                        <div className="flex items-center -space-x-1.5 overflow-hidden">
+                                          {ticket.participants.map((p, idx) => {
+                                            const pObj = typeof p === 'object' ? p : { name: p || 'Unknown', avatar: null };
+                                            const pName = pObj.name;
+                                            const pAvatar = (pObj as any).avatar;
+                                            return (
+                                              <div
+                                                key={idx}
+                                                title={pName}
+                                                className="w-6 h-6 rounded-full border-2 border-white dark:border-brand-800 bg-brand-50 dark:bg-brand-900 flex items-center justify-center text-[10px] font-bold shadow-sm overflow-hidden"
+                                              >
+                                                {pAvatar ? (
+                                                  <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
+                                                ) : (
+                                                  <span className="text-brand-700 dark:text-brand-300">
+                                                    {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                                                  </span>
+                                                )}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Archive */}
-          {sidebarTab === 'archive' && (
-            <div className="flex flex-col flex-1 min-h-0">
-              {/* Search + dept filter */}
-              <div className="px-3 py-2 border-b border-solarized-base2 dark:border-brand-700 space-y-2">
-                <input
-                  type="text"
-                  value={archiveSearch}
-                  onChange={(e) => { setArchiveOffset(0); setArchiveSearch(e.target.value); }}
-                  placeholder="Search name, CDBID, Dare Ref…"
-                  className="w-full text-xs border border-solarized-base2 dark:border-brand-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white dark:bg-gray-700 text-solarized-base01 dark:text-gray-100 placeholder-solarized-base1"
-                />
-                <div className="flex gap-1">
-                  {['all', 'DSC', 'FOT'].map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => { setArchiveOffset(0); setArchiveDept(d); }}
-                      className={`flex-1 text-xs py-1 rounded-md transition-colors font-medium ${archiveDept === d
-                        ? 'bg-brand-500 text-white'
-                        : 'bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base1 dark:hover:bg-gray-600'
-                        }`}
-                    >
-                      {d === 'all' ? 'All' : d}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto">
-                {archiveQuery.isLoading && archivedTickets.length === 0 ? (
-                  <p className="text-center text-solarized-base1 text-sm py-8">Loading…</p>
-                ) : archivedTickets.length === 0 ? (
-                  <p className="text-center text-solarized-base1 text-sm py-8">No results.</p>
-                ) : (
-                  <>
-                    <p className="text-xs text-solarized-base1 px-3 py-2">{archiveTotal} total</p>
-                    <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
-                      {archivedTickets.map((ticket) => {
-                        const isPreviewed = previewTicketId === ticket.id;
-                        const closedTime = getTicketTime(ticket.closedAt);
-                        return (
-                          <li
-                            key={ticket.id}
-                            onClick={() => setPreviewTicketId(ticket.id)}
-                            className={`p-3 cursor-pointer transition-colors ${isPreviewed
-                              ? 'bg-solarized-base2 dark:bg-brand-900/20 border-l-2 border-brand-500'
-                              : 'hover:bg-solarized-base2 dark:hover:bg-brand-700 border-l-2 border-transparent'
-                              }`}
-                          >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
-                              <span className="text-[10px] font-medium text-solarized-base1">{closedTime}</span>
-                            </div>
-                            <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate mb-1">{ticket.agentName}</p>
-
-                            {(ticket.cdbId || ticket.dareRef) && (
-                              <div className="flex items-center gap-2 text-[11px] font-mono text-solarized-base1 mb-1">
-                                {ticket.cdbId && <span title="CDBID">#{ticket.cdbId}</span>}
-                                {ticket.cdbId && ticket.dareRef && <span>•</span>}
-                                {ticket.dareRef && <span title="Dare Ref">{ticket.dareRef}</span>}
-                              </div>
-                            )}
-                            {ticket.expertName && <p className="text-[11px] text-solarized-base1 font-medium">Expert: {ticket.expertName}</p>}
-                            {ticket.closingNotes && (
-                              <p className="text-xs text-solarized-base1 mt-1.5 italic line-clamp-2 border-l-2 border-amber-300 dark:border-amber-700 pl-2">
-                                {ticket.closingNotes}
-                              </p>
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
-
-                    {archivedTickets.length < archiveTotal && (
-                      <div className="px-3 py-3">
+    
+              {/* Archive */}
+              {sidebarTab === 'archive' && (
+                <div className="flex flex-col flex-1 min-h-0">
+                  {/* Search + dept filter */}
+                  <div className="px-3 py-2 border-b border-solarized-base2 dark:border-brand-700 space-y-2">
+                    <input
+                      type="text"
+                      value={archiveSearch}
+                      onChange={(e) => { setArchiveOffset(0); setArchiveSearch(e.target.value); }}
+                      placeholder="Search name, CDBID, Dare Ref…"
+                      className="w-full text-xs border border-solarized-base2 dark:border-brand-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white dark:bg-gray-700 text-solarized-base01 dark:text-gray-100 placeholder-solarized-base1"
+                    />
+                    <div className="flex gap-1">
+                      {['all', 'DSC', 'FOT'].map((d) => (
                         <button
-                          onClick={() => setArchiveOffset(archivedTickets.length)}
-                          disabled={archiveQuery.isFetching}
-                          className="w-full text-xs py-1.5 rounded-lg border border-gray-200 dark:border-brand-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-brand-700 disabled:opacity-40 transition-colors"
+                          key={d}
+                          onClick={() => { setArchiveOffset(0); setArchiveDept(d); }}
+                          className={`flex-1 text-xs py-1 rounded-md transition-colors font-medium ${archiveDept === d
+                            ? 'bg-brand-500 text-white'
+                            : 'bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base1 dark:hover:bg-gray-600'
+                            }`}
                         >
-                          {archiveQuery.isFetching ? 'Loading…' : `Load more (${archiveTotal - archivedTickets.length} remaining)`}
+                          {d === 'all' ? 'All' : d}
                         </button>
+                      ))}
+                    </div>
+                  </div>
+    
+                  <div className="flex-1 overflow-y-auto">
+                    {archiveQuery.isLoading && archivedTickets.length === 0 ? (
+                      <p className="text-center text-solarized-base1 text-sm py-8">Loading…</p>
+                    ) : archivedTickets.length === 0 ? (
+                      <p className="text-center text-solarized-base1 text-sm py-8">No results.</p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-solarized-base1 px-3 py-2">{archiveTotal} total</p>
+                        <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
+                          {archivedTickets.map((ticket) => {
+                            const isPreviewed = previewTicketId === ticket.id;
+                            const closedTime = getTicketTime(ticket.closedAt);
+                            return (
+                              <li
+                                key={ticket.id}
+                                onClick={() => setPreviewTicketId(ticket.id)}
+                                className={`p-3 cursor-pointer transition-colors ${isPreviewed
+                                  ? 'bg-solarized-base2 dark:bg-brand-900/20 border-l-2 border-brand-500'
+                                  : 'hover:bg-solarized-base2 dark:hover:bg-brand-700 border-l-2 border-transparent'
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
+                                  <span className="text-[10px] font-medium text-solarized-base1">{closedTime}</span>
+                                </div>
+                                <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate mb-1">{ticket.agentName}</p>
+    
+                                {(ticket.cdbId || ticket.dareRef) && (
+                                  <div className="flex items-center gap-2 text-[11px] font-mono text-solarized-base1 mb-1">
+                                    {ticket.cdbId && <span title="CDBID">#{ticket.cdbId}</span>}
+                                    {ticket.cdbId && ticket.dareRef && <span>•</span>}
+                                    {ticket.dareRef && <span title="Dare Ref">{ticket.dareRef}</span>}
+                                  </div>
+                                )}
+                                {ticket.expertName && <p className="text-[11px] text-solarized-base1 font-medium">Expert: {ticket.expertName}</p>}
+                                {ticket.closingNotes && (
+                                  <p className="text-xs text-solarized-base1 mt-1.5 italic line-clamp-2 border-l-2 border-amber-300 dark:border-amber-700 pl-2">
+                                    {ticket.closingNotes}
+                                  </p>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+    
+                        {archivedTickets.length < archiveTotal && (
+                          <div className="px-3 py-3">
+                            <button
+                              onClick={() => setArchiveOffset(archivedTickets.length)}
+                              disabled={archiveQuery.isFetching}
+                              className="w-full text-xs py-1.5 rounded-lg border border-gray-200 dark:border-brand-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-brand-700 disabled:opacity-40 transition-colors"
+                            >
+                              {archiveQuery.isFetching ? 'Loading…' : `Load more (${archiveTotal - archivedTickets.length} remaining)`}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+    
+              {/* Online experts */}
+              <div className="border-t border-solarized-base2 dark:border-brand-700 px-3 py-2 shrink-0">
+                <p className="text-xs text-solarized-base1 uppercase tracking-wide mb-1.5 px-1">
+                  Online experts {onlineExperts.length > 0 && <span className="text-green-500">· {onlineExperts.length}</span>}
+                </p>
+                {onlineExperts.length === 0 ? (
+                  <p className="text-xs text-solarized-base1 px-1">No experts online</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1 px-1">
+                    {onlineExperts.slice(0, 12).map((e) => (
+                      <div
+                        key={e.userId}
+                        title={`${e.name}${e.status && e.status !== 'available' ? ` · ${e.status}` : ''}`}
+                        className="relative w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center text-xs font-semibold ring-2 ring-white dark:ring-gray-800"
+                      >
+                        {e.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
+                        {e.status && e.status !== 'available' && (
+                          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${statusDot(e.status)} ring-1 ring-white dark:ring-gray-800`} />
+                        )}
+                      </div>
+                    ))}
+                    {onlineExperts.length > 12 && (
+                      <div className="w-7 h-7 rounded-full bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 flex items-center justify-center text-xs font-semibold ring-2 ring-white dark:ring-gray-800">
+                        +{onlineExperts.length - 12}
                       </div>
                     )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Online experts */}
-          <div className="border-t border-solarized-base2 dark:border-brand-700 px-3 py-2 shrink-0">
-            <p className="text-xs text-solarized-base1 uppercase tracking-wide mb-1.5 px-1">
-              Online experts {onlineExperts.length > 0 && <span className="text-green-500">· {onlineExperts.length}</span>}
-            </p>
-            {onlineExperts.length === 0 ? (
-              <p className="text-xs text-solarized-base1 px-1">No experts online</p>
-            ) : (
-              <div className="flex flex-wrap gap-1 px-1">
-                {onlineExperts.slice(0, 12).map((e) => (
-                  <div
-                    key={e.userId}
-                    title={`${e.name}${e.status && e.status !== 'available' ? ` · ${e.status}` : ''}`}
-                    className="relative w-7 h-7 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 flex items-center justify-center text-xs font-semibold ring-2 ring-white dark:ring-gray-800"
-                  >
-                    {e.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                    {e.status && e.status !== 'available' && (
-                      <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${statusDot(e.status)} ring-1 ring-white dark:ring-gray-800`} />
-                    )}
-                  </div>
-                ))}
-                {onlineExperts.length > 12 && (
-                  <div className="w-7 h-7 rounded-full bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 flex items-center justify-center text-xs font-semibold ring-2 ring-white dark:ring-gray-800">
-                    +{onlineExperts.length - 12}
                   </div>
                 )}
               </div>
-            )}
-          </div>
-
-          {/* Archive toggle — pinned to bottom */}
-          <div className="border-t border-solarized-base2 dark:border-brand-700 p-3 shrink-0">
-            <button
-              onClick={() => switchSidebarTab(sidebarTab === 'archive' ? 'queue' : 'archive')}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${sidebarTab === 'archive'
-                ? 'bg-solarized-base2 dark:bg-brand-900/30 text-solarized-base01 dark:text-brand-400'
-                : 'text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base2 dark:hover:bg-brand-700'
-                }`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
-              Archive
-              {sidebarTab === 'archive' && archiveTotal > 0 && (
-                <span className="ml-auto text-xs text-solarized-base1">{archiveTotal} chats</span>
-              )}
-            </button>
-          </div>
+    
+              {/* Archive toggle — pinned to bottom */}
+              <div className="border-t border-solarized-base2 dark:border-brand-700 p-3 shrink-0">
+                <button
+                  onClick={() => switchSidebarTab(sidebarTab === 'archive' ? 'queue' : 'archive')}
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${sidebarTab === 'archive'
+                    ? 'bg-solarized-base2 dark:bg-brand-900/30 text-solarized-base01 dark:text-brand-400'
+                    : 'text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base2 dark:hover:bg-brand-700'
+                    }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                  Archive
+                  {sidebarTab === 'archive' && archiveTotal > 0 && (
+                    <span className="ml-auto text-xs text-solarized-base1">{archiveTotal} chats</span>
+                  )}
+                </button>
+              </div>
             </motion.aside>
           )}
         </AnimatePresence>
