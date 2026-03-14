@@ -1,51 +1,64 @@
+import { z } from 'zod/v4';
 
+const configSchema = z.object({
+    PORT: z.coerce.number().int().min(1).max(65535).default(3001),
+    CORS_ORIGIN: z.string()
+        .refine((val) => val !== '*' && !val.includes('*'), { message: 'Wildcard CORS origins are not allowed' })
+        .default('http://localhost:5173'),
+    OLLAMA_HOST: z.string().url().default('http://host.docker.internal:11434'),
+    BUSINESS_HOURS_START: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('07:30'),
+    BUSINESS_HOURS_END: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('22:30'),
+    SLA_THRESHOLD_MS: z.coerce.number().int().positive().default(180000),
+    GDPR_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+    PURGE_INTERVAL_MS: z.coerce.number().int().positive().default(24 * 60 * 60 * 1000),
+    JWT_SECRET: z.string().default('super-secret-key-replace-in-prod'),
+    JWT_EXPIRY: z.string().default('24h'),
+    MAX_EXPERTS_SHOWN: z.coerce.number().int().positive().default(8),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+    UPLOAD_MAX_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),
+    UPLOAD_ALLOWED_TYPES: z.array(z.string()).default(['image/png', 'image/jpeg', 'image/webp']),
+    OLLAMA_MODEL: z.string().default('gemmatranslate4b'),
+    REDIS_URL: z.string().default('redis://localhost:6379'),
+});
 
-export interface Config {
-    PORT: number | string;
-    CORS_ORIGIN: string;
-    OLLAMA_HOST: string;
-    BUSINESS_HOURS_START: string;
-    BUSINESS_HOURS_END: string;
-    SLA_THRESHOLD_MS: number;
-    GDPR_RETENTION_DAYS: number;
-    PURGE_INTERVAL_MS: number;
-    JWT_SECRET: string;
-    JWT_EXPIRY: string;
-    MAX_EXPERTS_SHOWN: number;
-    LOG_LEVEL: string;
-    UPLOAD_MAX_SIZE: number;
-    UPLOAD_ALLOWED_TYPES: string[];
-    OLLAMA_MODEL?: string;
-    REDIS_URL?: string;
+export type Config = z.infer<typeof configSchema>;
+
+const parseResult = configSchema.safeParse({
+    PORT: process.env.PORT,
+    CORS_ORIGIN: process.env.CORS_ORIGIN,
+    OLLAMA_HOST: process.env.OLLAMA_HOST,
+    BUSINESS_HOURS_START: process.env.BUSINESS_HOURS_START,
+    BUSINESS_HOURS_END: process.env.BUSINESS_HOURS_END,
+    SLA_THRESHOLD_MS: process.env.SLA_THRESHOLD_MS,
+    GDPR_RETENTION_DAYS: process.env.GDPR_RETENTION_DAYS,
+    PURGE_INTERVAL_MS: process.env.PURGE_INTERVAL_MS,
+    JWT_SECRET: process.env.JWT_SECRET,
+    JWT_EXPIRY: process.env.JWT_EXPIRY,
+    MAX_EXPERTS_SHOWN: process.env.MAX_EXPERTS_SHOWN,
+    LOG_LEVEL: process.env.LOG_LEVEL,
+    UPLOAD_MAX_SIZE: process.env.UPLOAD_MAX_SIZE,
+    OLLAMA_MODEL: process.env.OLLAMA_MODEL,
+    REDIS_URL: process.env.REDIS_URL,
+});
+
+if (!parseResult.success) {
+    console.error('FATAL: Invalid environment configuration:');
+    for (const issue of parseResult.error.issues) {
+        console.error(`  ${issue.path.join('.')}: ${issue.message}`);
+    }
+    process.exit(1);
 }
 
-const config: Config = {
-    PORT: process.env.PORT || 3001,
-    CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    OLLAMA_HOST: process.env.OLLAMA_HOST || 'http://host.docker.internal:11434',
-    BUSINESS_HOURS_START: process.env.BUSINESS_HOURS_START || '07:30',
-    BUSINESS_HOURS_END: process.env.BUSINESS_HOURS_END || '22:30',
-    SLA_THRESHOLD_MS: Number(process.env.SLA_THRESHOLD_MS) || 180000,
-    GDPR_RETENTION_DAYS: Number(process.env.GDPR_RETENTION_DAYS) || 30,
-    PURGE_INTERVAL_MS: Number(process.env.PURGE_INTERVAL_MS) || 24 * 60 * 60 * 1000,
-    JWT_SECRET: process.env.JWT_SECRET || 'super-secret-key-replace-in-prod',
-    JWT_EXPIRY: process.env.JWT_EXPIRY || '24h',
-    MAX_EXPERTS_SHOWN: Number(process.env.MAX_EXPERTS_SHOWN) || 8,
-    LOG_LEVEL: process.env.LOG_LEVEL || 'info',
-    UPLOAD_MAX_SIZE: Number(process.env.UPLOAD_MAX_SIZE) || 5 * 1024 * 1024,
-    UPLOAD_ALLOWED_TYPES: ['image/png', 'image/jpeg', 'image/webp'],
-    OLLAMA_MODEL: process.env.OLLAMA_MODEL || 'gemmatranslate4b',
-    REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
-};
+const config: Config = parseResult.data;
 
 // Startup validation — fail fast if JWT secret is not set
 if (config.JWT_SECRET === 'super-secret-key-replace-in-prod') {
-  if (process.env.NODE_ENV === 'production') {
-    console.error('FATAL: JWT_SECRET must be set in production. Exiting.');
-    process.exit(1);
-  } else {
-    console.warn('WARNING: Using default JWT_SECRET. Set JWT_SECRET env var before deploying.');
-  }
+    if (process.env.NODE_ENV === 'production') {
+        console.error('FATAL: JWT_SECRET must be set in production. Exiting.');
+        process.exit(1);
+    } else {
+        console.warn('WARNING: Using default JWT_SECRET. Set JWT_SECRET env var before deploying.');
+    }
 }
 
 export default config;
