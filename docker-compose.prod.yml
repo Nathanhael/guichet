@@ -25,11 +25,25 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - CORS_ORIGIN=${CORS_ORIGIN}
+      - REDIS_URL=redis://redis:6379
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   client:
     build:
@@ -43,3 +57,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
