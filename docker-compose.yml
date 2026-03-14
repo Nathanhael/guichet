@@ -5,13 +5,13 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: i_pxs_support
+      POSTGRES_DB: murmur
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d i_pxs_support"]
+      test: ["CMD-SHELL", "pg_isready -U user -d murmur"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -22,7 +22,7 @@ services:
       - "3001:3001"
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
-      - DATABASE_URL=postgres://user:password@db:5432/i_pxs_support
+      - DATABASE_URL=postgres://user:password@db:5432/murmur
       - REDIS_URL=redis://redis:6379
     volumes:
       - ./server:/app

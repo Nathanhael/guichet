@@ -1,6 +1,6 @@
 # User Guide: Multi-Tenant Prototype
 
-This guide helps you explore the neuro-inclusive and multi-tenant features of the M&P Support platform.
+This guide helps you explore the neuro-inclusive and multi-tenant features of the Murmur platform.
 
 ## Role-Based Access
 

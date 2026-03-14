@@ -31,7 +31,7 @@ export default function LoginView() {
 
       <div className="glass-panel w-full max-w-lg overflow-hidden animate-slide-up relative z-10 border border-white/20 dark:border-brand-700/50 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl rounded-3xl shadow-2xl">
         <div className="bg-gradient-to-r from-brand-800 to-brand-900 px-8 py-8 text-white">
-          <h1 className="text-3xl font-bold tracking-tight">iKanbi M&P Support</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Murmur</h1>
           <p className="text-brand-200 text-sm mt-2 opacity-90">{tBrowser('select_user')}</p>
         </div>
 

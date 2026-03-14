@@ -1,4 +1,4 @@
-# M&P Support
+# Murmur
 
 Local prototype of a real-time, multi-tenant live chat application. Featuring project-agnostic "White-Label" architecture, AI-powered insights, asynchronous sentiment analysis, and a neuro-inclusive Solaris design.
 

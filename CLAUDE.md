@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-M&P Support is a real-time, multi-tenant live chat platform. Agents create tickets, support specialists handle them with live translation, and admins monitor qualitative AI insights. Five roles: `agent`, `support`, `manager`, `admin`, `platform_operator`. All code uses ES modules (`"type": "module"`).
+Murmur is a real-time, multi-tenant live chat platform. Agents create tickets, support specialists handle them with live translation, and admins monitor qualitative AI insights. Five roles: `agent`, `support`, `manager`, `admin`, `platform_operator`. All code uses ES modules (`"type": "module"`).
 
 ## Commands
 
@@ -31,7 +31,7 @@ docker-compose up                                          # Start all services 
 docker-compose -f docker-compose.prod.yml up --build      # Production build
 docker-compose exec server npm test                        # Run server tests in container
 docker-compose exec client npm test                        # Run client tests in container
-docker logs -f i-pxs-support-server-1                     # Tail server logs
+docker logs -f murmur-server-1                     # Tail server logs
 ```
 
 > [!TIP]
