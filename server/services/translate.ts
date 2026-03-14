@@ -59,7 +59,9 @@ async function callOllamaWithRetry(prompt: string, type: string, modelOverride?:
       return await callOllama(prompt, type, modelOverride);
     } catch (err) {
       if (attempt === maxRetries) throw err;
-      logger.warn({ type, attempt, err: err instanceof Error ? err.message : String(err), model: modelOverride || MODEL }, 'Ollama attempt failed, retrying...');
+      const delay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s...
+      logger.warn({ type, attempt, delay, err: err instanceof Error ? err.message : String(err), model: modelOverride || MODEL }, 'Ollama attempt failed, retrying...');
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
   throw new Error('Ollama unreachable after retries');
