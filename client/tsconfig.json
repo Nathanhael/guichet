@@ -20,7 +20,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "allowJs": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "paths": {
+      "/server/*": ["../server/*"]
+    }
   },
   "include": ["src", "../server/trpc"],
   "references": [{ "path": "./tsconfig.node.json" }]
