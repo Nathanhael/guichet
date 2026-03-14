@@ -69,6 +69,38 @@ interface SenderInfo {
   lang: string;
 }
 
+interface TicketReopenRow {
+  id: string;
+  reopen_count: number;
+}
+
+interface TicketRow {
+  id: string;
+  partner_id: string;
+  dept: string;
+  agent_id: string;
+  agent_lang: string;
+  support_id: string | null;
+  support_name: string | null;
+  support_lang: string | null;
+  support_joined_at: string | null;
+  status: string;
+  participants: string;
+  created_at: string;
+}
+
+interface TicketPartnerRow {
+  partner_id: string;
+}
+
+interface PartnerAIRow {
+  ai_enabled: boolean;
+}
+
+interface TicketParticipantsRow {
+  participants: string;
+}
+
 export function registerSocketHandlers(io: Server) {
   io.on('connection', (socket: Socket) => {
     console.log(`[socket] connected: ${socket.id}`);
@@ -119,7 +151,7 @@ export function registerSocketHandlers(io: Server) {
         let reopened = false;
         let reopenCount = 0;
         if (ref1 || ref2) {
-          const existing = await get('SELECT id, reopen_count FROM tickets WHERE (ref_1 = $1 OR ref_2 = $2) AND partner_id = $3 AND status = $4 ORDER BY created_at DESC LIMIT 1', [ref1 || null, ref2 || null, partnerId, 'closed']) as any;
+          const existing = await get('SELECT id, reopen_count FROM tickets WHERE (ref_1 = $1 OR ref_2 = $2) AND partner_id = $3 AND status = $4 ORDER BY created_at DESC LIMIT 1', [ref1 || null, ref2 || null, partnerId, 'closed']) as TicketReopenRow | undefined;
           if (existing) {
             reopened = true;
             reopenCount = (existing.reopen_count || 0) + 1;
@@ -146,7 +178,7 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('support:join', async ({ ticketId, supportId, supportName, supportLang }: SupportJoinPayload) => {
       try {
-        const ticket = (await get('SELECT * FROM tickets WHERE id = $1', [ticketId])) as unknown as any;
+        const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as TicketRow | undefined;
         if (!ticket) return;
         const participants = JSON.parse(ticket.participants || '[]');
         if (!participants.find((p: Participant) => p.id === supportId)) participants.push({ id: supportId, name: supportName });
@@ -168,7 +200,7 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('support:leave', async ({ ticketId, supportId, supportName }: SupportLeavePayload) => {
       try {
-        const ticket = (await get('SELECT participants FROM tickets WHERE id = $1', [ticketId])) as unknown as any;
+        const ticket = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as TicketParticipantsRow | undefined;
         if (!ticket) return;
         let participants = JSON.parse(ticket.participants || '[]');
         participants = participants.filter((p: Participant) => p.id !== supportId);
@@ -186,9 +218,9 @@ export function registerSocketHandlers(io: Server) {
         await broadcastQueuePositions();
 
         // Trigger AI Summary
-        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as any;
+        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as TicketPartnerRow | undefined;
         if (ticket) {
-          const partner = await get('SELECT ai_enabled FROM partners WHERE id = $1', [ticket.partner_id]) as any;
+          const partner = await get('SELECT ai_enabled FROM partners WHERE id = $1', [ticket.partner_id]) as PartnerAIRow | undefined;
           if (partner?.ai_enabled) {
             summarizeConversation(ticketId, ticket.partner_id).catch(err => {
               logger.error({ err, ticketId }, 'Background summarization failed');
@@ -201,7 +233,7 @@ export function registerSocketHandlers(io: Server) {
     socket.on('message:send', async ({ ticketId, senderId, text, mediaUrl, whisper }: MessageSendPayload) => {
       try {
         if (!ticketId || !senderId || !text) return;
-        const ticket = (await get('SELECT * FROM tickets WHERE id = $1', [ticketId])) as unknown as any;
+        const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as TicketRow | undefined;
         if (!ticket || ticket.status === 'closed') return;
         
         // Presence is async now
