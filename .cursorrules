@@ -1,4 +1,4 @@
-# Project Rules: Murmur
+# Project Rules: Tessera
 
 ## Environment Context
 - This project is **CONTAINERIZED**. All server and client logic should be treated as running within Docker.
@@ -7,11 +7,11 @@
 
 ## Command Execution
 - To run server-side scripts (e.g., seeding, migrations):
-  `docker exec murmur-server-1 node <filename>.js`
+  `docker exec tessera-server-1 node <filename>.js`
 - To check server logs:
-  `docker logs -f murmur-server-1`
+  `docker logs -f tessera-server-1`
 - To run tests:
-  `docker exec murmur-server-1 npm test`
+  `docker exec tessera-server-1 npm test`
 
 ## File Paths
 - The project root contains `server/` and `client/` directories.

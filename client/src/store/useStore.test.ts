@@ -5,7 +5,7 @@ import useStore from './useStore';
 describe('useStore', () => {
   beforeEach(() => {
     // Reset store to initial state
-    const { setUser, setToken, setTickets, setMessages } = useStore.getState();
+    const { setUser, setToken, setTickets } = useStore.getState();
     act(() => {
       setUser(null);
       setToken(null);
@@ -15,7 +15,7 @@ describe('useStore', () => {
 
   describe('auth', () => {
     it('sets user and token', () => {
-      const user = { id: '1', name: 'Test Agent', role: 'agent' as const, dept: 'DSC', lang: 'nl' as const };
+      const user: any = { id: '1', name: 'Test Agent', role: 'agent' as const, dept: 'DSC', lang: 'nl' as const, isPlatformOperator: false };
       act(() => {
         useStore.getState().setUser(user);
         useStore.getState().setToken('jwt-token-123');
@@ -26,9 +26,9 @@ describe('useStore', () => {
 
     it('logout clears user, token, tickets, and messages', () => {
       act(() => {
-        useStore.getState().setUser({ id: '1', name: 'Test', role: 'agent', dept: 'DSC', lang: 'nl' });
+        useStore.getState().setUser({ id: '1', name: 'Test', role: 'agent', dept: 'DSC', lang: 'nl', isPlatformOperator: false });
         useStore.getState().setToken('token');
-        useStore.getState().setTickets([{ id: 't1', dept: 'DSC', agentId: '1', agentName: 'Test', agentLang: 'nl', status: 'open', createdAt: '2026-01-01', participants: [] }]);
+        useStore.getState().setTickets([{ id: 't1', dept: 'DSC', agentId: '1', agentName: 'Test', agentLang: 'nl', status: 'open', createdAt: '2026-01-01', participants: [], labels: [] }]);
         useStore.getState().logout();
       });
       const state = useStore.getState();
@@ -40,9 +40,9 @@ describe('useStore', () => {
   });
 
   describe('tickets', () => {
-    const ticket = {
+    const ticket: any = {
       id: 't1', dept: 'DSC', agentId: 'a1', agentName: 'Agent 1',
-      agentLang: 'nl', status: 'open' as const, createdAt: '2026-01-01', participants: [],
+      agentLang: 'nl', status: 'open' as const, createdAt: '2026-01-01', participants: [], labels: [],
     };
 
     it('adds a ticket without duplicates', () => {
@@ -56,24 +56,25 @@ describe('useStore', () => {
     it('updates a ticket by id', () => {
       act(() => {
         useStore.getState().addTicket(ticket);
-        useStore.getState().updateTicket('t1', { status: 'active', expertId: 'e1' });
+        useStore.getState().updateTicket('t1', { status: 'active', supportId: 'e1' });
       });
       const updated = useStore.getState().tickets[0];
       expect(updated.status).toBe('active');
-      expect(updated.expertId).toBe('e1');
+      expect(updated.supportId).toBe('e1');
     });
   });
 
   describe('messages', () => {
-    const msg = {
-      id: 'm1', ticketId: 't1', senderId: 'a1', senderName: 'Agent',
-      text: 'Hello', createdAt: '2026-01-01T10:00:00Z',
+    const msg: any = {
+      id: 'm1', ticketId: 't1', senderId: 'a1', senderName: 'Agent', senderRole: 'agent', senderLang: 'nl',
+      originalText: 'Hello', improvedText: 'Hello', processedText: 'Hello', text: 'Hello',
+      timestamp: '2026-01-01T10:00:00Z', whisper: 0, system: 0, translationSkipped: 1, fallback: 0, reactions: {},
     };
 
     it('sets and adds messages per ticket', () => {
       act(() => {
         useStore.getState().setMessages('t1', [msg]);
-        useStore.getState().addMessage('t1', { ...msg, id: 'm2', text: 'World' });
+        useStore.getState().addMessage('t1', { ...msg, id: 'm2', text: 'World', originalText: 'World', processedText: 'World' });
       });
       expect(useStore.getState().messages['t1']).toHaveLength(2);
     });
@@ -122,7 +123,7 @@ describe('useStore', () => {
 
   describe('labels', () => {
     it('adds and removes labels globally', () => {
-      const label = { id: 'l1', text: 'Bug', color: '#ff0000' };
+      const label = { id: 'l1', name: 'Bug', text: 'Bug', color: '#ff0000' };
       act(() => {
         useStore.getState().addLabelGlobally(label);
       });
@@ -151,17 +152,17 @@ describe('useStore', () => {
 
   describe('presence', () => {
     it('tracks typing users per ticket', () => {
-      act(() => useStore.getState().setTyping('t1', 'Expert A', true));
-      expect(useStore.getState().typingUsers['t1']?.['Expert A']).toBe(true);
+      act(() => useStore.getState().setTyping('t1', 'Support A', true));
+      expect(useStore.getState().typingUsers['t1']?.['Support A']).toBe(true);
 
-      act(() => useStore.getState().setTyping('t1', 'Expert A', false));
-      expect(useStore.getState().typingUsers['t1']?.['Expert A']).toBeUndefined();
+      act(() => useStore.getState().setTyping('t1', 'Support A', false));
+      expect(useStore.getState().typingUsers['t1']?.['Support A']).toBeUndefined();
     });
 
-    it('sets online experts', () => {
-      const experts = [{ userId: 'e1', name: 'Expert 1', status: 'available' as const }];
-      act(() => useStore.getState().setOnlineExperts(experts));
-      expect(useStore.getState().onlineExperts).toEqual(experts);
+    it('sets online support users', () => {
+      const support = [{ userId: 'e1', name: 'Support 1', status: 'available' as const }];
+      act(() => useStore.getState().setOnlineSupportUsers(support));
+      expect(useStore.getState().onlineSupportUsers).toEqual(support);
     });
   });
 });

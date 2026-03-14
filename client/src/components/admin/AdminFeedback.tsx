@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Stars, Skeleton } from './DashboardHelpers';
-import { Rating, FeedbackItem, User } from '../../types';
-import useStore from '../../store/useStore';
+import { Rating } from '../../types';
 import { trpc } from '../../utils/trpc';
 
-interface ExpertRatings {
+interface SupportRatings {
   [key: string]: {
     total: number;
     sum: number;
@@ -21,10 +20,9 @@ interface ExpertRatings {
 }
 
 export default function AdminFeedback() {
-  const { token } = useStore();
   const [tab, setTab] = useState<'feedback' | 'ratings'>('feedback');
   const [showDismissed, setShowDismissed] = useState(false);
-  const [selectedExpert, setSelectedExpert] = useState('ALL');
+  const [selectedSupport, setSelectedSupport] = useState('ALL');
 
   // tRPC: Feedback List
   const feedbackQuery = trpc.feedback.list.useQuery();
@@ -42,9 +40,9 @@ export default function AdminFeedback() {
   // tRPC: Users List
   const { data: usersData } = trpc.user.list.useQuery();
 
-  const users = usersData || [];
+  const users = (usersData || []) as any[];
   const feedback = feedbackQuery.data || [];
-  const ratings = (ratingsQuery.data || []) as Rating[];
+  const ratings = (ratingsQuery.data || []) as any[];
   const loadingFeedback = feedbackQuery.isLoading;
   const loadingRatings = ratingsQuery.isLoading;
 
@@ -53,17 +51,17 @@ export default function AdminFeedback() {
   };
 
   const agentDeptMap: Record<string, string> = {};
-  const expertNameMap: Record<string, string> = {};
+  const supportNameMap: Record<string, string> = {};
   users.forEach((u) => {
-    if (u.role === 'agent') agentDeptMap[u.id] = u.dept;
-    if (u.role === 'expert') expertNameMap[u.id] = u.name;
+    if (u.role === 'agent') agentDeptMap[u.id] = u.dept || 'N/A';
+    if (u.role === 'support' || u.role === 'admin') supportNameMap[u.id] = u.name;
   });
 
-  const expertRatings: ExpertRatings = {};
+  const supportRatings: SupportRatings = {};
   ratings.forEach((r) => {
-    const name = expertNameMap[r.expertId || ''] || r.expertId || 'Unknown';
-    if (!expertRatings[name]) {
-      expertRatings[name] = {
+    const name = supportNameMap[r.supportId || ''] || r.supportId || 'Unknown';
+    if (!supportRatings[name]) {
+      supportRatings[name] = {
         total: 0,
         sum: 0,
         ratings: [],
@@ -73,13 +71,13 @@ export default function AdminFeedback() {
         },
       };
     }
-    expertRatings[name].total++;
-    expertRatings[name].sum += r.rating;
-    expertRatings[name].ratings.push(r);
+    supportRatings[name].total++;
+    supportRatings[name].sum += r.rating;
+    supportRatings[name].ratings.push(r);
 
     const dept = agentDeptMap[r.agentId];
-    if (dept && expertRatings[name].depts[dept]) {
-      const d = expertRatings[name].depts[dept];
+    if (dept && supportRatings[name].depts[dept]) {
+      const d = supportRatings[name].depts[dept];
       d.total++;
       d.sum += r.rating;
       if (r.rating === 5) d.count5++;
@@ -313,19 +311,19 @@ export default function AdminFeedback() {
                 </div>
               </div>
 
-              {Object.keys(expertRatings).length > 0 && (
+              {Object.keys(supportRatings).length > 0 && (
                 <div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-8 mb-4">
-                    <p className="text-lg font-bold text-solarized-base01 dark:text-white">Ratings by Expert</p>
+                    <p className="text-lg font-bold text-solarized-base01 dark:text-white">Ratings by Support</p>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-solarized-base1 dark:text-gray-400">View:</span>
                       <select
-                        value={selectedExpert}
-                        onChange={(e) => setSelectedExpert(e.target.value)}
+                        value={selectedSupport}
+                        onChange={(e) => setSelectedSupport(e.target.value)}
                         className="text-sm bg-solarized-base3 dark:bg-brand-900 border border-solarized-base2 dark:border-brand-700 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-brand-500 outline-none transition-all text-solarized-base01 dark:text-gray-200 shadow-sm"
                       >
-                        <option value="ALL">All Experts (Overview)</option>
-                        {Object.keys(expertRatings)
+                        <option value="ALL">All Support (Overview)</option>
+                        {Object.keys(supportRatings)
                           .sort()
                           .map((name) => (
                             <option key={name} value={name}>
@@ -336,13 +334,13 @@ export default function AdminFeedback() {
                     </div>
                   </div>
 
-                  {selectedExpert === 'ALL' ? (
+                  {selectedSupport === 'ALL' ? (
                     <div className="bg-solarized-base3 dark:bg-brand-800 rounded-xl border border-solarized-base2 dark:border-brand-700 overflow-hidden shadow-sm animate-fade-in">
                       <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
                             <tr className="bg-solarized-base2/50 dark:bg-brand-900/40 border-b border-solarized-base2 dark:border-brand-700">
-                              <th className="px-6 py-4 font-bold text-solarized-base01 dark:text-gray-300">Expert Name</th>
+                              <th className="px-6 py-4 font-bold text-solarized-base01 dark:text-gray-300">Support Name</th>
                               <th className="px-6 py-4 font-bold text-solarized-base01 dark:text-gray-300 text-center">Avg Rating</th>
                               <th className="px-6 py-4 font-bold text-solarized-base01 dark:text-gray-300 text-center">Trend</th>
                               <th className="px-6 py-4 font-bold text-solarized-base01 dark:text-gray-300 text-center">Total</th>
@@ -350,7 +348,7 @@ export default function AdminFeedback() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-solarized-base2 dark:divide-brand-700/50">
-                            {Object.entries(expertRatings)
+                            {Object.entries(supportRatings)
                               .sort((a, b) => b[1].total - a[1].total)
                               .map(([name, e]) => {
                                 const avg = (e.sum / e.total).toFixed(1);
@@ -383,7 +381,7 @@ export default function AdminFeedback() {
                                       </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                      <button onClick={() => setSelectedExpert(name)} className="text-brand-500 hover:text-brand-600 font-bold text-xs">
+                                      <button onClick={() => setSelectedSupport(name)} className="text-brand-500 hover:text-brand-600 font-bold text-xs">
                                         Details
                                       </button>
                                     </td>
@@ -397,7 +395,7 @@ export default function AdminFeedback() {
                   ) : (
                     <div className="animate-fade-in">
                       {(() => {
-                        const e = expertRatings[selectedExpert];
+                        const e = supportRatings[selectedSupport];
                         if (!e) return null;
                         const avg = (e.sum / e.total).toFixed(1);
                         return (
@@ -405,9 +403,9 @@ export default function AdminFeedback() {
                             <div className="flex items-center justify-between mb-4 border-b border-solarized-base2 dark:border-brand-700 pb-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-12 h-12 rounded-full bg-brand-500 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-brand-500/20">
-                                  {selectedExpert[0]}
+                                  {selectedSupport[0]}
                                 </div>
-                                <h3 className="font-bold text-xl text-solarized-base01 dark:text-white">{selectedExpert}</h3>
+                                <h3 className="font-bold text-xl text-solarized-base01 dark:text-white">{selectedSupport}</h3>
                               </div>
                               <div className="flex items-center gap-4">
                                 <div className="text-right">
@@ -515,14 +513,14 @@ export default function AdminFeedback() {
                           <span className="text-xs text-solarized-base1 dark:text-gray-400">
                             Agent:{' '}
                             <span className="font-medium text-solarized-base01 dark:text-gray-200">
-                              {expertNameMap[r.agentId] || r.agentId}
+                              {supportNameMap[r.agentId] || r.agentId}
                             </span>
                           </span>
-                          {r.expertId && (
+                          {r.supportId && (
                             <span className="text-xs text-solarized-base1 dark:text-gray-400">
-                              Expert:{' '}
+                              Support:{' '}
                               <span className="font-medium text-solarized-base01 dark:text-gray-200">
-                                {expertNameMap[r.expertId] || r.expertId}
+                                {supportNameMap[r.supportId] || r.supportId}
                               </span>
                             </span>
                           )}
@@ -537,10 +535,10 @@ export default function AdminFeedback() {
                 </div>
               </div>
 
-              {selectedExpert !== 'ALL' && (
+              {selectedSupport !== 'ALL' && (
                 <div className="mt-6 flex justify-center">
                   <button
-                    onClick={() => setSelectedExpert('ALL')}
+                    onClick={() => setSelectedSupport('ALL')}
                     className="text-xs font-bold text-solarized-base1 dark:text-gray-400 hover:text-brand-500 transition-colors flex items-center gap-2"
                   >
                     <svg

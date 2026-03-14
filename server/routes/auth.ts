@@ -13,7 +13,7 @@ const router = express.Router();
 router.post('/register', [
     body('id').notEmpty().withMessage('User ID is required'),
     body('name').notEmpty().withMessage('Name is required'),
-    body('role').isIn(['agent', 'expert', 'admin']),
+    body('role').isIn(['agent', 'support', 'admin']),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
     validate([])
 ], async (req: Request, res: Response) => {

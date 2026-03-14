@@ -1,7 +1,6 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 import * as schema from './schema.js';
-import config from '../config.js';
 import logger from '../utils/logger.js';
 
 const { Pool, types } = pg;
@@ -12,7 +11,7 @@ types.setTypeParser(1114, (val: string) => val); // timestamp
 types.setTypeParser(1184, (val: string) => val); // timestamptz
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/murmur',
+  connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/tessera',
 });
 
 pool.on('error', (err) => {

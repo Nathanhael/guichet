@@ -18,7 +18,7 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, messages, typingUsers, agentOnline, setAgentOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode, setMessages } = useStore();
+  const { user, messages, typingUsers, participantsOnline, setParticipantOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode, setMessages, activePartnerId } = useStore();
   const { manifest } = usePartner();
   const t = useT();
   const [text, setText] = useState('');
@@ -47,29 +47,39 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   if (!ticket) return null;
 
   // tRPC: Message History
-  trpc.message.list.useQuery(
+  const messageQuery = trpc.message.list.useQuery(
     { ticketId: ticket.id },
     { 
       enabled: !!ticket.id,
-      onSuccess: (data) => setMessages(ticket.id, data as any),
     }
   );
 
-  const isExpert = user?.role === 'expert' || user?.role === 'admin';
+  useEffect(() => {
+    if (messageQuery.data) {
+      setMessages(ticket.id, messageQuery.data as any);
+    }
+  }, [messageQuery.data, ticket.id, setMessages]);
+
+  const isSupport = user?.role === 'support' || user?.role === 'admin';
 
   // tRPC: Agent Presence
-  trpc.presence.getOnlineStatus.useQuery(
-    { userId: ticket.agentId || '' },
+  const presenceQuery = trpc.presence.getOnlineStatus.useQuery(
+    { userId: ticket.agentId || '', partnerId: activePartnerId || '' },
     {
-      enabled: isExpert && !!ticket.agentId && ticket.status !== 'closed',
-      onSuccess: (data) => setAgentOnline(ticket.id, data.online),
+      enabled: isSupport && !!ticket.agentId && ticket.status !== 'closed' && !!activePartnerId,
       refetchInterval: 10000, // Check every 10s
     }
   );
 
+  useEffect(() => {
+    if (presenceQuery.data) {
+      setParticipantOnline(ticket.id, presenceQuery.data.online);
+    }
+  }, [presenceQuery.data, ticket.id, setParticipantOnline]);
+
   const ticketMessages = messages[ticket.id] || [];
   const whoIsTyping = Object.keys(typingUsers[ticket.id] || {});
-  const agentIsOnline = agentOnline[ticket.id] ?? true;
+  const agentIsOnline = participantsOnline[ticket.id] ?? true;
 
   // Track scroll position
   function handleScroll() {
@@ -269,11 +279,19 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       senderName: user?.name || '',
       senderRole: user?.role || 'agent',
       senderLang: user?.lang || 'en',
+      originalText: trimmed || '📎',
+      improvedText: trimmed || '📎',
+      processedText: trimmed || '📎',
       text: trimmed || '📎',
       mediaUrl: mediaUrl || undefined,
       whisper: whisperMode,
-      pending: true,
+      system: 0,
+      translationSkipped: 1,
+      fallback: 0,
+      timestamp: new Date().toISOString(),
       createdAt: new Date().toISOString(),
+      reactions: {},
+      pending: true,
     };
     useStore.getState().addMessage(ticket!.id, optimisticMsg);
 
@@ -308,12 +326,12 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   }
 
   function leaveTicket() {
-    if (!isExpert) return;
-    getSocket().emit('expert:leave', { ticketId: ticket!.id, expertId: user?.id, expertName: user?.name });
+    if (!isSupport) return;
+    getSocket().emit('support:leave', { ticketId: ticket!.id, supportId: user?.id, supportName: user?.name });
     if (onClose) onClose();
   }
 
-  const canClose = user?.role === 'expert' || user?.role === 'admin';
+  const canClose = user?.role === 'support' || user?.role === 'admin';
   const isClosed = ticket.status === 'closed';
 
   return (
@@ -331,7 +349,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             </span>
             <span className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate flex items-center gap-1.5 min-w-0 max-w-[120px]">
               {ticket.agentName}
-              {isExpert && !isClosed && (
+              {isSupport && !isClosed && (
                 <span
                   title={agentIsOnline ? 'Agent online' : 'Agent offline'}
                   className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${agentIsOnline ? 'bg-solarized-green' : 'bg-solarized-base1 dark:bg-gray-500'}`}
@@ -373,14 +391,14 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 {(ticket.participants as any[]).map((p) => (typeof p === 'object' && p !== null ? p.name : p)).join(', ')}
               </span>
             ) : (
-              <span className="text-xs text-solarized-base1">{t('waiting_for_expert')}</span>
+              <span className="text-xs text-solarized-base1">{t('waiting_for_support')}</span>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           {/* Labels Menu Button */}
-          {isExpert && !isClosed && (
+          {isSupport && !isClosed && (
             <div className="relative" ref={labelsMenuRef}>
               <button
                 onClick={() => setShowLabelsMenu(!showLabelsMenu)}
@@ -496,7 +514,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
         </div>
       </div>
 
-      {(user?.role === 'agent' || user?.role === 'admin') && !ticket.expertName && !isClosed && queuePosition && (
+      {(user?.role === 'agent' || user?.role === 'admin') && !ticket.supportName && !isClosed && queuePosition && (
         <div className="bg-gradient-to-r from-blue-500/10 to-brand-500/10 border-b border-blue-200 dark:border-blue-900/50 px-4 py-2.5 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -560,8 +578,8 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             const isSameSenderAsNext = nextMsg && nextMsg.senderId === msg.senderId && !nextMsg.system && !msg.system;
 
             // Grouping logic: same sender and within 2 minutes
-            const timeDiffPrev = prevMsg ? (new Date(msg.timestamp || msg.createdAt).getTime() - new Date(prevMsg.timestamp || prevMsg.createdAt).getTime()) : 0;
-            const timeDiffNext = nextMsg ? (new Date(nextMsg.timestamp || nextMsg.createdAt).getTime() - new Date(msg.timestamp || msg.createdAt).getTime()) : 0;
+            const timeDiffPrev = prevMsg ? (new Date(msg.timestamp).getTime() - new Date(prevMsg.timestamp).getTime()) : 0;
+            const timeDiffNext = nextMsg ? (new Date(nextMsg.timestamp).getTime() - new Date(msg.timestamp).getTime()) : 0;
 
             const isGroupStart = !isSameSenderAsPrev || timeDiffPrev > 120000;
             const isGroupEnd = !isSameSenderAsNext || timeDiffNext > 120000;
@@ -581,7 +599,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
           {!ticket.supportName && !isClosed && (
             <div className="flex items-center justify-center gap-2 py-4 text-sm text-solarized-base1">
               <span className="animate-spin text-brand-400">⟳</span>
-              {t('waiting_for_expert')}
+              {t('waiting_for_support')}
             </div>
           )}
 
@@ -692,7 +710,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
           )}
 
           <div className="flex items-end gap-2">
-          {(user?.role === 'expert' || user?.role === 'admin') && (
+          {isSupport && (
             <button
               type="button"
               onClick={() => setWhisperMode((v) => !v)}
@@ -707,7 +725,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               </svg>
             </button>
           )}
-          {isExpert && (
+          {isSupport && (
             <CannedResponsePicker onSelect={(val) => setText((prev) => prev ? `${prev} ${val}` : val)} />
           )}
 

@@ -1,6 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react';
 import useStore from './store/useStore';
 import { useSocket } from './hooks/useSocket';
+import { useTheme } from './hooks/useTheme';
 import LoginView from './views/LoginView';
 import { WifiOff, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -47,20 +48,10 @@ function ConnectionBanner() {
 }
 
 export default function App() {
-  const { user, darkMode, dyslexicMode, highContrastMode, setAppConfig, memberships, activeMembershipId } = useStore();
+  const { user, darkMode, dyslexicMode, highContrastMode, setAppConfig } = useStore();
   
   useSocket();
-
-  // Dynamic Theming
-  useEffect(() => {
-    const activeMembership = memberships.find(m => m.id === activeMembershipId);
-    if (activeMembership?.manifest) {
-      const { primaryColor, secondaryColor } = activeMembership.manifest;
-      document.documentElement.style.setProperty('--brand-primary', primaryColor);
-      document.documentElement.style.setProperty('--brand-secondary', secondaryColor);
-      // Update Tailwind-compatible RGB if needed, but for now hex is fine for basic vars
-    }
-  }, [memberships, activeMembershipId]);
+  useTheme();
 
   useEffect(() => {
     if (darkMode) {

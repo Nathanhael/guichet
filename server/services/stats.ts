@@ -22,7 +22,7 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
 
   const deptCounts: Record<string, number> = {};
   const hourly = Array(24).fill(0);
-  const hourlyExperts: Record<string, number>[] = Array.from({ length: 24 }, () => ({}));
+  const hourlySupport: Record<string, number>[] = Array.from({ length: 24 }, () => ({}));
   const hourlySla = Array.from({ length: 24 }, () => ({ resolved: 0, compliant: 0 }));
   let closed = 0, abandoned = 0, reopened = 0;
   let responseSum = 0, responseCount = 0;
@@ -31,7 +31,7 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
   const ratingsByDept: Record<string, { sum: number; count: number }> = {};
   const deptResolved: Record<string, number> = {};
   const deptCompliant: Record<string, number> = {};
-  const expertIds = new Set<string>();
+  const supportIds = new Set<string>();
 
   tickets.forEach(t => {
     deptCounts[t.dept] = (deptCounts[t.dept] || 0) + 1;
@@ -39,20 +39,20 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
     const hour = createdAt.getHours();
     hourly[hour]++;
 
-    if (t.expertId) {
-      hourlyExperts[hour][t.expertId] = (hourlyExperts[hour][t.expertId] || 0) + 1;
-      expertIds.add(t.expertId);
+    if (t.supportId) {
+      hourlySupport[hour][t.supportId] = (hourlySupport[hour][t.supportId] || 0) + 1;
+      supportIds.add(t.supportId);
     }
 
     if (t.status === 'closed') {
       closed++;
-      if (!t.expertJoinedAt) abandoned++;
+      if (!t.supportJoinedAt) abandoned++;
     }
 
     if ((t as any).reopened) reopened++;
 
-    if (t.expertJoinedAt) {
-      const responseTime = new Date(t.expertJoinedAt).getTime() - createdAt.getTime();
+    if (t.supportJoinedAt) {
+      const responseTime = new Date(t.supportJoinedAt).getTime() - createdAt.getTime();
       responseSum += responseTime;
       responseCount++;
       responseTimes.push(responseTime);
@@ -82,8 +82,8 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
   const sentimentSum = messages.reduce((s, m) => s + ((m as any).sentiment || 0), 0);
   const sentimentCount = messages.filter(m => (m as any).sentiment !== undefined && (m as any).sentiment !== null).length;
 
-  const resolved = tickets.filter(t => t.expertJoinedAt);
-  const compliant = resolved.filter(t => (new Date(t.expertJoinedAt!).getTime() - new Date(t.createdAt).getTime()) <= config.SLA_THRESHOLD_MS).length;
+  const resolved = tickets.filter(t => t.supportJoinedAt);
+  const compliant = resolved.filter(t => (new Date(t.supportJoinedAt!).getTime() - new Date(t.createdAt).getTime()) <= config.SLA_THRESHOLD_MS).length;
 
   return {
     total: tickets.length,
@@ -105,21 +105,21 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
     slaCompliant: compliant,
     deptResolved,
     deptCompliant,
-    expertIds: Array.from(expertIds),
+    supportIds: Array.from(supportIds),
     hourly,
     hourlyStaffing: hourly.map((count, h) => {
-      const expertsInHour = Object.keys(hourlyExperts[h]);
-      const topExpertId = expertsInHour.reduce((a, b) => {
+      const supportInHour = Object.keys(hourlySupport[h]);
+      const topSupportId = supportInHour.reduce((a, b) => {
         if (!a) return b;
-        return (hourlyExperts[h][a] || 0) > (hourlyExperts[h][b] || 0) ? a : b;
-      }, expertsInHour[0] || null);
+        return (hourlySupport[h][a] || 0) > (hourlySupport[h][b] || 0) ? a : b;
+      }, supportInHour[0] || null);
 
       return {
         hour: h,
         tickets: count,
-        experts: expertsInHour.length,
-        topExpertId,
-        topExpertCount: topExpertId ? hourlyExperts[h][topExpertId] : 0,
+        support: supportInHour.length,
+        topSupportId,
+        topSupportCount: topSupportId ? hourlySupport[h][topSupportId] : 0,
         slaResolved: hourlySla[h].resolved,
         slaCompliant: hourlySla[h].compliant
       };

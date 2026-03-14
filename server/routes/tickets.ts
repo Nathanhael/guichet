@@ -14,7 +14,7 @@ const router = express.Router();
  */
 router.get('/export', [
   auth,
-  authorize(['admin', 'expert']),
+  authorize(['admin', 'support']),
   queryVal('dept').optional().isString(),
   queryVal('search').optional().isString(),
   queryVal('dateFrom').optional().isISO8601(),
@@ -35,7 +35,7 @@ router.get('/export', [
     }
     if (search) {
       const q = `%${search}%`;
-      sql += ` AND (agent_name ILIKE $${pIdx} OR cdb_id ILIKE $${pIdx} OR dare_ref ILIKE $${pIdx} OR expert_name ILIKE $${pIdx})`;
+      sql += ` AND (agent_name ILIKE $${pIdx} OR ref_1 ILIKE $${pIdx} OR ref_2 ILIKE $${pIdx} OR support_name ILIKE $${pIdx})`;
       params.push(q);
       pIdx++;
     }
@@ -56,14 +56,14 @@ router.get('/export', [
     const result = (await query(sql, params)) as unknown as Ticket[];
     
     // Format as CSV
-    const headers = ['ID', 'Department', 'Agent', 'CDBID', 'Dare Ref', 'Expert', 'Created At', 'Closed At', 'Status'];
+    const headers = ['ID', 'Department', 'Agent', 'Ref 1', 'Ref 2', 'Support', 'Created At', 'Closed At', 'Status'];
     const rows = result.map(t => [
       t.id,
       t.dept,
       t.agentName,
-      t.cdbId || '',
-      t.dareRef || '',
-      t.expertName || '',
+      t.ref1 || '',
+      t.ref2 || '',
+      t.supportName || '',
       t.createdAt,
       t.closedAt || '',
       t.status

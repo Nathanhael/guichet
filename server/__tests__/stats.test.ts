@@ -12,15 +12,15 @@ describe('computeLiveDayStats', () => {
 
     it('should calculate counts correctly', () => {
         const tickets: Partial<Ticket>[] = [
-            { id: '1', dept: 'DSC', status: 'closed', createdAt: '2024-01-01T10:00:00Z', expertJoinedAt: '2024-01-01T10:01:00Z', closedAt: '2024-01-01T10:10:00Z' },
+            { id: '1', dept: 'DSC', status: 'closed', createdAt: '2024-01-01T10:00:00Z', supportJoinedAt: '2024-01-01T10:01:00Z', closedAt: '2024-01-01T10:10:00Z' },
             { id: '2', dept: 'FOT', status: 'open', createdAt: '2024-01-01T11:00:00Z' },
-            { id: '3', dept: 'DSC', status: 'closed', createdAt: '2024-01-01T12:00:00Z', closedAt: '2024-01-01T12:05:00Z' } // Abandoned (expertJoinedAt is null)
+            { id: '3', dept: 'DSC', status: 'closed', createdAt: '2024-01-01T12:00:00Z', closedAt: '2024-01-01T12:05:00Z' } // Abandoned (supportJoinedAt is null)
         ];
         const stats = computeLiveDayStats(tickets as Ticket[], [], 'all');
 
         expect(stats.total).toBe(3);
         expect(stats.closed).toBe(2);
-        expect(stats.abandoned).toBe(1); // Ticket 3 closed without expert
+        expect(stats.abandoned).toBe(1); // Ticket 3 closed without support
         expect(stats.deptCounts['DSC']).toBe(2);
         expect(stats.deptCounts['FOT']).toBe(1);
     });
@@ -38,8 +38,8 @@ describe('computeLiveDayStats', () => {
 
     it('should calculate SLA metrics', () => {
         const tickets: Partial<Ticket>[] = [
-            { id: '1', dept: 'DSC', createdAt: '2024-01-01T10:00:00Z', expertJoinedAt: '2024-01-01T10:01:00Z' }, // Compliant (1m)
-            { id: '2', dept: 'DSC', createdAt: '2024-01-01T11:00:00Z', expertJoinedAt: '2024-01-01T11:05:00Z' }  // Violates (5m)
+            { id: '1', dept: 'DSC', createdAt: '2024-01-01T10:00:00Z', supportJoinedAt: '2024-01-01T10:01:00Z' }, // Compliant (1m)
+            { id: '2', dept: 'DSC', createdAt: '2024-01-01T11:00:00Z', supportJoinedAt: '2024-01-01T11:05:00Z' }  // Violates (5m)
         ];
         const stats = computeLiveDayStats(tickets as Ticket[], [], 'all');
         expect(stats.slaResolved).toBe(2);

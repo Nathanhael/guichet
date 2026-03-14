@@ -22,6 +22,6 @@
     "allowJs": true,
     "esModuleInterop": true
   },
-  "include": ["src"],
+  "include": ["src", "../server/trpc"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

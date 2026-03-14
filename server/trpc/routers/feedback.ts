@@ -29,7 +29,7 @@ export const feedbackRouter = router({
     .input(z.object({
       userId: z.string().min(1),
       userName: z.string().min(1),
-      role: z.enum(['agent', 'expert']),
+      role: z.enum(['agent', 'support']),
       text: z.string().min(1),
     }))
     .mutation(async ({ input }) => {

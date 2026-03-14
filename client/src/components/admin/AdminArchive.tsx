@@ -36,25 +36,32 @@ export default function AdminArchive() {
       search: search.trim() || undefined,
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
-    },
-    {
-      onSuccess: (data: any) => {
-        if (data.tickets) {
-          setTickets((prev) => offset === 0 ? data.tickets : [...prev, ...data.tickets]);
-          setTotal(data.total);
-        }
-      }
     }
   );
 
+  useEffect(() => {
+    if (ticketsQuery.data) {
+      const data = ticketsQuery.data as any;
+      if (data.tickets) {
+        setTickets((prev) => offset === 0 ? data.tickets : [...prev, ...data.tickets]);
+        setTotal(data.total);
+      }
+    }
+  }, [ticketsQuery.data, offset]);
+
   // Message Preview using tRPC
-  trpc.message.list.useQuery(
+  const messagesQuery = trpc.message.list.useQuery(
     { ticketId: preview?.id || '' },
     {
       enabled: !!preview?.id,
-      onSuccess: (data) => setPreviewMessages(data as any),
     }
   );
+
+  useEffect(() => {
+    if (messagesQuery.data) {
+      setPreviewMessages(messagesQuery.data as any);
+    }
+  }, [messagesQuery.data]);
 
   // Reset offset when filters change
   useEffect(() => {
@@ -106,7 +113,7 @@ export default function AdminArchive() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agent, CDBID, Dare Ref, expert…"
+            placeholder="Search agent, CDBID, Dare Ref, support…"
             className="border border-solarized-base2 dark:border-brand-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-56 bg-solarized-base3 dark:bg-gray-700 text-solarized-base01 dark:text-gray-100"
           />
           <div className="flex gap-1">
@@ -171,7 +178,7 @@ export default function AdminArchive() {
                     <th className="px-4 py-3">Dept</th>
                     <th className="px-4 py-3">Agent</th>
                     <th className="px-4 py-3">Ref</th>
-                    <th className="px-4 py-3">Expert</th>
+                    <th className="px-4 py-3">Support</th>
                     <th className="px-4 py-3">Labels</th>
                     <th className="px-4 py-3">Duration</th>
                     <th className="px-4 py-3">Created</th>
@@ -202,7 +209,7 @@ export default function AdminArchive() {
                           {ticket.cdbId ? `CDBID: ${ticket.cdbId}` : ticket.dareRef ? `Dare Ref: ${ticket.dareRef}` : '—'}
                         </td>
                         <td className="px-4 py-2.5 text-solarized-base1 dark:text-gray-400">
-                          {ticket.expertName || <span className="italic text-solarized-base2">Abandoned</span>}
+                          {ticket.supportName || <span className="italic text-solarized-base2">Abandoned</span>}
                         </td>
                         <td className="px-4 py-2.5">
                           {ticket.labels && (ticket.labels as string[]).length > 0 ? (
@@ -226,7 +233,7 @@ export default function AdminArchive() {
                         </td>
                         <td className="px-4 py-2.5 text-solarized-base1 dark:text-gray-400">{duration(ticket)}</td>
                         <td className="px-4 py-2.5 text-solarized-base1 whitespace-nowrap">{fmt(ticket.createdAt)}</td>
-                        <td className="px-4 py-2.5 text-solarized-base1 whitespace-nowrap">{fmt(ticket.closedAt)}</td>
+                        <td className="px-4 py-2.5 text-solarized-base1 whitespace-nowrap">{fmt(ticket.closedAt || undefined)}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -269,7 +276,7 @@ export default function AdminArchive() {
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                   </svg>
-                  {preview.expertName ? `Expert: ${preview.expertName}` : 'No expert joined'}
+                  {preview.supportName ? `Support: ${preview.supportName}` : 'No support joined'}
                   <span className="text-solarized-base2 dark:text-brand-600">•</span>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path
@@ -329,7 +336,7 @@ export default function AdminArchive() {
                       <div className="flex items-baseline gap-2 mb-1 cursor-default">
                         <span className="text-sm font-bold text-solarized-base01 dark:text-gray-100">{msg.senderName}</span>
                         <span className="text-xs text-solarized-base1">
-                          {new Date(msg.createdAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(msg.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         {msg.whisper && (
                           <span className="text-[10px] font-medium uppercase tracking-wider text-violet-500 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-300 px-1.5 py-0.5 rounded leading-none">

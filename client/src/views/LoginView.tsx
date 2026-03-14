@@ -5,10 +5,10 @@ import DarkModeToggle from '../components/DarkModeToggle';
 import { UserRole } from '../types';
 import { trpc } from '../utils/trpc';
 
-const ROLE_LABEL: Record<string, string> = { agent: 'Agent', expert: 'Expert', admin: 'Admin' };
+const ROLE_LABEL: Record<string, string> = { agent: 'Agent', support: 'Support', admin: 'Admin' };
 const ROLE_BADGE: Record<string, string> = {
   agent: 'bg-solarized-base2 text-solarized-base1',
-  expert: 'bg-solarized-base2 text-brand-600',
+  support: 'bg-solarized-base2 text-brand-600',
   admin: 'bg-solarized-base02 text-accent-500',
 };
 const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR', en: '🇬🇧 EN' };
@@ -18,9 +18,9 @@ export default function LoginView() {
   const [filter, setFilter] = useState<UserRole | 'all'>('all');
 
   const { data: usersData, isLoading: loading } = trpc.user.list.useQuery();
-  const users = usersData || [];
+  const users = (usersData || []) as any[];
 
-  const filtered = filter === 'all' ? users : users.filter((u) => u.role === filter);
+  const filtered = filter === 'all' ? users : users.filter((u: any) => u.role === filter);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-fade-in text-slate-900 dark:text-slate-100">
@@ -31,12 +31,12 @@ export default function LoginView() {
 
       <div className="glass-panel w-full max-w-lg overflow-hidden animate-slide-up relative z-10 border border-white/20 dark:border-brand-700/50 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl rounded-3xl shadow-2xl">
         <div className="bg-gradient-to-r from-brand-800 to-brand-900 px-8 py-8 text-white">
-          <h1 className="text-3xl font-bold tracking-tight">Murmur</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Tessera</h1>
           <p className="text-brand-200 text-sm mt-2 opacity-90">{tBrowser('select_user')}</p>
         </div>
 
         <div className="flex border-b border-solarized-base2 dark:border-brand-800 px-4 pt-4 bg-solarized-base3/50 dark:bg-brand-900/50">
-          {(['all', 'agent', 'expert', 'admin'] as const).map((role) => (
+          {(['all', 'agent', 'support', 'admin'] as const).map((role) => (
             <button
               key={role}
               onClick={() => setFilter(role)}

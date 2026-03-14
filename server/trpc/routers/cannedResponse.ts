@@ -7,21 +7,27 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 
 export const cannedResponseRouter = router({
-  list: protectedProcedure.query(async () => {
-    try {
-      const data = await db.select()
-        .from(cannedResponses)
-        .orderBy(asc(cannedResponses.shortcut));
-      return data;
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      logger.error({ err: message }, 'tRPC: Error fetching canned responses');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
-    }
-  }),
+  list: protectedProcedure
+    .input(z.object({
+      partnerId: z.string(),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const data = await db.select()
+          .from(cannedResponses)
+          .where(eq(cannedResponses.partnerId, input.partnerId))
+          .orderBy(asc(cannedResponses.shortcut));
+        return data;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message }, 'tRPC: Error fetching canned responses');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+      }
+    }),
 
   create: adminProcedure
     .input(z.object({
+      partnerId: z.string(),
       shortcut: z.string().min(1),
       text: z.string().min(1),
     }))
@@ -30,6 +36,7 @@ export const cannedResponseRouter = router({
         const id = `cr${Date.now()}`;
         await db.insert(cannedResponses).values({
           id,
+          partnerId: input.partnerId,
           shortcut: input.shortcut,
           text: input.text,
         });
@@ -48,7 +55,7 @@ export const cannedResponseRouter = router({
     .input(z.string())
     .mutation(async ({ input: id }) => {
       try {
-        const result = await db.delete(cannedResponses).where(eq(cannedResponses.id, id));
+        await db.delete(cannedResponses).where(eq(cannedResponses.id, id));
         return { success: true };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);

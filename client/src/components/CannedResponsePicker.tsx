@@ -1,12 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { trpc } from '../utils/trpc';
+import useStore from '../store/useStore';
 
 interface CannedResponsePickerProps {
   onSelect: (text: string) => void;
 }
 
 export default function CannedResponsePicker({ onSelect }: CannedResponsePickerProps) {
-    const { data: cannedResponses, isLoading } = trpc.cannedResponse.list.useQuery();
+    const { activePartnerId } = useStore();
+    const { data: cannedResponses, isLoading } = trpc.cannedResponse.list.useQuery(
+      { partnerId: activePartnerId || '' },
+      { enabled: !!activePartnerId }
+    );
     const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef<HTMLDivElement>(null);

@@ -14,6 +14,8 @@ export const partners = pgTable('partners', {
   enableActionableAi: boolean('enable_actionable_ai').default(false),
   departments: text('departments').default('[]'), // JSON array
   aiEnabled: boolean('ai_enabled').default(true),
+  themeConfig: text('theme_config'), // JSONB
+  ollamaModel: text('ollama_model'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
 });
 
@@ -30,7 +32,7 @@ export const memberships = pgTable('memberships', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
-  role: text('role').notNull(), // 'agent', 'expert', 'admin', 'manager'
+  role: text('role').notNull(), // 'agent', 'support', 'admin', 'manager'
   dept: text('dept'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
 }, (table) => ({
@@ -65,6 +67,8 @@ export const tickets = pgTable('tickets', {
   statusIdx: index('idx_tickets_status').on(table.status),
   deptIdx: index('idx_tickets_dept').on(table.dept),
   createdAtIdx: index('idx_tickets_created_at').on(table.createdAt),
+  partnerCreatedIdx: index('idx_tickets_partner_created').on(table.partnerId, table.createdAt),
+  partnerStatusIdx: index('idx_tickets_partner_status').on(table.partnerId, table.status),
 }));
 
 export const messages = pgTable('messages', {
@@ -85,6 +89,7 @@ export const messages = pgTable('messages', {
   cannedResponseId: text('canned_response_id'),
 }, (table) => ({
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
+  senderIdIdx: index('idx_messages_sender_id').on(table.senderId),
 }));
 
 export const ratings = pgTable('ratings', {

@@ -1,7 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import MessageBubble from './MessageBubble';
 import useStore from '../store/useStore';
+import { Message } from '../types';
 
 // Mock getSocket
 const mockEmit = vi.fn();
@@ -17,14 +18,24 @@ describe('MessageBubble Component', () => {
     useStore.getState().setSelectedLang('en');
   });
 
-  const mockMessage = {
+  const mockMessage: Message = {
     id: 'm1',
     ticketId: 't1',
     senderId: 'u1',
     senderName: 'Agent A',
+    senderRole: 'agent',
+    senderLang: 'en',
+    originalText: 'Hello world',
+    improvedText: 'Hello world',
+    processedText: 'Hello world',
     text: 'Hello world',
+    timestamp: new Date().toISOString(),
     createdAt: new Date().toISOString(),
-    system: false,
+    system: 0,
+    whisper: 0,
+    translationSkipped: 1,
+    fallback: 0,
+    reactions: {},
   };
 
   it('renders message text', () => {
@@ -33,26 +44,26 @@ describe('MessageBubble Component', () => {
   });
 
   it('renders system message correctly', () => {
-    const systemMsg = { ...mockMessage, system: true, text: 'System alert' };
+    const systemMsg = { ...mockMessage, system: 1, text: 'System alert' };
     render(<MessageBubble message={systemMsg} ticketId="t1" />);
     expect(screen.getByText('System alert')).toBeInTheDocument();
     expect(screen.getByText('System alert')).toHaveClass('text-[10px]');
   });
 
   it('shows sender name for messages from others', () => {
-    useStore.getState().setUser({ id: 'u2', name: 'Expert X', role: 'expert', dept: 'DSC', lang: 'nl' });
+    useStore.getState().setUser({ id: 'u2', name: 'Support X', role: 'support', dept: 'DSC', lang: 'nl', isPlatformOperator: false });
     render(<MessageBubble message={mockMessage} ticketId="t1" />);
     expect(screen.getByText('Agent A')).toBeInTheDocument();
   });
 
   it('hides sender name for own messages', () => {
-    useStore.getState().setUser({ id: 'u1', name: 'Agent A', role: 'agent', dept: 'DSC', lang: 'nl' });
+    useStore.getState().setUser({ id: 'u1', name: 'Agent A', role: 'agent', dept: 'DSC', lang: 'nl', isPlatformOperator: false });
     render(<MessageBubble message={mockMessage} ticketId="t1" />);
     expect(screen.queryByText('Agent A')).not.toBeInTheDocument();
   });
 
   it('renders whisper indicator for whispers', () => {
-    const whisperMsg = { ...mockMessage, whisper: true };
+    const whisperMsg = { ...mockMessage, whisper: 1 };
     render(<MessageBubble message={whisperMsg} ticketId="t1" />);
     expect(screen.getByText(/Internal mode/i)).toBeInTheDocument();
   });
@@ -64,9 +75,9 @@ describe('MessageBubble Component', () => {
       processedText: 'Hallo wereld',
       originalText: 'Hello world',
       improvedText: 'Hello world',
-      translationSkipped: false 
+      translationSkipped: 0 
     };
-    useStore.getState().setUser({ id: 'u2', name: 'Expert X', role: 'expert', dept: 'DSC', lang: 'nl', isPlatformOperator: false });
+    useStore.getState().setUser({ id: 'u2', name: 'Support X', role: 'support', dept: 'DSC', lang: 'nl', isPlatformOperator: false });
     
     render(<MessageBubble message={translatedMsg} ticketId="t1" />);
     

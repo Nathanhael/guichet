@@ -53,11 +53,11 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
                   </span>
                 </div>
                 <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">
-                  {ticket.title || (ticket.dareRef ? `DARE: ${ticket.dareRef}` : ticket.cdbId ? `CDBID: ${ticket.cdbId}` : t('No title'))}
+                  {ticket.agentName || (ticket.dareRef ? `DARE: ${ticket.dareRef}` : ticket.cdbId ? `CDBID: ${ticket.cdbId}` : t('No title'))}
                 </p>
-                {ticket.agentName && ticket.agentName !== ticket.title && (
+                {ticket.ref1 && (
                   <p className="text-[11px] text-solarized-base1 dark:text-gray-400 mt-0.5">
-                    {ticket.agentName}
+                    {ticket.ref1}
                   </p>
                 )}
                 <div className="mt-1 text-xs text-solarized-base1 dark:text-gray-400 flex items-center gap-2">
@@ -85,8 +85,7 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
                             <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
                           ) : (
                             <span className="text-brand-700 dark:text-brand-300">
-                              {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                            </span>
+                              {pName.toString().split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}                            </span>
                           )}
                         </div>
                       );

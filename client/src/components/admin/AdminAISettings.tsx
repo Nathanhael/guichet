@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useT } from '../../i18n';
 import { trpc } from '../../utils/trpc';
 import { Panel, Skeleton } from './DashboardHelpers';
-import { motion } from 'framer-motion';
 import { Save, Bot, Sparkles, ShieldCheck, User, LifeBuoy } from 'lucide-react';
 
 export default function AdminAISettings() {
-  const t = useT();
   const [aiRules, setAiRules] = useState('');
   const [agentStrategy, setAgentStrategy] = useState('');
   const [supportStrategy, setSupportStrategy] = useState('');
@@ -61,7 +58,7 @@ export default function AdminAISettings() {
           </p>
         </div>
         <button
-          disabled={!isDirty || updateStrategiesMutation.isLoading}
+          disabled={!isDirty || updateStrategiesMutation.isPending}
           onClick={handleSave}
           className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold transition-all ${
             isDirty 
@@ -70,7 +67,7 @@ export default function AdminAISettings() {
           }`}
         >
           <Save size={18} />
-          {updateStrategiesMutation.isLoading ? 'Saving...' : 'Save Changes'}
+          {updateStrategiesMutation.isPending ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
 

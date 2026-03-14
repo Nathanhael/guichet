@@ -29,10 +29,10 @@ const translations: Translations = {
     question_problem: 'Question / problem',
     describe_problem: 'Describe the problem...',
     connecting: 'Connecting...',
-    connect_with_expert: 'Connect with support',
+    connect_with_support: 'Connect with support',
 
     // Chat window
-    waiting_for_expert: 'Waiting for support...',
+    waiting_for_support: 'Waiting for support...',
     close: 'Close',
     leave: 'Leave',
     no_messages: 'No messages yet.',
@@ -55,8 +55,8 @@ const translations: Translations = {
     no_tickets: 'No tickets found.',
 
     // Business hours guard
-    expert_chat_closed: 'Support chat closed',
-    expert_chat_closed_body: 'The support chat is currently closed. Available Monday to Sunday between 07:30 and 22:30.',
+    support_chat_closed: 'Support chat closed',
+    support_chat_closed_body: 'The support chat is currently closed. Available Monday to Sunday between 07:30 and 22:30.',
 
     // Login
     select_user: 'Select your user to log in (demo)',
@@ -77,10 +77,10 @@ const translations: Translations = {
     select_ticket_hint: 'Select a ticket from the queue and click "Join" to start supporting.',
     total_chats: 'total chats',
     no_results: 'No results.',
-    online_experts: 'Support online',
-    no_experts_online: 'No support online',
+    online_support: 'Support online',
+    no_support_online: 'No support online',
     back_to_queue: 'Back to queue',
-    expert_prefix: 'Support:',
+    support_prefix: 'Support:',
     exit_zen_mode: 'Exit Zen Mode',
     enter_zen_mode: 'Enter Zen Mode (Focus)',
     notifications_on: 'Notifications on \u2014 click to mute',
@@ -126,7 +126,7 @@ const translations: Translations = {
     col_title: 'Title',
     col_dept: 'Dept',
     col_agent: 'Agent',
-    col_expert: 'Support',
+    col_support: 'Support',
     col_created: 'Created',
     col_closed: 'Closed',
     export_csv: 'Export to CSV',
@@ -141,7 +141,7 @@ const translations: Translations = {
 
     // Rating
     rate_experience: 'Rate your experience',
-    rate_expert_desc: 'How was your session with',
+    rate_support_desc: 'How was your session with',
     rating_comment_placeholder: 'Any additional comments? (optional)',
     submit_rating: 'Submit',
     skip: 'Skip',
@@ -182,9 +182,9 @@ const translations: Translations = {
     question_problem: 'Question / probl\u00e8me',
     describe_problem: 'D\u00e9crivez le probl\u00e8me...',
     connecting: 'Connexion en cours...',
-    connect_with_expert: "Contacter le support",
+    connect_with_support: "Contacter le support",
 
-    waiting_for_expert: "En attente du support...",
+    waiting_for_support: "En attente du support...",
     close: 'Fermer',
     leave: 'Quitter',
     no_messages: 'Aucun message pour l\u2019instant.',
@@ -204,8 +204,8 @@ const translations: Translations = {
 
     no_tickets: 'Aucun ticket trouv\u00e9.',
 
-    expert_chat_closed: 'Chat de support ferm\u00e9',
-    expert_chat_closed_body: 'Le chat de support est actuellement ferm\u00e9. Disponible du lundi au dimanche entre 07h30 et 22h30.',
+    support_chat_closed: 'Chat de support ferm\u00e9',
+    support_chat_closed_body: 'Le chat de support est actuellement ferm\u00e9. Disponible du lundi au dimanche entre 07h30 et 22h30.',
 
     select_user: 'S\u00e9lectionnez votre utilisateur pour vous connecter (d\u00e9mo)',
     no_users: 'Aucun utilisateur trouv\u00e9.',
@@ -228,10 +228,10 @@ const translations: Translations = {
     select_ticket_hint: 'S\u00e9lectionnez un ticket dans la file et cliquez sur \u00ab\u00a0Rejoindre\u00a0\u00bb pour commencer.',
     total_chats: 'chats au total',
     no_results: 'Aucun r\u00e9sultat.',
-    online_experts: 'Support en ligne',
-    no_experts_online: 'Aucun support en ligne',
+    online_support: 'Support en ligne',
+    no_support_online: 'Aucun support en ligne',
     back_to_queue: 'Retour \u00e0 la file d\u2019attente',
-    expert_prefix: 'Support :',
+    support_prefix: 'Support :',
     exit_zen_mode: 'Quitter le mode Zen',
     enter_zen_mode: 'Passer en mode Zen (Focus)',
     notifications_on: 'Notifications activ\u00e9es \u2014 cliquer pour couper',
@@ -271,7 +271,7 @@ const translations: Translations = {
     col_title: 'Titre',
     col_dept: 'D\u00e9pt',
     col_agent: 'Agent',
-    col_expert: 'Support',
+    col_support: 'Support',
     col_created: 'Cr\u00e9\u00e9',
     col_closed: 'Ferm\u00e9',
     export_csv: 'Exporter en CSV',
@@ -284,7 +284,7 @@ const translations: Translations = {
     feedback_sent: 'Merci pour votre retour\u00a0!',
 
     rate_experience: '\u00c9valuez votre exp\u00e9rience',
-    rate_expert_desc: 'Comment \u00e9tait votre session avec',
+    rate_support_desc: 'Comment \u00e9tait votre session avec',
     rating_comment_placeholder: 'Commentaires suppl\u00e9mentaires\u00a0? (optionnel)',
     submit_rating: 'Soumettre',
     skip: 'Passer',
@@ -322,9 +322,9 @@ const translations: Translations = {
     question_problem: 'Vraag / probleem',
     describe_problem: 'Beschrijf het probleem...',
     connecting: 'Verbinden...',
-    connect_with_expert: 'Verbind met support',
+    connect_with_support: 'Verbind met support',
 
-    waiting_for_expert: 'Wachten op support...',
+    waiting_for_support: 'Wachten op support...',
     close: 'Sluiten',
     leave: 'Verlaten',
     no_messages: 'Nog geen berichten.',
@@ -344,8 +344,8 @@ const translations: Translations = {
 
     no_tickets: 'Geen tickets gevonden.',
 
-    expert_chat_closed: 'Supportchat gesloten',
-    expert_chat_closed_body: 'De supportchat is momenteel gesloten. Beschikbaar van maandag t/m zondag tussen 07:30 en 22:30.',
+    support_chat_closed: 'Supportchat gesloten',
+    support_chat_closed_body: 'De supportchat is momenteel gesloten. Beschikbaar van maandag t/m zondag tussen 07:30 en 22:30.',
 
     select_user: 'Kies je gebruiker om in te loggen (demo)',
     no_users: 'Geen gebruikers gevonden.',
@@ -368,10 +368,10 @@ const translations: Translations = {
     select_ticket_hint: 'Selecteer een ticket uit de wachtrij en klik op "Join" om te beginnen.',
     total_chats: 'totaal chats',
     no_results: 'Geen resultaten.',
-    online_experts: 'Support online',
-    no_experts_online: 'Geen support online',
+    online_support: 'Support online',
+    no_support_online: 'Geen support online',
     back_to_queue: 'Terug naar wachtrij',
-    expert_prefix: 'Support:',
+    support_prefix: 'Support:',
     exit_zen_mode: 'Zen-modus verlaten',
     enter_zen_mode: 'Zen-modus inschakelen (Focus)',
     notifications_on: 'Meldingen aan \u2014 klik om te dempen',
@@ -411,7 +411,7 @@ const translations: Translations = {
     col_title: 'Titel',
     col_dept: 'Dept',
     col_agent: 'Agent',
-    col_expert: 'Support',
+    col_support: 'Support',
     col_created: 'Aangemaakt',
     col_closed: 'Gesloten',
     export_csv: 'Exporteer naar CSV',
@@ -424,7 +424,7 @@ const translations: Translations = {
     feedback_sent: 'Bedankt voor je feedback!',
 
     rate_experience: 'Beoordeel je ervaring',
-    rate_expert_desc: 'Hoe was je sessie met',
+    rate_support_desc: 'Hoe was je sessie met',
     rating_comment_placeholder: 'Extra opmerkingen? (optioneel)',
     submit_rating: 'Verstuur',
     skip: 'Overslaan',

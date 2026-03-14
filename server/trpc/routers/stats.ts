@@ -2,7 +2,6 @@ import { z } from 'zod';
 import { router, adminProcedure, roleProcedure } from '../trpc.js';
 import { query, get } from '../../db.js';
 import { computeLiveDayStats } from '../../services/stats.js';
-import { getLLMSummary } from '../../services/llm.js';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { Ticket, User } from '../../types/index.js';
@@ -30,7 +29,7 @@ interface HistoricalStatRow {
 interface RatingRow {
   id: string;
   ticketId: string;
-  expertId: string;
+  supportId: string;
   rating: number;
   createdAt: string;
 }
@@ -57,13 +56,13 @@ interface DayData {
   deptCompliant: Record<string, number>;
   hourly: number[];
   hourlyStaffing?: HourlyStaffingItem[];
-  expertIds?: Set<string> | string[];
+  supportIds?: Set<string> | string[];
 }
 
 interface HourlyStaffingItem {
   hour: number;
   tickets: number;
-  experts: number;
+  support: number;
   slaResolved?: number;
   slaCompliant?: number;
 }
@@ -71,7 +70,7 @@ interface HourlyStaffingItem {
 interface HourlyStaffingAccumulator {
   hour: number;
   tickets: number;
-  experts: number;
+  support: number;
   dayCount: number;
   slaResolved: number;
   slaCompliant: number;
@@ -90,7 +89,7 @@ interface RatingsByDeptAccumulator {
   count: number;
 }
 
-interface ExpertMapEntry {
+interface SupportMapEntry {
   id: string;
   name: string;
   total: number;
@@ -124,7 +123,7 @@ interface LabelCountRow {
 }
 
 export const statsRouter = router({
-  getGlobalStats: roleProcedure(['admin', 'expert'])
+  getGlobalStats: roleProcedure(['admin', 'support'])
     .input(z.object({
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
@@ -206,7 +205,7 @@ export const statsRouter = router({
         const ratingsByDeptAgg: Record<string, RatingsByDeptAccumulator> = {};
         const deptResolvedAgg: Record<string, number> = {};
         const deptCompliantAgg: Record<string, number> = {};
-        const expertIdsAgg = new Set<string>();
+        const supportIdsAgg = new Set<string>();
         const perDayData: PerDayEntry[] = [];
 
         for (const date of allDays) {
@@ -317,8 +316,8 @@ export const statsRouter = router({
           if (!hist) {
               const dayTickets = liveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
               dayTickets.forEach(t => {
-                  if (t.expertJoinedAt && t.createdAt) {
-                      allResponseTimes.push(new Date(t.expertJoinedAt).getTime() - new Date(t.createdAt).getTime());
+                  if (t.supportJoinedAt && t.createdAt) {
+                      allResponseTimes.push(new Date(t.supportJoinedAt).getTime() - new Date(t.createdAt).getTime());
                   }
               });
           } else {
@@ -333,10 +332,10 @@ export const statsRouter = router({
               if (slot) {
                 slot.count += item.tickets;
                 if (!hourlyStaffingMap[item.hour]) {
-                  hourlyStaffingMap[item.hour] = { hour: item.hour, tickets: 0, experts: 0, dayCount: 0, slaResolved: 0, slaCompliant: 0 };
+                  hourlyStaffingMap[item.hour] = { hour: item.hour, tickets: 0, support: 0, dayCount: 0, slaResolved: 0, slaCompliant: 0 };
                 }
                 hourlyStaffingMap[item.hour].tickets += item.tickets;
-                hourlyStaffingMap[item.hour].experts += item.experts;
+                hourlyStaffingMap[item.hour].support += item.support;
                 hourlyStaffingMap[item.hour].slaResolved += (item.slaResolved || 0);
                 hourlyStaffingMap[item.hour].slaCompliant += (item.slaCompliant || 0);
                 hourlyStaffingMap[item.hour].dayCount++;
@@ -346,14 +345,14 @@ export const statsRouter = router({
             dayData.hourly.forEach((count: number, h: number) => {
               hourlyMap[h].count += count;
               if (!hourlyStaffingMap[h]) {
-                hourlyStaffingMap[h] = { hour: h, tickets: 0, experts: 0, dayCount: 0, slaResolved: 0, slaCompliant: 0 };
+                hourlyStaffingMap[h] = { hour: h, tickets: 0, support: 0, dayCount: 0, slaResolved: 0, slaCompliant: 0 };
               }
               hourlyStaffingMap[h].tickets += count;
               hourlyStaffingMap[h].dayCount++;
             });
           }
 
-          if (dayData.expertIds) (dayData.expertIds as string[]).forEach((id: string) => expertIdsAgg.add(id));
+          if (dayData.supportIds) (dayData.supportIds as string[]).forEach((id: string) => supportIdsAgg.add(id));
 
           Object.entries(dayData.deptResolved || {}).forEach(([d, count]) => {
             deptResolvedAgg[d] = (deptResolvedAgg[d] || 0) + (count as number);
@@ -400,7 +399,7 @@ export const statsRouter = router({
         }
 
         const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-        const waitingTickets = (await query('SELECT created_at FROM tickets WHERE status = $1 AND expert_id IS NULL AND created_at >= $2', ['open', thirtyMinsAgo])) as unknown as { createdAt: string }[];
+        const waitingTickets = (await query('SELECT created_at FROM tickets WHERE status = $1 AND support_id IS NULL AND created_at >= $2', ['open', thirtyMinsAgo])) as unknown as { createdAt: string }[];
         let oldest = 0;
         waitingTickets.forEach(t => {
           if (t.createdAt) {
@@ -444,40 +443,40 @@ export const statsRouter = router({
           sentimentByDeptOut[d] = { avg: s.count > 0 ? Math.round((s.sum / s.count) * 100) / 100 : null, count: s.count };
         });
 
-        const expertMap: Record<string, ExpertMapEntry> = {};
+        const supportMap: Record<string, SupportMapEntry> = {};
         allLiveTickets.forEach(t => {
-          if (!t.expertName || !t.expertId) return;
-          if (!expertMap[t.expertId]) {
-            expertMap[t.expertId] = { id: t.expertId, name: t.expertName, total: 0, today: 0, trendMap: {}, ratingSum: 0, ratingCount: 0, deptStats: {} };
+          if (!t.supportName || !t.supportId) return;
+          if (!supportMap[t.supportId]) {
+            supportMap[t.supportId] = { id: t.supportId, name: t.supportName, total: 0, today: 0, trendMap: {}, ratingSum: 0, ratingCount: 0, deptStats: {} };
           }
-          const expert = expertMap[t.expertId];
-          expert.total++;
+          const support = supportMap[t.supportId];
+          support.total++;
           const d = t.dept || 'Unknown';
-          if (!expert.deptStats[d]) expert.deptStats[d] = { sum: 0, count: 0, tickets: 0 };
-          expert.deptStats[d].tickets++;
+          if (!support.deptStats[d]) support.deptStats[d] = { sum: 0, count: 0, tickets: 0 };
+          support.deptStats[d].tickets++;
           const dateKey = t.createdAt ? t.createdAt.substring(0, 10) : '';
-          if (dateKey === today) expert.today++;
-          if (!expert.trendMap[dateKey]) expert.trendMap[dateKey] = 0;
-          expert.trendMap[dateKey]++;
+          if (dateKey === today) support.today++;
+          if (!support.trendMap[dateKey]) support.trendMap[dateKey] = 0;
+          support.trendMap[dateKey]++;
         });
 
         for (const r of liveRatings) {
-          if (!r.expertId) continue;
-          if (!expertMap[r.expertId]) {
-            const u = (await get('SELECT name FROM users WHERE id = $1', [r.expertId])) as unknown as User;
-            expertMap[r.expertId] = { id: r.expertId, name: u?.name || 'Unknown Expert', total: 0, today: 0, trendMap: {}, ratingSum: 0, ratingCount: 0, deptStats: {} };
+          if (!r.supportId) continue;
+          if (!supportMap[r.supportId]) {
+            const u = (await get('SELECT name FROM users WHERE id = $1', [r.supportId])) as unknown as User;
+            supportMap[r.supportId] = { id: r.supportId, name: u?.name || 'Unknown Support', total: 0, today: 0, trendMap: {}, ratingSum: 0, ratingCount: 0, deptStats: {} };
           }
-          const expert = expertMap[r.expertId];
-          expert.ratingSum += r.rating;
-          expert.ratingCount++;
+          const support = supportMap[r.supportId];
+          support.ratingSum += r.rating;
+          support.ratingCount++;
           const ticket = allLiveTickets.find(t => t.id === r.ticketId);
           const d = ticket?.dept || 'Unknown';
-          if (!expert.deptStats[d]) expert.deptStats[d] = { sum: 0, count: 0, tickets: 0 };
-          expert.deptStats[d].sum += r.rating;
-          expert.deptStats[d].count++;
+          if (!support.deptStats[d]) support.deptStats[d] = { sum: 0, count: 0, tickets: 0 };
+          support.deptStats[d].sum += r.rating;
+          support.deptStats[d].count++;
         }
 
-        const expertStats = await Promise.all(Object.values(expertMap).map(async (e) => {
+        const supportStats = await Promise.all(Object.values(supportMap).map(async (e) => {
           const trend = allDays.map(date => ({ date: date.substring(5), count: e.trendMap[date] || 0 }));
           const avgRating = e.ratingCount > 0 ? Math.round((e.ratingSum / e.ratingCount) * 10) / 10 : null;
           const deptRatings: Record<string, number | null> = {};
@@ -486,7 +485,7 @@ export const statsRouter = router({
           });
           return { name: e.name, total: e.total, today: e.today, trend, avgRating, deptRatings, depts: Object.keys(e.deptStats).sort() };
         }));
-        expertStats.sort((a, b) => b.total - a.total);
+        supportStats.sort((a, b) => b.total - a.total);
 
         const agentMap: Record<string, AgentMapEntry> = {};
         allLiveTickets.forEach(t => {
@@ -512,13 +511,13 @@ export const statsRouter = router({
         const prevStartStr = prevStart.toISOString().slice(0, 10);
         const prevEndStr = prevEnd.toISOString().slice(0, 10);
 
-        let prevHistSql = `SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(sla_resolved) as slares, AVG(sla_compliant) as slacomp
+        let prevHistSql = `SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(sla_resolved) as slares, AVG(sla_compliant) as slacomp, AVG(avg_rating) as avgrat
                            FROM daily_stats
                            WHERE date >= $1 AND date <= $2`;
         if (excludeWeekends) {
             prevHistSql += " AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)";
         }
-        const prevHist = (await query(prevHistSql, [prevStartStr, prevEndStr])) as unknown as PrevHistRow[];
+        const prevHist = (await query(prevHistSql, [prevStartStr, prevEndStr])) as unknown as (PrevHistRow & { avgrat: number | null })[];
 
         const prevSlares = prevHist[0]?.slares ?? 0;
         const prevSlacomp = prevHist[0]?.slacomp ?? 0;
@@ -529,6 +528,7 @@ export const statsRouter = router({
           avgDurationMinutes: Math.round((prevHist[0]?.avgdur || 0) / 60000),
           abandonedCount: prevHist[0]?.abandoned || 0,
           slaHealth: prevSlares > 0 ? Math.round((prevSlacomp / prevSlares) * 100) : 100,
+          avgRating: prevHist[0]?.avgrat ? Math.round(prevHist[0].avgrat * 10) / 10 : null,
         };
 
         const responseData = {
@@ -546,13 +546,13 @@ export const statsRouter = router({
           hourlyStaffing: Object.values(hourlyStaffingMap).map(h => ({
             hour: h.hour,
             tickets: h.dayCount > 0 ? Math.round((h.tickets / h.dayCount) * 10) / 10 : 0,
-            experts: h.dayCount > 0 ? Math.round((h.experts / h.dayCount) * 10) / 10 : 0,
+            support: h.dayCount > 0 ? Math.round((h.support / h.dayCount) * 10) / 10 : 0,
             slaHealth: h.slaResolved > 0 ? Math.round((h.slaCompliant / h.slaResolved) * 100) : 100
           })).sort((a, b) => a.hour - b.hour),
-          dailyTrend, trendGranularity, expertStats, agentStats, slaHealth, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
+          dailyTrend, trendGranularity, supportStats, agentStats, slaHealth, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
           waitingOver3: waitingTickets.filter(t => t.createdAt && (now.getTime() - new Date(t.createdAt).getTime()) > 3 * 60 * 1000).length,
           dscCount: totalDsc, fotCount: totalFot, globalDscCount: globalDsc, globalFotCount: globalFot, resolutionRate: totalCount > 0 ? Math.round((totalClosed / totalCount) * 100) : 0,
-          avgConcurrency: expertIdsAgg.size > 0 ? Math.round((totalCount / expertIdsAgg.size) * 10) / 10 : 0,
+          avgConcurrency: supportIdsAgg.size > 0 ? Math.round((totalCount / supportIdsAgg.size) * 10) / 10 : 0,
           deptSla: {
             DSC: deptResolvedAgg['DSC'] > 0 ? Math.round((deptCompliantAgg['DSC'] || 0) / deptResolvedAgg['DSC'] * 100) : 0,
             FOT: deptResolvedAgg['FOT'] > 0 ? Math.round((deptCompliantAgg['FOT'] || 0) / deptResolvedAgg['FOT'] * 100) : 0,

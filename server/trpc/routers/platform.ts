@@ -4,7 +4,6 @@ import { db } from '../../db.js';
 import { partners, memberships, users } from '../../db/schema.js';
 import { eq, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import logger from '../../utils/logger.js';
 
 export const platformRouter = router({
   listPartners: platformProcedure.query(async () => {
@@ -30,6 +29,8 @@ export const platformRouter = router({
       enableActionableAi: z.boolean().default(true),
       departments: z.string(), // JSON string
       aiEnabled: z.boolean().default(true),
+      themeConfig: z.string().optional(), // JSON string
+      ollamaModel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       try {
@@ -51,6 +52,8 @@ export const platformRouter = router({
             enableActionableAi: input.enableActionableAi,
             departments: input.departments,
             aiEnabled: input.aiEnabled,
+            themeConfig: input.themeConfig,
+            ollamaModel: input.ollamaModel,
           }
         });
         return { success: true };
@@ -70,7 +73,7 @@ export const platformRouter = router({
         dept: memberships.dept,
       })
       .from(memberships)
-      .join(users, eq(memberships.userId, users.id))
+      .innerJoin(users, eq(memberships.userId, users.id))
       .where(eq(memberships.partnerId, input.partnerId));
     }),
 

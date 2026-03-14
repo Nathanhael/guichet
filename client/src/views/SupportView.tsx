@@ -12,7 +12,7 @@ import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import PartnerSwitcher from '../components/PartnerSwitcher';
 import { requestNotificationPermission } from '../utils/notifications';
-import { Ticket, Message, UserRole } from '../types';
+import { Ticket } from '../types';
 import { getTicketTime } from '../utils/dateUtils';
 import { trpc } from '../utils/trpc';
 
@@ -42,6 +42,7 @@ function statusDot(status: string) {
 function StatusPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const t = useT();
 
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
@@ -78,7 +79,7 @@ function StatusPicker({ value, onChange }: { value: string; onChange: (v: string
               <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
               {t(s.label)}
               {s.key === value && (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-auto text-brand-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 ml-auto text-brand-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               )}
@@ -139,16 +140,8 @@ function vsplitGridClass(count: number) {
   return 'grid-cols-4';
 }
 
-interface OnlineExpertInfo {
-  userId: string;
-  name: string;
-  role: string | UserRole;
-  status?: string;
-}
-
 export default function SupportView() {
-  const { user, tickets, setTickets, expertOpenTickets, addExpertOpenTicket, removeExpertOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses, focusMode, toggleFocusMode } = useStore();
-  const onlineExperts = useStore(s => s.onlineExperts as unknown as OnlineExpertInfo[]);
+  const { user, tickets, setTickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses, focusMode, toggleFocusMode, activePartnerId, memberships, activeMembershipId, onlineSupportUsers } = useStore();
   const t = useT();
   const [myStatus, setMyStatus] = useState('available');
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -161,7 +154,6 @@ export default function SupportView() {
   const [archivedTickets, setArchivedTickets] = useState<Ticket[]>([]);
   const [archiveTotal, setArchiveTotal] = useState(0);
   const [archiveOffset, setArchiveOffset] = useState(0);
-  const [archiveLoading, setArchiveLoading] = useState(false);
   const [archiveSearch, setArchiveSearch] = useState('');
   const [archiveDept, setArchiveDept] = useState('all');
   const [focusedTicketId, setFocusedTicketId] = useState<string | null>(null);
@@ -169,36 +161,48 @@ export default function SupportView() {
   const ARCHIVE_LIMIT = ARCHIVE_PAGE_SIZE;
 
   // tRPC: Labels & Canned Responses
-  trpc.label.list.useQuery(undefined, {
-    onSuccess: (data) => setAllLabels(data),
+  const labelsQuery = trpc.label.list.useQuery(undefined, {
+    enabled: !!activePartnerId,
   });
-  trpc.cannedResponse.list.useQuery(undefined, {
-    onSuccess: (data) => setCannedResponses(data),
-  });
+  useEffect(() => {
+    if (labelsQuery.data) setAllLabels(labelsQuery.data as any);
+  }, [labelsQuery.data, setAllLabels]);
+
+  const cannedResponsesQuery = trpc.cannedResponse.list.useQuery(
+    { partnerId: activePartnerId || '' },
+    { enabled: !!activePartnerId }
+  );
+  useEffect(() => {
+    if (cannedResponsesQuery.data) setCannedResponses(cannedResponsesQuery.data as any);
+  }, [cannedResponsesQuery.data, setCannedResponses]);
 
   // tRPC: Active Tickets
-  trpc.ticket.list.useQuery(
+  const ticketsQuery = trpc.ticket.list.useQuery(
     {}, // Open/Pending
     {
-      onSuccess: (data) => {
-        if (Array.isArray(data)) {
-          setTickets(data.filter((tk) => tk.status !== 'closed') as any);
-        }
-      },
       refetchInterval: 30000,
     }
   );
+  useEffect(() => {
+    if (ticketsQuery.data && Array.isArray(ticketsQuery.data)) {
+      setTickets(ticketsQuery.data.filter((tk) => tk.status !== 'closed') as any);
+    }
+  }, [ticketsQuery.data, setTickets]);
 
   // tRPC: Preview Messages
-  const { data: previewMessages = [] } = trpc.message.list.useQuery(
+  const previewMessagesQuery = trpc.message.list.useQuery(
     { ticketId: previewTicketId || '' },
     {
       enabled: !!previewTicketId,
     }
   );
+  const previewMessages = (previewMessagesQuery.data || []) as any[];
 
   // tRPC: Set Status
   const setStatusMutation = trpc.presence.setStatus.useMutation();
+
+  const activeMembership = memberships.find(m => m.id === activeMembershipId);
+  const partnerName = activeMembership?.partnerName || 'Tessera';
 
   useEffect(() => {
     if (!toast) return;
@@ -219,9 +223,9 @@ export default function SupportView() {
 
     // Auto-leave active chats on break or lunch
     if (status === 'break' || status === 'lunch') {
-      [...expertOpenTickets].forEach((ticketId) => {
-        getSocket().emit('expert:leave', { ticketId, expertId: user.id, expertName: user.name });
-        removeExpertOpenTicket(ticketId);
+      [...supportOpenTickets].forEach((ticketId) => {
+        getSocket().emit('support:leave', { ticketId, supportId: user.id, supportName: user.name });
+        removeSupportOpenTicket(ticketId);
         clearUnread(ticketId);
         if (focusedTicketId === ticketId) setFocusedTicketId(null);
       });
@@ -240,14 +244,18 @@ export default function SupportView() {
     },
     {
       enabled: sidebarTab === 'archive',
-      onSuccess: (data: any) => {
-        if (data.tickets) {
-          setArchivedTickets((prev) => archiveOffset === 0 ? data.tickets : [...prev, ...data.tickets]);
-          setArchiveTotal(data.total);
-        }
-      }
     }
   );
+
+  useEffect(() => {
+    if (archiveQuery.data) {
+      const data = archiveQuery.data as any;
+      if (data.tickets) {
+        setArchivedTickets((prev) => archiveOffset === 0 ? data.tickets : [...prev, ...data.tickets]);
+        setArchiveTotal(data.total);
+      }
+    }
+  }, [archiveQuery.data, archiveOffset]);
 
   function switchSidebarTab(tab: 'queue' | 'archive') {
     setSidebarTab(tab);
@@ -264,7 +272,7 @@ export default function SupportView() {
   
   const queueFiltered = filterDept === 'all' ? activeTicketsList : activeTicketsList.filter((tk) => tk.dept === filterDept);
   
-  const openTabTickets = expertOpenTickets
+  const openTabTickets = supportOpenTickets
     .map((id) => tickets.find((tk) => tk.id === id))
     .filter((tk): tk is Ticket => !!tk)
     .slice(0, MAX_OPEN_CHATS);
@@ -272,7 +280,7 @@ export default function SupportView() {
   const previewTicket = previewTicketId
     ? (tickets.find((tk) => tk.id === previewTicketId) || archivedTickets.find((tk) => tk.id === previewTicketId))
     : null;
-  const showPreview = !!previewTicket && !expertOpenTickets.includes(previewTicketId!);
+  const showPreview = !!previewTicket && !supportOpenTickets.includes(previewTicketId!);
 
   const atMaxChats = openTabTickets.length >= MAX_OPEN_CHATS;
 
@@ -282,14 +290,14 @@ export default function SupportView() {
         if (typeof p === 'string') return p === user.id;
         return p.id === user.id;
     });
-    if (expertOpenTickets.includes(ticket.id) || isParticipant) {
-      if (!expertOpenTickets.includes(ticket.id)) {
+    if (supportOpenTickets.includes(ticket.id) || isParticipant) {
+      if (!supportOpenTickets.includes(ticket.id)) {
         if (atMaxChats) {
           setToast(t('max_chats_reached') || 'You can only have up to 4 active chats at a time.');
           return;
         }
-        addExpertOpenTicket(ticket.id);
-        getSocket().emit('expert:join', { ticketId: ticket.id, expertId: user.id, expertName: user.name, expertLang: user.lang });
+        addSupportOpenTicket(ticket.id);
+        getSocket().emit('support:join', { ticketId: ticket.id, supportId: user.id, supportName: user.name, supportLang: user.lang });
       }
       switchTab(ticket.id);
       setPreviewTicketId(null);
@@ -306,13 +314,13 @@ export default function SupportView() {
       setToast(t('max_chats_reached') || 'You can only have up to 4 active chats at a time.');
       return;
     }
-    getSocket().emit('expert:join', {
+    getSocket().emit('support:join', {
       ticketId: ticket.id,
-      expertId: user.id,
-      expertName: user.name,
-      expertLang: user.lang,
+      supportId: user.id,
+      supportName: user.name,
+      supportLang: user.lang,
     });
-    addExpertOpenTicket(ticket.id);
+    addSupportOpenTicket(ticket.id);
     setActiveTab(ticket.id);
     clearUnread(ticket.id);
     setPreviewTicketId(null);
@@ -324,7 +332,7 @@ export default function SupportView() {
   }
 
   function closeTab(ticketId: string) {
-    removeExpertOpenTicket(ticketId);
+    removeSupportOpenTicket(ticketId);
     clearUnread(ticketId);
     if (focusedTicketId === ticketId) setFocusedTicketId(null);
     if (activeTab === ticketId) {
@@ -359,7 +367,7 @@ export default function SupportView() {
         <div className="flex items-center gap-3">
           <span className={`font-bold transition-all duration-500 tracking-tight ${focusMode ? 'text-lg opacity-80' : 'text-xl'}`}>{partnerName} Support</span>
           {!focusMode && (
-            <span className={`text-xs px-2.5 py-1 rounded-md font-semibold tracking-wide transition-colors bg-brand-800 border border-brand-700`}>Expert</span>
+            <span className={`text-xs px-2.5 py-1 rounded-md font-semibold tracking-wide transition-colors bg-brand-800 border border-brand-700`}>Support</span>
           )}
         </div>
         <div className="flex items-center gap-4">
@@ -426,11 +434,11 @@ export default function SupportView() {
                     <h2 className="font-semibold text-solarized-base01 dark:text-solarized-base1 text-sm uppercase tracking-wide">{t('queue')}</h2>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-medium">
-                        {queueFiltered.filter(tk => !tk.expertName).length} {t('waiting')}
+                        {queueFiltered.filter(tk => !tk.supportName).length} {t('waiting')}
                       </span>
-                      {queueFiltered.filter(tk => tk.expertName).length > 0 && (
+                      {queueFiltered.filter(tk => tk.supportName).length > 0 && (
                         <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                          {queueFiltered.filter(tk => tk.expertName).length} {t('active')}
+                          {queueFiltered.filter(tk => tk.supportName).length} {t('active')}
                         </span>
                       )}
                     </div>
@@ -476,14 +484,14 @@ export default function SupportView() {
                   ) : (
                     <div className="space-y-4 pb-4">
                       {/* Waiting Queue */}
-                      {queueFiltered.filter(tk => !tk.expertName).length > 0 && (
+                      {queueFiltered.filter(tk => !tk.supportName).length > 0 && (
                         <div>
                           <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
                             {t('waiting_badge')}
                           </h3>
                           <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
-                            {queueFiltered.filter(tk => !tk.expertName).map((ticket) => {
-                              const alreadyOpen = expertOpenTickets.includes(ticket.id);
+                            {queueFiltered.filter(tk => !tk.supportName).map((ticket) => {
+                              const alreadyOpen = supportOpenTickets.includes(ticket.id);
                               const isPreviewed = previewTicketId === ticket.id;
                               const time = getTicketTime(ticket.createdAt);
                               return (
@@ -541,8 +549,7 @@ export default function SupportView() {
                                                   <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
                                                 ) : (
                                                   <span className="text-brand-700 dark:text-brand-300">
-                                                    {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                                                  </span>
+                                                    {pName.toString().split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}                                                  </span>
                                                 )}
                                               </div>
                                             );
@@ -559,14 +566,14 @@ export default function SupportView() {
                       )}
     
                       {/* Handled Queue */}
-                      {queueFiltered.filter(tk => tk.expertName).length > 0 && (
+                      {queueFiltered.filter(tk => tk.supportName).length > 0 && (
                         <div>
                           <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
                             {t('in_progress')}
                           </h3>
                           <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
-                            {queueFiltered.filter(tk => tk.expertName).map((ticket) => {
-                              const alreadyOpen = expertOpenTickets.includes(ticket.id);
+                            {queueFiltered.filter(tk => tk.supportName).map((ticket) => {
+                              const alreadyOpen = supportOpenTickets.includes(ticket.id);
                               const isPreviewed = previewTicketId === ticket.id;
                               const time = getTicketTime(ticket.createdAt);
                               return (
@@ -624,8 +631,7 @@ export default function SupportView() {
                                                   <img src={pAvatar} alt={pName} className="w-full h-full object-cover" />
                                                 ) : (
                                                   <span className="text-brand-700 dark:text-brand-300">
-                                                    {pName.toString().split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                                                  </span>
+                                                    {pName.toString().split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()}                                                  </span>
                                                 )}
                                               </div>
                                             );
@@ -684,7 +690,7 @@ export default function SupportView() {
                         <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
                           {archivedTickets.map((ticket) => {
                             const isPreviewed = previewTicketId === ticket.id;
-                            const closedTime = getTicketTime(ticket.closedAt);
+                            const closedTime = getTicketTime(ticket.closedAt || undefined);
                             return (
                               <li
                                 key={ticket.id}
@@ -707,7 +713,7 @@ export default function SupportView() {
                                     {ticket.dareRef && <span title="Dare Ref">{ticket.dareRef}</span>}
                                   </div>
                                 )}
-                                {ticket.expertName && <p className="text-[11px] text-solarized-base1 font-medium">{t('expert_prefix')} {ticket.expertName}</p>}
+                                {ticket.supportName && <p className="text-[11px] text-solarized-base1 font-medium">{t('support_prefix')} {ticket.supportName}</p>}
                                 {ticket.closingNotes && (
                                   <p className="text-xs text-solarized-base1 mt-1.5 italic line-clamp-2 border-l-2 border-amber-300 dark:border-amber-700 pl-2">
                                     {ticket.closingNotes}
@@ -735,16 +741,16 @@ export default function SupportView() {
                 </div>
               )}
     
-              {/* Online experts */}
+              {/* Online support */}
               <div className="border-t border-solarized-base2 dark:border-brand-700 px-3 py-2 shrink-0">
                 <p className="text-xs text-solarized-base1 uppercase tracking-wide mb-1.5 px-1">
-                  {t('online_experts')} {onlineExperts.length > 0 && <span className="text-green-500">· {onlineExperts.length}</span>}
+                  {t('online_support')} {onlineSupportUsers.length > 0 && <span className="text-green-500">· {onlineSupportUsers.length}</span>}
                 </p>
-                {onlineExperts.length === 0 ? (
-                  <p className="text-xs text-solarized-base1 px-1">{t('no_experts_online')}</p>
+                {onlineSupportUsers.length === 0 ? (
+                  <p className="text-xs text-solarized-base1 px-1">{t('no_support_online')}</p>
                 ) : (
                   <div className="flex flex-wrap gap-1 px-1">
-                    {onlineExperts.slice(0, 12).map((e) => (
+                    {onlineSupportUsers.slice(0, 12).map((e) => (
                       <div
                         key={e.userId}
                         title={`${e.name}${e.status && e.status !== 'available' ? ` · ${t(STATUSES.find(s => s.key === e.status)?.label || '')}` : ''}`}
@@ -756,9 +762,9 @@ export default function SupportView() {
                         )}
                       </div>
                     ))}
-                    {onlineExperts.length > 12 && (
+                    {onlineSupportUsers.length > 12 && (
                       <div className="w-7 h-7 rounded-full bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 flex items-center justify-center text-xs font-semibold ring-2 ring-white dark:ring-gray-800">
-                        +{onlineExperts.length - 12}
+                        +{onlineSupportUsers.length - 12}
                       </div>
                     )}
                   </div>

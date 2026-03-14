@@ -52,7 +52,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should authenticate with query token', () => {
-      const token = jwt.sign({ userId: 'user2', role: 'expert' }, config.JWT_SECRET);
+      const token = jwt.sign({ userId: 'user2', role: 'support' }, config.JWT_SECRET);
       const { req, res, next } = mockReqResNext({
         query: { token },
       });

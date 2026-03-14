@@ -37,7 +37,7 @@ export default function RatingModal() {
     getSocket().emit('rating:submit', {
       ticketId: ratingPrompt.ticketId,
       agentId: user.id,
-      expertId: ratingPrompt.expertId,
+      supportId: ratingPrompt.supportId,
       rating,
       comment: comment.trim() || null,
     });
@@ -70,7 +70,7 @@ export default function RatingModal() {
               {t('rate_experience')}
             </h3>
             <p className="text-sm text-solarized-base1 dark:text-gray-400 mb-4">
-              {t('rate_expert_desc')} <span className="font-medium text-solarized-base01 dark:text-gray-200">{ratingPrompt.expertName}</span>
+              {t('rate_support_desc')} <span className="font-medium text-solarized-base01 dark:text-gray-200">{ratingPrompt.supportName}</span>
             </p>
 
             <div className="flex justify-center gap-1 mb-4">

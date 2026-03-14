@@ -1,9 +1,9 @@
 # GEMINI.md - Project Context & Instructions
 
-This file serves as the primary instructional context for Gemini CLI when working in the **murmur** repository.
+This file serves as the primary instructional context for Gemini CLI when working in the **tessera** repository.
 
 ## Project Overview
-**Murmur** is a high-fidelity prototype of a real-time, multi-tenant customer support platform. It facilitates communication between **Agents** (who create tickets) and **Support Specialists** (who resolve them), with **Admins**, **Managers**, and **Platform Operators** overseeing operations.
+**Tessera** is a high-fidelity prototype of a real-time, multi-tenant customer support platform. It facilitates communication between **Agents** (who create tickets) and **Support Specialists** (who resolve them), with **Admins**, **Managers**, and **Platform Operators** overseeing operations.
 
 ### Key Features
 - **Real-Time Communication**: Powered by Socket.io for low-latency chat and status updates.
@@ -42,6 +42,7 @@ This file serves as the primary instructional context for Gemini CLI when workin
 4.  **Graceful AI Fallback**: Always ensure the system remains functional if the Ollama service is offline or if a partner has `ai_enabled: false`.
 5.  **State Management**: `client/src/store/useStore.ts` is the single source of truth. Always use functional updates for nested ticket/message objects.
 6.  **tRPC & Drizzle Preference**: New data-fetching logic should use **tRPC procedures** instead of raw Express routes. Database interactions must use **Drizzle ORM**.
+7.  **SHELL PREFERENCE**: Always use `pwsh` (PowerShell 7+) for shell commands instead of the default `powershell.exe` to ensure compatibility with modern syntax.
 
 ---
 
@@ -59,7 +60,7 @@ This file serves as the primary instructional context for Gemini CLI when workin
 | **Install Dependencies** | `npm run install:all` (Host-only for IDE sync, then restart Docker) |
 | **Run Backend Tests** | `docker compose exec server npm test` |
 | **Run Frontend Tests** | `docker compose exec client npm test` |
-| **View Server Logs** | `docker logs -f murmur-server-1` |
+| **View Server Logs** | `docker logs -f tessera-server-1` |
 | **Database Studio** | `cd server && npx drizzle-kit studio` (Runs locally) |
 
 ---

@@ -40,7 +40,7 @@ describe('useSocket hook', () => {
   });
 
   it('identifies user when user is set in store', () => {
-    const user = { id: 'u1', name: 'User 1', role: 'agent' as const, dept: 'DSC', lang: 'nl' as const };
+    const user = { id: '1', name: 'Test', role: 'agent' as const, dept: 'DSC', lang: 'nl' as const, isPlatformOperator: false };
     
     // Set user first
     act(() => {
