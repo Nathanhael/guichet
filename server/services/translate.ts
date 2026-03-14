@@ -3,6 +3,7 @@ import { get, run } from '../db.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { TranslationResult, ProcessedMessageResult } from '../types/index.js';
+import { aiPipelineDuration, aiPipelineErrorsTotal } from '../utils/metrics.js';
 
 interface OllamaResponse {
   response: string;
@@ -54,11 +55,18 @@ async function callOllama(prompt: string, type: string, modelOverride?: string):
 }
 
 async function callOllamaWithRetry(prompt: string, type: string, modelOverride?: string, maxRetries = 1): Promise<string> {
+  const end = aiPipelineDuration.startTimer({ type });
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await callOllama(prompt, type, modelOverride);
+      const result = await callOllama(prompt, type, modelOverride);
+      end();
+      return result;
     } catch (err) {
-      if (attempt === maxRetries) throw err;
+      if (attempt === maxRetries) {
+        end();
+        aiPipelineErrorsTotal.inc({ type });
+        throw err;
+      }
       const delay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s...
       logger.warn({ type, attempt, delay, err: err instanceof Error ? err.message : String(err), model: modelOverride || MODEL }, 'Ollama attempt failed, retrying...');
       await new Promise(resolve => setTimeout(resolve, delay));
