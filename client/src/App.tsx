@@ -1,4 +1,4 @@
-import { useEffect, lazy, Suspense } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import useStore from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import { useTheme } from './hooks/useTheme';
@@ -10,6 +10,7 @@ const AgentView = lazy(() => import('./views/AgentView'));
 const SupportView = lazy(() => import('./views/SupportView'));
 const AdminView = lazy(() => import('./views/AdminView'));
 const PlatformView = lazy(() => import('./views/PlatformView'));
+const AgentLiteView = lazy(() => import('./views/AgentLiteView'));
 
 function LoadingFallback() {
   return (
@@ -50,6 +51,9 @@ function ConnectionBanner() {
 export default function App() {
   const { user, darkMode, dyslexicMode, highContrastMode, setAppConfig } = useStore();
   
+  const [showLitePrompt, setShowLitePrompt] = useState(false);
+  const isLiteMode = new URLSearchParams(window.location.search).has('lite');
+
   useSocket();
   useTheme();
 
@@ -84,6 +88,26 @@ export default function App() {
       .catch((err) => console.error('Failed to load app config:', err));
   }, [setAppConfig]);
 
+  // Mobile lite mode prompt
+  useEffect(() => {
+    const { memberships, activeMembershipId } = useStore.getState();
+    const membership = memberships.find(m => m.id === activeMembershipId);
+    if (membership?.role !== 'agent') return;
+    if (isLiteMode) return;
+    if (localStorage.getItem('liteDismissed')) return;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobile) setShowLitePrompt(true);
+  }, [user, isLiteMode]);
+
+  // Service worker registration
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // SW registration failed — app works without it
+      });
+    }
+  }, []);
+
   const renderView = () => {
     if (!user) return <LoginView />;
     
@@ -104,7 +128,8 @@ export default function App() {
 
     return (
       <Suspense fallback={<LoadingFallback />}>
-        {role === 'agent' && <AgentView />}
+        {role === 'agent' && isLiteMode && <AgentLiteView />}
+        {role === 'agent' && !isLiteMode && <AgentView />}
         {role === 'support' && <SupportView />}
         {(role === 'admin' || role === 'manager') && <AdminView />}
       </Suspense>
@@ -115,6 +140,25 @@ export default function App() {
     <>
       <ConnectionBanner />
       {renderView()}
+      {showLitePrompt && (
+        <div className="fixed bottom-4 left-4 right-4 z-[9999] bg-gray-900 text-white p-4 rounded-xl shadow-2xl flex items-center justify-between gap-3">
+          <span className="text-sm font-medium">Switch to mobile view?</span>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { window.location.href = '/?lite=1'; }}
+              className="bg-brand-500 px-4 py-2 rounded-lg text-sm font-bold"
+            >
+              Yes
+            </button>
+            <button
+              onClick={() => { setShowLitePrompt(false); localStorage.setItem('liteDismissed', '1'); }}
+              className="px-4 py-2 rounded-lg text-sm text-gray-300"
+            >
+              No
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
