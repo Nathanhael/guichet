@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Murmur is a real-time, multi-tenant live chat platform. Agents create tickets, support specialists handle them with live translation, and admins monitor qualitative AI insights. Five roles: `agent`, `support`, `manager`, `admin`, `platform_operator`. All code uses ES modules (`"type": "module"`).
+Tessera is a real-time, multi-tenant live chat platform. Agents create tickets, support specialists handle them with live translation, and admins monitor qualitative AI insights. Five roles: `agent`, `support`, `manager`, `admin`, `platform_operator`. All code uses ES modules (`"type": "module"`).
 
 ## Commands
 
@@ -31,7 +31,7 @@ docker-compose up                                          # Start all services 
 docker-compose -f docker-compose.prod.yml up --build      # Production build
 docker-compose exec server npm test                        # Run server tests in container
 docker-compose exec client npm test                        # Run client tests in container
-docker logs -f murmur-server-1                     # Tail server logs
+docker logs -f tessera-server-1                     # Tail server logs
 ```
 
 > [!TIP]
@@ -85,7 +85,7 @@ For detailed diagrams and AI translation pipeline docs, see **[ARCHITECTURE.md](
 **Socket** (`server/socket/handlers.ts`):
 Registers all real-time event handlers. Tickets use rooms named `ticket:{ticketId}`.
 
-Key events: `socket:identify`, `ticket:new`, `expert:join`, `expert:leave`, `ticket:close`, `message:send`, `status:set`, `reaction:toggle`, `ticket:labels:update`.
+Key events: `socket:identify`, `ticket:new`, `support:join`, `support:leave`, `ticket:close`, `message:send`, `status:set`, `reaction:toggle`, `ticket:labels:update`.
 
 **Message pipeline** (integrated in `message.send` tRPC mutation):
 1. Guards (8-tier: length → ALL CAPS → repetition → injection → swearing → threats → discrimination → async Ollama topic check)
@@ -116,7 +116,7 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 
 ### Client (`client/src/`)
 
-**Entry**: `App.tsx` — lazy-loads `AgentView`, `ExpertView`, `AdminView` by role. Fetches `/api/config` on mount. Global connection banner (disconnected/reconnecting).
+**Entry**: `App.tsx` — lazy-loads `AgentView`, `SupportView`, `AdminView` by role. Fetches `/api/config` on mount. Global connection banner (disconnected/reconnecting).
 
 **State**: Zustand store (`store/useStore.ts`) — single source of truth for auth, tickets, messages (normalized by ticketId), presence, UI settings. Persists to localStorage: token, darkMode, dyslexicMode, bionicReading, selectedLang.
 
@@ -148,4 +148,4 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
   - **Sentiment**: Every non-whisper message is asynchronously scored via Ollama (`llm.ts`).
 - **Scaling**: Redis-based Presence and Socket.io adapter. Avoid in-memory state for enterprise scalability.
 - **TypeScript**: 100% type safety. Avoid `any`. Maintain interfaces in `client/src/types/index.ts`.
-- **Ollama**: `http://host.docker.internal:11434`, model `gemmatranslate4b`.
+- **Ollama**: `http://host.docker.internal:11434`, model-agnostic (per-partner config).

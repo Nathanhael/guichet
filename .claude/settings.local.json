@@ -12,7 +12,19 @@
       "Bash(npx:*)",
       "Bash(where node:*)",
       "Skill(commit-commands:commit)",
-      "Skill(claude-md-management:revise-claude-md)"
+      "Skill(claude-md-management:revise-claude-md)",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
+      "mcp__plugin_context-mode_context-mode__ctx_execute",
+      "Bash(gh repo:*)",
+      "Bash(ls:*)",
+      "Skill(nano-banana)",
+      "Bash(cd:*)",
+      "Bash(which gh:*)",
+      "Bash(where gh:*)",
+      "mcp__plugin_context-mode_context-mode__ctx_search",
+      "Bash(npm view:*)",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs"
     ]
   }
 }

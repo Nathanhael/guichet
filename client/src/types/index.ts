@@ -1,4 +1,13 @@
-export type UserRole = 'agent' | 'expert' | 'admin';
+export type UserRole = 'agent' | 'support' | 'admin';
+
+export interface ThemeConfig {
+  glassBlur?: string;
+  glassOpacity?: string;
+  brandPrimary?: string;
+  brandSecondary?: string;
+  accentColor?: string;
+  borderRadius?: string;
+}
 
 export interface PartnerManifest {
   industry: string;
@@ -8,6 +17,8 @@ export interface PartnerManifest {
   ref2Label: string;
   departments: { id: string; label: string }[];
   aiRules?: string;
+  themeConfig?: ThemeConfig;
+  ollamaModel?: string;
 }
 
 export interface Membership {
@@ -23,90 +34,113 @@ export interface Membership {
 export interface User {
   id: string;
   name: string;
+  role: UserRole | 'manager' | 'platform_operator';
   lang: 'nl' | 'fr' | 'en';
   isPlatformOperator: boolean;
   avatarUrl?: string;
+  dept?: string;
 }
 
-export interface StoreState {
-  user: User | null;
-  memberships: Membership[];
-  activeMembershipId: string | null;
-  activePartnerId: string | null;
-  token: string | null;
-  appConfig: AppConfig | null;
-  dyslexicMode: boolean;
-  bionicReading: boolean;
-  highContrastMode: boolean;
-  focusMode: boolean;
-  zenSettings: ZenSettings;
-  selectedLang: string | null;
-  cannedResponses: CannedResponse[];
-  notificationsEnabled: boolean;
-  tickets: Ticket[];
-  archivedTickets: Ticket[];
-  messages: Record<string, Message[]>;
-  onlineExperts: OnlineExpert[];
-  typingUsers: Record<string, Record<string, boolean>>;
-  activeTicketId: string | null;
-  expertOpenTickets: string[];
-  ratingPrompt: RatingPromptData | null;
-  unreadTickets: Set<string>;
-  agentOnline: Record<string, boolean>;
-  businessHoursOpen: boolean;
-  darkMode: boolean;
-  connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
-  allLabels: Label[];
-  queuePosition: { position: number; etaMins: number } | null;
-
-  setMemberships: (memberships: Membership[]) => void;
-  setActiveMembershipId: (id: string | null) => void;
-  setCannedResponses: (responses: CannedResponse[]) => void;
-  updateMessageState: (ticketId: string, messageId: string, updates: Partial<Message>) => void;
-  setNotificationsEnabled: (enabled: boolean) => void;
-  setAppConfig: (config: AppConfig) => void;
-  setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
-  logout: () => void;
-  setTickets: (tickets: Ticket[]) => void;
-  setArchivedTickets: (archived: Ticket[]) => void;
-  addTicket: (ticket: Ticket) => void;
-  updateTicket: (ticketId: string, updates: Partial<Ticket>) => void;
-  toggleTicketLabel: (ticketId: string, labelId: string) => void;
-  setMessages: (ticketId: string, messages: Message[]) => void;
-  addMessage: (ticketId: string, message: Message) => void;
-  setOnlineExperts: (list: OnlineExpert[]) => void;
-  setTyping: (ticketId: string, name: string, isTyping: boolean) => void;
-  setActiveTicketId: (id: string | null) => void;
-  addExpertOpenTicket: (ticketId: string) => void;
-  removeExpertOpenTicket: (ticketId: string) => void;
-  setRatingPrompt: (data: RatingPromptData | null) => void;
-  clearRatingPrompt: () => void;
-  updateMessageReaction: (ticketId: string, messageId: string, reactions: Record<string, string[]>) => void;
-  markUnread: (ticketId: string) => void;
-  clearUnread: (ticketId: string) => void;
-  setAgentOnline: (ticketId: string, online: boolean) => void;
-  setBusinessHoursOpen: (open: boolean) => void;
-  toggleDarkMode: () => void;
-  toggleDyslexicMode: () => void;
-  toggleBionicReading: () => void;
-  toggleHighContrastMode: () => void;
-  toggleFocusMode: () => void;
-  updateZenSettings: (updates: Partial<ZenSettings>) => void;
-  setSelectedLang: (lang: string) => void;
-  setConnectionStatus: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
-  setAllLabels: (labels: Label[]) => void;
-  removeLabelGlobally: (labelId: string) => void;
-  addLabelGlobally: (label: Label) => void;
-  setQueuePosition: (pos: { position: number; etaMins: number } | null) => void;
+export interface AppConfig {
+  ollamaAvailable: boolean;
+  businessHours: {
+    start: string;
+    end: string;
+  };
 }
+
+export interface ZenSettings {
+  autoBionic: boolean;
+  notificationShield: boolean;
+}
+
+export interface CannedResponse {
+  id: string;
+  shortcut: string;
+  text: string;
+}
+
+export interface Label {
+  id: string;
+  name: string;
+  text?: string; // fallback
+  color: string;
+}
+
+export interface Ticket {
+  id: string;
+  dept: string;
+  agentId: string;
+  agentName: string;
+  agentLang: string;
+  ref1?: string | null;
+  ref2?: string | null;
+  cdbId?: string | null; // legacy
+  dareRef?: string | null; // legacy
+  status: 'open' | 'active' | 'closed';
+  supportId?: string | null;
+  supportName?: string | null;
+  supportLang?: string | null;
+  supportJoinedAt?: string | null;
+  createdAt: string;
+  closedAt?: string | null;
+  closingNotes?: string | null;
+  closedBy?: string | null;
+  participants: any[];
+  labels: string[];
+  summary?: string | null;
+}
+
+export interface Message {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  senderLang: string;
+  originalText: string;
+  improvedText: string;
+  processedText: string;
+  text?: string;
+  mediaUrl?: string | null;
+  whisper: boolean | number;
+  system: boolean | number;
+  translationSkipped: boolean | number;
+  fallback: boolean | number;
+  timestamp: string;
+  createdAt?: string; // alias/legacy
+  readAt?: string | null;
+  reactions: any;
+  pending?: boolean;
+}
+
+export interface OnlineSupport {
+  userId: string;
+  name: string;
+  status: string;
+}
+
+export interface RatingPromptData {
+  ticketId: string;
+  supportId: string;
+  supportName: string;
+}
+
+import { AuthSlice } from '../store/slices/authSlice';
+import { TicketSlice } from '../store/slices/ticketSlice';
+import { MessageSlice } from '../store/slices/messageSlice';
+import { UISlice } from '../store/slices/uiSlice';
+import { ConfigSlice } from '../store/slices/configSlice';
+import { RatingSlice } from '../store/slices/ratingSlice';
+
+export interface StoreState extends AuthSlice, TicketSlice, MessageSlice, UISlice, ConfigSlice, RatingSlice {}
 
 export interface StatsTrend {
   date: string;
   count: number;
 }
 
-export interface ExpertStat {
+export interface SupportStat {
   name: string;
   total: number;
   avgRating?: number;
@@ -127,7 +161,7 @@ export interface AgentStat {
 export interface HourlyStat {
   hour: number;
   tickets: number;
-  experts: number;
+  support: number;
   slaHealth: number;
   staffing?: number;
   demand?: number;
@@ -142,7 +176,7 @@ export interface LLMSummaryData {
   updatedAt: string;
 }
 
-export interface ExpertRatingStat {
+export interface SupportRatingStat {
   name: string;
   total: number;
   avgRating?: number;
@@ -155,14 +189,9 @@ export interface HourPoint {
   count: number;
 }
 
-export interface ExpertPerformanceTrend {
+export interface SupportPerformanceTrend {
   name: string;
   trend?: { date: string; count: number }[];
-}
-
-export interface AgentStat {
-  name: string;
-  total: number;
 }
 
 export interface DeptRating {
@@ -190,10 +219,10 @@ export interface AdminStats {
   trendGranularity: 'daily' | 'weekly' | 'monthly';
   dailyTrend: { date: string; total: number; dsc: number; fot: number }[];
   ratingsByDept?: Record<string, DeptRating>;
-  expertStats: { name: string; total: number; today: number }[];
+  supportStats: { name: string; total: number; today: number }[];
   agentStats: { name: string; total: number; today: number }[];
   hourlyDistribution: { hour: number; count: number }[];
-  hourlyStaffing?: { hour: number; tickets: number; experts: number; slaHealth: number }[];
+  hourlyStaffing?: { hour: number; tickets: number; support: number; slaHealth: number }[];
   daySummary?: Record<string, string[]>;
   previousPeriod?: Partial<AdminStats>;
 }
@@ -212,8 +241,10 @@ export interface FeedbackItem {
 export interface Rating {
   id: string;
   rating: number;
-  expertId: string;
+  ticketId: string;
+  supportId: string | null;
+  supportName?: string | null;
   agentId: string;
-  comment?: string;
+  comment?: string | null;
   createdAt: string;
 }

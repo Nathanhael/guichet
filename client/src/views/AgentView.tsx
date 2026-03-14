@@ -1,97 +1,85 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { usePartner } from '../hooks/usePartner';
 import { useT } from '../i18n';
-import BusinessHoursGuard from '../components/BusinessHoursGuard';
 import ChatWindow from '../components/ChatWindow';
+import AmbientBackground from '../components/AmbientBackground';
 import DarkModeToggle from '../components/DarkModeToggle';
-import RatingModal from '../components/RatingModal';
-import FeedbackModal from '../components/FeedbackModal';
-import PartnerSwitcher from '../components/PartnerSwitcher';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import { requestNotificationPermission } from '../utils/notifications';
+import BusinessHoursGuard from '../components/BusinessHoursGuard';
+import FeedbackModal from '../components/FeedbackModal';
+import RatingModal from '../components/RatingModal';
 import { trpc } from '../utils/trpc';
-
+import { motion } from 'framer-motion';
 
 export default function AgentView() {
-  const { user, tickets, setTickets, activeTicketId, setActiveTicketId, logout, notificationsEnabled, setNotificationsEnabled } = useStore();
-  const { manifest, partnerName } = usePartner();
+  const { user, logout, tickets, setTickets, activeTicketId, setActiveTicketId, focusMode } = useStore();
+  const { manifest } = usePartner();
   const t = useT();
-  const [form, setForm] = useState({ dept: '', refValue: '' });
-  const [submitting, setSubmitting] = useState(false);
+  const [dept, setDept] = useState(manifest.departments[0]?.id || 'DSC');
+  const [ref1, setRef1] = useState('');
+  const [ref2, setRef2] = useState('');
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const pendingNavigate = useRef(false);
-
-  // Initialize form with first department
-  useEffect(() => {
-    if (manifest.departments.length > 0 && !form.dept) {
-      setForm(f => ({ ...f, dept: manifest.departments[0].id }));
-    }
-  }, [manifest.departments, form.dept]);
+  const notificationsEnabled = useStore((s) => s.notificationsEnabled);
+  const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
 
   // tRPC Ticket List
-  const { data: ticketList, isLoading } = trpc.ticket.list.useQuery(
+  const { data: ticketList } = trpc.ticket.list.useQuery(
     { agentId: user?.id },
     { 
       enabled: !!user?.id,
-      onSuccess: (data) => setTickets(data as any),
     }
   );
 
   useEffect(() => {
-    if (notificationsEnabled) {
-      requestNotificationPermission();
+    if (ticketList) {
+      setTickets(ticketList as any);
     }
-  }, [notificationsEnabled]);
+  }, [ticketList, setTickets]);
 
-  const myTickets = tickets.filter((tk) => user && tk.agentId === user.id);
-  const activeTicket = myTickets.find((tk) => tk.id === activeTicketId);
+  const activeTicket = tickets.find((tk) => tk.id === activeTicketId);
 
-  useEffect(() => {
-    if (!pendingNavigate.current || myTickets.length === 0) return;
-    const newest = [...myTickets].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
-    setActiveTicketId(newest.id);
-    setSubmitting(false);
-    pendingNavigate.current = false;
-  }, [myTickets.length, setActiveTicketId, myTickets]);
-
-  const submitTicket = (e: React.FormEvent) => {
+  async function createTicket(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) return;
-    setSubmitting(true);
-    pendingNavigate.current = true;
-
+    if (!user || !text.trim()) return;
+    setLoading(true);
     getSocket().emit('ticket:new', {
-      dept: form.dept,
+      dept,
       agentId: user.id,
       agentLang: user.lang,
-      ref1: form.refValue.trim(),
-      text: '',
-      mediaUrl: null,
+      ref1,
+      ref2,
+      text: text.trim(),
     });
-
-    setForm({ dept: manifest.departments[0]?.id || '', refValue: '' });
-  };
+    setRef1('');
+    setRef2('');
+    setText('');
+    setLoading(false);
+  }
 
   if (!user) return null;
 
   return (
     <BusinessHoursGuard>
-    <div className="h-screen flex flex-col overflow-hidden bg-transparent animate-fade-in">
-        <nav className="bg-brand-900/95 backdrop-blur-md text-white px-6 py-3 flex items-center justify-between shadow-lg sticky top-0 z-50 border-b border-brand-800">
+      <div className={`h-screen bg-transparent flex flex-col overflow-hidden relative transition-all duration-700 ${focusMode ? 'zen-mode' : ''}`}>
+        <AmbientBackground />
+        
+        <nav className="relative z-50 px-6 py-3 bg-brand-900/95 backdrop-blur-md border-b border-brand-800 text-white flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-xl tracking-tight">{partnerName} Support</span>
-            <span className="text-xs bg-gradient-to-r from-accent-500 to-rose-500 px-2.5 py-1 rounded-md font-semibold tracking-wide shadow-sm">Agent</span>
+            <span className="text-xl font-bold tracking-tight">{manifest.industry} Support</span>
+            <span className="text-xs px-2.5 py-1 rounded-md bg-brand-800 border border-brand-700 font-semibold tracking-wide">Agent</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-solarized-base1">{user.name} · {user.lang.toUpperCase()}</span>
-            <PartnerSwitcher />
-            {activeTicket && (
-              <button
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-solarized-base2">{user.name}</span>
+            
+            {!activeTicketId && (
+              <button 
                 onClick={() => setActiveTicketId(null)}
-                className="btn-primary"
+                className="bg-brand-500 hover:bg-brand-400 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-brand-500/20 transition-all active:scale-95"
               >
                 {t('new_ticket')}
               </button>
@@ -145,66 +133,86 @@ export default function AgentView() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center p-6">
-              {isLoading && !tickets.length ? (
-                <div className="text-solarized-base1 animate-pulse">Loading your tickets...</div>
-              ) : (
-                <div className="glass-panel p-10 w-full max-w-lg animate-slide-up border border-white/20 dark:border-brand-700/50 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl rounded-3xl shadow-2xl">
-                  <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white mb-2">
-                    {t('hello')}, <span className="text-accent-500">{user.name.split(' ')[1] || user.name}</span>
-                  </h2>
-                  <p className="text-sm text-solarized-base00 dark:text-slate-400 mb-8 font-medium">{t('choose_dept_desc')}</p>
-
-                  <form onSubmit={submitTicket} className="space-y-4">
-                    <div className="flex gap-3">
+            <div className="flex-1 flex flex-col items-center justify-center p-6">
+              {!loading && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="w-full max-w-lg glass-panel p-8 rounded-3xl shadow-2xl border border-white/20 dark:border-brand-700/50"
+                >
+                  <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white mb-2">{t('hello')}, {user.name}</h2>
+                  <p className="text-solarized-base1 dark:text-gray-400 mb-8">{t('choose_dept_desc')}</p>
+                  
+                  <form onSubmit={createTicket} className="space-y-6">
+                    <div className="grid grid-cols-2 gap-3">
                       {manifest.departments.map((d) => (
                         <button
                           key={d.id}
                           type="button"
-                          onClick={() => setForm((f) => ({ ...f, dept: d.id }))}
-                          className={`flex-1 py-4 rounded-xl border-2 text-sm font-semibold transition-all duration-300 hover:-translate-y-1 ${form.dept === d.id
-                            ? d.id === 'dsc' || d.id === 'DSC'
-                              ? 'border-amber-500 bg-gradient-to-b from-amber-50/50 to-solarized-base3 dark:from-amber-900/30 dark:to-brand-800 text-amber-600 dark:text-amber-400 shadow-md'
-                              : 'border-indigo-500 bg-gradient-to-b from-indigo-50/50 to-solarized-base3 dark:from-indigo-900/30 dark:to-brand-800 text-indigo-600 dark:text-indigo-400 shadow-md'
-                            : 'border-solarized-base2 dark:border-brand-700 bg-solarized-base3/50 dark:bg-brand-800/50 text-solarized-base01 dark:text-slate-400 hover:border-accent-300 dark:hover:border-accent-500 hover:shadow-sm'
-                            }`}
+                          onClick={() => setDept(d.id)}
+                          className={`py-3 px-4 rounded-xl border-2 transition-all font-bold text-sm ${
+                            dept === d.id 
+                              ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400' 
+                              : 'border-solarized-base2 dark:border-brand-800 text-solarized-base1 dark:text-gray-500 hover:border-brand-300'
+                          }`}
                         >
-                          <span className="block text-lg font-bold tracking-tight">{d.id.toUpperCase()}</span>
-                          <span className="block text-xs font-medium opacity-80 mt-1">
-                            {d.label}
-                          </span>
+                          {d.label}
                         </button>
                       ))}
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-semibold text-solarized-base01 dark:text-gray-300 mb-2">
-                        {form.dept === 'FOT' || form.dept === 'fot' ? manifest.ref2Label : manifest.ref1Label}{' '}
-                        <span className="text-solarized-base1 font-normal">(optional)</span>
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={form.refValue}
-                        onChange={(e) => {
-                          const digits = e.target.value.replace(/[^0-9]/g, '');
-                          setForm((f) => ({ ...f, refValue: digits.slice(0, 15) }));
-                        }}
-                        placeholder={`e.g. 123456`}
-                        className="input-field"
-                      />
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] uppercase font-black tracking-widest text-solarized-base1 dark:text-gray-500 ml-1">{manifest.ref1Label}</label>
+                          <input
+                            type="text"
+                            value={ref1}
+                            onChange={(e) => setRef1(e.target.value)}
+                            placeholder={t('dare_placeholder')}
+                            className="w-full bg-solarized-base3/50 dark:bg-brand-900/50 border border-solarized-base2 dark:border-brand-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-solarized-base01 dark:text-white"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] uppercase font-black tracking-widest text-solarized-base1 dark:text-gray-500 ml-1">{manifest.ref2Label} <span className="text-[8px] opacity-50">({t('optional')})</span></label>
+                          <input
+                            type="text"
+                            value={ref2}
+                            onChange={(e) => setRef2(e.target.value)}
+                            placeholder={t('case_placeholder')}
+                            className="w-full bg-solarized-base3/50 dark:bg-brand-900/50 border border-solarized-base2 dark:border-brand-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-solarized-base01 dark:text-white"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] uppercase font-black tracking-widest text-solarized-base1 dark:text-gray-500 ml-1">{t('question_problem')}</label>
+                        <textarea
+                          rows={4}
+                          value={text}
+                          onChange={(e) => setText(e.target.value)}
+                          placeholder={t('describe_problem')}
+                          required
+                          className="w-full bg-solarized-base3/50 dark:bg-brand-900/50 border border-solarized-base2 dark:border-brand-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-solarized-base01 dark:text-white resize-none"
+                        />
+                      </div>
                     </div>
 
-                    <div className="pt-2">
-                      <button
-                        type="submit"
-                        disabled={submitting}
-                        className="btn-primary w-full py-3.5 text-base shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
-                      >
-                        {submitting ? t('connecting') : t('connect_with_expert')}
-                      </button>
-                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading || !text.trim()}
+                      className="w-full bg-brand-500 hover:bg-brand-400 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-brand-500/20 transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:transform-none"
+                    >
+                      {loading ? t('connecting') : t('connect_with_support')}
+                    </button>
                   </form>
+                </motion.div>
+              )}
+
+              {loading && (
+                <div className="flex flex-col items-center gap-4 animate-pulse">
+                  <div className="w-16 h-16 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
+                  <p className="text-solarized-base1 dark:text-gray-400 text-sm mt-1">{t('waiting_for_support')}</p>
                 </div>
               )}
             </div>

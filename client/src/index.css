@@ -4,18 +4,19 @@
 @tailwind utilities;
 @layer base {
   :root {
-    --glass-opacity: 0.8;
+    --glass-opacity: 0.3;
+    --glass-blur: 16px;
     --brand-primary: #a855f7;
     --brand-secondary: #3b82f6;
-  }
-    --glass-blur: 12px;
+    --accent-color: #f43f5e;
+    --border-radius: 0.75rem;
     --glass-saturate: 150%;
     --glass-border: rgba(255, 255, 255, 0.4);
   }
 
   .dark {
-    --glass-opacity: 0.6;
-    --glass-blur: 16px;
+    --glass-opacity: 0.1;
+    --glass-blur: 20px;
     --glass-saturate: 180%;
     --glass-border: rgba(255, 255, 255, 0.1);
   }

@@ -1,7 +1,7 @@
 # Specification: Multi-Tenant Agnostic Foundation
 
 ## Objective
-Transform the Murmur prototype from a telecom-specific application into a **multi-tenant platform** capable of serving different partners (projects) with unique branding, logic, and AI rules.
+Transform the Tessera prototype from a telecom-specific application into a **multi-tenant platform** capable of serving different partners (projects) with unique branding, logic, and AI rules.
 
 ---
 

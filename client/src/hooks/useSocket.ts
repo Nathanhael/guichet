@@ -3,7 +3,7 @@ import { playChime } from '../utils/notifications';
 import { io, Socket } from 'socket.io-client';
 import useStore from '../store/useStore';
 import { SOCKET_URL } from '../config';
-import { Ticket, Message, OnlineExpert, Label } from '../types';
+import { Ticket, Message, OnlineSupport, Label } from '../types';
 
 let socket: Socket | null = null;
 
@@ -29,8 +29,7 @@ export function useSocket(): Socket {
     setMessages, 
     setBusinessHoursOpen, 
     setTyping, 
-    setOnlineExperts,
-    addLabelGlobally,
+    setOnlineSupportUsers,
   } = useStore();
   
   const listenersAttached = useRef(false);
@@ -65,7 +64,7 @@ export function useSocket(): Socket {
       useStore.getState().setConnectionStatus('reconnecting');
     });
 
-    // New ticket created (broadcast to experts/admins)
+    // New ticket created (broadcast to support/admins)
     s.on('ticket:created', ({ ticket }: { ticket: Ticket }) => {
       addTicket(ticket);
     });
@@ -76,12 +75,12 @@ export function useSocket(): Socket {
       if (message) addMessage(ticket.id, message);
     });
 
-    // Expert joined a ticket
-    s.on('expert:joined', ({ ticketId, expertName, participants }: { ticketId: string; expertName: string; participants: any[] }) => {
-      updateTicket(ticketId, { expertName, status: 'active', participants: participants || [] });
+    // Support joined a ticket
+    s.on('support:joined', ({ ticketId, supportName, participants }: { ticketId: string; supportName: string; participants: any[] }) => {
+      updateTicket(ticketId, { supportName, status: 'active', participants: participants || [] });
     });
 
-    // History when expert joins
+    // History when support joins
     s.on('ticket:history', ({ ticketId, messages, labels }: { ticketId: string; messages: Message[]; labels: string[] }) => {
       setMessages(ticketId, messages);
       if (labels) updateTicket(ticketId, { labels });
@@ -111,15 +110,15 @@ export function useSocket(): Socket {
       setTyping(ticketId, senderName, typing);
     });
 
-    // Online experts/admins
-    s.on('experts:online', (list: OnlineExpert[]) => {
-      setOnlineExperts(list);
+    // Online support/admins
+    s.on('support:online', (list: OnlineSupport[]) => {
+      setOnlineSupportUsers(list);
     });
 
     // Agent online/offline status
     s.on('agent:status', ({ ticketId, agentId: _agentId, online }: { ticketId: string; agentId: string; online: boolean }) => {
       const state = useStore.getState();
-      state.setAgentOnline(ticketId, online);
+      state.setParticipantOnline(ticketId, online);
       // Add a system message to the chat
       if (!online) {
         state.addMessage(ticketId, {
@@ -127,12 +126,20 @@ export function useSocket(): Socket {
           ticketId,
           senderId: '__system__',
           senderName: 'System',
-          text: `Agent has disconnected.`,
-          translatedText: undefined,
-          mediaUrl: undefined,
-          system: true,
+          senderRole: 'admin',
+          senderLang: 'en',
+          originalText: 'Agent has disconnected.',
+          improvedText: 'Agent has disconnected.',
+          processedText: 'Agent has disconnected.',
+          text: 'Agent has disconnected.',
+          timestamp: new Date().toISOString(),
           createdAt: new Date().toISOString(),
-        } as Message);
+          system: 1,
+          whisper: 0,
+          translationSkipped: 1,
+          fallback: 0,
+          reactions: {},
+        });
       }
     });
 
@@ -152,7 +159,7 @@ export function useSocket(): Socket {
     });
 
     // Ticket closed
-    s.on('ticket:closed', ({ ticketId, expertId: eventExpertId, expertName: eventExpertName }: { ticketId: string; expertId?: string; expertName?: string }) => {
+    s.on('ticket:closed', ({ ticketId, supportId: eventSupportId, supportName: eventSupportName }: { ticketId: string; supportId?: string; supportName?: string }) => {
       updateTicket(ticketId, { status: 'closed' });
       // Trigger rating prompt for agent
       const state = useStore.getState();
@@ -160,14 +167,14 @@ export function useSocket(): Socket {
         const ticket = state.tickets.find((t) => t.id === ticketId);
         if (ticket && ticket.agentId === state.user.id) {
           // Use data from event, fall back to ticket in store
-          const expertId = eventExpertId || ticket.expertId;
-          const expertName = eventExpertName || ticket.expertName;
+          const supportId = eventSupportId || ticket.supportId;
+          const supportName = eventSupportName || ticket.supportName;
 
-          if (expertId && expertName) {
+          if (supportId && supportName) {
             state.setRatingPrompt({
               ticketId,
-              expertId,
-              expertName,
+              supportId,
+              supportName,
             });
           }
         }
@@ -204,7 +211,7 @@ export function useSocket(): Socket {
       s.off('connect_error');
       s.off('ticket:created');
       s.off('ticket:created:self');
-      s.off('expert:joined');
+      s.off('support:joined');
       s.off('ticket:history');
       s.off('message:new');
       s.off('ticket:closed');
@@ -212,7 +219,7 @@ export function useSocket(): Socket {
       s.off('ticket:labels:updated');
       s.off('hours:closed');
       s.off('typing:update');
-      s.off('experts:online');
+      s.off('support:online');
       s.off('agent:status');
       s.off('reaction:updated');
       s.off('rating:saved');
@@ -220,7 +227,7 @@ export function useSocket(): Socket {
       s.off('label:created');
       listenersAttached.current = false;
     };
-  }, [addMessage, addTicket, setMessages, setOnlineExperts, setTyping, updateTicket, setBusinessHoursOpen]);
+  }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursOpen]);
 
   return getSocket();
 }

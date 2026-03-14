@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { LifeBuoy, Sparkles } from 'lucide-react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import BionicText from './BionicText';
 import UserAvatar from './UserAvatar';
 import { Message } from '../types';
-
-const LANG_LABEL: Record<string, string> = { nl: 'NL', fr: 'FR', en: 'EN' };
 
 const REACTION_EMOJIS = [
   { key: 'thumbsUp', emoji: '\uD83D\uDC4D' },
@@ -27,7 +26,7 @@ interface MessageBubbleProps {
 }
 
 export default function MessageBubble({ message, ticketId, searchQuery: _searchQuery = '', isGroupStart = true, isGroupEnd = true }: MessageBubbleProps) {
-  const { user, dyslexicMode, bionicReading, highContrastMode, agentOnline } = useStore();
+  const { user, dyslexicMode, bionicReading, highContrastMode, participantsOnline } = useStore();
   const t = useT();
   const [showOriginal, setShowOriginal] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -82,7 +81,7 @@ export default function MessageBubble({ message, ticketId, searchQuery: _searchQ
 
   const displayText = mainText;
 
-  const time = new Date(message.timestamp || message.createdAt).toLocaleTimeString('en-GB', {
+  const time = new Date(message.timestamp).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -118,7 +117,7 @@ export default function MessageBubble({ message, ticketId, searchQuery: _searchQ
             name={message.senderName || 'User'} 
             size="sm" 
             showStatus 
-            isOnline={agentOnline[ticketId]}
+            isOnline={participantsOnline[ticketId]}
           />
         )}
       </div>

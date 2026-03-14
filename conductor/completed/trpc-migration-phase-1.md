@@ -1,6 +1,6 @@
 # Implementation Plan — tRPC Migration (Phase 1) [COMPLETED]
 
-This plan outlines the first phase of migrating the Murmur application from raw REST/fetch to end-to-end typesafe tRPC. We will focus on the infrastructure and the "Labels" and "Canned Responses" modules.
+This plan outlines the first phase of migrating the Tessera application from raw REST/fetch to end-to-end typesafe tRPC. We will focus on the infrastructure and the "Labels" and "Canned Responses" modules.
 
 ## Objective
 *   Eliminate manual type syncing between frontend and backend.

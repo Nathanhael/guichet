@@ -13,10 +13,10 @@ export const messageRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const isExpert = ctx.user.role === 'expert' || ctx.user.role === 'admin';
+        const isSupport = ctx.user.role === 'support' || ctx.user.role === 'admin';
 
         // Ownership check for agents
-        if (!isExpert) {
+        if (!isSupport) {
           const ticketResult = await db.select({ agentId: tickets.agentId })
             .from(tickets)
             .where(eq(tickets.id, input.ticketId))
@@ -30,7 +30,7 @@ export const messageRouter = router({
         let query = db.select().from(messages).where(eq(messages.ticketId, input.ticketId));
 
         // Agents shouldn't see whispers
-        if (!isExpert) {
+        if (!isSupport) {
           query = db.select().from(messages).where(
             and(
               eq(messages.ticketId, input.ticketId),

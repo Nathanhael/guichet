@@ -1,53 +1,50 @@
-# Murmur
+# Tessera
 
-Local prototype of a real-time, multi-tenant live chat application. Featuring project-agnostic "White-Label" architecture, AI-powered insights, asynchronous sentiment analysis, and a neuro-inclusive Solaris design.
+Tessera is a high-fidelity, real-time multi-tenant customer support platform designed for seamless communication between Agents and Support Specialists.
+
+## 🌟 Key Features
+
+- **Multi-Tenant Architecture**: Complete data isolation with partner-specific branding and AI rules.
+- **Asymmetric AI Pipeline**: Specialized AI strategies for `agent` vs `support` roles.
+- **Real-Time Scaling**: Powered by Socket.io with Redis horizontal scaling and presence tracking.
+- **Neuro-Inclusive Design (Solaris)**: Adaptive UI with glassmorphism, Dyslexic mode, and Bionic Reading.
+- **Actionable AI**: Automated generation of customer scripts and internal procedures.
+- **End-to-End Type Safety**: Built with tRPC, Drizzle ORM, and Zod.
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 18, Vite 5, Tailwind CSS 3, Framer Motion, Zustand.
+- **Backend**: Node.js 20, Express, tRPC, Socket.io.
+- **Database**: PostgreSQL (PostGIS ready), Drizzle ORM, Redis (Presence & Scaling).
+- **AI**: Ollama REST API (Model-agnostic, per-partner configuration).
+- **Runtime**: Docker & Docker Compose.
 
 ## 🚀 Quick Start
 
-1.  **Prerequisites**: Install [Docker](https://www.docker.com/) and [Ollama](https://ollama.com/).
-2.  **Ollama Setup**:
-    ```bash
-    ollama serve
-    ollama pull gemmatranslate4b
-    ```
-3.  **Launch**:
-    ```bash
-    docker-compose up
-    ```
-4.  **Access**: Open `http://localhost:5173` and select a demo user.
+1. **Docker Development**:
+   ```bash
+   docker-compose up
+   ```
+   *The server will be available at http://localhost:3001 and the client at http://localhost:5173.*
 
----
+2. **Environment**:
+   Copy `.env.example` to `.env` and configure your PostgreSQL and Redis credentials.
 
-## 📚 Documentation Library
+3. **Install (Host-only for IDE sync)**:
+   ```bash
+   npm run install:all
+   ```
 
-Explore our structured documentation for deeper insights:
+## 🚨 Critical Mandates (for AI Agents)
 
-### 🛠️ Technical & Architecture
-- **[docs/TECHNICAL.md](./docs/TECHNICAL.md)** -- Multi-tenant system design, database schema, and scalability logic.
-- **[CONTRIBUTING.md](./CONTRIBUTING.md)** -- Solaris design standards and coding conventions.
+- **DOCKER ONLY**: Always execute commands inside containers (`docker compose exec ...`).
+- **SOLARIS UI**: Adhere to glassmorphism standards in `client/src/index.css`.
+- **LOCALIZATION**: Use the `useT` hook for all UI strings.
+- **TYPE SAFETY**: Maintain 100% TypeScript coverage in `client/src/types/index.ts`.
 
-### 🧠 AI & Intelligence
-- **[docs/AI_PIPELINE.md](./docs/AI_PIPELINE.md)** -- Message processing, safety guards, and tenant-aware AI Hub analytics.
+## 📖 Documentation
 
-### 👥 User Guides
-- **[docs/USER_GUIDE.md](./docs/USER_GUIDE.md)** -- Role-based walkthroughs (Agent, Support, Admin, Platform Operator).
-
----
-
-## 🏗️ Core Technology
-
-| Layer | Technology |
-|---|---|
-| **Frontend** | React 18, Vite 5, Tailwind CSS 3, Framer Motion, Zustand |
-| **Backend** | Node 20 (ESM), Express.js, Socket.io, **tRPC** |
-| **Database** | PostgreSQL + **Drizzle ORM**, **Redis** (Socket scaling & Presence) |
-| **AI/ML** | local Ollama (Gemma), Tenant-Aware Sentiment Scoring |
-| **DevOps** | Docker Compose, Healthchecks, Non-root containers |
-
----
-
-## 🛡️ Mandates for AI Assistants
-- **Docker Only**: Never run `npm` on the host. Use `docker compose exec`.
-- **Solaris UI**: Use glassmorphism and gradients defined in `index.css`.
-- **Type Safety**: Maintain 100% TypeScript coverage; avoid `any`.
-- **AI Guidance**: See **[CLAUDE.md](./CLAUDE.md)** and **[GEMINI.md](./GEMINI.md)** for developer rules.
+- **[TECHNICAL.md](./docs/TECHNICAL.md)**: Deep dive into the architecture and scaling.
+- **[AI_PIPELINE.md](./docs/AI_PIPELINE.md)**: Details on the multi-stage AI transformation.
+- **[USER_GUIDE.md](./docs/USER_GUIDE.md)**: Walkthrough of the 5 platform roles.
+- **[CLAUDE.md](./CLAUDE.md)**: Specialized guidance for AI coding assistants.

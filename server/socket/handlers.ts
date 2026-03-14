@@ -1,13 +1,14 @@
 import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import * as presenceService from '../services/presence.js';
-import { runGuards, resetRepetition } from '../services/guards.js';
+import { runGuards } from '../services/guards.js';
 import { processMessage } from '../services/translate.js';
-import { analyzeSentiment } from '../services/llm.js';
+import { analyzeSentiment, summarizeConversation } from '../services/llm.js';
 import { query, get, run, transaction } from '../db.js';
 import { isWithinBusinessHours, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
 import { Ticket, Message, User } from '../types/index.js';
+import { getRedisClients } from '../utils/redis.js';
 
 interface TicketNewPayload {
   agentId: string;
@@ -19,17 +20,17 @@ interface TicketNewPayload {
   mediaUrl?: string;
 }
 
-interface ExpertJoinPayload {
+interface SupportJoinPayload {
   ticketId: string;
-  expertId: string;
-  expertName: string;
-  expertLang: string;
+  supportId: string;
+  supportName: string;
+  supportLang: string;
 }
 
-interface ExpertLeavePayload {
+interface SupportLeavePayload {
   ticketId: string;
-  expertId: string;
-  expertName: string;
+  supportId: string;
+  supportName: string;
 }
 
 interface TicketClosePayload {
@@ -91,8 +92,8 @@ export function registerSocketHandlers(io: Server) {
       // Join partner-specific room for broadcasts
       socket.join(`partner:${partnerId}`);
 
-      if (role === 'support' || role === 'expert' || role === 'admin') {
-        await presenceService.broadcastOnlineExperts(partnerId);
+      if (membership.role === 'support' || membership.role === 'admin') {
+        await presenceService.broadcastOnlineSupport(partnerId);
       }
       
       if (role === 'agent') {
@@ -126,12 +127,13 @@ export function registerSocketHandlers(io: Server) {
         }
 
         const agentUser = (await get('SELECT name FROM users WHERE id = $1', [agentId])) as unknown as User;
-        const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, ref1: ref1 || null, ref2: ref2 || null, status: 'open', expertId: null, createdAt: new Date().toISOString(), participants: '[]' };
+        const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, ref1: ref1 || null, ref2: ref2 || null, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
         await run('INSERT INTO tickets (id, partner_id, dept, agent_id, agent_name, agent_lang, ref_1, ref_2, status, created_at, participants, reopened, reopen_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)', [ticket.id, partnerId, ticket.dept, ticket.agentId, ticket.agentName, ticket.agentLang, ticket.ref1, ticket.ref2, ticket.status, ticket.createdAt, ticket.participants, reopened, reopenCount]);
 
         let message: Message | null = null;
         if (text?.trim()) {
-          const guard = await runGuards(text, agentId);
+          const { pubClient } = getRedisClients();
+          const guard = await runGuards(pubClient, text, agentId);
           message = { id: uuidv4(), ticketId: ticket.id, senderId: agentId, senderName: agentUser?.name || agentId, senderRole: 'agent', senderLang: agentLang, originalText: text, improvedText: guard.text || text, processedText: guard.text || text, whisper: 0, system: 0, translationSkipped: 1, fallback: 0, timestamp: new Date().toISOString(), reactions: '{}' };
           await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [message.id, message.ticketId, message.senderId, message.senderName, 'agent', agentLang, message.originalText, message.processedText, mediaUrl || null, 0, 0, message.timestamp, '{}']);
         }
@@ -142,19 +144,19 @@ export function registerSocketHandlers(io: Server) {
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:new] error'); }
     });
 
-    socket.on('expert:join', async ({ ticketId, expertId, expertName, expertLang }: ExpertJoinPayload) => {
+    socket.on('support:join', async ({ ticketId, supportId, supportName, supportLang }: SupportJoinPayload) => {
       try {
         const ticket = (await get('SELECT * FROM tickets WHERE id = $1', [ticketId])) as unknown as any;
         if (!ticket) return;
         const participants = JSON.parse(ticket.participants || '[]');
-        if (!participants.find((p: Participant) => p.id === expertId)) participants.push({ id: expertId, name: expertName });
-        await run('UPDATE tickets SET support_id = $1, support_name = $2, support_lang = $3, support_joined_at = $4, participants = $5, status = $6 WHERE id = $7', [ticket.support_id || expertId, ticket.support_name || expertName, ticket.support_lang || expertLang, ticket.support_joined_at || new Date().toISOString(), JSON.stringify(participants), 'active', ticketId]);
+        if (!participants.find((p: Participant) => p.id === supportId)) participants.push({ id: supportId, name: supportName });
+        await run('UPDATE tickets SET support_id = $1, support_name = $2, support_lang = $3, support_joined_at = $4, participants = $5, status = $6 WHERE id = $7', [ticket.support_id || supportId, ticket.support_name || supportName, ticket.support_lang || supportLang, ticket.support_joined_at || new Date().toISOString(), JSON.stringify(participants), 'active', ticketId]);
         socket.join(`ticket:${ticketId}`);
         const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Message[]).map(m => ({ ...m, whisper: !!m.whisper, system: !!m.system, reactions: JSON.parse(m.reactions || '{}') }));
         socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
-        io.to(`ticket:${ticketId}`).emit('expert:joined', { ticketId, expertName, participants });
+        io.to(`ticket:${ticketId}`).emit('support:joined', { ticketId, supportName, participants });
         await broadcastQueuePositions();
-      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[expert:join] error'); }
+      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
     });
 
     socket.on('status:set', async ({ status }: { status: string }) => {
@@ -164,16 +166,16 @@ export function registerSocketHandlers(io: Server) {
       }
     });
 
-    socket.on('expert:leave', async ({ ticketId, expertId, expertName }: ExpertLeavePayload) => {
+    socket.on('support:leave', async ({ ticketId, supportId, supportName }: SupportLeavePayload) => {
       try {
         const ticket = (await get('SELECT participants FROM tickets WHERE id = $1', [ticketId])) as unknown as any;
         if (!ticket) return;
         let participants = JSON.parse(ticket.participants || '[]');
-        participants = participants.filter((p: Participant) => p.id !== expertId);
+        participants = participants.filter((p: Participant) => p.id !== supportId);
         await run('UPDATE tickets SET participants = $1 WHERE id = $2', [JSON.stringify(participants), ticketId]);
         socket.leave(`ticket:${ticketId}`);
-        io.to(`ticket:${ticketId}`).emit('expert:left', { ticketId, expertId, expertName, participants });
-      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[expert:leave] error'); }
+        io.to(`ticket:${ticketId}`).emit('support:left', { ticketId, supportId, supportName, participants });
+      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:leave] error'); }
     });
 
     socket.on('ticket:close', async ({ ticketId, closedBy, closingNotes }: TicketClosePayload) => {
@@ -206,13 +208,13 @@ export function registerSocketHandlers(io: Server) {
         const sender = (await get('SELECT name, role, lang FROM users WHERE id = $1', [senderId])) as unknown as SenderInfo;
         
         if (!whisper) {
-          const guard = await runGuards(text, senderId);
+          const { pubClient } = getRedisClients();
+          const guard = await runGuards(pubClient, text, senderId);
           if (!guard.ok) return socket.emit('message:blocked', { code: guard.code });
           text = guard.text;
-          resetRepetition(senderId);
         }
         const recipientLang = (sender.role === 'agent') ? ticket.support_lang : ticket.agent_lang;
-        const { processedText, improvedText, translationSkipped, fallback } = await processMessage(text, sender.role as 'agent' | 'expert', ticket.partner_id, sender.lang, recipientLang || sender.lang);
+        const { processedText, improvedText, translationSkipped, fallback } = await processMessage(text, sender.role as 'agent' | 'support', ticket.partner_id, sender.lang, recipientLang || sender.lang);
         const messageId = uuidv4();
         const now = new Date().toISOString();
         await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [messageId, ticketId, senderId, sender.name, text, processedText, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}']);

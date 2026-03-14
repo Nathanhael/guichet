@@ -1,6 +1,6 @@
 # Implementation Plan — tRPC Migration (Phase 3) [COMPLETED]
 
-This plan outlines the third phase of migrating the Murmur application to tRPC, focusing on **Insights & Engagement** (Stats and Feedback).
+This plan outlines the third phase of migrating the Tessera application to tRPC, focusing on **Insights & Engagement** (Stats and Feedback).
 
 ## Objective
 *   Migrate complex dashboard statistics and AI summaries to typesafe tRPC procedures.

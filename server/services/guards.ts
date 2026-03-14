@@ -1,5 +1,7 @@
+import { createClient } from 'redis';
 import config from '../config.js';
 import { GuardResult } from '../types/index.js';
+import { getRepetitionCount } from './repetitionStore.js';
 
 interface OllamaResponse {
   response: string;
@@ -51,26 +53,23 @@ export function guardCaps(text: string): GuardResult {
 
 // ─── 3. Repetition detection ─────────────────────────────────────────────────
 
-const repetitionStore = new Map<string, { text: string; count: number }>();
-
-export function guardRepetition(text: string, senderId: string): GuardResult {
+export async function guardRepetition(
+  redisClient: ReturnType<typeof createClient> | null,
+  text: string,
+  senderId: string
+): Promise<GuardResult> {
   const normalized = text.trim().toLowerCase();
-  const entry = repetitionStore.get(senderId);
+  const count = await getRepetitionCount(redisClient, senderId, normalized);
 
-  if (entry && entry.text === normalized) {
-    entry.count += 1;
-    if (entry.count >= 3) {
-      return block('guard_repetition');
-    }
-  } else {
-    repetitionStore.set(senderId, { text: normalized, count: 1 });
+  if (count >= 3) {
+    return block('guard_repetition');
   }
 
   return pass();
 }
 
-export function resetRepetition(senderId: string): void {
-  repetitionStore.delete(senderId);
+export function resetRepetition(_senderId: string): void {
+  // Reset is handled by TTL and new text detection in Redis service
 }
 
 // ─── 4. Swearing / offensive language ────────────────────────────────────────
@@ -233,11 +232,16 @@ export async function guardTopic(text: string): Promise<GuardResult> {
  * Tier 1: Local regex/length/injection checks (Fast, Cheap).
  * Tier 2: AI-based semantic topic check (Async, Expensive).
  * 
+ * @param {ReturnType<typeof createClient> | null} redisClient - Redis client instance.
  * @param {string} text - The raw message text.
  * @param {string} senderId - ID of the sender for rate-limiting/repetition checks.
  * @returns {Promise<GuardResult & { text: string }>} Result of the guard check and the final (possibly sanitized) text.
  */
-export async function runGuards(text: string, senderId: string): Promise<GuardResult & { text: string }> {
+export async function runGuards(
+  redisClient: ReturnType<typeof createClient> | null,
+  text: string,
+  senderId: string
+): Promise<GuardResult & { text: string }> {
   let current = text;
 
   // 1. Length
@@ -249,7 +253,7 @@ export async function runGuards(text: string, senderId: string): Promise<GuardRe
   if (capsResult.sanitized) current = capsResult.sanitized;
 
   // 3. Repetition
-  const repResult = guardRepetition(current, senderId);
+  const repResult = await guardRepetition(redisClient, current, senderId);
   if (!repResult.ok) return { ...repResult, text: current };
 
   // 4. Injection

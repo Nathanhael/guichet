@@ -1,69 +1,59 @@
-# User Guide: Multi-Tenant Prototype
+# User Guide: Tessera Platform
 
-This guide helps you explore the neuro-inclusive and multi-tenant features of the Murmur platform.
-
-## Role-Based Access
-
-The platform uses a 5-tier hierarchy to manage global and project-specific operations:
-
-1.  **Platform Operator**: The system developer. Manages partners (tenants), global AI settings, and branding manifests.
-2.  **Admin (Partner Admin)**: Manages a specific project. Access to labels, feedback, and all dashboards for their partner.
-3.  **Manager (Team Lead)**: Operational lead. Monitors performance and AI Insights for their partner.
-4.  **Support Specialist**: Resolution expert. Handles tickets and uses AI tools.
-5.  **Agent**: Requester. Creates tickets and interacts with Support.
+Welcome to Tessera. This guide explains the different roles and how to use the neuro-inclusive features of the platform.
 
 ---
 
-## Key Features
+## 1. Roles & Responsibilities
 
-### 1. Transversal Support (Partner Switcher)
-If you are assigned to multiple projects (e.g., Telecom and Healthcare), you will see a **Partner Switcher** in the top navigation bar. 
-*   Click the dropdown to instantly swap contexts.
-*   The UI will update its branding (colors) and terminology (labels) to match the selected project.
+The platform is designed around 5 distinct roles, isolated by the membership model.
 
-### 2. The Cognitive Cockpit
-Every view features a neuro-inclusive header:
-- **Dyslexic Mode (🔤)**: Lexend font and optimized spacing.
-- **Bionic Reading (👁️)**: Fixation-point highlighting.
-- **Zen Mode (⚡)**: (Support only) Immersive focus environment with adaptive glassmorphism and ambient backgrounds.
-
-### 3. Dual Admin Dashboards
-Admins and Managers can toggle between two specialized views:
-- **Operational Dashboard**: Real-time KPIs (p95 Response, SLA Health, Staffing).
-- **AI Intelligence Hub**: Qualitative analysis (Sentiment trends, Topic clustering, LLM summaries).
-
-### 4. AI Persona & Strategy
-Admins can fine-tune the AI for their specific project in the **AI Persona** tab:
-- **Industry Context**: Define technical terms and domain-specific rules.
-- **Asymmetric Strategies**: Define how the AI should improve Agent messages vs. how it should transform Support replies.
-- **Actionable Toggles**: Enable "Actionable AI" to have the system automatically generate customer scripts and internal procedures.
+1.  **Platform Operator**: Global administrator. Manages Partners (Tenants) and cross-platform memberships.
+2.  **Partner Admin**: Managed specific partner settings, AI persona rules, and canned responses.
+3.  **Manager**: Views high-level AI insights and operational dashboards for their specific partner.
+4.  **Support Specialist**: Resolution specialist. Handles tickets and uses AI tools to communicate with agents.
+5.  **Agent**: Creates tickets and communicates with support on behalf of customers.
 
 ---
 
-## Scenarios to Try
+## 2. Using the Support Workspace
 
-### Scenario 1: Cross-Project Interaction
-1. Log in as **Admin Dirk** (Platform Operator).
-2. Use the **Partner Switcher** to navigate to the **Platform Cockpit**.
-3. Create a new "Healthcare" partner with custom colors and labels (e.g., "Patient ID").
-4. Switch back to the Healthcare workspace and notice the UI transformation.
+The **Support Specialist** workspace is designed for maximum focus and efficiency.
 
-### Scenario 2: Support Flow & Actionable AI
-1. As an Admin, go to **AI Persona** and enable **Actionable AI**.
-2. Log in as a **Support Specialist**.
-3. Reply to a technical ticket with jargon (e.g., "Reset the DHCP lease on the node").
-4. Notice how the AI transforms your message into **[STEPS]** for the agent and a **[CUSTOMER SCRIPT]** for the customer.
-5. The Agent can now just click **"Copy"** on the emerald script box.
+### Live Queue
+- Tickets are automatically sorted by wait time.
+- Join a ticket to start a real-time conversation.
+- Use **Canned Responses** (shortcuts) for common procedures.
 
-### Scenario 3: Focus & Zen
-1. Log in as a **Support Specialist**.
-2. Join multiple active tickets.
-3. Toggle **Zen Mode** to experience the "Flow State" environment.
-4. Notice how notifications for background tickets are visually shielded to minimize distraction.
+### Zen Mode (Focus)
+- Toggle **Zen Mode** to remove all UI clutter.
+- Immersive glassmorphic design reduces cognitive load.
+- Ambient backgrounds create a calming workspace for deep resolution.
+
+### Asymmetric AI
+- Your messages are automatically improved for clarity and structure.
+- Internal procedures are detected and formatted into [STEPS].
+- Actionable scripts for agents are generated via [CUSTOMER_SCRIPT].
 
 ---
 
-## Troubleshooting
+## 3. Neuro-Inclusive Features (Solaris)
 
-- **Redis Error?** Ensure the Redis container is running. Presence and Socket.io scaling depend on it.
-- **AI Unavailable?** Check the **Platform Cockpit** to see if `ai_enabled` is toggled on for your partner. Ensure Ollama is running at `host.docker.internal:11434`.
+Tessera is built to be accessible to everyone, with a focus on neuro-diversity.
+
+### Dyslexic Mode
+- Switch to the **Lexend** font family, specifically designed to reduce reading errors.
+- Increased line height and letter spacing for better scanability.
+
+### Bionic Reading
+- Highlighting fixation points (the first few letters of words).
+- Helps the eye skip through text faster, reducing the effort needed to process long conversations.
+
+### High Contrast & Dark Mode
+- Adaptive themes to suit different visual sensitivities and environments.
+
+---
+
+## 4. Multi-Tenant Switching
+
+If you are a member of multiple projects (e.g., both Telecom and Healthcare), use the **Partner Switcher** in the top navigation to jump between workspaces. Your status (Available/Break) is tracked per partner.

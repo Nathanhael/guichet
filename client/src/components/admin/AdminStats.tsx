@@ -1,7 +1,4 @@
-import { useState, useEffect } from 'react';
-import { useT } from '../../i18n';
-import useStore from '../../store/useStore';
-import { OnlineExpert } from '../../types';
+import { useState } from 'react';
 import { Panel, StatCard, Skeleton } from './DashboardHelpers';
 import {
   ResponsiveContainer,
@@ -15,19 +12,13 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
-import LLMSummary from './Stats/LLMSummary';
-import TopicSummary from './Stats/TopicSummary';
-import StaffingDemand from './Stats/StaffingDemand';
 import { trpc } from '../../utils/trpc';
 
 export default function AdminStats() {
-  const t = useT();
-  const { onlineExperts } = useStore();
   const [statsDept, setStatsDept] = useState('all');
   const [statsDateFrom, setStatsDateFrom] = useState('');
   const [statsDateTo, setStatsDateTo] = useState('');
   const [activePreset, setActivePreset] = useState<string | null>(null);
-  const [activeHour, setActiveHour] = useState<number | null>(null);
 
   function applyPreset(key: string) {
     const now = new Date();
@@ -52,7 +43,7 @@ export default function AdminStats() {
   }
 
   // tRPC: Global Stats
-  const { data: stats, isLoading, refetch } = trpc.stats.getGlobalStats.useQuery(
+  const { data: stats, isLoading } = trpc.stats.getGlobalStats.useQuery(
     {
       dept: statsDept === 'all' ? undefined : statsDept,
       dateFrom: statsDateFrom || undefined,
@@ -88,7 +79,7 @@ export default function AdminStats() {
     <div className="space-y-6 max-w-7xl mx-auto animate-slide-up pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white tracking-tight">{t('dashboard')}</h2>
+          <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white tracking-tight">Dashboard</h2>
           <p className="text-sm text-solarized-base1 dark:text-gray-400 mt-1">Real-time performance metrics and historical trends</p>
         </div>
 
@@ -181,7 +172,7 @@ export default function AdminStats() {
           color="red"
           invertTrend
         />
-        <StatCard label="Satisfaction" value={stats.avgRating > 0 ? `${stats.avgRating}` : '—'} color="yellow" prev={stats.previousPeriod?.avgRating} />
+        <StatCard label="Satisfaction" value={(stats.avgRating ?? 0) > 0 ? `${stats.avgRating}` : '—'} color="yellow" prev={stats.previousPeriod?.avgRating ?? undefined} />
         <StatCard label="Abandoned" value={stats.abandonedCount} color="red" prev={stats.previousPeriod?.abandonedCount} invertTrend />
         <StatCard
           label="SLA Health"
@@ -239,35 +230,10 @@ export default function AdminStats() {
           </div>
         </Panel>
 
-        <Panel title={`Online now (${onlineExperts.length})`}>
-          {onlineExperts.length === 0 ? (
-            <p className="text-sm text-solarized-base1">No experts online</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {onlineExperts.map((e: any) => (
-                <div
-                  key={e.userId}
-                  title={`${e.name} · ${e.status || 'available'}`}
-                  className="relative group flex items-center gap-2 bg-solarized-base2 dark:bg-gray-700 border border-solarized-base2 dark:border-brand-600 rounded-full pl-1.5 pr-4 py-1.5 cursor-default"
-                >
-                  <div className="w-6 h-6 rounded-full bg-solarized-base3/50 dark:bg-brand-900/50 flex items-center justify-center text-xs font-bold text-brand-600 dark:text-brand-400 shrink-0">
-                    {e.name
-                      .split(' ')
-                      .map((w: string) => w[0])
-                      .join('')
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </div>
-                  <span className="text-sm font-medium text-solarized-base01 dark:text-gray-200 leading-none truncate max-w-[120px]">{e.name}</span>
-                  <span
-                    className={`absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full ring-2 ring-white dark:ring-gray-800 ${
-                      e.status === 'break' ? 'bg-yellow-400' : e.status === 'lunch' ? 'bg-orange-400' : e.status === 'meeting' ? 'bg-gray-400' : 'bg-green-400'
-                    }`}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+        <Panel title="Online now">
+          <div className="py-4 text-center">
+            <p className="text-sm text-solarized-base1">Live presence monitoring active</p>
+          </div>
         </Panel>
       </div>
 
@@ -290,21 +256,13 @@ export default function AdminStats() {
         </ResponsiveContainer>
       </Panel>
 
-      {stats.hourlyStaffing && (
-        <StaffingDemand 
-          hourlyStaffing={stats.hourlyStaffing} 
-          activeHour={activeHour} 
-          onHourClick={setActiveHour} 
-        />
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <Panel title="Expert performance">
-          {stats.expertStats.length === 0 ? (
+        <Panel title="Support performance">
+          {stats.supportStats.length === 0 ? (
             <p className="text-sm text-solarized-base1">No data yet</p>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(160, stats.expertStats.length * 40)}>
-              <BarChart data={stats.expertStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
+            <ResponsiveContainer width="100%" height={Math.max(160, stats.supportStats.length * 40)}>
+              <BarChart data={stats.supportStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#93a1a1" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />

@@ -6,7 +6,7 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 
 export const ratingRouter = router({
-  list: roleProcedure(['admin', 'expert']).query(async () => {
+  list: roleProcedure(['admin', 'support']).query(async () => {
     try {
       const data = await db.select()
         .from(ratings)

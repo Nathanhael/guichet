@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import useStore from '../store/useStore';
 import { trpc } from '../utils/trpc';
-import { Panel, StatCard, Skeleton } from '../components/admin/DashboardHelpers';
 import { motion, AnimatePresence } from 'framer-motion';
 import DarkModeToggle from '../components/DarkModeToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 export default function PlatformView() {
-  const { user, logout, setActiveMembershipId } = useStore();
+  const { logout } = useStore();
   const [editingPartner, setEditingPartner] = useState<any>(null);
   
   const { data: partners, isLoading, refetch } = trpc.platform.listPartners.useQuery();
@@ -63,7 +62,14 @@ export default function PlatformView() {
               >
                 <div>
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl" style={{ backgroundColor: p.primaryColor + '22', color: p.primaryColor, border: `1px solid ${p.primaryColor}44` }}>
+                    <div 
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-xl" 
+                      style={{ 
+                        backgroundColor: (p.primaryColor || '#a855f7') + '22', 
+                        color: p.primaryColor || '#a855f7', 
+                        border: `1px solid ${p.primaryColor || '#a855f7'}44` 
+                      }}
+                    >
                       {p.name.charAt(0)}
                     </div>
                     <span className="text-[10px] uppercase font-black tracking-widest text-gray-500">{p.id}</span>
@@ -71,9 +77,32 @@ export default function PlatformView() {
                   <h3 className="text-lg font-bold">{p.name}</h3>
                   <p className="text-sm text-gray-400 capitalize mb-4">{p.industry}</p>
                   
-                  <div className="flex gap-2 mb-6">
-                    <div className="w-6 h-6 rounded-full" style={{ backgroundColor: p.primaryColor }} title="Primary" />
-                    <div className="w-6 h-6 rounded-full" style={{ backgroundColor: p.secondaryColor }} title="Secondary" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Ollama Model</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. gemma2:2b"
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                        value={editingPartner.ollamaModel || ''}
+                        onChange={e => setEditingPartner({ ...editingPartner, ollamaModel: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Theme Config (JSON)</label>
+                      <input
+                        type="text"
+                        placeholder='{"glassBlur": "20px"}'
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                        value={typeof editingPartner.themeConfig === 'string' ? editingPartner.themeConfig : JSON.stringify(editingPartner.themeConfig || {})}
+                        onChange={e => setEditingPartner({ ...editingPartner, themeConfig: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <div className="w-6 h-6 rounded-full" style={{ backgroundColor: p.primaryColor || '#a855f7' }} title="Primary" />
+                    <div className="w-6 h-6 rounded-full" style={{ backgroundColor: p.secondaryColor || '#3b82f6' }} title="Secondary" />
                   </div>
                 </div>
 
@@ -195,10 +224,52 @@ export default function PlatformView() {
                   <textarea 
                     value={editingPartner.aiRules} 
                     onChange={e => setEditingPartner({...editingPartner, aiRules: e.target.value})}
-                    rows={4}
+                    rows={2}
                     className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-accent-500 outline-none resize-none"
-                    placeholder="e.g. You are a medical support assistant. Use clinical terminology and maintain HIPAA-style privacy..."
+                    placeholder="e.g. You are a medical support assistant..."
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-black text-gray-500 mb-1.5 tracking-widest">Agent Strategy</label>
+                    <textarea 
+                      value={editingPartner.agentPromptStrategy} 
+                      onChange={e => setEditingPartner({...editingPartner, agentPromptStrategy: e.target.value})}
+                      rows={3}
+                      className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-accent-500 outline-none resize-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-black text-gray-500 mb-1.5 tracking-widest">Support Strategy</label>
+                    <textarea 
+                      value={editingPartner.supportPromptStrategy} 
+                      onChange={e => setEditingPartner({...editingPartner, supportPromptStrategy: e.target.value})}
+                      rows={3}
+                      className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-accent-500 outline-none resize-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-black text-gray-500 mb-1.5 tracking-widest">Ollama Model</label>
+                    <input 
+                      value={editingPartner.ollamaModel} 
+                      onChange={e => setEditingPartner({...editingPartner, ollamaModel: e.target.value})}
+                      className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm focus:border-accent-500 outline-none"
+                      placeholder="e.g. gemma2:2b"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-black text-gray-500 mb-1.5 tracking-widest">Theme Config (JSON)</label>
+                    <input 
+                      value={typeof editingPartner.themeConfig === 'string' ? editingPartner.themeConfig : JSON.stringify(editingPartner.themeConfig || {})} 
+                      onChange={e => setEditingPartner({...editingPartner, themeConfig: e.target.value})}
+                      className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-2 text-sm focus:border-accent-500 outline-none"
+                      placeholder='{"glassBlur":"20px"}'
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">

@@ -19,7 +19,7 @@ export function setIo(socketIo: Server) {
   io = socketIo;
 }
 
-export async function broadcastOnlineExperts(partnerId: string) {
+export async function broadcastOnlineSupport(partnerId: string) {
   const { pubClient } = getRedisClients();
   if (!io || !pubClient) return;
   
@@ -29,7 +29,7 @@ export async function broadcastOnlineExperts(partnerId: string) {
     
     for (const key of keys) {
       const data = await pubClient.hGetAll(key);
-      if (data && data.partnerId === partnerId && (data.role === 'support' || data.role === 'expert' || data.role === 'admin')) {
+      if (data && data.partnerId === partnerId && (data.role === 'support' || data.role === 'admin')) {
         list.push({
           userId: data.userId,
           name: data.name,
@@ -39,9 +39,9 @@ export async function broadcastOnlineExperts(partnerId: string) {
     }
     
     // Broadcast to partner-specific room
-    io.to(`partner:${partnerId}`).emit('experts:online', list);
+    io.to(`partner:${partnerId}`).emit('support:online', list);
   } catch (err) {
-    logger.error({ err }, 'Failed to broadcast online experts from Redis');
+    logger.error({ err }, 'Failed to broadcast online support from Redis');
   }
 }
 
@@ -67,8 +67,8 @@ export async function identifyUser(userId: string, role: string, name: string, p
       await pubClient.expire(key, 86400);
     }
     
-    if (role === 'support' || role === 'expert' || role === 'admin') {
-      await broadcastOnlineExperts(partnerId);
+    if (role === 'support' || role === 'admin') {
+      await broadcastOnlineSupport(partnerId);
     }
   } catch (err) {
     logger.error({ err, userId }, 'Failed to identify user in Redis');
@@ -84,7 +84,7 @@ export async function setUserStatus(userId: string, status: string) {
     const user = await pubClient.hGetAll(key);
     if (user && user.userId) {
       await pubClient.hSet(key, 'status', status);
-      await broadcastOnlineExperts(user.partnerId);
+      await broadcastOnlineSupport(user.partnerId);
       logger.info({ userId, status }, 'User status updated in Redis');
       return true;
     }
@@ -106,8 +106,8 @@ export async function decrementUserCount(userId: string) {
     const newCount = await pubClient.hIncrBy(key, 'count', -1);
     if (newCount <= 0) {
       await pubClient.del(key);
-      if (user.role === 'support' || user.role === 'expert' || user.role === 'admin') {
-        await broadcastOnlineExperts(user.partnerId);
+      if (user.role === 'support' || user.role === 'admin') {
+        await broadcastOnlineSupport(user.partnerId);
       }
       return { role: user.role, partnerId: user.partnerId, removed: true };
     }

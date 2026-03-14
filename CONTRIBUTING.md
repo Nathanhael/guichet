@@ -1,4 +1,4 @@
-# Contributing Guidelines: Murmur
+# Contributing Guidelines: Tessera
 
 To maintain the high-fidelity aesthetic and real-time performance of this prototype, please follow these guidelines.
 

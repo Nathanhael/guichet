@@ -27,7 +27,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
     createMutation.mutate({
       userId: user.id,
       userName: user.name,
-      role: user.role as 'agent' | 'expert',
+      role: user.role as 'agent' | 'support',
       text: text.trim(),
     });
   }

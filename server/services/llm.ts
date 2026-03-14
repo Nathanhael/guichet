@@ -66,7 +66,7 @@ export async function getLLMSummary(periodType: string, periodValue: string, par
         }
 
         const partner = await get('SELECT * FROM partners WHERE id = $1', [partnerId]) as any;
-        const aiRules = partner?.ai_rules || 'You are a professional support expert.';
+        const aiRules = partner?.ai_rules || 'You are a professional support specialist.';
 
         const textToAnalyze = messages
             .map(m => `${m.senderName}: ${m.processedText || m.text || ''}`)
@@ -179,7 +179,7 @@ export async function summarizeConversation(ticketId: string, partnerId: string)
     }
 
     const partner = await get('SELECT industry, ai_rules FROM partners WHERE id = $1', [partnerId]) as any;
-    const aiRules = partner?.ai_rules || 'You are a professional support expert.';
+    const aiRules = partner?.ai_rules || 'You are a professional support specialist.';
 
     const textToAnalyze = messages
         .map((m) => `${m.senderName}: ${m.originalText}`)

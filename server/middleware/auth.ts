@@ -2,18 +2,14 @@ import jwt from 'jsonwebtoken';
 import config from '../config.js';
 import { Request, Response, NextFunction } from 'express';
 import { User, UserRole } from '../types/index.js';
+import logger from '../utils/logger.js';
 
-export type AuthRequest<
-  P = any,
-  ResBody = any,
-  ReqBody = any,
-  ReqQuery = any
-> = Request<P, ResBody, ReqBody, ReqQuery> & {
+export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: UserRole;
   };
-};
+}
 
 export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -27,6 +23,7 @@ export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
     req.user = { id: decoded.userId, role: decoded.role };
     next();
   } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'JWT verification failed');
     res.status(401).json({ error: 'Invalid token' });
   }
 };

@@ -36,6 +36,8 @@ describe('Translation Service', () => {
     expect(result.fallback).toBe(true);
     expect(result.processedText).toBe('Test message');
     expect(result.improvedText).toBe('Test message');
+    // It should retry once, so 2 attempts total (for the 'improve' step)
+    expect(mockFetch).toHaveBeenCalledTimes(2);
   });
 
   it('should skip translation when languages match', async () => {

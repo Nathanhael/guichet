@@ -1,4 +1,4 @@
-export type UserRole = 'agent' | 'expert' | 'admin';
+export type UserRole = 'agent' | 'support' | 'admin';
 
 export interface User {
   id: string;
@@ -7,6 +7,8 @@ export interface User {
   dept?: string;
   lang?: string;
   password?: string;
+  avatarUrl?: string | null;
+  isPlatformOperator?: boolean;
 }
 
 export type TicketStatus = 'open' | 'active' | 'closed';
@@ -17,13 +19,13 @@ export interface Ticket {
   agentId: string;
   agentName: string;
   agentLang: string;
-  cdbId?: string | null;
-  dareRef?: string | null;
+  ref1?: string | null;
+  ref2?: string | null;
   status: TicketStatus;
-  expertId?: string | null;
-  expertName?: string | null;
-  expertLang?: string | null;
-  expertJoinedAt?: string | null;
+  supportId?: string | null;
+  supportName?: string | null;
+  supportLang?: string | null;
+  supportJoinedAt?: string | null;
   createdAt: string;
   closedAt?: string | null;
   closingNotes?: string | null;

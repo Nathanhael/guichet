@@ -1,7 +1,7 @@
 # tRPC Migration — Design Spec
 
 **Date:** 2026-03-13
-**Status:** Approved, pending implementation
+**Status:** Completed
 **Goal:** Replace raw `fetch`-based REST calls with end-to-end typesafe tRPC procedures, and migrate raw `pool.query()` calls to Drizzle ORM queries. Eliminates manual type syncing between server routes and client, gives React Query caching/loading states for free, and produces a fully type-safe stack from DB → server → client.
 
 ## Decisions
@@ -28,7 +28,7 @@ packages/
         labels.ts
         feedback.ts
         canned-responses.ts
-    package.json        ← name: "@i-pxs/trpc", no build step (ts-node / tsx)
+    package.json        ← name: "@tessera/trpc", no build step (ts-node / tsx)
 ```
 
 `packages/trpc/` is a TypeScript-only package. No compilation step — server imports it directly via `tsx`, client imports the type only (`import type { AppRouter }`).
@@ -37,7 +37,7 @@ packages/
 
 ### Mount point (`server/app.ts`)
 ```ts
-import { appRouter } from '@i-pxs/trpc/router';
+import { appRouter } from '@tessera/trpc/router';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 
 app.use('/trpc', createExpressMiddleware({
@@ -125,8 +125,8 @@ Remove the corresponding Express route file after each procedure is verified wor
 
 ## Files to Modify
 - `package.json` (root) — add workspace config if not present
-- `server/package.json` — add `@i-pxs/trpc` workspace dep
-- `client/package.json` — add `@trpc/react-query`, `@tanstack/react-query`, `@i-pxs/trpc`
+- `server/package.json` — add `@tessera/trpc` workspace dep
+- `client/package.json` — add `@trpc/react-query`, `@tanstack/react-query`, `@tessera/trpc`
 - `server/app.ts` — mount `/trpc` endpoint
 - `client/src/main.tsx` — wrap with providers
 - `vite.config.ts` — may need path alias for workspace package

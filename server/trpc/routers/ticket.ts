@@ -38,7 +38,7 @@ export const ticketRouter = router({
             ilike(tickets.agentName, q),
             ilike(tickets.ref1, q),
             ilike(tickets.ref2, q),
-            ilike(tickets.expertName, q)
+            ilike(tickets.supportName, q)
           ));
         }
 

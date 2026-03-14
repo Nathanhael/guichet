@@ -1,6 +1,6 @@
-# Technical Documentation: Murmur
+# Technical Documentation: Tessera
 
-This document provides a comprehensive deep dive into the system design, tech stack, and multi-tenant architecture of the Murmur platform.
+This document provides a comprehensive deep dive into the system design, tech stack, and multi-tenant architecture of the Tessera platform.
 
 ---
 
@@ -43,7 +43,7 @@ graph TD
 | Backend | Node 20 (ESM), Express.js |
 | Database | PostgreSQL + **Drizzle ORM** |
 | Auth | JWT (Multi-Tenant Memberships) |
-| AI | Ollama REST API (Tenant-Aware Pipeline) |
+| AI | Ollama REST API (Model-agnostic per partner) |
 
 ---
 
@@ -66,6 +66,7 @@ Every partner has a JSON manifest that dynamically "hydrates" the UI:
 - **Labels**: Domain-specific terms (e.g., "Patient ID" vs "CDBID").
 - **Departments**: Dynamic navigation tabs.
 - **AI Rules**: Custom system instructions for the LLM.
+- **Theme**: Custom CSS variables (blur, opacity, radius).
 
 ---
 
@@ -75,7 +76,8 @@ Every partner has a JSON manifest that dynamically "hydrates" the UI:
 The platform is designed for enterprise scale (1000+ employees):
 1. **Socket.io Redis Adapter**: Syncs chat events across multiple server instances.
 2. **Distributed Presence**: Online user status is stored in **Redis Hashes** rather than local memory. This allows any server instance to know who is online globally.
-3. **Scoped Broadcasts**: Real-time updates (e.g., "Expert joined") are scoped to `partner:{id}` rooms to minimize network overhead.
+3. **Redis Utility**: Redis clients are managed via `server/utils/redis.ts` to ensure clean lifecycle management and prevent circular dependencies.
+4. **Scoped Broadcasts**: Real-time updates (e.g., "Support Specialist joined") are scoped to `partner:{id}` rooms to minimize network overhead.
 
 ### Event Flow: Ticket Creation to Resolution
 
@@ -109,7 +111,8 @@ sequenceDiagram
 ```sql
 partners           (id, name, industry, primary_color, secondary_color, 
                     ref_1_label, ref_2_label, ai_rules, departments, ai_enabled,
-                    agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai)
+                    agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai,
+                    theme_config, ollama_model)
 users              (id, name, lang, password, avatar_url, is_platform_operator)
 memberships        (id, user_id, partner_id, role, dept)
 tickets            (id, partner_id, dept, agent_id, agent_name, agent_lang, 
@@ -129,14 +132,12 @@ daily_stats        (date, partner_id, total, closed, abandoned, avg_response_ms,
 
 ---
 
-## 5. Scalability & Distributed State (Azure Ready)
+## 5. Data Lifecycle & Compliance (GDPR)
 
-The platform is designed for enterprise scale (1000+ employees):
-1. **Socket.io Redis Adapter**: Syncs chat events across multiple server instances.
-2. **Distributed Presence**: Online user status is stored in **Redis Hashes** rather than local memory. This allows any server instance to know who is online globally.
-3. **Redis Utility**: Redis clients are managed via `server/utils/redis.ts` to ensure clean lifecycle management and prevent circular dependencies.
-4. **Scoped Broadcasts**: Real-time updates (e.g., "Expert joined") are scoped to `partner:{id}` rooms to minimize network overhead.
+The platform enforces a 30-day data retention policy via the `gdpr.ts` service:
 
----
-
-## 6. Data Lifecycle & Compliance (GDPR)
+1. **Daily Purge Cycle**: A background job runs every 24 hours, scanning for records older than 30 days.
+2. **Aggregation Before Deletion**: Before purging, ticket and message data is aggregated into the `daily_stats` table (counts, averages, sentiment sums) — preserving operational insights without PII.
+3. **Transactional Safety**: The aggregation and deletion run inside a single Drizzle transaction to prevent data loss.
+4. **What's Purged**: Messages, tickets, ratings, and translation cache entries older than the retention window.
+5. **What's Kept**: Anonymized `daily_stats` rows, partner configuration, and user accounts (until explicit deletion request).

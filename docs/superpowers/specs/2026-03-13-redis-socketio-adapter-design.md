@@ -1,7 +1,7 @@
 # Redis Socket.io Adapter — Design Spec
 
 **Date:** 2026-03-13
-**Status:** Approved, pending implementation
+**Status:** Completed
 **Goal:** Add Redis adapter to Socket.io so horizontal scaling works (multiple server instances share room state).
 
 ## Context

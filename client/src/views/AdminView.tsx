@@ -42,7 +42,7 @@ export default function AdminView() {
       <nav className="bg-brand-900/95 backdrop-blur-md text-white px-6 py-3 flex items-center justify-between shadow-lg sticky top-0 z-50 border-b border-brand-800">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-xl tracking-tight">Murmur</span>
+            <span className="font-bold text-xl tracking-tight">Tessera</span>
             <span className="text-xs bg-gradient-to-r from-accent-500 to-rose-500 px-2.5 py-1 rounded-md font-semibold tracking-wide shadow-sm">Admin</span>
           </div>
 

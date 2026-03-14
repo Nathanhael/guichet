@@ -110,8 +110,8 @@ describe('tRPC Integration Tests', () => {
 
   describe('presenceRouter', () => {
     it('setStatus should update user status', async () => {
-      const expert = { id: 'expert-1', role: 'expert' as const };
-      const caller = createCaller(expert);
+      const support = { id: 'support-1', role: 'support' as const };
+      const caller = createCaller(support);
 
       // We don't mock the presence service here, so it might fail if setUserStatus is called,
       // but we are testing the tRPC wrapper logic.
@@ -119,7 +119,7 @@ describe('tRPC Integration Tests', () => {
       
       // Let's just verify it rejects for unauthorized users
       const agentCaller = createCaller({ id: 'agent-1', role: 'agent' as const });
-      await expect(agentCaller.presence.setStatus({ userId: 'expert-1', status: 'break' })).rejects.toThrow(TRPCError);
+      await expect(agentCaller.presence.setStatus({ userId: 'support-1', status: 'break' })).rejects.toThrow(TRPCError);
     });
   });
 });

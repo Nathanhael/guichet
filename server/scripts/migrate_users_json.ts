@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_JSON_PATH = path.join(__dirname, '..', 'db.json');
-const PG_URL = process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/murmur';
+const PG_URL = process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/tessera';
 
 async function migrateUsers() {
   console.log('🚀 Starting user migration from db.json to PostgreSQL...');

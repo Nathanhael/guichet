@@ -1,11 +1,16 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
+import useStore from '../../store/useStore';
 
 export default function AdminCannedResponses() {
+  const { activePartnerId } = useStore();
   const [newShortcut, setNewShortcut] = useState('');
   const [newText, setNewText] = useState('');
 
-  const { data: responses, isLoading, error: fetchError, refetch } = trpc.cannedResponse.list.useQuery();
+  const { data: responses, isLoading, error: fetchError, refetch } = trpc.cannedResponse.list.useQuery(
+    { partnerId: activePartnerId || '' },
+    { enabled: !!activePartnerId }
+  );
   
   const createMutation = trpc.cannedResponse.create.useMutation({
     onSuccess: () => {
@@ -22,8 +27,12 @@ export default function AdminCannedResponses() {
   });
 
   const addResponse = () => {
-    if (!newShortcut.trim() || !newText.trim()) return;
-    createMutation.mutate({ shortcut: newShortcut, text: newText });
+    if (!newShortcut.trim() || !newText.trim() || !activePartnerId) return;
+    createMutation.mutate({ 
+      partnerId: activePartnerId,
+      shortcut: newShortcut, 
+      text: newText 
+    });
   };
 
   const deleteResponse = (id: string) => {

@@ -23,15 +23,17 @@ function cacheKey(...parts: string[]): string {
  * Calls the local Ollama instance for generation.
  * @param {string} prompt - The full prompt text.
  * @param {string} type - Descriptive type for logging (e.g. 'translate', 'improve').
+ * @param {string} [modelOverride] - Optional model name to use instead of global default.
  * @returns {Promise<string>} The generated response text.
  */
-async function callOllama(prompt: string, type: string): Promise<string> {
+async function callOllama(prompt: string, type: string, modelOverride?: string): Promise<string> {
   const start = Date.now();
+  const modelToUse = modelOverride || MODEL;
   try {
     const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: MODEL, prompt, stream: false }),
+      body: JSON.stringify({ model: modelToUse, prompt, stream: false }),
       signal: AbortSignal.timeout(10000), // 10s hard limit
     });
 
@@ -41,21 +43,33 @@ async function callOllama(prompt: string, type: string): Promise<string> {
     const result = data.response?.trim();
     const duration = Date.now() - start;
     
-    logger.info({ type, duration, model: MODEL }, 'Ollama performance');
+    logger.info({ type, duration, model: modelToUse }, 'Ollama performance');
     
     if (!result) throw new Error('Ollama returned empty response');
     return result;
   } catch (err: unknown) {
-    logger.error({ type, err: err instanceof Error ? err.message : String(err) }, 'Ollama call failed');
+    logger.error({ type, err: err instanceof Error ? err.message : String(err), model: modelToUse }, 'Ollama call failed');
     throw err;
   }
 }
 
+async function callOllamaWithRetry(prompt: string, type: string, modelOverride?: string, maxRetries = 1): Promise<string> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await callOllama(prompt, type, modelOverride);
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+      logger.warn({ type, attempt, err: err instanceof Error ? err.message : String(err), model: modelOverride || MODEL }, 'Ollama attempt failed, retrying...');
+    }
+  }
+  throw new Error('Ollama unreachable after retries');
+}
+
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
-async function getAIPrefix(partnerId: string): Promise<string> {
-  const partner = await get('SELECT industry, ai_rules, agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai FROM partners WHERE id = $1', [partnerId]) as any;
-  if (!partner) return 'You are a professional support assistant.';
+async function getAIPrefix(partnerId: string): Promise<any> {
+  const partner = await get('SELECT industry, ai_rules, agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai, ai_enabled FROM partners WHERE id = $1', [partnerId]) as any;
+  if (!partner) return { ai_rules: 'You are a professional support assistant.', ai_enabled: true };
   return partner;
 }
 
@@ -81,7 +95,7 @@ Your task:
 <agent_message>${text}</agent_message>`;
 }
 
-async function buildExpertImprovementPrompt(text: string, lang: string, partner: any): Promise<string> {
+async function buildSupportImprovementPrompt(text: string, lang: string, partner: any): Promise<string> {
   const langNames: Record<string, string> = { nl: 'Dutch', fr: 'French', en: 'English' };
   const langName = langNames[lang] || lang;
   const prefix = partner.ai_rules || `You are a professional ${partner.industry} support assistant.`;
@@ -111,7 +125,7 @@ Your task:
 ${taskList}
 - Return ONLY the improved message, no explanation, no preamble, no quotes
 
-<support_message>${text}</expert_message>`;
+<support_message>${text}</support_message>`;
 }
 
 async function buildTranslationPrompt(text: string, fromLang: string, toLang: string, partner: any): Promise<string> {
@@ -132,7 +146,7 @@ Return ONLY the translated text — no explanation, no quotes, no preamble.
 
 // ─── Improve ──────────────────────────────────────────────────────────────────
 
-async function improve(text: string, lang: string, senderRole: 'agent'|'expert', partner: any, partnerId: string): Promise<TranslationResult> {
+async function improve(text: string, lang: string, senderRole: 'agent'|'support', partner: any, partnerId: string): Promise<TranslationResult> {
   const key = cacheKey('improve', senderRole, lang, text, partnerId);
 
   const cached = await get('SELECT value FROM translations_cache WHERE key = $1', [key]) as { value: string } | undefined;
@@ -140,9 +154,9 @@ async function improve(text: string, lang: string, senderRole: 'agent'|'expert',
 
   const prompt = senderRole === 'agent'
     ? await buildAgentImprovementPrompt(text, lang, partner)
-    : await buildExpertImprovementPrompt(text, lang, partner);
+    : await buildSupportImprovementPrompt(text, lang, partner);
 
-  const improved = await callOllama(prompt, 'improve');
+  const improved = await callOllamaWithRetry(prompt, 'improve', partner.ollama_model);
   await run(
     'INSERT INTO translations_cache (key, value, from_lang, to_lang, created_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, created_at = EXCLUDED.created_at',
     [key, improved, lang, lang, new Date().toISOString()]
@@ -161,7 +175,7 @@ export async function translate(text: string, fromLang: string, toLang: string, 
   if (cached) return { text: cached.value, fromCache: true };
 
   const prompt = await buildTranslationPrompt(text, fromLang, toLang, partner);
-  const translated = await callOllama(prompt, 'translate');
+  const translated = await callOllamaWithRetry(prompt, 'translate', partner.ollama_model);
   await run(
     'INSERT INTO translations_cache (key, value, from_lang, to_lang, created_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, created_at = EXCLUDED.created_at',
     [key, translated, fromLang, toLang, new Date().toISOString()]
@@ -174,7 +188,7 @@ export async function translate(text: string, fromLang: string, toLang: string, 
 /**
  * Orchestrates the full AI message pipeline: Improvement followed by Translation.
  */
-export async function processMessage(text: string, senderRole: 'agent'|'expert', partnerId: string, fromLang?: string, toLang?: string): Promise<ProcessedMessageResult> {
+export async function processMessage(text: string, senderRole: 'agent'|'support', partnerId: string, fromLang?: string, toLang?: string): Promise<ProcessedMessageResult> {
   const from = (fromLang || 'nl').toLowerCase().slice(0, 2);
   const to   = (toLang   || 'nl').toLowerCase().slice(0, 2);
 
@@ -191,10 +205,10 @@ export async function processMessage(text: string, senderRole: 'agent'|'expert',
       };
     }
 
-    // Step 1: Improve
+    // Step 1: Improve (Always do this)
     const { text: improved } = await improve(text, from, senderRole, partner, partnerId);
 
-    // Step 2: Translate (skip if same language)
+    // Step 2: Translate (only if languages differ)
     if (from === to) {
       return {
         processedText:      improved,

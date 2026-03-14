@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useT } from '../../i18n';
 import { Panel, StatCard, Skeleton } from './DashboardHelpers';
 import {
   ResponsiveContainer,
@@ -9,6 +8,9 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  LineChart,
+  Line,
+  Cell,
 } from 'recharts';
 import LLMSummary from './Stats/LLMSummary';
 import TopicSummary from './Stats/TopicSummary';
@@ -16,29 +18,10 @@ import { trpc } from '../../utils/trpc';
 import { motion } from 'framer-motion';
 
 export default function AdminAIStats() {
-  const t = useT();
   const [statsDept, setStatsDept] = useState('all');
-  const [statsDateFrom, setStatsDateFrom] = useState('');
-  const [statsDateTo, setStatsDateTo] = useState('');
-  const [activePreset, setActivePreset] = useState<string | null>('30d');
-
-  function applyPreset(key: string) {
-    const now = new Date();
-    const toStr = now.toISOString().slice(0, 10);
-    let fromStr = toStr;
-    if (key === '7d') {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 6);
-      fromStr = d.toISOString().slice(0, 10);
-    } else if (key === '30d') {
-      const d = new Date(now);
-      d.setDate(d.getDate() - 29);
-      fromStr = d.toISOString().slice(0, 10);
-    }
-    setStatsDateFrom(fromStr);
-    setStatsDateTo(toStr);
-    setActivePreset(key);
-  }
+  const statsDateFrom = '';
+  const statsDateTo = '';
+  const activePreset = '30d';
 
   const { data: stats, isLoading } = trpc.stats.getGlobalStats.useQuery(
     {
@@ -96,21 +79,18 @@ export default function AdminAIStats() {
           label="Global Sentiment" 
           value={stats.sentimentScore != null ? stats.sentimentScore.toFixed(2) : '—'} 
           color={stats.sentimentScore != null ? (stats.sentimentScore > 0.2 ? 'teal' : stats.sentimentScore < -0.2 ? 'red' : 'yellow') : 'gray'} 
-          description="Average emotional tone of all messages (-1 to +1)"
         />
         <StatCard
           label="Resolution Quality"
           value={stats.reopenRate != null ? `${stats.reopenRate}%` : '—'}
           color="gray"
           invertTrend
-          description="Percentage of tickets requiring a second look"
         />
         <StatCard
           label="SLA Risk"
           value={stats.p95ResponseMinutes != null ? `${stats.p95ResponseMinutes}m` : '—'}
           color="red"
           invertTrend
-          description="p95 wait time (Outlier experience)"
         />
       </div>
 
@@ -164,7 +144,7 @@ export default function AdminAIStats() {
                   barSize={40}
                 >
                   {Object.entries((stats as any).sentimentByDept || {}).map((entry: any, index) => (
-                    <cell key={`cell-${index}`} fill={entry[1].avg > 0.2 ? '#10b981' : entry[1].avg < -0.2 ? '#f43f5e' : '#f59e0b'} />
+                    <Cell key={`cell-${index}`} fill={entry[1].avg > 0.2 ? '#10b981' : entry[1].avg < -0.2 ? '#f43f5e' : '#f59e0b'} />
                   ))}
                 </Bar>
               </BarChart>

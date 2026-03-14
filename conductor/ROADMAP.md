@@ -1,8 +1,15 @@
 # Product Roadmap & Future Enhancements
 
-This document tracks planned features and strategic architectural shifts for the Murmur platform.
+This document tracks planned features and strategic architectural shifts for the Tessera platform.
 
 ---
+
+## ✅ Phase 5: Rebranding & Quality Hardening (Completed)
+*Goal: System-wide rename, Theme system, and model-agnostic AI.*
+- **Systematic Rename**: "Expert" -> "Support" across the full stack.
+- **Theme System**: Dynamic CSS variables and per-partner manifest injection.
+- **Model-Agnostic AI**: Configurable Ollama models per tenant.
+- **Quality Hardening**: Redis-backed repetition store, strict typing, and zero-error build.
 
 ## 🚀 Phase 6: The Intelligent Workspace (Pending)
 *Goal: Transforming the Support Specialist's experience with proactive AI assistance.*
