@@ -1,6 +1,6 @@
 # Product Roadmap & Future Enhancements
 
-This document tracks planned features and strategic architectural shifts for the M&P Support platform.
+This document tracks planned features and strategic architectural shifts for the Murmur platform.
 
 ---
 

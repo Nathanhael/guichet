@@ -1,9 +1,9 @@
 # GEMINI.md - Project Context & Instructions
 
-This file serves as the primary instructional context for Gemini CLI when working in the **i-pxs-support** repository.
+This file serves as the primary instructional context for Gemini CLI when working in the **murmur** repository.
 
 ## Project Overview
-**M&P Support** is a high-fidelity prototype of a real-time, multi-tenant customer support platform. It facilitates communication between **Agents** (who create tickets) and **Support Specialists** (who resolve them), with **Admins**, **Managers**, and **Platform Operators** overseeing operations.
+**Murmur** is a high-fidelity prototype of a real-time, multi-tenant customer support platform. It facilitates communication between **Agents** (who create tickets) and **Support Specialists** (who resolve them), with **Admins**, **Managers**, and **Platform Operators** overseeing operations.
 
 ### Key Features
 - **Real-Time Communication**: Powered by Socket.io for low-latency chat and status updates.
@@ -59,7 +59,7 @@ This file serves as the primary instructional context for Gemini CLI when workin
 | **Install Dependencies** | `npm run install:all` (Host-only for IDE sync, then restart Docker) |
 | **Run Backend Tests** | `docker compose exec server npm test` |
 | **Run Frontend Tests** | `docker compose exec client npm test` |
-| **View Server Logs** | `docker logs -f i-pxs-support-server-1` |
+| **View Server Logs** | `docker logs -f murmur-server-1` |
 | **Database Studio** | `cd server && npx drizzle-kit studio` (Runs locally) |
 
 ---

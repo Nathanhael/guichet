@@ -1,4 +1,4 @@
-# Contributing Guidelines: i-pxs-support
+# Contributing Guidelines: Murmur
 
 To maintain the high-fidelity aesthetic and real-time performance of this prototype, please follow these guidelines.
 

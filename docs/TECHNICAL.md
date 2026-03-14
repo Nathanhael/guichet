@@ -1,6 +1,6 @@
-# Technical Documentation: M&P Support
+# Technical Documentation: Murmur
 
-This document provides a comprehensive deep dive into the system design, tech stack, and multi-tenant architecture of the M&P Support platform.
+This document provides a comprehensive deep dive into the system design, tech stack, and multi-tenant architecture of the Murmur platform.
 
 ---
 

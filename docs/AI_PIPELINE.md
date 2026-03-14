@@ -1,6 +1,6 @@
 # AI Intelligence Hub & Message Pipeline
 
-This document describes the AI-driven features of M&P Support, including the tenant-aware message processing pipeline, safety guards, and strategic intelligence tools.
+This document describes the AI-driven features of Murmur, including the tenant-aware message processing pipeline, safety guards, and strategic intelligence tools.
 
 ---
 

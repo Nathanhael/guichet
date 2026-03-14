@@ -12,7 +12,7 @@ types.setTypeParser(1114, (val: string) => val); // timestamp
 types.setTypeParser(1184, (val: string) => val); // timestamptz
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/i_pxs_support',
+  connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/murmur',
 });
 
 pool.on('error', (err) => {

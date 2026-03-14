@@ -1,6 +1,6 @@
 # Implementation Plan — tRPC Migration (Phase 2) [COMPLETED]
 
-This plan outlines the second phase of migrating the M&P Support application to tRPC, focusing on the core **Tickets** and **Messages** modules.
+This plan outlines the second phase of migrating the Murmur application to tRPC, focusing on the core **Tickets** and **Messages** modules.
 
 ## Objective
 *   Achieve 100% type safety for the core chat data flow.
