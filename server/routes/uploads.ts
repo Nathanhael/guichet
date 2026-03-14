@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import crypto from 'crypto';
 import { fileTypeFromFile } from 'file-type';
 import config from '../config.js';
 import { auth } from '../middleware/auth.js';
@@ -13,8 +14,7 @@ const uploadDir = path.join(__dirname, '..', 'uploads');
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadDir),
   filename: (_req, file, cb) => {
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}${path.extname(file.originalname)}`);
+    cb(null, `${crypto.randomUUID()}${path.extname(file.originalname)}`);
   },
 });
 
