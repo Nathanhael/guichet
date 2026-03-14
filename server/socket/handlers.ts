@@ -73,12 +73,20 @@ export function registerSocketHandlers(io: Server) {
     console.log(`[socket] connected: ${socket.id}`);
 
     socket.on('socket:identify', async ({ userId, role, name, partnerId }: { userId: string, role: string, name: string, partnerId: string }) => {
+      // Validate that user has a membership for the requested partner
+      const membership = await get('SELECT role FROM memberships WHERE user_id = $1 AND partner_id = $2', [userId, partnerId]) as { role: string } | undefined;
+      if (!membership) {
+        socket.emit('error', { message: 'Not authorized for this partner' });
+        socket.disconnect();
+        return;
+      }
+
       socket.data.userId = userId;
-      socket.data.role = role;
+      socket.data.role = membership.role;
       socket.data.name = name;
       socket.data.partnerId = partnerId;
-      
-      await presenceService.identifyUser(userId, role, name, partnerId);
+
+      await presenceService.identifyUser(userId, membership.role, name, partnerId);
       
       // Join partner-specific room for broadcasts
       socket.join(`partner:${partnerId}`);

@@ -38,4 +38,14 @@ const config: Config = {
     REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
 };
 
+// Startup validation — fail fast if JWT secret is not set
+if (config.JWT_SECRET === 'super-secret-key-replace-in-prod') {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('FATAL: JWT_SECRET must be set in production. Exiting.');
+    process.exit(1);
+  } else {
+    console.warn('WARNING: Using default JWT_SECRET. Set JWT_SECRET env var before deploying.');
+  }
+}
+
 export default config;
