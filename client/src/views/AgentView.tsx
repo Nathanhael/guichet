@@ -77,8 +77,9 @@ export default function AgentView() {
             <span className="text-sm font-medium text-solarized-base2">{user.name}</span>
             
             {!activeTicketId && (
-              <button 
+              <button
                 onClick={() => setActiveTicketId(null)}
+                aria-label={t('new_ticket')}
                 className="bg-brand-500 hover:bg-brand-400 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-brand-500/20 transition-all active:scale-95"
               >
                 {t('new_ticket')}
@@ -93,6 +94,7 @@ export default function AgentView() {
               <button
                 onClick={() => setNotificationsEnabled(!notificationsEnabled)}
                 title={notificationsEnabled ? 'Disable notifications' : 'Enable notifications'}
+                aria-label={notificationsEnabled ? t('mute_notifications') : t('enable_notifications')}
                 className={`p-2 rounded-lg flex items-center justify-center transition-all duration-300 ${
                   notificationsEnabled 
                     ? 'text-accent-400 bg-white/10 shadow-sm' 
@@ -115,13 +117,14 @@ export default function AgentView() {
               onClick={() => setShowFeedback(true)}
               className="text-solarized-base1 hover:text-white text-sm flex items-center gap-1.5 ml-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
               title={t('feedback')}
+              aria-label={t('feedback')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
               </svg>
               {t('feedback')}
             </button>
-            <button onClick={logout} className="text-solarized-base1 hover:text-rose-400 text-sm font-medium ml-2 transition-colors">{t('sign_out')}</button>
+            <button onClick={logout} aria-label={t('sign_out')} className="text-solarized-base1 hover:text-rose-400 text-sm font-medium ml-2 transition-colors">{t('sign_out')}</button>
           </div>
         </nav>
 
@@ -143,7 +146,7 @@ export default function AgentView() {
                   <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white mb-2">{t('hello')}, {user.name}</h2>
                   <p className="text-solarized-base1 dark:text-gray-400 mb-8">{t('choose_dept_desc')}</p>
                   
-                  <form onSubmit={createTicket} className="space-y-6">
+                  <form onSubmit={createTicket} aria-label={t('new_ticket')} className="space-y-6">
                     <div className="grid grid-cols-2 gap-3">
                       {manifest.departments.map((d) => (
                         <button

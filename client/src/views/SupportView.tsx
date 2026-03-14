@@ -58,6 +58,9 @@ function StatusPicker({ value, onChange }: { value: string; onChange: (v: string
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
+        aria-label={`Status: ${t(current.label)}`}
+        aria-expanded={open}
+        aria-haspopup="listbox"
         className="flex items-center gap-2 bg-brand-700 hover:bg-brand-600 rounded-lg px-2.5 py-1.5 transition-colors"
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${current.dot}`} />
@@ -68,7 +71,7 @@ function StatusPicker({ value, onChange }: { value: string; onChange: (v: string
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-gray-900 border border-solarized-base2 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
+        <div role="listbox" aria-label={t('status_available')} className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-gray-900 border border-solarized-base2 dark:border-gray-700 rounded-xl shadow-2xl overflow-hidden z-50">
           {STATUSES.map((s) => (
             <button
               key={s.key}
@@ -410,7 +413,7 @@ export default function SupportView() {
               </button>
             </div>
 
-            <button onClick={logout} className="text-brand-200 hover:text-rose-400 text-sm font-medium ml-2 transition-colors">{t('sign_out')}</button>
+            <button onClick={logout} aria-label={t('sign_out')} className="text-brand-200 hover:text-rose-400 text-sm font-medium ml-2 transition-colors">{t('sign_out')}</button>
           </div>
         </div>
       </nav>
@@ -467,6 +470,7 @@ export default function SupportView() {
                     onClick={() => switchSidebarTab('queue')}
                     className="text-solarized-base1 hover:text-brand-500 transition-colors"
                     title={t('back_to_queue')}
+                    aria-label={t('back_to_queue')}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -489,7 +493,7 @@ export default function SupportView() {
                           <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
                             {t('waiting_badge')}
                           </h3>
-                          <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
+                          <ul role="list" aria-label={t('waiting_badge')} className="divide-y divide-solarized-base2 dark:divide-gray-700">
                             {queueFiltered.filter(tk => !tk.supportName).map((ticket) => {
                               const alreadyOpen = supportOpenTickets.includes(ticket.id);
                               const isPreviewed = previewTicketId === ticket.id;
@@ -571,7 +575,7 @@ export default function SupportView() {
                           <h3 className="text-xs font-semibold text-solarized-base1 uppercase tracking-wider px-4 pt-3 pb-1">
                             {t('in_progress')}
                           </h3>
-                          <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
+                          <ul role="list" aria-label={t('in_progress')} className="divide-y divide-solarized-base2 dark:divide-gray-700">
                             {queueFiltered.filter(tk => tk.supportName).map((ticket) => {
                               const alreadyOpen = supportOpenTickets.includes(ticket.id);
                               const isPreviewed = previewTicketId === ticket.id;
@@ -661,6 +665,7 @@ export default function SupportView() {
                       value={archiveSearch}
                       onChange={(e) => { setArchiveOffset(0); setArchiveSearch(e.target.value); }}
                       placeholder={t('archive_search_placeholder')}
+                      aria-label={t('archive_search_placeholder')}
                       className="w-full text-xs border border-solarized-base2 dark:border-brand-600 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white dark:bg-gray-700 text-solarized-base01 dark:text-gray-100 placeholder-solarized-base1"
                     />
                     <div className="flex gap-1">
@@ -794,7 +799,7 @@ export default function SupportView() {
         </AnimatePresence>
 
         {/* Main */}
-        <main className={`flex-1 flex flex-col overflow-hidden transition-all duration-700 ${
+        <main role="main" aria-label="Chat workspace" className={`flex-1 flex flex-col overflow-hidden transition-all duration-700 ${
           focusMode ? 'm-4 rounded-3xl zen-glass z-10' : ''
         }`}>
           {/* Tab bar + view toggle */}
@@ -805,12 +810,15 @@ export default function SupportView() {
                 : 'bg-solarized-base3 dark:bg-brand-800 border-solarized-base2 dark:border-brand-700'
             }`}>
               {viewMode === 'tabs' && (
-                <div className="flex overflow-x-auto flex-1">
+                <div role="tablist" aria-label={t('active_tickets')} className="flex overflow-x-auto flex-1">
                   {openTabTickets.map((ticket) => {
                     const hasUnread = unreadTickets.has(ticket.id) && activeTab !== ticket.id;
                     return (
                       <button
                         key={ticket.id}
+                        role="tab"
+                        aria-selected={activeTab === ticket.id}
+                        aria-label={`${ticket.dept} - ${ticket.agentName}`}
                         onClick={() => switchTab(ticket.id)}
                         className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === ticket.id
                           ? 'border-brand-500 text-brand-600 dark:text-brand-400'
@@ -825,8 +833,12 @@ export default function SupportView() {
                         {ticket.cdbId && <span className="text-xs font-mono text-solarized-base1">#{ticket.cdbId}</span>}
                         {ticket.dareRef && <span className="text-xs font-mono text-solarized-base1">{ticket.dareRef}</span>}
                         <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Close ${ticket.agentName} tab`}
                           onClick={(e) => { e.stopPropagation(); closeTab(ticket.id); }}
-                          className="ml-1 text-solarized-base1 hover:text-solarized-base01 text-base leading-none"
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); closeTab(ticket.id); } }}
+                          className="ml-1 text-solarized-base1 hover:text-solarized-base01 text-base leading-none cursor-pointer"
                         >×</span>
                       </button>
                     );
@@ -845,6 +857,8 @@ export default function SupportView() {
                 <button
                   onClick={() => setViewMode('tabs')}
                   title={t('tab_view')}
+                  aria-label={t('tab_view')}
+                  aria-pressed={viewMode === 'tabs'}
                   className={`p-1.5 rounded-md transition-colors ${viewMode === 'tabs' ? 'bg-solarized-base2 dark:bg-brand-900/30 text-brand-600' : 'text-solarized-base1 hover:text-solarized-base01 hover:bg-solarized-base2 dark:hover:bg-brand-700'}`}
                 >
                   <TabIcon />
@@ -852,6 +866,8 @@ export default function SupportView() {
                 <button
                   onClick={() => setViewMode('vsplit')}
                   title={t('vertical_split')}
+                  aria-label={t('vertical_split')}
+                  aria-pressed={viewMode === 'vsplit'}
                   className={`p-1.5 rounded-md transition-colors ${viewMode === 'vsplit' ? 'bg-solarized-base2 dark:bg-brand-900/30 text-brand-600' : 'text-solarized-base1 hover:text-solarized-base01 hover:bg-solarized-base2 dark:hover:bg-brand-700'}`}
                 >
                   <VSplitIcon />
