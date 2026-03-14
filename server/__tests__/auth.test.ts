@@ -51,6 +51,34 @@ describe('Auth Middleware', () => {
       expect(next).not.toHaveBeenCalled();
     });
 
+    it('should return 401 with expired token', () => {
+      const token = jwt.sign({ userId: 'user1', role: 'agent' }, config.JWT_SECRET, { expiresIn: '0s' });
+      const { req, res, next } = mockReqResNext({
+        headers: { authorization: `Bearer ${token}` },
+      });
+      auth(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should return 401 with token signed by wrong secret', () => {
+      const token = jwt.sign({ userId: 'user1', role: 'agent' }, 'wrong-secret');
+      const { req, res, next } = mockReqResNext({
+        headers: { authorization: `Bearer ${token}` },
+      });
+      auth(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('should return 401 with malformed Authorization header', () => {
+      const { req, res, next } = mockReqResNext({
+        headers: { authorization: 'NotBearer token123' },
+      });
+      auth(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(401);
+    });
+
     it('should authenticate with query token', () => {
       const token = jwt.sign({ userId: 'user2', role: 'support' }, config.JWT_SECRET);
       const { req, res, next } = mockReqResNext({
