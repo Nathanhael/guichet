@@ -23,6 +23,8 @@ import * as presenceService from './services/presence.js';
 import { setIo as setBusinessHoursIo } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
 import { registerSocketHandlers } from './socket/handlers.js';
+import { metricsMiddleware } from './middleware/metrics.js';
+import { register } from './utils/metrics.js';
 
 import { initRedis, getRedisClients } from './utils/redis.js';
 
@@ -75,6 +77,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+app.use(metricsMiddleware);
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use('/api/tickets', ticketRoutes); // Kept for export support
@@ -97,6 +101,11 @@ app.get('/api/config', (_req: Request, res: Response) => {
     uploadMaxSize: config.UPLOAD_MAX_SIZE,
     uploadAllowedTypes: config.UPLOAD_ALLOWED_TYPES,
   });
+});
+
+app.get('/metrics', async (_req: Request, res: Response) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
 });
 
 app.get('/api/health', async (_req: Request, res: Response) => {

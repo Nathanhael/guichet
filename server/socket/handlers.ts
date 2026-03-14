@@ -9,6 +9,7 @@ import { isWithinBusinessHours, broadcastQueuePositions, broadcastAgentStatus } 
 import logger from '../utils/logger.js';
 import { Ticket, Message, User } from '../types/index.js';
 import { getRedisClients } from '../utils/redis.js';
+import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 
 interface TicketNewPayload {
   agentId: string;
@@ -104,6 +105,7 @@ interface TicketParticipantsRow {
 export function registerSocketHandlers(io: Server) {
   io.on('connection', (socket: Socket) => {
     console.log(`[socket] connected: ${socket.id}`);
+    socketioConnectionsActive.inc();
 
     socket.on('socket:identify', async ({ userId, role, name, partnerId }: { userId: string, role: string, name: string, partnerId: string }) => {
       // Validate that user has a membership for the requested partner
@@ -139,6 +141,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('ticket:new', async (data: TicketNewPayload) => {
+      socketioEventsTotal.inc({ event: 'ticket:new' });
       if (!isWithinBusinessHours()) return socket.emit('hours:closed', { message: 'The support chat is currently closed.' });
       try {
         const { agentId, agentLang, dept, ref1, ref2, text, mediaUrl } = data;
@@ -177,6 +180,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('support:join', async ({ ticketId, supportId, supportName, supportLang }: SupportJoinPayload) => {
+      socketioEventsTotal.inc({ event: 'support:join' });
       try {
         const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as TicketRow | undefined;
         if (!ticket) return;
@@ -199,6 +203,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('support:leave', async ({ ticketId, supportId, supportName }: SupportLeavePayload) => {
+      socketioEventsTotal.inc({ event: 'support:leave' });
       try {
         const ticket = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as TicketParticipantsRow | undefined;
         if (!ticket) return;
@@ -211,6 +216,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('ticket:close', async ({ ticketId, closedBy, closingNotes }: TicketClosePayload) => {
+      socketioEventsTotal.inc({ event: 'ticket:close' });
       try {
         const now = new Date().toISOString();
         await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, closedBy || 'System', closingNotes || '', ticketId]);
@@ -231,6 +237,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('message:send', async ({ ticketId, senderId, text, mediaUrl, whisper }: MessageSendPayload) => {
+      socketioEventsTotal.inc({ event: 'message:send' });
       try {
         if (!ticketId || !senderId || !text) return;
         const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as TicketRow | undefined;
@@ -306,6 +313,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('disconnect', async () => {
+      socketioConnectionsActive.dec();
       const userId = socket.data.userId;
       if (userId) {
         const result = await presenceService.decrementUserCount(userId);
