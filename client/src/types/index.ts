@@ -42,12 +42,11 @@ export interface User {
 }
 
 export interface AppConfig {
-  ollamaAvailable: boolean;
-  businessHours: {
-    start: string;
-    end: string;
-    timezone: string;
-  };
+  businessHoursStart: string;
+  businessHoursEnd: string;
+  businessHoursTimezone: string;
+  uploadMaxSize: number;
+  uploadAllowedTypes: string[];
 }
 
 export interface ZenSettings {

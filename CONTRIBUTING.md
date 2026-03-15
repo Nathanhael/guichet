@@ -56,7 +56,7 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 
 ## E2E Testing
 
-The project uses Playwright for end-to-end testing. Tests live in `e2e/` and cover:
+The project uses Playwright (Chrome + Edge) for end-to-end testing. Tests live in `e2e/` and cover:
 - **Auth flows**: Login for each role lands on the correct view.
 - **Ticket lifecycle**: Agent creates ticket, support joins and resolves.
 - **Live chat**: Real-time bidirectional message exchange via Socket.io.
