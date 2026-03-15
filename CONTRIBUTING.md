@@ -74,6 +74,7 @@ The project uses Playwright (Chrome + Edge) for end-to-end testing. Tests live i
 - **Live chat**: Real-time bidirectional message exchange via Socket.io.
 - **Admin dashboard**: Tab navigation and stats rendering.
 - **Multi-tenant isolation**: Partner B cannot see Partner A's tickets.
+- **Stats tenant isolation**: All stats queries include `partner_id` filters (unit test enforced).
 
 ### Running E2E Tests
 ```bash
