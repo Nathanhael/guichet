@@ -401,7 +401,7 @@ export const statsRouter = router({
         }
 
         const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-        const waitingTickets = (await query('SELECT created_at FROM tickets WHERE status = $1 AND support_id IS NULL AND created_at >= $2', ['open', thirtyMinsAgo])) as unknown as { createdAt: string }[];
+        const waitingTickets = (await query('SELECT created_at FROM tickets WHERE status = $1 AND support_id IS NULL AND created_at >= $2 AND partner_id = $3', ['open', thirtyMinsAgo, partnerId])) as unknown as { createdAt: string }[];
         let oldest = 0;
         waitingTickets.forEach(t => {
           if (t.createdAt) {
@@ -515,11 +515,11 @@ export const statsRouter = router({
 
         let prevHistSql = `SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(sla_resolved) as slares, AVG(sla_compliant) as slacomp, AVG(avg_rating) as avgrat
                            FROM daily_stats
-                           WHERE date >= $1 AND date <= $2`;
+                           WHERE date >= $1 AND date <= $2 AND partner_id = $3`;
         if (excludeWeekends) {
             prevHistSql += " AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)";
         }
-        const prevHist = (await query(prevHistSql, [prevStartStr, prevEndStr])) as unknown as (PrevHistRow & { avgrat: number | null })[];
+        const prevHist = (await query(prevHistSql, [prevStartStr, prevEndStr, partnerId])) as unknown as (PrevHistRow & { avgrat: number | null })[];
 
         const prevSlares = prevHist[0]?.slares ?? 0;
         const prevSlacomp = prevHist[0]?.slacomp ?? 0;
@@ -564,10 +564,10 @@ export const statsRouter = router({
                                FROM ticket_labels tl
                                JOIN labels l ON tl.label_id = l.id
                                JOIN tickets t ON tl.ticket_id = t.id
-                               WHERE t.created_at::date >= $1 AND t.created_at::date <= $2
+                               WHERE t.created_at::date >= $1 AND t.created_at::date <= $2 AND t.partner_id = $3
                                GROUP BY l.name, t.dept
                                ORDER BY t.dept, count DESC`;
-            const labelCounts = (await query(labelsSql, [rangeStart, rangeEnd])) as unknown as LabelCountRow[];
+            const labelCounts = (await query(labelsSql, [rangeStart, rangeEnd, partnerId])) as unknown as LabelCountRow[];
             const summary: Record<string, string[]> = { DSC: [], FOT: [] };
             labelCounts.forEach(lc => { if (summary[lc.dept] && summary[lc.dept].length < 3) summary[lc.dept].push(lc.name); });
             return summary;
@@ -577,10 +577,11 @@ export const statsRouter = router({
                                FROM messages m
                                JOIN canned_responses cr ON m.canned_response_id = cr.id
                                JOIN ratings r ON m.ticket_id = r.ticket_id
-                               WHERE m.created_at::date >= $1 AND m.created_at::date <= $2
+                               JOIN tickets tk ON m.ticket_id = tk.id
+                               WHERE m.created_at::date >= $1 AND m.created_at::date <= $2 AND tk.partner_id = $3
                                GROUP BY cr.shortcut
                                ORDER BY usage_count DESC`;
-            return await query(cannedSql, [rangeStart, rangeEnd]);
+            return await query(cannedSql, [rangeStart, rangeEnd, partnerId]);
           })(),
           previousPeriod,
         };
