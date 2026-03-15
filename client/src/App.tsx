@@ -82,7 +82,7 @@ export default function App() {
   }, [highContrastMode]);
 
   useEffect(() => {
-    const url = activePartnerId ? `/api/config?partnerId=${activePartnerId}` : '/api/config';
+    const url = activePartnerId ? `/api/v1/config?partnerId=${activePartnerId}` : '/api/v1/config';
     fetch(url)
       .then((res) => res.json())
       .then((config) => setAppConfig(config))

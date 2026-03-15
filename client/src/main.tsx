@@ -23,7 +23,7 @@ const TRPCProvider = ({ children }: { children: React.ReactNode }) => {
     trpc.createClient({
       links: [
         httpBatchLink({
-          url: '/api/trpc',
+          url: '/api/v1/trpc',
           headers() {
             return {
               Authorization: token ? `Bearer ${token}` : undefined,

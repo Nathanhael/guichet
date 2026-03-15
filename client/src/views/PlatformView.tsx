@@ -4,6 +4,7 @@ import { trpc } from '../utils/trpc';
 import { motion, AnimatePresence } from 'framer-motion';
 import DarkModeToggle from '../components/DarkModeToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import ThemePreviewCard from '../components/admin/ThemePreviewCard';
 
 export default function PlatformView() {
   const { logout } = useStore();
@@ -197,6 +198,11 @@ export default function PlatformView() {
                     </div>
                   </div>
                 </div>
+
+                <ThemePreviewCard 
+                  primaryColor={editingPartner.primaryColor}
+                  secondaryColor={editingPartner.secondaryColor}
+                />
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>

@@ -1,33 +1,52 @@
 import { useEffect } from 'react';
 import useStore from '../store/useStore';
 import { usePartner } from './usePartner';
+import { generatePalette } from '../utils/colorUtils';
+
+const DEFAULT_PRIMARY = '#a855f7';
+const DEFAULT_SECONDARY = '#3b82f6';
+
+const GLASS_DEFAULTS = {
+  light: { opacity: '0.3', blur: '16px', saturate: '150%', border: 'rgba(255, 255, 255, 0.4)' },
+  dark:  { opacity: '0.1', blur: '20px', saturate: '180%', border: 'rgba(255, 255, 255, 0.1)' },
+};
 
 export function useTheme() {
   const { manifest } = usePartner();
-  const { darkMode } = useStore();
+  const darkMode = useStore((s) => s.darkMode);
 
   useEffect(() => {
-    if (!manifest) return;
-
     const root = document.documentElement;
-    const theme = manifest.themeConfig || {};
+    const theme = manifest?.themeConfig || {};
+    const mode = darkMode ? 'dark' : 'light';
 
-    // Base colors from manifest (primary/secondary)
-    root.style.setProperty('--brand-primary', manifest.primaryColor || '#a855f7');
-    root.style.setProperty('--brand-secondary', manifest.secondaryColor || '#3b82f6');
+    // Brand colors — use manifest or defaults
+    const primary = manifest?.primaryColor || DEFAULT_PRIMARY;
+    const secondary = manifest?.secondaryColor || DEFAULT_SECONDARY;
+    root.style.setProperty('--brand-primary', primary);
+    root.style.setProperty('--brand-secondary', secondary);
 
-    // Advanced theme config
-    if (theme.glassBlur) root.style.setProperty('--glass-blur', theme.glassBlur);
-    else root.style.setProperty('--glass-blur', '16px');
+    // Generate and inject full palette
+    const primaryPalette = generatePalette(primary);
+    Object.entries(primaryPalette).forEach(([shade, color]) => {
+      root.style.setProperty(`--brand-${shade}`, color);
+    });
 
-    if (theme.glassOpacity) root.style.setProperty('--glass-opacity', theme.glassOpacity);
-    else root.style.setProperty('--glass-opacity', darkMode ? '0.1' : '0.3');
+    const secondaryPalette = generatePalette(secondary);
+    Object.entries(secondaryPalette).forEach(([shade, color]) => {
+      root.style.setProperty(`--brand-secondary-${shade}`, color);
+    });
 
-    if (theme.accentColor) root.style.setProperty('--accent-color', theme.accentColor);
-    else root.style.setProperty('--accent-color', '#f43f5e');
+    // Glass defaults — partner theme overrides mode defaults
+    const glass = GLASS_DEFAULTS[mode];
+    root.style.setProperty('--glass-blur', theme.glassBlur || glass.blur);
+    root.style.setProperty('--glass-opacity', theme.glassOpacity || glass.opacity);
+    root.style.setProperty('--glass-saturate', glass.saturate);
+    root.style.setProperty('--glass-border', glass.border);
 
-    if (theme.borderRadius) root.style.setProperty('--border-radius', theme.borderRadius);
-    else root.style.setProperty('--border-radius', '0.75rem');
+    // Other theme properties
+    root.style.setProperty('--accent-color', theme.accentColor || '#f43f5e');
+    root.style.setProperty('--border-radius', theme.borderRadius || '0.75rem');
 
   }, [manifest, darkMode]);
 }

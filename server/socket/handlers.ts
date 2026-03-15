@@ -46,6 +46,7 @@ interface MessageSendPayload {
   text: string;
   mediaUrl?: string;
   whisper?: boolean;
+  cannedResponseId?: string;
 }
 
 interface ReactionTogglePayload {
@@ -243,7 +244,7 @@ export function registerSocketHandlers(io: Server) {
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
     });
 
-    socket.on('message:send', async ({ ticketId, senderId, text, mediaUrl, whisper }: MessageSendPayload) => {
+    socket.on('message:send', async ({ ticketId, senderId, text, mediaUrl, whisper, cannedResponseId }: MessageSendPayload) => {
       socketioEventsTotal.inc({ event: 'message:send' });
       try {
         if (!ticketId || !senderId || !text) return;
@@ -263,7 +264,7 @@ export function registerSocketHandlers(io: Server) {
         const { processedText, improvedText, translationSkipped, fallback } = await processMessage(text, sender.role as 'agent' | 'support', ticket.partner_id, sender.lang, recipientLang || sender.lang);
         const messageId = uuidv4();
         const now = new Date().toISOString();
-        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [messageId, ticketId, senderId, sender.name, text, processedText, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}']);
+        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, text, translated_text, media_url, whisper, system, created_at, reactions, canned_response_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, text, processedText, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}', cannedResponseId || null]);
         io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, text: processedText, originalText: text, improvedText, mediaUrl, whisper: !!whisper, system: false, timestamp: now, reactions: {}, translationSkipped, fallback });
 
         // Background Sentiment Analysis

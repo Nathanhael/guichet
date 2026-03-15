@@ -54,6 +54,18 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 - **Avoid `any`**: Document your interfaces in specialized `.d.ts` or at the top of the file.
 - Use the `useT` hook for all UI strings.
 
+## 🛠️ Tooling
+
+### Database Management (Drizzle)
+- Use **Drizzle ORM** for all database interactions.
+- To push schema changes to the database: `cd server && npx drizzle-kit push:pg`.
+- To explore the database visually: `cd server && npx drizzle-kit studio`.
+
+### AI & LLM (Ollama)
+- Local translation and sentiment analysis require **Ollama** running on your host.
+- The server connects via `http://host.docker.internal:11434`.
+- Ensure you have the `gemmatranslate4b` model pulled: `ollama pull gemmatranslate4b`.
+
 ## E2E Testing
 
 The project uses Playwright (Chrome + Edge) for end-to-end testing. Tests live in `e2e/` and cover:

@@ -3,7 +3,7 @@ import { trpc } from '../utils/trpc';
 import useStore from '../store/useStore';
 
 interface CannedResponsePickerProps {
-  onSelect: (text: string) => void;
+  onSelect: (text: string, id: string) => void;
 }
 
 export default function CannedResponsePicker({ onSelect }: CannedResponsePickerProps) {
@@ -69,7 +69,7 @@ export default function CannedResponsePicker({ onSelect }: CannedResponsePickerP
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                onSelect(r.text);
+                                                onSelect(r.text, r.id);
                                                 setOpen(false);
                                             }}
                                             className="w-full text-left p-2.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group"
@@ -87,3 +87,4 @@ export default function CannedResponsePicker({ onSelect }: CannedResponsePickerP
         </div>
     );
 }
+

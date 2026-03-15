@@ -25,16 +25,17 @@ export default {
       },
       colors: {
         brand: {
-          50: '#f1f6fa',
-          100: '#e3ebf4',
-          200: '#c2d2e3',
-          300: '#9bb1c9',
-          400: '#758fae',
-          500: '#557091',
-          600: '#3f5675',
-          700: '#2d3f56',
-          800: '#1e2b38', // iKanbi Navy
-          900: '#121b25',
+          50:  'var(--brand-50)',
+          100: 'var(--brand-100)',
+          200: 'var(--brand-200)',
+          300: 'var(--brand-300)',
+          400: 'var(--brand-400)',
+          500: 'var(--brand-500)',
+          600: 'var(--brand-600)',
+          700: 'var(--brand-700)',
+          800: 'var(--brand-800)',
+          900: 'var(--brand-900)',
+          DEFAULT: 'var(--brand-primary)',
         },
         accent: {
           400: '#f07469',
