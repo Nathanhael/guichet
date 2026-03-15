@@ -12,7 +12,8 @@ Tessera is a high-fidelity, real-time multi-tenant customer support platform des
 - **End-to-End Type Safety**: Built with tRPC, Drizzle ORM, and Zod.
 - **Agent Lite PWA**: Installable mobile-first view for field agents with offline support.
 - **Platform Observability**: Prometheus metrics + pre-provisioned Grafana dashboards.
-- **E2E Testing**: Playwright test suite covering auth, tickets, chat, admin, and tenant isolation.
+- **Configurable Business Hours**: Per-partner opening hours with timezone support, configurable via Admin UI.
+- **E2E Testing**: Playwright test suite (Chrome + Edge) covering auth, tickets, chat, admin, and tenant isolation.
 
 ## 🛠️ Tech Stack
 
