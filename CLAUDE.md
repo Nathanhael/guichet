@@ -80,7 +80,7 @@ cd client && npm run preview  # Preview production build
 
 ## Architecture
 
-For detailed diagrams and AI translation pipeline docs, see **[ARCHITECTURE.md](./ARCHITECTURE.md)** and **[CONTRIBUTING.md](./CONTRIBUTING.md)** (Solaris design system rules).
+For AI translation pipeline docs, see **[AI_PIPELINE.md](./docs/AI_PIPELINE.md)**. For design system rules, see **[CONTRIBUTING.md](./CONTRIBUTING.md)**.
 
 ### Server (`server/`)
 
@@ -161,7 +161,7 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 - **AgentLiteView**: Mobile-optimized PWA view for field agents (`?lite=1` URL param).
 - **SupportView**: Queue management and resolution (Zen Mode).
 - **AdminView**: Operational and AI Dashboards, AI Persona configuration, and Business Hours settings.
-- **PlatformView**: Global partner and membership management (Operator only).
+- **PlatformView**: Global partner and membership management (Operator only). Includes branding editor with `ThemePreviewCard`.
 
 **PWA**: `manifest.json` + `sw.js` in `client/public/`. Service worker uses cache-first for static assets, network-first for API calls, skips Socket.io.
 
@@ -171,6 +171,8 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 - **Multi-Tenancy**: All data must be scoped by `partner_id`. Never leak cross-partner data.
 - **Transversal**: Users can have multiple `memberships`. Use `usePartner()` hook for active context.
 - **Aesthetics**: Solaris design system — glassmorphism, dynamic CSS variables (`--brand-primary`).
+- **Theme System**: `useTheme.ts` is the single source of truth for all CSS variables (brand palette, glass defaults, accent, border-radius). It generates `--brand-50` through `--brand-900` from the partner's `primaryColor` via `colorUtils.ts` (piecewise HSL interpolation). Glass defaults are mode-aware (light/dark) with partner `themeConfig` overlay. `ThemePreviewCard` in `PlatformView.tsx` provides live preview in the partner editor.
+- **Accessibility Modes**: Dark, dyslexic, and high-contrast modes use a CSS specificity cascade (no `!important` except dyslexic font-family). Modes are independent toggles that stack correctly.
 - **API Versioning**: All REST and tRPC endpoints are versioned. Use the `/api/v1/` prefix for any new manual `fetch` calls (e.g., `/api/v1/config`, `/api/v1/uploads`).
 - **Scaling**: Redis-based Presence and Socket.io adapter. Avoid in-memory state for enterprise scalability.
 - **TypeScript**: 100% type safety. Avoid `any`. Maintain interfaces in `client/src/types/index.ts`.
