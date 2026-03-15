@@ -19,8 +19,8 @@ export default function BusinessHoursGuard({ children }: BusinessHoursGuardProps
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold text-solarized-base01 dark:text-white mb-2">{t('expert_chat_closed') || 'Chat is currently closed'}</h2>
-          <p className="text-solarized-base1 dark:text-gray-400">{t('expert_chat_closed_body') || 'Our experts are available during business hours.'}</p>
+          <h2 className="text-xl font-semibold text-solarized-base01 dark:text-white mb-2">{t('support_chat_closed')}</h2>
+          <p className="text-solarized-base1 dark:text-gray-400">{t('support_chat_closed_body')}</p>
         </div>
       </div>
     );

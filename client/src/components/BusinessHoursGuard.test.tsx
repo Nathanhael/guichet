@@ -18,7 +18,7 @@ describe('BusinessHoursGuard Component', () => {
     );
     
     expect(screen.getByTestId('child')).toBeInTheDocument();
-    expect(screen.queryByText(/expert_chat_closed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Support chat closed/i)).not.toBeInTheDocument();
   });
 
   it('renders closed message when business hours are closed', () => {
@@ -31,6 +31,6 @@ describe('BusinessHoursGuard Component', () => {
     );
     
     expect(screen.queryByTestId('child')).not.toBeInTheDocument();
-    expect(screen.getByText('expert_chat_closed')).toBeInTheDocument();
+    expect(screen.getByText(/Support chat closed/i)).toBeInTheDocument();
   });
 });
