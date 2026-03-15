@@ -22,9 +22,25 @@ export default defineConfig({
       },
     },
     {
+      name: 'docker-edge',
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
+        baseURL: 'http://localhost:5173',
+      },
+    },
+    {
       name: 'mock',
       use: {
         ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:4173',
+      },
+    },
+    {
+      name: 'mock-edge',
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge',
         baseURL: 'http://localhost:4173',
       },
     },

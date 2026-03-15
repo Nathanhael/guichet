@@ -10,11 +10,16 @@ export function setIo(socketIo: Server) {
   io = socketIo;
 }
 
-export function isWithinBusinessHours(): boolean {
-  const now = toZonedTime(new Date(), 'Europe/Brussels');
+export function isWithinBusinessHours(partner?: {
+  businessHoursStart?: string | null;
+  businessHoursEnd?: string | null;
+  businessHoursTimezone?: string | null;
+}): boolean {
+  const timezone = partner?.businessHoursTimezone ?? 'Europe/Brussels';
+  const now = toZonedTime(new Date(), timezone);
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const [startH, startM] = config.BUSINESS_HOURS_START.split(':').map(Number);
-  const [endH, endM] = config.BUSINESS_HOURS_END.split(':').map(Number);
+  const [startH, startM] = (partner?.businessHoursStart ?? config.BUSINESS_HOURS_START).split(':').map(Number);
+  const [endH, endM] = (partner?.businessHoursEnd ?? config.BUSINESS_HOURS_END).split(':').map(Number);
   return currentMinutes >= (startH * 60 + startM) && currentMinutes < (endH * 60 + endM);
 }
 

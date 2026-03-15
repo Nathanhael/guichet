@@ -142,12 +142,19 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('ticket:new', async (data: TicketNewPayload) => {
       socketioEventsTotal.inc({ event: 'ticket:new' });
-      if (!isWithinBusinessHours()) return socket.emit('hours:closed', { message: 'The support chat is currently closed.' });
+
+      const partnerId = socket.data.partnerId;
+      const partnerRow = partnerId ? await get('SELECT business_hours_start, business_hours_end, business_hours_timezone FROM partners WHERE id = $1', [partnerId]) as { business_hours_start: string | null; business_hours_end: string | null; business_hours_timezone: string | null } | undefined : null;
+      const partnerHours = partnerRow ? {
+        businessHoursStart: partnerRow.business_hours_start,
+        businessHoursEnd: partnerRow.business_hours_end,
+        businessHoursTimezone: partnerRow.business_hours_timezone,
+      } : undefined;
+
+      if (!isWithinBusinessHours(partnerHours)) return socket.emit('hours:closed', { message: 'The support chat is currently closed.' });
       try {
         const { agentId, agentLang, dept, ref1, ref2, text, mediaUrl } = data;
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
-        
-        const partnerId = socket.data.partnerId;
         if (!partnerId) return socket.emit('error', { message: 'No partner context' });
 
         // Re-open detection
