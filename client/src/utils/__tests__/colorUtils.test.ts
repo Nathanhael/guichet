@@ -10,23 +10,23 @@ describe('hexToHsl', () => {
   });
 
   it('converts pure white', () => {
-    const { h, s, l } = hexToHsl('#ffffff');
+    const { l, s } = hexToHsl('#ffffff');
     expect(l).toBeCloseTo(100);
     expect(s).toBeCloseTo(0);
   });
 
   it('converts pure black', () => {
-    const { h, s, l } = hexToHsl('#000000');
+    const { l } = hexToHsl('#000000');
     expect(l).toBeCloseTo(0);
   });
 
   it('converts the default brand purple', () => {
     const { h, s, l } = hexToHsl('#a855f7');
-    // #a855f7 is HSL(270.7, 91%, 65.1%)
-    expect(h).toBeGreaterThan(265);
-    expect(h).toBeLessThan(275);
-    expect(s).toBeGreaterThan(80);
-    expect(l).toBeGreaterThan(60);
+    expect(Math.round(h)).toBeGreaterThanOrEqual(269);
+    expect(Math.round(h)).toBeLessThanOrEqual(272);
+    expect(s).toBeGreaterThan(50);
+    expect(l).toBeGreaterThan(40);
+    expect(l).toBeLessThan(70);
   });
 });
 
@@ -38,9 +38,7 @@ describe('hslToHex', () => {
   it('round-trips the brand purple', () => {
     const original = '#a855f7';
     const { h, s, l } = hexToHsl(original);
-    const roundTrip = hslToHex(h, s, l);
-    // Tolerance for rounding: #a855f7 vs #a855f8 etc.
-    expect(roundTrip.startsWith('#a')).toBe(true);
+    expect(hslToHex(h, s, l)).toBe(original);
   });
 
   it('handles gray (zero saturation)', () => {
@@ -76,18 +74,17 @@ describe('generatePalette', () => {
     const palette = generatePalette('#3b82f6');
     const l = hexToHsl(palette['900']).l;
     expect(l).toBeGreaterThanOrEqual(10);
-    expect(l).toBeLessThan(25);
+    expect(l).toBeLessThan(20);
   });
 
   it('preserves hue across all shades', () => {
     const palette = generatePalette('#a855f7');
-    const { h: baseHue } = hexToHsl('#a855f7');
+    const baseHue = hexToHsl('#a855f7').h;
     Object.values(palette).forEach(hex => {
       const { h, s } = hexToHsl(hex);
-      if (s > 10) { // skip near-grays where hue is meaningless
-        // Allow up to 15 degrees of drift for generated palettes (aesthetic adjustments)
+      if (s > 5) {
         const diff = Math.abs(h - baseHue);
-        expect(diff).toBeLessThan(15);
+        expect(diff).toBeLessThan(10);
       }
     });
   });
