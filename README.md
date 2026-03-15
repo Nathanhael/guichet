@@ -10,6 +10,9 @@ Tessera is a high-fidelity, real-time multi-tenant customer support platform des
 - **Neuro-Inclusive Design (Solaris)**: Adaptive UI with glassmorphism, Dyslexic mode, and Bionic Reading.
 - **Actionable AI**: Automated generation of customer scripts and internal procedures.
 - **End-to-End Type Safety**: Built with tRPC, Drizzle ORM, and Zod.
+- **Agent Lite PWA**: Installable mobile-first view for field agents with offline support.
+- **Platform Observability**: Prometheus metrics + pre-provisioned Grafana dashboards.
+- **E2E Testing**: Playwright test suite covering auth, tickets, chat, admin, and tenant isolation.
 
 ## 🛠️ Tech Stack
 
@@ -17,6 +20,8 @@ Tessera is a high-fidelity, real-time multi-tenant customer support platform des
 - **Backend**: Node.js 20, Express, tRPC, Socket.io.
 - **Database**: PostgreSQL (PostGIS ready), Drizzle ORM, Redis (Presence & Scaling).
 - **AI**: Ollama REST API (Model-agnostic, per-partner configuration).
+- **Observability**: Prometheus (prom-client), Grafana (pre-provisioned dashboards).
+- **Testing**: Vitest (unit), Playwright (E2E).
 - **Runtime**: Docker & Docker Compose.
 
 ## 🚀 Quick Start
@@ -41,6 +46,25 @@ Tessera is a high-fidelity, real-time multi-tenant customer support platform des
 - **SOLARIS UI**: Adhere to glassmorphism standards in `client/src/index.css`.
 - **LOCALIZATION**: Use the `useT` hook for all UI strings.
 - **TYPE SAFETY**: Maintain 100% TypeScript coverage in `client/src/types/index.ts`.
+
+## 🧪 Testing
+
+```bash
+# Unit tests
+cd server && npm test        # Backend
+cd client && npm test        # Frontend
+
+# E2E tests (requires Docker stack running)
+npm run test:e2e             # Against Docker
+npm run test:e2e:mock        # Against mock server (start first: cd e2e && npm run mock:start)
+```
+
+## 📊 Observability
+
+When running via Docker Compose, Prometheus and Grafana are available:
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
+- **Metrics endpoint**: http://localhost:3001/metrics
 
 ## 📖 Documentation
 

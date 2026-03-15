@@ -132,7 +132,32 @@ daily_stats        (date, partner_id, total, closed, abandoned, avg_response_ms,
 
 ---
 
-## 5. Data Lifecycle & Compliance (GDPR)
+## 5. Observability (Prometheus + Grafana)
+
+The platform exposes Prometheus metrics at `/metrics` via `prom-client`. When running in Docker, Prometheus and Grafana are automatically provisioned.
+
+### Metrics Exposed
+
+| Metric | Type | Labels | Description |
+|---|---|---|---|
+| `http_request_duration_seconds` | Histogram | method, route, status | HTTP request latency |
+| `http_requests_total` | Counter | method, route, status | Total HTTP requests |
+| `socketio_connections_active` | Gauge | — | Active WebSocket connections |
+| `socketio_events_total` | Counter | event | Socket.io events processed |
+| `tickets_active_total` | Gauge | partner_id | Open/active tickets |
+| `ticket_queue_depth` | Gauge | partner_id | Tickets awaiting support |
+| `ai_pipeline_duration_seconds` | Histogram | type | AI pipeline call latency |
+| `ai_pipeline_errors_total` | Counter | type | AI pipeline failures |
+
+### Architecture
+- **Metrics middleware** (`server/middleware/metrics.ts`): Instruments all HTTP requests.
+- **Socket.io instrumentation**: Connection gauge + event counters in `server/socket/handlers.ts`.
+- **AI pipeline timing**: Histogram wrapping Ollama calls in `server/services/translate.ts`.
+- **Grafana dashboard**: Pre-provisioned 8-panel dashboard at `monitoring/grafana/dashboards/tessera.json`.
+
+---
+
+## 6. Data Lifecycle & Compliance (GDPR)
 
 The platform enforces a 30-day data retention policy via the `gdpr.ts` service:
 

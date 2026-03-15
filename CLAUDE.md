@@ -48,6 +48,26 @@ cd client && npm run test:watch # Frontend tests (watch mode)
 
 Vitest supports filtering: `npx vitest run auth` runs only files matching "auth".
 
+### E2E Tests (Playwright)
+
+```bash
+npm run test:e2e             # Run against Docker stack (must be running)
+npm run test:e2e:mock        # Run against mock server
+cd e2e && npm run mock:start # Start mock server (port 4173)
+cd e2e && npm run test:ui    # Interactive Playwright UI
+```
+
+E2E structure: `e2e/tests/*.spec.ts`, auth fixture in `e2e/fixtures/`, test data seeding via `e2e/global-setup.ts`.
+
+### Observability
+
+```bash
+# Available when running via Docker Compose
+# Prometheus: http://localhost:9090
+# Grafana:    http://localhost:3000 (admin/admin)
+# Metrics:    http://localhost:3001/metrics
+```
+
 ### Build
 
 ```bash
@@ -95,8 +115,14 @@ Key events: `socket:identify`, `ticket:new`, `support:join`, `support:leave`, `t
 
 **Middleware** (`server/middleware/`):
 - `auth.ts` — JWT extraction + verification; `authorize(role)` for role-gating.
+- `metrics.ts` — Prometheus HTTP request duration/count instrumentation.
 - Rate limiting: 100 req/min globally, 5 auth attempts/min.
 - Uploads: magic-byte validated via `file-type` package (not just MIME).
+
+**Observability** (`server/utils/metrics.ts`):
+- 8 Prometheus metrics exposed at `/metrics` (HTTP latency, Socket.io connections, ticket queue, AI pipeline duration/errors).
+- Socket.io handlers emit `socketioConnectionsActive` gauge and `socketioEventsTotal` counter.
+- AI pipeline calls in `translate.ts` are wrapped with `aiPipelineDuration` histogram timers.
 
 ### Database
 
@@ -116,7 +142,7 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 
 ### Client (`client/src/`)
 
-**Entry**: `App.tsx` — lazy-loads `AgentView`, `SupportView`, `AdminView` by role. Fetches `/api/config` on mount. Global connection banner (disconnected/reconnecting).
+**Entry**: `App.tsx` — lazy-loads `AgentView`, `SupportView`, `AdminView`, `AgentLiteView` by role. Fetches `/api/config` on mount. Global connection banner (disconnected/reconnecting). Registers service worker for PWA support.
 
 **State**: Zustand store (`store/useStore.ts`) — single source of truth for auth, tickets, messages (normalized by ticketId), presence, UI settings. Persists to localStorage: token, darkMode, dyslexicMode, bionicReading, selectedLang.
 
@@ -132,9 +158,12 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 
 **Primary views** (`client/src/views/`):
 - **AgentView**: Ticket creation and requester chat.
+- **AgentLiteView**: Mobile-optimized PWA view for field agents (`?lite=1` URL param).
 - **SupportView**: Queue management and resolution (Zen Mode).
 - **AdminView**: Operational and AI Dashboards, and AI Persona configuration.
 - **PlatformView**: Global partner and membership management (Operator only).
+
+**PWA**: `manifest.json` + `sw.js` in `client/public/`. Service worker uses cache-first for static assets, network-first for API calls, skips Socket.io.
 
 ### Key Conventions
 
