@@ -15,19 +15,27 @@ export interface AuthSlice {
 }
 
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, get) => ({
-  user: null,
-  memberships: [],
+  user: JSON.parse(localStorage.getItem('user') || 'null'),
+  memberships: JSON.parse(localStorage.getItem('memberships') || '[]'),
   activeMembershipId: localStorage.getItem('activeMembershipId') || null,
   activePartnerId: localStorage.getItem('activePartnerId') || null,
   token: localStorage.getItem('token') || null,
 
-  setUser: (user) => set({ user }),
+  setUser: (user) => {
+    if (user) localStorage.setItem('user', JSON.stringify(user));
+    else localStorage.removeItem('user');
+    set({ user });
+  },
   setToken: (token) => {
     if (token) localStorage.setItem('token', token);
     else localStorage.removeItem('token');
     set({ token });
   },
-  setMemberships: (memberships) => set({ memberships }),
+  setMemberships: (memberships) => {
+    if (memberships) localStorage.setItem('memberships', JSON.stringify(memberships));
+    else localStorage.removeItem('memberships');
+    set({ memberships });
+  },
   setActiveMembershipId: (id) => {
     if (id) localStorage.setItem('activeMembershipId', id);
     else localStorage.removeItem('activeMembershipId');
@@ -42,6 +50,8 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
   },
   logout: () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('memberships');
     localStorage.removeItem('activeMembershipId');
     localStorage.removeItem('activePartnerId');
     set({ 
