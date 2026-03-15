@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
-import useStore from '../store/useStore';
 import { usePartner } from './usePartner';
+import useStore from '../store/useStore';
 import { generatePalette } from '../utils/colorUtils';
 
 const DEFAULT_PRIMARY = '#a855f7';
