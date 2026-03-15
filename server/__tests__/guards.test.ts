@@ -7,9 +7,9 @@ import {
   guardThreats,
   guardDiscrimination,
   guardInjection,
-  resetRepetition,
   runGuards,
 } from '../services/guards.js';
+import { resetFallbackStore } from '../services/repetitionStore.js';
 
 // Mock fetch globally so guardTopic (called by runGuards) doesn't hit a real Ollama
 // By default, make it fail so guardTopic falls through with a pass().
@@ -18,9 +18,7 @@ vi.stubGlobal('fetch', mockFetch);
 
 describe('Guards', () => {
   beforeEach(() => {
-    resetRepetition('test-user');
-    resetRepetition('user1');
-    resetRepetition('test-caps-user');
+    resetFallbackStore();
     mockFetch.mockRejectedValue(new Error('No Ollama in tests'));
   });
 
@@ -56,24 +54,28 @@ describe('Guards', () => {
   });
 
   describe('guardRepetition', () => {
-    it('should pass first message', () => {
-      expect(guardRepetition('hello', 'user1').ok).toBe(true);
+    it('should pass first message', async () => {
+      const result = await guardRepetition(null, 'hello', 'user1');
+      expect(result.ok).toBe(true);
     });
-    it('should pass second identical message', () => {
-      guardRepetition('hello', 'user1');
-      expect(guardRepetition('hello', 'user1').ok).toBe(true);
+    it('should pass second identical message', async () => {
+      await guardRepetition(null, 'hello', 'user1');
+      const result = await guardRepetition(null, 'hello', 'user1');
+      expect(result.ok).toBe(true);
     });
-    it('should block third identical message', () => {
-      guardRepetition('hello', 'user1');
-      guardRepetition('hello', 'user1');
-      expect(guardRepetition('hello', 'user1').ok).toBe(false);
-      expect(guardRepetition('hello', 'user1').code).toBe('guard_repetition');
+    it('should block third identical message', async () => {
+      await guardRepetition(null, 'hello', 'user1');
+      await guardRepetition(null, 'hello', 'user1');
+      const result = await guardRepetition(null, 'hello', 'user1');
+      expect(result.ok).toBe(false);
+      expect(result.code).toBe('guard_repetition');
     });
-    it('should reset on different message', () => {
-      guardRepetition('hello', 'user1');
-      guardRepetition('hello', 'user1');
-      guardRepetition('different message', 'user1');
-      expect(guardRepetition('different message', 'user1').ok).toBe(true);
+    it('should reset on different message', async () => {
+      await guardRepetition(null, 'hello', 'user1');
+      await guardRepetition(null, 'hello', 'user1');
+      await guardRepetition(null, 'different message', 'user1');
+      const result = await guardRepetition(null, 'different message', 'user1');
+      expect(result.ok).toBe(true);
     });
   });
 
@@ -121,16 +123,16 @@ describe('Guards', () => {
 
   describe('runGuards (integration)', () => {
     it('should pass a valid telecom message', async () => {
-      const result = await runGuards('My internet connection keeps dropping every 5 minutes', 'test-user');
+      const result = await runGuards(null, 'My internet connection keeps dropping every 5 minutes', 'test-user');
       expect(result.ok).toBe(true);
     });
     it('should block short messages', async () => {
-      const result = await runGuards('hi', 'test-user');
+      const result = await runGuards(null, 'hi', 'test-user');
       expect(result.ok).toBe(false);
       expect(result.code).toBe('guard_too_short');
     });
     it('should sanitize all-caps and still pass', async () => {
-      const result = await runGuards('MY INTERNET IS NOT WORKING AND I NEED HELP', 'test-caps-user');
+      const result = await runGuards(null, 'MY INTERNET IS NOT WORKING AND I NEED HELP', 'test-caps-user');
       expect(result.ok).toBe(true);
       // Text should be sanitized (no longer all caps)
       expect(result.text).not.toBe('MY INTERNET IS NOT WORKING AND I NEED HELP');

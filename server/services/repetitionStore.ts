@@ -44,3 +44,11 @@ function fallbackGet(senderId: string, text: string): number {
   fallbackStore.set(senderId, { text, count: 1 });
   return 1;
 }
+
+export function resetFallbackStore(senderId?: string): void {
+  if (senderId) {
+    fallbackStore.delete(senderId);
+  } else {
+    fallbackStore.clear();
+  }
+}
