@@ -60,6 +60,9 @@ Instead of a static role on a user, access is managed via the `memberships` tabl
 | **Membership** | Links a User to a Partner with a specific `role` and `dept`. |
 | **User** | Global identity (Name, Lang). |
 
+### Data Isolation
+All database queries that touch tenant data (`tickets`, `daily_stats`, `ticket_labels`, `messages`, `canned_responses`) **must** include a `partner_id` filter. This is enforced by the `stats-tenant-isolation` test suite, which verifies that every SQL query in the stats router includes `partner_id` in both the WHERE clause and bind parameters.
+
 ### Tenant Manifest
 Every partner has a JSON manifest that dynamically "hydrates" the UI:
 - **Branding**: Primary/Secondary colors (`--brand-primary`).

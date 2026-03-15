@@ -174,7 +174,7 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 ### Key Conventions
 
 - **Roles**: `agent`, `support`, `manager`, `admin`, `platform_operator`.
-- **Multi-Tenancy**: All data must be scoped by `partner_id`. Never leak cross-partner data.
+- **Multi-Tenancy**: All data must be scoped by `partner_id`. Never leak cross-partner data. Every SQL query touching `tickets`, `daily_stats`, `ticket_labels`, `messages`, or `canned_responses` must include a `partner_id` filter. The `stats-tenant-isolation` test suite enforces this for stats queries.
 - **Transversal**: Users can have multiple `memberships`. Use `usePartner()` hook for active context.
 - **Aesthetics**: Solaris design system — glassmorphism, dynamic CSS variables (`--brand-primary`).
 - **Theme System**: `useTheme.ts` is the single source of truth for all CSS variables (brand palette, glass defaults, accent, border-radius). It generates `--brand-50` through `--brand-900` from the partner's `primaryColor` via `colorUtils.ts` (piecewise HSL interpolation). Glass defaults are mode-aware (light/dark) with partner `themeConfig` overlay. `ThemePreviewCard` in `PlatformView.tsx` provides live preview in the partner editor.
