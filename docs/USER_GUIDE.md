@@ -71,6 +71,23 @@ Field agents can use the **Agent Lite** view — a mobile-optimized, installable
 
 ---
 
-## 5. Multi-Tenant Switching
+## 5. Business Hours Configuration (Admin)
+
+Partner Admins can configure when their support desk is available to agents.
+
+### Setting Business Hours
+1. Navigate to the **Admin View** and open the **Business Hours** settings panel.
+2. Set the **Start** and **End** times (24h format, e.g. `09:00` – `17:00`).
+3. Select the **Timezone** for your partner (defaults to `Europe/Brussels`).
+4. Click **Save** to apply.
+
+### How It Works
+- When outside business hours, agents cannot create new tickets.
+- The check runs server-side — the UI displays a notice based on a real-time socket event (`businessHours:status`).
+- If no partner-specific hours are configured, the platform falls back to global defaults (`07:30` – `22:30` Brussels time).
+
+---
+
+## 6. Multi-Tenant Switching
 
 If you are a member of multiple projects (e.g., both Telecom and Healthcare), use the **Partner Switcher** in the top navigation to jump between workspaces. Your status (Available/Break) is tracked per partner.
