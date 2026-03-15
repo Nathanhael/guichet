@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "install:all": "npm install --prefix server && npm install --prefix client"
+    "install:all": "npm install --prefix server && npm install --prefix client && npm install --prefix e2e",
+    "test:e2e": "npm test --prefix e2e",
+    "test:e2e:mock": "npm run test:mock --prefix e2e"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
