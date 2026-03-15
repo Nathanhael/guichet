@@ -54,8 +54,38 @@ The app uses a custom "Solaris" theme. All new components must adhere to these v
 - **Avoid `any`**: Document your interfaces in specialized `.d.ts` or at the top of the file.
 - Use the `useT` hook for all UI strings.
 
+## E2E Testing
+
+The project uses Playwright for end-to-end testing. Tests live in `e2e/` and cover:
+- **Auth flows**: Login for each role lands on the correct view.
+- **Ticket lifecycle**: Agent creates ticket, support joins and resolves.
+- **Live chat**: Real-time bidirectional message exchange via Socket.io.
+- **Admin dashboard**: Tab navigation and stats rendering.
+- **Multi-tenant isolation**: Partner B cannot see Partner A's tickets.
+
+### Running E2E Tests
+```bash
+# Against the Docker stack (must be running)
+npm run test:e2e
+
+# Against the mock server (fast, no Docker needed)
+cd e2e && npm run mock:start   # Terminal 1
+npm run test:e2e:mock          # Terminal 2
+
+# Interactive Playwright UI
+cd e2e && npm run test:ui
+```
+
+### Writing E2E Tests
+- Use the auth fixture (`e2e/fixtures/auth.fixture.ts`) for single-context tests.
+- For multi-user tests (e.g., agent + support), use separate `browser.newContext()` with the `loginInContext` helper pattern.
+- Test constants and user credentials are in `e2e/lib/constants.ts`.
+- Global setup seeds test data into PostgreSQL; teardown cleans it.
+
 ## Commands Reference
 
 - **Install**: `npm run install:all`
 - **Dev**: `npm run dev` (Concurrent client/server)
 - **Dev Container**: `docker-compose up` for development. **Production**: `docker-compose -f docker-compose.prod.yml up --build`
+- **E2E Tests**: `npm run test:e2e` (Docker) or `npm run test:e2e:mock` (mock server)
+- **Unit Tests**: `cd server && npm test` / `cd client && npm test`

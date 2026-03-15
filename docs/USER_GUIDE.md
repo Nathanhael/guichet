@@ -54,6 +54,23 @@ Tessera is built to be accessible to everyone, with a focus on neuro-diversity.
 
 ---
 
-## 4. Multi-Tenant Switching
+## 4. Agent Lite (Mobile PWA)
+
+Field agents can use the **Agent Lite** view — a mobile-optimized, installable PWA designed for quick ticket creation and chat on the go.
+
+### Accessing Agent Lite
+- Navigate to `/?lite=1` to switch to the mobile view.
+- On mobile devices, agents are automatically prompted to switch to Lite mode.
+- Install as a PWA via the browser's "Add to Home Screen" for a native app experience.
+
+### Features
+- **Ticket list**: View all your active tickets at a glance.
+- **Quick ticket creation**: Streamlined form with department selection and description.
+- **Chat**: Full real-time chat powered by the same Socket.io backend.
+- **Offline support**: Service worker caches static assets and API responses for offline access.
+
+---
+
+## 5. Multi-Tenant Switching
 
 If you are a member of multiple projects (e.g., both Telecom and Healthcare), use the **Partner Switcher** in the top navigation to jump between workspaces. Your status (Available/Break) is tracked per partner.
