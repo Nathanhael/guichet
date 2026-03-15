@@ -94,10 +94,25 @@ app.use(
   })
 );
 
-app.get('/api/config', (_req: Request, res: Response) => {
+import { partners } from './db/schema.js';
+import { eq } from 'drizzle-orm';
+import { db } from './db.js';
+
+app.get('/api/config', async (req: Request, res: Response) => {
+  const partnerId = req.query.partnerId as string;
+  let partnerConfig = null;
+
+  if (partnerId) {
+    const result = await db.select().from(partners).where(eq(partners.id, partnerId)).limit(1);
+    if (result.length > 0) {
+      partnerConfig = result[0];
+    }
+  }
+
   res.json({
-    businessHoursStart: config.BUSINESS_HOURS_START,
-    businessHoursEnd: config.BUSINESS_HOURS_END,
+    businessHoursStart: partnerConfig?.businessHoursStart ?? config.BUSINESS_HOURS_START,
+    businessHoursEnd: partnerConfig?.businessHoursEnd ?? config.BUSINESS_HOURS_END,
+    businessHoursTimezone: partnerConfig?.businessHoursTimezone ?? 'Europe/Brussels',
     uploadMaxSize: config.UPLOAD_MAX_SIZE,
     uploadAllowedTypes: config.UPLOAD_ALLOWED_TYPES,
   });

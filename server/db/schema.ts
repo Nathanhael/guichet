@@ -16,6 +16,9 @@ export const partners = pgTable('partners', {
   aiEnabled: boolean('ai_enabled').default(true),
   themeConfig: text('theme_config'), // JSONB
   ollamaModel: text('ollama_model'),
+  businessHoursStart: text('business_hours_start'),
+  businessHoursEnd: text('business_hours_end'),
+  businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
 });
 

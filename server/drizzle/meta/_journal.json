@@ -8,6 +8,13 @@
       "when": 1773501824723,
       "tag": "0000_daffy_the_liberteens",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773572210922,
+      "tag": "0001_watery_doctor_spectrum",
+      "breakpoints": true
     }
   ]
 }

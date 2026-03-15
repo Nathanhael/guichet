@@ -49,7 +49,7 @@ function ConnectionBanner() {
 }
 
 export default function App() {
-  const { user, darkMode, dyslexicMode, highContrastMode, setAppConfig } = useStore();
+  const { user, darkMode, dyslexicMode, highContrastMode, setAppConfig, activePartnerId } = useStore();
   
   const [showLitePrompt, setShowLitePrompt] = useState(false);
   const isLiteMode = new URLSearchParams(window.location.search).has('lite');
@@ -82,11 +82,12 @@ export default function App() {
   }, [highContrastMode]);
 
   useEffect(() => {
-    fetch('/api/config')
+    const url = activePartnerId ? `/api/config?partnerId=${activePartnerId}` : '/api/config';
+    fetch(url)
       .then((res) => res.json())
       .then((config) => setAppConfig(config))
       .catch((err) => console.error('Failed to load app config:', err));
-  }, [setAppConfig]);
+  }, [setAppConfig, activePartnerId]);
 
   // Mobile lite mode prompt
   useEffect(() => {

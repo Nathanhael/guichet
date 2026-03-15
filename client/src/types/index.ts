@@ -46,6 +46,7 @@ export interface AppConfig {
   businessHours: {
     start: string;
     end: string;
+    timezone: string;
   };
 }
 

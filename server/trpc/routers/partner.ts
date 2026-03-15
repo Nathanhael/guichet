@@ -65,4 +65,30 @@ export const partnerRouter = router({
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
     }),
+
+  updateBusinessHours: adminProcedure
+    .input(z.object({
+      businessHoursStart: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+      businessHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
+      businessHoursTimezone: z.string().min(1).nullable(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const partnerId = ctx.user.partnerId;
+        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+        await db.update(partners)
+          .set({ 
+            businessHoursStart: input.businessHoursStart,
+            businessHoursEnd: input.businessHoursEnd,
+            businessHoursTimezone: input.businessHoursTimezone
+          })
+          .where(eq(partners.id, partnerId));
+
+        logger.info({ partnerId }, 'Business Hours updated by Partner Admin');
+        return { success: true };
+      } catch (err: unknown) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
+    }),
 });
