@@ -1,5 +1,4 @@
 import { get, run, query } from '../db.js';
-import config from '../config.js';
 import logger from '../utils/logger.js';
 import { getLLMProvider } from './llm/factory.js';
 
