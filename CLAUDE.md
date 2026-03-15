@@ -105,7 +105,7 @@ For AI translation pipeline docs, see **[AI_PIPELINE.md](./docs/AI_PIPELINE.md)*
 **Socket** (`server/socket/handlers.ts`):
 Registers all real-time event handlers. Tickets use rooms named `ticket:{ticketId}`.
 
-Key events: `socket:identify`, `ticket:new`, `support:join`, `support:leave`, `ticket:close`, `message:send`, `status:set`, `reaction:toggle`, `ticket:labels:update`.
+Key events: `socket:identify`, `ticket:new`, `ticket:created:self`, `ticket:history`, `support:join`, `support:leave`, `ticket:close`, `message:send`, `message:blocked`, `status:set`, `reaction:toggle`, `ticket:labels:update`, `businessHours:status`, `hours:closed`.
 
 **Message pipeline** (integrated in `message.send` tRPC mutation):
 1. Guards (8-tier: length → ALL CAPS → repetition → injection → swearing → threats → discrimination → async Ollama topic check)
@@ -147,6 +147,12 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 **State**: Zustand store (`store/useStore.ts`) — single source of truth for auth, tickets, messages (normalized by ticketId), presence, UI settings. Persists to localStorage: token, darkMode, dyslexicMode, bionicReading, selectedLang.
 
 **Real-time**: `hooks/useSocket.ts` — single Socket.io instance, registers all listeners (ticket events, messages, presence, typing, reactions, queue position, business hours).
+
+**Utilities** (`client/src/utils/`):
+- `colorUtils.ts` — Hex/HSL conversion, `generatePalette()` for dynamic brand shade generation, `getContrastRatio()` for accessibility checks.
+- `dateUtils.ts` — Date formatting helpers.
+- `notifications.ts` — Browser notification management.
+- `trpc.ts` — tRPC client configuration.
 
 **Client-side patterns**:
 - Optimistic message updates (`pending: true`) replaced when server confirms.
