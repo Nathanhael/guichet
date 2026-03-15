@@ -236,13 +236,23 @@ export default function MessageBubble({ message, ticketId, searchQuery: _searchQ
           )}
 
           {message.mediaUrl && (
-            <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">
-              <img
-                src={message.mediaUrl}
-                alt="screenshot"
-                className={`rounded-lg max-w-full h-auto ${highContrastMode ? 'border-2 border-current' : 'border border-black/5 dark:border-white/5'}`}
-              />
-            </a>
+            (() => {
+              const isSafe = message.mediaUrl.startsWith('/') || 
+                             message.mediaUrl.startsWith('http://') || 
+                             message.mediaUrl.startsWith('https://');
+              
+              if (!isSafe) return null;
+
+              return (
+                <a href={message.mediaUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block">
+                  <img
+                    src={message.mediaUrl}
+                    alt="screenshot"
+                    className={`rounded-lg max-w-full h-auto ${highContrastMode ? 'border-2 border-current' : 'border border-black/5 dark:border-white/5'}`}
+                  />
+                </a>
+              );
+            })()
           )}
         </div>
 

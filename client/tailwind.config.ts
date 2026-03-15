@@ -39,7 +39,7 @@ export default {
         },
         accent: {
           400: '#f07469',
-          500: '#e65649', // iKanbi Coral
+          500: '#e65649', // Primary Accent
           600: '#cc4135',
         },
         solarized: {

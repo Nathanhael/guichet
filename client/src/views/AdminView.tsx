@@ -14,8 +14,10 @@ import AdminCannedResponses from '../components/admin/AdminCannedResponses';
 import AdminAIStats from '../components/admin/AdminAIStats';
 import AdminAISettings from '../components/admin/AdminAISettings';
 import AdminBusinessHours from '../components/admin/AdminBusinessHours';
+import AdminAlerts from '../components/admin/AdminAlerts';
+import { Flame } from 'lucide-react';
 
-type AdminTab = 'dashboard' | 'ai_dashboard' | 'ai_persona' | 'business_hours' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
+type AdminTab = 'dashboard' | 'alerts' | 'ai_dashboard' | 'ai_persona' | 'business_hours' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
 
 export default function AdminView() {
   const { user, logout } = useStore();
@@ -56,6 +58,11 @@ export default function AdminView() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               }
+            />
+            <NavButton
+              id="alerts"
+              label="Alerts"
+              icon={<Flame className="h-4 w-4" />}
             />
             <NavButton
               id="ai_dashboard"
@@ -159,6 +166,7 @@ export default function AdminView() {
 
       <main className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-brand-950 p-6 custom-scrollbar">
         {view === 'dashboard' && <AdminStats />}
+        {view === 'alerts' && <AdminAlerts />}
         {view === 'ai_dashboard' && <AdminAIStats />}
         {view === 'ai_persona' && <AdminAISettings />}
         {view === 'business_hours' && <AdminBusinessHours />}

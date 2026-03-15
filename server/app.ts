@@ -22,6 +22,7 @@ import { auth, authorize } from './middleware/auth.js';
 import * as presenceService from './services/presence.js';
 import { setIo as setBusinessHoursIo } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
+import { setIo as setTopicHeatIo, runTopicHeatCheck } from './services/topicHeat.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { register } from './utils/metrics.js';
@@ -140,7 +141,15 @@ v1Router.get('/health', async (_req: Request, res: Response) => {
 
 app.use('/api/v1', v1Router);
 
-app.get('/metrics', async (_req: Request, res: Response) => {
+app.get('/metrics', async (req: Request, res: Response) => {
+  const remoteIp = req.socket.remoteAddress;
+  const isLocal = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
+  const tokenHeader = req.headers['x-metrics-token'];
+  
+  if (config.METRICS_TOKEN && tokenHeader !== config.METRICS_TOKEN && !isLocal) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
 });
@@ -152,3 +161,9 @@ setInterval(runDailyPurge, config.PURGE_INTERVAL_MS);
 
 // Socket.IO handlers
 registerSocketHandlers(io);
+
+// Topic Heat Detection
+setTopicHeatIo(io);
+setInterval(() => {
+  runTopicHeatCheck().catch(err => logger.error({ err }, '[TopicHeat] Periodic check failed'));
+}, 10 * 60 * 1000); // Every 10 minutes

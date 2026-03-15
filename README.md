@@ -13,6 +13,8 @@ Tessera is a high-fidelity, real-time multi-tenant customer support platform des
 - **Agent Lite PWA**: Installable mobile-first view for field agents with offline support.
 - **Platform Observability**: Prometheus metrics + pre-provisioned Grafana dashboards.
 - **Configurable Business Hours**: Per-partner opening hours with timezone support, configurable via Admin UI.
+- **Intelligent Incident Detection**: Real-time "Topic Heat" alerts powered by LLM clustering of incoming ticket text.
+- **Security & Privacy Hardening**: Robust XSS prevention (media URL validation), AI prompt injection safeguards, and protected metrics endpoints.
 - **E2E Testing**: Playwright test suite (Chrome + Edge) covering auth, tickets, chat, admin, and tenant isolation.
 
 ## 🛠️ Tech Stack
@@ -55,6 +57,7 @@ Tessera uses environment variables for all sensitive configuration. **Never comm
 - **PostgreSQL**: Default credentials for local Docker are `user` / `password`.
 - **Redis**: Default local instance has no password. Required for presence and horizontal scaling.
 - **JWT**: In production, you MUST set a unique `JWT_SECRET`.
+- **Metrics**: Access to `/metrics` is restricted to localhost or callers with a valid `METRICS_TOKEN` (provided via `x-metrics-token` header).
 - **Grafana**: Default admin credentials are `admin` / `admin` (configurable via `GRAFANA_ADMIN_PASSWORD`).
 - **Prometheus**: Default local instance has no authentication.
 - **E2E Tests**: Tests seed their own data using the `E2E_TEST_DB_URL`.

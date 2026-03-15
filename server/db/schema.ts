@@ -181,3 +181,18 @@ export const cannedResponses = pgTable('canned_responses', {
 }, (table) => ({
   partnerShortcutIdx: index('idx_canned_partner_shortcut').on(table.partnerId, table.shortcut),
 }));
+
+export const topicAlerts = pgTable('topic_alerts', {
+  id: text('id').primaryKey(),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  dept: text('dept').notNull(),
+  topic: text('topic').notNull(),
+  summary: text('summary').notNull(),
+  severity: text('severity').default('medium'), // 'low', 'medium', 'high'
+  ticketCount: integer('ticket_count').notNull(),
+  status: text('status').default('active'), // 'active', 'acknowledged', 'resolved'
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  resolvedAt: timestamp('resolved_at', { mode: 'string' }),
+}, (table) => ({
+  partnerStatusIdx: index('idx_alerts_partner_status').on(table.partnerId, table.status),
+}));

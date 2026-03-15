@@ -10,6 +10,7 @@ import { statsRouter } from './routers/stats.js';
 import { userRouter } from './routers/user.js';
 import { platformRouter } from './routers/platform.js';
 import { partnerRouter } from './routers/partner.js';
+import { alertsRouter } from './routers/alerts.js';
 
 export const appRouter = router({
   label: labelRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   user: userRouter,
   platform: platformRouter,
   partner: partnerRouter,
+  alerts: alertsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -88,6 +88,20 @@ Partner Admins can configure when their support desk is available to agents.
 
 ---
 
-## 6. Multi-Tenant Switching
+## 6. Intelligent Incident Alerts (Admin & Manager)
+
+Admins and Managers have access to a real-time **Alerts** dashboard that proactively identifies emerging incidents.
+
+### Topic Heat Detection
+- The platform's AI continuously monitors incoming tickets for patterns.
+- If multiple agents report similar issues (e.g., "login errors" or "connectivity outage"), the system triggers a **Heat Alert**.
+- Alerts appear in the **Alerts** tab with a severity level (Low, Medium, High).
+
+### Managing Alerts
+1. **Real-time Notifications**: When a new incident is detected, a chime will play and an alert will appear in the dashboard.
+2. **Acknowledge**: Mark an alert as "Acknowledge" to let other managers know you are investigating.
+3. **Resolve**: Once the incident is handled, mark it as "Resolved" to clear it from the active list.
+
+## 7. Multi-Tenant Switching
 
 If you are a member of multiple projects (e.g., both Telecom and Healthcare), use the **Partner Switcher** in the top navigation to jump between workspaces. Your status (Available/Break) is tracked per partner.

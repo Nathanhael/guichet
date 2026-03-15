@@ -34,7 +34,14 @@ This document tracks planned features and strategic architectural shifts for the
 - **API Hardening**: Improved global error boundaries and status code consistency.
 - **Mobile PWA**: Specialized "Agent Lite" view for field technicians.
 
-## 🚀 Phase 6: The Intelligent Workspace (Pending)
+## ✅ Security & Privacy Hardening (Completed)
+*Goal: Remediate audit findings and protect the multi-tenant trust boundary.*
+- **XSS Prevention**: Strict validation of media URLs in socket handlers and protocol whitelisting in UI.
+- **AI Safety**: Sanitization and XML-delimited data isolation in LLM prompts to prevent injection.
+- **Secret Management**: Mandatory JWT_SECRET configuration (removal of insecure defaults).
+- **Access Control**: Protected `/metrics` endpoint with token-based authentication.
+
+## 🚀 Phase 6: The Intelligent Workspace (In Progress)
 *Goal: Transforming the Support Specialist's experience with proactive AI assistance.*
 
 ### 1. AI-Powered Smart Drafts (Support Copilot)
@@ -47,10 +54,10 @@ This document tracks planned features and strategic architectural shifts for the
 - **Integration**: Pull mock CRM data (Active services, Account status) and historical ticket sentiment.
 - **Benefit**: Immediate context without requiring manual search or questioning.
 
-### 3. Real-Time "Topic Heat" Alerts
+### 3. ✅ Real-Time "Topic Heat" Alerts
 - **Feature**: Queue-level incident detection.
-- **Logic**: Automated clustering of incoming tickets to detect trending issues (potential outages).
-- **Benefit**: Proactive instead of reactive incident management.
+- **Logic**: Intelligent LLM-based clustering of incoming ticket text to detect trending incidents.
+- **Broadcast**: Real-time Socket.io alerts and dashboard notifications for admins/managers.
 
 ---
 
