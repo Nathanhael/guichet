@@ -43,3 +43,8 @@ Thumbs.db
 server/uploads/*
 !server/uploads/.gitkeep
 .agents/
+.claude/
+
+# E2E
+e2e/playwright-report/
+e2e/test-results/

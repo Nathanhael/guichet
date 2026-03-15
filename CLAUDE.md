@@ -57,7 +57,7 @@ cd e2e && npm run mock:start # Start mock server (port 4173)
 cd e2e && npm run test:ui    # Interactive Playwright UI
 ```
 
-E2E structure: `e2e/tests/*.spec.ts`, auth fixture in `e2e/fixtures/`, test data seeding via `e2e/global-setup.ts`.
+E2E structure: `e2e/tests/*.spec.ts`, auth fixture in `e2e/fixtures/`, test data seeding via `e2e/global-setup.ts`. Playwright projects: `docker` / `mock` (Chrome) and `docker-edge` / `mock-edge` (Edge).
 
 ### Observability
 
@@ -98,7 +98,7 @@ For detailed diagrams and AI translation pipeline docs, see **[ARCHITECTURE.md](
 **Services** (`server/services/`):
 - `translate.ts` — Two-stage Ollama pipeline: Improve text → Translate if langs differ. Results cached in `translations_cache` (SHA256 key). Gracefully degrades if Ollama is down (`fallback: true`).
 - `llm.ts` — Generates sentiment/topic summaries per period (day/week/month), cached in `llm_summaries` table.
-- `businessHours.ts` — Brussels timezone check (configurable range, default 07:30–22:30). Enforced server-side on ticket creation.
+- `businessHours.ts` — Per-partner business hours check. Accepts optional partner config (start, end, timezone); falls back to env vars `BUSINESS_HOURS_START`/`BUSINESS_HOURS_END` (default 07:30–22:30 Brussels). Enforced server-side on ticket creation.
 - `gdpr.ts` — Daily purge: aggregates records older than 30 days into `daily_stats`, then deletes in a Drizzle transaction.
 - `stats.ts` — Stats computation logic used by the `stats` tRPC router.
 
@@ -160,7 +160,7 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 - **AgentView**: Ticket creation and requester chat.
 - **AgentLiteView**: Mobile-optimized PWA view for field agents (`?lite=1` URL param).
 - **SupportView**: Queue management and resolution (Zen Mode).
-- **AdminView**: Operational and AI Dashboards, and AI Persona configuration.
+- **AdminView**: Operational and AI Dashboards, AI Persona configuration, and Business Hours settings.
 - **PlatformView**: Global partner and membership management (Operator only).
 
 **PWA**: `manifest.json` + `sw.js` in `client/public/`. Service worker uses cache-first for static assets, network-first for API calls, skips Socket.io.
