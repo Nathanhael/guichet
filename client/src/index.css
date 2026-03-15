@@ -113,11 +113,17 @@
   }
 
   .input-field {
-    @apply w-full border border-solarized-base2 dark:border-brand-700 bg-solarized-base3/70 dark:bg-brand-800/70 text-solarized-base00 dark:text-slate-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 dark:focus:border-accent-400 transition-all duration-200;
+    @apply w-full border border-solarized-base2 dark:border-brand-700 bg-solarized-base3/70 text-solarized-base00 dark:text-slate-100 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-accent-500/50 focus:border-accent-500 dark:focus:border-accent-400 transition-all duration-200;
+  }
+  .input-field:is(.dark *) {
+    background-color: color-mix(in srgb, var(--brand-800) 70%, transparent);
   }
 
   .glass-skeleton {
-    @apply animate-pulse bg-solarized-base2 dark:bg-brand-700/50 rounded-xl;
+    @apply animate-pulse bg-solarized-base2 rounded-xl;
+  }
+  .glass-skeleton:is(.dark *) {
+    background-color: color-mix(in srgb, var(--brand-700) 50%, transparent);
   }
 
   .zen-glass {
