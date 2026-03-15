@@ -19,6 +19,10 @@ const configSchema = z.object({
     UPLOAD_ALLOWED_TYPES: z.array(z.string()).default(['image/png', 'image/jpeg', 'image/webp']),
     OLLAMA_MODEL: z.string().default('gemmatranslate4b'),
     REDIS_URL: z.string().default('redis://localhost:6379'),
+    AI_PROVIDER: z.enum(['ollama', 'azure', 'openai-compatible', 'gemini', 'anthropic']).default('ollama'),
+    AI_BASE_URL: z.string().url().optional(),
+    AI_API_KEY: z.string().optional(),
+    AZURE_OPENAI_DEPLOYMENT: z.string().optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -39,6 +43,10 @@ const parseResult = configSchema.safeParse({
     UPLOAD_MAX_SIZE: process.env.UPLOAD_MAX_SIZE,
     OLLAMA_MODEL: process.env.OLLAMA_MODEL,
     REDIS_URL: process.env.REDIS_URL,
+    AI_PROVIDER: process.env.AI_PROVIDER,
+    AI_BASE_URL: process.env.AI_BASE_URL,
+    AI_API_KEY: process.env.AI_API_KEY,
+    AZURE_OPENAI_DEPLOYMENT: process.env.AZURE_OPENAI_DEPLOYMENT,
 });
 
 if (!parseResult.success) {

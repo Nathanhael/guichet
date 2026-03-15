@@ -29,6 +29,7 @@ This file serves as the primary instructional context for Gemini CLI when workin
 - **AI**: Ollama REST API (running `gemmatranslate4b`).
 - **DevOps**: Docker & Docker Compose (preferred runtime).
 - **Real-Time**: Redis Socket.io Adapter (horizontal scaling), tRPC (end-to-end type safety).
+- **API**: Versioned `/api/v1/` namespace for all REST and tRPC endpoints.
 
 ---
 

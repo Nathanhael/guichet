@@ -4,21 +4,10 @@
 @tailwind utilities;
 @layer base {
   :root {
-    --glass-opacity: 0.3;
-    --glass-blur: 16px;
     --brand-primary: #a855f7;
     --brand-secondary: #3b82f6;
     --accent-color: #f43f5e;
     --border-radius: 0.75rem;
-    --glass-saturate: 150%;
-    --glass-border: rgba(255, 255, 255, 0.4);
-  }
-
-  .dark {
-    --glass-opacity: 0.1;
-    --glass-blur: 20px;
-    --glass-saturate: 180%;
-    --glass-border: rgba(255, 255, 255, 0.1);
   }
 
   body {
@@ -36,27 +25,28 @@
     background-image: radial-gradient(circle at 50% 0%, #161b22 0%, #0D1117 100%);
   }
   
+  /* Dyslexic mode — warm background, no gradients */
   .dyslexic-mode body:not(.dark) {
-    background-color: #FFFBEB !important;
-    background-image: none !important;
+    background-color: #FFFBEB;
+    background-image: none;
   }
 
   .dyslexic-mode.dark body {
-    background-color: #111827 !important;
-    background-image: none !important;
+    background-color: #111827;
+    background-image: none;
   }
 
-  /* High Contrast Mode */
+  /* High contrast — pure B&W, overrides dyslexic background */
   .high-contrast-mode body:not(.dark) {
-    background-color: #ffffff !important;
-    background-image: none !important;
-    @apply text-black;
+    background-color: #ffffff;
+    color: #000000;
+    background-image: none;
   }
 
   .high-contrast-mode.dark body {
-    background-color: #000000 !important;
-    background-image: none !important;
-    @apply text-white;
+    background-color: #000000;
+    color: #ffffff;
+    background-image: none;
   }
 
   /* Smooth scrollbar global */

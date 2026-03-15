@@ -63,10 +63,12 @@ Instead of a static role on a user, access is managed via the `memberships` tabl
 ### Tenant Manifest
 Every partner has a JSON manifest that dynamically "hydrates" the UI:
 - **Branding**: Primary/Secondary colors (`--brand-primary`).
+- **Dynamic Palette**: Runtime generation of 10-shade Tailwind-compatible palettes (`brand-50` to `brand-900`) using piecewise linear HSL interpolation.
 - **Labels**: Domain-specific terms (e.g., "Patient ID" vs "CDBID").
 - **Departments**: Dynamic navigation tabs.
 - **AI Rules**: Custom system instructions for the LLM.
-- **Theme**: Custom CSS variables (blur, opacity, radius).
+- **Theme**: Custom CSS variables (blur, opacity, radius) with mode-aware defaults (Light/Dark).
+- **Accessibility Modes**: Integrated specificity-based cascade for Dark, Dyslexic, and High-Contrast modes.
 
 ---
 
@@ -119,7 +121,8 @@ memberships        (id, user_id, partner_id, role, dept)
 tickets            (id, partner_id, dept, agent_id, agent_name, agent_lang, 
                     ref_1, ref_2, status, support_id, support_name, 
                     support_lang, support_joined_at, created_at, closed_at, 
-                    closing_notes, closed_by, participants, summary)
+                    closing_notes, closed_by, participants, summary, reopened,
+                    reopen_count)
 messages           (id, ticket_id, sender_id, sender_name, text, translated_text, 
                     media_url, whisper, system, created_at, reactions, 
                     sentiment, canned_response_id)
@@ -133,7 +136,24 @@ daily_stats        (date, partner_id, total, closed, abandoned, avg_response_ms,
 
 ---
 
-## 5. Observability (Prometheus + Grafana)
+## 5. API Design & Versioning
+
+The platform uses a versioned API structure to ensure stability for clients and the mobile PWA.
+
+### Namespace: `/api/v1`
+All application logic is contained within the `v1` namespace. This allows for future breaking changes without interrupting service for older client versions.
+
+- **tRPC Endpoint**: `/api/v1/trpc` — Main type-safe application logic.
+- **REST Endpoints**:
+    - `POST /api/v1/auth/login`: JWT-based authentication.
+    - `GET /api/v1/config`: Dynamic client configuration (partner-aware).
+    - `POST /api/v1/uploads`: Multer-based file upload with magic-byte validation.
+    - `GET /api/v1/tickets/export`: CSV export for historical ticket data.
+- **Health Check**: `/api/v1/health` — Deep health check (DB + LLM connectivity).
+
+---
+
+## 6. Observability (Prometheus + Grafana)
 
 The platform exposes Prometheus metrics at `/metrics` via `prom-client`. When running in Docker, Prometheus and Grafana are automatically provisioned.
 
@@ -158,7 +178,7 @@ The platform exposes Prometheus metrics at `/metrics` via `prom-client`. When ru
 
 ---
 
-## 6. Data Lifecycle & Compliance (GDPR)
+## 7. Data Lifecycle & Compliance (GDPR)
 
 The platform enforces a 30-day data retention policy via the `gdpr.ts` service:
 

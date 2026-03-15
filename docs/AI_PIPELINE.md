@@ -61,6 +61,8 @@ The AI Intelligence Hub provides qualitative, strategic insights derived from re
 ### Key Capabilities
 - **AI Persona Editor**: Dedicated configuration tab for Partner Admins to manage their industry rules and prompt strategies.
 - **Sentiment Trends**: Historical tracking of the emotional "vibe" of interactions.
+- **p95 Response Trends**: Identifying latency outliers and peak demand periods.
+- **Canned Response Effectiveness**: Correlating specific template usage with average user ratings to identify the highest-quality scripts.
 - **Resolution Quality**: Tracking re-open rates to identify recurring friction points.
 - **Topic Clustering**: AI-grouped recurring issues per department.
 - **Automated Summaries**: LLM-generated qualitative overviews of daily/weekly performance.
@@ -82,6 +84,21 @@ The AI Intelligence Hub provides qualitative, strategic insights derived from re
 
 ## 4. Technical Integration
 
-- **LLM Interface**: Local Ollama REST API (`host.docker.internal:11434`).
-- **Backend Service**: `server/services/translate.ts`, `server/services/llm.ts`, `server/services/guards.ts`.
+The platform uses a **Model-Agnostic AI architecture** based on a provider-adapter pattern.
+
+### Provider Factory
+The `getLLMProvider()` factory (`server/services/llm/factory.ts`) instantiates the correct adapter based on the `AI_PROVIDER` environment variable.
+
+### Supported Adapters
+| Adapter | Tool / Service | API Interface |
+|---|---|---|
+| **Ollama** | Local development | `/api/generate` |
+| **Azure** | Enterprise Production | `/openai/deployments/...` |
+| **Gemini** | Google AI Studio | `/v1beta/models/...` |
+| **Anthropic** | Claude | `/v1/messages` |
+| **OpenAI-Compatible** | LocalAI, vLLM, xAI, Groq | `/v1/chat/completions` |
+
+### Core Services
+- **Backend**: `server/services/translate.ts`, `server/services/llm.ts`, `server/services/guards.ts`.
+- **Provider Core**: `server/services/llm/types.ts` (Interface definitions).
 - **Database**: `translations_cache`, `llm_summaries`, and sentiment columns in `messages`/`daily_stats`.

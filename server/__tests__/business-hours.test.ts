@@ -56,9 +56,9 @@ describe('Business Hours Tasks 5 & 6', () => {
     });
   });
 
-  describe('Task 5: /api/config', () => {
+  describe('Task 5: /api/v1/config', () => {
     it('should return global defaults when no partnerId provided', async () => {
-      const res = await request(app).get('/api/config');
+      const res = await request(app).get('/api/v1/config');
       expect(res.status).toBe(200);
       expect(res.body.businessHoursStart).toBe(config.BUSINESS_HOURS_START);
       expect(res.body.businessHoursEnd).toBe(config.BUSINESS_HOURS_END);
@@ -79,7 +79,7 @@ describe('Business Hours Tasks 5 & 6', () => {
         limit: vi.fn().mockResolvedValue([mockPartner]),
       });
 
-      const res = await request(app).get('/api/config?partnerId=p1');
+      const res = await request(app).get('/api/v1/config?partnerId=p1');
       expect(res.status).toBe(200);
       expect(res.body.businessHoursStart).toBe('09:00');
       expect(res.body.businessHoursEnd).toBe('17:00');

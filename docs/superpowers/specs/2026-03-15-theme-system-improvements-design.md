@@ -1,7 +1,7 @@
 # Theme System Improvements — Design Spec
 
 **Date:** 2026-03-15
-**Status:** Draft
+**Status:** Implemented
 
 ---
 

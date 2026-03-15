@@ -13,7 +13,7 @@ app.use(express.json());
 const JWT_SECRET = 'mock-secret';
 
 // Auth
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/v1/auth/login', (req, res) => {
   const { id, username } = req.body;
   const lookup = id || username;
   const user = Object.values(mockUsers).find(
@@ -32,17 +32,17 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 // Config
-app.get('/api/config', (_req, res) => res.json(mockConfig));
+app.get('/api/v1/config', (_req, res) => res.json(mockConfig));
 
 // Health
-app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/api/v1/health', (_req, res) => res.json({ status: 'ok' }));
 
 // tRPC-style mock responses (batch and individual)
-app.get('/api/trpc/ticket.list', (_req, res) => {
+app.get('/api/v1/trpc/ticket.list', (_req, res) => {
   res.json({ result: { data: mockTickets } });
 });
 
-app.get('/api/trpc/stats.overview', (_req, res) => {
+app.get('/api/v1/trpc/stats.overview', (_req, res) => {
   res.json({
     result: {
       data: { totalTickets: 42, avgResolution: 15, satisfaction: 4.2 },
@@ -50,18 +50,18 @@ app.get('/api/trpc/stats.overview', (_req, res) => {
   });
 });
 
-app.get('/api/trpc/ticket.messages', (req, res) => {
+app.get('/api/v1/trpc/ticket.messages', (req, res) => {
   res.json({ result: { data: mockMessages } });
 });
 
 // Catch-all tRPC GET (for batch queries)
-app.get('/api/trpc/:proc', (req, res) => {
+app.get('/api/v1/trpc/:proc', (req, res) => {
   console.log(`Mock tRPC GET: ${req.params.proc}`);
   res.json({ result: { data: null } });
 });
 
 // Catch-all tRPC POST (for mutations)
-app.post('/api/trpc/:proc', (req, res) => {
+app.post('/api/v1/trpc/:proc', (req, res) => {
   console.log(`Mock tRPC POST: ${req.params.proc}`);
   res.json({ result: { data: { ok: true } } });
 });
@@ -73,6 +73,10 @@ io.on('connection', (socket) => {
   socket.on('socket:identify', (data) => {
     socket.data = data;
     socket.emit('queue:update', mockTickets);
+    
+    // Emit business hours status — controlled by env var or default to open
+    const businessHoursOpen = process.env.MOCK_BUSINESS_HOURS !== 'closed';
+    socket.emit('businessHours:status', { open: businessHoursOpen });
   });
 
   socket.on('ticket:new', (data) => {

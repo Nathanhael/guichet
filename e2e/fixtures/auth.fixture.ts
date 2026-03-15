@@ -13,7 +13,7 @@ export const test = base.extend<AuthFixtures>({
       const user = TEST_USERS[userKey];
       console.log(`E2E: Logging in as ${userKey} (${user.id})...`);
       
-      const res = await page.request.post(`${API_URL}/api/auth/login`, {
+      const res = await page.request.post(`${API_URL}/api/v1/auth/login`, {
         data: { id: user.id, password: user.password },
       });
       

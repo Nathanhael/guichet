@@ -1,16 +1,8 @@
 import crypto from 'crypto';
 import { get, run } from '../db.js';
-import config from '../config.js';
 import logger from '../utils/logger.js';
 import { TranslationResult, ProcessedMessageResult } from '../types/index.js';
-import { aiPipelineDuration, aiPipelineErrorsTotal } from '../utils/metrics.js';
-
-interface OllamaResponse {
-  response: string;
-}
-
-const OLLAMA_HOST = config.OLLAMA_HOST || 'http://localhost:11434';
-const MODEL = config.OLLAMA_MODEL || 'gemmatranslate4b';
+import { getLLMProvider } from './llm/factory.js';
 
 // ─── Cache setup ─────────────────────────────────────────────────────────────
 
@@ -18,67 +10,10 @@ function cacheKey(...parts: string[]): string {
   return crypto.createHash('sha256').update(parts.join('|')).digest('hex');
 }
 
-// ─── Ollama wrapper ───────────────────────────────────────────────────────────
-
-/**
- * Calls the local Ollama instance for generation.
- * @param {string} prompt - The full prompt text.
- * @param {string} type - Descriptive type for logging (e.g. 'translate', 'improve').
- * @param {string} [modelOverride] - Optional model name to use instead of global default.
- * @returns {Promise<string>} The generated response text.
- */
-async function callOllama(prompt: string, type: string, modelOverride?: string): Promise<string> {
-  const start = Date.now();
-  const modelToUse = modelOverride || MODEL;
-  try {
-    const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: modelToUse, prompt, stream: false }),
-      signal: AbortSignal.timeout(10000), // 10s hard limit
-    });
-
-    if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
-
-    const data = await response.json() as OllamaResponse;
-    const result = data.response?.trim();
-    const duration = Date.now() - start;
-    
-    logger.info({ type, duration, model: modelToUse }, 'Ollama performance');
-    
-    if (!result) throw new Error('Ollama returned empty response');
-    return result;
-  } catch (err: unknown) {
-    logger.error({ type, err: err instanceof Error ? err.message : String(err), model: modelToUse }, 'Ollama call failed');
-    throw err;
-  }
-}
-
-async function callOllamaWithRetry(prompt: string, type: string, modelOverride?: string, maxRetries = 1): Promise<string> {
-  const end = aiPipelineDuration.startTimer({ type });
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const result = await callOllama(prompt, type, modelOverride);
-      end();
-      return result;
-    } catch (err) {
-      if (attempt === maxRetries) {
-        end();
-        aiPipelineErrorsTotal.inc({ type });
-        throw err;
-      }
-      const delay = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s...
-      logger.warn({ type, attempt, delay, err: err instanceof Error ? err.message : String(err), model: modelOverride || MODEL }, 'Ollama attempt failed, retrying...');
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  throw new Error('Ollama unreachable after retries');
-}
-
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
 async function getAIPrefix(partnerId: string): Promise<any> {
-  const partner = await get('SELECT industry, ai_rules, agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai, ai_enabled FROM partners WHERE id = $1', [partnerId]) as any;
+  const partner = await get('SELECT industry, ai_rules, agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai, ai_enabled, ollama_model FROM partners WHERE id = $1', [partnerId]) as any;
   if (!partner) return { ai_rules: 'You are a professional support assistant.', ai_enabled: true };
   return partner;
 }
@@ -166,7 +101,9 @@ async function improve(text: string, lang: string, senderRole: 'agent'|'support'
     ? await buildAgentImprovementPrompt(text, lang, partner)
     : await buildSupportImprovementPrompt(text, lang, partner);
 
-  const improved = await callOllamaWithRetry(prompt, 'improve', partner.ollama_model);
+  const provider = getLLMProvider();
+  const improved = await provider.generate(prompt, { type: 'improve', model: partner.ollama_model });
+
   await run(
     'INSERT INTO translations_cache (key, value, from_lang, to_lang, created_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, created_at = EXCLUDED.created_at',
     [key, improved, lang, lang, new Date().toISOString()]
@@ -185,7 +122,9 @@ export async function translate(text: string, fromLang: string, toLang: string, 
   if (cached) return { text: cached.value, fromCache: true };
 
   const prompt = await buildTranslationPrompt(text, fromLang, toLang, partner);
-  const translated = await callOllamaWithRetry(prompt, 'translate', partner.ollama_model);
+  const provider = getLLMProvider();
+  const translated = await provider.generate(prompt, { type: 'translate', model: partner.ollama_model });
+
   await run(
     'INSERT INTO translations_cache (key, value, from_lang, to_lang, created_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, created_at = EXCLUDED.created_at',
     [key, translated, fromLang, toLang, new Date().toISOString()]
@@ -238,7 +177,7 @@ export async function processMessage(text: string, senderRole: 'agent'|'support'
     };
 
   } catch (err: unknown) {
-    logger.warn({ err: err instanceof Error ? err.message : String(err) }, '[processMessage] Ollama unavailable, falling back');
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, '[processMessage] AI Provider unavailable, falling back');
     return {
       processedText:      text,
       improvedText:       text,

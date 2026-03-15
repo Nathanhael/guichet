@@ -12,7 +12,7 @@ export default function BusinessHoursGuard({ children }: BusinessHoursGuardProps
 
   if (!businessHoursOpen) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-brand-900">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-brand-900" data-testid="business-hours-guard">
         <div className="bg-solarized-base3 dark:bg-brand-800 rounded-2xl shadow-lg p-8 max-w-md text-center border border-solarized-base2 dark:border-brand-700">
           <div className="w-16 h-16 bg-solarized-base2 dark:bg-brand-900/50 text-solarized-base01 dark:text-brand-400 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">

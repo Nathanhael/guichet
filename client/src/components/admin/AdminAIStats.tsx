@@ -127,6 +127,67 @@ export default function AdminAIStats() {
           <p className="text-[10px] text-center text-solarized-base1 mt-2 uppercase font-bold tracking-widest">Historical emotional trend (-1 to +1)</p>
         </Panel>
 
+        <Panel title="p95 Response Time Trend">
+          <div className="h-[250px] w-full mt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={stats.dailyTrend}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#93a1a122" />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#93a1a1'}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#93a1a1'}} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '16px', border: 'none', backgroundColor: 'rgba(15, 23, 42, 0.9)', backdropFilter: 'blur(12px)', color: '#fff' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="p95" 
+                  stroke="#f43f5e" 
+                  strokeWidth={3} 
+                  dot={{ r: 4, fill: '#f43f5e', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 6, strokeWidth: 0 }}
+                  name="p95 Response (min)"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-[10px] text-center text-solarized-base1 mt-2 uppercase font-bold tracking-widest">95th percentile response time in minutes</p>
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Panel title="Canned Response Effectiveness">
+          <div className="mt-4 overflow-hidden rounded-xl border border-white/5 bg-white/5">
+            <table className="w-full text-left text-xs text-solarized-base1">
+              <thead className="bg-white/5 text-[10px] uppercase font-bold tracking-wider">
+                <tr>
+                  <th className="px-4 py-3">Shortcut</th>
+                  <th className="px-4 py-3">Usage</th>
+                  <th className="px-4 py-3">Avg Rating</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {(stats as any).cannedResponseUsage?.length > 0 ? (stats as any).cannedResponseUsage.map((row: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-white/5 transition-colors">
+                    <td className="px-4 py-3 font-mono text-accent-400">{row.shortcut}</td>
+                    <td className="px-4 py-3 font-medium text-white">{row.usage_count}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-bold ${row.avg_rating >= 4 ? 'text-emerald-400' : row.avg_rating >= 3 ? 'text-amber-400' : 'text-rose-400'}`}>
+                          {Number(row.avg_rating).toFixed(1)}
+                        </span>
+                        <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${row.avg_rating >= 4 ? 'bg-emerald-500' : row.avg_rating >= 3 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${(row.avg_rating / 5) * 100}%` }} />
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-500">No canned response data yet</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+
         <Panel title="Sentiment by Department" className="bg-white/5 dark:bg-brand-900/20 backdrop-blur-2xl border-white/5">
           <div className="h-[250px] w-full mt-4">
             <ResponsiveContainer width="100%" height="100%">

@@ -12,7 +12,7 @@ export async function loginInContext(
   const page = await context.newPage();
   const user = TEST_USERS[userKey];
 
-  const res = await page.request.post(`${API_URL}/api/auth/login`, {
+  const res = await page.request.post(`${API_URL}/api/v1/auth/login`, {
     data: { id: user.id, password: user.password },
   });
   if (!res.ok()) throw new Error(`Login failed for ${user.id}: ${res.status()}`);

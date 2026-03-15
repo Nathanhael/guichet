@@ -18,7 +18,7 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, messages, typingUsers, participantsOnline, setParticipantOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode, setMessages, activePartnerId } = useStore();
+  const { user, messages, typingUsers, participantsOnline, setParticipantOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode, setMessages, activePartnerId, focusMode } = useStore();
   const { manifest } = usePartner();
   const t = useT();
   const [text, setText] = useState('');
@@ -33,8 +33,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const [searchQuery, setSearchQuery] = useState('');
   const [blockedNotice, setBlockedNotice] = useState<string | null>(null);
   const [showLabelsMenu, setShowLabelsMenu] = useState(false);
+  const [lastCannedId, setLastCannedId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -223,7 +225,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     try {
       const form = new FormData();
       form.append('file', file);
-      const res = await fetch('/api/uploads', {
+      const res = await fetch('/api/v1/uploads', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: form
@@ -302,9 +304,11 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       text: trimmed || '📎',
       mediaUrl,
       whisper: whisperMode,
+      cannedResponseId: lastCannedId || undefined,
     });
     setText('');
     clearMedia();
+    setLastCannedId(null);
     stopTyping();
   }
 
@@ -335,40 +339,42 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const isClosed = ticket.status === 'closed';
 
   return (
-    <div className="relative flex flex-col h-full glass-card rounded-xl shadow-soft border-white/40 dark:border-brand-700/50 flex-1 min-h-0 animate-fade-in">
+    <div className={`relative flex flex-col h-full glass-card rounded-xl shadow-soft border-white/40 dark:border-brand-700/50 flex-1 min-h-0 animate-fade-in ${focusMode ? 'zen-glass border-none shadow-2xl' : ''}`}>
       {/* Header */}
-      <div className="relative z-50 flex items-center justify-between px-4 py-3 border-b border-white/20 dark:border-brand-700/50 bg-white/30 dark:bg-brand-800/40 backdrop-blur-sm rounded-t-xl">
+      <div className={`relative z-50 flex items-center justify-between px-4 border-b border-white/20 dark:border-brand-700/50 bg-white/30 dark:bg-brand-800/40 backdrop-blur-sm rounded-t-xl transition-all duration-500 ${focusMode ? 'py-1.5' : 'py-3'}`}>
         <div className="min-w-0 pr-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-tighter ${
-              ticket.dept === 'DSC' || ticket.dept === 'dsc'
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' 
-                : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
-            }`}>
-              {ticket.dept}
-            </span>
-            <span className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate flex items-center gap-1.5 min-w-0 max-w-[120px]">
+            {!focusMode && (
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-tighter ${
+                ticket.dept === 'DSC' || ticket.dept === 'dsc'
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' 
+                  : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+              }`}>
+                {ticket.dept}
+              </span>
+            )}
+            <span className={`font-semibold text-solarized-base01 dark:text-gray-100 truncate flex items-center gap-1.5 min-w-0 ${focusMode ? 'text-xs opacity-70' : 'text-sm max-w-[120px]'}`}>
               {ticket.agentName}
-              {isSupport && !isClosed && (
+              {isSupport && !isClosed && !focusMode && (
                 <span
                   title={agentIsOnline ? 'Agent online' : 'Agent offline'}
                   className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${agentIsOnline ? 'bg-solarized-green' : 'bg-solarized-base1 dark:bg-gray-500'}`}
                 />
               )}
             </span>
-            {(ticket.ref1 || (ticket as any).cdbId) && (
+            {!focusMode && (ticket.ref1 || (ticket as any).cdbId) && (
               <span className="text-[10px] font-mono bg-solarized-base2/50 dark:bg-gray-700/50 text-solarized-base1 dark:text-gray-400 px-1.5 py-0.5 rounded shrink-0 hidden sm:inline-block">
                 {ticket.dept === 'FOT' || ticket.dept === 'fot' ? manifest.ref2Label : manifest.ref1Label}: {ticket.ref1 || (ticket as any).cdbId}
               </span>
             )}
-            {ticket.agentLang && (
+            {!focusMode && ticket.agentLang && (
               <span className="text-xs shrink-0" title={ticket.agentLang.toUpperCase()}>
                 {LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]}
               </span>
             )}
             
             {/* Active Labels Display */}
-            {liveTicket.labels && liveTicket.labels.length > 0 && (
+            {!focusMode && liveTicket.labels && liveTicket.labels.length > 0 && (
               <div className="flex flex-wrap gap-1 focus-within:ring-0">
                 {liveTicket.labels.map(id => {
                   const info = getLabelInfo(id);
@@ -385,18 +391,20 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            {ticket.participants && (Array.isArray(ticket.participants) ? ticket.participants.length > 0 : false) ? (
-              <span className="text-xs text-solarized-base1 dark:text-gray-400">
-                {(ticket.participants as any[]).map((p) => (typeof p === 'object' && p !== null ? p.name : p)).join(', ')}
-              </span>
-            ) : (
-              <span className="text-xs text-solarized-base1">{t('waiting_for_support')}</span>
-            )}
-          </div>
+          {!focusMode && (
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              {ticket.participants && (Array.isArray(ticket.participants) ? ticket.participants.length > 0 : false) ? (
+                <span className="text-xs text-solarized-base1 dark:text-gray-400">
+                  {(ticket.participants as any[]).map((p) => (typeof p === 'object' && p !== null ? p.name : p)).join(', ')}
+                </span>
+              ) : (
+                <span className="text-xs text-solarized-base1">{t('waiting_for_support')}</span>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className={`flex items-center gap-2 shrink-0 ${focusMode ? 'scale-90 opacity-60 hover:opacity-100 transition-opacity' : ''}`}>
           {/* Labels Menu Button */}
           {isSupport && !isClosed && (
             <div className="relative" ref={labelsMenuRef}>
@@ -405,7 +413,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 title="Manage Labels"
                 className={`p-2 rounded-xl transition-all shadow-sm ${showLabelsMenu ? 'bg-brand-500 text-white shadow-brand-500/20' : 'bg-solarized-base2 dark:bg-brand-900/50 text-solarized-base01 dark:text-gray-400 hover:text-brand-500 hover:bg-solarized-base3 dark:hover:bg-brand-850 hover:shadow-md'} active:scale-95`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${focusMode ? 'h-4 w-4' : 'h-5 w-5'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                 </svg>
               </button>
@@ -447,11 +455,11 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               className="text-solarized-base1 hover:text-solarized-base01 dark:hover:text-gray-200 transition-colors"
             >
               {focused ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${focusMode ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${focusMode ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
               )}
@@ -466,7 +474,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               : 'text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-brand-700'
               }`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${focusMode ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </button>
@@ -476,7 +484,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               <button
                 onClick={leaveTicket}
                 title={t('leave')}
-                className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-3 py-2 rounded-xl font-bold transition-all border border-amber-200 dark:border-amber-800 shadow-sm active:scale-95 whitespace-nowrap hidden sm:block"
+                className={`text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-3 py-2 rounded-xl font-bold transition-all border border-amber-200 dark:border-amber-800 shadow-sm active:scale-95 whitespace-nowrap hidden sm:block ${focusMode ? 'px-2 py-1 text-[10px]' : 'px-3 py-2'}`}
               >
                 {t('leave') || 'Leave'}
               </button>
@@ -486,7 +494,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   closeTicket();
                 }}
                 disabled={closing}
-                className="text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-2 rounded-xl font-bold transition-all border border-red-200 dark:border-red-800 shadow-sm active:scale-95 flex items-center gap-2 whitespace-nowrap"
+                className={`text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-2 rounded-xl font-bold transition-all border border-red-200 dark:border-red-800 shadow-sm active:scale-95 flex items-center gap-2 whitespace-nowrap ${focusMode ? 'px-2 py-1 text-[10px]' : 'px-3 py-2'}`}
               >
                 {closing && (
                   <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24">
@@ -506,7 +514,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               }}
               className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-solarized-base2 dark:hover:bg-brand-700 text-solarized-base1 hover:text-solarized-base01 dark:hover:text-gray-200 transition-colors"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${focusMode ? 'h-4 w-4' : 'h-5 w-5'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -726,7 +734,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             </button>
           )}
           {isSupport && (
-            <CannedResponsePicker onSelect={(val) => setText((prev) => prev ? `${prev} ${val}` : val)} />
+            <CannedResponsePicker onSelect={(val, id) => {
+              setText((prev) => prev ? `${prev} ${val}` : val);
+              setLastCannedId(id);
+            }} />
           )}
 
           <label className="cursor-pointer text-solarized-base1 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition-colors p-1.5 rounded-lg hover:bg-solarized-base2 dark:hover:bg-brand-700 shrink-0" title="Screenshot (Ctrl+V)">

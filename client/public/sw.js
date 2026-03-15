@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tessera-v1';
+const CACHE_NAME = 'tessera-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -33,7 +33,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/socket.io')) return;
 
   // API calls: network-first, cache fallback
-  if (url.pathname.startsWith('/api')) {
+  if (url.pathname.startsWith('/api/v1')) {
     event.respondWith(
       fetch(request)
         .then((response) => {

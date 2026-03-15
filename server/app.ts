@@ -81,13 +81,16 @@ app.use(metricsMiddleware);
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/api/tickets', ticketRoutes); // Kept for export support
-app.use('/api/uploads', uploadRoutes);
-app.use('/api/auth', authLimiter, authRoutes);
+// API v1 Routing
+const v1Router = express.Router();
 
-// tRPC
-app.use(
-  '/api/trpc',
+v1Router.use('/tickets', ticketRoutes); // Kept for export support
+v1Router.use('/uploads', uploadRoutes);
+v1Router.use('/auth', authLimiter, authRoutes);
+
+// tRPC v1
+v1Router.use(
+  '/trpc',
   trpcExpress.createExpressMiddleware({
     router: appRouter,
     createContext,
@@ -98,7 +101,7 @@ import { partners } from './db/schema.js';
 import { eq } from 'drizzle-orm';
 import { db } from './db.js';
 
-app.get('/api/config', async (req: Request, res: Response) => {
+v1Router.get('/config', async (req: Request, res: Response) => {
   const partnerId = req.query.partnerId as string;
   let partnerConfig = null;
 
@@ -118,12 +121,7 @@ app.get('/api/config', async (req: Request, res: Response) => {
   });
 });
 
-app.get('/metrics', async (_req: Request, res: Response) => {
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
-
-app.get('/api/health', async (_req: Request, res: Response) => {
+v1Router.get('/health', async (_req: Request, res: Response) => {
   try {
     await query('SELECT 1');
     try {
@@ -139,6 +137,14 @@ app.get('/api/health', async (_req: Request, res: Response) => {
     res.status(503).json({ status: 'error', database: 'disconnected' });
   }
 });
+
+app.use('/api/v1', v1Router);
+
+app.get('/metrics', async (_req: Request, res: Response) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
 
 // GDPR purge
 runDailyPurge();

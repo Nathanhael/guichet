@@ -82,6 +82,7 @@ interface PerDayEntry {
   dsc: number;
   fot: number;
   sentiment?: number | null;
+  p95?: number | null;
 }
 
 interface RatingsByDeptAccumulator {
@@ -293,7 +294,8 @@ export const statsRouter = router({
             total: dayData.total,
             dsc: dayData.deptCounts['DSC'] || 0,
             fot: dayData.deptCounts['FOT'] || 0,
-            sentiment: dayData.sentimentCount > 0 ? Math.round((dayData.sentimentSum / dayData.sentimentCount) * 100) / 100 : null
+            sentiment: dayData.sentimentCount > 0 ? Math.round((dayData.sentimentSum / dayData.sentimentCount) * 100) / 100 : null,
+            p95: Math.round(dayData.p95ResponseMs / 60000)
           });
           totalCount += dayData.total;
           totalDsc += dayData.deptCounts['DSC'] || 0;
@@ -569,6 +571,16 @@ export const statsRouter = router({
             const summary: Record<string, string[]> = { DSC: [], FOT: [] };
             labelCounts.forEach(lc => { if (summary[lc.dept] && summary[lc.dept].length < 3) summary[lc.dept].push(lc.name); });
             return summary;
+          })(),
+          cannedResponseUsage: await (async () => {
+            const cannedSql = `SELECT cr.shortcut, COUNT(*) as usage_count, AVG(r.rating) as avg_rating
+                               FROM messages m
+                               JOIN canned_responses cr ON m.canned_response_id = cr.id
+                               JOIN ratings r ON m.ticket_id = r.ticket_id
+                               WHERE m.created_at::date >= $1 AND m.created_at::date <= $2
+                               GROUP BY cr.shortcut
+                               ORDER BY usage_count DESC`;
+            return await query(cannedSql, [rangeStart, rangeEnd]);
           })(),
           previousPeriod,
         };
