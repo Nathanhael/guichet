@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { StoreState, Ticket } from '../../types';
+import { StoreState, Ticket, TopicAlert } from '../../types';
 
 export interface TicketSlice {
   tickets: Ticket[];
@@ -9,6 +9,7 @@ export interface TicketSlice {
   participantsOnline: Record<string, boolean>;
   supportOpenTickets: string[];
   queuePosition: { position: number; etaMins: number } | null;
+  topicAlerts: TopicAlert[];
 
   setTickets: (tickets: Ticket[]) => void;
   setArchivedTickets: (archived: Ticket[]) => void;
@@ -22,6 +23,7 @@ export interface TicketSlice {
   addSupportOpenTicket: (ticketId: string) => void;
   removeSupportOpenTicket: (ticketId: string) => void;
   setQueuePosition: (pos: { position: number; etaMins: number } | null) => void;
+  addTopicAlert: (alert: TopicAlert) => void;
 }
 
 export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = (set) => ({
@@ -32,6 +34,7 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   participantsOnline: {},
   supportOpenTickets: [],
   queuePosition: null,
+  topicAlerts: [],
 
   setTickets: (tickets) => set({ tickets }),
   setArchivedTickets: (archived) => set({ archivedTickets: archived }),
@@ -91,4 +94,8 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
       supportOpenTickets: state.supportOpenTickets.filter((id) => id !== ticketId),
     })),
   setQueuePosition: (pos) => set({ queuePosition: pos }),
+  addTopicAlert: (alert) =>
+    set((state) => ({
+      topicAlerts: [alert, ...state.topicAlerts].slice(0, 50),
+    })),
 });

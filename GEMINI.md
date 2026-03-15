@@ -21,12 +21,14 @@ This file serves as the primary instructional context for Gemini CLI when workin
   - **Immersive Zen Mode**: Adaptive glassmorphism (`.zen-glass`) and ambient backgrounds.
 - **Solaris Design System**: A "glassmorphic" aesthetic with dynamic brand variables (`--brand-primary`).
 - **GDPR Compliance**: Automatic 30-day data retention policy with anonymized historical aggregation.
+- **Intelligent Incident Detection**: Real-time "Topic Heat" alerts powered by LLM clustering.
+- **Security Hardening**: Stored XSS prevention, prompt injection safeguards, and token-protected metrics.
 - **Enterprise Scaling**: **Redis-based** distributed presence and horizontal scaling support.
 
 ### Tech Stack
 - **Frontend**: React 18, Vite 5, Tailwind CSS 3, Framer Motion, Zustand (State), Socket.io-client.
 - **Backend**: Node.js 20 (ESM), Express.js, Socket.io, PostgreSQL (pg + Drizzle ORM).
-- **AI**: Ollama REST API (running `gemmatranslate4b`).
+- **AI**: Ollama REST API (running `translategemma:4b`).
 - **DevOps**: Docker & Docker Compose (preferred runtime).
 - **Real-Time**: Redis Socket.io Adapter (horizontal scaling), tRPC (end-to-end type safety).
 - **API**: Versioned `/api/v1/` namespace for all REST and tRPC endpoints.

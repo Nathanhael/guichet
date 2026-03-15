@@ -248,3 +248,16 @@ export interface Rating {
   comment?: string | null;
   createdAt: string;
 }
+
+export interface TopicAlert {
+  id: string;
+  partnerId: string;
+  dept: string;
+  topic: string;
+  summary: string;
+  severity: 'low' | 'medium' | 'high';
+  ticketCount: number;
+  status: 'active' | 'acknowledged' | 'resolved';
+  createdAt: string;
+  resolvedAt?: string | null;
+}

@@ -49,6 +49,7 @@ The majority of application logic is handled via tRPC procedures.
 - `user`: Profile management.
 - `platform`: Global partner and membership control.
 - `partner`: Tenant-specific settings.
+- `alerts`: Real-time incident management (list, acknowledge, resolve).
 
 ---
 
@@ -61,5 +62,6 @@ The majority of application logic is handled via tRPC procedures.
 
 ### Prometheus Metrics
 `GET /metrics`
+- **Auth**: None for localhost; `x-metrics-token` header required for external callers if `METRICS_TOKEN` is configured.
 - **Response**: Standard Prometheus exposition format.
 - **Note**: This endpoint is **not** versioned as it is for infrastructure monitoring.

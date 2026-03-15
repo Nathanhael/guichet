@@ -64,7 +64,8 @@ The AI Intelligence Hub provides qualitative, strategic insights derived from re
 - **p95 Response Trends**: Identifying latency outliers and peak demand periods.
 - **Canned Response Effectiveness**: Correlating specific template usage with average user ratings to identify the highest-quality scripts.
 - **Resolution Quality**: Tracking re-open rates to identify recurring friction points.
-- **Topic Clustering**: AI-grouped recurring issues per department.
+- **Topic Clustering**: AI-grouped recurring issues per department for historical analysis.
+- **Intelligent Topic Heat Alerts**: Real-time background worker analyzing message clusters every 10 minutes to detect emerging incidents or outages before they scale.
 - **Automated Summaries**: LLM-generated qualitative overviews of daily/weekly performance.
 - **Predictive Staffing**: (Beta) Forecasting support coverage needs based on volume velocity.
 
@@ -73,8 +74,10 @@ The AI Intelligence Hub provides qualitative, strategic insights derived from re
 ## 3. Security & Safety Hardening
 
 ### Prompt Injection Protection
-- **XML Delimiters**: User content is wrapped in `<message>` tags within prompts.
-- **Tenant Context**: The partner's industry rules are injected as a system prefix to ground the model.
+- **Input Sanitization**: All untrusted ticket text and partner-defined strategies are processed via the `sanitizeForPrompt` utility to escape potentially malicious control characters.
+- **Strict XML Delimiters**: User content is wrapped in robust tags (e.g., `<agent_message>`, `<strategy>`, `<ticket>`) within prompts to provide clear boundaries between instructions and data.
+- **Instruction Grounding**: Every prompt explicitly commands the LLM to treat content inside data tags as untrusted and to ignore any embedded instructions.
+- **Tenant Context**: The partner's industry rules are injected as a system prefix to ground the model and maintain role consistency.
 
 ### Data Privacy & PII
 - **PII Guard**: Post-AI regex scan for sensitive data (IBAN, Credit Cards).

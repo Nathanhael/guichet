@@ -84,6 +84,13 @@ The platform is designed for enterprise scale (1000+ employees):
 3. **Redis Utility**: Redis clients are managed via `server/utils/redis.ts` to ensure clean lifecycle management and prevent circular dependencies.
 4. **Scoped Broadcasts**: Real-time updates (e.g., "Support Specialist joined") are scoped to `partner:{id}` rooms to minimize network overhead.
 
+### Intelligent Incident Detection (Topic Heat)
+A specialized background worker (`server/services/topicHeat.ts`) runs every 10 minutes to detect emerging incidents:
+1. **Clustering**: Analyzes the first message of all tickets created in the last 15 minutes.
+2. **LLM Analysis**: If a department exceeds a volume threshold (>3 tickets), ticket content is sent to the LLM with a specialized clustering prompt.
+3. **Alert Generation**: If the AI detects a common theme (e.g., "login failure," "regional outage"), a record is created in `topic_alerts`.
+4. **Real-Time Broadcast**: Alerts are broadcasted via Socket.io to the relevant `partner:{id}` room, triggering real-time UI notifications for admins and managers.
+
 ### Event Flow: Ticket Creation to Resolution
 
 ```mermaid
@@ -133,6 +140,8 @@ ratings            (id, ticket_id, agent_id, support_id, rating, comment, create
 daily_stats        (date, partner_id, total, closed, abandoned, avg_response_ms, 
                     avg_duration_ms, avg_rating, sla_health, p95_response_ms, 
                     reopened, sentiment_sum, sentiment_count)
+topic_alerts       (id, partner_id, dept, topic, summary, severity, 
+                    ticket_count, status, created_at, resolved_at)
 ```
 
 **JSON columns**: `participants`, `reactions`, `deptCounts`, `ratingsByDept`, `hourly`, `questions` are stored as JSON strings and parsed at query time.
@@ -158,7 +167,12 @@ All application logic is contained within the `v1` namespace. This allows for fu
 
 ## 6. Observability (Prometheus + Grafana)
 
-The platform exposes Prometheus metrics at `/metrics` via `prom-client`. When running in Docker, Prometheus and Grafana are automatically provisioned.
+The platform exposes Prometheus metrics at `/metrics` via `prom-client`. 
+
+### Access Control
+Access to the `/metrics` endpoint is protected:
+- **Local Access**: Requests from `127.0.0.1` or `::1` are permitted without a token.
+- **Token Access**: External requests must provide a valid `x-metrics-token` header matching the `METRICS_TOKEN` environment variable.
 
 ### Metrics Exposed
 

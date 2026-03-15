@@ -96,16 +96,17 @@ For AI translation pipeline docs, see **[AI_PIPELINE.md](./docs/AI_PIPELINE.md)*
   - `uploads.ts` — Multer-based file uploads
 
 **Services** (`server/services/`):
-- `translate.ts` — Two-stage Ollama pipeline: Improve text → Translate if langs differ. Results cached in `translations_cache` (SHA256 key). Gracefully degrades if Ollama is down (`fallback: true`).
+- `translate.ts` — Two-stage Ollama pipeline: Improve text → Translate if langs differ. Results cached in `translations_cache` (SHA256 key). Gracefully degrades if Ollama is down (`fallback: true`). Includes `sanitizeForPrompt` to prevent injection.
 - `llm.ts` — Generates sentiment/topic summaries per period (day/week/month), cached in `llm_summaries` table.
-- `businessHours.ts` — Per-partner business hours check. Accepts optional partner config (start, end, timezone); falls back to env vars `BUSINESS_HOURS_START`/`BUSINESS_HOURS_END` (default 07:30–22:30 Brussels). Enforced server-side on ticket creation.
+- `topicHeat.ts` — Intelligent incident detection background worker. Uses LLM clustering on short windows (15 min) to detect trending issues. Broadcasts `topic:alert` via Socket.io.
+- `businessHours.ts` — Per-partner business hours check. Enforced server-side on ticket creation.
 - `gdpr.ts` — Daily purge: aggregates records older than 30 days into `daily_stats`, then deletes in a Drizzle transaction.
 - `stats.ts` — Stats computation logic used by the `stats` tRPC router.
 
 **Socket** (`server/socket/handlers.ts`):
-Registers all real-time event handlers. Tickets use rooms named `ticket:{ticketId}`.
+Registers all real-time event handlers. Tickets use rooms named `ticket:{ticketId}`. Broadcasts scoped to `partner:{id}`.
 
-Key events: `socket:identify`, `ticket:new`, `ticket:created:self`, `ticket:history`, `support:join`, `support:leave`, `ticket:close`, `message:send`, `message:blocked`, `status:set`, `reaction:toggle`, `ticket:labels:update`, `businessHours:status`, `hours:closed`.
+Key events: `socket:identify`, `ticket:new`, `ticket:created:self`, `ticket:history`, `support:join`, `support:leave`, `ticket:close`, `message:send`, `message:blocked`, `status:set`, `reaction:toggle`, `ticket:labels:update`, `businessHours:status`, `hours:closed`, `topic:alert`.
 
 **Message pipeline** (integrated in `message.send` tRPC mutation):
 1. Guards (8-tier: length → ALL CAPS → repetition → injection → swearing → threats → discrimination → async Ollama topic check)
@@ -139,6 +140,7 @@ PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables
 | `llm_summaries` | Period-keyed AI summaries (e.g. `day:2025-03-13`) |
 | `daily_stats` | GDPR-compliant aggregates after purge |
 | `canned_responses` | Shortcut → text templates |
+| `topic_alerts` | AI-detected heat clusters/incidents |
 
 ### Client (`client/src/`)
 

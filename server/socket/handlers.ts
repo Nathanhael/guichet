@@ -10,6 +10,7 @@ import logger from '../utils/logger.js';
 import { Ticket, Message, User } from '../types/index.js';
 import { getRedisClients } from '../utils/redis.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
+import { isValidMediaUrl } from '../utils/security.js';
 
 interface TicketNewPayload {
   agentId: string;
@@ -157,6 +158,7 @@ export function registerSocketHandlers(io: Server) {
         const { agentId, agentLang, dept, ref1, ref2, text, mediaUrl } = data;
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
         if (!partnerId) return socket.emit('error', { message: 'No partner context' });
+        if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
 
         // Re-open detection
         let reopened = false;
@@ -248,6 +250,7 @@ export function registerSocketHandlers(io: Server) {
       socketioEventsTotal.inc({ event: 'message:send' });
       try {
         if (!ticketId || !senderId || !text) return;
+        if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
         const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as TicketRow | undefined;
         if (!ticket || ticket.status === 'closed') return;
         

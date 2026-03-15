@@ -11,13 +11,14 @@ const configSchema = z.object({
     SLA_THRESHOLD_MS: z.coerce.number().int().positive().default(180000),
     GDPR_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
     PURGE_INTERVAL_MS: z.coerce.number().int().positive().default(24 * 60 * 60 * 1000),
-    JWT_SECRET: z.string().default('super-secret-key-replace-in-prod'),
+    JWT_SECRET: z.string(),
     JWT_EXPIRY: z.string().default('24h'),
     MAX_EXPERTS_SHOWN: z.coerce.number().int().positive().default(8),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     UPLOAD_MAX_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     UPLOAD_ALLOWED_TYPES: z.array(z.string()).default(['image/png', 'image/jpeg', 'image/webp']),
-    OLLAMA_MODEL: z.string().default('gemmatranslate4b'),
+    OLLAMA_MODEL: z.string().default('translategemma:4b'),
+    METRICS_TOKEN: z.string().optional(),
     REDIS_URL: z.string().default('redis://localhost:6379'),
     AI_PROVIDER: z.enum(['ollama', 'azure', 'openai-compatible', 'gemini', 'anthropic']).default('ollama'),
     AI_BASE_URL: z.string().url().optional(),
@@ -42,6 +43,7 @@ const parseResult = configSchema.safeParse({
     LOG_LEVEL: process.env.LOG_LEVEL,
     UPLOAD_MAX_SIZE: process.env.UPLOAD_MAX_SIZE,
     OLLAMA_MODEL: process.env.OLLAMA_MODEL,
+    METRICS_TOKEN: process.env.METRICS_TOKEN,
     REDIS_URL: process.env.REDIS_URL,
     AI_PROVIDER: process.env.AI_PROVIDER,
     AI_BASE_URL: process.env.AI_BASE_URL,
@@ -58,15 +60,5 @@ if (!parseResult.success) {
 }
 
 const config: Config = parseResult.data;
-
-// Startup validation — fail fast if JWT secret is not set
-if (config.JWT_SECRET === 'super-secret-key-replace-in-prod') {
-    if (process.env.NODE_ENV === 'production') {
-        console.error('FATAL: JWT_SECRET must be set in production. Exiting.');
-        process.exit(1);
-    } else {
-        console.warn('WARNING: Using default JWT_SECRET. Set JWT_SECRET env var before deploying.');
-    }
-}
 
 export default config;

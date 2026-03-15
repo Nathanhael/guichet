@@ -32,7 +32,7 @@ Every partner will have a configuration object stored in the database. This mani
 ```typescript
 interface PartnerManifest {
   id: string;           // 'telecom-01'
-  name: string;         // 'iKanbi Telecom'
+  name: string;         // 'Tessera Telecom'
   industry: string;     // 'telecommunications'
   theme: {
     primaryColor: string;   // hex code

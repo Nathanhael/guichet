@@ -30,6 +30,7 @@ export function useSocket(): Socket {
     setBusinessHoursOpen, 
     setTyping, 
     setOnlineSupportUsers,
+    addTopicAlert,
   } = useStore();
   
   const listenersAttached = useRef(false);
@@ -204,6 +205,15 @@ export function useSocket(): Socket {
       setBusinessHoursOpen(false);
     });
 
+    // Topic Heat Alert
+    s.on('topic:alert', (alert: TopicAlert) => {
+      const state = useStore.getState();
+      if (state.user?.role === 'admin' || state.user?.role === 'manager') {
+        addTopicAlert(alert);
+        playChime();
+      }
+    });
+
     return () => {
       // Do NOT disconnect — socket is shared. Only remove listeners on strict-mode double-effect.
       s.off('connect');
@@ -225,6 +235,7 @@ export function useSocket(): Socket {
       s.off('rating:saved');
       s.off('label:deleted');
       s.off('label:created');
+      s.off('topic:alert');
       listenersAttached.current = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursOpen]);

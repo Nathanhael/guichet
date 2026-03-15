@@ -15,6 +15,13 @@
       "when": 1773572210922,
       "tag": "0001_watery_doctor_spectrum",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1773614702795,
+      "tag": "0002_fine_supreme_intelligence",
+      "breakpoints": true
     }
   ]
 }
