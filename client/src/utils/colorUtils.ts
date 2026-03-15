@@ -63,7 +63,7 @@ const SHADE_TARGETS: Record<string, number> = {
 };
 
 export function generatePalette(hex: string): Record<string, string> {
-  const { h, s, l } = hexToHsl(hex);
+  const { h, s } = hexToHsl(hex);
   const palette: Record<string, string> = {};
 
   for (const [shade, target] of Object.entries(SHADE_TARGETS)) {
