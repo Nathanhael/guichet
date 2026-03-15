@@ -26,7 +26,7 @@ global.alert = mockAlert;
 describe('LoginView Component', () => {
   const mockUsers = [
     { id: 'u1', name: 'Agent Alice', role: 'agent', dept: 'DSC', lang: 'nl' },
-    { id: 'u2', name: 'Expert Bob', role: 'expert', dept: 'FOT', lang: 'fr' },
+    { id: 'u2', name: 'Support Bob', role: 'support', dept: 'FOT', lang: 'fr' },
   ];
 
   beforeEach(() => {
@@ -49,30 +49,34 @@ describe('LoginView Component', () => {
   it('renders list of users', () => {
     render(<LoginView />);
     expect(screen.getByText('Agent Alice')).toBeInTheDocument();
-    expect(screen.getByText('Expert Bob')).toBeInTheDocument();
+    expect(screen.getByText('Support Bob')).toBeInTheDocument();
   });
 
   it('filters users by role', () => {
     render(<LoginView />);
-    
-    const expertFilter = screen.getByText('Expert', { selector: 'button' });
-    fireEvent.click(expertFilter);
-    
+
+    const supportFilter = screen.getByText('Support', { selector: 'button' });
+    fireEvent.click(supportFilter);
+
     expect(screen.queryByText('Agent Alice')).not.toBeInTheDocument();
-    expect(screen.getByText('Expert Bob')).toBeInTheDocument();
+    expect(screen.getByText('Support Bob')).toBeInTheDocument();
   });
 
   it('handles successful login', async () => {
     const mockResponse = {
       ok: true,
-      json: () => Promise.resolve({ token: 't123', user: mockUsers[0] }),
+      json: () => Promise.resolve({
+        token: 't123',
+        user: mockUsers[0],
+        memberships: [{ id: 'm1', userId: 'u1', partnerId: 'p1', role: 'agent' }],
+      }),
     };
     mockFetch.mockResolvedValue(mockResponse);
-    
+
     render(<LoginView />);
     const aliceBtn = screen.getByText('Agent Alice').closest('button')!;
     fireEvent.click(aliceBtn);
-    
+
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith('/api/auth/login', expect.any(Object));
       expect(useStore.getState().token).toBe('t123');

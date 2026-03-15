@@ -50,9 +50,9 @@ describe('useSocket hook', () => {
     renderHook(() => useSocket());
     
     expect(mockSocket.emit).toHaveBeenCalledWith('socket:identify', {
-      userId: 'u1',
+      userId: '1',
       role: 'agent',
-      name: 'User 1'
+      name: 'Test'
     });
   });
 
