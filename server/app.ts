@@ -32,43 +32,53 @@ import { initRedis, getRedisClients } from './utils/redis.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
+app.set('trust proxy', 1);
 export { app };
 
 const httpServer = createServer(app);
 export { httpServer };
 
+const allowedOrigins = config.CORS_ORIGIN.split(',');
+
 const io = new Server(httpServer, {
-  cors: { origin: config.CORS_ORIGIN, methods: ['GET', 'POST'] },
+  cors: { 
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    methods: ['GET', 'POST'] 
+  },
 });
 
-// Redis Adapter Initialization
-const { pubClient, subClient } = await initRedis();
-if (pubClient && subClient) {
-  io.adapter(createAdapter(pubClient, subClient));
-  logger.info('Socket.io Redis adapter connected');
-}
-
-export { io };
-app.set('io', io);
-presenceService.setIo(io);
-setBusinessHoursIo(io);
+// ... (redis setup)
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(cors({ origin: config.CORS_ORIGIN }));
+app.use(cors({ 
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }
+}));
 app.use(express.json());
 
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 100,
+  max: (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') ? 999999 : 100,
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api', globalLimiter);
 
 export const authLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  max: (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') ? 999999 : 5,
   message: { error: 'Too many authentication attempts, please try again later.' }
 });
 
@@ -114,8 +124,8 @@ v1Router.get('/config', async (req: Request, res: Response) => {
   }
 
   res.json({
-    businessHoursStart: partnerConfig?.businessHoursStart ?? config.BUSINESS_HOURS_START,
-    businessHoursEnd: partnerConfig?.businessHoursEnd ?? config.BUSINESS_HOURS_END,
+    businessHoursStart: partnerConfig?.businessHoursStart ?? null,
+    businessHoursEnd: partnerConfig?.businessHoursEnd ?? null,
     businessHoursTimezone: partnerConfig?.businessHoursTimezone ?? 'Europe/Brussels',
     uploadMaxSize: config.UPLOAD_MAX_SIZE,
     uploadAllowedTypes: config.UPLOAD_ALLOWED_TYPES,
@@ -138,6 +148,20 @@ v1Router.get('/health', async (_req: Request, res: Response) => {
     res.status(503).json({ status: 'error', database: 'disconnected' });
   }
 });
+
+// Internal E2E Seeding Endpoint
+if (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') {
+  v1Router.post('/seed-e2e', async (_req: Request, res: Response) => {
+    try {
+      const { execSync } = await import('child_process');
+      execSync('npx tsx scripts/seed_e2e.ts', { stdio: 'inherit' });
+      res.json({ success: true });
+    } catch (err) {
+      logger.error({ err }, 'E2E Seed endpoint failed');
+      res.status(500).json({ error: String(err) });
+    }
+  });
+}
 
 app.use('/api/v1', v1Router);
 

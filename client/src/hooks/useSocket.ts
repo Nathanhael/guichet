@@ -23,6 +23,7 @@ export function getSocket(): Socket {
 export function useSocket(): Socket {
   const { 
     user, 
+    activePartnerId,
     addTicket, 
     updateTicket, 
     addMessage, 
@@ -31,16 +32,22 @@ export function useSocket(): Socket {
     setTyping, 
     setOnlineSupportUsers,
     addTopicAlert,
+    setActiveTicketId,
   } = useStore();
   
   const listenersAttached = useRef(false);
 
-  // Re-identify whenever user changes (e.g. after login)
+  // Re-identify whenever user or partner changes (e.g. after login or switch)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activePartnerId) return;
     const s = getSocket();
-    s.emit('socket:identify', { userId: user.id, role: user.role, name: user.name });
-  }, [user]);
+    s.emit('socket:identify', { 
+      userId: user.id, 
+      role: user.role, 
+      name: user.name,
+      partnerId: activePartnerId
+    });
+  }, [user, activePartnerId]);
 
   useEffect(() => {
     const s = getSocket();
@@ -52,8 +59,13 @@ export function useSocket(): Socket {
     s.on('connect', () => {
       useStore.getState().setConnectionStatus('connected');
       const state = useStore.getState();
-      if (state.user) {
-        s.emit('socket:identify', { userId: state.user.id, role: state.user.role, name: state.user.name });
+      if (state.user && state.activePartnerId) {
+        s.emit('socket:identify', { 
+          userId: state.user.id, 
+          role: state.user.role, 
+          name: state.user.name,
+          partnerId: state.activePartnerId
+        });
       }
     });
 
@@ -74,6 +86,7 @@ export function useSocket(): Socket {
     s.on('ticket:created:self', ({ ticket, message }: { ticket: Ticket; message: Message }) => {
       addTicket(ticket);
       if (message) addMessage(ticket.id, message);
+      setActiveTicketId(ticket.id);
     });
 
     // Support joined a ticket

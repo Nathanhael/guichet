@@ -1,19 +1,17 @@
 import { test, expect } from '@playwright/test';
-import { loginInContext } from '../lib/login';
-import { AGENT_USER } from '../lib/constants';
+import { loginInContext } from '../lib/login.js';
+import { TEST_USERS } from '../lib/constants.js';
 
 test.describe('Business Hours Guard', () => {
   test('shows guard when business hours are closed', async ({ browser }) => {
     // This test requires MOCK_BUSINESS_HOURS=closed on the mock server
     // For now, we test the guard component visibility based on socket state
     const context = await browser.newContext();
-    const page = await context.newPage();
-    
-    // We can't easily set env vars for the mock server from within Playwright 
-    // unless we use a specialized setup. For this project, the mock server 
-    // defaults to open. We will verify it's NOT visible by default.
-    await loginInContext(page, AGENT_USER);
 
+    // We can't easily set env vars for the mock server from within Playwright
+    // unless we use a specialized setup. For this project, the mock server
+    // defaults to open. We will verify it's NOT visible by default.
+    const page = await loginInContext(context, 'agentA');
     // Wait for socket connection and check if guard is present
     await page.waitForTimeout(2000);
 

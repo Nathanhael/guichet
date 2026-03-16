@@ -31,7 +31,9 @@ function ConnectionBanner() {
   if (connectionStatus === 'connected') return null;
 
   return (
-    <div className={`fixed top-0 left-0 right-0 z-[100] py-1.5 px-4 flex items-center justify-center gap-2 text-xs font-bold text-white shadow-md transition-colors ${connectionStatus === 'reconnecting' ? 'bg-amber-500' : 'bg-red-500'
+    <div 
+      data-testid="connection-banner"
+      className={`fixed top-0 left-0 right-0 z-[100] py-1.5 px-4 flex items-center justify-center gap-2 text-xs font-bold text-white shadow-md transition-colors ${connectionStatus === 'reconnecting' ? 'bg-amber-500' : 'bg-red-500'
       }`}>
       {connectionStatus === 'reconnecting' ? (
         <>

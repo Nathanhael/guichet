@@ -45,8 +45,7 @@ test.describe('Multi-Tenant Isolation', () => {
     await supportAPage.reload({ waitUntil: 'networkidle' });
 
     // Support A (same partner) should see the ticket
-    const queueText = supportAPage.locator('text=Queue');
-    await expect(queueText).toBeVisible({ timeout: 15000 });
+    await expect(supportAPage.getByRole('heading', { name: 'Queue' })).toBeVisible({ timeout: 15000 });
 
     await agentAContext.close();
     await supportAContext.close();

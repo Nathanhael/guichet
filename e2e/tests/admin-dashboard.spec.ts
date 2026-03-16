@@ -5,16 +5,17 @@ test.describe('Admin Dashboard', () => {
     await loginAs('adminA');
 
     // Dashboard tab should be visible
-    await expect(page.locator('text=Dashboard')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 15000 });
 
     // Stats area should render (grid with cards)
     const statsArea = page.locator('[class*="grid"]').first();
-    await expect(statsArea).toBeVisible({ timeout: 10000 });
-  });
+    await expect(statsArea).toBeVisible();
+    });
 
-  test('admin can navigate between tabs', async ({ loginAs, page }) => {
+    test('admin can navigate between tabs', async ({ loginAs, page }) => {
     await loginAs('adminA');
-    await expect(page.locator('text=Dashboard')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 15000 });
+
 
     // Click AI Insights tab
     const aiTab = page.locator('button').filter({ hasText: /AI Insights/i });
@@ -39,8 +40,8 @@ test.describe('Admin Dashboard', () => {
     }
 
     // Navigate back to Dashboard
-    await page.locator('button').filter({ hasText: /Dashboard/i }).first().click();
-    await expect(page.locator('text=Dashboard')).toBeVisible({ timeout: 5000 });
+    await page.getByRole('button', { name: /Dashboard/i }).first().click();
+    await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 5000 });
   });
 
   test('non-admin cannot see admin dashboard', async ({ loginAs, page }) => {

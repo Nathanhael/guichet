@@ -15,11 +15,16 @@ export function isWithinBusinessHours(partner?: {
   businessHoursEnd?: string | null;
   businessHoursTimezone?: string | null;
 }): boolean {
+  // If hours are not explicitly defined, the department is "Open" by default
+  if (!partner?.businessHoursStart || !partner?.businessHoursEnd) {
+    return true;
+  }
+
   const timezone = partner?.businessHoursTimezone ?? 'Europe/Brussels';
   const now = toZonedTime(new Date(), timezone);
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const [startH, startM] = (partner?.businessHoursStart ?? config.BUSINESS_HOURS_START).split(':').map(Number);
-  const [endH, endM] = (partner?.businessHoursEnd ?? config.BUSINESS_HOURS_END).split(':').map(Number);
+  const [startH, startM] = partner.businessHoursStart.split(':').map(Number);
+  const [endH, endM] = partner.businessHoursEnd.split(':').map(Number);
   return currentMinutes >= (startH * 60 + startM) && currentMinutes < (endH * 60 + endM);
 }
 

@@ -15,18 +15,18 @@ test.describe('Authentication', () => {
 
     // AgentView has a form for ticket creation
     await expect(page.locator('form')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('text=Agent')).toBeVisible();
+    await expect(page.getByText('Agent', { exact: true }).first()).toBeVisible();
   });
 
   test('support login lands on SupportView', async ({ loginAs, page }) => {
     await loginAs('supportA');
     // SupportView has a "Queue" heading
-    await expect(page.locator('text=Queue')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Queue' })).toBeVisible({ timeout: 15000 });
   });
 
   test('admin login lands on AdminView', async ({ loginAs, page }) => {
     await loginAs('adminA');
     // AdminView has a "Dashboard" nav button
-    await expect(page.locator('text=Dashboard')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Dashboard' })).toBeVisible({ timeout: 15000 });
   });
 });

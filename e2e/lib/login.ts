@@ -20,6 +20,7 @@ export async function loginInContext(
   const data = await res.json();
   const { token, user: userProfile, memberships, activePartnerId } = data;
 
+  console.log(`E2E: Navigating to ${APP_URL} for login injection...`);
   await page.goto(APP_URL);
   await page.evaluate((params: Record<string, unknown>) => {
     localStorage.setItem('token', params.token as string);

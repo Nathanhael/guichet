@@ -1,66 +1,108 @@
 import bcrypt from 'bcrypt';
-import { run, get } from './db.js';
+import { db } from './db.js';
+import { users, partners, memberships, labels } from './db/schema.js';
+import { eq } from 'drizzle-orm';
 import logger from './utils/logger.js';
+import { v4 as uuidv4 } from 'uuid';
 
 async function seed() {
-    console.log('Starting database seed...');
+    console.log('🌱 Starting database seed (schema-aware)...');
     
+    // 1. Ensure Default Partner exists
+    const defaultPartnerId = 'tessera-main';
+    const existingPartner = await db.select().from(partners).where(eq(partners.id, defaultPartnerId)).limit(1);
+    
+    if (existingPartner.length === 0) {
+        console.log('  - Creating default partner...');
+        await db.insert(partners).values({
+            id: defaultPartnerId,
+            name: 'Tessera Main',
+            industry: 'Telecommunications',
+            departments: JSON.stringify([
+                { id: 'DSC', label: 'Dispatch' },
+                { id: 'FOT', label: 'Front Office' }
+            ]),
+            createdAt: new Date().toISOString()
+        });
+    }
+
     const demoUsers = [
         { id: 'agent_jan', name: 'Agent Jan', role: 'agent', dept: 'DSC', lang: 'nl' },
         { id: 'agent_marie', name: 'Agent Marie', role: 'agent', dept: 'FOT', lang: 'fr' },
         { id: 'agent_tom', name: 'Agent Tom', role: 'agent', dept: 'DSC', lang: 'en' },
-        { id: 'expert_piet', name: 'Expert Piet', role: 'expert', dept: 'DSC', lang: 'nl' },
-        { id: 'expert_sophie', name: 'Expert Sophie', role: 'expert', dept: 'FOT', lang: 'fr' },
-        { id: 'expert_alex', name: 'Expert Alex', role: 'expert', dept: 'FOT', lang: 'en' },
+        { id: 'expert_piet', name: 'Expert Piet', role: 'support', dept: 'DSC', lang: 'nl' },
+        { id: 'expert_sophie', name: 'Expert Sophie', role: 'support', dept: 'FOT', lang: 'fr' },
+        { id: 'expert_alex', name: 'Expert Alex', role: 'support', dept: 'FOT', lang: 'en' },
         { id: 'admin_dirk', name: 'Admin Dirk', role: 'admin', dept: 'DSC', lang: 'nl' }
     ];
 
     const password = 'password123';
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    for (const user of demoUsers) {
+    for (const u of demoUsers) {
         try {
-            const existing = await get('SELECT id FROM users WHERE id = $1', [user.id]);
-            if (existing) {
-                console.log(`User ${user.id} already exists, skipping.`);
-                continue;
+            const existing = await db.select().from(users).where(eq(users.id, u.id)).limit(1);
+            if (existing.length > 0) {
+                console.log(`  - User ${u.id} already exists, skipping.`);
+            } else {
+                console.log(`  - Creating user ${u.id}...`);
+                await db.insert(users).values({
+                    id: u.id,
+                    name: u.name,
+                    lang: u.lang,
+                    password: hashedPassword
+                });
             }
 
-            await run(
-                'INSERT INTO users (id, name, role, dept, lang, password) VALUES ($1, $2, $3, $4, $5, $6)',
-                [user.id, user.name, user.role, user.dept, user.lang, hashedPassword]
-            );
-            } catch (err: unknown) {
-                console.error(`Error creating user ${user.id}:`, (err as Error).message);
+            // Ensure membership exists
+            const existingMem = await db.select().from(memberships)
+                .where(eq(memberships.userId, u.id))
+                .limit(1);
+            
+            if (existingMem.length === 0) {
+                console.log(`  - Creating membership for ${u.id}...`);
+                await db.insert(memberships).values({
+                    id: `mem_${u.id}`,
+                    userId: u.id,
+                    partnerId: defaultPartnerId,
+                    role: u.role as any,
+                    dept: u.dept,
+                    createdAt: new Date().toISOString()
+                });
             }
-            }
+        } catch (err: unknown) {
+            console.error(`❌ Error creating user/membership ${u.id}:`, (err as Error).message);
+        }
+    }
 
-            console.log('Seeding labels...');
-            const demoLabels = [
-            { id: 'label_billing', name: 'Billing', color: '#ef4444' },
-            { id: 'label_technical', name: 'Technical', color: '#3b82f6' },
-            { id: 'label_sales', name: 'Sales', color: '#10b981' }
-            ];
+    console.log('🌱 Seeding labels...');
+    const demoLabels = [
+        { id: 'label_billing', name: 'Billing', color: '#ef4444' },
+        { id: 'label_technical', name: 'Technical', color: '#3b82f6' },
+        { id: 'label_sales', name: 'Sales', color: '#10b981' }
+    ];
 
-            for (const label of demoLabels) {
-            try {
-                const existing = await get('SELECT id FROM labels WHERE id = $1', [label.id]);
-                if (existing) continue;
+    for (const l of demoLabels) {
+        try {
+            const existing = await db.select().from(labels).where(eq(labels.id, l.id)).limit(1);
+            if (existing.length > 0) continue;
 
-                await run(
-                    'INSERT INTO labels (id, name, color) VALUES ($1, $2, $3)',
-                    [label.id, label.name, label.color]
-                );
-                console.log(`Created label: ${label.name}`);
-            } catch (err: unknown) {
-                console.error(`Error creating label ${label.name}:`, (err as Error).message);
-            }
-            }
-
-            console.log('Database seed complete!');
-            }
-
-            seed().catch((err: unknown) => {
-            console.error('Seed script failed:', (err as Error).message);
+            await db.insert(labels).values({
+                id: l.id,
+                name: l.name,
+                color: l.color,
+                partnerId: defaultPartnerId
             });
+            console.log(`  - Created label: ${l.name}`);
+        } catch (err: unknown) {
+            console.error(`❌ Error creating label ${l.name}:`, (err as Error).message);
+        }
+    }
+
+    console.log('✅ Database seed complete!');
+}
+
+seed().catch((err: unknown) => {
+    console.error('❌ Seed script failed:', (err as Error).message);
+    process.exit(1);
+});
