@@ -2,9 +2,7 @@ import { z } from 'zod/v4';
 
 const configSchema = z.object({
     PORT: z.coerce.number().int().min(1).max(65535).default(3001),
-    CORS_ORIGIN: z.string()
-        .refine((val) => val !== '*' && !val.includes('*'), { message: 'Wildcard CORS origins are not allowed' })
-        .default('http://localhost:5173'),
+    CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:3001,http://client:5173'),
     OLLAMA_HOST: z.string().url().default('http://host.docker.internal:11434'),
     BUSINESS_HOURS_START: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('07:30'),
     BUSINESS_HOURS_END: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('22:30'),

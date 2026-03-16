@@ -19,8 +19,23 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
   onlineSupportUsers: [],
   typingUsers: {},
 
-  setMessages: (ticketId, messages) =>
-    set((state) => ({ messages: { ...state.messages, [ticketId]: messages } })),
+  setMessages: (ticketId, newMessages) =>
+    set((state) => {
+      const existing = state.messages[ticketId] || [];
+      // Create a map of existing messages by ID
+      const msgMap = new Map();
+      existing.forEach(m => msgMap.set(m.id, m));
+      
+      // Add or update with new messages
+      newMessages.forEach(m => msgMap.set(m.id, m));
+      
+      // Sort by creation time to maintain order
+      const merged = Array.from(msgMap.values()).sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+
+      return { messages: { ...state.messages, [ticketId]: merged } };
+    }),
   addMessage: (ticketId, message) =>
     set((state) => {
       const existing = state.messages[ticketId] || [];

@@ -20,6 +20,11 @@ export default defineConfig({
         target: process.env.VITE_API_TARGET || 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/socket.io': {
+        target: process.env.VITE_API_TARGET || 'http://localhost:3001',
+        ws: true,
+        changeOrigin: true,
+      },
     },
   },
   build: {

@@ -18,7 +18,7 @@ export default defineConfig({
       name: 'docker',
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: 'http://localhost:5173',
+        baseURL: process.env.APP_URL || 'http://client:5173',
       },
     },
     {
@@ -26,7 +26,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Edge'],
         channel: 'msedge',
-        baseURL: 'http://localhost:5173',
+        baseURL: process.env.APP_URL || 'http://client:5173',
       },
     },
     {

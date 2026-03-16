@@ -17,6 +17,40 @@ Tessera is a high-fidelity, real-time multi-tenant customer support platform des
 - **Security & Privacy Hardening**: Robust XSS prevention (media URL validation), AI prompt injection safeguards, and protected metrics endpoints.
 - **E2E Testing**: Playwright test suite (Chrome + Edge) covering auth, tickets, chat, admin, and tenant isolation.
 
+## 🧪 Testing Suite
+
+Tessera includes an extensive testing suite covering unit, integration, E2E, and load testing.
+
+### 1. Unit & Integration (Vitest)
+Runs inside the server/client containers.
+```bash
+docker compose exec server npm test
+docker compose exec client npm test
+```
+
+### 2. End-to-End (Playwright)
+Covers multi-tenant isolation, real-time chat, and network resilience.
+```bash
+# Seed the database first
+docker exec tessera-server-1 npx tsx scripts/seed_e2e.ts
+
+# Run all E2E tests
+docker compose run --rm e2e
+
+# Run a specific test
+docker compose run --rm e2e npx playwright test tests/live-chat.spec.ts --project=docker
+
+# View the last HTML report
+docker compose exec e2e npm run report:serve
+# Then open http://localhost:9323
+```
+
+### 3. Load Testing (K6)
+Simulates concurrent Socket.io agents and traffic.
+```bash
+docker compose run --rm k6 run /scripts/socket-stress.js
+```
+
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 18, Vite 5, Tailwind CSS 3, Framer Motion, Zustand (State).
