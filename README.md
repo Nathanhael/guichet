@@ -4,9 +4,8 @@ Tessera is a high-fidelity, real-time multi-tenant customer support platform des
 
 ## 🌟 Key Features
 
-- **Multi-Tenant Architecture**: Complete data isolation with partner-specific branding and AI rules.
-- **Asymmetric AI Pipeline**: Specialized AI strategies for `agent` vs `support` roles.
-- **Real-Time Scaling**: Powered by Socket.io with Redis horizontal scaling and presence tracking.
+- **Real-Time Scaling**: Powered by Socket.io with Redis horizontal scaling, presence tracking, typing indicators, and read receipts.
+- **Asymmetric AI Pipeline**: Specialized AI strategies for `agent` vs `support` roles with automated translation and sentiment analysis.
 - **Neuro-Inclusive Design (Solaris)**: Adaptive UI with glassmorphism, Dyslexic mode, and Bionic Reading.
 - **Actionable AI**: Automated generation of customer scripts and internal procedures.
 - **End-to-End Type Safety**: Built with tRPC, Drizzle ORM, and Zod.
@@ -15,7 +14,7 @@ Tessera is a high-fidelity, real-time multi-tenant customer support platform des
 - **Configurable Business Hours**: Per-partner opening hours with timezone support, configurable via Admin UI.
 - **Intelligent Incident Detection**: Real-time "Topic Heat" alerts powered by LLM clustering of incoming ticket text.
 - **Security & Privacy Hardening**: Robust XSS prevention (media URL validation), AI prompt injection safeguards, and protected metrics endpoints.
-- **E2E Testing**: Playwright test suite (Chrome + Edge) covering auth, tickets, chat, admin, and tenant isolation.
+- **E2E Testing**: Comprehensive Playwright suite covering auth, tickets, chat reliability (offline/race conditions), and tenant isolation.
 
 ## 🧪 Testing Suite
 

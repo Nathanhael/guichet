@@ -81,8 +81,13 @@ Every partner has a JSON manifest that dynamically "hydrates" the UI:
 The platform is designed for enterprise scale (1000+ employees):
 1. **Socket.io Redis Adapter**: Syncs chat events across multiple server instances.
 2. **Distributed Presence**: Online user status is stored in **Redis Hashes** rather than local memory. This allows any server instance to know who is online globally.
-3. **Redis Utility**: Redis clients are managed via `server/utils/redis.ts` to ensure clean lifecycle management and prevent circular dependencies.
-4. **Scoped Broadcasts**: Real-time updates (e.g., "Support Specialist joined") are scoped to `partner:{id}` rooms to minimize network overhead.
+3. **Message Lifecycle Events**:
+    - `typing:start` / `typing:stop`: Dynamic visual indicators in the chat header.
+    - `message:delivered`: Immediate confirmation for the sender.
+    - `message:read`: Visual checkmark confirming the recipient has viewed the message.
+4. **Message Normalization**: The `server/utils/messageMapper.ts` utility ensures that both tRPC and Socket.io endpoints return identical data structures, resolving historical issues with inconsistent case (snake_case vs camelCase) and missing translated text.
+5. **Redis Utility**: Redis clients are managed via `server/utils/redis.ts` to ensure clean lifecycle management and prevent circular dependencies.
+6. **Scoped Broadcasts**: Real-time updates (e.g., "Support Specialist joined") are scoped to `partner:{id}` rooms to minimize network overhead.
 
 ### Intelligent Incident Detection (Topic Heat)
 A specialized background worker (`server/services/topicHeat.ts`) runs every 10 minutes to detect emerging incidents:
@@ -133,9 +138,9 @@ tickets            (id, partner_id, dept, agent_id, agent_name, agent_lang,
                     support_lang, support_joined_at, created_at, closed_at, 
                     closing_notes, closed_by, participants, summary, reopened,
                     reopen_count)
-messages           (id, ticket_id, sender_id, sender_name, text, translated_text, 
-                    media_url, whisper, system, created_at, reactions, 
-                    sentiment, canned_response_id)
+messages           (id, ticket_id, sender_id, sender_name, sender_role, sender_lang,
+                    text, translated_text, media_url, whisper, system, created_at, 
+                    reactions, sentiment, canned_response_id)
 ratings            (id, ticket_id, agent_id, support_id, rating, comment, created_at)
 daily_stats        (date, partner_id, total, closed, abandoned, avg_response_ms, 
                     avg_duration_ms, avg_rating, sla_health, p95_response_ms, 

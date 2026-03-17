@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { get, run } from '../db.js';
+import config from '../config.js';
 import logger from '../utils/logger.js';
 import { TranslationResult, ProcessedMessageResult } from '../types/index.js';
 import { getLLMProvider } from './llm/factory.js';
@@ -149,9 +150,14 @@ export async function processMessage(text: string, senderRole: 'agent'|'support'
   const from = (fromLang || 'nl').toLowerCase().slice(0, 2);
   const to   = (toLang   || 'nl').toLowerCase().slice(0, 2);
 
+  // Global AI kill-switch — skip all LLM processing instantly
+  if (!config.AI_ENABLED) {
+    return { processedText: text, improvedText: text, translationSkipped: from === to, fallback: false };
+  }
+
   try {
     const partner = await getAIPrefix(partnerId);
-    
+
     // Check if AI is enabled for this partner
     if (partner && partner.ai_enabled === false) {
       return {

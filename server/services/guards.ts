@@ -186,6 +186,9 @@ Respond with ONLY one word: ALLOWED or BLOCKED.
 Message: ${text}`;
 
 export async function guardTopic(text: string): Promise<GuardResult> {
+  // Skip LLM-based topic check when AI is globally disabled
+  if (!config.AI_ENABLED) return pass();
+
   const trimmed = text.trim().toLowerCase();
   const QUICK_PASS = [
     'ok', 'oke', 'oké', 'ja', 'nee', 'oui', 'non', 'yes', 'no',

@@ -37,7 +37,7 @@ export async function broadcastAgentStatus(agentId: string, online: boolean) {
 
 export async function broadcastQueuePositions() {
   try {
-    const openTickets = await query('SELECT id FROM tickets WHERE status = $1 AND expert_id IS NULL ORDER BY created_at ASC', ['open']) as { id: string }[];
+    const openTickets = await query('SELECT id FROM tickets WHERE status = $1 AND support_id IS NULL ORDER BY created_at ASC', ['open']) as { id: string }[];
     openTickets.forEach((t, index) => {
       const position = index + 1;
       io!.to(`ticket:${t.id}`).emit('queue:update', { position, etaMins: position * 2 });

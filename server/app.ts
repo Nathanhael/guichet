@@ -124,8 +124,8 @@ v1Router.get('/config', async (req: Request, res: Response) => {
   }
 
   res.json({
-    businessHoursStart: partnerConfig?.businessHoursStart ?? null,
-    businessHoursEnd: partnerConfig?.businessHoursEnd ?? null,
+    businessHoursStart: partnerConfig?.businessHoursStart ?? config.BUSINESS_HOURS_START,
+    businessHoursEnd: partnerConfig?.businessHoursEnd ?? config.BUSINESS_HOURS_END,
     businessHoursTimezone: partnerConfig?.businessHoursTimezone ?? 'Europe/Brussels',
     uploadMaxSize: config.UPLOAD_MAX_SIZE,
     uploadAllowedTypes: config.UPLOAD_ALLOWED_TYPES,
@@ -188,6 +188,7 @@ registerSocketHandlers(io);
 
 // Topic Heat Detection
 setTopicHeatIo(io);
+setBusinessHoursIo(io);
 setInterval(() => {
   runTopicHeatCheck().catch(err => logger.error({ err }, '[TopicHeat] Periodic check failed'));
 }, 10 * 60 * 1000); // Every 10 minutes

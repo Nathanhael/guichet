@@ -232,7 +232,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'Upload failed');
+        console.error('Upload failed:', data.error || 'Unknown error');
         setMediaPreview(null);
         return;
       }

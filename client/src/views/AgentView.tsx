@@ -41,6 +41,27 @@ export default function AgentView() {
     }
   }, [ticketList, setTickets]);
 
+  useEffect(() => {
+    const s = getSocket();
+    const onCreated = () => {
+      setRef1('');
+      setRef2('');
+      setText('');
+      setLoading(false);
+    };
+    const onError = () => {
+      setLoading(false);
+    };
+    s.on('ticket:created:self', onCreated);
+    s.on('error', onError);
+    s.on('hours:closed', onError);
+    return () => {
+      s.off('ticket:created:self', onCreated);
+      s.off('error', onError);
+      s.off('hours:closed', onError);
+    };
+  }, []);
+
   const activeTicket = tickets.find((tk) => tk.id === activeTicketId);
 
   async function createTicket(e: React.FormEvent) {
@@ -55,10 +76,6 @@ export default function AgentView() {
       ref2,
       text: text.trim(),
     });
-    setRef1('');
-    setRef2('');
-    setText('');
-    setLoading(false);
   }
 
   if (!user) return null;

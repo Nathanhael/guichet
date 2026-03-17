@@ -26,6 +26,7 @@ services:
       - REDIS_URL=redis://redis:6379
       - JWT_SECRET=dev-secret-key-change-in-prod
       - DISABLE_RATE_LIMIT=true
+      - AI_ENABLED=false
       - NODE_ENV=test
       - DEBUG=socket.io:*
       - CORS_ORIGIN=http://localhost:5173,http://client:5173,http://localhost:3001,http://lb:80

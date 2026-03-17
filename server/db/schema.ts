@@ -79,6 +79,8 @@ export const messages = pgTable('messages', {
   ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
   senderId: text('sender_id').notNull(),
   senderName: text('sender_name'),
+  senderRole: text('sender_role'),
+  senderLang: text('sender_lang'),
   text: text('text'),
   translatedText: text('translated_text'),
   mediaUrl: text('media_url'),

@@ -89,6 +89,22 @@ This file serves as the primary instructional context for Gemini CLI when workin
 - `server/routes/`: Express API endpoints.
 - `server/services/`: Core business logic (Translation, LLM, Stats, GDPR, Presence).
 - `server/db/schema.ts`: Drizzle ORM schema definitions.
+- `server/utils/messageMapper.ts`: Shared utility for normalizing message rows across tRPC and Socket.io.
+
+---
+
+## 📡 Communication Protocol (Socket.io)
+
+### Core Events
+| Event | Direction | Payload / Purpose |
+| :--- | :--- | :--- |
+| `message:send` | Client -> Server | Send new message (text, media). |
+| `message:new` | Server -> Client | Broadcast new message to participants. |
+| `typing:start` | Client -> Server | Notify partner that sender is typing. |
+| `typing:stop` | Client -> Server | Notify partner that sender stopped. |
+| `message:delivered`| Server -> Client | Confirm message reached the server/db. |
+| `message:read` | Client -> Server | Mark message as viewed by the recipient. |
+| `ticket:history` | Client -> Server | Request previous messages for a ticket. |
 
 ---
 
