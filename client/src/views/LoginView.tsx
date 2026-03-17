@@ -2,15 +2,12 @@ import { useState } from 'react';
 import useStore from '../store/useStore';
 import { tBrowser } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
+import AmbientBackground from '../components/AmbientBackground';
 import { UserRole } from '../types';
+import InWebsiteError from '../components/InWebsiteError';
 import { trpc } from '../utils/trpc';
 
 const ROLE_LABEL: Record<string, string> = { agent: 'Agent', support: 'Support', admin: 'Admin' };
-const ROLE_BADGE: Record<string, string> = {
-  agent: 'bg-solarized-base2 text-solarized-base1',
-  support: 'bg-solarized-base2 text-brand-600',
-  admin: 'bg-solarized-base02 text-accent-500',
-};
 const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR', en: '🇬🇧 EN' };
 
 export default function LoginView() {
@@ -24,26 +21,27 @@ export default function LoginView() {
   const filtered = filter === 'all' ? users : users.filter((u: any) => u.role === filter);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 animate-fade-in text-slate-900 dark:text-slate-100">
-      {/* Dark mode toggle top-right */}
-      <div className="absolute top-4 right-4 z-50">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-black dark:text-white relative bg-white dark:bg-black">
+      <AmbientBackground />
+      
+      <div className="absolute top-6 right-6 z-50">
         <DarkModeToggle />
       </div>
 
-      <div className="glass-panel w-full max-w-lg overflow-hidden animate-slide-up relative z-10 border border-white/20 dark:border-brand-700/50 bg-white/70 dark:bg-brand-900/40 backdrop-blur-xl rounded-3xl shadow-2xl">
-        <div className="bg-gradient-to-r from-brand-800 to-brand-900 px-8 py-8 text-white">
-          <h1 className="text-3xl font-bold tracking-tight">Tessera</h1>
-          <p className="text-brand-200 text-sm mt-2 opacity-90">{tBrowser('select_user')}</p>
+      <div className="w-full max-w-lg overflow-hidden relative z-10 border-2 border-black dark:border-white bg-white dark:bg-black">
+        <div className="bg-black dark:bg-white px-8 py-10 text-white dark:text-black relative overflow-hidden">
+          <h1 className="text-4xl font-black uppercase tracking-tighter relative z-10">Tessera</h1>
+          <p className="text-sm mt-2 opacity-80 font-bold uppercase tracking-widest relative z-10">{tBrowser('select_user')}</p>
         </div>
 
-        <div className="flex border-b border-solarized-base2 dark:border-brand-800 px-4 pt-4 bg-solarized-base3/50 dark:bg-brand-900/50">
+        <div className="flex border-b-2 border-black dark:border-white px-4 pt-4 bg-white dark:bg-black">
           {(['all', 'agent', 'support', 'admin'] as const).map((role) => (
             <button
               key={role}
               onClick={() => setFilter(role)}
-              className={`px-3 py-2 text-sm font-medium capitalize transition-all duration-300 border-b-2 mr-1 ${filter === role
-                ? 'border-accent-500 text-accent-600 dark:text-accent-400'
-                : 'border-transparent text-solarized-base1 dark:text-slate-400 hover:text-solarized-base01 dark:hover:text-slate-200'
+              className={`px-4 py-3 text-xs font-black uppercase tracking-wider border-b-4 mr-1 ${filter === role
+                ? 'border-black dark:border-white text-black dark:text-white'
+                : 'border-transparent text-slate-400 hover:text-black dark:hover:text-white'
                 }`}
             >
               {role === 'all' ? tBrowser('all') : ROLE_LABEL[role]}
@@ -51,18 +49,19 @@ export default function LoginView() {
           ))}
         </div>
 
-        <div className="p-4 max-h-[28rem] overflow-y-auto scrollbar-thin bg-solarized-base2/40 dark:bg-brand-900/40">
-          {error && (
-            <div className="mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm flex items-center justify-between">
-              <span>{error}</span>
-              <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-red-600 dark:hover:text-red-200 font-bold">&times;</button>
+        <div className="p-4 max-h-[28rem] overflow-y-auto bg-white dark:bg-black">
+          <InWebsiteError message={error} onDismiss={() => setError(null)} />
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <div className="w-8 h-8 border-4 border-black dark:border-white border-t-transparent rounded-full" />
+              <p className="text-sm font-bold uppercase text-black dark:text-white">{tBrowser('loading')}</p>
             </div>
           )}
-          {loading && <p className="text-center text-solarized-base1 py-8">{tBrowser('loading')}</p>}
           {!loading && filtered.length === 0 && (
-            <p className="text-center text-solarized-base1 py-8">{tBrowser('no_users')}</p>
+            <p className="text-center text-slate-500 py-12 font-bold uppercase">{tBrowser('no_users')}</p>
           )}
-          <ul className="space-y-2">
+          
+          <ul className="space-y-3 pb-2">
             {filtered.map((u) => (
               <li key={u.id}>
                 <button
@@ -80,36 +79,34 @@ export default function LoginView() {
                         setUser(data.user);
                         const memberships = data.memberships || [];
                         useStore.getState().setMemberships(memberships);
-                        if (memberships.length > 0) {
+                        if (memberships.length > 0 && !data.user.isPlatformOperator) {
                           useStore.getState().setActiveMembershipId(memberships[0].id);
                         }
                       } else {
                         const data = await res.json().catch(() => ({}));
-                        setError(data.error || 'Login failed. Please ensure the user has the default password.');
+                        setError(data.error || 'Login failed.');
                       }
                     } catch (err) {
                       console.error(err);
-                      setError('Connection error. Is the server running?');
+                      setError('Connection error.');
                     }
                   }}
-                  className="w-full text-left p-4 rounded-xl border border-solarized-base2 dark:border-brand-700 hover:border-accent-400 dark:hover:border-accent-500 bg-white/60 dark:bg-brand-800/60 hover:shadow-lg hover:-translate-y-1 hover:bg-white dark:hover:bg-brand-800 transition-all duration-300 group shadow-sm"
+                  className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black group flex items-center justify-between"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-solarized-base2 to-solarized-base1 dark:from-brand-600 dark:to-brand-700 flex items-center justify-center text-xl font-bold text-solarized-base00 dark:text-brand-100 shadow-inner group-hover:scale-105 transition-transform duration-300">
-                        {u.name.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-solarized-base01 dark:text-white">{u.name}</p>
-                        <p className="text-xs text-solarized-base1 dark:text-slate-400">{u.dept}</p>
-                      </div>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 border-2 border-current flex items-center justify-center text-xl font-black">
+                      {u.name.charAt(0)}
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_BADGE[u.role]}`}>
-                        {ROLE_LABEL[u.role]}
-                      </span>
-                      <span className="text-xs text-solarized-base1 dark:text-slate-400">{LANG_FLAG[u.lang] || u.lang}</span>
+                    <div>
+                      <p className="font-black uppercase tracking-tight">{u.name}</p>
+                      <p className="text-[10px] font-bold opacity-60 uppercase">{u.dept}</p>
                     </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest border border-current px-2 py-0.5">
+                      {ROLE_LABEL[u.role]}
+                    </span>
+                    <span className="text-[10px] font-bold opacity-60">{LANG_FLAG[u.lang] || u.lang}</span>
                   </div>
                 </button>
               </li>

@@ -18,7 +18,7 @@ const configSchema = z.object({
     OLLAMA_MODEL: z.string().default('translategemma:4b'),
     METRICS_TOKEN: z.string().optional(),
     REDIS_URL: z.string().default('redis://localhost:6379'),
-    AI_ENABLED: z.coerce.boolean().default(true),
+    AI_ENABLED: z.coerce.boolean().default(false),
     AI_PROVIDER: z.enum(['ollama', 'azure', 'openai-compatible', 'gemini', 'anthropic']).default('ollama'),
     AI_BASE_URL: z.string().url().optional(),
     AI_API_KEY: z.string().optional(),

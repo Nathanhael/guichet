@@ -8,8 +8,6 @@ export function usePartner() {
   
   const manifest: PartnerManifest = activeMembership?.manifest || {
     industry: 'general',
-    primaryColor: '#a855f7',
-    secondaryColor: '#3b82f6',
     ref1Label: 'Reference 1',
     ref2Label: 'Reference 2',
     departments: []

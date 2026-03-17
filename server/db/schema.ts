@@ -4,8 +4,8 @@ export const partners = pgTable('partners', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   industry: text('industry').default('general'),
-  primaryColor: text('primary_color').default('#a855f7'),
-  secondaryColor: text('secondary_color').default('#3b82f6'),
+  primaryColor: text('primary_color').default('#007aff'),
+  secondaryColor: text('secondary_color').default('#0a84ff'),
   ref1Label: text('ref_1_label').default('Reference 1'),
   ref2Label: text('ref_2_label').default('Reference 2'),
   aiRules: text('ai_rules'),
@@ -13,7 +13,7 @@ export const partners = pgTable('partners', {
   supportPromptStrategy: text('support_prompt_strategy'),
   enableActionableAi: boolean('enable_actionable_ai').default(false),
   departments: text('departments').default('[]'), // JSON array
-  aiEnabled: boolean('ai_enabled').default(true),
+  aiEnabled: boolean('ai_enabled').default(false),
   themeConfig: text('theme_config'), // JSONB
   ollamaModel: text('ollama_model'),
   businessHoursStart: text('business_hours_start'),

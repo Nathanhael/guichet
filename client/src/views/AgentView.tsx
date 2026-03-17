@@ -11,6 +11,7 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import BusinessHoursGuard from '../components/BusinessHoursGuard';
 import FeedbackModal from '../components/FeedbackModal';
 import RatingModal from '../components/RatingModal';
+import InWebsiteError from '../components/InWebsiteError';
 import { trpc } from '../utils/trpc';
 import { motion } from 'framer-motion';
 
@@ -23,6 +24,7 @@ export default function AgentView() {
   const [ref2, setRef2] = useState('');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const notificationsEnabled = useStore((s) => s.notificationsEnabled);
   const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
@@ -47,9 +49,12 @@ export default function AgentView() {
       setRef1('');
       setRef2('');
       setText('');
+      setError(null);
       setLoading(false);
     };
-    const onError = () => {
+    const onError = (msg?: unknown) => {
+      const errMsg = typeof msg === 'string' ? msg : (msg as any)?.message || 'An error occurred. Please try again.';
+      setError(errMsg);
       setLoading(false);
     };
     s.on('ticket:created:self', onCreated);
@@ -68,6 +73,7 @@ export default function AgentView() {
     e.preventDefault();
     if (!user || !text.trim()) return;
     setLoading(true);
+    setError(null);
     getSocket().emit('ticket:new', {
       dept,
       agentId: user.id,
@@ -105,7 +111,6 @@ export default function AgentView() {
             
             <div className="flex items-center gap-2 bg-black/10 dark:bg-white/5 p-1 rounded-xl border border-white/10 ml-2">
               <LanguageSwitcher />
-              <NeuroToggle />
               <DarkModeToggle />
               
               <button
@@ -163,6 +168,8 @@ export default function AgentView() {
                   <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white mb-2">{t('hello')}, {user.name}</h2>
                   <p className="text-solarized-base1 dark:text-gray-400 mb-8">{t('choose_dept_desc')}</p>
                   
+                  <InWebsiteError message={error} onDismiss={() => setError(null)} />
+
                   <form onSubmit={createTicket} aria-label={t('new_ticket')} className="space-y-6">
                     <div className="grid grid-cols-2 gap-3">
                       {manifest.departments.map((d) => (

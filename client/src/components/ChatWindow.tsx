@@ -4,7 +4,6 @@ import { getSocket } from '../hooks/useSocket';
 import { usePartner } from '../hooks/usePartner';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
-import CannedResponsePicker from './CannedResponsePicker';
 import { Ticket, Message } from '../types';
 import { trpc } from '../utils/trpc';
 
@@ -23,17 +22,11 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [blockedNotice, setBlockedNotice] = useState<string | null>(null);
-  const [showLabelsMenu, setShowLabelsMenu] = useState(false);
-  const [lastCannedId, setLastCannedId] = useState<string | null>(null);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -127,7 +120,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
       if (labelsMenuRef.current && !labelsMenuRef.current.contains(e.target as Node)) {
-        setShowLabelsMenu(false);
+        // setShowLabelsMenu(false);
       }
     }
     document.addEventListener('mousedown', onOutsideClick, true);
@@ -205,18 +198,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [ticketMessages, ticket.id, user?.id]);
-
-  useEffect(() => {
-    const socket = getSocket();
-    function onBlocked({ code }: { code: string }) {
-      setBlockedNotice(code);
-      setTimeout(() => setBlockedNotice(null), 5000);
-    }
-    socket.on('message:blocked', onBlocked);
-    return () => { socket.off('message:blocked', onBlocked); };
-  }, []);
-
-
 
   async function uploadFile(file: File) {
     const { token } = useStore.getState();
@@ -304,11 +285,9 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       text: trimmed || '📎',
       mediaUrl,
       whisper: whisperMode,
-      cannedResponseId: lastCannedId || undefined,
     });
     setText('');
     clearMedia();
-    setLastCannedId(null);
     stopTyping();
   }
 
@@ -321,8 +300,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       closingNotes: '',
       closedBy: user?.name
     });
-
-    setShowCloseConfirm(false);
 
     setTimeout(() => {
       setClosing(false);
@@ -339,50 +316,53 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const isClosed = ticket.status === 'closed';
 
   return (
-    <div className={`relative flex flex-col h-full glass-card rounded-xl shadow-soft border-white/40 dark:border-brand-700/50 flex-1 min-h-0 animate-fade-in ${focusMode ? 'zen-glass border-none shadow-2xl' : ''}`}>
+    <div className={`relative flex flex-col h-full bg-white dark:bg-slate-900 rounded-[1.5rem] shadow-xl border border-slate-200 dark:border-slate-800 flex-1 min-h-0 animate-fade-in overflow-hidden transition-all duration-500 ${focusMode ? 'scale-[0.99] border-blue-500/20' : ''}`}>
       {/* Header */}
-      <div className={`relative z-50 flex items-center justify-between px-4 border-b border-white/20 dark:border-brand-700/50 bg-white/30 dark:bg-brand-800/40 backdrop-blur-sm rounded-t-xl transition-all duration-500 ${focusMode ? 'py-1.5' : 'py-3'}`}>
-        <div className="min-w-0 pr-2">
-          <div className="flex items-center gap-2 flex-wrap">
+      <div className={`relative z-50 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 transition-all duration-500 ${focusMode ? 'py-2' : 'py-4'}`}>
+        <div className="min-w-0 pr-4">
+          <div className="flex items-center gap-3 flex-wrap">
             {!focusMode && (
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-tighter ${
+              <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg shrink-0 uppercase tracking-widest shadow-sm ${
                 ticket.dept === 'DSC' || ticket.dept === 'dsc'
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' 
-                  : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' 
+                  : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
               }`}>
                 {ticket.dept}
               </span>
             )}
-            <span className={`font-semibold text-solarized-base01 dark:text-gray-100 truncate flex items-center gap-1.5 min-w-0 ${focusMode ? 'text-xs opacity-70' : 'text-sm max-w-[120px]'}`}>
-              {ticket.agentName}
-              {isSupport && !isClosed && !focusMode && (
-                <span
-                  title={agentIsOnline ? 'Agent online' : 'Agent offline'}
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 animate-pulse ${agentIsOnline ? 'bg-solarized-green' : 'bg-solarized-base1 dark:bg-gray-500'}`}
-                />
-              )}
-            </span>
-            {!focusMode && (ticket.ref1 || (ticket as any).cdbId) && (
-              <span className="text-[10px] font-mono bg-solarized-base2/50 dark:bg-gray-700/50 text-solarized-base1 dark:text-gray-400 px-1.5 py-0.5 rounded shrink-0 hidden sm:inline-block">
-                {ticket.dept === 'FOT' || ticket.dept === 'fot' ? manifest.ref2Label : manifest.ref1Label}: {ticket.ref1 || (ticket as any).cdbId}
+            <div className="flex flex-col">
+              <span className={`font-bold text-slate-900 dark:text-white truncate flex items-center gap-2 min-w-0 ${focusMode ? 'text-sm opacity-80' : 'text-base'}`}>
+                {ticket.agentName}
+                {isSupport && !isClosed && (
+                  <span
+                    title={agentIsOnline ? 'Agent online' : 'Agent offline'}
+                    className={`w-2 h-2 rounded-full shrink-0 transition-all duration-500 ${agentIsOnline ? 'bg-green-500 shadow-lg shadow-green-500/50 scale-110' : 'bg-slate-300 dark:bg-slate-600'}`}
+                  />
+                )}
               </span>
-            )}
+              {!focusMode && (ticket.ref1 || (ticket as any).cdbId) && (
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
+                  {ticket.dept === 'FOT' || ticket.dept === 'fot' ? manifest.ref2Label : manifest.ref1Label}: {ticket.ref1 || (ticket as any).cdbId}
+                </span>
+              )}
+            </div>
+            
             {!focusMode && ticket.agentLang && (
-              <span className="text-xs shrink-0" title={ticket.agentLang.toUpperCase()}>
+              <span className="text-sm grayscale-[0.2] hover:grayscale-0 transition-all cursor-default" title={ticket.agentLang.toUpperCase()}>
                 {LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]}
               </span>
             )}
             
             {/* Active Labels Display */}
             {!focusMode && liveTicket.labels && liveTicket.labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 focus-within:ring-0">
+              <div className="flex flex-wrap gap-1.5 ml-2">
                 {liveTicket.labels.map(id => {
                   const info = getLabelInfo(id);
                   if (!info) return null;
                   return (
                     <span
                       key={id}
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-${info.color}-500/10 text-${info.color}-600 dark:text-${info.color}-400 border border-${info.color}-500/20`}
+                      className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 shadow-sm`}
                     >
                       {info.text}
                     </span>
@@ -391,100 +371,33 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               </div>
             )}
           </div>
-          {!focusMode && (
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              {ticket.participants && (Array.isArray(ticket.participants) ? ticket.participants.length > 0 : false) ? (
-                <span className="text-xs text-solarized-base1 dark:text-gray-400">
-                  {(ticket.participants as any[]).map((p) => (typeof p === 'object' && p !== null ? p.name : p)).join(', ')}
-                </span>
-              ) : (
-                <span className="text-xs text-solarized-base1">{t('waiting_for_support')}</span>
-              )}
-            </div>
-          )}
         </div>
 
-        <div className={`flex items-center gap-2 shrink-0 ${focusMode ? 'scale-90 opacity-60 hover:opacity-100 transition-opacity' : ''}`}>
-          {/* Labels Menu Button */}
-          {isSupport && !isClosed && (
-            <div className="relative" ref={labelsMenuRef}>
-              <button
-                onClick={() => setShowLabelsMenu(!showLabelsMenu)}
-                title="Manage Labels"
-                className={`p-2 rounded-xl transition-all shadow-sm ${showLabelsMenu ? 'bg-brand-500 text-white shadow-brand-500/20' : 'bg-solarized-base2 dark:bg-brand-900/50 text-solarized-base01 dark:text-gray-400 hover:text-brand-500 hover:bg-solarized-base3 dark:hover:bg-brand-850 hover:shadow-md'} active:scale-95`}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${focusMode ? 'h-4 w-4' : 'h-5 w-5'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-              </button>
-              {showLabelsMenu && (
-                <div className="absolute right-0 top-full mt-2 w-48 bg-solarized-base3 dark:bg-brand-800 border border-solarized-base2 dark:border-brand-700 rounded-xl shadow-2xl z-50 overflow-hidden animate-slide-up">
-                  <div className="px-3 py-2 border-b border-solarized-base2 dark:border-brand-700 bg-solarized-base2/50 dark:bg-brand-900/30">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-solarized-base1">Labels</span>
-                  </div>
-                   <div className="max-h-60 overflow-y-auto p-1">
-                    {allLabels.length === 0 ? (
-                      <p className="text-[10px] text-solarized-base1 px-3 py-4 text-center">No labels defined</p>
-                    ) : (
-                      allLabels.map(l => (
-                        <button
-                          key={l.id}
-                          type="button"
-                          onClick={() => toggleLabel(l.id)}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium hover:bg-solarized-base2 dark:hover:bg-brand-700 transition-colors group"
-                        >
-                          <div className={`w-2.5 h-2.5 rounded-full bg-${l.color}-500 shrink-0`} />
-                          <span className="flex-1 text-left text-solarized-base1 dark:text-gray-200">{l.text}</span>
-                          {(liveTicket.labels || []).includes(l.id) && (
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-brand-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+        <div className={`flex items-center gap-3 shrink-0 ${focusMode ? 'scale-90 opacity-60 hover:opacity-100 transition-opacity' : ''}`}>
           {onFocus && (
             <button
               onClick={onFocus}
               title={focused ? 'Restore split' : 'Maximize'}
-              className="text-solarized-base1 hover:text-solarized-base01 dark:hover:text-gray-200 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-300"
             >
               {focused ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${focusMode ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${focusMode ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
               )}
             </button>
           )}
-          {/* Search Toggle */}
-          <button
-            onClick={() => setShowSearch(!showSearch)}
-            title="Search in chat"
-            className={`p-1.5 rounded-lg transition-colors shrink-0 ${showSearch
-              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
-              : 'text-gray-400 hover:text-blue-500 hover:bg-gray-100 dark:hover:bg-brand-700'
-              }`}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${focusMode ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </button>
 
           {canClose && !isClosed && (
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <button
                 onClick={leaveTicket}
                 title={t('leave')}
-                className={`text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 px-3 py-2 rounded-xl font-bold transition-all border border-amber-200 dark:border-amber-800 shadow-sm active:scale-95 whitespace-nowrap hidden sm:block ${focusMode ? 'px-2 py-1 text-[10px]' : 'px-3 py-2'}`}
+                className={`text-xs font-bold transition-all duration-300 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-amber-100 dark:hover:bg-amber-900/30 hover:text-amber-700 dark:hover:text-amber-300 border border-slate-300 dark:border-slate-700 rounded-xl active:scale-95 hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
               >
                 {t('leave') || 'Leave'}
               </button>
@@ -494,12 +407,16 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   closeTicket();
                 }}
                 disabled={closing}
-                className={`text-xs bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-2 rounded-xl font-bold transition-all border border-red-200 dark:border-red-800 shadow-sm active:scale-95 flex items-center gap-2 whitespace-nowrap ${focusMode ? 'px-2 py-1 text-[10px]' : 'px-3 py-2'}`}
+                className={`text-xs font-black transition-all duration-300 bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 rounded-xl shadow-lg shadow-red-500/5 active:scale-95 flex items-center gap-2 ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
               >
-                {closing && (
+                {closing ? (
                   <svg className="animate-spin h-3 w-3 shrink-0" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                 )}
                 {t('close')}
@@ -512,71 +429,30 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 e.stopPropagation();
                 onClose();
               }}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-solarized-base2 dark:hover:bg-brand-700 text-solarized-base1 hover:text-solarized-base01 dark:hover:text-gray-200 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-all duration-300"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${focusMode ? 'h-4 w-4' : 'h-5 w-5'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           )}
         </div>
       </div>
 
-      {(user?.role === 'agent' || user?.role === 'admin') && !ticket.supportName && !isClosed && queuePosition && (
-        <div className="bg-gradient-to-r from-blue-500/10 to-brand-500/10 border-b border-blue-200 dark:border-blue-900/50 px-4 py-2.5 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm font-semibold tracking-wide">
-              Position #{queuePosition.position} in queue
-            </span>
-          </div>
-          <div className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-white/50 dark:bg-black/20 px-2 py-1 rounded-md">
-            ~{queuePosition.etaMins} min ETA
-          </div>
-        </div>
-      )}
-
-      {showSearch && (
-        <div className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-brand-700 px-4 py-2 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-          </svg>
-          <input
-            type="text"
-            autoFocus
-            placeholder="Search messages..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent text-sm text-gray-800 dark:text-gray-200 focus:outline-none placeholder-gray-400"
-          />
-          {searchQuery && (
-            <span className="text-xs text-brand-500 font-medium px-2 py-0.5 bg-brand-50 dark:bg-brand-900/30 rounded mr-2">
-              {ticketMessages.filter(m => (m.processedText || m.text || '').toLowerCase().includes(searchQuery.toLowerCase())).length} matches
-            </span>
-          )}
-          <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-      )}
-
       {/* Messages */}
       <div 
         ref={scrollContainerRef} 
         onScroll={handleScroll} 
-        className={`flex-1 overflow-y-auto p-4 scrollbar-thin relative transition-colors duration-500 ${
-          darkMode 
-            ? 'whatsapp-bg bg-[#0d1418]' 
-            : 'bg-solarized-base3/20'
-        }`}
+        className={`flex-1 overflow-y-auto p-6 scrollbar-thin relative transition-all duration-700 bg-slate-50 dark:bg-black`}
       >
-        <div className="space-y-0.5 mb-4">
+        <div className="space-y-1 mb-8">
           {ticketMessages.length === 0 && (
-            <p className="text-center text-solarized-base1 text-sm mt-8">{t('no_messages')}</p>
+            <div className="flex flex-col items-center justify-center py-20 opacity-40">
+              <svg className="w-12 h-12 text-slate-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.855-1.246L3 20l1.226-3.746A9.233 9.233 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <p className="text-sm font-medium tracking-wide italic">{t('no_messages')}</p>
+            </div>
           )}
           {ticketMessages.map((msg, idx) => {
             const prevMsg = ticketMessages[idx - 1];
@@ -597,182 +473,90 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 key={msg.id} 
                 message={msg} 
                 ticketId={ticket.id} 
-                searchQuery={searchQuery}
                 isGroupStart={isGroupStart}
                 isGroupEnd={isGroupEnd}
               />
             );
           })}
 
-          {!ticket.supportName && !isClosed && (
-            <div className="flex items-center justify-center gap-2 py-4 text-sm text-solarized-base1">
-              <span className="animate-spin text-brand-400">⟳</span>
-              {t('waiting_for_support')}
-            </div>
-          )}
-
-          {isClosed && (
-            <div className="text-center py-3 text-sm text-solarized-base1 bg-solarized-base2 dark:bg-gray-700/50 rounded-lg mt-2">
-              {t('ticket_closed_notice')}
-            </div>
-          )}
-
-          {whoIsTyping.length > 0 && (
-            <div className="flex items-center gap-2 px-2 py-1 text-xs text-solarized-base1 dark:text-gray-500">
-              <span className="flex gap-0.5 items-center">
-                <span className="w-1.5 h-1.5 bg-solarized-base1 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-1.5 h-1.5 bg-solarized-base1 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 bg-solarized-base1 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </span>
-              <span>
-                {whoIsTyping.length === 1
-                  ? `${whoIsTyping[0]} is typing…`
-                  : `${whoIsTyping.join(', ')} are typing…`}
-              </span>
-            </div>
-          )}
-
           <div ref={bottomRef} />
         </div>
       </div>
 
-      {/* Unread messages badge */}
-      {unreadCount > 0 && (
-        <button
-          onClick={scrollToBottom}
-          className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 bg-gradient-to-r from-brand-500 to-brand-600 text-white pl-4 pr-4 py-2 rounded-full shadow-lg shadow-brand-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 text-xs font-semibold tracking-wide border border-brand-400/30"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-          </svg>
-          {unreadCount} new {unreadCount === 1 ? 'message' : 'messages'}
-        </button>
-      )}
-
-      {/* Blocked Notice */}
-      {blockedNotice && (
-        <div className="absolute top-16 left-4 right-4 z-[60] animate-slide-up">
-          <div className="bg-red-50 dark:bg-red-900/80 border border-red-200 dark:border-red-800 p-3 rounded-xl shadow-xl flex items-start gap-3">
-            <div className="p-1.5 bg-red-100 dark:bg-red-900 rounded-lg text-red-600 dark:text-red-400">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <h4 className="text-sm font-bold text-red-800 dark:text-red-200">{t('guard_blocked_title')}</h4>
-              <p className="text-xs text-red-700 dark:text-red-300 mt-0.5">{t(blockedNotice)}</p>
-            </div>
-            <button onClick={() => setBlockedNotice(null)} className="text-red-400 hover:text-red-600 transition-colors">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Close confirmation overlay */}
-      {showCloseConfirm && (
-        <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center z-10">
-          <div className="bg-solarized-base3 dark:bg-brand-800 rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full border border-solarized-base2 dark:border-brand-700">
-            <h3 className="text-base font-semibold text-solarized-base01 dark:text-white mb-1">{t('close_ticket_title')}</h3>
-            <p className="text-sm text-solarized-base00 dark:text-gray-400 mb-5">{t('close_ticket_body')}</p>
-            <div className="flex gap-3">
-              <button onClick={closeTicket} className="flex-1 bg-solarized-red text-white py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors">
-                {t('yes_close')}
-              </button>
-              <button onClick={() => setShowCloseConfirm(false)} className="flex-1 border border-solarized-base2 dark:border-brand-600 text-solarized-base01 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-solarized-base2 dark:hover:bg-brand-700 transition-colors">
-                {t('cancel')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Input */}
       {!isClosed && (
-        <form onSubmit={sendMessage} className={`border-t p-3 backdrop-blur-md transition-colors duration-300 ${whisperMode
-          ? 'border-solarized-violet/20 dark:border-solarized-violet/50 bg-solarized-violet/5 dark:bg-solarized-violet/10'
-          : 'border-solarized-base2 dark:border-brand-700/50 bg-solarized-base3/60 dark:bg-brand-800/60'
+        <form onSubmit={sendMessage} className={`border-t p-4 pb-6 transition-all duration-500 ${whisperMode
+          ? 'bg-amber-100 dark:bg-amber-950/40 border-amber-200 dark:border-amber-900'
+          : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
           }`}>
-          {mediaPreview && (
-          <div className="relative inline-block mb-2">
-            <img src={mediaPreview} alt="preview" className="h-20 rounded-lg object-contain border border-solarized-base2 dark:border-brand-600" />
-            <button
-              type="button"
-              onClick={clearMedia}
-              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
-            >×</button>
-            {uploading && (
-              <div className="absolute inset-0 bg-solarized-base3/70 dark:bg-brand-800/70 flex items-center justify-center rounded-lg text-xs text-solarized-base1">
-                {t('uploading')}
-              </div>
+          <div className="max-w-4xl mx-auto w-full">
+            {whisperMode && (
+            <div className="flex items-center gap-2 mb-3 animate-in fade-in slide-in-from-left-2">
+              <div className="px-2 py-0.5 rounded bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest shadow-sm">Whisper</div>
+              <p className="text-[10px] text-amber-700 dark:text-amber-400 font-bold uppercase tracking-tight opacity-80">
+                {t('whisper_hint')}
+              </p>
+            </div>
             )}
-          </div>
-          )}
 
-          {whisperMode && (
-          <p className="text-xs text-violet-500 dark:text-violet-400 mb-2 font-medium">
-            Whisper — {t('whisper_hint')}
-          </p>
-          )}
+            <div className={`flex items-end gap-3 p-1.5 rounded-[1.25rem] border transition-colors duration-300 ${
+              whisperMode 
+                ? 'bg-white/50 dark:bg-black/20 border-amber-300 dark:border-amber-800' 
+                : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+            }`}>
+            <div className="flex items-center self-center px-1">
+              {isSupport && (
+                <button
+                  type="button"
+                  onClick={() => setWhisperMode((v) => !v)}
+                  title={t('whisper_mode')}
+                  className={`w-10 h-10 rounded-xl transition-all duration-300 flex items-center justify-center ${whisperMode
+                    ? 'bg-amber-500 text-white shadow-md'
+                    : 'text-slate-400 hover:text-amber-500 hover:bg-amber-500/10'
+                    }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                </button>
+              )}
 
-          <div className="flex items-end gap-2">
-          {isSupport && (
+              <label className="w-10 h-10 rounded-xl transition-all duration-300 flex items-center justify-center text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 cursor-pointer" title="Attach file">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </label>
+            </div>
+
+            <textarea
+              value={text}
+              onChange={(e) => { setText(e.target.value); emitTyping(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+              }}
+              onPaste={handlePaste}
+              placeholder={t('type_message')}
+              rows={1}
+              className="flex-1 resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 max-h-32 scrollbar-none"
+            />
+
             <button
-              type="button"
-              onClick={() => setWhisperMode((v) => !v)}
-              title={t('whisper_mode')}
-              className={`p-1.5 rounded-lg transition-colors shrink-0 ${whisperMode
-                ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400'
-                : 'text-solarized-base1 dark:text-gray-400 hover:text-violet-500 hover:bg-solarized-base2 dark:hover:bg-brand-700'
-                }`}
+              type="submit"
+              disabled={uploading || (!text.trim() && !mediaUrl)}
+              className="bg-blue-600 hover:bg-blue-500 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-all duration-300 disabled:opacity-30 disabled:grayscale active:scale-90"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268-2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
               </svg>
             </button>
-          )}
-          {isSupport && (
-            <CannedResponsePicker onSelect={(val, id) => {
-              setText((prev) => prev ? `${prev} ${val}` : val);
-              setLastCannedId(id);
-            }} />
-          )}
-
-          <label className="cursor-pointer text-solarized-base1 dark:text-gray-400 hover:text-brand-500 dark:hover:text-brand-400 transition-colors p-1.5 rounded-lg hover:bg-solarized-base2 dark:hover:bg-brand-700 shrink-0" title="Screenshot (Ctrl+V)">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </label>
-
-          <textarea
-            value={text}
-            onChange={(e) => { setText(e.target.value); emitTyping(); }}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-            }}
-            onPaste={handlePaste}
-            placeholder={t('type_message')}
-            rows={1}
-            className="flex-1 resize-none rounded-xl border border-solarized-base2 dark:border-brand-600/50 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/50 bg-solarized-base3/80 dark:bg-brand-800/80 backdrop-blur-sm text-solarized-base00 dark:text-gray-100 placeholder-solarized-base1 dark:placeholder-gray-500 shadow-sm transition-all duration-200"
-          />
-
-          <button
-            type="submit"
-            onClick={() => sendMessage()}
-            disabled={uploading || (!text.trim() && !mediaUrl)}
-            className="bg-gradient-to-r from-brand-500 to-brand-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-sm hover:shadow-md hover:-translate-y-[1px] disabled:opacity-50 disabled:transform-none disabled:shadow-sm transition-all duration-200 shrink-0"
-          >
-            {t('send')}
-          </button>
+            </div>
           </div>
         </form>
       )}

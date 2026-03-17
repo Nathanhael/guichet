@@ -56,31 +56,6 @@ services:
     depends_on:
       - server
 
-  k6:
-    image: grafana/k6:latest
-    volumes:
-      - ./testing/k6:/scripts
-    environment:
-      - SERVER_URL=ws://lb:80
-    depends_on:
-      - lb
-
-  e2e:
-    build: ./e2e
-    environment:
-      - API_URL=http://lb:80
-      - APP_URL=http://client:5173
-      - JWT_SECRET=dev-secret-key-change-in-prod
-      - NODE_ENV=test
-    volumes:
-      - ./e2e:/app
-      - /app/node_modules
-    depends_on:
-      - client
-      - lb
-    profiles:
-      - test
-
   redis:
     image: redis:7-alpine
     restart: always

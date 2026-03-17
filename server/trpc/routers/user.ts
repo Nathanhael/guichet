@@ -7,9 +7,10 @@ export const userRouter = router({
     .query(async () => {
       try {
         const users = await query(`
-          SELECT u.id, u.name, u.lang, m.role, m.dept 
+          SELECT u.id, u.name, u.lang, u.is_platform_operator, m.role, m.dept 
           FROM users u
-          LEFT JOIN memberships m ON u.id = m.user_id AND m.partner_id = 'telecom-01'
+          LEFT JOIN memberships m ON u.id = m.user_id AND m.partner_id = 'tessera-main'
+          ORDER BY u.is_platform_operator DESC, u.name ASC
         `);
         return users;
       } catch (err: unknown) {
