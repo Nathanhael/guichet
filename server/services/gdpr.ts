@@ -18,7 +18,8 @@ export async function runDailyPurge() {
       [cutoffDate]
     ) as { date: string }[];
 
-    for (const { date } of datesToAggregate) {
+    if (Array.isArray(datesToAggregate)) {
+      for (const { date } of datesToAggregate) {
       const dayTickets = (await query('SELECT * FROM tickets WHERE created_at::date = $1', [date])) as unknown as Ticket[];
       const ticketIds = dayTickets.map(t => t.id);
       let dayRatings: Rating[] = [];
@@ -63,6 +64,7 @@ export async function runDailyPurge() {
           JSON.stringify(stats.deptCounts), JSON.stringify(stats.ratingsByDept), JSON.stringify(stats.hourly)
         ]
       );
+    }
     }
 
     await transaction(async () => {

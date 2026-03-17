@@ -40,7 +40,7 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
     set((state) => {
       const existing = state.messages[ticketId] || [];
       if (!message.pending) {
-        const optimisticIndex = existing.findIndex(m => m.pending && m.text === message.text && m.senderId === message.senderId);
+        const optimisticIndex = existing.findIndex(m => m.pending && m.senderId === message.senderId && (m.originalText === message.originalText || m.text === message.originalText));
         if (optimisticIndex !== -1) {
           const next = [...existing];
           next[optimisticIndex] = message;

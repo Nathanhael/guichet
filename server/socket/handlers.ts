@@ -11,6 +11,7 @@ import { Ticket, Message, User } from '../types/index.js';
 import { getRedisClients } from '../utils/redis.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
+import { mapMessageRow } from '../utils/messageMapper.js';
 
 interface TicketNewPayload {
   agentId: string;
@@ -179,8 +180,11 @@ export function registerSocketHandlers(io: Server) {
         if (text?.trim()) {
           const { pubClient } = getRedisClients();
           const guard = await runGuards(pubClient, text, agentId);
-          message = { id: uuidv4(), ticketId: ticket.id, senderId: agentId, senderName: agentUser?.name || agentId, senderRole: 'agent', senderLang: agentLang, originalText: text, improvedText: guard.text || text, processedText: guard.text || text, whisper: 0, system: 0, translationSkipped: 1, fallback: 0, timestamp: new Date().toISOString(), reactions: '{}' };
-          await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [message.id, message.ticketId, message.senderId, message.senderName, 'agent', agentLang, message.originalText, message.processedText, mediaUrl || null, 0, 0, message.timestamp, '{}']);
+          const { processedText, improvedText, translationSkipped, fallback } = await processMessage(guard.text || text, 'agent', partnerId, agentLang, agentLang);
+          const messageId = uuidv4();
+          const now = new Date().toISOString();
+          message = { id: messageId, ticketId: ticket.id, senderId: agentId, senderName: agentUser?.name || agentId, senderRole: 'agent', senderLang: agentLang, originalText: text, improvedText, processedText, text: processedText, whisper: 0, system: 0, translationSkipped, fallback, timestamp: now, createdAt: now, reactions: {} };
+          await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [message.id, message.ticketId, message.senderId, message.senderName, message.senderRole, message.senderLang, message.originalText, message.processedText, mediaUrl || null, 0, 0, message.timestamp, '{}']);
         }
         socket.join(`ticket:${ticket.id}`);
         socket.emit('ticket:created:self', { ticket: { ...ticket, participants: [], labels: [] }, message });
@@ -198,7 +202,7 @@ export function registerSocketHandlers(io: Server) {
         if (!participants.find((p: Participant) => p.id === supportId)) participants.push({ id: supportId, name: supportName });
         await run('UPDATE tickets SET support_id = $1, support_name = $2, support_lang = $3, support_joined_at = $4, participants = $5, status = $6 WHERE id = $7', [ticket.support_id || supportId, ticket.support_name || supportName, ticket.support_lang || supportLang, ticket.support_joined_at || new Date().toISOString(), JSON.stringify(participants), 'active', ticketId]);
         socket.join(`ticket:${ticketId}`);
-        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Message[]).map(m => ({ ...m, whisper: !!m.whisper, system: !!m.system, reactions: JSON.parse(m.reactions || '{}') }));
+        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as any[]).map(mapMessageRow);
         socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
         io.to(`ticket:${ticketId}`).emit('support:joined', { ticketId, supportName, participants });
         await broadcastQueuePositions();
@@ -236,9 +240,9 @@ export function registerSocketHandlers(io: Server) {
         // Trigger AI Summary
         const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as TicketPartnerRow | undefined;
         if (ticket) {
-          const partner = await get('SELECT ai_enabled FROM partners WHERE id = $1', [ticket.partner_id]) as PartnerAIRow | undefined;
+          const partner = await get('SELECT ai_enabled FROM partners WHERE id = $1', [ticket.partnerId]) as PartnerAIRow | undefined;
           if (partner?.ai_enabled) {
-            summarizeConversation(ticketId, ticket.partner_id).catch(err => {
+            summarizeConversation(ticketId, ticket.partnerId).catch(err => {
               logger.error({ err, ticketId }, 'Background summarization failed');
             });
           }
@@ -249,26 +253,36 @@ export function registerSocketHandlers(io: Server) {
     socket.on('message:send', async ({ ticketId, senderId, text, mediaUrl, whisper, cannedResponseId }: MessageSendPayload) => {
       socketioEventsTotal.inc({ event: 'message:send' });
       try {
+        logger.info({ ticketId, senderId, text }, '[message:send] Received');
         if (!ticketId || !senderId || !text) return;
         if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
-        const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as TicketRow | undefined;
+        const ticket = await get('SELECT * FROM tickets WHERE id = $1', [ticketId]) as any;
+        logger.info({ ticketFound: !!ticket, status: ticket?.status }, '[message:send] Ticket lookup');
         if (!ticket || ticket.status === 'closed') return;
         
         // Presence is async now
-        const sender = (await get('SELECT name, role, lang FROM users WHERE id = $1', [senderId])) as unknown as SenderInfo;
+        const sender = (await get('SELECT u.name, m.role, u.lang FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [senderId, ticket.partnerId])) as unknown as SenderInfo;
         
+        logger.info({ senderFound: !!sender, role: sender?.role }, '[message:send] Sender lookup');
+        if (!sender) return logger.error({ senderId }, '[message:send] sender not found or no membership for ticket partner');
+
         if (!whisper) {
           const { pubClient } = getRedisClients();
           const guard = await runGuards(pubClient, text, senderId);
+          logger.info({ guardOk: guard.ok }, '[message:send] Guards result');
           if (!guard.ok) return socket.emit('message:blocked', { code: guard.code });
           text = guard.text;
         }
-        const recipientLang = (sender.role === 'agent') ? ticket.support_lang : ticket.agent_lang;
-        const { processedText, improvedText, translationSkipped, fallback } = await processMessage(text, sender.role as 'agent' | 'support', ticket.partner_id, sender.lang, recipientLang || sender.lang);
+        const recipientLang = (sender.role === 'agent') ? ticket.supportLang : ticket.agentLang;
+        logger.info({ senderLang: sender.lang, recipientLang }, '[message:send] Processing message via AI');
+        const { processedText, improvedText, translationSkipped, fallback } = await processMessage(text, sender.role as 'agent' | 'support', ticket.partnerId, sender.lang, recipientLang || sender.lang);
+        logger.info({ processedText, fallback }, '[message:send] AI processed');
+        
         const messageId = uuidv4();
         const now = new Date().toISOString();
-        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, text, translated_text, media_url, whisper, system, created_at, reactions, canned_response_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, text, processedText, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}', cannedResponseId || null]);
-        io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, text: processedText, originalText: text, improvedText, mediaUrl, whisper: !!whisper, system: false, timestamp: now, reactions: {}, translationSkipped, fallback });
+        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, translated_text, media_url, whisper, system, created_at, reactions, canned_response_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, text, processedText, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}', cannedResponseId || null]);
+        io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, senderLang: sender.lang, text: processedText, originalText: text, improvedText, processedText, mediaUrl, whisper: !!whisper, system: false, timestamp: now, createdAt: now, reactions: {}, translationSkipped, fallback });
+        logger.info({ messageId }, '[message:send] Emitted message:new');
 
         // Background Sentiment Analysis
         if (!whisper && text.length > 5) {
@@ -281,6 +295,30 @@ export function registerSocketHandlers(io: Server) {
           });
         }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
+    });
+
+    socket.on('typing:start', ({ ticketId, senderName }: { ticketId: string, senderName: string }) => {
+      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName, typing: true });
+    });
+
+    socket.on('typing:stop', ({ ticketId, senderName }: { ticketId: string, senderName: string }) => {
+      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName, typing: false });
+    });
+
+    socket.on('message:delivered', async ({ ticketId, messageId }: { ticketId: string, messageId: string }) => {
+      if (!ticketId || !messageId) return;
+      const now = new Date().toISOString();
+      await run('UPDATE messages SET delivered_at = $1 WHERE id = $2 AND delivered_at IS NULL', [now, messageId]);
+      io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'delivered', timestamp: now });
+    });
+
+    socket.on('message:read', async ({ ticketId, messageIds }: { ticketId: string, messageIds: string[] }) => {
+      if (!ticketId || !messageIds?.length) return;
+      const now = new Date().toISOString();
+      for (const messageId of messageIds) {
+        await run('UPDATE messages SET read_at = $1 WHERE id = $2 AND read_at IS NULL', [now, messageId]);
+        io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'read', timestamp: now });
+      }
     });
 
     socket.on('reaction:toggle', async ({ ticketId, messageId, emoji, userId }: ReactionTogglePayload) => {

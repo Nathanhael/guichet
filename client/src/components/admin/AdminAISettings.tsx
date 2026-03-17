@@ -9,6 +9,7 @@ export default function AdminAISettings() {
   const [supportStrategy, setSupportStrategy] = useState('');
   const [enableActionable, setEnableActionable] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   const { data: manifest, isLoading, refetch } = trpc.partner.getManifest.useQuery();
   
@@ -20,7 +21,7 @@ export default function AdminAISettings() {
     onSuccess: () => {
       setIsDirty(false);
       refetch();
-      alert('AI Persona & Strategies updated successfully!');
+      setSaveMessage('AI Persona & Strategies updated successfully!');
     }
   });
 
@@ -70,6 +71,13 @@ export default function AdminAISettings() {
           {updateStrategiesMutation.isPending ? 'Saving...' : 'Save Changes'}
         </button>
       </div>
+
+      {saveMessage && (
+        <div className="mb-3 p-3 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 text-sm flex items-center justify-between">
+          <span>{saveMessage}</span>
+          <button onClick={() => setSaveMessage(null)} className="ml-2 text-green-400 hover:text-green-600 dark:hover:text-green-200 font-bold">&times;</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="glass-card p-4 border-white/10 bg-white/5">

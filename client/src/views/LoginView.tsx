@@ -16,6 +16,7 @@ const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR'
 export default function LoginView() {
   const { setUser, setToken } = useStore();
   const [filter, setFilter] = useState<UserRole | 'all'>('all');
+  const [error, setError] = useState<string | null>(null);
 
   const { data: usersData, isLoading: loading } = trpc.user.list.useQuery();
   const users = (usersData || []) as any[];
@@ -51,6 +52,12 @@ export default function LoginView() {
         </div>
 
         <div className="p-4 max-h-[28rem] overflow-y-auto scrollbar-thin bg-solarized-base2/40 dark:bg-brand-900/40">
+          {error && (
+            <div className="mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm flex items-center justify-between">
+              <span>{error}</span>
+              <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-red-600 dark:hover:text-red-200 font-bold">&times;</button>
+            </div>
+          )}
           {loading && <p className="text-center text-solarized-base1 py-8">{tBrowser('loading')}</p>}
           {!loading && filtered.length === 0 && (
             <p className="text-center text-solarized-base1 py-8">{tBrowser('no_users')}</p>
@@ -61,6 +68,7 @@ export default function LoginView() {
                 <button
                   onClick={async () => {
                     try {
+                      setError(null);
                       const res = await fetch('/api/v1/auth/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -76,10 +84,12 @@ export default function LoginView() {
                           useStore.getState().setActiveMembershipId(memberships[0].id);
                         }
                       } else {
-                        alert('Login failed. Please ensure the user has the default password.');
+                        const data = await res.json().catch(() => ({}));
+                        setError(data.error || 'Login failed. Please ensure the user has the default password.');
                       }
                     } catch (err) {
                       console.error(err);
+                      setError('Connection error. Is the server running?');
                     }
                   }}
                   className="w-full text-left p-4 rounded-xl border border-solarized-base2 dark:border-brand-700 hover:border-accent-400 dark:hover:border-accent-500 bg-white/60 dark:bg-brand-800/60 hover:shadow-lg hover:-translate-y-1 hover:bg-white dark:hover:bg-brand-800 transition-all duration-300 group shadow-sm"

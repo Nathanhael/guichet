@@ -35,21 +35,28 @@ All endpoints are prefixed with `/api/v1/`.
 
 ## 📡 tRPC Interface: `/api/v1/trpc`
 
-The majority of application logic is handled via tRPC procedures.
+The majority of application logic is handled via tRPC procedures. **Note**: All message-related results are normalized via `messageMapper` to ensure frontend compatibility.
 
-### Routers
-- `label`: Management of domain labels.
-- `cannedResponse`: Template management and usage correlation.
-- `ticket`: CRUD, queue management, and resolution.
-- `message`: History, sending, and real-time triggers.
-- `presence`: Global user online status.
-- `feedback`: Customer satisfaction and comments.
-- `rating`: Star-rating submission.
-- `stats`: Operational KPIs, trends, and AI-driven insights.
-- `user`: Profile management.
-- `platform`: Global partner and membership control.
-- `partner`: Tenant-specific settings.
-- `alerts`: Real-time incident management (list, acknowledge, resolve).
+---
+
+## 🔌 Socket.io Real-Time Interface
+
+Real-time communication is scoped to `ticket:{id}` and `partner:{id}` rooms.
+
+### 1. Messaging
+- `message:send`: Client sends a message.
+- `message:new`: Server broadcasts message to the ticket room.
+- `message:delivered`: Server confirms database persistence.
+- `message:read`: Client notifies receipt of message.
+
+### 2. Typing Indicators
+- `typing:start`: Client indicates active input.
+- `typing:stop`: Client indicates input inactivity.
+
+### 3. Connection & Presence
+- `support:join`: Specialist claims a ticket.
+- `support:left`: Specialist disconnects from a ticket.
+- `queue:position`: Real-time update for waiting agents.
 
 ---
 

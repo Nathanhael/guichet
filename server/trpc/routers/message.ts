@@ -5,6 +5,7 @@ import { messages, tickets } from '../../db/schema.js';
 import { eq, and, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
+import { mapMessageRow } from '../../utils/messageMapper.js';
 
 export const messageRouter = router({
   list: protectedProcedure
@@ -42,12 +43,7 @@ export const messageRouter = router({
 
         const rows = await query.orderBy(asc(messages.createdAt));
 
-        return rows.map(m => ({
-          ...m,
-          whisper: !!m.whisper,
-          system: !!m.system,
-          reactions: JSON.parse(m.reactions || '{}'),
-        }));
+        return rows.map(mapMessageRow);
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         const message = err instanceof Error ? err.message : String(err);

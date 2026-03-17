@@ -249,6 +249,9 @@ export function useSocket(): Socket {
       s.off('label:deleted');
       s.off('label:created');
       s.off('topic:alert');
+      s.off('support:left');
+      s.off('message:status');
+      s.off('queue:position');
       listenersAttached.current = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursOpen]);

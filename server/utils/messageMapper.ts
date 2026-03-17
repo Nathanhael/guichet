@@ -1,0 +1,40 @@
+import { Message } from '../types';
+
+export function mapMessageRow(row: any): Message {
+  // Handle both snake_case (raw SQL) and camelCase (Drizzle) row formats
+  const originalText = row.text || '';
+  const translatedText = row.translated_text || row.translatedText || null;
+  const createdAt = row.created_at || row.createdAt;
+  const senderRole = row.sender_role || row.senderRole || 'system';
+  const senderLang = row.sender_lang || row.senderLang || 'en';
+
+  let reactions = {};
+  try {
+    const rawReactions = row.reactions || '{}';
+    reactions = typeof rawReactions === 'string' ? JSON.parse(rawReactions) : rawReactions;
+  } catch (e) {
+    reactions = {};
+  }
+
+  return {
+    id: row.id,
+    ticketId: row.ticket_id || row.ticketId,
+    senderId: row.sender_id || row.senderId,
+    senderName: row.sender_name || row.senderName || '',
+    senderRole,
+    senderLang,
+    originalText,
+    processedText: translatedText || originalText,
+    improvedText: translatedText || originalText,
+    text: translatedText || originalText, // fallback to original if translated is null
+    mediaUrl: row.media_url || row.mediaUrl || null,
+    whisper: !!row.whisper,
+    system: !!row.system,
+    translationSkipped: !translatedText,
+    fallback: 0,
+    timestamp: createdAt,
+    createdAt: createdAt,
+    readAt: row.read_at || row.readAt || null,
+    reactions,
+  };
+}
