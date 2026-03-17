@@ -24,11 +24,11 @@ export interface UISlice {
 }
 
 export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) => ({
-  dyslexicMode: localStorage.getItem('dyslexicMode') === 'true',
-  bionicReading: localStorage.getItem('bionicReading') === 'true',
-  highContrastMode: localStorage.getItem('highContrastMode') === 'true',
-  focusMode: localStorage.getItem('focusMode') === 'true',
-  zenSettings: JSON.parse(localStorage.getItem('zenSettings') || '{"autoBionic":true,"notificationShield":true}'),
+  dyslexicMode: false,
+  bionicReading: false,
+  highContrastMode: false,
+  focusMode: false,
+  zenSettings: { autoBionic: false, notificationShield: false },
   darkMode: localStorage.getItem('darkMode') === 'true',
   selectedLang: localStorage.getItem('selectedLang') || null,
   notificationsEnabled: localStorage.getItem('notificationsEnabled') !== 'false',
@@ -43,44 +43,10 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       return { darkMode: next };
     }),
 
-  toggleDyslexicMode: () =>
-    set((state) => {
-      const next = !state.dyslexicMode;
-      localStorage.setItem('dyslexicMode', String(next));
-      if (next) document.documentElement.classList.add('dyslexic-mode');
-      else document.documentElement.classList.remove('dyslexic-mode');
-      return { dyslexicMode: next };
-    }),
-
-  toggleBionicReading: () =>
-    set((state) => {
-      const next = !state.bionicReading;
-      localStorage.setItem('bionicReading', String(next));
-      return { bionicReading: next };
-    }),
-
-  toggleHighContrastMode: () =>
-    set((state) => {
-      const next = !state.highContrastMode;
-      localStorage.setItem('highContrastMode', String(next));
-      if (next) document.documentElement.classList.add('high-contrast-mode');
-      else document.documentElement.classList.remove('high-contrast-mode');
-      return { highContrastMode: next };
-    }),
-
-  toggleFocusMode: () =>
-    set((state) => {
-      const next = !state.focusMode;
-      localStorage.setItem('focusMode', String(next));
-      
-      // Auto-bionic logic
-      if (next && state.zenSettings.autoBionic && !state.bionicReading && state.dyslexicMode) {
-        localStorage.setItem('bionicReading', 'true');
-        return { focusMode: next, bionicReading: true };
-      }
-      
-      return { focusMode: next };
-    }),
+  toggleDyslexicMode: () => {},
+  toggleBionicReading: () => {},
+  toggleHighContrastMode: () => {},
+  toggleFocusMode: () => {},
 
   updateZenSettings: (updates) =>
     set((state) => {
