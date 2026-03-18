@@ -2,10 +2,12 @@ import { z } from 'zod';
 import { router, platformProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { partners, memberships, users } from '../../db/schema.js';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, desc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import { randomUUID } from 'crypto';
 
 export const platformRouter = router({
+  // --- Partner Management ---
   listPartners: platformProcedure.query(async () => {
     try {
       return await db.select().from(partners).orderBy(asc(partners.name));
@@ -14,90 +16,87 @@ export const platformRouter = router({
     }
   }),
 
-  upsertPartner: platformProcedure
+  updatePartner: platformProcedure
     .input(z.object({
       id: z.string(),
-      name: z.string(),
-      industry: z.string(),
-      primaryColor: z.string(),
-      secondaryColor: z.string(),
-      ref1Label: z.string(),
-      ref2Label: z.string(),
-      aiRules: z.string().optional(),
-      agentPromptStrategy: z.string().optional(),
-      supportPromptStrategy: z.string().optional(),
-      enableActionableAi: z.boolean().default(true),
-      departments: z.string(), // JSON string
-      aiEnabled: z.boolean().default(true),
-      themeConfig: z.string().optional(), // JSON string
-      ollamaModel: z.string().optional(),
+      data: z.object({
+        name: z.string(),
+        industry: z.string(),
+        ollamaModel: z.string().optional().nullable(),
+        aiEnabled: z.boolean().optional(),
+      })
     }))
     .mutation(async ({ input }) => {
-      try {
-        await db.insert(partners).values({
-          ...input,
-          createdAt: new Date().toISOString(),
-        }).onConflictDoUpdate({
-          target: partners.id,
-          set: {
-            name: input.name,
-            industry: input.industry,
-            primaryColor: input.primaryColor,
-            secondaryColor: input.secondaryColor,
-            ref1Label: input.ref1Label,
-            ref2Label: input.ref2Label,
-            aiRules: input.aiRules,
-            agentPromptStrategy: input.agentPromptStrategy,
-            supportPromptStrategy: input.supportPromptStrategy,
-            enableActionableAi: input.enableActionableAi,
-            departments: input.departments,
-            aiEnabled: input.aiEnabled,
-            themeConfig: input.themeConfig,
-            ollamaModel: input.ollamaModel,
-          }
-        });
-        return { success: true };
-      } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
+      await db.update(partners)
+        .set({ ...input.data, updatedAt: new Date().toISOString() })
+        .where(eq(partners.id, input.id));
+      return { success: true };
     }),
 
-  listMemberships: platformProcedure
-    .input(z.object({ partnerId: z.string() }))
-    .query(async ({ input }) => {
-      return await db.select({
-        id: memberships.id,
-        userId: memberships.userId,
-        userName: users.name,
-        role: memberships.role,
-        dept: memberships.dept,
-      })
-      .from(memberships)
-      .innerJoin(users, eq(memberships.userId, users.id))
-      .where(eq(memberships.partnerId, input.partnerId));
-    }),
+  // --- Global User & Membership Management ---
+  listGlobalUsers: platformProcedure.query(async () => {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }),
 
-  addMembership: platformProcedure
+  inviteUser: platformProcedure
     .input(z.object({
-      userId: z.string(),
+      email: z.string().email(),
+      name: z.string(),
+      role: z.enum(['agent', 'support', 'manager', 'admin', 'platform_operator']),
       partnerId: z.string(),
-      role: z.string(),
       dept: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const id = `mem_${Date.now()}`;
-      await db.insert(memberships).values({
-        id,
-        ...input,
-        createdAt: new Date().toISOString(),
-      });
-      return { id };
+      try {
+        // 1. Ensure user exists or create them (Invite mode)
+        let userId: string;
+        const existing = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
+        
+        if (existing.length > 0) {
+          userId = existing[0].id;
+        } else {
+          userId = `u_${randomUUID().slice(0, 8)}`;
+          await db.insert(users).values({
+            id: userId,
+            email: input.email,
+            name: input.name,
+            isPlatformOperator: input.role === 'platform_operator',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
+        }
+
+        // 2. Add Membership
+        const memId = `mem_${randomUUID().slice(0, 8)}`;
+        await db.insert(memberships).values({
+          id: memId,
+          userId,
+          partnerId: input.partnerId,
+          role: input.role as any,
+          dept: input.dept,
+          createdAt: new Date().toISOString(),
+        });
+
+        return { userId, membershipId: memId };
+      } catch (err: unknown) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
     }),
 
   removeMembership: platformProcedure
     .input(z.string())
     .mutation(async ({ input }) => {
       await db.delete(memberships).where(eq(memberships.id, input));
+      return { success: true };
+    }),
+
+  deleteUser: platformProcedure
+    .input(z.string())
+    .mutation(async ({ input }) => {
+      // Soft delete
+      await db.update(users)
+        .set({ deletedAt: new Date().toISOString() })
+        .where(eq(users.id, input));
       return { success: true };
     }),
 });

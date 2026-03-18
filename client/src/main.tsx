@@ -25,8 +25,9 @@ const TRPCProvider = ({ children }: { children: React.ReactNode }) => {
         httpBatchLink({
           url: '/api/v1/trpc',
           headers() {
+            const currentToken = useStore.getState().token;
             return {
-              Authorization: token ? `Bearer ${token}` : undefined,
+              Authorization: currentToken ? `Bearer ${currentToken}` : undefined,
             };
           },
         }),

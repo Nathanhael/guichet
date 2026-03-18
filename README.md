@@ -8,18 +8,19 @@ Tessera is a high-performance, real-time multi-tenant customer support platform.
 
 - **Real-Time Scaling**: Powered by Socket.io with Redis horizontal scaling, presence tracking, typing indicators, and read receipts.
 - **Strict Monochrome Standard**: A "scorched earth" visual overhaul. Zero animations, zero motions, zero glassmorphism. Just high-contrast black and white for maximum performance and readability.
-- **End-to-End Type Safety**: Built with tRPC, Drizzle ORM, and Zod.
-- **Unified Multi-Tenancy**: Standardized UI across all partners to ensure a consistent, professional workspace.
-- **Platform Management**: Global oversight for Platform Operators to manage the entire ecosystem.
+- **Adaptive Dynamic Departments**: Organization structure is 100% data-driven. Handles any number of departments via a horizontally scrollable chip-bar UI.
+- **Enterprise-Ready Schema**: Optimized with native PostgreSQL JSONB, Enums, and Soft-Delete capabilities.
+- **Platform Management**: Global oversight for Platform Operators to manage users, memberships, and partner configurations.
+- **Azure Identity Ready**: Schema prepped for OIDC/Entra ID integration.
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 18, Vite 5, Tailwind CSS 3, Zustand (State).
 - **Backend**: Node.js 20 (ESM), Express, tRPC (Type-safe API), Socket.io (Real-time).
 - **Database**: 
-  - **PostgreSQL 16**: Primary relational storage.
+  - **PostgreSQL 16**: Primary relational storage with JSONB and Enums.
   - **Redis 7**: Presence tracking and Socket.io horizontal scaling.
-  - **Drizzle ORM**: TypeScript-first schema and migration management.
+  - **Drizzle ORM**: TypeScript-first schema management.
 - **Observability**: Prometheus (Metrics), Grafana (Visualization), Pino (Structured logging).
 - **Runtime**: Docker & Docker Compose.
 
@@ -45,18 +46,15 @@ Tessera is a high-performance, real-time multi-tenant customer support platform.
 | Role | User | ID |
 | :--- | :--- | :--- |
 | **Platform Admin** | Platform Admin | `platform_admin` |
-| **Partner Admin** | Admin Dirk | `admin_dirk` |
-| **Agent** | Agent Jan | `agent_jan` |
-| **Support** | Expert Piet | `expert_piet` |
 
-*Password for all users: `password123`*
+*Password: `password123`*
 
 ## 🚨 Project Mandates
 
 - **STRICT B&W**: No colors, gradients, or shadows. Use solid black and white only.
 - **NO MOTION**: No animations, transitions, or special effects. The UI must be perfectly static.
+- **DYNAMIC DEPT**: Never hardcode department IDs. Read from the partner manifest.
 - **DOCKER ONLY**: Always execute commands inside containers.
-- **LOCALIZATION**: Use the `useT` hook for all UI strings.
 
 ## 🧪 Testing
 
