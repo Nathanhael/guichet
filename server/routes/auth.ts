@@ -52,8 +52,6 @@ router.post('/login', [
                 dept: memberships.dept,
                 partnerName: partners.name,
                 industry: partners.industry,
-                primaryColor: partners.primaryColor,
-                secondaryColor: partners.secondaryColor,
                 ref1Label: partners.ref1Label,
                 ref2Label: partners.ref2Label,
                 departments: partners.departments,
@@ -104,11 +102,9 @@ router.post('/login', [
                 dept: m.dept,
                 manifest: {
                     industry: m.industry,
-                    primaryColor: m.primaryColor,
-                    secondaryColor: m.secondaryColor,
                     ref1Label: m.ref1Label,
                     ref2Label: m.ref2Label,
-                    departments: JSON.parse(m.departments || '[]'),
+                    departments: m.departments || [], // Native JSONB
                     aiRules: m.aiRules
                 }
             })),
@@ -126,7 +122,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
         const userId = req.user.id;
 
         const membership = await get(
-            `SELECT m.*, p.name as partner_name, p.industry, p.primary_color, p.secondary_color, p.ref_1_label, p.ref_2_label, p.departments, p.ai_rules
+            `SELECT m.*, p.name as partner_name, p.industry, p.ref_1_label, p.ref_2_label, p.departments, p.ai_rules
              FROM memberships m
              JOIN partners p ON m.partner_id = p.id
              WHERE m.id = $1 AND m.user_id = $2`,
@@ -155,11 +151,9 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
             activePartnerId: membership.partner_id,
             manifest: {
                 industry: membership.industry,
-                primaryColor: membership.primary_color,
-                secondaryColor: membership.secondary_color,
                 ref1Label: membership.ref_1_label,
                 ref2Label: membership.ref_2_label,
-                departments: JSON.parse(membership.departments || '[]'),
+                departments: membership.departments || [], // Native JSONB
                 aiRules: membership.ai_rules
             }
         });

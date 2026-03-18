@@ -7,31 +7,25 @@ This file serves as the primary instructional context for Gemini CLI. The projec
 
 ### Active Features
 - **Real-Time Communication**: Core chat functionality via Socket.io.
-- **Multi-Tenant Architecture**: Standardized data isolation via Partners and Memberships.
-- **B&W Minimalist Standard**: A strictly monochrome, static UI designed for maximum readability.
-- **Platform Oversight**: Global dashboard for Platform Operators.
-
-### Deactivated (Future Backlog)
-- AI-Powered Insights & Translation
-- Intelligent Incident Detection (Topic Heat)
-- Solaris Design System (Glassmorphism & Gradients)
-- Agent Lite PWA
-- GDPR Automated Purge
+- **Dynamic Org Structure**: Departments are 100% data-driven via Partner JSONB.
+- **B&W Minimalist Standard**: A strictly monochrome, static UI designed for maximum readability and zero motion.
+- **Enterprise Schema**: Optimized with native JSONB, Enums, and Audit tracking.
+- **Platform Oversight**: Global dashboard for managing Partners and Users (Azure Identity ready).
 
 ### Tech Stack
-- **Frontend**: React 18, Vite 5, Tailwind CSS 3, Zustand (State).
-- **Backend**: Node.js 20 (ESM), Express.js, Socket.io, PostgreSQL (pg + Drizzle ORM).
-- **Real-Time**: Redis Socket.io Adapter & Distributed Presence.
+- **Frontend**: React 18, Vite 5, Tailwind CSS 3, Zustand.
+- **Backend**: Node.js 20 (ESM), Express.js, tRPC, Socket.io.
+- **Database**: PostgreSQL 16 (JSONB/Enums) + Redis 7.
 
 ---
 
 ## 🚨 Critical Mandates
 
-1.  **STRICT B&W**: The theme is strictly black and white. **NEVER** introduce colors, gradients, or shadows. Use solid backgrounds and sharp borders only.
-2.  **ZERO MOTION**: All animations, transitions, and Framer Motion logic have been stripped. The UI must remain perfectly static.
-3.  **DOCKER ONLY**: Never run npm/node commands on the host machine.
-4.  **Localization-First**: Use the `useT` hook for all UI strings.
-5.  **Simplified State**: `client/src/store/useStore.ts` remains the source of truth.
+1.  **STRICT B&W**: The theme is strictly black and white. **NEVER** introduce colors, gradients, or shadows.
+2.  **ZERO MOTION**: All animations, transitions, and Framer Motion logic are stripped. UI must remain static.
+3.  **DYNAMIC ONLY**: Never hardcode departments (e.g., 'DSC', 'FOT'). Always read from `manifest.departments`.
+4.  **DOCKER ONLY**: Never run npm/node commands on the host machine.
+5.  **TYPE SAFETY**: Maintain 100% tRPC and Drizzle type safety.
 
 ---
 
@@ -42,12 +36,12 @@ This file serves as the primary instructional context for Gemini CLI. The projec
 | **Start Development** | `docker compose up` |
 | **Run Backend Tests** | `docker compose exec server npm test` |
 | **Run Frontend Tests** | `docker compose exec client npm test` |
-| **Database Studio** | `cd server && npx drizzle-kit studio` (Runs locally) |
+| **Database Push** | `docker compose exec server npx drizzle-kit push` |
 
 ---
 
 ## Development Conventions
 
-- **Role-Based Access**: `agent`, `support`, `admin`, and `platform_operator`.
-- **Standardized UI**: No partner-specific theming. All organizations share the same B&W standard.
-- **File Structure**: Core views are in `client/src/views/`. Standard components in `client/src/components/`.
+- **Global User Management**: Handle user invites and partner mapping in `PlatformView.tsx`.
+- **Hybrid Auth**: Pre-provision users via email; map to `external_id` upon Azure OIDC login.
+- **Adaptive UI**: Use horizontally scrollable bars for department filters to handle large lists.

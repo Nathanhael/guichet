@@ -113,6 +113,8 @@ export default function SupportView() {
 
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const partnerName = activeMembership?.partnerName || 'Tessera';
+  const manifest = activeMembership?.manifest || { departments: [] };
+  const departments = (manifest.departments || []) as { id: string; name: string }[];
 
   useEffect(() => {
     if (notificationsEnabled) requestNotificationPermission();
@@ -196,9 +198,34 @@ export default function SupportView() {
           <aside className="w-80 bg-white dark:bg-black border-r-2 border-black dark:border-white flex flex-col overflow-hidden">
             <div className="px-4 py-3 border-b-2 border-black dark:border-white">
               <h2 className="font-black text-[10px] uppercase tracking-[0.2em] mb-2">{sidebarTab === 'queue' ? t('queue') : t('archive')}</h2>
-              <div className="flex gap-1">
-                <button onClick={() => setSidebarTab('queue')} className={`flex-1 text-[9px] font-black uppercase py-1 border ${sidebarTab === 'queue' ? 'bg-black dark:bg-white text-white dark:text-black' : ''}`}>Queue</button>
-                <button onClick={() => setSidebarTab('archive')} className={`flex-1 text-[9px] font-black uppercase py-1 border ${sidebarTab === 'archive' ? 'bg-black dark:bg-white text-white dark:text-black' : ''}`}>Archive</button>
+              <div className="flex gap-1 mb-2">
+                <button onClick={() => setSidebarTab('queue')} className={`flex-1 text-[9px] font-black uppercase py-1 border ${sidebarTab === 'queue' ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' : 'border-black/10'}`}>Queue</button>
+                <button onClick={() => setSidebarTab('archive')} className={`flex-1 text-[9px] font-black uppercase py-1 border ${sidebarTab === 'archive' ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' : 'border-black/10'}`}>Archive</button>
+              </div>
+
+              {/* Adaptive Department Chips */}
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
+                <button
+                  onClick={() => setFilterDept('all')}
+                  className={`shrink-0 px-3 py-1 text-[9px] font-black uppercase border transition-colors ${filterDept === 'all'
+                    ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
+                    : 'bg-white dark:bg-black text-black dark:text-white border-black/10 dark:border-white/10'
+                    }`}
+                >
+                  {t('all')}
+                </button>
+                {departments.map((dept) => (
+                  <button
+                    key={dept.id}
+                    onClick={() => setFilterDept(dept.id)}
+                    className={`shrink-0 px-3 py-1 text-[9px] font-black uppercase border transition-colors ${filterDept === dept.id
+                      ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
+                      : 'bg-white dark:bg-black text-black dark:text-white border-black/10 dark:border-white/10'
+                      }`}
+                  >
+                    {dept.name}
+                  </button>
+                ))}
               </div>
             </div>
             

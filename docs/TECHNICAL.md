@@ -1,56 +1,46 @@
 # Technical Documentation: Tessera (Clean Slate)
 
-This document provides an overview of the core architecture for the simplified Tessera platform.
+This document provides an overview of the core architecture for the simplified, high-performance Tessera platform.
 
 ---
 
-## 1. High-Level Architecture
+## 1. Enterprise Schema (PostgreSQL)
 
-The platform follows a real-time, event-driven architecture designed for high availability.
-
-### Core Stack
-- **Frontend**: React 18, Vite 5, Tailwind CSS 3. (Framer Motion logic is deactivated).
-- **API**: **tRPC** for type-safe requests + **Socket.io** for real-time events.
-- **Scaling**: **Redis** for Socket.io horizontal scaling and distributed presence.
-- **Database**: PostgreSQL 16 + **Drizzle ORM**.
+The database has been overhauled for type safety and performance:
+- **Native JSONB**: All structured data (`departments`, `participants`, `reactions`) uses native JSONB for efficient nested querying.
+- **PG Enums**: Enforced data integrity for `user_role`, `ticket_status`, and `severity`.
+- **Audit Tracking**: Consistent `created_at`, `updated_at`, and `deleted_at` (soft delete) columns across all core entities.
+- **Azure Identity Prep**: Added `email` and `external_id` columns to support OIDC integration.
 
 ---
 
-## 2. Multi-Tenant Architecture
+## 2. Dynamic Organizational Structure
 
-Logic and data are isolated via a Partner/Membership model.
-
-### Data Isolation
-All database queries must include a `partner_id` filter to ensure strict tenant isolation.
-
-### Standardized UI
-Partner-specific branding logic has been replaced by a global **B&W Minimalist Standard**. This ensures all users benefit from the same high-performance, accessible interface regardless of their organization.
+Tessera is 100% data-driven. Hardcoded constants for departments have been removed.
+- **Manifest-Driven**: The `SupportView` generates filters based on the `departments` JSONB array in the `partners` table.
+- **Adaptive UI**: Horizontal scrollable bar handles large department lists without layout breaks.
+- **Platform Manager**: CRUD tools in `PlatformView` allow real-time structure changes without code deployment.
 
 ---
 
-## 3. Real-Time Engine
+## 3. Real-Time Engine (Socket.io & Redis)
 
-### Horizontal Scaling (Redis)
-1. **Socket.io Redis Adapter**: Syncs chat events across multiple server instances.
-2. **Distributed Presence**: Online user status is stored in Redis Hashes.
-3. **Message Lifecycle**: Supports `typing`, `delivered`, and `read` events globally.
-
----
-
-## 4. Deactivated Components (Backlog)
-
-The following components are currently disconnected to focus on core chat stability:
-- **AI Asymmetric Pipeline**: Automated translation and script generation.
-- **Topic Heat Detection**: Background worker for emerging incident detection.
-- **GDPR Purge Service**: Automated PII data retention policy.
-- **Agent Lite PWA**: Mobile-optimized field agent view.
+- **Horizontal Scaling**: Uses the Redis adapter to sync events across server instances.
+- **Distributed Presence**: Online status tracked via Redis Hashes.
+- **Core Events**: Optimized for `message`, `typing`, and `presence` with zero animation overhead on the frontend.
 
 ---
 
-## 5. API Design
+## 4. UI Architecture (Static B&W)
 
-- **tRPC Endpoint**: `/api/v1/trpc` — Main type-safe application logic.
-- **REST Endpoints**:
-    - `POST /api/v1/auth/login`: JWT-based authentication.
-    - `POST /api/v1/uploads`: Simple file upload validation.
-- **Health Check**: `/api/v1/health` — Basic DB and Redis connectivity.
+- **Standardization**: Decoupled theme from partner data. All organizations use the global monochrome standard.
+- **Motion Stripped**: All Framer Motion and CSS transitions have been removed to prioritize immediate responsiveness.
+- **Contrast Optimization**: Solid black/white surfaces ensure maximum readability in both Light and Dark modes.
+
+---
+
+## 5. API Strategy
+
+- **tRPC**: Main application logic with end-to-end type safety.
+- **REST**: Limited to legacy Auth and File Uploads.
+- **Dynamic Headers**: Authorization tokens are fetched dynamically from the store for every tRPC request.

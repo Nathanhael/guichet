@@ -1,66 +1,80 @@
-import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+
+// Enums
+export const roleEnum = pgEnum('user_role', ['agent', 'support', 'manager', 'admin', 'platform_operator']);
+export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'pending', 'closed', 'resolved']);
+export const severityEnum = pgEnum('severity', ['low', 'medium', 'high', 'critical']);
+export const alertStatusEnum = pgEnum('alert_status', ['active', 'acknowledged', 'resolved']);
 
 export const partners = pgTable('partners', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   industry: text('industry').default('general'),
-  primaryColor: text('primary_color').default('#007aff'),
-  secondaryColor: text('secondary_color').default('#0a84ff'),
   ref1Label: text('ref_1_label').default('Reference 1'),
   ref2Label: text('ref_2_label').default('Reference 2'),
   aiRules: text('ai_rules'),
   agentPromptStrategy: text('agent_prompt_strategy'),
   supportPromptStrategy: text('support_prompt_strategy'),
   enableActionableAi: boolean('enable_actionable_ai').default(false),
-  departments: text('departments').default('[]'), // JSON array
+  departments: jsonb('departments').default([]),
   aiEnabled: boolean('ai_enabled').default(false),
-  themeConfig: text('theme_config'), // JSONB
   ollamaModel: text('ollama_model'),
   businessHoursStart: text('business_hours_start'),
   businessHoursEnd: text('business_hours_end'),
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { mode: 'string' }),
 });
 
 export const users = pgTable('users', {
   id: text('id').primaryKey(),
+  email: text('email').unique(), // Azure Identity Prep
+  externalId: text('external_id').unique(), // Azure OID / Entra ID
   name: text('name').notNull(),
-  lang: text('lang').default('nl'), // Global preferred language
-  password: text('password'),
+  lang: text('lang').default('nl'),
+  password: text('password'), // Optional legacy/local login
   avatarUrl: text('avatar_url'),
   isPlatformOperator: boolean('is_platform_operator').default(false),
-});
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { mode: 'string' }),
+}, (table) => ({
+  emailIdx: index('idx_users_email').on(table.email),
+  externalIdIdx: index('idx_users_external_id').on(table.externalId),
+}));
 
 export const memberships = pgTable('memberships', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
-  role: text('role').notNull(), // 'agent', 'support', 'admin', 'manager'
+  role: roleEnum('role').notNull(),
   dept: text('dept'),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({
   userPartnerIdx: index('idx_memberships_user_partner').on(table.userId, table.partnerId),
 }));
 
 export const tickets = pgTable('tickets', {
   id: text('id').primaryKey(),
-  partnerId: text('partner_id').notNull().references(() => partners.id),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   dept: text('dept').notNull(),
-  agentId: text('agent_id').notNull().references(() => users.id),
+  agentId: text('agent_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   agentName: text('agent_name'),
   agentLang: text('agent_lang'),
-  ref1: text('ref_1'), // Genericized from cdb_id
-  ref2: text('ref_2'), // Genericized from dare_ref
-  status: text('status').default('open'),
-  supportId: text('support_id').references(() => users.id),
+  ref1: text('ref_1'),
+  ref2: text('ref_2'),
+  status: ticketStatusEnum('status').default('open'),
+  supportId: text('support_id').references(() => users.id, { onDelete: 'set null' }),
   supportName: text('support_name'),
   supportLang: text('support_lang'),
   supportJoinedAt: timestamp('support_joined_at', { mode: 'string' }),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { mode: 'string' }),
   closingNotes: text('closing_notes'),
   closedBy: text('closed_by'),
-  participants: text('participants').default('[]'),
+  participants: jsonb('participants').default([]),
   summary: text('summary'),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
@@ -86,10 +100,10 @@ export const messages = pgTable('messages', {
   mediaUrl: text('media_url'),
   whisper: integer('whisper').default(0),
   system: integer('system').default(0),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   deliveredAt: timestamp('delivered_at', { mode: 'string' }),
   readAt: timestamp('read_at', { mode: 'string' }),
-  reactions: text('reactions').default('{}'),
+  reactions: jsonb('reactions').default({}),
   sentiment: real('sentiment'),
   cannedResponseId: text('canned_response_id'),
 }, (table) => ({
@@ -104,7 +118,7 @@ export const ratings = pgTable('ratings', {
   supportId: text('support_id').references(() => users.id, { onDelete: 'cascade' }),
   rating: integer('rating').notNull(),
   comment: text('comment'),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 
 export const appFeedback = pgTable('app_feedback', {
@@ -114,7 +128,7 @@ export const appFeedback = pgTable('app_feedback', {
   role: text('role'),
   text: text('text').notNull(),
   treated: integer('treated').default(0),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 
 export const labels = pgTable('labels', {
@@ -149,9 +163,9 @@ export const dailyStats = pgTable('daily_stats', {
   reopened: integer('reopened').default(0),
   sentimentSum: real('sentiment_sum').default(0),
   sentimentCount: integer('sentiment_count').default(0),
-  deptCounts: text('dept_counts'), // JSON string
-  ratingsByDept: text('ratings_by_dept'), // JSON string
-  hourly: text('hourly'), // JSON string
+  deptCounts: jsonb('dept_counts').default({}),
+  ratingsByDept: jsonb('ratings_by_dept').default({}),
+  hourly: jsonb('hourly').default({}),
 }, (table) => ({
   pk: primaryKey({ columns: [table.date, table.partnerId] }),
 }));
@@ -161,16 +175,16 @@ export const translationsCache = pgTable('translations_cache', {
   value: text('value').notNull(),
   fromLang: text('from_lang').notNull(),
   toLang: text('to_lang').notNull(),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 });
 
 export const llmSummaries = pgTable('llm_summaries', {
   period: text('period').notNull(),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   sentiment: text('sentiment'),
-  questions: text('questions'), // JSON array
+  questions: jsonb('questions').default([]),
   summary: text('summary'),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.period, table.partnerId] }),
 }));
@@ -190,10 +204,10 @@ export const topicAlerts = pgTable('topic_alerts', {
   dept: text('dept').notNull(),
   topic: text('topic').notNull(),
   summary: text('summary').notNull(),
-  severity: text('severity').default('medium'), // 'low', 'medium', 'high'
+  severity: severityEnum('severity').default('medium'),
   ticketCount: integer('ticket_count').notNull(),
-  status: text('status').default('active'), // 'active', 'acknowledged', 'resolved'
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  status: alertStatusEnum('status').default('active'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   resolvedAt: timestamp('resolved_at', { mode: 'string' }),
 }, (table) => ({
   partnerStatusIdx: index('idx_alerts_partner_status').on(table.partnerId, table.status),
