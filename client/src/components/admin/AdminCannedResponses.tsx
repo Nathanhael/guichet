@@ -45,12 +45,12 @@ export default function AdminCannedResponses() {
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white tracking-tight">Canned Responses</h2>
-          <p className="text-sm text-solarized-base1">Create shortcuts for frequently used messages.</p>
+          <h2 className="text-2xl font-bold text-ui-base01 dark:text-white tracking-tight">Canned Responses</h2>
+          <p className="text-sm text-ui-base1">Create shortcuts for frequently used messages.</p>
         </div>
         <button
           onClick={() => refetch()}
-          className="p-2 rounded-lg bg-solarized-base2 dark:bg-brand-900/50 text-solarized-base1 hover:text-brand-500 transition-colors"
+          className="p-2 rounded-lg bg-ui-base2 dark:bg-brand-900/50 text-ui-base1 hover:text-brand-500 transition-colors"
           title="Refresh"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -69,7 +69,7 @@ export default function AdminCannedResponses() {
       )}
 
       <div className="glass-card p-6 shadow-soft">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-solarized-base1 mb-4">Add New Shortcut</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-ui-base1 mb-4">Add New Shortcut</h3>
         <div className="space-y-4">
           <div className="flex gap-4">
             <div className="w-1/3">
@@ -105,31 +105,31 @@ export default function AdminCannedResponses() {
         </div>
       </div>
 
-      <div className="bg-solarized-base3 dark:bg-brand-800 rounded-2xl border border-solarized-base2 dark:border-brand-700 overflow-hidden shadow-sm">
+      <div className="bg-ui-base3 dark:bg-brand-800 rounded-2xl border border-ui-base2 dark:border-brand-700 overflow-hidden shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-solarized-base2 dark:bg-brand-900/50">
-              <th className="px-6 py-3 text-xs font-bold uppercase tracking-wider text-solarized-base1 border-b border-solarized-base2 dark:border-brand-700">Shortcut</th>
-              <th className="px-6 py-3 text-xs font-bold uppercase tracking-wider text-solarized-base1 border-b border-solarized-base2 dark:border-brand-700">Full Message</th>
-              <th className="px-6 py-3 text-right border-b border-solarized-base2 dark:border-brand-700"></th>
+            <tr className="bg-ui-base2 dark:bg-brand-900/50">
+              <th className="px-6 py-3 text-xs font-bold uppercase tracking-wider text-ui-base1 border-b border-ui-base2 dark:border-brand-700">Shortcut</th>
+              <th className="px-6 py-3 text-xs font-bold uppercase tracking-wider text-ui-base1 border-b border-ui-base2 dark:border-brand-700">Full Message</th>
+              <th className="px-6 py-3 text-right border-b border-ui-base2 dark:border-brand-700"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-solarized-base2 dark:divide-brand-700">
+          <tbody className="divide-y divide-ui-base2 dark:divide-brand-700">
             {isLoading ? (
-              <tr><td colSpan={3} className="px-6 py-8 text-center text-solarized-base1 animate-pulse">Loading responses...</td></tr>
+              <tr><td colSpan={3} className="px-6 py-8 text-center text-ui-base1 animate-pulse">Loading responses...</td></tr>
             ) : !responses || responses.length === 0 ? (
-              <tr><td colSpan={3} className="px-6 py-12 text-center text-solarized-base1">No canned responses yet.</td></tr>
+              <tr><td colSpan={3} className="px-6 py-12 text-center text-ui-base1">No canned responses yet.</td></tr>
             ) : (
               responses.map((r) => (
-                <tr key={r.id} className="group hover:bg-solarized-base2/30 dark:hover:bg-brand-900/20 transition-colors">
+                <tr key={r.id} className="group hover:bg-ui-base2/30 dark:hover:bg-brand-900/20 transition-colors">
                   <td className="px-6 py-4">
                     <code className="text-xs font-bold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/40 px-2 py-1 rounded">{r.shortcut}</code>
                   </td>
-                  <td className="px-6 py-4 text-sm text-solarized-base01 dark:text-gray-300">{r.text}</td>
+                  <td className="px-6 py-4 text-sm text-ui-base01 dark:text-gray-300">{r.text}</td>
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => deleteResponse(r.id)}
-                      className="opacity-0 group-hover:opacity-100 p-2 text-solarized-base1 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-2 text-ui-base1 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

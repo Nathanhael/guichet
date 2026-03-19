@@ -9,6 +9,7 @@ export const alertStatusEnum = pgEnum('alert_status', ['active', 'acknowledged',
 export const partners = pgTable('partners', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
+  logoUrl: text('logo_url'),
   industry: text('industry').default('general'),
   ref1Label: text('ref_1_label').default('Reference 1'),
   ref2Label: text('ref_2_label').default('Reference 2'),
@@ -18,10 +19,12 @@ export const partners = pgTable('partners', {
   enableActionableAi: boolean('enable_actionable_ai').default(false),
   departments: jsonb('departments').default([]),
   aiEnabled: boolean('ai_enabled').default(false),
+  aiProvider: text('ai_provider').default('ollama'),
   ollamaModel: text('ollama_model'),
   businessHoursStart: text('business_hours_start'),
   businessHoursEnd: text('business_hours_end'),
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
+  status: text('status').notNull().default('active'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
@@ -49,6 +52,7 @@ export const memberships = pgTable('memberships', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   role: roleEnum('role').notNull(),
+  departments: jsonb('departments').default([]),
   dept: text('dept'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({
@@ -211,4 +215,19 @@ export const topicAlerts = pgTable('topic_alerts', {
   resolvedAt: timestamp('resolved_at', { mode: 'string' }),
 }, (table) => ({
   partnerStatusIdx: index('idx_alerts_partner_status').on(table.partnerId, table.status),
+}));
+
+export const auditLog = pgTable('audit_log', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  action: text('action').notNull(),
+  actorId: text('actor_id').references(() => users.id, { onDelete: 'set null' }),
+  partnerId: text('partner_id').references(() => partners.id, { onDelete: 'cascade' }),
+  targetType: text('target_type'),
+  targetId: text('target_id'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerCreatedIdx: index('idx_audit_log_partner_created').on(table.partnerId, table.createdAt),
+  actorCreatedIdx: index('idx_audit_log_actor_created').on(table.actorId, table.createdAt),
+  actionIdx: index('idx_audit_log_action').on(table.action),
 }));

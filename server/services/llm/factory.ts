@@ -6,16 +6,23 @@ import { AzureProvider } from './providers/azureProvider.js';
 import { GeminiProvider } from './providers/geminiProvider.js';
 import { AnthropicProvider } from './providers/anthropicProvider.js';
 
-let instance: LLMProvider | null = null;
+const instances: Map<string, LLMProvider> = new Map();
 
-export function getLLMProvider(): LLMProvider {
-    if (instance) return instance;
+export function getLLMProvider(providerName?: string): LLMProvider {
+    const name = providerName || config.AI_PROVIDER || 'ollama';
+    
+    if (instances.has(name)) {
+        return instances.get(name)!;
+    }
 
-    switch (config.AI_PROVIDER) {
+    let instance: LLMProvider;
+
+    switch (name) {
         case 'azure':
             instance = new AzureProvider();
             break;
         case 'openai-compatible':
+        case 'openai':
             instance = new OpenAIProvider();
             break;
         case 'gemini':
@@ -30,5 +37,6 @@ export function getLLMProvider(): LLMProvider {
             break;
     }
 
+    instances.set(name, instance);
     return instance;
 }

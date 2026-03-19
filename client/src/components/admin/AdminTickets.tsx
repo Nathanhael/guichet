@@ -81,11 +81,11 @@ export default function AdminTickets() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden bg-solarized-base3/30 dark:bg-transparent">
+    <div className="flex h-full overflow-hidden bg-ui-base3/30 dark:bg-transparent">
       {/* Sidebar: Open Queue */}
-      <aside className="w-80 border-r border-solarized-base2 dark:border-brand-800 flex flex-col bg-white/50 dark:bg-brand-900/20 backdrop-blur-md">
-        <div className="p-4 border-b border-solarized-base2 dark:border-brand-800">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-solarized-base1 dark:text-brand-400">
+      <aside className="w-80 border-r border-ui-base2 dark:border-brand-800 flex flex-col bg-white/50 dark:bg-brand-900/20 backdrop-blur-md">
+        <div className="p-4 border-b border-ui-base2 dark:border-brand-800">
+          <h2 className="text-sm font-bold uppercase tracking-widest text-ui-base1 dark:text-brand-400">
             {t('live_queue')} ({tickets.length})
           </h2>
         </div>
@@ -106,16 +106,16 @@ export default function AdminTickets() {
                   className={`w-full text-left p-3 rounded-xl transition-all relative group ${
                     previewTicketId === tk.id
                       ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/20'
-                      : 'hover:bg-white dark:hover:bg-brand-800/60 text-solarized-base01 dark:text-gray-300'
+                      : 'hover:bg-white dark:hover:bg-brand-800/60 text-ui-base01 dark:text-gray-300'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                      previewTicketId === tk.id ? 'bg-white/20' : 'bg-solarized-base2 dark:bg-brand-900/40 text-brand-600'
+                      previewTicketId === tk.id ? 'bg-white/20' : 'bg-ui-base2 dark:bg-brand-900/40 text-brand-600'
                     }`}>
                       {tk.dept}
                     </span>
-                    <span className={`text-[10px] opacity-70 ${previewTicketId === tk.id ? 'text-white' : 'text-solarized-base1'}`}>
+                    <span className={`text-[10px] opacity-70 ${previewTicketId === tk.id ? 'text-white' : 'text-ui-base1'}`}>
                       {tk.createdAt ? new Date(tk.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>
                   </div>
@@ -141,7 +141,7 @@ export default function AdminTickets() {
       {/* Main Area: Preview or Tabs */}
       <main className="flex-1 flex flex-col relative">
         {previewTicketId ? (
-          <div className="h-full flex flex-col p-6 animate-fade-in bg-solarized-base3/50 dark:bg-brand-900/10">
+          <div className="h-full flex flex-col p-6 animate-fade-in bg-ui-base3/50 dark:bg-brand-900/10">
             <div className="glass-panel flex-1 rounded-3xl overflow-hidden shadow-2xl border border-white/20 dark:border-brand-700/50 flex flex-col">
               <TicketPreview
                 ticket={tickets.find((t) => t.id === previewTicketId)!}
@@ -152,7 +152,7 @@ export default function AdminTickets() {
             </div>
           </div>
         ) : openTabTickets.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center opacity-30 text-solarized-base01 dark:text-white">
+          <div className="h-full flex flex-col items-center justify-center opacity-30 text-ui-base01 dark:text-white">
             <div className="w-24 h-24 rounded-full border-2 border-current flex items-center justify-center mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
@@ -164,15 +164,15 @@ export default function AdminTickets() {
         ) : (
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Tab Bar */}
-            <div className="flex bg-solarized-base2/50 dark:bg-brand-900/40 px-4 pt-3 border-b border-solarized-base2 dark:border-brand-800">
+            <div className="flex bg-ui-base2/50 dark:bg-brand-900/40 px-4 pt-3 border-b border-ui-base2 dark:border-brand-800">
               {openTabTickets.map((tk: Ticket) => (
                 <button
                   key={tk.id}
                   onClick={() => setActiveTab(tk.id)}
                   className={`group flex items-center gap-3 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all duration-300 relative min-w-[140px] max-w-[200px] ${
                     activeTab === tk.id
-                      ? 'bg-solarized-base3 dark:bg-brand-800 text-brand-600 dark:text-white shadow-[0_-4px_10px_rgba(0,0,0,0.05)]'
-                      : 'text-solarized-base1 dark:text-gray-500 hover:text-solarized-base01 dark:hover:text-gray-300'
+                      ? 'bg-ui-base3 dark:bg-brand-800 text-brand-600 dark:text-white shadow-[0_-4px_10px_rgba(0,0,0,0.05)]'
+                      : 'text-ui-base1 dark:text-gray-500 hover:text-ui-base01 dark:hover:text-gray-300'
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${tk.dept === 'DSC' ? 'bg-amber-500' : 'bg-brand-500'}`} />

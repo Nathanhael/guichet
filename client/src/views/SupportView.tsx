@@ -5,7 +5,7 @@ import { useT } from '../i18n';
 import { MAX_OPEN_CHATS, ARCHIVE_PAGE_SIZE } from '../config';
 import ChatWindow from '../components/ChatWindow';
 import TicketPreview from '../components/TicketPreview';
-import AmbientBackground from '../components/AmbientBackground';
+import SystemBackground from '../components/SystemBackground';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -14,9 +14,10 @@ import InWebsiteError from '../components/InWebsiteError';
 import { requestNotificationPermission } from '../utils/notifications';
 import { Ticket } from '../types';
 import { getTicketTime } from '../utils/dateUtils';
+import PartnerUnavailable from '../components/PartnerUnavailable';
 import { trpc } from '../utils/trpc';
 
-const DEPT_COLOR: Record<string, string> = {
+const DEPT_CLASSES: Record<string, string> = {
   DSC: 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black',
   FOT: 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white',
 };
@@ -111,10 +112,17 @@ export default function SupportView() {
   const [toast, setToast] = useState<string | null>(null);
   const ARCHIVE_LIMIT = ARCHIVE_PAGE_SIZE;
 
-  const activeMembership = memberships.find(m => m.id === activeMembershipId);
+  const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
   const partnerName = activeMembership?.partnerName || 'Tessera';
   const manifest = activeMembership?.manifest || { departments: [] };
+  const logoUrl = (manifest as any).logoUrl;
   const departments = (manifest.departments || []) as { id: string; name: string }[];
+
+  const assignedDepartmentIds = activeMembership?.departments || [];
+  const isGeneralist = assignedDepartmentIds.length === 0;
+  const visibleDepartments = isGeneralist 
+    ? departments 
+    : departments.filter(d => assignedDepartmentIds.includes(d.id));
 
   useEffect(() => {
     if (notificationsEnabled) requestNotificationPermission();
@@ -141,7 +149,11 @@ export default function SupportView() {
     }
   }, [archiveQuery.data, archiveOffset]);
 
-  const queueFiltered = (filterDept === 'all' ? tickets : tickets.filter((tk) => tk.dept === filterDept)).filter(tk => tk.status !== 'closed');
+  const queueFiltered = tickets.filter(tk => 
+    tk.status !== 'closed' && 
+    (filterDept === 'all' ? true : tk.dept === filterDept) &&
+    (isGeneralist || assignedDepartmentIds.includes(tk.dept))
+  );
   const openTabTickets = supportOpenTickets.map((id) => tickets.find((tk) => tk.id === id)).filter((tk): tk is Ticket => !!tk);
   const previewTicket = previewTicketId ? (tickets.find((tk) => tk.id === previewTicketId) || archivedTickets.find((tk) => tk.id === previewTicketId)) : null;
   const showPreview = !!previewTicket && !supportOpenTickets.includes(previewTicketId!);
@@ -169,12 +181,26 @@ export default function SupportView() {
 
   if (!user) return null;
 
+  // Guard: partner was deleted — activeMembership is undefined
+  if (!activeMembership) return <PartnerUnavailable />;
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
       <nav className={`px-8 flex items-center justify-between sticky top-0 z-50 border-b-2 border-black dark:border-white ${focusMode ? 'py-2 bg-black text-white' : 'py-4 bg-white dark:bg-black'}`}>
         <div className="flex items-center gap-4">
           <span className="font-black text-2xl uppercase tracking-tighter">TESSERA</span>
-          {!focusMode && <span className="text-[10px] font-black px-3 py-1 uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black">{partnerName}</span>}
+          {!focusMode && (
+            <div className="flex items-center gap-3">
+              <div className="h-6 w-px bg-black dark:bg-white opacity-20" />
+              {logoUrl ? (
+                <img src={logoUrl} alt={partnerName} className="h-8 object-contain" />
+              ) : (
+                <span className="text-[10px] font-black px-3 py-1 uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black">
+                  {partnerName}
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-6">
           {!focusMode && (

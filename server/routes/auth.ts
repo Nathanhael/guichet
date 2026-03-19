@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body } from 'express-validator';
 import { get, run } from '../db.js';
@@ -49,13 +49,16 @@ router.post('/login', [
                 id: memberships.id,
                 partnerId: memberships.partnerId,
                 role: memberships.role,
-                dept: memberships.dept,
+                departments: memberships.departments, // Now JSONB array
+                dept: memberships.dept, // Legacy fallback
                 partnerName: partners.name,
+                logoUrl: partners.logoUrl,
                 industry: partners.industry,
                 ref1Label: partners.ref1Label,
                 ref2Label: partners.ref2Label,
-                departments: partners.departments,
-                aiRules: partners.aiRules
+                partnerDepartments: partners.departments,
+                aiRules: partners.aiRules,
+                status: partners.status
             })
             .from(memberships)
             .innerJoin(partners, eq(memberships.partnerId, partners.id))
@@ -65,26 +68,29 @@ router.post('/login', [
 
         if (userMemberships.length === 0 && !user.isPlatformOperator) {
             logger.warn({ id }, '[Auth] Login failed: No memberships found');
-            return res.status(403).json({ error: 'User has no active memberships' });
+            return res.status(403).json({ error: 'User has no memberships' });
         }
 
-        // Default to first membership
-        const activeMembership = userMemberships[0];
+        const activeMemberships = userMemberships.filter(m => m.status === 'active');
+        
+        // Default to first active membership, or null if none are active
+        const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
 
         const token = jwt.sign(
             { 
                 userId: user.id, 
-                role: activeMembership?.role || 'platform_operator', 
-                dept: activeMembership?.dept,
-                partnerId: activeMembership?.partnerId,
-                membershipId: activeMembership?.id,
+                role: defaultMembership?.role || (user.isPlatformOperator ? 'platform_operator' : 'user'), 
+                departments: defaultMembership?.departments || [],
+                dept: defaultMembership?.dept,
+                partnerId: defaultMembership?.partnerId,
+                membershipId: defaultMembership?.id,
                 isPlatformOperator: user.isPlatformOperator
             },
             config.JWT_SECRET,
             { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
         );
 
-        logger.info({ id, partnerId: activeMembership?.partnerId }, '[Auth] Login successful');
+        logger.info({ id, partnerId: defaultMembership?.partnerId }, '[Auth] Login successful');
 
         res.json({
             token,
@@ -94,21 +100,23 @@ router.post('/login', [
                 lang: user.lang,
                 isPlatformOperator: user.isPlatformOperator
             },
-            memberships: userMemberships.map(m => ({
+            memberships: activeMemberships.map(m => ({
                 id: m.id,
                 partnerId: m.partnerId,
                 partnerName: m.partnerName,
                 role: m.role,
+                departments: m.departments || [],
                 dept: m.dept,
                 manifest: {
                     industry: m.industry,
+                    logoUrl: m.logoUrl,
                     ref1Label: m.ref1Label,
                     ref2Label: m.ref2Label,
-                    departments: m.departments || [], // Native JSONB
+                    departments: m.partnerDepartments || [], // Native JSONB
                     aiRules: m.aiRules
                 }
             })),
-            activePartnerId: activeMembership?.partnerId
+            activePartnerId: defaultMembership?.partnerId
         });
     } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Login FATAL error');
@@ -121,24 +129,44 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
         const { membershipId } = req.body;
         const userId = req.user.id;
 
-        const membership = await get(
-            `SELECT m.*, p.name as partner_name, p.industry, p.ref_1_label, p.ref_2_label, p.departments, p.ai_rules
-             FROM memberships m
-             JOIN partners p ON m.partner_id = p.id
-             WHERE m.id = $1 AND m.user_id = $2`,
-            [membershipId, userId]
-        ) as any;
+        const results = await db
+            .select({
+                id: memberships.id,
+                partnerId: memberships.partnerId,
+                role: memberships.role,
+                departments: memberships.departments,
+                dept: memberships.dept,
+                partnerName: partners.name,
+                logoUrl: partners.logoUrl,
+                industry: partners.industry,
+                ref1Label: partners.ref1Label,
+                ref2Label: partners.ref2Label,
+                partnerDepartments: partners.departments,
+                aiRules: partners.aiRules,
+                status: partners.status
+            })
+            .from(memberships)
+            .innerJoin(partners, eq(memberships.partnerId, partners.id))
+            .where(and(eq(memberships.id, membershipId), eq(memberships.userId, userId)))
+            .limit(1);
+
+        const membership = results[0];
 
         if (!membership) {
             return res.status(403).json({ error: 'Invalid membership for this user' });
+        }
+
+        if (membership.status !== 'active') {
+            return res.status(403).json({ error: 'Partner is currently inactive' });
         }
 
         const token = jwt.sign(
             { 
                 userId: userId, 
                 role: membership.role, 
+                departments: membership.departments || [],
                 dept: membership.dept,
-                partnerId: membership.partner_id,
+                partnerId: membership.partnerId,
                 membershipId: membership.id,
                 isPlatformOperator: req.user.isPlatformOperator
             },
@@ -148,13 +176,14 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
 
         res.json({
             token,
-            activePartnerId: membership.partner_id,
+            activePartnerId: membership.partnerId,
             manifest: {
                 industry: membership.industry,
-                ref1Label: membership.ref_1_label,
-                ref2Label: membership.ref_2_label,
-                departments: membership.departments || [], // Native JSONB
-                aiRules: membership.ai_rules
+                logoUrl: membership.logoUrl,
+                ref1Label: membership.ref1Label,
+                ref2Label: membership.ref2Label,
+                departments: membership.partnerDepartments || [], // Native JSONB
+                aiRules: membership.aiRules
             }
         });
     } catch (err: unknown) {

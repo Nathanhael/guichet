@@ -8,18 +8,19 @@ Tessera is a high-performance, real-time multi-tenant customer support platform.
 
 - **Real-Time Scaling**: Powered by Socket.io with Redis horizontal scaling, presence tracking, typing indicators, and read receipts.
 - **Strict Monochrome Standard**: A "scorched earth" visual overhaul. Zero animations, zero motions, zero glassmorphism. Just high-contrast black and white for maximum performance and readability.
-- **Adaptive Dynamic Departments**: Organization structure is 100% data-driven. Handles any number of departments via a horizontally scrollable chip-bar UI.
-- **Enterprise-Ready Schema**: Optimized with native PostgreSQL JSONB, Enums, and Soft-Delete capabilities.
-- **Platform Management**: Global oversight for Platform Operators to manage users, memberships, and partner configurations.
+- **Adaptive Dynamic Departments**: Organization structure is 100% data-driven. Handles any number of departments via a horizontally scrollable chip-bar UI. Each user can be assigned to multiple departments for custom visibility.
+- **Enterprise-Ready Schema**: Optimized with native PostgreSQL JSONB, Enums, and Soft-Delete capabilities. Includes full Audit Logging.
+- **Platform Management**: Global oversight for Platform Operators to manage users, partner health, and active/inactive tenant states.
+- **Partner Administration**: Partner Admins can directly manage their team, assigning existing users and inviting external users to their specific workspace.
 - **Azure Identity Ready**: Schema prepped for OIDC/Entra ID integration.
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 18, Vite 5, Tailwind CSS 3, Zustand (State).
-- **Backend**: Node.js 20 (ESM), Express, tRPC (Type-safe API), Socket.io (Real-time).
-- **Database**: 
-  - **PostgreSQL 16**: Primary relational storage with JSONB and Enums.
-  - **Redis 7**: Presence tracking and Socket.io horizontal scaling.
+- **Frontend**: React 19.2, Vite 8, Tailwind CSS 4, Zustand 5 (State).
+- **Backend**: Node.js 24 (ESM), Express 5, tRPC 11 (Type-safe API), Socket.io 4.8 (Real-time).
+- **Database**:
+  - **PostgreSQL 18**: Primary relational storage with JSONB and Enums.
+  - **Redis 8**: Presence tracking and Socket.io horizontal scaling.
   - **Drizzle ORM**: TypeScript-first schema management.
 - **Observability**: Prometheus (Metrics), Grafana (Visualization), Pino (Structured logging).
 - **Runtime**: Docker & Docker Compose.
@@ -36,9 +37,9 @@ Tessera is a high-performance, real-time multi-tenant customer support platform.
    docker-compose up
    ```
 
-3. **Install Dependencies (Host-only)**:
+3. **Production Deployment**:
    ```bash
-   npm run install:all
+   docker compose -f docker-compose.prod.yml up
    ```
 
 ## 🔒 Default Users (Demo)

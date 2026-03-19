@@ -5,6 +5,7 @@ import { httpBatchLink } from '@trpc/client';
 import { trpc } from './utils/trpc';
 import useStore from './store/useStore';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -47,7 +48,9 @@ const TRPCProvider = ({ children }: { children: React.ReactNode }) => {
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <TRPCProvider>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </TRPCProvider>
   </React.StrictMode>
 );

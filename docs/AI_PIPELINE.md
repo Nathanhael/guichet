@@ -1,5 +1,9 @@
 # AI Intelligence Hub & Message Pipeline
 
+> [!WARNING]
+> **Currently Deactivated**
+> The AI Pipeline and its associated features (Sentiment Analysis, Intelligent Topic Heat, automated summaries) have been deactivated in the current "Clean Slate" build of Tessera. This document describes the architecture and behavior for when these features are reactivated in future iterations.
+
 This document describes the AI-driven features of Tessera, including the tenant-aware message processing pipeline, safety guards, and strategic intelligence tools.
 
 ---

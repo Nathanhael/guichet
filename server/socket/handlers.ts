@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid';
 import * as presenceService from '../services/presence.js';
 import { runGuards } from '../services/guards.js';
 import { processMessage } from '../services/translate.js';
-import { analyzeSentiment, summarizeConversation } from '../services/llm.js';
 import { query, get, run, transaction } from '../db.js';
 import { isWithinBusinessHours, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
@@ -105,7 +104,16 @@ interface TicketParticipantsRow {
   participants: string;
 }
 
+let ioInstance: Server | null = null;
+
+export function broadcastPartnerDeactivation(partnerId: string) {
+  if (ioInstance) {
+    ioInstance.to(`partner:${partnerId}`).emit('partner:deactivated', { partnerId });
+  }
+}
+
 export function registerSocketHandlers(io: Server) {
+  ioInstance = io;
   io.on('connection', (socket: Socket) => {
     console.log(`[socket] connected: ${socket.id}`);
     socketioConnectionsActive.inc();
@@ -153,7 +161,12 @@ export function registerSocketHandlers(io: Server) {
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       const partnerId = socket.data.partnerId;
-      const partnerRow = partnerId ? await get('SELECT business_hours_start, business_hours_end, business_hours_timezone FROM partners WHERE id = $1', [partnerId]) as { business_hours_start: string | null; business_hours_end: string | null; business_hours_timezone: string | null } | undefined : null;
+      const partnerRow = partnerId ? await get('SELECT status, business_hours_start, business_hours_end, business_hours_timezone FROM partners WHERE id = $1', [partnerId]) as { status: string; business_hours_start: string | null; business_hours_end: string | null; business_hours_timezone: string | null } | undefined : null;
+      
+      if (partnerRow && partnerRow.status !== 'active') {
+        return socket.emit('error', { message: 'Partner is currently inactive.' });
+      }
+
       const partnerHours = partnerRow ? {
         businessHoursStart: partnerRow.business_hours_start,
         businessHoursEnd: partnerRow.business_hours_end,

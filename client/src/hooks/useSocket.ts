@@ -227,6 +227,14 @@ export function useSocket(): Socket {
       }
     });
 
+    s.on('partner:deactivated', ({ partnerId }: { partnerId: string }) => {
+      const state = useStore.getState();
+      const updatedMemberships = state.memberships.map(m => 
+        m.partnerId === partnerId ? { ...m, status: 'inactive' as const } : m
+      );
+      state.setMemberships(updatedMemberships);
+    });
+
     return () => {
       // Do NOT disconnect — socket is shared. Only remove listeners on strict-mode double-effect.
       s.off('connect');

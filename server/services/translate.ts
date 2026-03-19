@@ -15,8 +15,8 @@ function cacheKey(...parts: string[]): string {
 // ─── Prompts ──────────────────────────────────────────────────────────────────
 
 async function getAIPrefix(partnerId: string): Promise<any> {
-  const partner = await get('SELECT industry, ai_rules, agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai, ai_enabled, ollama_model FROM partners WHERE id = $1', [partnerId]) as any;
-  if (!partner) return { ai_rules: 'You are a professional support assistant.', ai_enabled: true };
+  const partner = await get('SELECT industry, ai_rules, agent_prompt_strategy, support_prompt_strategy, enable_actionable_ai, ai_enabled, ai_provider, ollama_model FROM partners WHERE id = $1', [partnerId]) as any;
+  if (!partner) return { ai_rules: 'You are a professional support assistant.', ai_enabled: true, ai_provider: 'ollama' };
   return partner;
 }
 
@@ -110,7 +110,7 @@ async function improve(text: string, lang: string, senderRole: 'agent'|'support'
     ? await buildAgentImprovementPrompt(text, lang, partner)
     : await buildSupportImprovementPrompt(text, lang, partner);
 
-  const provider = getLLMProvider();
+  const provider = getLLMProvider(partner.ai_provider);
   const improved = await provider.generate(prompt, { type: 'improve', model: partner.ollama_model });
 
   await run(
@@ -131,7 +131,7 @@ export async function translate(text: string, fromLang: string, toLang: string, 
   if (cached) return { text: cached.value, fromCache: true };
 
   const prompt = await buildTranslationPrompt(text, fromLang, toLang, partner);
-  const provider = getLLMProvider();
+  const provider = getLLMProvider(partner.ai_provider);
   const translated = await provider.generate(prompt, { type: 'translate', model: partner.ollama_model });
 
   await run(

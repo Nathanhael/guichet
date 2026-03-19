@@ -65,11 +65,11 @@ export default function AdminBusinessHours() {
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in pb-20">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-ui-base01 dark:text-white tracking-tight flex items-center gap-2">
             <Clock className="text-accent-500" />
             Business Hours
           </h2>
-          <p className="text-sm text-solarized-base1 dark:text-gray-400 mt-1">
+          <p className="text-sm text-ui-base1 dark:text-gray-400 mt-1">
             Configure when agents can create new tickets. Leave empty to use system defaults.
           </p>
         </div>
@@ -107,7 +107,7 @@ export default function AdminBusinessHours() {
               type="time"
               value={start}
               onChange={(e) => { setStart(e.target.value); setIsDirty(true); }}
-              className="w-full bg-solarized-base3/50 dark:bg-black/20 border-2 border-solarized-base2 dark:border-brand-700 rounded-2xl px-5 py-3 text-sm font-medium focus:border-accent-500 outline-none transition-all"
+              className="w-full bg-ui-base3/50 dark:bg-black/20 border-2 border-ui-base2 dark:border-brand-700 rounded-2xl px-5 py-3 text-sm font-medium focus:border-accent-500 outline-none transition-all"
               placeholder="07:30"
             />
             {!start && (
@@ -122,7 +122,7 @@ export default function AdminBusinessHours() {
               type="time"
               value={end}
               onChange={(e) => { setEnd(e.target.value); setIsDirty(true); }}
-              className="w-full bg-solarized-base3/50 dark:bg-black/20 border-2 border-solarized-base2 dark:border-brand-700 rounded-2xl px-5 py-3 text-sm font-medium focus:border-accent-500 outline-none transition-all"
+              className="w-full bg-ui-base3/50 dark:bg-black/20 border-2 border-ui-base2 dark:border-brand-700 rounded-2xl px-5 py-3 text-sm font-medium focus:border-accent-500 outline-none transition-all"
               placeholder="22:30"
             />
             {!end && (
@@ -142,7 +142,7 @@ export default function AdminBusinessHours() {
         <select
           value={timezone}
           onChange={(e) => { setTimezone(e.target.value); setIsDirty(true); }}
-          className="w-full bg-solarized-base3/50 dark:bg-black/20 border-2 border-solarized-base2 dark:border-brand-700 rounded-2xl px-5 py-3 text-sm font-medium focus:border-accent-500 outline-none transition-all"
+          className="w-full bg-ui-base3/50 dark:bg-black/20 border-2 border-ui-base2 dark:border-brand-700 rounded-2xl px-5 py-3 text-sm font-medium focus:border-accent-500 outline-none transition-all"
         >
           {TIMEZONES.map((tz) => (
             <option key={tz} value={tz}>{tz}</option>

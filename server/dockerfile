@@ -1,10 +1,35 @@
-FROM node:20-alpine
+# --- Build Stage ---
+FROM node:24-alpine AS builder
+
 WORKDIR /app
-RUN apk add --no-cache python3 make g++ curl
-COPY package*.json ./
-RUN npm install
-COPY --chown=node:node . .
-RUN mkdir -p uploads && chown node:node uploads
+RUN chown node:node /app
+
 USER node
+
+# Copy package manifests and install dependencies
+COPY --chown=node:node package*.json ./
+RUN npm install --legacy-peer-deps
+
+# --- Production Stage ---
+FROM node:24-alpine AS runner
+
+WORKDIR /app
+
+# Copy built node_modules and package files
+COPY --from=builder /app/node_modules ./node_modules
+COPY package*.json ./
+
+# Copy source code with correct permissions
+COPY --chown=node:node . .
+
+# Ensure uploads directory exists with correct permissions
+RUN mkdir -p uploads && chown node:node uploads
+
+# Switch to non-root user
+USER node
+
 EXPOSE 3001
+
+# The 'dev' command is used here as per current setup, 
+# but multi-stage is ready for a 'start' command in production.
 CMD ["npm", "run", "dev"]

@@ -4,7 +4,7 @@ import { StoreState, ZenSettings } from '../../types';
 export interface UISlice {
   dyslexicMode: boolean;
   bionicReading: boolean;
-  highContrastMode: boolean;
+  monochromeMode: boolean;
   focusMode: boolean;
   zenSettings: ZenSettings;
   darkMode: boolean;
@@ -15,7 +15,7 @@ export interface UISlice {
   toggleDarkMode: () => void;
   toggleDyslexicMode: () => void;
   toggleBionicReading: () => void;
-  toggleHighContrastMode: () => void;
+  toggleMonochromeMode: () => void;
   toggleFocusMode: () => void;
   updateZenSettings: (updates: Partial<ZenSettings>) => void;
   setSelectedLang: (lang: string) => void;
@@ -26,7 +26,7 @@ export interface UISlice {
 export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) => ({
   dyslexicMode: false,
   bionicReading: false,
-  highContrastMode: false,
+  monochromeMode: localStorage.getItem('monochromeMode') !== 'false', // Default to true for now to keep the current look
   focusMode: false,
   zenSettings: { autoBionic: false, notificationShield: false },
   darkMode: localStorage.getItem('darkMode') === 'true',
@@ -45,7 +45,14 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
 
   toggleDyslexicMode: () => {},
   toggleBionicReading: () => {},
-  toggleHighContrastMode: () => {},
+  toggleMonochromeMode: () =>
+    set((state) => {
+      const next = !state.monochromeMode;
+      localStorage.setItem('monochromeMode', String(next));
+      if (next) document.documentElement.classList.add('monochrome-mode');
+      else document.documentElement.classList.remove('monochrome-mode');
+      return { monochromeMode: next };
+    }),
   toggleFocusMode: () => {},
 
   updateZenSettings: (updates) =>

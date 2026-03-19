@@ -1,8 +1,36 @@
-FROM node:20-alpine
+# --- Build Stage ---
+FROM node:24-alpine AS builder
+
 WORKDIR /app
-COPY package*.json ./
-RUN npm install && chown -R node:node node_modules
-COPY --chown=node:node . .
+RUN chown node:node /app
+
 USER node
+
+# Copy package manifests and install dependencies
+COPY --chown=node:node package*.json ./
+RUN npm install --legacy-peer-deps
+
+# --- Development/Runtime Stage ---
+FROM node:24-alpine AS runner
+
+WORKDIR /app
+
+# Copy installed dependencies and package files
+COPY --from=builder /app/node_modules ./node_modules
+COPY package*.json ./
+
+# Fix permissions for node_modules to allow Vite to create its cache (.vite)
+USER root
+RUN chown -R node:node /app/node_modules
+USER node
+
+# Copy source code and ensure correct permissions
+COPY --chown=node:node . .
+
+# Switch to non-root user
+USER node
+
 EXPOSE 5173
+
+# Vite's 'dev' command with --host to enable Docker access
 CMD ["npm", "run", "dev", "--", "--host"]

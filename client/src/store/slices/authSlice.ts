@@ -14,9 +14,19 @@ export interface AuthSlice {
   logout: () => void;
 }
 
+function safeJsonParse(key: string, fallback: any) {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : fallback;
+  } catch (e) {
+    console.error(`Error parsing localStorage key "${key}":`, e);
+    return fallback;
+  }
+}
+
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, get) => ({
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
-  memberships: JSON.parse(localStorage.getItem('memberships') || '[]'),
+  user: safeJsonParse('user', null),
+  memberships: safeJsonParse('memberships', []),
   activeMembershipId: localStorage.getItem('activeMembershipId') || null,
   activePartnerId: localStorage.getItem('activePartnerId') || null,
   token: localStorage.getItem('token') || null,
@@ -38,14 +48,21 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
   },
   setActiveMembershipId: (id) => {
     if (id) localStorage.setItem('activeMembershipId', id);
-    else localStorage.removeItem('activeMembershipId');
+    else {
+      localStorage.removeItem('activeMembershipId');
+      localStorage.removeItem('activePartnerId');
+      set({ activeMembershipId: null, activePartnerId: null });
+      return;
+    }
     
     const membership = get().memberships.find(m => m.id === id);
     if (membership) {
       localStorage.setItem('activePartnerId', membership.partnerId);
       set({ activeMembershipId: id, activePartnerId: membership.partnerId });
     } else {
-      set({ activeMembershipId: id });
+      // If no membership found, assume the ID itself is the partnerId (Platform Operator scenario)
+      localStorage.setItem('activePartnerId', id);
+      set({ activeMembershipId: id, activePartnerId: id });
     }
   },
   logout: () => {

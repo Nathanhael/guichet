@@ -5,22 +5,22 @@ export default function NeuroToggle() {
   const { 
     dyslexicMode, toggleDyslexicMode, 
     bionicReading, toggleBionicReading,
-    highContrastMode, toggleHighContrastMode 
+    monochromeMode, toggleMonochromeMode 
   } = useStore();
 
   return (
     <div className="flex items-center p-0.5 rounded-lg bg-black/10 dark:bg-white/5 border border-white/5">
-      {/* High Contrast Mode Button */}
+      {/* Monochrome Mode Button */}
       <button
-        onClick={toggleHighContrastMode}
-        title={highContrastMode ? 'Calm UI' : 'High Contrast UI'}
+        onClick={toggleMonochromeMode}
+        title={monochromeMode ? 'Full Color UI' : 'Monochrome UI'}
         className={`px-2 py-1 rounded-md text-[10px] font-bold transition-all duration-300 group relative ${
-          highContrastMode 
+          monochromeMode 
             ? 'bg-white/20 dark:bg-white/10 text-white shadow-sm ring-1 ring-white/10' 
             : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
         }`}
       >
-        <Contrast size={12} strokeWidth={highContrastMode ? 3 : 2} />
+        <Contrast size={12} strokeWidth={monochromeMode ? 3 : 2} />
       </button>
 
       {/* Dyslexic Mode Button */}

@@ -7,7 +7,7 @@ export function Stars({ value }: { value: number }) {
         <svg
           key={n}
           xmlns="http://www.w3.org/2000/svg"
-          className={`h-3.5 w-3.5 transition-colors duration-500 ${n <= value ? 'text-amber-400 drop-shadow-[0_0_3px_rgba(251,191,36,0.4)]' : 'text-solarized-base2 dark:text-gray-600'}`}
+          className={`h-3.5 w-3.5 transition-colors duration-500 ${n <= value ? 'text-amber-400 drop-shadow-[0_0_3px_rgba(251,191,36,0.4)]' : 'text-ui-base2 dark:text-gray-600'}`}
           viewBox="0 0 24 24"
           fill="currentColor"
         >
@@ -22,7 +22,7 @@ export function Panel({ title, badge, className = '', children }: { title: strin
   return (
     <div className={`glass-card p-6 shadow-soft hover:shadow-2xl hover:translate-y-[-2px] ${className}`}>
       <div className="flex items-center justify-between mb-5">
-        <p className="text-xs font-bold text-solarized-base1 dark:text-gray-400 tracking-widest uppercase">{title}</p>
+        <p className="text-xs font-bold text-ui-base1 dark:text-gray-400 tracking-widest uppercase">{title}</p>
         {badge && (
           <span className="px-2.5 py-1 rounded-lg bg-brand-500/10 text-brand-500 text-[10px] font-black uppercase tracking-tighter border border-brand-500/20 shadow-sm">
             {badge}
@@ -49,8 +49,8 @@ export function StatCard({ label, value, color, prev, invertTrend }: StatCardPro
     green: 'bg-gradient-to-br from-emerald-50/50 to-emerald-100/30 text-emerald-700 border-emerald-200/40 dark:from-emerald-900/20 dark:to-transparent dark:text-emerald-400 dark:border-emerald-900/30',
     purple: 'bg-gradient-to-br from-purple-50/50 to-purple-100/30 text-purple-700 border-purple-200/40 dark:from-purple-900/20 dark:to-transparent dark:text-purple-400 dark:border-purple-900/30',
     teal: 'bg-gradient-to-br from-teal-50/50 to-teal-100/30 text-teal-700 border-teal-200/40 dark:from-teal-900/20 dark:to-transparent dark:text-teal-400 dark:border-teal-900/30',
-    gray: 'bg-gradient-to-br from-solarized-base3/50 to-solarized-base2/30 text-solarized-base1 border-solarized-base2/40 dark:from-slate-800/30 dark:to-transparent dark:text-slate-300 dark:border-slate-700/30',
-    dark: 'bg-gradient-to-br from-solarized-base03 to-solarized-base02 text-white border-solarized-base03/50 shadow-lg',
+    gray: 'bg-gradient-to-br from-ui-base3/50 to-ui-base2/30 text-ui-base1 border-ui-base2/40 dark:from-slate-800/30 dark:to-transparent dark:text-slate-300 dark:border-slate-700/30',
+    dark: 'bg-gradient-to-br from-ui-base03 to-ui-base02 text-white border-ui-base03/50 shadow-lg',
   };
 
   let trendEl = null;

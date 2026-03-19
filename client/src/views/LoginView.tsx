@@ -2,27 +2,31 @@ import { useState } from 'react';
 import useStore from '../store/useStore';
 import { tBrowser } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
-import AmbientBackground from '../components/AmbientBackground';
+import SystemBackground from '../components/SystemBackground';
 import { UserRole } from '../types';
 import InWebsiteError from '../components/InWebsiteError';
 import { trpc } from '../utils/trpc';
 
-const ROLE_LABEL: Record<string, string> = { agent: 'Agent', support: 'Support', admin: 'Admin' };
+const ROLE_LABEL: Record<string, string> = { agent: 'Agent', support: 'Support', admin: 'Admin', platform: 'Platform', platform_operator: 'Platform Admin' };
 const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR', en: '🇬🇧 EN' };
 
 export default function LoginView() {
   const { setUser, setToken } = useStore();
-  const [filter, setFilter] = useState<UserRole | 'all'>('all');
+  const [filter, setFilter] = useState<UserRole | 'all' | 'platform'>('all');
   const [error, setError] = useState<string | null>(null);
 
   const { data: usersData, isLoading: loading } = trpc.user.list.useQuery();
   const users = (usersData || []) as any[];
 
-  const filtered = filter === 'all' ? users : users.filter((u: any) => u.role === filter);
+  const filtered = filter === 'all' 
+    ? users 
+    : filter === 'platform'
+      ? users.filter((u: any) => u.isPlatformOperator)
+      : users.filter((u: any) => u.role === filter);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-black dark:text-white relative bg-white dark:bg-black">
-      <AmbientBackground />
+      <SystemBackground />
       
       <div className="absolute top-6 right-6 z-50">
         <DarkModeToggle />
@@ -34,12 +38,12 @@ export default function LoginView() {
           <p className="text-sm mt-2 opacity-80 font-bold uppercase tracking-widest relative z-10">{tBrowser('select_user')}</p>
         </div>
 
-        <div className="flex border-b-2 border-black dark:border-white px-4 pt-4 bg-white dark:bg-black">
-          {(['all', 'agent', 'support', 'admin'] as const).map((role) => (
+        <div className="flex border-b-2 border-black dark:border-white px-4 pt-4 bg-white dark:bg-black overflow-x-auto no-scrollbar">
+          {(['all', 'agent', 'support', 'admin', 'platform'] as const).map((role) => (
             <button
               key={role}
               onClick={() => setFilter(role)}
-              className={`px-4 py-3 text-xs font-black uppercase tracking-wider border-b-4 mr-1 ${filter === role
+              className={`px-4 py-3 text-xs font-black uppercase tracking-wider border-b-4 mr-1 shrink-0 ${filter === role
                 ? 'border-black dark:border-white text-black dark:text-white'
                 : 'border-transparent text-slate-400 hover:text-black dark:hover:text-white'
                 }`}

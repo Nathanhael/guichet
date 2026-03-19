@@ -7,9 +7,10 @@ This document provides an overview of the core architecture for the simplified, 
 ## 1. Enterprise Schema (PostgreSQL)
 
 The database has been overhauled for type safety and performance:
-- **Native JSONB**: All structured data (`departments`, `participants`, `reactions`) uses native JSONB for efficient nested querying.
+- **Native JSONB**: All structured data (`departments`, `participants`, `reactions`, `memberships.departments`) uses native JSONB for efficient nested querying.
 - **PG Enums**: Enforced data integrity for `user_role`, `ticket_status`, and `severity`.
-- **Audit Tracking**: Consistent `created_at`, `updated_at`, and `deleted_at` (soft delete) columns across all core entities.
+- **Partner Status**: Partners support `status: 'active' | 'inactive'` to block logins and ticket creation without deleting data.
+- **Audit Tracking**: Consistent `created_at`, `updated_at`, and `deleted_at` (soft delete) columns across all core entities. A dedicated `audit_log` table tracks system-wide actions.
 - **Azure Identity Prep**: Added `email` and `external_id` columns to support OIDC integration.
 
 ---
@@ -17,7 +18,8 @@ The database has been overhauled for type safety and performance:
 ## 2. Dynamic Organizational Structure
 
 Tessera is 100% data-driven. Hardcoded constants for departments have been removed.
-- **Manifest-Driven**: The `SupportView` generates filters based on the `departments` JSONB array in the `partners` table.
+- **Manifest-Driven**: Departments use an immutable `id`, display `name`, and optional `description`. The `SupportView` generates filters based on the `departments` JSONB array in the `partners` table.
+- **Multi-Department Assignments**: Users are assigned an array of department IDs (`memberships.departments`), serving as visibility filters. Generalists (`[]` or `null`) see all departments.
 - **Adaptive UI**: Horizontal scrollable bar handles large department lists without layout breaks.
 - **Platform Manager**: CRUD tools in `PlatformView` allow real-time structure changes without code deployment.
 
