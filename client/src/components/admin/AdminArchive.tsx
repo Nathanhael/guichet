@@ -84,7 +84,7 @@ export default function AdminArchive() {
     <div className="flex gap-4 items-start">
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <h2 className="text-xl font-bold text-solarized-base01 dark:text-white mr-auto">Archive</h2>
+          <h2 className="text-xl font-bold text-ui-base01 dark:text-white mr-auto">Archive</h2>
           <button
             onClick={() => {
               const params = new URLSearchParams();
@@ -95,7 +95,7 @@ export default function AdminArchive() {
               params.set('token', token || '');
               window.open(`/api/v1/tickets/export?${params.toString()}`, '_blank');
             }}
-            className="flex items-center gap-2 bg-solarized-base2 dark:bg-brand-900/40 hover:bg-solarized-base2 hover:text-solarized-base01 text-brand-700 dark:text-brand-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-solarized-base2 dark:border-brand-700/50 mr-2 shadow-sm"
+            className="flex items-center gap-2 bg-ui-base2 dark:bg-brand-900/40 hover:bg-ui-base2 hover:text-ui-base01 text-brand-700 dark:text-brand-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-ui-base2 dark:border-brand-700/50 mr-2 shadow-sm"
             title={t('export_csv')}
           >
             <svg
@@ -114,7 +114,7 @@ export default function AdminArchive() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search agent, CDBID, Dare Ref, support…"
-            className="border border-solarized-base2 dark:border-brand-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-56 bg-solarized-base3 dark:bg-gray-700 text-solarized-base01 dark:text-gray-100"
+            className="border border-ui-base2 dark:border-brand-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-56 bg-ui-base3 dark:bg-gray-700 text-ui-base01 dark:text-gray-100"
           />
           <div className="flex gap-1">
             {['all', 'DSC', 'FOT'].map((d) => (
@@ -124,7 +124,7 @@ export default function AdminArchive() {
                 className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                   dept === d
                     ? 'bg-brand-500 text-white'
-                    : 'bg-solarized-base2 dark:bg-gray-700 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base2 hover:text-solarized-base01 dark:hover:bg-gray-600'
+                    : 'bg-ui-base2 dark:bg-gray-700 text-ui-base1 dark:text-gray-400 hover:bg-ui-base2 hover:text-ui-base01 dark:hover:bg-gray-600'
                 }`}
               >
                 {d === 'all' ? 'All' : d}
@@ -135,7 +135,7 @@ export default function AdminArchive() {
             <select
               value={labelFilter}
               onChange={(e) => setLabelFilter(e.target.value)}
-              className="border border-solarized-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-xs font-medium bg-solarized-base3 dark:bg-gray-700 text-solarized-base01 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="border border-ui-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-xs font-medium bg-ui-base3 dark:bg-gray-700 text-ui-base01 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
             >
               <option value="all">All labels</option>
               <option value="none">No label</option>
@@ -151,30 +151,30 @@ export default function AdminArchive() {
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="border border-solarized-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-sm bg-solarized-base3 dark:bg-gray-700 text-solarized-base01 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="border border-ui-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-sm bg-ui-base3 dark:bg-gray-700 text-ui-base01 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
-          <span className="text-solarized-base1 text-xs">→</span>
+          <span className="text-ui-base1 text-xs">→</span>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="border border-solarized-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-sm bg-solarized-base3 dark:bg-gray-700 text-solarized-base01 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="border border-ui-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-sm bg-ui-base3 dark:bg-gray-700 text-ui-base01 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
           {(dateFrom || dateTo) && (
-            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-solarized-base1 hover:text-brand-500 transition-colors">
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-ui-base1 hover:text-brand-500 transition-colors">
               ✕ Clear dates
             </button>
           )}
         </div>
 
-        <div className="bg-solarized-base3 dark:bg-brand-800 rounded-xl shadow-sm border border-solarized-base2 dark:border-brand-700 overflow-hidden">
+        <div className="bg-ui-base3 dark:bg-brand-800 rounded-xl shadow-sm border border-ui-base2 dark:border-brand-700 overflow-hidden">
           <div className="overflow-x-auto">
             {tickets.length === 0 && !loading ? (
-              <p className="text-center text-solarized-base1 py-12 text-sm">No results.</p>
+              <p className="text-center text-ui-base1 py-12 text-sm">No results.</p>
             ) : (
               <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-solarized-base3 dark:bg-brand-800">
-                  <tr className="border-b border-solarized-base2 dark:border-brand-700 text-left text-xs text-solarized-base1 dark:text-gray-400 uppercase tracking-wide">
+                <thead className="sticky top-0 z-10 bg-ui-base3 dark:bg-brand-800">
+                  <tr className="border-b border-ui-base2 dark:border-brand-700 text-left text-xs text-ui-base1 dark:text-gray-400 uppercase tracking-wide">
                     <th className="px-4 py-3">Dept</th>
                     <th className="px-4 py-3">Agent</th>
                     <th className="px-4 py-3">Ref</th>
@@ -198,18 +198,18 @@ export default function AdminArchive() {
                         key={ticket.id}
                         onClick={() => setPreview(preview?.id === ticket.id ? null : ticket)}
                         className={`cursor-pointer transition-colors ${
-                          preview?.id === ticket.id ? 'bg-solarized-base2 dark:bg-brand-900/20' : 'hover:bg-solarized-base2 dark:hover:bg-brand-700'
+                          preview?.id === ticket.id ? 'bg-ui-base2 dark:bg-brand-900/20' : 'hover:bg-ui-base2 dark:hover:bg-brand-700'
                         }`}
                       >
                         <td className="px-4 py-2.5">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
                         </td>
-                        <td className="px-4 py-2.5 font-medium text-solarized-base01 dark:text-gray-100">{ticket.agentName}</td>
+                        <td className="px-4 py-2.5 font-medium text-ui-base01 dark:text-gray-100">{ticket.agentName}</td>
                         <td className="px-4 py-2.5 font-mono text-xs text-brand-600 dark:text-brand-400">
                           {ticket.cdbId ? `CDBID: ${ticket.cdbId}` : ticket.dareRef ? `Dare Ref: ${ticket.dareRef}` : '—'}
                         </td>
-                        <td className="px-4 py-2.5 text-solarized-base1 dark:text-gray-400">
-                          {ticket.supportName || <span className="italic text-solarized-base2">Abandoned</span>}
+                        <td className="px-4 py-2.5 text-ui-base1 dark:text-gray-400">
+                          {ticket.supportName || <span className="italic text-ui-base2">Abandoned</span>}
                         </td>
                         <td className="px-4 py-2.5">
                           {ticket.labels && (ticket.labels as string[]).length > 0 ? (
@@ -228,12 +228,12 @@ export default function AdminArchive() {
                               })}
                             </div>
                           ) : (
-                            <span className="text-solarized-base2 dark:text-gray-600">—</span>
+                            <span className="text-ui-base2 dark:text-gray-600">—</span>
                           )}
                         </td>
-                        <td className="px-4 py-2.5 text-solarized-base1 dark:text-gray-400">{duration(ticket)}</td>
-                        <td className="px-4 py-2.5 text-solarized-base1 whitespace-nowrap">{fmt(ticket.createdAt)}</td>
-                        <td className="px-4 py-2.5 text-solarized-base1 whitespace-nowrap">{fmt(ticket.closedAt || undefined)}</td>
+                        <td className="px-4 py-2.5 text-ui-base1 dark:text-gray-400">{duration(ticket)}</td>
+                        <td className="px-4 py-2.5 text-ui-base1 whitespace-nowrap">{fmt(ticket.createdAt)}</td>
+                        <td className="px-4 py-2.5 text-ui-base1 whitespace-nowrap">{fmt(ticket.closedAt || undefined)}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -241,15 +241,15 @@ export default function AdminArchive() {
             )}
           </div>
 
-          <div className="px-4 py-3 border-t border-solarized-base2 dark:border-brand-700 flex items-center justify-between shrink-0">
-            <span className="text-xs text-solarized-base1">
+          <div className="px-4 py-3 border-t border-ui-base2 dark:border-brand-700 flex items-center justify-between shrink-0">
+            <span className="text-xs text-ui-base1">
               {tickets.length} of {total} chats
             </span>
             {tickets.length < total && (
               <button
                 onClick={() => setOffset(tickets.length)}
                 disabled={loading}
-                className="text-xs px-3 py-1.5 rounded-lg border border-solarized-base2 dark:border-brand-600 text-solarized-base1 dark:text-gray-400 hover:bg-solarized-base2 dark:hover:bg-brand-700 disabled:opacity-40 transition-colors"
+                className="text-xs px-3 py-1.5 rounded-lg border border-ui-base2 dark:border-brand-600 text-ui-base1 dark:text-gray-400 hover:bg-ui-base2 dark:hover:bg-brand-700 disabled:opacity-40 transition-colors"
               >
                 {loading ? 'Loading…' : `Load more (${total - tickets.length} remaining)`}
               </button>
@@ -261,23 +261,23 @@ export default function AdminArchive() {
       {preview && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-brand-900/40 backdrop-blur-sm transition-opacity animate-fade-in" onClick={() => setPreview(null)}></div>
-          <div className="relative w-full max-w-[550px] bg-solarized-base3 dark:bg-brand-800 shadow-2xl border-l border-solarized-base2 dark:border-brand-700 h-full flex flex-col animate-slide-in-right">
-            <div className="px-6 py-4 border-b border-solarized-base2 dark:border-brand-700 flex items-start justify-between gap-3 shrink-0 bg-solarized-base2/50 dark:bg-brand-900/20">
+          <div className="relative w-full max-w-[550px] bg-ui-base3 dark:bg-brand-800 shadow-2xl border-l border-ui-base2 dark:border-brand-700 h-full flex flex-col animate-slide-in-right">
+            <div className="px-6 py-4 border-b border-ui-base2 dark:border-brand-700 flex items-start justify-between gap-3 shrink-0 bg-ui-base2/50 dark:bg-brand-900/20">
               <div>
                 <div className="flex items-center gap-2 flex-wrap mb-1.5">
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${DEPT_COLOR[preview.dept] || 'bg-slate-100 text-slate-700'}`}>{preview.dept}</span>
-                  <span className="text-base font-bold text-solarized-base01 dark:text-gray-100">{preview.agentName}</span>
+                  <span className="text-base font-bold text-ui-base01 dark:text-gray-100">{preview.agentName}</span>
                 </div>
-                <div className="flex flex-wrap gap-2 text-xs font-mono text-solarized-base1 dark:text-gray-400">
-                  {preview.cdbId && <span className="bg-solarized-base2 dark:bg-brand-700 px-2 py-0.5 rounded">CDBID: {preview.cdbId}</span>}
-                  {preview.dareRef && <span className="bg-solarized-base2 dark:bg-brand-700 px-2 py-0.5 rounded">Dare Ref: {preview.dareRef}</span>}
+                <div className="flex flex-wrap gap-2 text-xs font-mono text-ui-base1 dark:text-gray-400">
+                  {preview.cdbId && <span className="bg-ui-base2 dark:bg-brand-700 px-2 py-0.5 rounded">CDBID: {preview.cdbId}</span>}
+                  {preview.dareRef && <span className="bg-ui-base2 dark:bg-brand-700 px-2 py-0.5 rounded">Dare Ref: {preview.dareRef}</span>}
                 </div>
-                <p className="text-sm text-solarized-base1 dark:text-gray-400 mt-2 flex items-center gap-2">
+                <p className="text-sm text-ui-base1 dark:text-gray-400 mt-2 flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                   </svg>
                   {preview.supportName ? `Support: ${preview.supportName}` : 'No support joined'}
-                  <span className="text-solarized-base2 dark:text-brand-600">•</span>
+                  <span className="text-ui-base2 dark:text-brand-600">•</span>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path
                       fillRule="evenodd"
@@ -306,7 +306,7 @@ export default function AdminArchive() {
               </div>
               <button
                 onClick={() => setPreview(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-solarized-base2 text-solarized-base1 hover:bg-solarized-base2 hover:text-solarized-base01 dark:bg-brand-700 dark:text-gray-400 dark:hover:bg-brand-600 dark:hover:text-white transition-colors shrink-0"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-ui-base2 text-ui-base1 hover:bg-ui-base2 hover:text-ui-base01 dark:bg-brand-700 dark:text-gray-400 dark:hover:bg-brand-600 dark:hover:text-white transition-colors shrink-0"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path
@@ -318,9 +318,9 @@ export default function AdminArchive() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-solarized-base3/10 dark:bg-transparent">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-ui-base3/10 dark:bg-transparent">
               {previewMessages.length === 0 ? (
-                <p className="text-center text-solarized-base1 text-sm mt-8">No messages.</p>
+                <p className="text-center text-ui-base1 text-sm mt-8">No messages.</p>
               ) : (
                 previewMessages.map((msg) => (
                   <div
@@ -334,8 +334,8 @@ export default function AdminArchive() {
                     </div>
                     <div className="flex-1 min-w-0 pt-0.5">
                       <div className="flex items-baseline gap-2 mb-1 cursor-default">
-                        <span className="text-sm font-bold text-solarized-base01 dark:text-gray-100">{msg.senderName}</span>
-                        <span className="text-xs text-solarized-base1">
+                        <span className="text-sm font-bold text-ui-base01 dark:text-gray-100">{msg.senderName}</span>
+                        <span className="text-xs text-ui-base1">
                           {new Date(msg.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         {msg.whisper && (
@@ -344,7 +344,7 @@ export default function AdminArchive() {
                           </span>
                         )}
                       </div>
-                      <p className={`text-[15px] break-words leading-relaxed ${msg.whisper ? 'text-violet-700 dark:text-violet-300' : 'text-solarized-base01 dark:text-gray-200'}`}>
+                      <p className={`text-[15px] break-words leading-relaxed ${msg.whisper ? 'text-violet-700 dark:text-violet-300' : 'text-ui-base01 dark:text-gray-200'}`}>
                         {msg.text}
                       </p>
                       {msg.mediaUrl && (
@@ -360,8 +360,8 @@ export default function AdminArchive() {
               )}
             </div>
 
-            <div className="px-6 py-4 border-t border-solarized-base2 dark:border-brand-700 shrink-0 bg-solarized-base2 dark:bg-brand-900/50">
-              <p className="text-sm font-medium text-solarized-base1 dark:text-gray-400 flex items-center justify-center gap-2">
+            <div className="px-6 py-4 border-t border-ui-base2 dark:border-brand-700 shrink-0 bg-ui-base2 dark:bg-brand-900/50">
+              <p className="text-sm font-medium text-ui-base1 dark:text-gray-400 flex items-center justify-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                   <path
                     fillRule="evenodd"

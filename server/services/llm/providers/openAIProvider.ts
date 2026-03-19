@@ -9,7 +9,7 @@ export class OpenAIProvider implements LLMProvider {
 
     async generate(prompt: string, options?: LLMOptions): Promise<string> {
         const type = options?.type || 'generate';
-        const model = options?.model || 'default';
+        const model = options?.model || 'gpt-4o-mini';
         const end = aiPipelineDuration.startTimer({ type });
 
         try {
@@ -25,7 +25,7 @@ export class OpenAIProvider implements LLMProvider {
 
     async generateJSON<T>(prompt: string, options?: LLMOptions): Promise<T> {
         const type = options?.type || 'generate_json';
-        const model = options?.model || 'default';
+        const model = options?.model || 'gpt-4o-mini';
         const end = aiPipelineDuration.startTimer({ type });
 
         try {

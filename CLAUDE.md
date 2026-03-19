@@ -4,184 +4,156 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Tessera is a real-time, multi-tenant live chat platform. Agents create tickets, support specialists handle them with live translation, and admins monitor qualitative AI insights. Five roles: `agent`, `support`, `manager`, `admin`, `platform_operator`. All code uses ES modules (`"type": "module"`).
+Tessera is a real-time, multi-tenant live chat platform (Clean Slate). All complex features (Solaris theme, glassmorphism, animations) have been deactivated to focus on a lightweight, strictly monochrome, high-performance chat core.
 
 ## Commands
 
-### Development
-
-```bash
-npm run dev              # Start both client and server concurrently
-npm run install:all      # Install client + server dependencies
-```
-
-Separately:
-```bash
-cd server && npm run dev   # Express on port 3001 (node --watch)
-cd client && npm run dev   # Vite on port 5173
-```
-
-### Docker (preferred runtime)
+### Docker (Preferred Runtime)
 
 > [!IMPORTANT]
-> **NEVER** run `npm`, `node`, or `npx` directly on the host machine — it causes `node_modules` sync issues with the container. All commands must go through Docker.
+> **NEVER** run `npm`, `node`, or `npx` directly on the host machine. All commands must go through Docker.
 
 ```bash
-docker-compose up                                          # Start all services (development)
-docker-compose -f docker-compose.prod.yml up --build      # Production build
-docker-compose exec server npm test                        # Run server tests in container
-docker-compose exec client npm test                        # Run client tests in container
-docker logs -f tessera-server-1                     # Tail server logs
-```
-
-> [!TIP]
-> Use `docker-compose exec` over `docker exec` when possible for cleaner environment variable inheritance.
-
-### Testing
-
-```bash
-cd server && npm test           # Backend tests (vitest, single run)
-cd server && npm run test:watch # Backend tests (watch mode)
-cd client && npm test           # Frontend tests (vitest, single run)
-cd client && npm run test:watch # Frontend tests (watch mode)
-```
-
-Vitest supports filtering: `npx vitest run auth` runs only files matching "auth".
-
-### E2E Tests (Playwright)
-
-```bash
-npm run test:e2e             # Run against Docker stack (must be running)
-npm run test:e2e:mock        # Run against mock server
-cd e2e && npm run mock:start # Start mock server (port 4173)
-cd e2e && npm run test:ui    # Interactive Playwright UI
-```
-
-E2E structure: `e2e/tests/*.spec.ts`, auth fixture in `e2e/fixtures/`, test data seeding via `e2e/global-setup.ts`. Playwright projects: `docker` / `mock` (Chrome) and `docker-edge` / `mock-edge` (Edge).
-
-### Observability
-
-```bash
-# Available when running via Docker Compose
-# Prometheus: http://localhost:9090
-# Grafana:    http://localhost:3000 (admin/admin)
-# Metrics:    http://localhost:3001/metrics
+docker compose up                                          # Start all services (development)
+docker compose exec server npm test                        # Run server tests in container
+docker compose exec client npm test                        # Run client tests in container
+docker compose exec server npx drizzle-kit push            # Database push
 ```
 
 ### Build
 
 ```bash
-cd client && npm run build    # Vite production build
-cd client && npm run preview  # Preview production build
+docker compose exec client npm run build    # Vite production build
+docker compose exec client npm run preview  # Preview production build
 ```
 
-> [!IMPORTANT]
-> Always run `npm run build` after major UI or dependency changes to verify the manual chunk splitting produces no warnings.
+### Production
+
+```bash
+docker compose -f docker-compose.prod.yml up    # Production deployment
+docker compose -f docker-compose.prod.yml build  # Build prod images
+```
 
 ## Architecture
 
-For AI translation pipeline docs, see **[AI_PIPELINE.md](./docs/AI_PIPELINE.md)**. For design system rules, see **[CONTRIBUTING.md](./CONTRIBUTING.md)**.
-
 ### Server (`server/`)
 
-**Entry point**: `app.ts` — mounts all routes, initializes Socket.io, starts GDPR purge cycle and queue broadcasting.
-
-**API Layer**: 
-- **tRPC (Primary)**: The application uses **tRPC** for almost all data fetching and mutations. 
-  - Root router: `server/trpc/router.ts`
-  - Domain routers: `server/trpc/routers/*.ts`
-- **Express Routes (Legacy/Specific)**: 
-  - `auth.ts` — JWT login (bcrypt passwords, 24h tokens)
-  - `tickets.ts` — CSV export
-  - `uploads.ts` — Multer-based file uploads
+**API Layer**:
+- **tRPC (Primary)**: The application uses **tRPC 11.13.4** for almost all data fetching and mutations.
+- **Express Routes**: Limited to legacy Auth and File Uploads.
 
 **Services** (`server/services/`):
-- `translate.ts` — Two-stage Ollama pipeline: Improve text → Translate if langs differ. Results cached in `translations_cache` (SHA256 key). Gracefully degrades if Ollama is down (`fallback: true`). Includes `sanitizeForPrompt` to prevent injection.
-- `llm.ts` — Generates sentiment/topic summaries per period (day/week/month), cached in `llm_summaries` table.
-- `topicHeat.ts` — Intelligent incident detection background worker. Uses LLM clustering on short windows (15 min) to detect trending issues. Broadcasts `topic:alert` via Socket.io.
-- `businessHours.ts` — Per-partner business hours check. Enforced server-side on ticket creation.
-- `gdpr.ts` — Daily purge: aggregates records older than 30 days into `daily_stats`, then deletes in a Drizzle transaction.
-- `stats.ts` — Stats computation logic used by the `stats` tRPC router.
+- `translate.ts` — Ollama pipeline for text improvement and translation.
+- `llm.ts` — Generates sentiment/topic summaries.
+- `topicHeat.ts` — Background worker for incident detection.
+- `gdpr.ts` — Daily purge and aggregation (30-day retention).
 
 **Socket** (`server/socket/handlers.ts`):
-Registers all real-time event handlers. Tickets use rooms named `ticket:{ticketId}`. Broadcasts scoped to `partner:{id}`.
-
-Key events: `socket:identify`, `ticket:new`, `ticket:created:self`, `ticket:history`, `support:join`, `support:leave`, `ticket:close`, `message:send`, `message:blocked`, `status:set`, `reaction:toggle`, `ticket:labels:update`, `businessHours:status`, `hours:closed`, `topic:alert`.
-
-**Message pipeline** (integrated in `message.send` tRPC mutation):
-1. Guards (8-tier: length → ALL CAPS → repetition → injection → swearing → threats → discrimination → async Ollama topic check)
-2. Improve (role-specific Ollama prompt)
-3. Translate (if sender/recipient langs differ)
-4. Broadcast with `originalText`, `improvedText`, `processedText`, and `translationSkipped`/`fallback` flags.
-
-**Middleware** (`server/middleware/`):
-- `auth.ts` — JWT extraction + verification; `authorize(role)` for role-gating.
-- `metrics.ts` — Prometheus HTTP request duration/count instrumentation.
-- Rate limiting: 100 req/min globally, 5 auth attempts/min.
-- Uploads: magic-byte validated via `file-type` package (not just MIME).
-
-**Observability** (`server/utils/metrics.ts`):
-- 8 Prometheus metrics exposed at `/metrics` (HTTP latency, Socket.io connections, ticket queue, AI pipeline duration/errors).
-- Socket.io handlers emit `socketioConnectionsActive` gauge and `socketioEventsTotal` counter.
-- AI pipeline calls in `translate.ts` are wrapped with `aiPipelineDuration` histogram timers.
+Registers all real-time event handlers. Uses Redis adapter for scaling. Includes `partner:deactivated` event for real-time partner lifecycle notifications.
 
 ### Database
 
-PostgreSQL via **Drizzle ORM** (config: `server/drizzle.config.ts`). Core tables:
+**PostgreSQL 18** via **Drizzle ORM 0.45.1** (config: `server/drizzle.config.ts`). Core tables:
 
 | Table | Purpose |
 |---|---|
-| `users` | Accounts with role, dept (DSC/FOT), lang (nl/fr/en) |
+| `users` | Accounts with lang (nl/fr/en), `isPlatformOperator` flag, Azure `externalId` |
+| `memberships` | Junction table: links users to partners with role and departments (JSONB array) |
 | `tickets` | Status: open → active → closed; stores participants JSON array |
-| `messages` | Per-ticket messages with `whisper` (private), `system` (auto-generated), `reactions` JSON |
-| `ratings` | 1–5 star ratings per closed ticket |
-| `ticket_labels` / `labels` | Junction + label definitions |
-| `translations_cache` | SHA256-keyed translation cache |
-| `llm_summaries` | Period-keyed AI summaries (e.g. `day:2025-03-13`) |
-| `daily_stats` | GDPR-compliant aggregates after purge |
-| `canned_responses` | Shortcut → text templates |
-| `topic_alerts` | AI-detected heat clusters/incidents |
+| `messages` | Per-ticket messages with `whisper` (private), `reactions` JSON |
+| `partners` | Tenant config with `departments` JSONB, `status` (active/inactive), AI settings |
+| `audit_log` | Platform event tracking: action, actor, partner, target, metadata |
 
 ### Client (`client/src/`)
 
-**Entry**: `App.tsx` — lazy-loads `AgentView`, `SupportView`, `AdminView`, `AgentLiteView` by role. Fetches `/api/config` on mount. Global connection banner (disconnected/reconnecting). Registers service worker for PWA support.
+**Stack**: **React 19.2**, **Vite 8**, **Tailwind CSS 4**, **Zustand 5**.
 
-**State**: Zustand store (`store/useStore.ts`) — single source of truth for auth, tickets, messages (normalized by ticketId), presence, UI settings. Persists to localStorage: token, darkMode, dyslexicMode, bionicReading, selectedLang.
+**State**: Zustand store (`store/useStore.ts`) — single source of truth for auth, tickets, messages, and UI settings.
 
-**Real-time**: `hooks/useSocket.ts` — single Socket.io instance, registers all listeners (ticket events, messages, presence, typing, reactions, queue position, business hours).
+**Real-time**: `hooks/useSocket.ts` — single Socket.io instance.
 
-**Utilities** (`client/src/utils/`):
-- `colorUtils.ts` — Hex/HSL conversion, `generatePalette()` for dynamic brand shade generation, `getContrastRatio()` for accessibility checks.
-- `dateUtils.ts` — Date formatting helpers.
-- `notifications.ts` — Browser notification management.
-- `trpc.ts` — tRPC client configuration.
+**Aesthetics**: Strict B&W Minimalist. Zero motion, zero color, zero transitions. Solid black/white surfaces only.
 
-**Client-side patterns**:
-- Optimistic message updates (`pending: true`) replaced when server confirms.
-- Socket auto-reconnects with exponential backoff (1–5s).
-- `client/src/types/index.ts` is the canonical type source.
+**Views**:
+- `PlatformView` — Platform operator: partner management (active/inactive), global users, system health, audit log.
+- `AdminView` — Partner admin: dashboard, team management, departments, tickets, business hours, AI, labels, canned responses.
+- `SupportView` — Support staff: ticket queue filtered by assigned departments, multi-tab chat.
+- `AgentView` — End-user: ticket creation, chat.
 
-**Code splitting** (`vite.config.ts` manual chunks):
-- `vendor-charts` (Recharts + D3), `vendor-ui-icons` (Lucide), `vendor-ui-anim` (Framer Motion), `vendor` (other deps).
-
-**Primary views** (`client/src/views/`):
-- **AgentView**: Ticket creation and requester chat.
-- **AgentLiteView**: Mobile-optimized PWA view for field agents (`?lite=1` URL param).
-- **SupportView**: Queue management and resolution (Zen Mode).
-- **AdminView**: Operational and AI Dashboards, AI Persona configuration, and Business Hours settings.
-- **PlatformView**: Global partner and membership management (Operator only). Includes branding editor with `ThemePreviewCard`.
-
-**PWA**: `manifest.json` + `sw.js` in `client/public/`. Service worker uses cache-first for static assets, network-first for API calls, skips Socket.io.
+**Guards**: `PartnerUnavailable` component handles deleted/inactive partners across all views.
 
 ### Key Conventions
 
 - **Roles**: `agent`, `support`, `manager`, `admin`, `platform_operator`.
-- **Multi-Tenancy**: All data must be scoped by `partner_id`. Never leak cross-partner data. Every SQL query touching `tickets`, `daily_stats`, `ticket_labels`, `messages`, or `canned_responses` must include a `partner_id` filter. The `stats-tenant-isolation` test suite enforces this for stats queries.
-- **Transversal**: Users can have multiple `memberships`. Use `usePartner()` hook for active context.
-- **Aesthetics**: Solaris design system — glassmorphism, dynamic CSS variables (`--brand-primary`).
-- **Theme System**: `useTheme.ts` is the single source of truth for all CSS variables (brand palette, glass defaults, accent, border-radius). It generates `--brand-50` through `--brand-900` from the partner's `primaryColor` via `colorUtils.ts` (piecewise HSL interpolation). Glass defaults are mode-aware (light/dark) with partner `themeConfig` overlay. `ThemePreviewCard` in `PlatformView.tsx` provides live preview in the partner editor.
-- **Accessibility Modes**: Dark, dyslexic, and high-contrast modes use a CSS specificity cascade (no `!important` except dyslexic font-family). Modes are independent toggles that stack correctly.
-- **API Versioning**: All REST and tRPC endpoints are versioned. Use the `/api/v1/` prefix for any new manual `fetch` calls (e.g., `/api/v1/config`, `/api/v1/uploads`).
-- **Scaling**: Redis-based Presence and Socket.io adapter. Avoid in-memory state for enterprise scalability.
-- **TypeScript**: 100% type safety. Avoid `any`. Maintain interfaces in `client/src/types/index.ts`.
-- **Ollama**: `http://host.docker.internal:11434`, model-agnostic (per-partner config).
+- **Multi-Tenancy**: All data must be scoped by `partner_id`. Every query must include a `partner_id` filter.
+- **Multi-Partner Users**: Users can belong to multiple partners via the `memberships` table. Each membership has a role and department assignments. Users can only be logged into one partner at a time — switching issues a new JWT via `/switch-partner`.
+- **Partner Status**: Partners have `status: 'active' | 'inactive'`. Inactive partners block logins, ticket creation, and partner switching. Enforce at login, switch-partner, socket, and tRPC middleware layers.
+- **Dynamic Departments**: Never hardcode departments. Always read from `manifest.departments` in the partner data. Department schema: `{ id (auto-slug, immutable), name, description? }`. Department IDs are generated once at creation and never change, even if the name is updated.
+- **Department Assignment**: `memberships.departments` is a JSONB array of department IDs. Empty/null means generalist (sees all departments). SupportView sidebar chips are filtered to show only assigned departments.
+- **TypeScript**: 100% type safety. Maintain interfaces in `client/src/types/index.ts`.
+- **Docker**: Always use `docker compose exec` for development tasks.
+- **bcrypt**: Dev uses `bcryptjs` (pure JS, fast builds). Prod `Dockerfile.prod` swaps to native `bcrypt` (C++) for performance at scale (500+ users). Source imports `bcryptjs` — prod Dockerfile rewrites imports at build time.
+- **Audit Logging**: All significant platform actions (partner lifecycle, user management, GDPR purges) are recorded in the `audit_log` table.
+
+# context-mode — MANDATORY routing rules
+
+You have context-mode MCP tools available. These rules are NOT optional — they protect your context window from flooding. A single unrouted command can dump 56 KB into context and waste the entire session.
+
+## BLOCKED commands — do NOT attempt these
+
+### curl / wget — BLOCKED
+Any Bash command containing `curl` or `wget` is intercepted and replaced with an error message. Do NOT retry.
+Instead use:
+- `ctx_fetch_and_index(url, source)` to fetch and index web pages
+- `ctx_execute(language: "javascript", code: "const r = await fetch(...)")` to run HTTP calls in sandbox
+
+### Inline HTTP — BLOCKED
+Any Bash command containing `fetch('http`, `requests.get(`, `requests.post(`, `http.get(`, or `http.request(` is intercepted and replaced with an error message. Do NOT retry with Bash.
+Instead use:
+- `ctx_execute(language, code)` to run HTTP calls in sandbox — only stdout enters context
+
+### WebFetch — BLOCKED
+WebFetch calls are denied entirely. The URL is extracted and you are told to use `ctx_fetch_and_index` instead.
+Instead use:
+- `ctx_fetch_and_index(url, source)` then `ctx_search(queries)` to query the indexed content
+
+## REDIRECTED tools — use sandbox equivalents
+
+### Bash (>20 lines output)
+Bash is ONLY for: `git`, `mkdir`, `rm`, `mv`, `cd`, `ls`, `npm install`, `pip install`, and other short-output commands.
+For everything else, use:
+- `ctx_batch_execute(commands, queries)` — run multiple commands + search in ONE call
+- `ctx_execute(language: "shell", code: "...")` — run in sandbox, only stdout enters context
+
+### Read (for analysis)
+If you are reading a file to **Edit** it → Read is correct (Edit needs content in context).
+If you are reading to **analyze, explore, or summarize** → use `ctx_execute_file(path, language, code)` instead. Only your printed summary enters context. The raw file content stays in the sandbox.
+
+### Grep (large results)
+Grep results can flood context. Use `ctx_execute(language: "shell", code: "grep ...")` to run searches in sandbox. Only your printed summary enters context.
+
+## Tool selection hierarchy
+
+1. **GATHER**: `ctx_batch_execute(commands, queries)` — Primary tool. Runs all commands, auto-indexes output, returns search results. ONE call replaces 30+ individual calls.
+2. **FOLLOW-UP**: `ctx_search(queries: ["q1", "q2", ...])` — Query indexed content. Pass ALL questions as array in ONE call.
+3. **PROCESSING**: `ctx_execute(language, code)` | `ctx_execute_file(path, language, code)` — Sandbox execution. Only stdout enters context.
+4. **WEB**: `ctx_fetch_and_index(url, source)` then `ctx_search(queries)` — Fetch, chunk, index, query. Raw HTML never enters context.
+5. **INDEX**: `ctx_index(content, source)` — Store content in FTS5 knowledge base for later search.
+
+## Subagent routing
+
+When spawning subagents (Agent/Task tool), the routing block is automatically injected into their prompt. Bash-type subagents are upgraded to general-purpose so they have access to MCP tools. You do NOT need to manually instruct subagents about context-mode.
+
+## Output constraints
+
+- Keep responses under 500 words.
+- Write artifacts (code, configs, PRDs) to FILES — never return them as inline text. Return only: file path + 1-line description.
+- When indexing content, use descriptive source labels so others can `ctx_search(source: "label")` later.
+
+## ctx commands
+
+| Command | Action |
+|---------|--------|
+| `ctx stats` | Call the `ctx_stats` MCP tool and display the full output verbatim |
+| `ctx doctor` | Call the `ctx_doctor` MCP tool, run the returned shell command, display as checklist |
+| `ctx upgrade` | Call the `ctx_upgrade` MCP tool, run the returned shell command, display as checklist |

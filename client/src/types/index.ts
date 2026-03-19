@@ -1,4 +1,4 @@
-export type UserRole = 'agent' | 'support' | 'admin';
+export type UserRole = 'agent' | 'support' | 'manager' | 'admin' | 'platform_operator';
 
 export interface ThemeConfig {
   glassBlur?: string;
@@ -11,11 +11,12 @@ export interface ThemeConfig {
 
 export interface PartnerManifest {
   industry: string;
-  primaryColor: string;
-  secondaryColor: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   ref1Label: string;
   ref2Label: string;
-  departments: { id: string; label: string }[];
+  departments: { id: string; name: string; description?: string }[];
   aiRules?: string;
   themeConfig?: ThemeConfig;
   ollamaModel?: string;
@@ -25,19 +26,22 @@ export interface Membership {
   id: string;
   partnerId: string;
   partnerName: string;
-  role: UserRole | 'manager' | 'platform_operator';
+  role: UserRole;
+  departments: string[];
   dept?: string;
   manifest: PartnerManifest;
   avatarUrl?: string;
+  status?: 'active' | 'inactive';
 }
 
 export interface User {
   id: string;
   name: string;
-  role: UserRole | 'manager' | 'platform_operator';
+  role: UserRole;
   lang: 'nl' | 'fr' | 'en';
   isPlatformOperator: boolean;
   avatarUrl?: string;
+  departments?: string[];
   dept?: string;
 }
 

@@ -50,11 +50,11 @@ export default function AdminAISettings() {
     <div className="max-w-5xl mx-auto space-y-6 animate-fade-in pb-20">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-ui-base01 dark:text-white tracking-tight flex items-center gap-2">
             <Bot className="text-accent-500" />
             AI Persona & Context
           </h2>
-          <p className="text-sm text-solarized-base1 dark:text-gray-400 mt-1">
+          <p className="text-sm text-ui-base1 dark:text-gray-400 mt-1">
             Configure how the AI behaves and what industry knowledge it applies to your project.
           </p>
         </div>
@@ -116,14 +116,14 @@ export default function AdminAISettings() {
           value={aiRules}
           onChange={(e) => { setAiRules(e.target.value); setIsDirty(true); }}
           rows={4}
-          className="w-full bg-solarized-base3/50 dark:bg-black/20 border-2 border-solarized-base2 dark:border-brand-700 rounded-2xl px-5 py-4 text-sm font-medium focus:border-accent-500 outline-none transition-all custom-scrollbar resize-none"
+          className="w-full bg-ui-base3/50 dark:bg-black/20 border-2 border-ui-base2 dark:border-brand-700 rounded-2xl px-5 py-4 text-sm font-medium focus:border-accent-500 outline-none transition-all custom-scrollbar resize-none"
           placeholder="General rules for all roles..."
         />
       </Panel>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Panel title="Agent Improvement Strategy">
-          <div className="flex items-center gap-2 mb-4 text-solarized-base1 dark:text-gray-400">
+          <div className="flex items-center gap-2 mb-4 text-ui-base1 dark:text-gray-400">
             <User size={16} />
             <span className="text-xs font-bold uppercase tracking-wider">Role: Agent (Non-Technical)</span>
           </div>
@@ -131,14 +131,14 @@ export default function AdminAISettings() {
             value={agentStrategy}
             onChange={(e) => { setAgentStrategy(e.target.value); setIsDirty(true); }}
             rows={8}
-            className="w-full bg-solarized-base3/50 dark:bg-black/20 border-2 border-solarized-base2 dark:border-brand-700 rounded-2xl px-5 py-4 text-sm font-medium focus:border-accent-500 outline-none transition-all custom-scrollbar resize-none"
+            className="w-full bg-ui-base3/50 dark:bg-black/20 border-2 border-ui-base2 dark:border-brand-700 rounded-2xl px-5 py-4 text-sm font-medium focus:border-accent-500 outline-none transition-all custom-scrollbar resize-none"
             placeholder="How should the AI improve agent messages?"
           />
           <p className="text-[10px] text-gray-500 mt-2 italic">Applied when an agent sends a message to support.</p>
         </Panel>
 
         <Panel title="Support Resolution Strategy">
-          <div className="flex items-center gap-2 mb-4 text-solarized-base1 dark:text-gray-400">
+          <div className="flex items-center gap-2 mb-4 text-ui-base1 dark:text-gray-400">
             <LifeBuoy size={16} />
             <span className="text-xs font-bold uppercase tracking-wider">Role: Support (Technical)</span>
           </div>
@@ -146,7 +146,7 @@ export default function AdminAISettings() {
             value={supportStrategy}
             onChange={(e) => { setSupportStrategy(e.target.value); setIsDirty(true); }}
             rows={8}
-            className="w-full bg-solarized-base3/50 dark:bg-black/20 border-2 border-solarized-base2 dark:border-brand-700 rounded-2xl px-5 py-4 text-sm font-medium focus:border-accent-500 outline-none transition-all custom-scrollbar resize-none"
+            className="w-full bg-ui-base3/50 dark:bg-black/20 border-2 border-ui-base2 dark:border-brand-700 rounded-2xl px-5 py-4 text-sm font-medium focus:border-accent-500 outline-none transition-all custom-scrollbar resize-none"
             placeholder="How should the AI transform support specialist replies?"
           />
           <p className="text-[10px] text-gray-500 mt-2 italic">Applied when support sends a message to an agent.</p>

@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { db } from './db.js';
 import { users, partners, memberships, labels } from './db/schema.js';
 import { eq } from 'drizzle-orm';
@@ -22,18 +22,22 @@ async function seed() {
                 { id: 'DSC', label: 'Dispatch' },
                 { id: 'FOT', label: 'Front Office' }
             ]),
+            aiProvider: 'ollama',
+            ollamaModel: 'translategemma:4b',
+            aiEnabled: true,
             createdAt: new Date().toISOString()
         });
     }
 
     const demoUsers = [
-        { id: 'agent_jan', name: 'Agent Jan', role: 'agent', dept: 'DSC', lang: 'nl' },
-        { id: 'agent_marie', name: 'Agent Marie', role: 'agent', dept: 'FOT', lang: 'fr' },
-        { id: 'agent_tom', name: 'Agent Tom', role: 'agent', dept: 'DSC', lang: 'en' },
-        { id: 'expert_piet', name: 'Expert Piet', role: 'support', dept: 'DSC', lang: 'nl' },
-        { id: 'expert_sophie', name: 'Expert Sophie', role: 'support', dept: 'FOT', lang: 'fr' },
-        { id: 'expert_alex', name: 'Expert Alex', role: 'support', dept: 'FOT', lang: 'en' },
-        { id: 'admin_dirk', name: 'Admin Dirk', role: 'admin', dept: 'DSC', lang: 'nl' }
+        { id: 'agent_jan', name: 'Agent Jan', role: 'agent', dept: 'DSC', lang: 'nl', isPlatformOperator: false },
+        { id: 'agent_marie', name: 'Agent Marie', role: 'agent', dept: 'FOT', lang: 'fr', isPlatformOperator: false },
+        { id: 'agent_tom', name: 'Agent Tom', role: 'agent', dept: 'DSC', lang: 'en', isPlatformOperator: false },
+        { id: 'expert_piet', name: 'Expert Piet', role: 'support', dept: 'DSC', lang: 'nl', isPlatformOperator: false },
+        { id: 'expert_sophie', name: 'Expert Sophie', role: 'support', dept: 'FOT', lang: 'fr', isPlatformOperator: false },
+        { id: 'expert_alex', name: 'Expert Alex', role: 'support', dept: 'FOT', lang: 'en', isPlatformOperator: false },
+        { id: 'admin_dirk', name: 'Admin Dirk', role: 'admin', dept: 'DSC', lang: 'nl', isPlatformOperator: false },
+        { id: 'platform_bart', name: 'Platform Bart', role: 'platform_operator', dept: 'GLOBAL', lang: 'nl', isPlatformOperator: true }
     ];
 
     const password = 'password123';
@@ -49,8 +53,9 @@ async function seed() {
                 await db.insert(users).values({
                     id: u.id,
                     name: u.name,
-                    lang: u.lang,
-                    password: hashedPassword
+                    lang: u.lang as any,
+                    password: hashedPassword,
+                    isPlatformOperator: u.isPlatformOperator
                 });
             }
 

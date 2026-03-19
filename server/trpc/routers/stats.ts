@@ -594,21 +594,4 @@ export const statsRouter = router({
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
-
-  getLLMSummary: adminProcedure
-    .input(z.object({
-      periodType: z.string(),
-      periodValue: z.string(),
-    }))
-    .query(async ({ input, ctx }) => {
-      try {
-        if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-        // We'll update the service signature next
-        return await (await import('../../services/llm.js')).getLLMSummary(input.periodType, input.periodValue, ctx.user.partnerId!);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        logger.error({ err: message }, 'tRPC: Error in getLLMSummary');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
-      }
-    }),
 });

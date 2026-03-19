@@ -28,7 +28,12 @@
       "mcp__plugin_context-mode_context-mode__ctx_execute_file",
       "mcp__plugin_context-mode_context-mode__ctx_stats",
       "Bash(find:*)",
-      "Bash(wc -l e2e/tests/*.spec.ts)"
+      "Bash(wc -l e2e/tests/*.spec.ts)",
+      "WebSearch",
+      "mcp__plugin_context-mode_context-mode__ctx_fetch_and_index",
+      "Bash(npm install:*)",
+      "Bash(typescript-language-server:*)",
+      "Bash(claude plugin:*)"
     ]
   }
 }

@@ -1,12 +1,19 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: {
+    dedupe: ['react', 'react-dom'],
+  },
+  optimizeDeps: {
+    exclude: ['@trpc/server'],
+  },
   server: {
     port: 5173,
     host: true,
-    allowedHosts: ['client', 'localhost'],
+    allowedHosts: ['client', 'localhost', '127.0.0.1'],
     watch: {
       usePolling: true,
       interval: 500,
@@ -37,9 +44,6 @@ export default defineConfig({
             }
             if (id.includes('lucide-react')) {
               return 'vendor-ui-icons';
-            }
-            if (id.includes('framer-motion')) {
-              return 'vendor-ui-anim';
             }
             return 'vendor';
           }

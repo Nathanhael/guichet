@@ -13,6 +13,7 @@ import { createContext } from './trpc/context.js';
 import { appRouter } from './trpc/router.js';
 
 import uploadRoutes from './routes/uploads.js';
+import logoRoutes from './routes/logos.js';
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js'; // Kept for export route support
 import { query } from './db.js';
@@ -90,13 +91,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(metricsMiddleware);
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const rootUploadDir = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(rootUploadDir));
 
 // API v1 Routing
 const v1Router = express.Router();
 
 v1Router.use('/tickets', ticketRoutes); // Kept for export support
 v1Router.use('/uploads', uploadRoutes);
+v1Router.use('/logos', logoRoutes);
 v1Router.use('/auth', authLimiter, authRoutes);
 
 // tRPC v1
@@ -140,7 +143,7 @@ v1Router.get('/health', async (_req: Request, res: Response) => {
       if (!ollamaRes.ok) throw new Error('Ollama response not ok');
     } catch (err) {
       logger.warn('Ollama unavailable during health check');
-      return res.status(503).json({ status: 'degraded', database: 'connected', llm: 'disconnected' });
+      return res.json({ status: 'degraded', database: 'connected', llm: 'disconnected' });
     }
     res.json({ status: 'ok', database: 'connected', llm: 'connected' });
   } catch (err) {

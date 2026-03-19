@@ -12,6 +12,7 @@ All endpoints are prefixed with `/api/v1/`.
 `POST /api/v1/auth/login`
 - **Body**: `{ "id": "user_id", "password": "..." }`
 - **Response**: `{ "token": "...", "user": {...}, "memberships": [...], "activePartnerId": "..." }`
+- **Note**: The endpoint filters out memberships for inactive partners. If all memberships belong to inactive partners, the login succeeds but restricts functionality.
 
 ### 2. Configuration
 `GET /api/v1/config`
@@ -37,6 +38,19 @@ All endpoints are prefixed with `/api/v1/`.
 
 The majority of application logic is handled via tRPC procedures. **Note**: All message-related results are normalized via `messageMapper` to ensure frontend compatibility.
 
+### Partner Router (admin access)
+- `partner.listMembers`: Returns paginated memberships and user data for the current partner.
+- `partner.addMemberByEmail`: Adds an existing user to the partner with specified roles and departments.
+- `partner.inviteExternalUser`: Creates a new user with a temporary password and adds them to the partner.
+- `partner.removeMember`: Removes a user's membership (prevents self-removal and last-membership removal).
+- `partner.updateMember`: Updates department assignments for a specific member.
+
+### Platform Router (platform_operator access)
+- `platform.deactivatePartner`: Sets partner status to inactive, auto-closes tickets, and broadcasts deactivation event.
+- `platform.reactivatePartner`: Sets partner status back to active.
+- `platform.getAuditLog`: Fetches paginated system and administrative audit events.
+- `platform.getSystemHealth`: Returns real-time Postgres/Redis connection status and GDPR purge history.
+
 ---
 
 ## 🔌 Socket.io Real-Time Interface
@@ -57,6 +71,9 @@ Real-time communication is scoped to `ticket:{id}` and `partner:{id}` rooms.
 - `support:join`: Specialist claims a ticket.
 - `support:left`: Specialist disconnects from a ticket.
 - `queue:position`: Real-time update for waiting agents.
+
+### 4. Partner Events
+- `partner:deactivated`: Broadcast to all clients connected to a deactivated partner, forcing them to disconnect active chat sessions gracefully.
 
 ---
 

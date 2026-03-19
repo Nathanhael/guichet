@@ -79,18 +79,18 @@ export default function AdminStats() {
     <div className="space-y-6 max-w-7xl mx-auto animate-slide-up pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white tracking-tight">Dashboard</h2>
-          <p className="text-sm text-solarized-base1 dark:text-gray-400 mt-1">Real-time performance metrics and historical trends</p>
+          <h2 className="text-2xl font-bold text-ui-base01 dark:text-white tracking-tight">Dashboard</h2>
+          <p className="text-sm text-ui-base1 dark:text-gray-400 mt-1">Real-time performance metrics and historical trends</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 bg-solarized-base3/50 dark:bg-brand-800/50 p-2 rounded-2xl border border-solarized-base2 dark:border-brand-700/50 backdrop-blur-sm self-start">
+        <div className="flex flex-wrap items-center gap-2 bg-ui-base3/50 dark:bg-brand-800/50 p-2 rounded-2xl border border-ui-base2 dark:border-brand-700/50 backdrop-blur-sm self-start">
           <div className="flex gap-1">
             {['all', 'DSC', 'FOT'].map((d) => (
               <button
                 key={d}
                 onClick={() => setStatsDept(d)}
                 className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 ${
-                  statsDept === d ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'text-solarized-base01 dark:text-gray-400 hover:bg-solarized-base2 dark:hover:bg-brand-700'
+                  statsDept === d ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'text-ui-base01 dark:text-gray-400 hover:bg-ui-base2 dark:hover:bg-brand-700'
                 }`}
               >
                 {d === 'all' ? 'All' : d}
@@ -109,7 +109,7 @@ export default function AdminStats() {
                 key={key}
                 onClick={() => applyPreset(key)}
                 className={`px-2.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 ${
-                  activePreset === key ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20' : 'text-solarized-base01 dark:text-gray-400 hover:bg-solarized-base2 dark:hover:bg-brand-700'
+                  activePreset === key ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20' : 'text-ui-base01 dark:text-gray-400 hover:bg-ui-base2 dark:hover:bg-brand-700'
                 }`}
               >
                 {label}
@@ -125,9 +125,9 @@ export default function AdminStats() {
                 setStatsDateFrom(e.target.value);
                 setActivePreset(null);
               }}
-              className="border-none bg-solarized-base3/80 dark:bg-gray-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-solarized-base01 dark:text-gray-200 focus:ring-2 focus:ring-brand-500 outline-none"
+              className="border-none bg-ui-base3/80 dark:bg-gray-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-ui-base01 dark:text-gray-200 focus:ring-2 focus:ring-brand-500 outline-none"
             />
-            <span className="text-solarized-base1 text-xs">→</span>
+            <span className="text-ui-base1 text-xs">→</span>
             <input
               type="date"
               value={statsDateTo}
@@ -135,7 +135,7 @@ export default function AdminStats() {
                 setStatsDateTo(e.target.value);
                 setActivePreset(null);
               }}
-              className="border-none bg-solarized-base3/80 dark:bg-gray-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-solarized-base01 dark:text-gray-200 focus:ring-2 focus:ring-brand-500 outline-none"
+              className="border-none bg-ui-base3/80 dark:bg-gray-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-ui-base01 dark:text-gray-200 focus:ring-2 focus:ring-brand-500 outline-none"
             />
             {(statsDept !== 'all' || statsDateFrom || statsDateTo) && (
               <button
@@ -187,13 +187,13 @@ export default function AdminStats() {
           <div className="grid grid-cols-2 gap-3 mb-3">
             <div
               className={`rounded-lg p-3 ${
-                stats.oldestWaitMinutes > 3 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-solarized-base2 dark:bg-gray-700'
+                stats.oldestWaitMinutes > 3 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-ui-base2 dark:bg-gray-700'
               }`}
             >
-              <p className="text-xs text-solarized-base1 dark:text-gray-400">Oldest waiting</p>
+              <p className="text-xs text-ui-base1 dark:text-gray-400">Oldest waiting</p>
               <p
                 className={`text-2xl font-bold mt-0.5 ${
-                  stats.oldestWaitMinutes > 3 ? 'text-red-600 dark:text-red-400' : 'text-solarized-base01 dark:text-white'
+                  stats.oldestWaitMinutes > 3 ? 'text-red-600 dark:text-red-400' : 'text-ui-base01 dark:text-white'
                 }`}
               >
                 {stats.oldestWaitMinutes > 0 ? `${stats.oldestWaitMinutes}m` : '—'}
@@ -201,13 +201,13 @@ export default function AdminStats() {
             </div>
             <div
               className={`rounded-lg p-3 ${
-                stats.waitingOver3 > 0 ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'bg-solarized-base2 dark:bg-gray-700'
+                stats.waitingOver3 > 0 ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'bg-ui-base2 dark:bg-gray-700'
               }`}
             >
-              <p className="text-xs text-solarized-base1 dark:text-gray-400">Waiting &gt;3 min</p>
+              <p className="text-xs text-ui-base1 dark:text-gray-400">Waiting &gt;3 min</p>
               <p
                 className={`text-2xl font-bold mt-0.5 ${
-                  stats.waitingOver3 > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-solarized-base01 dark:text-white'
+                  stats.waitingOver3 > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-ui-base01 dark:text-white'
                 }`}
               >
                 {stats.waitingOver3}
@@ -215,8 +215,8 @@ export default function AdminStats() {
             </div>
           </div>
 
-            <div className="mt-4 pt-4 border-t border-solarized-base2 dark:border-gray-700">
-            <p className="text-[10px] uppercase font-bold text-solarized-base1 mb-2 tracking-wider">DSC vs FOT Distribution</p>
+            <div className="mt-4 pt-4 border-t border-ui-base2 dark:border-gray-700">
+            <p className="text-[10px] uppercase font-bold text-ui-base1 mb-2 tracking-wider">DSC vs FOT Distribution</p>
             <div className="h-2 w-full bg-indigo-500 rounded-full overflow-hidden flex">
               <div
                 className="h-full bg-amber-500 transition-all duration-500"
@@ -232,7 +232,7 @@ export default function AdminStats() {
 
         <Panel title="Online now">
           <div className="py-4 text-center">
-            <p className="text-sm text-solarized-base1">Live presence monitoring active</p>
+            <p className="text-sm text-ui-base1">Live presence monitoring active</p>
           </div>
         </Panel>
       </div>
@@ -259,7 +259,7 @@ export default function AdminStats() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel title="Support performance">
           {stats.supportStats.length === 0 ? (
-            <p className="text-sm text-solarized-base1">No data yet</p>
+            <p className="text-sm text-ui-base1">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.supportStats.length * 40)}>
               <BarChart data={stats.supportStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
@@ -277,7 +277,7 @@ export default function AdminStats() {
 
         <Panel title="Agent performance">
           {stats.agentStats.length === 0 ? (
-            <p className="text-sm text-solarized-base1">No data yet</p>
+            <p className="text-sm text-ui-base1">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.agentStats.length * 40)}>
               <BarChart data={stats.agentStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>

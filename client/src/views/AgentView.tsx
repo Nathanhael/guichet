@@ -4,7 +4,7 @@ import { getSocket } from '../hooks/useSocket';
 import { usePartner } from '../hooks/usePartner';
 import { useT } from '../i18n';
 import ChatWindow from '../components/ChatWindow';
-import AmbientBackground from '../components/AmbientBackground';
+import SystemBackground from '../components/SystemBackground';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -12,12 +12,18 @@ import BusinessHoursGuard from '../components/BusinessHoursGuard';
 import FeedbackModal from '../components/FeedbackModal';
 import RatingModal from '../components/RatingModal';
 import InWebsiteError from '../components/InWebsiteError';
+import PartnerUnavailable from '../components/PartnerUnavailable';
 import { trpc } from '../utils/trpc';
-import { motion } from 'framer-motion';
 
 export default function AgentView() {
-  const { user, logout, tickets, setTickets, activeTicketId, setActiveTicketId, focusMode } = useStore();
-  const { manifest } = usePartner();
+  const { user, logout, tickets, setTickets, activeTicketId, setActiveTicketId, focusMode, memberships, activeMembershipId } = useStore();
+  const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
+  const manifest = activeMembership?.manifest || {
+    industry: 'general',
+    ref1Label: 'Reference 1',
+    ref2Label: 'Reference 2',
+    departments: []
+  };
   const t = useT();
   const [dept, setDept] = useState(manifest.departments[0]?.id || 'DSC');
   const [ref1, setRef1] = useState('');
@@ -86,18 +92,25 @@ export default function AgentView() {
 
   if (!user) return null;
 
+  // Guard: partner was deleted — activeMembership is undefined
+  if (!activeMembership) return <PartnerUnavailable />;
+
   return (
     <BusinessHoursGuard>
       <div className={`h-screen bg-transparent flex flex-col overflow-hidden relative transition-all duration-700 ${focusMode ? 'zen-mode' : ''}`}>
-        <AmbientBackground />
+        <SystemBackground />
         
         <nav className="relative z-50 px-6 py-3 bg-brand-900/95 backdrop-blur-md border-b border-brand-800 text-white flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
-            <span className="text-xl font-bold tracking-tight">{manifest.industry} Support</span>
+            {manifest.logoUrl ? (
+              <img src={manifest.logoUrl} alt={manifest.name} className="h-8 object-contain" />
+            ) : (
+              <span className="text-xl font-bold tracking-tight">{manifest.industry} Support</span>
+            )}
             <span className="text-xs px-2.5 py-1 rounded-md bg-brand-800 border border-brand-700 font-semibold tracking-wide">Agent</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-solarized-base2">{user.name}</span>
+            <span className="text-sm font-medium text-ui-base2">{user.name}</span>
             
             {!activeTicketId && (
               <button
@@ -137,7 +150,7 @@ export default function AgentView() {
 
             <button
               onClick={() => setShowFeedback(true)}
-              className="text-solarized-base1 hover:text-white text-sm flex items-center gap-1.5 ml-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+              className="text-ui-base1 hover:text-white text-sm flex items-center gap-1.5 ml-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
               title={t('feedback')}
               aria-label={t('feedback')}
             >
@@ -146,7 +159,7 @@ export default function AgentView() {
               </svg>
               {t('feedback')}
             </button>
-            <button onClick={logout} aria-label={t('sign_out')} className="text-solarized-base1 hover:text-rose-400 text-sm font-medium ml-2 transition-colors">{t('sign_out')}</button>
+            <button onClick={logout} aria-label={t('sign_out')} className="text-ui-base1 hover:text-rose-400 text-sm font-medium ml-2 transition-colors">{t('sign_out')}</button>
           </div>
         </nav>
 
@@ -160,13 +173,11 @@ export default function AgentView() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-6">
               {!loading && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                <div 
                   className="w-full max-w-lg glass-panel p-8 rounded-3xl shadow-2xl border border-white/20 dark:border-brand-700/50"
                 >
-                  <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white mb-2">{t('hello')}, {user.name}</h2>
-                  <p className="text-solarized-base1 dark:text-gray-400 mb-8">{t('choose_dept_desc')}</p>
+                  <h2 className="text-2xl font-bold text-ui-base01 dark:text-white mb-2">{t('hello')}, {user.name}</h2>
+                  <p className="text-ui-base1 dark:text-gray-400 mb-8">{t('choose_dept_desc')}</p>
                   
                   <InWebsiteError message={error} onDismiss={() => setError(null)} />
 
@@ -180,7 +191,7 @@ export default function AgentView() {
                           className={`py-3 px-4 rounded-xl border-2 transition-all font-bold text-sm ${
                             dept === d.id 
                               ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400' 
-                              : 'border-solarized-base2 dark:border-brand-800 text-solarized-base1 dark:text-gray-500 hover:border-brand-300'
+                              : 'border-ui-base2 dark:border-brand-800 text-ui-base1 dark:text-gray-500 hover:border-brand-300'
                           }`}
                         >
                           {d.label}
@@ -191,36 +202,36 @@ export default function AgentView() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] uppercase font-black tracking-widest text-solarized-base1 dark:text-gray-500 ml-1">{manifest.ref1Label}</label>
+                          <label className="text-[10px] uppercase font-black tracking-widest text-ui-base1 dark:text-gray-500 ml-1">{manifest.ref1Label}</label>
                           <input
                             type="text"
                             value={ref1}
                             onChange={(e) => setRef1(e.target.value)}
                             placeholder={t('dare_placeholder')}
-                            className="w-full bg-solarized-base3/50 dark:bg-brand-900/50 border border-solarized-base2 dark:border-brand-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-solarized-base01 dark:text-white"
+                            className="w-full bg-ui-base3/50 dark:bg-brand-900/50 border border-ui-base2 dark:border-brand-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-ui-base01 dark:text-white"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] uppercase font-black tracking-widest text-solarized-base1 dark:text-gray-500 ml-1">{manifest.ref2Label} <span className="text-[8px] opacity-50">({t('optional')})</span></label>
+                          <label className="text-[10px] uppercase font-black tracking-widest text-ui-base1 dark:text-gray-500 ml-1">{manifest.ref2Label} <span className="text-[8px] opacity-50">({t('optional')})</span></label>
                           <input
                             type="text"
                             value={ref2}
                             onChange={(e) => setRef2(e.target.value)}
                             placeholder={t('case_placeholder')}
-                            className="w-full bg-solarized-base3/50 dark:bg-brand-900/50 border border-solarized-base2 dark:border-brand-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-solarized-base01 dark:text-white"
+                            className="w-full bg-ui-base3/50 dark:bg-brand-900/50 border border-ui-base2 dark:border-brand-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-ui-base01 dark:text-white"
                           />
                         </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase font-black tracking-widest text-solarized-base1 dark:text-gray-500 ml-1">{t('question_problem')}</label>
+                        <label className="text-[10px] uppercase font-black tracking-widest text-ui-base1 dark:text-gray-500 ml-1">{t('question_problem')}</label>
                         <textarea
                           rows={4}
                           value={text}
                           onChange={(e) => setText(e.target.value)}
                           placeholder={t('describe_problem')}
                           required
-                          className="w-full bg-solarized-base3/50 dark:bg-brand-900/50 border border-solarized-base2 dark:border-brand-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-solarized-base01 dark:text-white resize-none"
+                          className="w-full bg-ui-base3/50 dark:bg-brand-900/50 border border-ui-base2 dark:border-brand-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-ui-base01 dark:text-white resize-none"
                         />
                       </div>
                     </div>
@@ -233,13 +244,13 @@ export default function AgentView() {
                       {loading ? t('connecting') : t('connect_with_support')}
                     </button>
                   </form>
-                </motion.div>
+                </div>
               )}
 
               {loading && (
                 <div className="flex flex-col items-center gap-4 animate-pulse">
                   <div className="w-16 h-16 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
-                  <p className="text-solarized-base1 dark:text-gray-400 text-sm mt-1">{t('waiting_for_support')}</p>
+                  <p className="text-ui-base1 dark:text-gray-400 text-sm mt-1">{t('waiting_for_support')}</p>
                 </div>
               )}
             </div>

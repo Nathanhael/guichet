@@ -50,12 +50,12 @@ export default function AdminLabels() {
     <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-solarized-base01 dark:text-white tracking-tight">Label Management</h2>
-          <p className="text-sm text-solarized-base1">Manage tags for experts to categorize chats.</p>
+          <h2 className="text-2xl font-bold text-ui-base01 dark:text-white tracking-tight">Label Management</h2>
+          <p className="text-sm text-ui-base1">Manage tags for experts to categorize chats.</p>
         </div>
         <button
           onClick={() => refetch()}
-          className="p-2 rounded-lg bg-solarized-base2 dark:bg-brand-900/50 text-solarized-base1 hover:text-brand-500 transition-colors"
+          className="p-2 rounded-lg bg-ui-base2 dark:bg-brand-900/50 text-ui-base1 hover:text-brand-500 transition-colors"
           title="Refresh Labels"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,7 +74,7 @@ export default function AdminLabels() {
       )}
 
       <div className="glass-card p-6 shadow-soft">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-solarized-base1 mb-4">Create New Label</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wider text-ui-base1 mb-4">Create New Label</h3>
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">Label Name</label>
@@ -87,8 +87,8 @@ export default function AdminLabels() {
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-solarized-base1 mb-1.5 uppercase">Color</label>
-            <div className="flex gap-2 p-1.5 bg-solarized-base3 dark:bg-brand-900 border border-solarized-base2 dark:border-brand-700 rounded-xl">
+            <label className="block text-xs font-semibold text-ui-base1 mb-1.5 uppercase">Color</label>
+            <div className="flex gap-2 p-1.5 bg-ui-base3 dark:bg-brand-900 border border-ui-base2 dark:border-brand-700 rounded-xl">
               {colors.map((c) => (
                 <button
                   key={c.key}
@@ -110,25 +110,25 @@ export default function AdminLabels() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {isLoading ? (
-          <p className="text-solarized-base1">Loading labels...</p>
+          <p className="text-ui-base1">Loading labels...</p>
         ) : !labels || labels.length === 0 ? (
-          <p className="col-span-2 text-center py-12 text-solarized-base1 bg-solarized-base2 dark:bg-brand-900/40 rounded-2xl border-2 border-dashed border-solarized-base2 dark:border-brand-700">
+          <p className="col-span-2 text-center py-12 text-ui-base1 bg-ui-base2 dark:bg-brand-900/40 rounded-2xl border-2 border-dashed border-ui-base2 dark:border-brand-700">
             No labels created yet. Add one above!
           </p>
         ) : (
           labels.map((l) => (
             <div
               key={l.id}
-              className="bg-solarized-base3 dark:bg-brand-800 rounded-2xl border border-solarized-base2 dark:border-brand-700 p-4 flex items-center justify-between group hover:shadow-md transition-all animate-slide-up"
+              className="bg-ui-base3 dark:bg-brand-800 rounded-2xl border border-ui-base2 dark:border-brand-700 p-4 flex items-center justify-between group hover:shadow-md transition-all animate-slide-up"
             >
               <div className="flex items-center gap-3">
                 <div className={`w-3 h-3 rounded-full bg-${l.color}-500 shadow-sm shadow-${l.color}-500/40`} />
-                <span className="font-bold text-solarized-base01 dark:text-gray-100">{l.text}</span>
+                <span className="font-bold text-ui-base01 dark:text-gray-100">{l.text}</span>
               </div>
               <button
                 onClick={() => deleteLabel(l.id)}
                 disabled={deleteMutation.isPending}
-                className="opacity-0 group-hover:opacity-100 p-2 text-solarized-base1 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-50"
+                className="opacity-0 group-hover:opacity-100 p-2 text-ui-base1 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-50"
                 title="Delete Label"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

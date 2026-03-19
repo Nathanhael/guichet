@@ -11,10 +11,11 @@ export class AzureProvider implements LLMProvider {
 
     async generate(prompt: string, options?: LLMOptions): Promise<string> {
         const type = options?.type || 'generate';
+        const deployment = options?.model || this.deployment;
         const end = aiPipelineDuration.startTimer({ type });
 
         try {
-            const result = await this.callAzure(prompt, type);
+            const result = await this.callAzure(prompt, type, deployment);
             end();
             return result;
         } catch (err) {
@@ -26,10 +27,11 @@ export class AzureProvider implements LLMProvider {
 
     async generateJSON<T>(prompt: string, options?: LLMOptions): Promise<T> {
         const type = options?.type || 'generate_json';
+        const deployment = options?.model || this.deployment;
         const end = aiPipelineDuration.startTimer({ type });
 
         try {
-            const raw = await this.callAzure(prompt, type, true);
+            const raw = await this.callAzure(prompt, type, deployment, true);
             end();
 
             const jsonMatch = raw.match(/\{[\s\S]*\}/);
@@ -42,12 +44,12 @@ export class AzureProvider implements LLMProvider {
         }
     }
 
-    private async callAzure(prompt: string, type: string, isJson = false): Promise<string> {
+    private async callAzure(prompt: string, type: string, deployment: string, isJson = false): Promise<string> {
         if (!this.baseUrl || !this.apiKey) {
             throw new Error('Azure OpenAI configuration missing (AI_BASE_URL or AI_API_KEY)');
         }
 
-        const url = `${this.baseUrl}/openai/deployments/${this.deployment}/chat/completions?api-version=${this.apiVersion}`;
+        const url = `${this.baseUrl}/openai/deployments/${deployment}/chat/completions?api-version=${this.apiVersion}`;
 
         try {
             const response = await fetch(url, {

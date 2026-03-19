@@ -8,6 +8,7 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: UserRole;
+    isPlatformOperator: boolean;
   };
 }
 
@@ -19,8 +20,12 @@ export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
 
   const token = authHeader ? authHeader.split(' ')[1] : queryToken;
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET) as { userId: string; role: UserRole };
-    req.user = { id: decoded.userId, role: decoded.role };
+    const decoded = jwt.verify(token, config.JWT_SECRET) as { userId: string; role: UserRole; isPlatformOperator: boolean };
+    req.user = { 
+      id: decoded.userId, 
+      role: decoded.role,
+      isPlatformOperator: !!decoded.isPlatformOperator 
+    };
     next();
   } catch (err) {
     logger.warn({ err: err instanceof Error ? err.message : String(err) }, 'JWT verification failed');

@@ -10,7 +10,7 @@ const DEPT_COLOR: Record<string, string> = {
 const STATUS_COLOR: Record<string, string> = {
   open: 'bg-yellow-100 text-yellow-700',
   active: 'bg-green-100 text-green-700',
-  closed: 'bg-solarized-base2 text-solarized-base1',
+  closed: 'bg-ui-base2 text-ui-base1',
 };
 
 const LANG_FLAG: Record<string, string> = { nl: '🇧🇪', fr: '🇫🇷', en: '🇬🇧' };
@@ -24,11 +24,11 @@ interface TicketListProps {
 export default function TicketList({ tickets, onSelect, activeId }: TicketListProps) {
   const t = useT();
   if (tickets.length === 0) {
-    return <p className="text-solarized-base1 text-sm p-4 text-center">{t('no_tickets')}</p>;
+    return <p className="text-ui-base1 text-sm p-4 text-center">{t('no_tickets')}</p>;
   }
 
   return (
-    <ul className="divide-y divide-solarized-base2 dark:divide-gray-700">
+    <ul className="divide-y divide-ui-base2 dark:divide-gray-700">
       {tickets.map((ticket) => {
         const time = getTicketTime(ticket.createdAt);
 
@@ -36,8 +36,8 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
           <li
             key={ticket.id}
             onClick={() => onSelect(ticket)}
-            className={`p-4 cursor-pointer transition-colors hover:bg-solarized-base2 dark:hover:bg-brand-700 ${activeId === ticket.id
-              ? 'bg-solarized-base2 dark:bg-gray-700 border-l-4 border-brand-500'
+            className={`p-4 cursor-pointer transition-colors hover:bg-ui-base2 dark:hover:bg-brand-700 ${activeId === ticket.id
+              ? 'bg-ui-base2 dark:bg-gray-700 border-l-4 border-brand-500'
               : ''
               }`}
           >
@@ -52,17 +52,17 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
                     {ticket.status}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-solarized-base01 dark:text-gray-100 truncate">
+                <p className="text-sm font-semibold text-ui-base01 dark:text-gray-100 truncate">
                   {ticket.agentName || (ticket.dareRef ? `DARE: ${ticket.dareRef}` : ticket.cdbId ? `CDBID: ${ticket.cdbId}` : t('No title'))}
                 </p>
                 {ticket.ref1 && (
-                  <p className="text-[11px] text-solarized-base1 dark:text-gray-400 mt-0.5">
+                  <p className="text-[11px] text-ui-base1 dark:text-gray-400 mt-0.5">
                     {ticket.ref1}
                   </p>
                 )}
-                <div className="mt-1 text-xs text-solarized-base1 dark:text-gray-400 flex items-center gap-2">
+                <div className="mt-1 text-xs text-ui-base1 dark:text-gray-400 flex items-center gap-2">
                   <span>{LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]} {ticket.agentLang?.toUpperCase()}</span>
-                  <span className="text-solarized-base1 opacity-50">•</span>
+                  <span className="text-ui-base1 opacity-50">•</span>
                   <span>{time}</span>
                 </div>
               </div>
