@@ -7,11 +7,12 @@ This file serves as the primary instructional context for Gemini CLI. The projec
 
 ### Active Features
 - **Real-Time Communication**: Core chat functionality via Socket.io with Redis scaling.
-- **Dynamic Org Structure**: Departments are 100% data-driven via Partner JSONB.
+- **Dynamic Org Structure**: Departments are 100% data-driven via Partner JSONB. Users can be assigned to multiple departments.
+- **Partner Status**: Partners can be toggled 'active' or 'inactive'. Inactive partners block auth and close open tickets.
 - **B&W Minimalist Standard**: A strictly monochrome, static UI designed for maximum readability and zero motion.
-- **Enterprise Schema**: Optimized with native JSONB, Enums, and Audit tracking.
-- **Platform Operator Oversight**: Global dashboard in `PlatformView.tsx` for managing Partners and Users (Azure Identity ready).
-- **Partner Administration**: Local management in `AdminView.tsx` for departments and system rules.
+- **Enterprise Schema**: Optimized with native JSONB, Enums, and a full global `audit_log` tracking system.
+- **Platform Operator Oversight**: Global dashboard in `PlatformView.tsx` for managing Partners, Global Users, System Health, and Audit Logs.
+- **Partner Administration**: Local management in `AdminView.tsx` for departments, system rules, and team members (internal/external invites).
 
 ### Tech Stack
 - **Frontend**: React 19.2, Vite 8, Tailwind CSS 4, Zustand 5.
