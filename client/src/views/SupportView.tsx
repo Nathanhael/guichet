@@ -10,7 +10,6 @@ import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import PartnerSwitcher from '../components/PartnerSwitcher';
-import InWebsiteError from '../components/InWebsiteError';
 import { requestNotificationPermission } from '../utils/notifications';
 import { Ticket } from '../types';
 import { getTicketTime } from '../utils/dateUtils';
