@@ -195,7 +195,7 @@ export function registerSocketHandlers(io: Server) {
           const messageId = uuidv4();
           const now = new Date().toISOString();
           message = { id: messageId, ticketId: ticket.id, senderId: agentId, senderName: agentUser?.name || agentId, senderRole: 'agent', senderLang: agentLang, originalText: text, text: text, whisper: 0, system: 0, timestamp: now, createdAt: now, reactions: {} };
-          await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [message.id, message.ticketId, message.senderId, message.senderName, message.senderRole, message.senderLang, message.originalText, message.text, mediaUrl || null, 0, 0, message.timestamp, '{}']);
+          await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [message.id, message.ticketId, message.senderId, message.senderName, message.senderRole, message.senderLang, message.text, mediaUrl || null, 0, 0, message.timestamp, '{}']);
         }
         socket.join(`ticket:${ticket.id}`);
         socket.emit('ticket:created:self', { ticket: { ...ticket, participants: [], labels: [] }, message });
@@ -267,7 +267,7 @@ export function registerSocketHandlers(io: Server) {
 
         const messageId = uuidv4();
         const now = new Date().toISOString();
-        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, translated_text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, text, text, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}']);
+        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, text, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}']);
         io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, senderLang: sender.lang, text: text, originalText: text, mediaUrl, whisper: !!whisper, system: false, timestamp: now, createdAt: now, reactions: {} });
         logger.info({ messageId }, '[message:send] Emitted message:new');
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }

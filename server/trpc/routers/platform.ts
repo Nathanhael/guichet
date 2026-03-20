@@ -204,7 +204,6 @@ export const platformRouter = router({
       name: z.string(),
       role: z.enum(['agent', 'support', 'manager', 'admin', 'platform_operator']),
       partnerId: z.string(),
-      dept: z.string().optional(), // legacy
       departments: z.array(z.string()).optional()
     }))
     .mutation(async ({ input }) => {
@@ -234,7 +233,6 @@ export const platformRouter = router({
           userId,
           partnerId: input.partnerId,
           role: input.role as any,
-          dept: input.dept,
           departments: input.departments || []
         });
 
