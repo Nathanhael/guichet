@@ -233,18 +233,18 @@ export default function SupportView() {
               <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
                 <button
                   onClick={() => setFilterDept('all')}
-                  className={`shrink-0 px-3 py-1 text-[9px] font-black uppercase border transition-colors ${filterDept === 'all'
+                  className={`shrink-0 px-3 py-1 text-[9px] font-black uppercase border ${filterDept === 'all'
                     ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
                     : 'bg-white dark:bg-black text-black dark:text-white border-black/10 dark:border-white/10'
                     }`}
                 >
                   {t('all')}
                 </button>
-                {departments.map((dept) => (
+                {visibleDepartments.map((dept) => (
                   <button
                     key={dept.id}
                     onClick={() => setFilterDept(dept.id)}
-                    className={`shrink-0 px-3 py-1 text-[9px] font-black uppercase border transition-colors ${filterDept === dept.id
+                    className={`shrink-0 px-3 py-1 text-[9px] font-black uppercase border ${filterDept === dept.id
                       ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
                       : 'bg-white dark:bg-black text-black dark:text-white border-black/10 dark:border-white/10'
                       }`}

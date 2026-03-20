@@ -19,7 +19,13 @@ export const platformRouter = router({
       redisMemoryUsed: '0',
       gdprLastRun: '2026-03-20T02:00:00.000Z', // Stubbed
       gdprSuccess: true,
-      gdprRecordsPurged: 0
+      gdprRecordsPurged: 0,
+      gdprNextPurge: (() => {
+        const next = new Date();
+        next.setUTCDate(next.getUTCDate() + 1);
+        next.setUTCHours(2, 0, 0, 0);
+        return next.toISOString();
+      })(),
     };
 
     try {
@@ -70,9 +76,6 @@ export const platformRouter = router({
         name: z.string(),
         description: z.string().optional()
       })).default([]),
-      aiProvider: z.string().default('ollama'),
-      ollamaModel: z.string().optional().nullable(),
-      aiEnabled: z.boolean().default(true),
     }))
     .mutation(async ({ input }) => {
       try {
@@ -82,9 +85,6 @@ export const platformRouter = router({
           logoUrl: input.logoUrl,
           industry: input.industry,
           departments: input.departments,
-          aiProvider: input.aiProvider,
-          ollamaModel: input.ollamaModel,
-          aiEnabled: input.aiEnabled,
           status: 'active',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -106,9 +106,6 @@ export const platformRouter = router({
         logoUrl: z.string().optional().nullable(),
         industry: z.string().optional(),
         departments: z.any().optional(),
-        aiProvider: z.string().optional(),
-        ollamaModel: z.string().optional().nullable(),
-        aiEnabled: z.boolean().optional(),
       })
     }))
     .mutation(async ({ input }) => {
@@ -189,7 +186,16 @@ export const platformRouter = router({
 
   // --- Global User & Membership Management ---
   listGlobalUsers: platformProcedure.query(async () => {
-    return await db.select().from(users).orderBy(desc(users.createdAt));
+    const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+    const allMemberships = await db
+      .select({ userId: memberships.userId, partnerId: memberships.partnerId, partnerName: partners.name })
+      .from(memberships)
+      .innerJoin(partners, eq(memberships.partnerId, partners.id))
+      .where(isNull(partners.deletedAt));
+    return allUsers.map(u => ({
+      ...u,
+      partnerMemberships: allMemberships.filter(m => m.userId === u.id),
+    }));
   }),
 
   inviteUser: platformProcedure

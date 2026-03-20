@@ -13,14 +13,7 @@ export const partners = pgTable('partners', {
   industry: text('industry').default('general'),
   ref1Label: text('ref_1_label').default('Reference 1'),
   ref2Label: text('ref_2_label').default('Reference 2'),
-  aiRules: text('ai_rules'),
-  agentPromptStrategy: text('agent_prompt_strategy'),
-  supportPromptStrategy: text('support_prompt_strategy'),
-  enableActionableAi: boolean('enable_actionable_ai').default(false),
   departments: jsonb('departments').default([]),
-  aiEnabled: boolean('ai_enabled').default(false),
-  aiProvider: text('ai_provider').default('ollama'),
-  ollamaModel: text('ollama_model'),
   businessHoursStart: text('business_hours_start'),
   businessHoursEnd: text('business_hours_end'),
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
@@ -172,25 +165,6 @@ export const dailyStats = pgTable('daily_stats', {
   hourly: jsonb('hourly').default({}),
 }, (table) => ({
   pk: primaryKey({ columns: [table.date, table.partnerId] }),
-}));
-
-export const translationsCache = pgTable('translations_cache', {
-  key: text('key').primaryKey(),
-  value: text('value').notNull(),
-  fromLang: text('from_lang').notNull(),
-  toLang: text('to_lang').notNull(),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-});
-
-export const llmSummaries = pgTable('llm_summaries', {
-  period: text('period').notNull(),
-  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
-  sentiment: text('sentiment'),
-  questions: jsonb('questions').default([]),
-  summary: text('summary'),
-  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.period, table.partnerId] }),
 }));
 
 export const cannedResponses = pgTable('canned_responses', {
