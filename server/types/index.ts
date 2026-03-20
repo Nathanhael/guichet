@@ -4,7 +4,6 @@ export interface User {
   id: string;
   name: string;
   role: UserRole;
-  dept?: string;
   lang?: string;
   password?: string;
   avatarUrl?: string | null;
@@ -31,7 +30,6 @@ export interface Ticket {
   closingNotes?: string | null;
   closedBy?: string | null;
   participants: string; // JSON string
-  summary?: string | null;
 }
 
 export interface Message {
@@ -44,8 +42,6 @@ export interface Message {
   originalText: string;
   improvedText: string;
   processedText: string;
-  text?: string; // legacy
-  translatedText?: string; // legacy
   mediaUrl?: string | null;
   whisper: number; // 0 or 1
   system: number; // 0 or 1
@@ -69,14 +65,3 @@ export interface GuardResult {
   text?: string;
 }
 
-export interface TranslationResult {
-  text: string;
-  fromCache: boolean;
-}
-
-export interface ProcessedMessageResult {
-  processedText: string;
-  improvedText: string;
-  translationSkipped: boolean;
-  fallback: boolean;
-}

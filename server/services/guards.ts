@@ -1,14 +1,6 @@
 import { createClient } from 'redis';
-import config from '../config.js';
 import { GuardResult } from '../types/index.js';
 import { getRepetitionCount } from './repetitionStore.js';
-
-interface OllamaResponse {
-  response: string;
-}
-
-const OLLAMA_HOST = config.OLLAMA_HOST || 'http://localhost:11434';
-const MODEL       = config.OLLAMA_MODEL || 'gemmatranslate4b';
 
 // ─── Guard result helpers ─────────────────────────────────────────────────────
 
@@ -158,83 +150,12 @@ export function guardInjection(text: string): GuardResult {
   return pass();
 }
 
-// ─── 8. Telecom topic filter (Ollama) ────────────────────────────────────────
-
-const TOPIC_PROMPT = (text: string) =>
-`You are a content moderator for a professional telecom support chat system.
-
-Determine if the following message is related to telecom support topics.
-
-Telecom support topics include:
-- Internet connectivity, modems, routers, Wi-Fi, fiber, DSL, ONT
-- TV boxes, IPTV, digital television, set-top boxes
-- Mobile phones, SIM cards, mobile data, calling, SMS
-- Billing, invoices, contracts, subscriptions, pricing
-- Technical troubleshooting, error codes, signal issues
-- Account questions, service activation or cancellation
-- Network outages and maintenance
-- Short replies, greetings, or confirmations in the context of a support chat
-  (e.g. "ok", "thanks", "understood", "yes that worked", "no problem")
-
-NOT telecom support topics:
-- Politics, religion, personal opinions
-- General chat unrelated to telecom (sports, recipes, entertainment)
-- Medical or legal advice
-
-Respond with ONLY one word: ALLOWED or BLOCKED.
-
-Message: ${text}`;
-
-export async function guardTopic(text: string): Promise<GuardResult> {
-  // Skip LLM-based topic check when AI is globally disabled
-  if (!config.AI_ENABLED) return pass();
-
-  const trimmed = text.trim().toLowerCase();
-  const QUICK_PASS = [
-    'ok', 'oke', 'oké', 'ja', 'nee', 'oui', 'non', 'yes', 'no',
-    'merci', 'dank', 'thanks', 'begrepen', 'compris', 'understood',
-    'perfect', 'super', 'goed', 'bien', 'd\'accord', 'akkoord',
-  ];
-  if (trimmed.length < 20 || QUICK_PASS.includes(trimmed)) {
-    return pass();
-  }
-
-  try {
-    const response = await fetch(`${OLLAMA_HOST}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model:  MODEL,
-        prompt: TOPIC_PROMPT(text),
-        stream: false,
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
-
-    if (!response.ok) throw new Error(`Ollama HTTP ${response.status}`);
-
-    const data = await response.json() as OllamaResponse;
-    const verdict = data.response?.trim().toUpperCase();
-
-    if (verdict === 'BLOCKED') {
-      return block('guard_off_topic');
-    }
-
-    return pass();
-
-  } catch (err: unknown) {
-    console.warn('[guardTopic] Ollama unavailable, skipping topic check:', err instanceof Error ? err.message : String(err));
-    return pass();
-  }
-}
-
 // ─── Master guard runner ──────────────────────────────────────────────────────
 
 /**
  * Master guard runner. Executes all guards in a tiered pipeline.
- * Tier 1: Local regex/length/injection checks (Fast, Cheap).
- * Tier 2: AI-based semantic topic check (Async, Expensive).
- * 
+ * Runs local regex/length/injection/content checks in sequence.
+ *
  * @param {ReturnType<typeof createClient> | null} redisClient - Redis client instance.
  * @param {string} text - The raw message text.
  * @param {string} senderId - ID of the sender for rate-limiting/repetition checks.
@@ -274,10 +195,6 @@ export async function runGuards(
   // 7. Discrimination
   const discResult = guardDiscrimination(current);
   if (!discResult.ok) return { ...discResult, text: current };
-
-  // 8. Topic filter (async, Ollama)
-  const topicResult = await guardTopic(current);
-  if (!topicResult.ok) return { ...topicResult, text: current };
 
   return { ok: true, code: 'PASS', text: current };
 }

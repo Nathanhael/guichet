@@ -3,24 +3,20 @@ import useStore from '../store/useStore';
 import { tBrowser } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
 import SystemBackground from '../components/SystemBackground';
-import { UserRole } from '../types';
 import { trpc } from '../utils/trpc';
 
-const ROLE_LABEL: Record<string, string> = { agent: 'Agent', support: 'Support', admin: 'Admin', platform: 'Platform', platform_operator: 'Platform Admin' };
 const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR', en: '🇬🇧 EN' };
 
 export default function LoginView() {
   const { setUser, setToken } = useStore();
-  const [filter, setFilter] = useState<UserRole | 'all' | 'platform'>('all');
+  const [filter, setFilter] = useState<'all' | 'platform'>('all');
 
   const { data: usersData, isLoading: loading } = trpc.user.list.useQuery();
   const users = (usersData || []) as any[];
 
-  const filtered = filter === 'all' 
-    ? users 
-    : filter === 'platform'
-      ? users.filter((u: any) => u.isPlatformOperator)
-      : users.filter((u: any) => u.role === filter);
+  const filtered = filter === 'platform'
+    ? users.filter((u: any) => u.is_platform_operator)
+    : users;
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-black dark:text-white relative bg-white dark:bg-black">
@@ -37,16 +33,16 @@ export default function LoginView() {
         </div>
 
         <div className="flex border-b-2 border-black dark:border-white px-4 pt-4 bg-white dark:bg-black overflow-x-auto no-scrollbar">
-          {(['all', 'agent', 'support', 'admin', 'platform'] as const).map((role) => (
+          {(['all', 'platform'] as const).map((tab) => (
             <button
-              key={role}
-              onClick={() => setFilter(role)}
-              className={`px-4 py-3 text-xs font-black uppercase tracking-wider border-b-4 mr-1 shrink-0 ${filter === role
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`px-4 py-3 text-xs font-black uppercase tracking-wider border-b-4 mr-1 shrink-0 ${filter === tab
                 ? 'border-black dark:border-white text-black dark:text-white'
-                : 'border-transparent text-slate-400 hover:text-black dark:hover:text-white'
+                : 'border-transparent opacity-40 hover:opacity-100'
                 }`}
             >
-              {role === 'all' ? tBrowser('all') : ROLE_LABEL[role]}
+              {tab === 'all' ? tBrowser('all') : 'Platform'}
             </button>
           ))}
         </div>
@@ -54,12 +50,12 @@ export default function LoginView() {
         <div className="p-4 max-h-[28rem] overflow-y-auto bg-white dark:bg-black">
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <div className="w-8 h-8 border-4 border-black dark:border-white border-t-transparent rounded-full" />
+              <div className="w-8 h-8 border-4 border-black dark:border-white border-t-transparent" />
               <p className="text-sm font-bold uppercase text-black dark:text-white">{tBrowser('loading')}</p>
             </div>
           )}
           {!loading && filtered.length === 0 && (
-            <p className="text-center text-slate-500 py-12 font-bold uppercase">{tBrowser('no_users')}</p>
+            <p className="text-center opacity-50 py-12 font-bold uppercase">{tBrowser('no_users')}</p>
           )}
           
           <ul className="space-y-3 pb-2">
@@ -95,7 +91,6 @@ export default function LoginView() {
                     </div>
                     <div>
                       <p className="font-black uppercase tracking-tight">{u.name}</p>
-                      <p className="text-[10px] font-bold opacity-60 uppercase">{u.dept}</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-1">

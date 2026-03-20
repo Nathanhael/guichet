@@ -167,11 +167,9 @@ export default function AgentView() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-6">
               {!loading && (
-                <div 
-                  className="w-full max-w-lg glass-panel p-8 rounded-3xl shadow-2xl border border-white/20 dark:border-brand-700/50"
-                >
-                  <h2 className="text-2xl font-bold text-ui-base01 dark:text-white mb-2">{t('hello')}, {user.name}</h2>
-                  <p className="text-ui-base1 dark:text-gray-400 mb-8">{t('choose_dept_desc')}</p>
+                <div className="w-full max-w-lg border-2 border-black dark:border-white p-8">
+                  <h2 className="text-2xl font-black uppercase tracking-tight mb-2">{t('hello')}, {user.name}</h2>
+                  <p className="text-sm opacity-60 mb-8">{t('choose_dept_desc')}</p>
                   
                   <form onSubmit={createTicket} aria-label={t('new_ticket')} className="space-y-6">
                     <div className="grid grid-cols-2 gap-3">
@@ -180,10 +178,10 @@ export default function AgentView() {
                           key={d.id}
                           type="button"
                           onClick={() => setDept(d.id)}
-                          className={`py-3 px-4 rounded-xl border-2 transition-all font-bold text-sm ${
-                            dept === d.id 
-                              ? 'border-brand-500 bg-brand-500/10 text-brand-600 dark:text-brand-400' 
-                              : 'border-ui-base2 dark:border-brand-800 text-ui-base1 dark:text-gray-500 hover:border-brand-300'
+                          className={`py-3 px-4 border-2 font-black text-sm uppercase tracking-widest ${
+                            dept === d.id
+                              ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
+                              : 'border-black/30 dark:border-white/30 hover:border-black dark:hover:border-white'
                           }`}
                         >
                           {d.label}
@@ -194,36 +192,36 @@ export default function AgentView() {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="text-[10px] uppercase font-black tracking-widest text-ui-base1 dark:text-gray-500 ml-1">{manifest.ref1Label}</label>
+                          <label className="text-[10px] uppercase font-black tracking-widest opacity-60">{manifest.ref1Label}</label>
                           <input
                             type="text"
                             value={ref1}
                             onChange={(e) => setRef1(e.target.value)}
                             placeholder={t('dare_placeholder')}
-                            className="w-full bg-ui-base3/50 dark:bg-brand-900/50 border border-ui-base2 dark:border-brand-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-ui-base01 dark:text-white"
+                            className="w-full border-2 border-black dark:border-white px-4 py-2.5 text-sm bg-transparent outline-none"
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="text-[10px] uppercase font-black tracking-widest text-ui-base1 dark:text-gray-500 ml-1">{manifest.ref2Label} <span className="text-[8px] opacity-50">({t('optional')})</span></label>
+                          <label className="text-[10px] uppercase font-black tracking-widest opacity-60">{manifest.ref2Label} <span className="text-[8px] opacity-50">({t('optional')})</span></label>
                           <input
                             type="text"
                             value={ref2}
                             onChange={(e) => setRef2(e.target.value)}
                             placeholder={t('case_placeholder')}
-                            className="w-full bg-ui-base3/50 dark:bg-brand-900/50 border border-ui-base2 dark:border-brand-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-ui-base01 dark:text-white"
+                            className="w-full border-2 border-black dark:border-white px-4 py-2.5 text-sm bg-transparent outline-none"
                           />
                         </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[10px] uppercase font-black tracking-widest text-ui-base1 dark:text-gray-500 ml-1">{t('question_problem')}</label>
+                        <label className="text-[10px] uppercase font-black tracking-widest opacity-60">{t('question_problem')}</label>
                         <textarea
                           rows={4}
                           value={text}
                           onChange={(e) => setText(e.target.value)}
                           placeholder={t('describe_problem')}
                           required
-                          className="w-full bg-ui-base3/50 dark:bg-brand-900/50 border border-ui-base2 dark:border-brand-700 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all text-ui-base01 dark:text-white resize-none"
+                          className="w-full border-2 border-black dark:border-white px-4 py-3 text-sm bg-transparent outline-none resize-none"
                         />
                       </div>
                     </div>
@@ -231,7 +229,7 @@ export default function AgentView() {
                     <button
                       type="submit"
                       disabled={loading || !text.trim()}
-                      className="w-full bg-brand-500 hover:bg-brand-400 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-brand-500/20 transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-50 disabled:transform-none"
+                      className="w-full border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black py-4 font-black uppercase tracking-widest text-sm disabled:opacity-30"
                     >
                       {loading ? t('connecting') : t('connect_with_support')}
                     </button>
@@ -240,9 +238,9 @@ export default function AgentView() {
               )}
 
               {loading && (
-                <div className="flex flex-col items-center gap-4 animate-pulse">
-                  <div className="w-16 h-16 border-4 border-brand-200 border-t-brand-500 rounded-full animate-spin" />
-                  <p className="text-ui-base1 dark:text-gray-400 text-sm mt-1">{t('waiting_for_support')}</p>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-16 h-16 border-4 border-black dark:border-white border-t-transparent" />
+                  <p className="text-sm opacity-60 mt-1 font-black uppercase tracking-widest">{t('waiting_for_support')}</p>
                 </div>
               )}
             </div>
