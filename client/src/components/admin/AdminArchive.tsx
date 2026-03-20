@@ -5,10 +5,6 @@ import useStore from '../../store/useStore';
 import { trpc } from '../../utils/trpc';
 
 const LIMIT = 25;
-const DEPT_COLOR: Record<string, string> = {
-  DSC: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  FOT: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
-};
 
 export default function AdminArchive() {
   const { token } = useStore();
@@ -26,18 +22,15 @@ export default function AdminArchive() {
 
   const { data: allLabels = [] } = trpc.label.list.useQuery();
 
-  // Paginated Ticket List using tRPC
-  const ticketsQuery = trpc.ticket.list.useQuery(
-    {
-      status: 'closed',
-      limit: LIMIT,
-      offset: offset,
-      dept: dept === 'all' ? undefined : dept,
-      search: search.trim() || undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
-    }
-  );
+  const ticketsQuery = trpc.ticket.list.useQuery({
+    status: 'closed',
+    limit: LIMIT,
+    offset,
+    dept: dept === 'all' ? undefined : dept,
+    search: search.trim() || undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
+  });
 
   useEffect(() => {
     if (ticketsQuery.data) {
@@ -49,24 +42,16 @@ export default function AdminArchive() {
     }
   }, [ticketsQuery.data, offset]);
 
-  // Message Preview using tRPC
   const messagesQuery = trpc.message.list.useQuery(
     { ticketId: preview?.id || '' },
-    {
-      enabled: !!preview?.id,
-    }
+    { enabled: !!preview?.id }
   );
 
   useEffect(() => {
-    if (messagesQuery.data) {
-      setPreviewMessages(messagesQuery.data as any);
-    }
+    if (messagesQuery.data) setPreviewMessages(messagesQuery.data as any);
   }, [messagesQuery.data]);
 
-  // Reset offset when filters change
-  useEffect(() => {
-    setOffset(0);
-  }, [search, dept, dateFrom, dateTo]);
+  useEffect(() => { setOffset(0); }, [search, dept, dateFrom, dateTo]);
 
   function duration(tk: Ticket) {
     if (!tk.closedAt || !tk.createdAt) return '—';
@@ -80,11 +65,19 @@ export default function AdminArchive() {
 
   const loading = ticketsQuery.isFetching;
 
+  const filteredTickets = tickets.filter((ticket) => {
+    if (labelFilter === 'all') return true;
+    if (labelFilter === 'none') return !ticket.labels || (ticket.labels as string[]).length === 0;
+    if (labelFilter === 'any') return ticket.labels && (ticket.labels as string[]).length > 0;
+    return ticket.labels && (ticket.labels as string[]).includes(labelFilter);
+  });
+
   return (
     <div className="flex gap-4 items-start">
       <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <h2 className="text-xl font-bold text-ui-base01 dark:text-white mr-auto">Archive</h2>
+        {/* Header + Filters */}
+        <div className="flex flex-wrap items-center gap-2 mb-4 border-b-4 border-black dark:border-white pb-4">
+          <h2 className="text-4xl font-black uppercase tracking-tighter mr-auto">Archive</h2>
           <button
             onClick={() => {
               const params = new URLSearchParams();
@@ -95,86 +88,59 @@ export default function AdminArchive() {
               params.set('token', token || '');
               window.open(`/api/v1/tickets/export?${params.toString()}`, '_blank');
             }}
-            className="flex items-center gap-2 bg-ui-base2 dark:bg-brand-900/40 hover:bg-ui-base2 hover:text-ui-base01 text-brand-700 dark:text-brand-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-ui-base2 dark:border-brand-700/50 mr-2 shadow-sm"
+            className="px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
             title={t('export_csv')}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-3.5 w-3.5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
             {t('export_csv')}
           </button>
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agent, CDBID, Dare Ref, support…"
-            className="border border-ui-base2 dark:border-brand-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-56 bg-ui-base3 dark:bg-gray-700 text-ui-base01 dark:text-gray-100"
+            placeholder="Search agent, ref, support…"
+            className="border-2 border-black dark:border-white px-3 py-1.5 text-sm font-bold bg-transparent outline-none w-52"
           />
-          <div className="flex gap-1">
-            {['all', 'DSC', 'FOT'].map((d) => (
-              <button
-                key={d}
-                onClick={() => setDept(d)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  dept === d
-                    ? 'bg-brand-500 text-white'
-                    : 'bg-ui-base2 dark:bg-gray-700 text-ui-base1 dark:text-gray-400 hover:bg-ui-base2 hover:text-ui-base01 dark:hover:bg-gray-600'
-                }`}
-              >
-                {d === 'all' ? 'All' : d}
-              </button>
-            ))}
-          </div>
-          {allLabels.length > 0 && (
-            <select
-              value={labelFilter}
-              onChange={(e) => setLabelFilter(e.target.value)}
-              className="border border-ui-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-xs font-medium bg-ui-base3 dark:bg-gray-700 text-ui-base01 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
-            >
-              <option value="all">All labels</option>
-              <option value="none">No label</option>
-              <option value="any">Has label</option>
-              {allLabels.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.text}
-                </option>
-              ))}
-            </select>
-          )}
           <input
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="border border-ui-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-sm bg-ui-base3 dark:bg-gray-700 text-ui-base01 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
           />
-          <span className="text-ui-base1 text-xs">→</span>
+          <span className="text-xs font-black">→</span>
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="border border-ui-base2 dark:border-brand-600 rounded-lg px-2 py-1.5 text-sm bg-ui-base3 dark:bg-gray-700 text-ui-base01 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
           />
           {(dateFrom || dateTo) && (
-            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-xs text-ui-base1 hover:text-brand-500 transition-colors">
-              ✕ Clear dates
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-2 py-1">
+              ✕ Clear
             </button>
+          )}
+          {allLabels.length > 0 && (
+            <select
+              value={labelFilter}
+              onChange={(e) => setLabelFilter(e.target.value)}
+              className="border-2 border-black dark:border-white px-2 py-1.5 text-xs font-black bg-transparent outline-none uppercase"
+            >
+              <option value="all">All labels</option>
+              <option value="none">No label</option>
+              <option value="any">Has label</option>
+              {allLabels.map((l) => <option key={l.id} value={l.id}>{(l as any).text || l.name}</option>)}
+            </select>
           )}
         </div>
 
-        <div className="bg-ui-base3 dark:bg-brand-800 rounded-xl shadow-sm border border-ui-base2 dark:border-brand-700 overflow-hidden">
+        {/* Table */}
+        <div className="border-2 border-black dark:border-white overflow-hidden">
           <div className="overflow-x-auto">
-            {tickets.length === 0 && !loading ? (
-              <p className="text-center text-ui-base1 py-12 text-sm">No results.</p>
+            {filteredTickets.length === 0 && !loading ? (
+              <p className="text-center text-[10px] font-black uppercase opacity-50 py-12">No results.</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 z-10 bg-ui-base3 dark:bg-brand-800">
-                  <tr className="border-b border-ui-base2 dark:border-brand-700 text-left text-xs text-ui-base1 dark:text-gray-400 uppercase tracking-wide">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5 text-left text-[10px] font-black uppercase tracking-widest">
                     <th className="px-4 py-3">Dept</th>
                     <th className="px-4 py-3">Agent</th>
                     <th className="px-4 py-3">Ref</th>
@@ -185,71 +151,51 @@ export default function AdminArchive() {
                     <th className="px-4 py-3">Closed</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                  {tickets
-                    .filter((ticket) => {
-                      if (labelFilter === 'all') return true;
-                      if (labelFilter === 'none') return !ticket.labels || ticket.labels.length === 0;
-                      if (labelFilter === 'any') return ticket.labels && ticket.labels.length > 0;
-                      return ticket.labels && (ticket.labels as string[]).includes(labelFilter);
-                    })
-                    .map((ticket) => (
-                      <tr
-                        key={ticket.id}
-                        onClick={() => setPreview(preview?.id === ticket.id ? null : ticket)}
-                        className={`cursor-pointer transition-colors ${
-                          preview?.id === ticket.id ? 'bg-ui-base2 dark:bg-brand-900/20' : 'hover:bg-ui-base2 dark:hover:bg-brand-700'
-                        }`}
-                      >
-                        <td className="px-4 py-2.5">
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${DEPT_COLOR[ticket.dept] || 'bg-slate-100 text-slate-700'}`}>{ticket.dept}</span>
-                        </td>
-                        <td className="px-4 py-2.5 font-medium text-ui-base01 dark:text-gray-100">{ticket.agentName}</td>
-                        <td className="px-4 py-2.5 font-mono text-xs text-brand-600 dark:text-brand-400">
-                          {ticket.cdbId ? `CDBID: ${ticket.cdbId}` : ticket.dareRef ? `Dare Ref: ${ticket.dareRef}` : '—'}
-                        </td>
-                        <td className="px-4 py-2.5 text-ui-base1 dark:text-gray-400">
-                          {ticket.supportName || <span className="italic text-ui-base2">Abandoned</span>}
-                        </td>
-                        <td className="px-4 py-2.5">
-                          {ticket.labels && (ticket.labels as string[]).length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {(ticket.labels as string[]).map((id) => {
-                                const info = allLabels.find((l) => l.id === id);
-                                if (!info) return null;
-                                return (
-                                  <span
-                                    key={id}
-                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-${info.color}-100 text-${info.color}-700 dark:bg-${info.color}-900/30 dark:text-${info.color}-400`}
-                                  >
-                                    {info.text}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <span className="text-ui-base2 dark:text-gray-600">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-2.5 text-ui-base1 dark:text-gray-400">{duration(ticket)}</td>
-                        <td className="px-4 py-2.5 text-ui-base1 whitespace-nowrap">{fmt(ticket.createdAt)}</td>
-                        <td className="px-4 py-2.5 text-ui-base1 whitespace-nowrap">{fmt(ticket.closedAt || undefined)}</td>
-                      </tr>
-                    ))}
+                <tbody className="divide-y divide-black/20 dark:divide-white/20">
+                  {filteredTickets.map((ticket) => (
+                    <tr
+                      key={ticket.id}
+                      onClick={() => setPreview(preview?.id === ticket.id ? null : ticket)}
+                      className={`cursor-pointer ${preview?.id === ticket.id ? 'bg-black/10 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
+                    >
+                      <td className="px-4 py-2.5">
+                        <span className="text-[10px] font-black uppercase border border-black dark:border-white px-1.5 py-0.5">{ticket.dept}</span>
+                      </td>
+                      <td className="px-4 py-2.5 font-bold">{ticket.agentName}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs opacity-60">
+                        {(ticket as any).cdbId ? `CDBID: ${(ticket as any).cdbId}` : (ticket as any).dareRef ? `Ref: ${(ticket as any).dareRef}` : '—'}
+                      </td>
+                      <td className="px-4 py-2.5 opacity-60">
+                        {ticket.supportName || <span className="italic">Abandoned</span>}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {ticket.labels && (ticket.labels as string[]).length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {(ticket.labels as string[]).map((id) => {
+                              const info = allLabels.find((l) => l.id === id);
+                              if (!info) return null;
+                              return <span key={id} className="text-[9px] font-black uppercase border border-black dark:border-white px-1 py-0.5">{(info as any).text || info.name}</span>;
+                            })}
+                          </div>
+                        ) : <span className="opacity-30">—</span>}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-xs opacity-60">{duration(ticket)}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(ticket.createdAt)}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(ticket.closedAt || undefined)}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}
           </div>
 
-          <div className="px-4 py-3 border-t border-ui-base2 dark:border-brand-700 flex items-center justify-between shrink-0">
-            <span className="text-xs text-ui-base1">
-              {tickets.length} of {total} chats
-            </span>
+          <div className="px-4 py-3 border-t border-black/20 dark:border-white/20 flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase opacity-60">{tickets.length} of {total} chats</span>
             {tickets.length < total && (
               <button
                 onClick={() => setOffset(tickets.length)}
                 disabled={loading}
-                className="text-xs px-3 py-1.5 rounded-lg border border-ui-base2 dark:border-brand-600 text-ui-base1 dark:text-gray-400 hover:bg-ui-base2 dark:hover:bg-brand-700 disabled:opacity-40 transition-colors"
+                className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 disabled:opacity-30"
               >
                 {loading ? 'Loading…' : `Load more (${total - tickets.length} remaining)`}
               </button>
@@ -258,119 +204,61 @@ export default function AdminArchive() {
         </div>
       </div>
 
+      {/* Preview Panel */}
       {preview && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-brand-900/40 backdrop-blur-sm transition-opacity animate-fade-in" onClick={() => setPreview(null)}></div>
-          <div className="relative w-full max-w-[550px] bg-ui-base3 dark:bg-brand-800 shadow-2xl border-l border-ui-base2 dark:border-brand-700 h-full flex flex-col animate-slide-in-right">
-            <div className="px-6 py-4 border-b border-ui-base2 dark:border-brand-700 flex items-start justify-between gap-3 shrink-0 bg-ui-base2/50 dark:bg-brand-900/20">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} />
+          <div className="relative w-full max-w-[550px] bg-white dark:bg-black border-l-4 border-black dark:border-white h-full flex flex-col">
+            {/* Preview Header */}
+            <div className="px-6 py-4 border-b-2 border-black dark:border-white flex items-start justify-between gap-3 shrink-0">
               <div>
-                <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${DEPT_COLOR[preview.dept] || 'bg-slate-100 text-slate-700'}`}>{preview.dept}</span>
-                  <span className="text-base font-bold text-ui-base01 dark:text-gray-100">{preview.agentName}</span>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-[10px] font-black uppercase border border-black dark:border-white px-1.5 py-0.5">{preview.dept}</span>
+                  <span className="font-black uppercase tracking-tight">{preview.agentName}</span>
                 </div>
-                <div className="flex flex-wrap gap-2 text-xs font-mono text-ui-base1 dark:text-gray-400">
-                  {preview.cdbId && <span className="bg-ui-base2 dark:bg-brand-700 px-2 py-0.5 rounded">CDBID: {preview.cdbId}</span>}
-                  {preview.dareRef && <span className="bg-ui-base2 dark:bg-brand-700 px-2 py-0.5 rounded">Dare Ref: {preview.dareRef}</span>}
-                </div>
-                <p className="text-sm text-ui-base1 dark:text-gray-400 mt-2 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                  </svg>
-                  {preview.supportName ? `Support: ${preview.supportName}` : 'No support joined'}
-                  <span className="text-ui-base2 dark:text-brand-600">•</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  {duration(preview)}
+                <p className="text-xs font-mono opacity-60">
+                  {preview.supportName ? `Support: ${preview.supportName}` : 'No support joined'} · {duration(preview)}
                 </p>
                 {preview.labels && (preview.labels as string[]).length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-3">
+                  <div className="flex flex-wrap gap-1 mt-2">
                     {(preview.labels as string[]).map((id) => {
                       const info = allLabels.find((l) => l.id === id);
                       if (!info) return null;
-                      return (
-                        <span
-                          key={id}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-${info.color}-500/10 text-${info.color}-600 dark:text-${info.color}-400 border border-${info.color}-500/20`}
-                        >
-                          {info.text}
-                        </span>
-                      );
+                      return <span key={id} className="text-[9px] font-black uppercase border border-black dark:border-white px-1 py-0.5">{(info as any).text || info.name}</span>;
                     })}
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => setPreview(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-ui-base2 text-ui-base1 hover:bg-ui-base2 hover:text-ui-base01 dark:bg-brand-700 dark:text-gray-400 dark:hover:bg-brand-600 dark:hover:text-white transition-colors shrink-0"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-              </button>
+              <button onClick={() => setPreview(null)} className="w-8 h-8 border-2 border-black dark:border-white flex items-center justify-center font-black shrink-0">✕</button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 bg-ui-base3/10 dark:bg-transparent">
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {previewMessages.length === 0 ? (
-                <p className="text-center text-ui-base1 text-sm mt-8">No messages.</p>
-              ) : (
-                previewMessages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex gap-3 px-3 py-2 rounded-xl border border-transparent ${
-                      msg.whisper ? 'bg-violet-50 dark:bg-violet-900/10 border-violet-100 dark:border-violet-900/30' : 'hover:bg-gray-50 dark:hover:bg-brand-900/20'
-                    }`}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-700 flex items-center justify-center text-xs font-bold text-brand-700 dark:text-brand-300 shrink-0 shadow-sm">
-                      {(msg.senderName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0 pt-0.5">
-                      <div className="flex items-baseline gap-2 mb-1 cursor-default">
-                        <span className="text-sm font-bold text-ui-base01 dark:text-gray-100">{msg.senderName}</span>
-                        <span className="text-xs text-ui-base1">
-                          {new Date(msg.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                        {msg.whisper && (
-                          <span className="text-[10px] font-medium uppercase tracking-wider text-violet-500 bg-violet-100 dark:bg-violet-900/50 dark:text-violet-300 px-1.5 py-0.5 rounded leading-none">
-                            whisper
-                          </span>
-                        )}
-                      </div>
-                      <p className={`text-[15px] break-words leading-relaxed ${msg.whisper ? 'text-violet-700 dark:text-violet-300' : 'text-ui-base01 dark:text-gray-200'}`}>
-                        {msg.text}
-                      </p>
-                      {msg.mediaUrl && (
-                        <img
-                          src={msg.mediaUrl}
-                          alt="screenshot"
-                          className="mt-2 rounded-lg max-h-60 object-contain border border-gray-200 dark:border-brand-600 shadow-sm"
-                        />
-                      )}
-                    </div>
+                <p className="text-center text-[10px] font-black uppercase opacity-50 mt-8">No messages.</p>
+              ) : previewMessages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`px-3 py-2 border ${msg.whisper ? 'border-black/40 dark:border-white/40 bg-black/5 dark:bg-white/5' : 'border-transparent'}`}
+                >
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="text-sm font-black uppercase tracking-tight">{msg.senderName}</span>
+                    <span className="text-[10px] font-mono opacity-50">
+                      {new Date(msg.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {msg.whisper && <span className="text-[9px] font-black uppercase border border-black dark:border-white px-1">whisper</span>}
                   </div>
-                ))
-              )}
+                  <p className="text-sm leading-relaxed break-words">{msg.text}</p>
+                  {msg.mediaUrl && (
+                    <img src={msg.mediaUrl} alt="attachment" className="mt-2 max-h-60 object-contain border border-black dark:border-white" />
+                  )}
+                </div>
+              ))}
             </div>
 
-            <div className="px-6 py-4 border-t border-ui-base2 dark:border-brand-700 shrink-0 bg-ui-base2 dark:bg-brand-900/50">
-              <p className="text-sm font-medium text-ui-base1 dark:text-gray-400 flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path
-                    fillRule="evenodd"
-                    d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                Read-only archive — conversation closed
-              </p>
+            {/* Preview Footer */}
+            <div className="px-6 py-3 border-t-2 border-black dark:border-white shrink-0">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-50 text-center">Read-only archive — conversation closed</p>
             </div>
           </div>
         </div>

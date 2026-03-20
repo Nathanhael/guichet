@@ -9,14 +9,6 @@ import PlatformAuditLog from '../components/admin/PlatformAuditLog';
 type PlatformTab = 'partners' | 'users' | 'system' | 'audit';
 
 const ROLE_LABEL: Record<string, string> = { agent: 'Agent', support: 'Support', manager: 'Manager', admin: 'Partner Admin', platform_operator: 'Platform Operator' };
-const AI_PROVIDERS = [
-  { id: 'none', label: 'Disabled (No AI)' },
-  { id: 'ollama', label: 'Ollama (Local)' },
-  { id: 'azure', label: 'Azure OpenAI' },
-  { id: 'openai', label: 'OpenAI (Compatible)' },
-  { id: 'gemini', label: 'Google Gemini' },
-  { id: 'anthropic', label: 'Anthropic Claude' },
-];
 
 export default function PlatformView() {
   const { user, memberships, activeMembershipId, logout } = useStore();
@@ -32,9 +24,6 @@ export default function PlatformView() {
     name: '',
     logoUrl: '',
     industry: 'Telecommunications',
-    aiEnabled: true,
-    aiProvider: 'ollama',
-    ollamaModel: 'translategemma:4b'
   });
 
   const [inviteForm, setInviteForm] = useState({
@@ -77,15 +66,7 @@ export default function PlatformView() {
   const createPartner = trpc.platform.createPartner.useMutation({
     onSuccess: () => {
       setShowCreateModal(false);
-      setCreateForm({
-        id: '',
-        name: '',
-        industry: 'Telecommunications',
-        logoUrl: '',
-        aiEnabled: true,
-        aiProvider: 'ollama',
-        ollamaModel: 'gemmatranslate4b'
-      });
+      setCreateForm({ id: '', name: '', industry: 'Telecommunications', logoUrl: '' });
       refetchPartners();
     },
     onError: (err) => alert(err.message)
@@ -129,18 +110,18 @@ export default function PlatformView() {
           {/* Health Indicators */}
           <div className="hidden lg:flex items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${health?.postgres ? 'bg-black dark:bg-white' : 'bg-slate-300 animate-pulse'}`} />
+              <div className={`w-2 h-2 border border-black dark:border-white ${health?.postgres ? 'bg-black dark:bg-white' : 'opacity-30'}`} />
               <span className="text-[8px] font-black uppercase tracking-widest opacity-60">Postgres</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className={`w-2 h-2 rounded-full ${health?.redis ? 'bg-black dark:bg-white' : 'bg-slate-300 animate-pulse'}`} />
+              <div className={`w-2 h-2 border border-black dark:border-white ${health?.redis ? 'bg-black dark:bg-white' : 'opacity-30'}`} />
               <span className="text-[8px] font-black uppercase tracking-widest opacity-60">Redis</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-6">
           <DarkModeToggle />
-          <button onClick={logout} className="text-black dark:text-white hover:line-through text-xs font-black uppercase tracking-widest transition-all">➔ {t('sign_out')}</button>
+          <button onClick={logout} className="text-black dark:text-white hover:line-through text-xs font-black uppercase tracking-widest">➔ {t('sign_out')}</button>
         </div>
       </nav>
 
@@ -149,8 +130,8 @@ export default function PlatformView() {
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-4 transition-all whitespace-nowrap ${
-              activeTab === tab ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent text-slate-400 hover:text-black dark:hover:text-white'
+            className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-4 whitespace-nowrap ${
+              activeTab === tab ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent opacity-40 hover:opacity-100'
             }`}
           >
             {tab}
@@ -194,8 +175,7 @@ export default function PlatformView() {
                               <h2 className="text-xl font-black uppercase tracking-tight line-clamp-1" title={p.name}>{p.name}</h2>
                               <div className="flex items-center gap-2">
                                 <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{p.industry}</p>
-                                {!p.aiEnabled && <span className="text-[8px] font-black px-1 border border-black/20 opacity-40">AI OFF</span>}
-                              </div>
+                                </div>
                             </div>
                           </div>
                           <div className="text-right">
@@ -203,11 +183,11 @@ export default function PlatformView() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2 mt-auto">
-                          <button onClick={() => setEditingPartner(p)} className="flex-1 min-w-[80px] py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all">Configure</button>
-                          <button onClick={() => useStore.getState().setActiveMembershipId(p.id)} className="flex-1 min-w-[80px] py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white hover:invert transition-all">Enter</button>
-                          <button 
-                            onClick={() => { if(confirm(`Deactivate partner ${p.name}? Users will be disconnected.`)) deactivatePartner.mutate({ partnerId: p.id }); }} 
-                            className="flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest opacity-50 hover:opacity-100 hover:bg-orange-500 hover:text-white transition-all border-2 border-black dark:border-white"
+                          <button onClick={() => setEditingPartner(p)} className="flex-1 min-w-[80px] py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">Configure</button>
+                          <button onClick={() => useStore.getState().setActiveMembershipId(p.id)} className="flex-1 min-w-[80px] py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white hover:invert">Enter</button>
+                          <button
+                            onClick={() => { if(confirm(`Deactivate partner ${p.name}? Users will be disconnected.`)) deactivatePartner.mutate({ partnerId: p.id }); }}
+                            className="flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest opacity-50 hover:opacity-100 border-2 border-black dark:border-white"
                           >
                             Deactivate
                           </button>
@@ -221,7 +201,7 @@ export default function PlatformView() {
               {inactivePartnersList.length > 0 && (
                 <div>
                   <h2 className="text-lg font-black uppercase tracking-widest mb-4 opacity-50">Inactive Partners</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-60 hover:opacity-100 transition-opacity">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-60">
                     {inactivePartnersList.map((p) => (
                       <div key={p.id} className="border-2 border-dashed border-black dark:border-white p-6 bg-black/5 dark:bg-white/5 flex flex-col justify-between">
                         <div className="flex justify-between items-start mb-6">
@@ -236,7 +216,7 @@ export default function PlatformView() {
                             <div>
                               <h2 className="text-xl font-black uppercase tracking-tight line-through line-clamp-1" title={p.name}>{p.name}</h2>
                               <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-black uppercase tracking-widest bg-orange-500 text-white px-1">INACTIVE</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-1">INACTIVE</span>
                               </div>
                             </div>
                           </div>
@@ -244,13 +224,13 @@ export default function PlatformView() {
                         <div className="flex flex-wrap gap-2 mt-auto">
                           <button 
                             onClick={() => reactivatePartner.mutate({ partnerId: p.id })} 
-                            className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white hover:invert transition-all"
+                            className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white hover:invert"
                           >
                             Reactivate
                           </button>
                           <button 
                             onClick={() => setPartnerToDelete(p)} 
-                            className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all border-2 border-transparent hover:border-red-600"
+                            className="flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:invert"
                           >
                             Delete Permanently
                           </button>
@@ -265,11 +245,11 @@ export default function PlatformView() {
               {partnerToDelete && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
                   <div onClick={() => setPartnerToDelete(null)} className="absolute inset-0 bg-black opacity-80" />
-                  <div className="w-full max-w-md bg-white dark:bg-black border-4 border-red-600 relative z-10 p-8 text-center">
-                    <div className="w-16 h-16 border-4 border-red-600 text-red-600 flex items-center justify-center mx-auto mb-6 text-2xl font-black">!</div>
+                  <div className="w-full max-w-md bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8 text-center">
+                    <div className="w-16 h-16 border-4 border-black dark:border-white flex items-center justify-center mx-auto mb-6 text-2xl font-black">!</div>
                     <h3 className="text-xl font-black uppercase tracking-tighter mb-2">Delete Permanently</h3>
                     <p className="text-sm font-bold uppercase opacity-60 mb-6">
-                      This will irreversibly delete <span className="text-red-600">{partnerToDelete.name}</span>.
+                      This will irreversibly delete <strong>{partnerToDelete.name}</strong>.
                     </p>
                     <div className="text-left mb-6">
                       <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Type partner name to confirm</label>
@@ -292,7 +272,7 @@ export default function PlatformView() {
                           }
                         }}
                         disabled={partnerDeleteConfirmation !== partnerToDelete.name || deletePartner.isPending}
-                        className="flex-1 py-3 bg-red-600 text-white border-2 border-red-600 font-black uppercase text-[10px] tracking-widest hover:invert disabled:opacity-30 disabled:hover:invert-0"
+                        className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert disabled:opacity-30 disabled:hover:invert-0"
                       >
                         Delete
                       </button>
@@ -324,6 +304,7 @@ export default function PlatformView() {
                     <tr className="bg-black/5 dark:bg-white/5 border-b-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest">
                       <th className="p-4">Name</th>
                       <th className="p-4">Email</th>
+                      <th className="p-4">Partners</th>
                       <th className="p-4">External ID (Azure)</th>
                       <th className="p-4">Created</th>
                       <th className="p-4 text-right">Actions</th>
@@ -331,18 +312,28 @@ export default function PlatformView() {
                   </thead>
                   <tbody className="divide-y-2 divide-black/20 dark:divide-white/20">
                     {(globalUsers || []).filter(u => !u.deletedAt).map((u) => (
-                      <tr key={u.id} className="text-sm font-bold hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                      <tr key={u.id} className="text-sm font-bold hover:bg-black/5 dark:hover:bg-white/5">
                         <td className="p-4 uppercase tracking-tighter whitespace-nowrap">
                           {u.name} 
                           {u.isPlatformOperator && <span className="ml-2 text-[8px] border-2 border-black dark:border-white px-1 py-0.5 align-middle">ROOT</span>}
                         </td>
                         <td className="p-4 font-mono text-xs">{u.email || '-'}</td>
+                        <td className="p-4">
+                          <div className="flex flex-wrap gap-1">
+                            {(u as any).partnerMemberships?.length > 0
+                              ? (u as any).partnerMemberships.map((m: any) => (
+                                  <span key={m.partnerId} className="border border-black dark:border-white text-[9px] font-black uppercase px-1 py-0.5">{m.partnerName}</span>
+                                ))
+                              : <span className="opacity-40 text-[10px]">—</span>
+                            }
+                          </div>
+                        </td>
                         <td className="p-4 font-mono text-xs opacity-40">{u.externalId || 'Not Linked'}</td>
                         <td className="p-4 text-[10px] opacity-60 font-mono">{new Date(u.createdAt).toLocaleDateString()}</td>
                         <td className="p-4 text-right">
                           <button 
                             onClick={() => { if(confirm('Delete user globally?')) deleteUser.mutate(u.id); }}
-                            className="text-[10px] font-black uppercase tracking-widest text-red-600 hover:line-through"
+                            className="text-[10px] font-black uppercase tracking-widest hover:line-through"
                           >
                             Delete
                           </button>
@@ -407,58 +398,21 @@ export default function PlatformView() {
                     />
                     <label 
                       htmlFor="logo-upload-create"
-                      className="cursor-pointer px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+                      className="cursor-pointer px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                     >
                       {createForm.logoUrl ? 'Change Logo' : 'Upload Logo'}
                     </label>
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black uppercase mb-1">Industry</label>
-                  <input 
-                    type="text" 
-                    className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none" 
-                    value={createForm.industry} 
-                    onChange={e => setCreateForm({...createForm, industry: e.target.value})} 
-                  />
-                </div>
-                <div className="flex items-end pb-2">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 accent-black dark:accent-white" 
-                      checked={createForm.aiEnabled} 
-                      onChange={e => setCreateForm({...createForm, aiEnabled: e.target.checked})} 
-                    />
-                    <span className="text-[10px] font-black uppercase tracking-widest group-hover:line-through">AI Enabled</span>
-                  </label>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black uppercase mb-1">AI Provider</label>
-                  <select 
-                    className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none" 
-                    value={createForm.aiProvider} 
-                    onChange={e => setCreateForm({...createForm, aiProvider: e.target.value})}
-                    disabled={!createForm.aiEnabled}
-                  >
-                    {AI_PROVIDERS.filter(p => p.id !== 'none').map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase mb-1">Model Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. gpt-4o-mini"
-                    className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold font-mono outline-none disabled:opacity-20" 
-                    value={createForm.ollamaModel} 
-                    onChange={e => setCreateForm({...createForm, ollamaModel: e.target.value})} 
-                    disabled={!createForm.aiEnabled}
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] font-black uppercase mb-1">Industry</label>
+                <input
+                  type="text"
+                  className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
+                  value={createForm.industry}
+                  onChange={e => setCreateForm({...createForm, industry: e.target.value})}
+                />
               </div>
               <div className="flex justify-end gap-3 mt-8">
                 <button onClick={() => setShowCreateModal(false)} className="px-6 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white">Cancel</button>
@@ -507,50 +461,13 @@ export default function PlatformView() {
                     />
                     <label 
                       htmlFor="logo-upload-edit"
-                      className="cursor-pointer px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+                      className="cursor-pointer px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                     >
                       {editingPartner.logoUrl ? 'Change Logo' : 'Upload Logo'}
                     </label>
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-end pb-2">
-                  <label className="flex items-center gap-2 cursor-pointer group">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 accent-black dark:accent-white" 
-                      checked={editingPartner.aiEnabled} 
-                      onChange={e => setEditingPartner({...editingPartner, aiEnabled: e.target.checked})} 
-                    />
-                    <span className="text-[10px] font-black uppercase tracking-widest group-hover:line-through">AI Enabled</span>
-                  </label>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-black uppercase mb-1">AI Provider</label>
-                  <select 
-                    className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none disabled:opacity-20" 
-                    value={editingPartner.aiProvider || 'ollama'} 
-                    onChange={e => setEditingPartner({...editingPartner, aiProvider: e.target.value})}
-                    disabled={!editingPartner.aiEnabled}
-                  >
-                    {AI_PROVIDERS.filter(p => p.id !== 'none').map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-black uppercase mb-1">Model Name</label>
-                  <input 
-                    type="text" 
-                    className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold font-mono outline-none disabled:opacity-20" 
-                    value={editingPartner?.ollamaModel || ''} 
-                    onChange={e => setEditingPartner({ ...editingPartner, ollamaModel: e.target.value })} 
-                    disabled={!editingPartner.aiEnabled}
-                  />
-                </div>
-              </div>
-
               <div className="flex justify-end gap-3 mt-8">
                 <button onClick={() => setEditingPartner(null)} className="px-6 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white">Cancel</button>
                 <button onClick={() => updatePartner.mutate({ id: editingPartner.id, data: { ...editingPartner } })} className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white">Save Configuration</button>

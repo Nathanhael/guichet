@@ -4,13 +4,24 @@ import { trpc } from '../../utils/trpc';
 export default function PlatformAuditLog() {
   const [page, setPage] = useState(0);
   const [filterAction, setFilterAction] = useState('');
+  const [filterPartnerId, setFilterPartnerId] = useState('');
+  const [filterActorId, setFilterActorId] = useState('');
   const LIMIT = 50;
+
+  const { data: partners } = trpc.platform.listPartners.useQuery();
 
   const { data, isLoading } = trpc.platform.getAuditLog.useQuery({
     limit: LIMIT,
     offset: page * LIMIT,
-    action: filterAction || undefined
+    action: filterAction || undefined,
+    partnerId: filterPartnerId || undefined,
+    actorId: filterActorId || undefined,
   });
+
+  // Derive unique actors from loaded log entries
+  const actors = data
+    ? Array.from(new Map(data.filter(l => l.actorId && l.actorName).map(l => [l.actorId, l.actorName])).entries())
+    : [];
 
   return (
     <div className="max-w-6xl space-y-6">
@@ -19,20 +30,44 @@ export default function PlatformAuditLog() {
           <h2 className="text-lg font-black uppercase tracking-widest">Audit Log</h2>
           <p className="text-xs uppercase opacity-60 mt-1">System-wide activity tracker</p>
         </div>
-        <select 
-          value={filterAction} 
-          onChange={e => { setFilterAction(e.target.value); setPage(0); }}
-          className="border-2 border-black dark:border-white bg-transparent p-2 text-xs font-black uppercase tracking-widest"
-        >
-          <option value="">All Actions</option>
-          <option value="partner.config_updated">Config Updated</option>
-          <option value="partner.deactivated">Partner Deactivated</option>
-          <option value="partner.reactivated">Partner Reactivated</option>
-          <option value="member.added">Member Added</option>
-          <option value="member.invited">Member Invited</option>
-          <option value="member.removed">Member Removed</option>
-          <option value="member.updated">Member Updated</option>
-        </select>
+        <div className="flex gap-2">
+          <select
+            value={filterAction}
+            onChange={e => { setFilterAction(e.target.value); setPage(0); }}
+            className="border-2 border-black dark:border-white bg-transparent p-2 text-xs font-black uppercase tracking-widest"
+          >
+            <option value="">All Actions</option>
+            <option value="partner.config_updated">Config Updated</option>
+            <option value="partner.deactivated">Partner Deactivated</option>
+            <option value="partner.reactivated">Partner Reactivated</option>
+            <option value="partner.deleted">Partner Deleted</option>
+            <option value="member.added">Member Added</option>
+            <option value="member.invited">Member Invited</option>
+            <option value="member.removed">Member Removed</option>
+            <option value="member.updated">Member Updated</option>
+            <option value="gdpr.purge">GDPR Purge</option>
+          </select>
+          <select
+            value={filterPartnerId}
+            onChange={e => { setFilterPartnerId(e.target.value); setPage(0); }}
+            className="border-2 border-black dark:border-white bg-transparent p-2 text-xs font-black uppercase tracking-widest"
+          >
+            <option value="">All Partners</option>
+            {(partners || []).map(p => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <select
+            value={filterActorId}
+            onChange={e => { setFilterActorId(e.target.value); setPage(0); }}
+            className="border-2 border-black dark:border-white bg-transparent p-2 text-xs font-black uppercase tracking-widest"
+          >
+            <option value="">All Actors</option>
+            {actors.map(([id, name]) => (
+              <option key={id!} value={id!}>{name}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {isLoading ? (
@@ -51,7 +86,7 @@ export default function PlatformAuditLog() {
             </thead>
             <tbody className="divide-y divide-black/20 dark:divide-white/20">
               {data?.map((log) => (
-                <tr key={log.id} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                <tr key={log.id} className="hover:bg-black/5 dark:hover:bg-white/5">
                   <td className="p-3 text-[10px] font-mono whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>

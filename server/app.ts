@@ -23,7 +23,6 @@ import { auth, authorize } from './middleware/auth.js';
 import * as presenceService from './services/presence.js';
 import { setIo as setBusinessHoursIo } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
-import { setIo as setTopicHeatIo, runTopicHeatCheck } from './services/topicHeat.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { register } from './utils/metrics.js';
@@ -138,14 +137,7 @@ v1Router.get('/config', async (req: Request, res: Response) => {
 v1Router.get('/health', async (_req: Request, res: Response) => {
   try {
     await query('SELECT 1');
-    try {
-      const ollamaRes = await fetch(`${config.OLLAMA_HOST}/api/version`, { signal: AbortSignal.timeout(2000) });
-      if (!ollamaRes.ok) throw new Error('Ollama response not ok');
-    } catch (err) {
-      logger.warn('Ollama unavailable during health check');
-      return res.json({ status: 'degraded', database: 'connected', llm: 'disconnected' });
-    }
-    res.json({ status: 'ok', database: 'connected', llm: 'connected' });
+    res.json({ status: 'ok', database: 'connected' });
   } catch (err) {
     logger.error({ err }, 'Health check failed');
     res.status(503).json({ status: 'error', database: 'disconnected' });
@@ -189,9 +181,4 @@ setInterval(runDailyPurge, config.PURGE_INTERVAL_MS);
 // Socket.IO handlers
 registerSocketHandlers(io);
 
-// Topic Heat Detection
-setTopicHeatIo(io);
 setBusinessHoursIo(io);
-setInterval(() => {
-  runTopicHeatCheck().catch(err => logger.error({ err }, '[TopicHeat] Periodic check failed'));
-}, 10 * 60 * 1000); // Every 10 minutes

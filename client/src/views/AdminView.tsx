@@ -11,7 +11,6 @@ import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminLabels from '../components/admin/AdminLabels';
 import AdminCannedResponses from '../components/admin/AdminCannedResponses';
-import AdminAISettings from '../components/admin/AdminAISettings';
 import AdminBusinessHours from '../components/admin/AdminBusinessHours';
 import AdminDepartments from '../components/admin/AdminDepartments';
 import AdminAlerts from '../components/admin/AdminAlerts';
@@ -19,7 +18,7 @@ import AdminTeam from '../components/admin/AdminTeam';
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import { Flame, Building2, Users } from 'lucide-react';
 
-type AdminTab = 'dashboard' | 'alerts' | 'team' | 'ai_persona' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
+type AdminTab = 'dashboard' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned';
 
 export default function AdminView() {
   const { user, logout, memberships, activeMembershipId } = useStore();
@@ -35,7 +34,7 @@ export default function AdminView() {
   const NavButton = ({ id, label, icon }: { id: AdminTab; label: string; icon: React.ReactNode }) => (
     <button
       onClick={() => setView(id)}
-      className={`flex items-center gap-2.5 px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+      className={`flex items-center gap-2.5 px-4 py-2 text-[10px] font-black uppercase tracking-widest ${
         view === id
           ? 'bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white'
           : 'text-slate-400 hover:text-black dark:hover:text-white border-2 border-transparent'
@@ -47,7 +46,7 @@ export default function AdminView() {
   );
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white transition-colors duration-300">
+    <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
       <nav className="bg-white dark:bg-black text-black dark:text-white px-8 py-4 flex items-center justify-between sticky top-0 z-50 border-b-2 border-black dark:border-white">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">
@@ -63,7 +62,6 @@ export default function AdminView() {
             />
             <NavButton id="team" label="Team" icon={<Users className="h-4 w-4" />} />
             <NavButton id="alerts" label="Alerts" icon={<Flame className="h-4 w-4" />} />
-            <NavButton id="ai_persona" label="AI Persona" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>} />
             <NavButton id="business_hours" label="Hours" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
             <NavButton id="departments" label="Depts" icon={<Building2 className="h-4 w-4" />} />
             <NavButton id="tickets" label={t('active_tickets')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>} />
@@ -86,7 +84,7 @@ export default function AdminView() {
             <LanguageSwitcher />
             <NeuroToggle />
             <DarkModeToggle />
-            <button onClick={logout} className="p-2 text-black dark:text-white hover:invert transition-all" title={t('logout')}>
+            <button onClick={logout} className="p-2 text-black dark:text-white hover:invert" title={t('logout')}>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
           </div>
@@ -97,7 +95,6 @@ export default function AdminView() {
         {view === 'dashboard' && <AdminStats />}
         {view === 'team' && <AdminTeam />}
         {view === 'alerts' && <AdminAlerts />}
-        {view === 'ai_persona' && <AdminAISettings />}
         {view === 'business_hours' && <AdminBusinessHours />}
         {view === 'departments' && <AdminDepartments />}
         {view === 'tickets' && <AdminTickets />}

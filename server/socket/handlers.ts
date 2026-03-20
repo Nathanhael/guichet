@@ -2,7 +2,6 @@ import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import * as presenceService from '../services/presence.js';
 import { runGuards } from '../services/guards.js';
-import { processMessage } from '../services/translate.js';
 import { query, get, run, transaction } from '../db.js';
 import { isWithinBusinessHours, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
@@ -94,10 +93,6 @@ interface TicketRow {
 
 interface TicketPartnerRow {
   partner_id: string;
-}
-
-interface PartnerAIRow {
-  ai_enabled: boolean;
 }
 
 interface TicketParticipantsRow {

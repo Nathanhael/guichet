@@ -32,51 +32,6 @@ export const partnerRouter = router({
     }
   }),
 
-  updateAIRules: adminProcedure
-    .input(z.object({
-      aiRules: z.string(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-
-        await db.update(partners)
-          .set({ aiRules: input.aiRules })
-          .where(eq(partners.id, partnerId));
-
-        logger.info({ partnerId }, 'AI Rules updated by Partner Admin');
-        return { success: true };
-      } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
-    }),
-
-  updateAIStrategies: adminProcedure
-    .input(z.object({
-      agentPromptStrategy: z.string(),
-      supportPromptStrategy: z.string(),
-      enableActionableAi: z.boolean(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-
-        await db.update(partners)
-          .set({ 
-            agentPromptStrategy: input.agentPromptStrategy,
-            supportPromptStrategy: input.supportPromptStrategy,
-            enableActionableAi: input.enableActionableAi
-          })
-          .where(eq(partners.id, partnerId));
-
-        return { success: true };
-      } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
-    }),
-
   updateBusinessHours: adminProcedure
     .input(z.object({
       businessHoursStart: z.string().regex(/^\d{2}:\d{2}$/).nullable(),
