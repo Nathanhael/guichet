@@ -49,15 +49,13 @@ router.post('/login', [
                 id: memberships.id,
                 partnerId: memberships.partnerId,
                 role: memberships.role,
-                departments: memberships.departments, // Now JSONB array
-                dept: memberships.dept, // Legacy fallback
+                departments: memberships.departments,
                 partnerName: partners.name,
                 logoUrl: partners.logoUrl,
                 industry: partners.industry,
                 ref1Label: partners.ref1Label,
                 ref2Label: partners.ref2Label,
                 partnerDepartments: partners.departments,
-                aiRules: partners.aiRules,
                 status: partners.status
             })
             .from(memberships)
@@ -79,9 +77,8 @@ router.post('/login', [
         const token = jwt.sign(
             { 
                 userId: user.id, 
-                role: defaultMembership?.role || (user.isPlatformOperator ? 'platform_operator' : 'user'), 
+                role: defaultMembership?.role || (user.isPlatformOperator ? 'platform_operator' : 'user'),
                 departments: defaultMembership?.departments || [],
-                dept: defaultMembership?.dept,
                 partnerId: defaultMembership?.partnerId,
                 membershipId: defaultMembership?.id,
                 isPlatformOperator: user.isPlatformOperator
@@ -106,14 +103,12 @@ router.post('/login', [
                 partnerName: m.partnerName,
                 role: m.role,
                 departments: m.departments || [],
-                dept: m.dept,
                 manifest: {
                     industry: m.industry,
                     logoUrl: m.logoUrl,
                     ref1Label: m.ref1Label,
                     ref2Label: m.ref2Label,
-                    departments: m.partnerDepartments || [], // Native JSONB
-                    aiRules: m.aiRules
+                    departments: m.partnerDepartments || [],
                 }
             })),
             activePartnerId: defaultMembership?.partnerId
@@ -135,14 +130,12 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
                 partnerId: memberships.partnerId,
                 role: memberships.role,
                 departments: memberships.departments,
-                dept: memberships.dept,
                 partnerName: partners.name,
                 logoUrl: partners.logoUrl,
                 industry: partners.industry,
                 ref1Label: partners.ref1Label,
                 ref2Label: partners.ref2Label,
                 partnerDepartments: partners.departments,
-                aiRules: partners.aiRules,
                 status: partners.status
             })
             .from(memberships)
@@ -163,9 +156,8 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
         const token = jwt.sign(
             { 
                 userId: userId, 
-                role: membership.role, 
+                role: membership.role,
                 departments: membership.departments || [],
-                dept: membership.dept,
                 partnerId: membership.partnerId,
                 membershipId: membership.id,
                 isPlatformOperator: req.user.isPlatformOperator
@@ -182,8 +174,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
                 logoUrl: membership.logoUrl,
                 ref1Label: membership.ref1Label,
                 ref2Label: membership.ref2Label,
-                departments: membership.partnerDepartments || [], // Native JSONB
-                aiRules: membership.aiRules
+                departments: membership.partnerDepartments || [],
             }
         });
     } catch (err: unknown) {

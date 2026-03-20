@@ -46,7 +46,6 @@ export const memberships = pgTable('memberships', {
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   role: roleEnum('role').notNull(),
   departments: jsonb('departments').default([]),
-  dept: text('dept'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({
   userPartnerIdx: index('idx_memberships_user_partner').on(table.userId, table.partnerId),
@@ -72,7 +71,6 @@ export const tickets = pgTable('tickets', {
   closingNotes: text('closing_notes'),
   closedBy: text('closed_by'),
   participants: jsonb('participants').default([]),
-  summary: text('summary'),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
 }, (table) => ({
@@ -93,7 +91,6 @@ export const messages = pgTable('messages', {
   senderRole: text('sender_role'),
   senderLang: text('sender_lang'),
   text: text('text'),
-  translatedText: text('translated_text'),
   mediaUrl: text('media_url'),
   whisper: integer('whisper').default(0),
   system: integer('system').default(0),

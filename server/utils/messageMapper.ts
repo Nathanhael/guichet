@@ -3,7 +3,6 @@ import { Message } from '../types';
 export function mapMessageRow(row: any): Message {
   // Handle both snake_case (raw SQL) and camelCase (Drizzle) row formats
   const originalText = row.text || '';
-  const translatedText = row.translated_text || row.translatedText || null;
   const createdAt = row.created_at || row.createdAt;
   const senderRole = row.sender_role || row.senderRole || 'system';
   const senderLang = row.sender_lang || row.senderLang || 'en';
@@ -24,13 +23,13 @@ export function mapMessageRow(row: any): Message {
     senderRole,
     senderLang,
     originalText,
-    processedText: translatedText || originalText,
-    improvedText: translatedText || originalText,
-    text: translatedText || originalText, // fallback to original if translated is null
+    processedText: originalText,
+    improvedText: originalText,
+    text: originalText,
     mediaUrl: row.media_url || row.mediaUrl || null,
     whisper: !!row.whisper,
     system: !!row.system,
-    translationSkipped: !translatedText,
+    translationSkipped: true,
     fallback: 0,
     timestamp: createdAt,
     createdAt: createdAt,
