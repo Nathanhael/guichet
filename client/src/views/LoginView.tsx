@@ -4,7 +4,6 @@ import { tBrowser } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
 import SystemBackground from '../components/SystemBackground';
 import { UserRole } from '../types';
-import InWebsiteError from '../components/InWebsiteError';
 import { trpc } from '../utils/trpc';
 
 const ROLE_LABEL: Record<string, string> = { agent: 'Agent', support: 'Support', admin: 'Admin', platform: 'Platform', platform_operator: 'Platform Admin' };
@@ -13,7 +12,6 @@ const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR'
 export default function LoginView() {
   const { setUser, setToken } = useStore();
   const [filter, setFilter] = useState<UserRole | 'all' | 'platform'>('all');
-  const [error, setError] = useState<string | null>(null);
 
   const { data: usersData, isLoading: loading } = trpc.user.list.useQuery();
   const users = (usersData || []) as any[];
@@ -54,7 +52,6 @@ export default function LoginView() {
         </div>
 
         <div className="p-4 max-h-[28rem] overflow-y-auto bg-white dark:bg-black">
-          <InWebsiteError message={error} onDismiss={() => setError(null)} />
           {loading && (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
               <div className="w-8 h-8 border-4 border-black dark:border-white border-t-transparent rounded-full" />
@@ -71,7 +68,6 @@ export default function LoginView() {
                 <button
                   onClick={async () => {
                     try {
-                      setError(null);
                       const res = await fetch('/api/v1/auth/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -86,13 +82,9 @@ export default function LoginView() {
                         if (memberships.length > 0 && !data.user.isPlatformOperator) {
                           useStore.getState().setActiveMembershipId(memberships[0].id);
                         }
-                      } else {
-                        const data = await res.json().catch(() => ({}));
-                        setError(data.error || 'Login failed.');
                       }
                     } catch (err) {
                       console.error(err);
-                      setError('Connection error.');
                     }
                   }}
                   className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black group flex items-center justify-between"

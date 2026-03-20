@@ -11,7 +11,6 @@ import LanguageSwitcher from '../components/LanguageSwitcher';
 import BusinessHoursGuard from '../components/BusinessHoursGuard';
 import FeedbackModal from '../components/FeedbackModal';
 import RatingModal from '../components/RatingModal';
-import InWebsiteError from '../components/InWebsiteError';
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import { trpc } from '../utils/trpc';
 
@@ -30,7 +29,6 @@ export default function AgentView() {
   const [ref2, setRef2] = useState('');
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const notificationsEnabled = useStore((s) => s.notificationsEnabled);
   const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
@@ -55,12 +53,9 @@ export default function AgentView() {
       setRef1('');
       setRef2('');
       setText('');
-      setError(null);
       setLoading(false);
     };
-    const onError = (msg?: unknown) => {
-      const errMsg = typeof msg === 'string' ? msg : (msg as any)?.message || 'An error occurred. Please try again.';
-      setError(errMsg);
+    const onError = () => {
       setLoading(false);
     };
     s.on('ticket:created:self', onCreated);
@@ -79,7 +74,6 @@ export default function AgentView() {
     e.preventDefault();
     if (!user || !text.trim()) return;
     setLoading(true);
-    setError(null);
     getSocket().emit('ticket:new', {
       dept,
       agentId: user.id,
@@ -179,8 +173,6 @@ export default function AgentView() {
                   <h2 className="text-2xl font-bold text-ui-base01 dark:text-white mb-2">{t('hello')}, {user.name}</h2>
                   <p className="text-ui-base1 dark:text-gray-400 mb-8">{t('choose_dept_desc')}</p>
                   
-                  <InWebsiteError message={error} onDismiss={() => setError(null)} />
-
                   <form onSubmit={createTicket} aria-label={t('new_ticket')} className="space-y-6">
                     <div className="grid grid-cols-2 gap-3">
                       {manifest.departments.map((d) => (
