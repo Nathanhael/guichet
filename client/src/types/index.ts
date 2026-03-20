@@ -215,13 +215,10 @@ export interface AdminStats {
   slaHealth: number;
   oldestWaitMinutes: number;
   waitingOver3: number;
-  dscCount: number;
-  fotCount: number;
-  globalDscCount?: number;
-  globalFotCount?: number;
+  deptCounts: Record<string, number>;
   deptSla?: Record<string, number>;
   trendGranularity: 'daily' | 'weekly' | 'monthly';
-  dailyTrend: { date: string; total: number; dsc: number; fot: number }[];
+  dailyTrend: { date: string; total: number; deptCounts: Record<string, number> }[];
   ratingsByDept?: Record<string, DeptRating>;
   supportStats: { name: string; total: number; today: number }[];
   agentStats: { name: string; total: number; today: number }[];

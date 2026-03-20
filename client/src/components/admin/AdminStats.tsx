@@ -13,8 +13,13 @@ import {
   Legend,
 } from 'recharts';
 import { trpc } from '../../utils/trpc';
+import useStore from '../../store/useStore';
 
 export default function AdminStats() {
+  const { memberships, activeMembershipId } = useStore();
+  const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
+  const departments: { id: string; name: string }[] = activeMembership?.manifest?.departments || [];
+
   const [statsDept, setStatsDept] = useState('all');
   const [statsDateFrom, setStatsDateFrom] = useState('');
   const [statsDateTo, setStatsDateTo] = useState('');
@@ -42,62 +47,68 @@ export default function AdminStats() {
     setActivePreset(key);
   }
 
-  // tRPC: Global Stats
   const { data: stats, isLoading } = trpc.stats.getGlobalStats.useQuery(
     {
       dept: statsDept === 'all' ? undefined : statsDept,
       dateFrom: statsDateFrom || undefined,
       dateTo: statsDateTo || undefined,
     },
-    {
-      refetchInterval: 30000,
-    }
+    { refetchInterval: 30000 }
   );
 
   if (isLoading || !stats) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto p-4 animate-fade-in">
+      <div className="space-y-6 max-w-7xl mx-auto p-4">
         <div className="flex justify-between items-center mb-8">
           <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-12 w-96 rounded-2xl" />
+          <Skeleton className="h-12 w-96" />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Skeleton key={i} className="h-24 rounded-2xl" />
+            <Skeleton key={i} className="h-24" />
           ))}
         </div>
-        <Skeleton className="h-64 rounded-2xl w-full" />
+        <Skeleton className="h-64 w-full" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Skeleton className="h-80 rounded-2xl" />
-          <Skeleton className="h-80 rounded-2xl" />
+          <Skeleton className="h-80" />
+          <Skeleton className="h-80" />
         </div>
       </div>
     );
   }
 
+  const deptCounts: Record<string, number> = (stats as any).deptCounts || {};
+  const totalTickets = stats.total || 1;
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto animate-slide-up pb-10">
+    <div className="space-y-6 max-w-7xl mx-auto pb-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-ui-base01 dark:text-white tracking-tight">Dashboard</h2>
-          <p className="text-sm text-ui-base1 dark:text-gray-400 mt-1">Real-time performance metrics and historical trends</p>
+          <h2 className="text-2xl font-black uppercase tracking-tight text-black dark:text-white">Dashboard</h2>
+          <p className="text-sm opacity-60 mt-1">Real-time performance metrics and historical trends</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 bg-ui-base3/50 dark:bg-brand-800/50 p-2 rounded-2xl border border-ui-base2 dark:border-brand-700/50 backdrop-blur-sm self-start">
+        <div className="flex flex-wrap items-center gap-2 border-2 border-black dark:border-white p-2 bg-white dark:bg-black">
+          {/* Department filter */}
           <div className="flex gap-1">
-            {['all', 'DSC', 'FOT'].map((d) => (
+            {(['all', ...departments.map(d => d.id)] as string[]).map((d) => (
               <button
                 key={d}
                 onClick={() => setStatsDept(d)}
-                className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 ${
-                  statsDept === d ? 'bg-brand-500 text-white shadow-md shadow-brand-500/20' : 'text-ui-base01 dark:text-gray-400 hover:bg-ui-base2 dark:hover:bg-brand-700'
+                className={`px-3 py-1.5 text-xs font-black uppercase border-2 ${
+                  statsDept === d
+                    ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
+                    : 'border-transparent text-black dark:text-white opacity-50 hover:opacity-100'
                 }`}
               >
-                {d === 'all' ? 'All' : d}
+                {d === 'all' ? 'All' : (departments.find(dep => dep.id === d)?.name || d)}
               </button>
             ))}
           </div>
-          <div className="w-px h-6 bg-slate-200 dark:bg-brand-700 mx-1 invisible md:visible" />
+
+          <div className="w-px h-6 bg-black dark:bg-white opacity-20 mx-1" />
+
+          {/* Date presets */}
           <div className="flex gap-1">
             {[
               { key: 'today', label: 'Today' },
@@ -108,44 +119,38 @@ export default function AdminStats() {
               <button
                 key={key}
                 onClick={() => applyPreset(key)}
-                className={`px-2.5 py-1.5 text-xs font-bold rounded-xl transition-all duration-300 ${
-                  activePreset === key ? 'bg-accent-500 text-white shadow-md shadow-accent-500/20' : 'text-ui-base01 dark:text-gray-400 hover:bg-ui-base2 dark:hover:bg-brand-700'
+                className={`px-2.5 py-1.5 text-xs font-black uppercase border-2 ${
+                  activePreset === key
+                    ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
+                    : 'border-transparent text-black dark:text-white opacity-50 hover:opacity-100'
                 }`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="w-px h-6 bg-slate-200 dark:bg-brand-700 mx-1 invisible md:visible" />
+
+          <div className="w-px h-6 bg-black dark:bg-white opacity-20 mx-1" />
+
+          {/* Date range */}
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={statsDateFrom}
-              onChange={(e) => {
-                setStatsDateFrom(e.target.value);
-                setActivePreset(null);
-              }}
-              className="border-none bg-ui-base3/80 dark:bg-gray-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-ui-base01 dark:text-gray-200 focus:ring-2 focus:ring-brand-500 outline-none"
+              onChange={(e) => { setStatsDateFrom(e.target.value); setActivePreset(null); }}
+              className="border-2 border-black dark:border-white bg-transparent px-3 py-1.5 text-xs font-bold text-black dark:text-white outline-none"
             />
-            <span className="text-ui-base1 text-xs">→</span>
+            <span className="text-xs opacity-50">→</span>
             <input
               type="date"
               value={statsDateTo}
-              onChange={(e) => {
-                setStatsDateTo(e.target.value);
-                setActivePreset(null);
-              }}
-              className="border-none bg-ui-base3/80 dark:bg-gray-700/80 rounded-xl px-3 py-1.5 text-xs font-semibold text-ui-base01 dark:text-gray-200 focus:ring-2 focus:ring-brand-500 outline-none"
+              onChange={(e) => { setStatsDateTo(e.target.value); setActivePreset(null); }}
+              className="border-2 border-black dark:border-white bg-transparent px-3 py-1.5 text-xs font-bold text-black dark:text-white outline-none"
             />
             {(statsDept !== 'all' || statsDateFrom || statsDateTo) && (
               <button
-                onClick={() => {
-                  setStatsDept('all');
-                  setStatsDateFrom('');
-                  setStatsDateTo('');
-                  setActivePreset(null);
-                }}
-                className="p-1.5 text-slate-400 hover:text-brand-500 hover:bg-brand-50 dark:hover:bg-brand-900/40 rounded-lg transition-colors"
+                onClick={() => { setStatsDept('all'); setStatsDateFrom(''); setStatsDateTo(''); setActivePreset(null); }}
+                className="p-1.5 border-2 border-black dark:border-white text-black dark:text-white opacity-50 hover:opacity-100"
                 title="Clear all filters"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -157,6 +162,7 @@ export default function AdminStats() {
         </div>
       </div>
 
+      {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <StatCard label="Total Tickets" value={stats.total} color="dark" prev={stats.previousPeriod?.total} />
         <StatCard
@@ -183,60 +189,56 @@ export default function AdminStats() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Queue health */}
         <Panel title="Queue health">
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <div
-              className={`rounded-lg p-3 ${
-                stats.oldestWaitMinutes > 3 ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800' : 'bg-ui-base2 dark:bg-gray-700'
-              }`}
-            >
-              <p className="text-xs text-ui-base1 dark:text-gray-400">Oldest waiting</p>
-              <p
-                className={`text-2xl font-bold mt-0.5 ${
-                  stats.oldestWaitMinutes > 3 ? 'text-red-600 dark:text-red-400' : 'text-ui-base01 dark:text-white'
-                }`}
-              >
+            <div className={`border-2 p-3 ${stats.oldestWaitMinutes > 3 ? 'border-black dark:border-white' : 'border-black/20 dark:border-white/20'}`}>
+              <p className="text-xs uppercase font-bold opacity-60">Oldest waiting</p>
+              <p className={`text-2xl font-black mt-0.5 ${stats.oldestWaitMinutes > 3 ? 'text-black dark:text-white' : 'opacity-40'}`}>
                 {stats.oldestWaitMinutes > 0 ? `${stats.oldestWaitMinutes}m` : '—'}
               </p>
             </div>
-            <div
-              className={`rounded-lg p-3 ${
-                stats.waitingOver3 > 0 ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800' : 'bg-ui-base2 dark:bg-gray-700'
-              }`}
-            >
-              <p className="text-xs text-ui-base1 dark:text-gray-400">Waiting &gt;3 min</p>
-              <p
-                className={`text-2xl font-bold mt-0.5 ${
-                  stats.waitingOver3 > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-ui-base01 dark:text-white'
-                }`}
-              >
+            <div className={`border-2 p-3 ${stats.waitingOver3 > 0 ? 'border-black dark:border-white' : 'border-black/20 dark:border-white/20'}`}>
+              <p className="text-xs uppercase font-bold opacity-60">Waiting &gt;3 min</p>
+              <p className={`text-2xl font-black mt-0.5 ${stats.waitingOver3 > 0 ? 'text-black dark:text-white' : 'opacity-40'}`}>
                 {stats.waitingOver3}
               </p>
             </div>
           </div>
 
-            <div className="mt-4 pt-4 border-t border-ui-base2 dark:border-gray-700">
-            <p className="text-[10px] uppercase font-bold text-ui-base1 mb-2 tracking-wider">DSC vs FOT Distribution</p>
-            <div className="h-2 w-full bg-indigo-500 rounded-full overflow-hidden flex">
-              <div
-                className="h-full bg-amber-500 transition-all duration-500"
-                style={{ width: `${Math.round((stats.dscCount / (stats.total || 1)) * 100)}%` }}
-              />
+          {/* Department distribution */}
+          {departments.length > 0 && (
+            <div className="mt-4 pt-4 border-t-2 border-black/10 dark:border-white/10">
+              <p className="text-[10px] uppercase font-black opacity-60 mb-3 tracking-widest">Dept distribution</p>
+              <div className="space-y-2">
+                {departments.map((dept) => {
+                  const count = deptCounts[dept.id] || 0;
+                  const pct = Math.round((count / totalTickets) * 100);
+                  return (
+                    <div key={dept.id}>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-[10px] font-black uppercase">{dept.name}</span>
+                        <span className="text-[10px] font-bold opacity-60">{count} ({pct}%)</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-black/10 dark:bg-white/10">
+                        <div className="h-full bg-black dark:bg-white" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="flex justify-between mt-1.5">
-              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">● DSC {Math.round((stats.dscCount / (stats.total || 1)) * 100)}%</span>
-              <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">● FOT {Math.round((stats.fotCount / (stats.total || 1)) * 100)}%</span>
-            </div>
-          </div>
+          )}
         </Panel>
 
         <Panel title="Online now">
           <div className="py-4 text-center">
-            <p className="text-sm text-ui-base1">Live presence monitoring active</p>
+            <p className="text-sm opacity-60">Live presence monitoring active</p>
           </div>
         </Panel>
       </div>
 
+      {/* Trend chart */}
       <Panel
         title={`Tickets Trend (${
           stats.trendGranularity === 'weekly' ? `${stats.dailyTrend.length} weeks` : stats.trendGranularity === 'monthly' ? `${stats.dailyTrend.length} months` : `${stats.dailyTrend.length} days`
@@ -249,17 +251,16 @@ export default function AdminStats() {
             <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
             <Tooltip />
             <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-            <Line type="monotone" dataKey="total" stroke="#e24e1b" strokeWidth={2} dot={false} name="Total" />
-            <Line type="monotone" dataKey="dsc" stroke="#f59e0b" strokeWidth={1.5} dot={false} name="DSC" />
-            <Line type="monotone" dataKey="fot" stroke="#6366f1" strokeWidth={1.5} dot={false} name="FOT" />
+            <Line type="monotone" dataKey="total" stroke="#000000" strokeWidth={2} dot={false} name="Total" />
           </LineChart>
         </ResponsiveContainer>
       </Panel>
 
+      {/* Support & Agent performance */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Panel title="Support performance">
           {stats.supportStats.length === 0 ? (
-            <p className="text-sm text-ui-base1">No data yet</p>
+            <p className="text-sm opacity-60">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.supportStats.length * 40)}>
               <BarChart data={stats.supportStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
@@ -268,8 +269,8 @@ export default function AdminStats() {
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
                 <Tooltip />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="total" fill="#6366f1" radius={[0, 3, 3, 0]} name="Total Tasks" />
-                <Bar dataKey="today" fill="#a5b4fc" radius={[0, 3, 3, 0]} name="Today" />
+                <Bar dataKey="total" fill="#000000" name="Total Tasks" />
+                <Bar dataKey="today" fill="#666666" name="Today" />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -277,7 +278,7 @@ export default function AdminStats() {
 
         <Panel title="Agent performance">
           {stats.agentStats.length === 0 ? (
-            <p className="text-sm text-ui-base1">No data yet</p>
+            <p className="text-sm opacity-60">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.agentStats.length * 40)}>
               <BarChart data={stats.agentStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
@@ -286,8 +287,8 @@ export default function AdminStats() {
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
                 <Tooltip />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="total" fill="#f59e0b" radius={[0, 3, 3, 0]} name="Total Tickets" />
-                <Bar dataKey="today" fill="#fcd34d" radius={[0, 3, 3, 0]} name="Today" />
+                <Bar dataKey="total" fill="#000000" name="Total Tickets" />
+                <Bar dataKey="today" fill="#666666" name="Today" />
               </BarChart>
             </ResponsiveContainer>
           )}

@@ -79,8 +79,7 @@ interface HourlyStaffingAccumulator {
 interface PerDayEntry {
   date: string;
   total: number;
-  dsc: number;
-  fot: number;
+  deptCounts: Record<string, number>;
   sentiment?: number | null;
   p95?: number | null;
 }
@@ -193,8 +192,7 @@ export const statsRouter = router({
         }
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0, totalReopened = 0;
-        let totalDsc = 0, totalFot = 0;
-        let globalDsc = 0, globalFot = 0;
+        const totalDeptCounts: Record<string, number> = {};
         let totalResponseSum = 0, totalResponseCount = 0;
         let totalDurationSum = 0, totalDurationCount = 0;
         let totalRatingSum = 0, totalRatingCount = 0;
@@ -215,8 +213,6 @@ export const statsRouter = router({
 
           if (hist) {
             const histDeptCounts = JSON.parse(hist.deptCounts || '{}');
-            globalDsc += histDeptCounts['DSC'] || 0;
-            globalFot += histDeptCounts['FOT'] || 0;
             const histRatingsByDept = JSON.parse(hist.ratingsByDept || '{}');
             const histHourly = JSON.parse(hist.hourly || '[]');
 
@@ -283,23 +279,17 @@ export const statsRouter = router({
             const dayRatings = liveRatings.filter(r => dayTickets.some(t => t.id === r.ticketId));
             const dayMessages = liveMessages.filter(m => dayTickets.some(t => t.id === m.ticketId));
             dayData = computeLiveDayStats(dayTickets, dayRatings, dept, dayMessages) as unknown as DayData;
-
-            const allDayTickets = allLiveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
-            globalDsc += allDayTickets.filter(t => t.dept === 'DSC').length;
-            globalFot += allDayTickets.filter(t => t.dept === 'FOT').length;
           }
 
           perDayData.push({
             date,
             total: dayData.total,
-            dsc: dayData.deptCounts['DSC'] || 0,
-            fot: dayData.deptCounts['FOT'] || 0,
+            deptCounts: dayData.deptCounts,
             sentiment: dayData.sentimentCount > 0 ? Math.round((dayData.sentimentSum / dayData.sentimentCount) * 100) / 100 : null,
             p95: Math.round(dayData.p95ResponseMs / 60000)
           });
           totalCount += dayData.total;
-          totalDsc += dayData.deptCounts['DSC'] || 0;
-          totalFot += dayData.deptCounts['FOT'] || 0;
+          Object.entries(dayData.deptCounts).forEach(([d, c]) => { totalDeptCounts[d] = (totalDeptCounts[d] || 0) + c; });
           totalClosed += dayData.closed;
           totalAbandoned += dayData.abandoned;
           totalReopened += dayData.reopened;
@@ -382,8 +372,10 @@ export const statsRouter = router({
             weeks.push({
               date: `W${weeks.length + 1}`,
               total: chunk.reduce((s, d) => s + d.total, 0),
-              dsc: chunk.reduce((s, d) => s + d.dsc, 0),
-              fot: chunk.reduce((s, d) => s + d.fot, 0),
+              deptCounts: chunk.reduce((acc, d) => {
+                Object.entries(d.deptCounts).forEach(([k, v]) => { acc[k] = (acc[k] || 0) + v; });
+                return acc;
+              }, {} as Record<string, number>),
             });
           }
           dailyTrend = weeks;
@@ -392,10 +384,9 @@ export const statsRouter = router({
           const months: Record<string, PerDayEntry> = {};
           perDayData.forEach(d => {
             const key = d.date.slice(0, 7);
-            if (!months[key]) months[key] = { date: key, total: 0, dsc: 0, fot: 0 };
+            if (!months[key]) months[key] = { date: key, total: 0, deptCounts: {} };
             months[key].total += d.total;
-            months[key].dsc += d.dsc;
-            months[key].fot += d.fot;
+            Object.entries(d.deptCounts).forEach(([k, v]) => { months[key].deptCounts[k] = (months[key].deptCounts[k] || 0) + v; });
           });
           dailyTrend = Object.values(months);
         }
@@ -553,12 +544,13 @@ export const statsRouter = router({
           })).sort((a, b) => a.hour - b.hour),
           dailyTrend, trendGranularity, supportStats, agentStats, slaHealth, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
           waitingOver3: waitingTickets.filter(t => t.createdAt && (now.getTime() - new Date(t.createdAt).getTime()) > 3 * 60 * 1000).length,
-          dscCount: totalDsc, fotCount: totalFot, globalDscCount: globalDsc, globalFotCount: globalFot, resolutionRate: totalCount > 0 ? Math.round((totalClosed / totalCount) * 100) : 0,
+          deptCounts: totalDeptCounts, resolutionRate: totalCount > 0 ? Math.round((totalClosed / totalCount) * 100) : 0,
           avgConcurrency: supportIdsAgg.size > 0 ? Math.round((totalCount / supportIdsAgg.size) * 10) / 10 : 0,
-          deptSla: {
-            DSC: deptResolvedAgg['DSC'] > 0 ? Math.round((deptCompliantAgg['DSC'] || 0) / deptResolvedAgg['DSC'] * 100) : 0,
-            FOT: deptResolvedAgg['FOT'] > 0 ? Math.round((deptCompliantAgg['FOT'] || 0) / deptResolvedAgg['FOT'] * 100) : 0,
-          },
+          deptSla: Object.fromEntries(
+            Object.entries(deptResolvedAgg).map(([d, resolved]) => [
+              d, resolved > 0 ? Math.round((deptCompliantAgg[d] || 0) / resolved * 100) : 0
+            ])
+          ),
           daySummary: await (async () => {
             const labelsSql = `SELECT l.name, t.dept, COUNT(*) as count
                                FROM ticket_labels tl
@@ -568,8 +560,11 @@ export const statsRouter = router({
                                GROUP BY l.name, t.dept
                                ORDER BY t.dept, count DESC`;
             const labelCounts = (await query(labelsSql, [rangeStart, rangeEnd, partnerId])) as unknown as LabelCountRow[];
-            const summary: Record<string, string[]> = { DSC: [], FOT: [] };
-            labelCounts.forEach(lc => { if (summary[lc.dept] && summary[lc.dept].length < 3) summary[lc.dept].push(lc.name); });
+            const summary: Record<string, string[]> = {};
+            labelCounts.forEach(lc => {
+              if (!summary[lc.dept]) summary[lc.dept] = [];
+              if (summary[lc.dept].length < 3) summary[lc.dept].push(lc.name);
+            });
             return summary;
           })(),
           cannedResponseUsage: await (async () => {
