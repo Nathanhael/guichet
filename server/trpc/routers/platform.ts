@@ -359,7 +359,7 @@ export const platformRouter = router({
           metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: partner[0].authMethod }
         });
 
-        return { userId, membershipId: memId, tempPassword, isExistingUser };
+        return { userId, membershipId: memId, tempPassword: tempPassword ?? '', isExistingUser: isExistingUser ?? false };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
