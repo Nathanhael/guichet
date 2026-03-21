@@ -215,7 +215,11 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
 
   const inviteMutation = trpc.partner.inviteExternalUser.useMutation({
     onSuccess: (data) => {
-      setTempPassword(data.tempPassword);
+      if (data.tempPassword) {
+        setTempPassword(data.tempPassword);
+      } else {
+        onInvited();
+      }
     },
     onError: (err) => alert(err.message)
   });
@@ -227,31 +231,43 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
 
   if (tempPassword) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-        <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-8 max-w-md w-full shadow-2xl text-center">
-          <div className="w-16 h-16 border-4 border-black dark:border-white flex items-center justify-center mx-auto mb-6 text-2xl font-black">✓</div>
-          <h3 className="text-xl font-black uppercase tracking-tighter mb-2">User Invited</h3>
-          <p className="text-sm uppercase opacity-70 mb-6">Please share these credentials securely.</p>
-          
-          <div className="bg-black/5 dark:bg-white/5 border border-black/20 dark:border-white/20 p-4 mb-6 text-left">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Email</p>
-            <p className="font-mono text-sm mb-4">{email}</p>
-            
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-50 mb-1">Temporary Password</p>
-            <p className="font-mono text-lg font-bold select-all">{tempPassword}</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black opacity-80" onClick={() => { setTempPassword(null); onInvited(); }} />
+        <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 max-w-md w-full relative z-10">
+          <h3 className="text-xl font-black uppercase tracking-tighter mb-4">User Invited</h3>
+          <div className="space-y-4">
+            <p className="text-xs font-bold uppercase tracking-widest">User created successfully.</p>
+            <div className="border-2 border-black dark:border-white p-4">
+              <p className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">Temporary Password</p>
+              <div className="flex items-center justify-between gap-3">
+                <code className="font-mono text-sm font-bold break-all">{tempPassword}</code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(tempPassword)}
+                  className="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black shrink-0"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            <p className="text-[9px] uppercase font-bold opacity-50">Share this securely. It won't be shown again.</p>
           </div>
-
-          <button onClick={onInvited} className="w-full py-3 bg-black dark:bg-white text-white dark:text-black font-black uppercase tracking-widest hover:invert">
-            Done
-          </button>
+          <div className="flex justify-end mt-6">
+            <button
+              onClick={() => { setTempPassword(null); onInvited(); }}
+              className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white"
+            >
+              Done
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 max-w-md w-full shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} />
+      <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 max-w-md w-full relative z-10">
         <h3 className="text-xl font-black uppercase tracking-tighter mb-4">Invite External User</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
