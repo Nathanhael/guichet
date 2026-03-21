@@ -145,8 +145,9 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 max-w-md w-full shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} />
+      <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 max-w-md w-full relative z-10">
         <h3 className="text-xl font-black uppercase tracking-tighter mb-4">Add Existing User</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
