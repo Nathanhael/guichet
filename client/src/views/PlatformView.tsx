@@ -25,10 +25,9 @@ export default function PlatformView() {
   const [inviteForm, setInviteForm] = useState({
     email: '',
     name: '',
-    role: 'support' as any,
+    role: 'support' as string,
     partnerId: '',
-    dept: '',
-    accessType: 'sso' as 'sso' | 'local'
+    dept: ''
   });
 
   const [partnerDeleteConfirmation, setPartnerDeleteConfirmation] = useState('');
@@ -40,6 +39,7 @@ export default function PlatformView() {
   const [addRole, setAddRole] = useState<string>('support');
   const [addPartnerId, setAddPartnerId] = useState<string>('');
   const [inviteError, setInviteError] = useState<string>('');
+  const [inviteResult, setInviteResult] = useState<{ tempPassword: string | null; isExistingUser: boolean; partnerName: string } | null>(null);
 
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -69,6 +69,8 @@ export default function PlatformView() {
   const { data: partners, refetch: refetchPartners } = trpc.platform.listPartners.useQuery();
   const { data: globalUsers, refetch: refetchUsers } = trpc.platform.listGlobalUsers.useQuery();
 
+  const utils = trpc.useUtils();
+
   const createPartner = trpc.platform.createPartner.useMutation({
     onSuccess: () => {
       setShowCreateModal(false);
@@ -92,17 +94,29 @@ export default function PlatformView() {
   const inviteUser = trpc.platform.inviteUser.useMutation({
     onSuccess: async (data) => {
       setInviteError('');
+
+      // Determine partner name for the confirmation dialog
+      // Use a local ref to the current partners data to avoid stale closure
+      const currentPartners = utils.platform.listPartners.getData();
+      const partnerName = currentPartners?.find(p => p.id === inviteForm.partnerId)?.name || inviteForm.partnerId;
+
+      // Show confirmation dialog with result
+      setInviteResult({
+        tempPassword: data.tempPassword,
+        isExistingUser: data.isExistingUser,
+        partnerName
+      });
+
       // If we are NOT in the 'Manage Access' modal, clean up the global invite form
       if (!editingUser) {
         setShowInviteModal(false);
-        setInviteForm({ email: '', name: '', role: 'support', partnerId: '', dept: '', accessType: 'sso' });
+        setInviteForm({ email: '', name: '', role: 'support', partnerId: '', dept: '' });
       }
 
-      // Refresh the data
+      // Refresh data
       const { data: freshUsers } = await refetchUsers();
 
       // If we ARE in the 'Manage Access' modal, update the current user snapshot
-      // so the new partner appears immediately in the list
       if (editingUser && freshUsers) {
         const updatedUser = freshUsers.find(u => u.id === editingUser.id);
         if (updatedUser) setEditingUser(updatedUser);
@@ -667,30 +681,6 @@ export default function PlatformView() {
           <div className="w-full max-w-xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
             <h2 className="text-2xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">Invite New User</h2>
             <div className="space-y-4">
-              <div className="mb-6">
-                <label className="block text-[10px] font-black uppercase tracking-widest mb-2">Identity & Access Type</label>
-                <div className="flex border-2 border-black dark:border-white">
-                  <button 
-                    onClick={() => setInviteForm({...inviteForm, accessType: 'sso'})}
-                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest ${inviteForm.accessType === 'sso' ? 'bg-black dark:bg-white text-white dark:text-black' : 'hover:bg-black/5'}`}
-                  >
-                    SSO (Azure Managed)
-                  </button>
-                  <button 
-                    onClick={() => setInviteForm({...inviteForm, accessType: 'local'})}
-                    className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest border-l-2 border-black dark:border-white ${inviteForm.accessType === 'local' ? 'bg-black dark:bg-white text-white dark:text-black' : 'hover:bg-black/5'}`}
-                  >
-                    Local (Password Access)
-                  </button>
-                </div>
-                <p className="mt-2 text-[9px] uppercase font-bold opacity-50">
-                  {inviteForm.accessType === 'sso' 
-                    ? 'User will sign in via corporate SSO. No local password will be generated.' 
-                    : 'A temporary password will be generated for external users without SSO access.'
-                  }
-                </p>
-              </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-1">Name</label>
@@ -747,6 +737,66 @@ export default function PlatformView() {
                   Invite User
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Result Dialog */}
+      {inviteResult && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+          <div onClick={() => setInviteResult(null)} className="absolute inset-0 bg-black opacity-80" />
+          <div className="w-full max-w-md bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
+            <h2 className="text-xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">
+              User Invited
+            </h2>
+            {inviteResult.isExistingUser ? (
+              <div className="space-y-4">
+                <p className="text-xs font-bold uppercase tracking-widest">
+                  User granted access to {inviteResult.partnerName}.
+                </p>
+                <p className="text-[10px] uppercase opacity-60">
+                  They can sign in with their existing credentials.
+                </p>
+              </div>
+            ) : inviteResult.tempPassword ? (
+              <div className="space-y-4">
+                <p className="text-xs font-bold uppercase tracking-widest">
+                  User created for {inviteResult.partnerName}.
+                </p>
+                <div className="border-2 border-black dark:border-white p-4">
+                  <p className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">Temporary Password</p>
+                  <div className="flex items-center justify-between gap-3">
+                    <code className="font-mono text-sm font-bold break-all">{inviteResult.tempPassword}</code>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(inviteResult.tempPassword!)}
+                      className="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black shrink-0"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+                <p className="text-[9px] uppercase font-bold opacity-50">
+                  Share this securely. It won't be shown again.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs font-bold uppercase tracking-widest">
+                  User invited to {inviteResult.partnerName}.
+                </p>
+                <p className="text-[10px] uppercase opacity-60">
+                  They can sign in via their corporate SSO.
+                </p>
+              </div>
+            )}
+            <div className="flex justify-end mt-8">
+              <button
+                onClick={() => setInviteResult(null)}
+                className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>
