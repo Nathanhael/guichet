@@ -1,10 +1,11 @@
-import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date, jsonb, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core';
 
 // Enums
 export const roleEnum = pgEnum('user_role', ['agent', 'support', 'manager', 'admin', 'platform_operator']);
 export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'pending', 'closed', 'resolved']);
 export const severityEnum = pgEnum('severity', ['low', 'medium', 'high', 'critical']);
 export const alertStatusEnum = pgEnum('alert_status', ['active', 'acknowledged', 'resolved']);
+export const authMethodEnum = pgEnum('auth_method', ['local', 'sso']);
 
 export const partners = pgTable('partners', {
   id: text('id').primaryKey(),
@@ -18,6 +19,7 @@ export const partners = pgTable('partners', {
   businessHoursEnd: text('business_hours_end'),
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   status: text('status').notNull().default('active'),
+  authMethod: authMethodEnum('auth_method').notNull().default('local'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
@@ -48,7 +50,7 @@ export const memberships = pgTable('memberships', {
   departments: jsonb('departments').default([]),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({
-  userPartnerIdx: index('idx_memberships_user_partner').on(table.userId, table.partnerId),
+  userPartnerIdx: uniqueIndex('idx_memberships_user_partner').on(table.userId, table.partnerId),
 }));
 
 export const tickets = pgTable('tickets', {
