@@ -4,7 +4,7 @@ import { db, run } from '../../db.js';
 import { partners, memberships, users, auditLog, tickets } from '../../db/schema.js';
 import { eq, asc, desc, sql, isNull, and } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import { randomUUID } from 'crypto';
+import { randomUUID, randomBytes } from 'crypto';
 import { getRedisClients } from '../../utils/redis.js';
 import logger from '../../utils/logger.js';
 import { broadcastPartnerDeactivation } from '../../socket/handlers.js';
@@ -285,35 +285,60 @@ export const platformRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        // 1. Ensure user exists or create them (Invite mode)
+        // 1. Look up partner to determine auth method
+        const partner = await db.select({ authMethod: partners.authMethod })
+          .from(partners)
+          .where(eq(partners.id, input.partnerId))
+          .limit(1);
+
+        if (partner.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+        }
+
+        const isLocal = partner[0].authMethod === 'local';
+        let tempPassword: string | null = null;
+        let isExistingUser = false;
+
+        // 2. Ensure user exists or create them
         let userId: string;
         const existing = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
-        
+
         if (existing.length > 0) {
           userId = existing[0].id;
+          isExistingUser = true;
         } else {
           userId = `u_${randomUUID().slice(0, 8)}`;
+
+          // Generate temp password only for new users on local partners
+          let hashedPassword: string | undefined;
+          if (isLocal) {
+            tempPassword = randomBytes(12).toString('base64url');
+            const { hash } = await import('bcryptjs');
+            hashedPassword = await hash(tempPassword, 10);
+          }
+
           await db.insert(users).values({
             id: userId,
             email: input.email,
             name: input.name,
+            password: hashedPassword,
             isPlatformOperator: input.role === 'platform_operator',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
         }
 
-        // 2. Prevent duplicate memberships
+        // 3. Prevent duplicate memberships
         const existingMembership = await db.select()
           .from(memberships)
           .where(and(eq(memberships.userId, userId), eq(memberships.partnerId, input.partnerId)))
           .limit(1);
-        
+
         if (existingMembership.length > 0) {
           throw new TRPCError({ code: 'CONFLICT', message: 'User already has a membership with this partner' });
         }
 
-        // 3. Add Membership
+        // 4. Add Membership
         const memId = `mem_${randomUUID().slice(0, 8)}`;
         await db.insert(memberships).values({
           id: memId,
@@ -323,7 +348,7 @@ export const platformRouter = router({
           departments: input.departments || []
         });
 
-        // 4. Audit Log
+        // 5. Audit Log
         await db.insert(auditLog).values({
           id: randomUUID(),
           action: 'member.invited',
@@ -331,10 +356,10 @@ export const platformRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: userId,
-          metadata: { email: input.email, role: input.role, membershipId: memId }
+          metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: partner[0].authMethod }
         });
 
-        return { userId, membershipId: memId };
+        return { userId, membershipId: memId, tempPassword, isExistingUser };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
