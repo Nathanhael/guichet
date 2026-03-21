@@ -6,6 +6,7 @@ import { eq, and } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
+import { randomBytes } from 'crypto';
 
 // simple slugify helper
 function makeSlug(text: string) {
@@ -192,24 +193,43 @@ export const partnerRouter = router({
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
+        // 1. Look up partner auth method
+        const partner = await db.select({ authMethod: partners.authMethod })
+          .from(partners)
+          .where(eq(partners.id, partnerId))
+          .limit(1);
+
+        if (partner.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+        }
+
+        const isLocal = partner[0].authMethod === 'local';
+
+        // 2. Check for existing user
         const existingUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
         if (existingUser.length > 0) {
           throw new TRPCError({ code: 'CONFLICT', message: 'Email already in use' });
         }
 
-        const tempPassword = Math.random().toString(36).slice(-8) + 'A1!'; // Basic complex random password
-        const { hash } = await import('bcryptjs');
-        const hashedPassword = await hash(tempPassword, 10);
-        
+        // 3. Create user — with or without password based on auth method
+        let tempPassword: string | null = null;
         const newUserId = uuidv4();
+
+        let hashedPassword: string | undefined;
+        if (isLocal) {
+          tempPassword = randomBytes(12).toString('base64url');
+          const { hash } = await import('bcryptjs');
+          hashedPassword = await hash(tempPassword, 10);
+        }
 
         await db.insert(users).values({
           id: newUserId,
           email: input.email,
           name: input.name,
-          password: hashedPassword
+          password: hashedPassword,
         });
 
+        // 4. Create membership
         const newMembershipId = uuidv4();
         await db.insert(memberships).values({
           id: newMembershipId,
@@ -219,16 +239,19 @@ export const partnerRouter = router({
           departments: input.departments || []
         });
 
+        // 5. Audit log
         await db.insert(auditLog).values({
           action: 'member.invited',
           actorId: ctx.user.id,
           partnerId: partnerId,
           targetType: 'user',
           targetId: newUserId,
-          metadata: { role: input.role, departments: input.departments, email: input.email }
+          metadata: { role: input.role, departments: input.departments, email: input.email, authMethod: partner[0].authMethod }
         });
 
-        return { success: true, tempPassword };
+        // Never log plaintext passwords
+        logger.info({ userId: newUserId, email: input.email, authMethod: partner[0].authMethod }, '[inviteExternalUser] User created');
+        return { success: true, userId: newUserId, tempPassword };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
