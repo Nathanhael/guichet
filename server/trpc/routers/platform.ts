@@ -12,13 +12,19 @@ import { broadcastPartnerDeactivation } from '../../socket/handlers.js';
 export const platformRouter = router({
   // --- System Health ---
   getSystemHealth: platformProcedure.query(async () => {
+    const lastPurge = await db.select({ createdAt: auditLog.createdAt })
+      .from(auditLog)
+      .where(eq(auditLog.action, 'system.gdpr_purge'))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(1);
+
     const health = {
       postgres: false,
       redis: false,
       postgresConnections: 0,
       redisMemoryUsed: '0',
-      gdprLastRun: '2026-03-20T02:00:00.000Z', // Stubbed
-      gdprSuccess: true,
+      gdprLastRun: lastPurge[0]?.createdAt || 'Never',
+      gdprSuccess: !!lastPurge[0],
       gdprRecordsPurged: 0,
       gdprNextPurge: (() => {
         const next = new Date();
@@ -33,7 +39,7 @@ export const platformRouter = router({
       health.postgres = true;
       health.postgresConnections = parseInt(String(pgRes.rows[0].count), 10);
     } catch (err) {
-      console.error('Health Check: Postgres error', err);
+      logger.error({ err }, 'Health Check: Postgres error');
     }
 
     try {
@@ -48,7 +54,7 @@ export const platformRouter = router({
         }
       }
     } catch (err) {
-      console.error('Health Check: Redis error', err);
+      logger.error({ err }, 'Health Check: Redis error');
     }
 
     return health;
@@ -76,6 +82,7 @@ export const platformRouter = router({
         name: z.string(),
         description: z.string().optional()
       })).default([]),
+      authMethod: z.enum(['local', 'sso']).default('local'),
     }))
     .mutation(async ({ input }) => {
       try {
@@ -85,6 +92,7 @@ export const platformRouter = router({
           logoUrl: input.logoUrl,
           industry: input.industry,
           departments: input.departments,
+          authMethod: input.authMethod,
           status: 'active',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -105,13 +113,75 @@ export const platformRouter = router({
         name: z.string().optional(),
         logoUrl: z.string().optional().nullable(),
         industry: z.string().optional(),
-        departments: z.any().optional(),
+        // Departments are dynamic JSONB: { id: string, name: string, description?: string, isActive: boolean }[]
+        departments: z.array(z.object({
+          id: z.string(),
+          name: z.string(),
+          description: z.string().optional(),
+          isActive: z.boolean().default(true)
+        })).optional(),
+        authMethod: z.enum(['local', 'sso']).optional(),
       })
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
+      const before = await db.select().from(partners).where(eq(partners.id, input.id)).limit(1);
+      
       await db.update(partners)
         .set({ ...input.data, updatedAt: new Date().toISOString() })
         .where(eq(partners.id, input.id));
+
+      if (before[0]) {
+        const diff: any = {};
+        Object.keys(input.data).forEach(key => {
+          if ((input.data as any)[key] !== (before[0] as any)[key]) {
+            diff[key] = { from: (before[0] as any)[key], to: (input.data as any)[key] };
+          }
+        });
+
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'partner.config_updated',
+          actorId: ctx.user.id,
+          partnerId: input.id,
+          targetType: 'partner',
+          targetId: input.id,
+          metadata: { changes: diff }
+        });
+      }
+      return { success: true };
+    }),
+
+  updateUser: platformProcedure
+    .input(z.object({
+      id: z.string(),
+      data: z.object({
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+      })
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const before = await db.select().from(users).where(eq(users.id, input.id)).limit(1);
+      
+      await db.update(users)
+        .set({ ...input.data, updatedAt: new Date().toISOString() })
+        .where(eq(users.id, input.id));
+
+      if (before[0]) {
+        const diff: any = {};
+        if (input.data.name && input.data.name !== before[0].name) diff.name = { from: before[0].name, to: input.data.name };
+        if (input.data.email && input.data.email !== before[0].email) diff.email = { from: before[0].email, to: input.data.email };
+
+        if (Object.keys(diff).length > 0) {
+          await db.insert(auditLog).values({
+            id: randomUUID(),
+            action: 'user.profile_updated',
+            actorId: ctx.user.id,
+            targetType: 'user',
+            targetId: input.id,
+            metadata: { changes: diff }
+          });
+        }
+      }
       return { success: true };
     }),
 
@@ -188,7 +258,14 @@ export const platformRouter = router({
   listGlobalUsers: platformProcedure.query(async () => {
     const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
     const allMemberships = await db
-      .select({ userId: memberships.userId, partnerId: memberships.partnerId, partnerName: partners.name })
+      .select({ 
+        id: memberships.id,
+        userId: memberships.userId, 
+        partnerId: memberships.partnerId, 
+        partnerName: partners.name,
+        role: memberships.role,
+        departments: memberships.departments
+      })
       .from(memberships)
       .innerJoin(partners, eq(memberships.partnerId, partners.id))
       .where(isNull(partners.deletedAt));
@@ -206,7 +283,7 @@ export const platformRouter = router({
       partnerId: z.string(),
       departments: z.array(z.string()).optional()
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         // 1. Ensure user exists or create them (Invite mode)
         let userId: string;
@@ -226,7 +303,17 @@ export const platformRouter = router({
           });
         }
 
-        // 2. Add Membership
+        // 2. Prevent duplicate memberships
+        const existingMembership = await db.select()
+          .from(memberships)
+          .where(and(eq(memberships.userId, userId), eq(memberships.partnerId, input.partnerId)))
+          .limit(1);
+        
+        if (existingMembership.length > 0) {
+          throw new TRPCError({ code: 'CONFLICT', message: 'User already has a membership with this partner' });
+        }
+
+        // 3. Add Membership
         const memId = `mem_${randomUUID().slice(0, 8)}`;
         await db.insert(memberships).values({
           id: memId,
@@ -236,26 +323,132 @@ export const platformRouter = router({
           departments: input.departments || []
         });
 
+        // 4. Audit Log
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'member.invited',
+          actorId: ctx.user.id,
+          partnerId: input.partnerId,
+          targetType: 'user',
+          targetId: userId,
+          metadata: { email: input.email, role: input.role, membershipId: memId }
+        });
+
         return { userId, membershipId: memId };
       } catch (err: unknown) {
+        if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
     }),
 
   removeMembership: platformProcedure
     .input(z.string())
-    .mutation(async ({ input }) => {
-      await db.delete(memberships).where(eq(memberships.id, input));
+    .mutation(async ({ input, ctx }) => {
+      try {
+        logger.info({ membershipId: input }, '[removeMembership] Attempting to revoke');
+        const mem = await db.select().from(memberships).where(eq(memberships.id, input)).limit(1);
+        
+        if (!mem[0]) {
+          logger.warn({ membershipId: input }, '[removeMembership] Membership not found');
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
+        }
+
+        await db.delete(memberships).where(eq(memberships.id, input));
+        logger.info({ membershipId: input, userId: mem[0].userId, partnerId: mem[0].partnerId }, '[removeMembership] Deleted membership');
+        
+        try {
+          await db.insert(auditLog).values({
+            id: randomUUID(),
+            action: 'member.removed',
+            actorId: ctx.user.id,
+            partnerId: mem[0].partnerId,
+            targetType: 'user',
+            targetId: mem[0].userId,
+            metadata: { membershipId: input, role: mem[0].role }
+          });
+          logger.info({ membershipId: input }, '[removeMembership] Logged to audit_log');
+        } catch (auditErr) {
+          logger.error({ err: auditErr, membershipId: input }, '[removeMembership] Failed to log to audit_log');
+        }
+
+        return { success: true };
+      } catch (err: unknown) {
+        if (err instanceof TRPCError) throw err;
+        logger.error({ err: err instanceof Error ? err.message : String(err), membershipId: input }, '[removeMembership] Error');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
+    }),
+
+  updateMembership: platformProcedure
+    .input(z.object({
+      id: z.string(),
+      data: z.object({
+        role: z.enum(['agent', 'support', 'manager', 'admin', 'platform_operator']),
+        departments: z.array(z.string()).optional()
+      })
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const memBefore = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
+      
+      await db.update(memberships)
+        .set({ 
+          role: input.data.role as any, 
+          departments: input.data.departments || [] 
+        })
+        .where(eq(memberships.id, input.id));
+      
+      if (memBefore[0]) {
+        try {
+          await db.insert(auditLog).values({
+            id: randomUUID(),
+            action: 'member.updated',
+            actorId: ctx.user.id,
+            partnerId: memBefore[0].partnerId,
+            targetType: 'user',
+            targetId: memBefore[0].userId,
+            metadata: { 
+              membershipId: input.id, 
+              oldRole: memBefore[0].role, 
+              newRole: input.data.role 
+            }
+          });
+        } catch (auditErr) {
+          logger.error({ err: auditErr }, '[updateMembership] Audit log failed');
+        }
+      }
+
+      // If role is platform_operator, also sync the user record
+      if (input.data.role === 'platform_operator') {
+        const mem = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
+        if (mem[0]) {
+          await db.update(users).set({ isPlatformOperator: true }).where(eq(users.id, mem[0].userId));
+        }
+      }
+      
       return { success: true };
     }),
 
   deleteUser: platformProcedure
     .input(z.string())
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       // Soft delete
       await db.update(users)
         .set({ deletedAt: new Date().toISOString() })
         .where(eq(users.id, input));
+
+      try {
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'user.deleted',
+          actorId: ctx.user.id,
+          targetType: 'user',
+          targetId: input,
+          metadata: { softDelete: true }
+        });
+      } catch (auditErr) {
+        logger.error({ err: auditErr }, '[deleteUser] Audit log failed');
+      }
+
       return { success: true };
     }),
 
@@ -265,6 +458,7 @@ export const platformRouter = router({
       action: z.string().optional(),
       partnerId: z.string().optional(),
       actorId: z.string().optional(),
+      targetId: z.string().optional(),
       limit: z.number().min(1).max(100).default(50),
       offset: z.number().min(0).default(0),
     }))
@@ -274,6 +468,7 @@ export const platformRouter = router({
         if (input.action) conditions.push(eq(auditLog.action, input.action));
         if (input.partnerId) conditions.push(eq(auditLog.partnerId, input.partnerId));
         if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
+        if (input.targetId) conditions.push(eq(auditLog.targetId, input.targetId));
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -296,6 +491,44 @@ export const platformRouter = router({
         .offset(input.offset);
 
         return results;
+      } catch (err: unknown) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
+    }),
+
+  exportAuditLog: platformProcedure
+    .input(z.object({
+      action: z.string().optional(),
+      partnerId: z.string().optional(),
+      actorId: z.string().optional(),
+      targetId: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      try {
+        let conditions = [];
+        if (input.action) conditions.push(eq(auditLog.action, input.action));
+        if (input.partnerId) conditions.push(eq(auditLog.partnerId, input.partnerId));
+        if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
+        if (input.targetId) conditions.push(eq(auditLog.targetId, input.targetId));
+
+        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+        return await db.select({
+          id: auditLog.id,
+          action: auditLog.action,
+          actorId: auditLog.actorId,
+          actorName: users.name,
+          partnerId: auditLog.partnerId,
+          targetType: auditLog.targetType,
+          targetId: auditLog.targetId,
+          metadata: auditLog.metadata,
+          createdAt: auditLog.createdAt,
+        })
+        .from(auditLog)
+        .leftJoin(users, eq(auditLog.actorId, users.id))
+        .where(whereClause)
+        .orderBy(desc(auditLog.createdAt))
+        .limit(1000); // Reasonable limit for direct export
       } catch (err: unknown) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
