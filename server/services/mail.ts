@@ -1,4 +1,4 @@
-// @ts-expect-error nodemailer types not installed in dev
+// @ts-ignore nodemailer types may not be installed
 import nodemailer from 'nodemailer';
 import { db } from '../db.js';
 import { systemSettings } from '../db/schema.js';
