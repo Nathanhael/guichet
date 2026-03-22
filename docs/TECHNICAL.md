@@ -63,4 +63,8 @@ Tessera is 100% data-driven. Hardcoded constants for departments have been remov
 ## 7. Frontend Architecture (React)
 
 - **Enterprise UI Patterns**: Long lists, such as the `PlatformAuditLog`, implement robust UX paradigms including sticky pagination bars and debounced searching (e.g., waiting 500ms before triggering a backend query) to reduce server load and improve client-side performance.
+- **Self-Contained Feature Modules**: `PlatformView` is a thin shell (tabs + modal state). Each feature (PartnerList, UserTable, CreatePartnerModal, etc.) lives in `components/platform/` and owns its own tRPC hooks, mutations, and cache invalidation — no prop-drilling of refetch functions.
+- **Reusable UI Primitives**: Custom `ConfirmDialog` and `Toast` components replace all native `alert()`/`confirm()` calls for consistent UX.
+- **Full i18n**: All UI strings use `useT()` with translations in English, French, and Dutch (`i18n.ts`). Business hours, admin views, and platform views are fully translated.
 - **State Synchronization**: Strict single-page-app behaviors using Zustand for global state and tRPC for seamless query invalidation and refetching.
+- **Test Coverage**: Vitest + React Testing Library with 66 tests across 9 files covering all platform components. Tests mock tRPC at the hook level using `vi.hoisted()` for clean isolation.

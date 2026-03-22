@@ -85,7 +85,7 @@ docker compose -f docker-compose.prod.yml build            # Build prod images
 **Real-Time**: `hooks/useSocket.ts` — single global Socket.io instance. Always clean up listeners in `useEffect` return.
 
 **Views**:
-- `PlatformView` — Platform operator: partner management, global users, system health, audit log
+- `PlatformView` — Thin shell (tabs + modal state). Feature modules in `components/platform/` (PartnerList, UserTable, CreatePartnerModal, EditPartnerModal, DeletePartnerModal, InviteUserModal, ManageAccessModal, EditUserProfileModal). Each component owns its own tRPC hooks and cache invalidation.
 - `AdminView` — Partner admin: team, departments, tickets, business hours, labels, canned responses
 - `SupportView` — Support staff: ticket queue by department, multi-tab chat
 - `AgentView` — End-user: ticket creation, chat, attachments
@@ -144,12 +144,21 @@ tessera/
 ├── client/
 │   ├── src/
 │   │   ├── components/            # React components
+│   │   │   ├── platform/          # PlatformView feature modules (self-contained)
+│   │   │   │   ├── __tests__/     # Vitest tests for platform components
+│   │   │   │   └── types.ts       # Shared types (Partner, GlobalUser, etc.)
+│   │   │   ├── ConfirmDialog.tsx   # Reusable confirmation modal
+│   │   │   └── Toast.tsx           # Auto-dismissing notification
 │   │   ├── views/                 # Page views (Platform, Admin, Support, Agent, Login)
+│   │   │   └── __tests__/         # Vitest tests for views
 │   │   ├── hooks/                 # useSocket, useStore, etc.
 │   │   ├── store/
 │   │   │   ├── useStore.ts        # Zustand composed store
 │   │   │   └── slices/            # Auth, ticket, message, UI, config, rating slices
 │   │   ├── types/index.ts         # TypeScript interfaces
+│   │   ├── test/
+│   │   │   ├── setup.ts           # Vitest setup (cleanup, jest-dom)
+│   │   │   └── helpers.tsx        # Test factories and mock builders
 │   │   └── utils/trpc.ts          # tRPC client setup
 │   └── Dockerfile
 ├── docker-compose.yml             # Development environment
