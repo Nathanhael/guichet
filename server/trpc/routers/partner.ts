@@ -250,7 +250,7 @@ export const partnerRouter = router({
         });
 
         // Never log plaintext passwords
-        logger.info({ userId: newUserId, email: input.email, authMethod: partner[0].authMethod }, '[inviteExternalUser] User created');
+        logger.info({ userId: newUserId, authMethod: partner[0].authMethod }, '[inviteExternalUser] User created');
         return { success: true, userId: newUserId, tempPassword: tempPassword ?? '' };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
