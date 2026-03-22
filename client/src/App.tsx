@@ -6,6 +6,7 @@ import LoginView from './views/LoginView';
 import SupportView from './views/SupportView';
 import AdminView from './views/AdminView';
 import PlatformView from './views/PlatformView';
+import AgentView from './views/AgentView';
 import DarkModeToggle from './components/DarkModeToggle';
 
 const LoadingFallback = () => (
@@ -74,7 +75,7 @@ export default function App() {
     }
 
     // Platform Operators get Admin access to any partner they 'Enter'
-    if (user.isPlatformOperator || role === 'admin' || role === 'manager') {
+    if (user.isPlatformOperator || role === 'admin') {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <AdminView />
@@ -82,6 +83,16 @@ export default function App() {
       );
     }
 
+    // End-user / customer agent view
+    if (role === 'agent') {
+      return (
+        <Suspense fallback={<LoadingFallback />}>
+          <AgentView />
+        </Suspense>
+      );
+    }
+
+    // Support staff view
     return (
       <Suspense fallback={<LoadingFallback />}>
         <SupportView />

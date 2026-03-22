@@ -25,15 +25,15 @@ export function mapMessageRow(row: any): Message {
     originalText,
     processedText: originalText,
     improvedText: originalText,
-    text: originalText,
+    text: originalText, // Alias for backward compatibility
     mediaUrl: row.media_url || row.mediaUrl || null,
-    whisper: !!row.whisper,
-    system: !!row.system,
-    translationSkipped: true,
+    whisper: row.whisper ? 1 : 0,
+    system: row.system ? 1 : 0,
+    translationSkipped: 1,
     fallback: 0,
     timestamp: createdAt,
-    createdAt: createdAt,
+    createdAt: createdAt, // Alias for backward compatibility
     readAt: row.read_at || row.readAt || null,
-    reactions,
+    reactions: typeof reactions === 'string' ? reactions : JSON.stringify(reactions),
   };
 }

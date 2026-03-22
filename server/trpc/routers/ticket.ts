@@ -2,9 +2,23 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { tickets, ticketLabels } from '../../db/schema.js';
-import { eq, and, or, ilike, sql, asc, desc, gte, lte } from 'drizzle-orm';
+import { eq, and, or, ilike, sql, asc, desc, gte, lte, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
+
+async function fetchLabelsForTickets(ticketIds: string[]): Promise<Record<string, string[]>> {
+  if (ticketIds.length === 0) return {};
+  const rows = await db.select({
+    ticketId: ticketLabels.ticketId,
+    labelId: ticketLabels.labelId,
+  }).from(ticketLabels).where(inArray(ticketLabels.ticketId, ticketIds));
+  const map: Record<string, string[]> = {};
+  for (const row of rows) {
+    if (!map[row.ticketId]) map[row.ticketId] = [];
+    map[row.ticketId].push(row.labelId);
+  }
+  return map;
+}
 
 export const ticketRouter = router({
   list: protectedProcedure
@@ -59,35 +73,39 @@ export const ticketRouter = router({
              .orderBy(input.status === 'closed' ? desc(tickets.closedAt) : asc(tickets.createdAt))
              .limit(input.limit).offset(input.offset || 0);
 
-          // Fetch labels for each ticket
-          const ticketsWithLabels = await Promise.all(rows.map(async (t) => {
-            const labels = await db.select({ labelId: ticketLabels.labelId })
-              .from(ticketLabels)
-              .where(eq(ticketLabels.ticketId, t.id));
-            
+          if (rows.length === 0) return { tickets: [], total };
+
+          // Optimized: Fetch all labels for these tickets in ONE query
+          const ticketIds = rows.map(t => t.id);
+          const labelsMap = await fetchLabelsForTickets(ticketIds);
+
+          const ticketsWithLabels = rows.map(t => {
             return {
               ...t,
-              participants: JSON.parse(t.participants || '[]'),
-              labels: labels.map(l => l.labelId),
+              participants: t.participants || [],
+              labels: labelsMap[t.id] || [],
             };
-          }));
+          });
 
           return { tickets: ticketsWithLabels, total };
         }
 
         const rows = await db.select().from(tickets).where(where)
           .orderBy(input.status === 'closed' ? desc(tickets.closedAt) : asc(tickets.createdAt));
-        const ticketsWithLabels = await Promise.all(rows.map(async (t) => {
-          const labels = await db.select({ labelId: ticketLabels.labelId })
-            .from(ticketLabels)
-            .where(eq(ticketLabels.ticketId, t.id));
-          
+        
+        if (rows.length === 0) return [];
+
+        // Optimized: Fetch all labels for these tickets in ONE query
+        const ticketIds = rows.map(t => t.id);
+        const labelsMap = await fetchLabelsForTickets(ticketIds);
+
+        const ticketsWithLabels = rows.map(t => {
           return {
             ...t,
-            participants: JSON.parse(t.participants || '[]'),
-            labels: labels.map(l => l.labelId),
+            participants: t.participants || [],
+            labels: labelsMap[t.id] || [],
           };
-        }));
+        });
 
         return ticketsWithLabels;
       } catch (err: unknown) {
@@ -113,14 +131,12 @@ export const ticketRouter = router({
         }
 
         const t = result[0];
-        const labels = await db.select({ labelId: ticketLabels.labelId })
-          .from(ticketLabels)
-          .where(eq(ticketLabels.ticketId, t.id));
+        const labelsMap = await fetchLabelsForTickets([t.id]);
 
         return {
           ...t,
-          participants: JSON.parse(t.participants || '[]'),
-          labels: labels.map(l => l.labelId),
+          participants: t.participants || [],
+          labels: labelsMap[t.id] || [],
         };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;

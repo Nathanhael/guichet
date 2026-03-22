@@ -208,7 +208,8 @@ export default function SupportView() {
             </div>
           )}
           <StatusPicker value={myStatus} onChange={setMyStatus} />
-          <div className="flex items-center gap-1.5 bg-black dark:bg-white p-1 ml-2 border border-black dark:border-white">
+          <div className="flex items-center gap-1.5 bg-black/5 dark:bg-white/5 p-1 ml-2 border border-black dark:border-white">
+            <LanguageSwitcher />
             <button onClick={toggleFocusMode} className={`w-8 h-8 flex items-center justify-center ${focusMode ? 'bg-white text-black invert' : 'text-white dark:text-black hover:bg-white dark:hover:bg-black hover:text-black dark:hover:text-white'}`}>Z</button>
             <NeuroToggle />
             <DarkModeToggle />

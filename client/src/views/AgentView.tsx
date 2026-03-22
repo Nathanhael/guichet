@@ -116,7 +116,7 @@ export default function AgentView() {
               </button>
             )}
             
-            <div className="flex items-center gap-2 bg-black/10 dark:bg-white/5 p-1 rounded-xl border border-white/10 ml-2">
+            <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 p-1 border border-black dark:border-white ml-2">
               <LanguageSwitcher />
               <DarkModeToggle />
               

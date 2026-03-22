@@ -280,7 +280,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
     getSocket().emit('message:send', {
       ticketId: ticket!.id,
-      senderId: user?.id,
       senderLang: user?.lang,
       text: trimmed || '📎',
       mediaUrl,
@@ -298,7 +297,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     getSocket().emit('ticket:close', {
       ticketId: ticket!.id,
       closingNotes: '',
-      closedBy: user?.name
     });
 
     setTimeout(() => {

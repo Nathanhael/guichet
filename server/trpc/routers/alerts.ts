@@ -10,14 +10,16 @@ export const alertsRouter = router({
    * List all alerts for the current partner.
    * Accessible by Admins and Managers.
    */
-  list: roleProcedure(['admin', 'manager'])
+  list: roleProcedure(['admin'])
     .input(z.object({
       status: z.enum(['active', 'acknowledged', 'resolved']).optional(),
       limit: z.number().min(1).max(100).default(50),
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const filters = [eq(topicAlerts.partnerId, ctx.user.partnerId)];
+        const partnerId = ctx.user.partnerId;
+        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
+        const filters = [eq(topicAlerts.partnerId, partnerId)];
         if (input.status) {
           filters.push(eq(topicAlerts.status, input.status));
         }
@@ -36,17 +38,19 @@ export const alertsRouter = router({
   /**
    * Mark an alert as acknowledged.
    */
-  acknowledge: roleProcedure(['admin', 'manager'])
+  acknowledge: roleProcedure(['admin'])
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
       try {
+        const partnerId = ctx.user.partnerId;
+        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
         const result = await db
           .update(topicAlerts)
           .set({ status: 'acknowledged' })
           .where(
             and(
               eq(topicAlerts.id, input),
-              eq(topicAlerts.partnerId, ctx.user.partnerId)
+              eq(topicAlerts.partnerId, partnerId)
             )
           );
         return { success: true };
@@ -58,10 +62,12 @@ export const alertsRouter = router({
   /**
    * Mark an alert as resolved.
    */
-  resolve: roleProcedure(['admin', 'manager'])
+  resolve: roleProcedure(['admin'])
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
       try {
+        const partnerId = ctx.user.partnerId;
+        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
         const result = await db
           .update(topicAlerts)
           .set({ 
@@ -71,7 +77,7 @@ export const alertsRouter = router({
           .where(
             and(
               eq(topicAlerts.id, input),
-              eq(topicAlerts.partnerId, ctx.user.partnerId)
+              eq(topicAlerts.partnerId, partnerId)
             )
           );
         return { success: true };

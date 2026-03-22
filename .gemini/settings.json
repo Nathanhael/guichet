@@ -1,7 +1,14 @@
 {
   "general": {
+    "maxAttempts": 20,
+    "retryFetchErrors": true,
     "plan": {
       "directory": ""
+    }
+  },
+  "tools": {
+    "shell": {
+      "inactivityTimeout": 600
     }
   },
   "mcpServers": {
@@ -20,6 +27,19 @@
         "@modelcontextprotocol/server-postgres",
         "postgresql://user:password@localhost:5432/tessera"
       ]
+    },
+    "docker-desktop": {
+      "command": "docker",
+      "args": [
+        "mcp",
+        "gateway",
+        "run"
+      ],
+      "env": {
+        "LOCALAPPDATA": "C:\\Users\\bart_\\AppData\\Local",
+        "ProgramData": "C:\\ProgramData",
+        "ProgramFiles": "C:\\Program Files"
+      }
     }
   }
 }

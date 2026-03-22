@@ -38,7 +38,8 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 // Helper for dynamic role checks
 export const roleProcedure = (roles: UserRole[]) => 
   protectedProcedure.use(({ ctx, next }) => {
-    if (!roles.includes(ctx.user.role)) {
+    // Platform operators can bypass role checks to manage data across any partner
+    if (!roles.includes(ctx.user.role) && !ctx.user.isPlatformOperator) {
       throw new TRPCError({ code: 'FORBIDDEN' });
     }
     return next();

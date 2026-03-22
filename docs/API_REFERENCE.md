@@ -12,7 +12,22 @@ All endpoints are prefixed with `/api/v1/`.
 `POST /api/v1/auth/login`
 - **Body**: `{ "id": "user_id", "password": "..." }`
 - **Response**: `{ "token": "...", "user": {...}, "memberships": [...], "activePartnerId": "..." }`
-- **Note**: The endpoint filters out memberships for inactive partners. If all memberships belong to inactive partners, the login succeeds but restricts functionality.
+- **Note**: Legacy/Demo login via internal User ID.
+
+`POST /api/v1/auth/login-local`
+- **Body**: `{ "email": "...", "password": "...", "rememberMe": boolean }`
+- **Response**: Same as `/login`.
+- **Note**: Recommended login method for local users. Supports case-insensitive email.
+
+`POST /api/v1/auth/forgot-password`
+- **Body**: `{ "email": "..." }`
+- **Response**: `{ "success": true, "message": "..." }`
+- **Note**: Triggers a secure password reset email. Enumeration protected.
+
+`POST /api/v1/auth/reset-password`
+- **Body**: `{ "token": "...", "password": "..." }`
+- **Response**: `{ "success": true, "message": "..." }`
+- **Note**: Validates 1-hour token and updates password.
 
 ### 2. Configuration
 `GET /api/v1/config`
@@ -36,44 +51,33 @@ All endpoints are prefixed with `/api/v1/`.
 
 ## 📡 tRPC Interface: `/api/v1/trpc`
 
-The majority of application logic is handled via tRPC procedures. **Note**: All message-related results are normalized via `messageMapper` to ensure frontend compatibility.
-
-### Partner Router (admin access)
-- `partner.listMembers`: Returns paginated memberships and user data for the current partner.
-- `partner.addMemberByEmail`: Adds an existing user to the partner with specified roles and departments.
-- `partner.inviteExternalUser`: Creates a new user with a temporary password and adds them to the partner.
-- `partner.removeMember`: Removes a user's membership (prevents self-removal and last-membership removal).
-- `partner.updateMember`: Updates department assignments for a specific member.
+The majority of application logic is handled via tRPC procedures.
 
 ### Platform Router (platform_operator access)
-- `platform.deactivatePartner`: Sets partner status to inactive, auto-closes tickets, and broadcasts deactivation event.
-- `platform.reactivatePartner`: Sets partner status back to active.
-- `platform.getAuditLog`: Fetches paginated system and administrative audit events.
-- `platform.getSystemHealth`: Returns real-time Postgres/Redis connection status and GDPR purge history.
+- `platform.getMailConfig`: Retrieves current global mail settings.
+- `platform.updateMailConfig`: Updates SMTP/API provider credentials.
+- `platform.sendTestEmail`: Triggers a verification email to a specified address.
+- `platform.resendInvite`: Regenerates temp password and resends welcome email.
+- `platform.deactivatePartner`: Sets partner status to inactive and kills sessions.
+- `platform.getAuditLog`: Fetches paginated system and administrative audit events (Supports `dateFrom`, `dateTo`, and various context filters).
+- `platform.exportAuditLog`: Generates a complete JSON dataset of filtered logs for CSV conversion.
+- `platform.getSystemHealth`: Returns real-time Postgres/Redis metrics.
 
 ---
 
 ## 🔌 Socket.io Real-Time Interface
 
-Real-time communication is scoped to `ticket:{id}` and `partner:{id}` rooms.
+### 1. Messaging & Indicators
+- `message:send` / `message:new`: Standard chat messaging.
+- `typing:start` / `typing:update`: Live input indicators.
 
-### 1. Messaging
-- `message:send`: Client sends a message.
-- `message:new`: Server broadcasts message to the ticket room.
-- `message:delivered`: Server confirms database persistence.
-- `message:read`: Client notifies receipt of message.
+### 2. Connection & Presence
+- `socket:identify`: Maps socket to user identity and partner context.
+- `support:join` / `support:left`: specialist lifecycle on tickets.
 
-### 2. Typing Indicators
-- `typing:start`: Client indicates active input.
-- `typing:stop`: Client indicates input inactivity.
-
-### 3. Connection & Presence
-- `support:join`: Specialist claims a ticket.
-- `support:left`: Specialist disconnects from a ticket.
-- `queue:position`: Real-time update for waiting agents.
-
-### 4. Partner Events
-- `partner:deactivated`: Broadcast to all clients connected to a deactivated partner, forcing them to disconnect active chat sessions gracefully.
+### 3. Kill Switches
+- `partner:deactivated`: Broadcast to all partner members when a company is disabled.
+- `user:deactivated`: Targeted broadcast to a specific User ID room, forcing immediate disconnection and session termination.
 
 ---
 
@@ -81,11 +85,8 @@ Real-time communication is scoped to `ticket:{id}` and `partner:{id}` rooms.
 
 ### Health Check
 `GET /api/v1/health`
-- **Response**: `{ "status": "ok", "database": "connected", "llm": "connected" }`
-- **Use Case**: Deployment ready-checks.
+- **Response**: `{ "status": "ok", "database": "connected" }`
 
 ### Prometheus Metrics
 `GET /metrics`
-- **Auth**: None for localhost; `x-metrics-token` header required for external callers if `METRICS_TOKEN` is configured.
 - **Response**: Standard Prometheus exposition format.
-- **Note**: This endpoint is **not** versioned as it is for infrastructure monitoring.

@@ -29,7 +29,7 @@ export default function AdminView() {
 
   // Guard: partner was deleted or membership is stale
   const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
-  if (activeMembershipId && !activeMembership) return <PartnerUnavailable />;
+  if (activeMembershipId && !activeMembership && !user.isPlatformOperator) return <PartnerUnavailable />;
 
   const NavButton = ({ id, label, icon }: { id: AdminTab; label: string; icon: React.ReactNode }) => (
     <button

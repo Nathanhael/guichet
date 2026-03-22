@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { router, platformProcedure } from '../trpc.js';
 import { db, run } from '../../db.js';
-import { partners, memberships, users, auditLog, tickets } from '../../db/schema.js';
-import { eq, asc, desc, sql, isNull, and } from 'drizzle-orm';
+import { partners, memberships, users, auditLog, tickets, systemSettings } from '../../db/schema.js';
+import { eq, asc, desc, sql, isNull, and, gte, lte } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { randomUUID, randomBytes } from 'crypto';
 import { getRedisClients } from '../../utils/redis.js';
 import logger from '../../utils/logger.js';
-import { broadcastPartnerDeactivation } from '../../socket/handlers.js';
+import { broadcastPartnerDeactivation, broadcastUserDeactivation } from '../../socket/handlers.js';
 
 export const platformRouter = router({
   // --- System Health ---
@@ -279,7 +279,7 @@ export const platformRouter = router({
     .input(z.object({
       email: z.string().email(),
       name: z.string(),
-      role: z.enum(['agent', 'support', 'manager', 'admin', 'platform_operator']),
+      role: z.enum(['agent', 'support', 'admin', 'platform_operator']),
       partnerId: z.string(),
       departments: z.array(z.string()).optional()
     }))
@@ -348,7 +348,48 @@ export const platformRouter = router({
           departments: input.departments || []
         });
 
-        // 5. Audit Log
+        // 5. Send Welcome Email if configured
+        try {
+          const partnerName = (await db.select({ name: partners.name }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0]?.name || input.partnerId;
+          
+          let welcomeHtml = '';
+          if (isExistingUser) {
+            welcomeHtml = `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px;">
+                <h1 style="text-transform: uppercase; font-weight: 900;">Tessera</h1>
+                <p>Hello ${input.name},</p>
+                <p>You have been granted access to <strong>${partnerName}</strong> on the Tessera platform.</p>
+                <p>You can sign in using your existing credentials.</p>
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}" style="display: inline-block; background: #000; color: #fff; text-decoration: none; padding: 15px 30px; font-weight: 900; text-transform: uppercase; margin-top: 20px;">Sign In Now</a>
+
+              </div>
+            `;
+          } else {
+            welcomeHtml = `
+              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px;">
+                <h1 style="text-transform: uppercase; font-weight: 900;">Tessera</h1>
+                <p>Hello ${input.name},</p>
+                <p>Welcome to Tessera! You have been invited to join <strong>${partnerName}</strong>.</p>
+                ${isLocal ? `
+                  <div style="background: #f4f4f4; padding: 20px; margin: 20px 0;">
+                    <p style="margin-top: 0; font-weight: bold; text-transform: uppercase; font-size: 12px;">Your Temporary Password</p>
+                    <code style="font-size: 18px; font-weight: 900; letter-spacing: 0.05em;">${tempPassword}</code>
+                  </div>
+                ` : `
+                  <p>Please sign in using your corporate Microsoft account.</p>
+                `}
+                <a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}" style="display: inline-block; background: #000; color: #fff; text-decoration: none; padding: 15px 30px; font-weight: 900; text-transform: uppercase; margin-top: 20px;">Sign In Now</a>
+
+              </div>
+            `;
+          }
+
+          await MailService.sendMail(input.email, `Invitation to join ${partnerName} on Tessera`, welcomeHtml);
+        } catch (mailErr) {
+          logger.error({ err: mailErr }, '[inviteUser] Failed to send welcome email');
+        }
+
+        // 6. Audit Log
         await db.insert(auditLog).values({
           id: randomUUID(),
           action: 'member.invited',
@@ -364,6 +405,86 @@ export const platformRouter = router({
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
+    }),
+
+  resendInvite: platformProcedure
+    .input(z.object({
+      userId: z.string(),
+      partnerId: z.string()
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const user = (await db.select().from(users).where(eq(users.id, input.userId)).limit(1))[0];
+        const partner = (await db.select().from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0];
+
+        if (!user || !partner) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'User or Partner not found' });
+        }
+
+        const isLocal = partner.authMethod === 'local';
+        let tempPassword: string | null = null;
+
+        if (isLocal && !user.externalId) {
+          // Regenerate temp password for local users who haven't linked yet
+          tempPassword = randomBytes(12).toString('base64url');
+          const { hash } = await import('bcryptjs');
+          const hashedPassword = await hash(tempPassword, 10);
+          await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id));
+        }
+
+        const welcomeHtml = `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px;">
+            <h1 style="text-transform: uppercase; font-weight: 900;">Tessera</h1>
+            <p>Hello ${user.name},</p>
+            <p>This is a reminder of your invitation to join <strong>${partner.name}</strong> on Tessera.</p>
+            ${tempPassword ? `
+              <div style="background: #f4f4f4; padding: 20px; margin: 20px 0;">
+                <p style="margin-top: 0; font-weight: bold; text-transform: uppercase; font-size: 12px;">Your Temporary Password</p>
+                <code style="font-size: 18px; font-weight: 900; letter-spacing: 0.05em;">${tempPassword}</code>
+              </div>
+            ` : `
+              <p>Please sign in using your existing credentials or corporate Microsoft account.</p>
+            `}
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}" style="display: inline-block; background: #000; color: #fff; text-decoration: none; padding: 15px 30px; font-weight: 900; text-transform: uppercase; margin-top: 20px;">Sign In Now</a>
+
+          </div>
+        `;
+
+        await MailService.sendMail(user.email!, `Reminder: Invitation to join ${partner.name}`, welcomeHtml);
+
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'member.invite_resent',
+          actorId: ctx.user.id,
+          partnerId: input.partnerId,
+          targetType: 'user',
+          targetId: user.id,
+          metadata: { email: user.email }
+        });
+
+        return { success: true };
+      } catch (err: unknown) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
+    }),
+
+  sendTestEmail: platformProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input, ctx }) => {
+      const html = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px; text-align: center;">
+          <h1 style="text-transform: uppercase; font-weight: 900;">Tessera</h1>
+          <p style="font-weight: bold; text-transform: uppercase; font-size: 14px; opacity: 0.6;">System Test Email</p>
+          <hr style="border: none; border-top: 2px solid #000; margin: 20px 0;" />
+          <p>This is a test email to verify your platform's mail configuration.</p>
+          <p style="font-size: 12px; margin-top: 40px;">Sent by ${ctx.user.name} at ${new Date().toLocaleString()}</p>
+        </div>
+      `;
+      const success = await MailService.sendMail(input.email, 'Tessera - Mail Configuration Test', html);
+      if (!success) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send test email. Check server logs.' });
+      }
+      return { success: true };
     }),
 
   removeMembership: platformProcedure
@@ -408,7 +529,7 @@ export const platformRouter = router({
     .input(z.object({
       id: z.string(),
       data: z.object({
-        role: z.enum(['agent', 'support', 'manager', 'admin', 'platform_operator']),
+        role: z.enum(['agent', 'support', 'admin', 'platform_operator']),
         departments: z.array(z.string()).optional()
       })
     }))
@@ -484,6 +605,8 @@ export const platformRouter = router({
       partnerId: z.string().optional(),
       actorId: z.string().optional(),
       targetId: z.string().optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
       limit: z.number().min(1).max(100).default(50),
       offset: z.number().min(0).default(0),
     }))
@@ -494,10 +617,17 @@ export const platformRouter = router({
         if (input.partnerId) conditions.push(eq(auditLog.partnerId, input.partnerId));
         if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
         if (input.targetId) conditions.push(eq(auditLog.targetId, input.targetId));
+        
+        if (input.dateFrom) {
+          conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
+        }
+        if (input.dateTo) {
+          conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
+        }
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-        const results = await db.select({
+        const query = db.select({
           id: auditLog.id,
           action: auditLog.action,
           actorId: auditLog.actorId,
@@ -515,6 +645,7 @@ export const platformRouter = router({
         .limit(input.limit)
         .offset(input.offset);
 
+        const results = await query;
         return results;
       } catch (err: unknown) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
@@ -527,6 +658,8 @@ export const platformRouter = router({
       partnerId: z.string().optional(),
       actorId: z.string().optional(),
       targetId: z.string().optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
     }))
     .query(async ({ input }) => {
       try {
@@ -535,6 +668,12 @@ export const platformRouter = router({
         if (input.partnerId) conditions.push(eq(auditLog.partnerId, input.partnerId));
         if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
         if (input.targetId) conditions.push(eq(auditLog.targetId, input.targetId));
+        if (input.dateFrom) {
+          conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
+        }
+        if (input.dateTo) {
+          conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
+        }
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -554,6 +693,66 @@ export const platformRouter = router({
         .where(whereClause)
         .orderBy(desc(auditLog.createdAt))
         .limit(1000); // Reasonable limit for direct export
+      } catch (err: unknown) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
+    }),
+
+  // --- System Configuration ---
+  getMailConfig: platformProcedure.query(async () => {
+    try {
+      const config = await db.select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, 'mail_config'))
+        .limit(1);
+      
+      return config[0]?.value as any || { provider: 'none' };
+    } catch (err: unknown) {
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+    }
+  }),
+
+  updateMailConfig: platformProcedure
+    .input(z.object({
+      provider: z.enum(['none', 'smtp', 'resend', 'sendgrid']),
+      apiKey: z.string().optional(),
+      smtpHost: z.string().optional(),
+      smtpPort: z.number().optional(),
+      smtpUser: z.string().optional(),
+      smtpPass: z.string().optional(),
+      smtpSecure: z.boolean().default(true),
+      fromEmail: z.string().email(),
+      fromName: z.string(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const before = await db.select().from(systemSettings).where(eq(systemSettings.key, 'mail_config')).limit(1);
+        
+        await db.insert(systemSettings)
+          .values({
+            key: 'mail_config',
+            value: input,
+            updatedAt: new Date().toISOString()
+          })
+          .onConflictDoUpdate({
+            target: systemSettings.key,
+            set: { value: input, updatedAt: new Date().toISOString() }
+          });
+
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'system.mail_config_updated',
+          actorId: ctx.user.id,
+          targetType: 'system',
+          targetId: 'mail_config',
+          metadata: { 
+            provider: input.provider,
+            fromEmail: input.fromEmail,
+            hasBefore: !!before[0]
+          }
+        });
+
+        return { success: true };
       } catch (err: unknown) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
