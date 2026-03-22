@@ -1,7 +1,7 @@
 import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date, jsonb, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core';
 
 // Enums
-export const roleEnum = pgEnum('user_role', ['agent', 'support', 'manager', 'admin', 'platform_operator']);
+export const roleEnum = pgEnum('user_role', ['agent', 'support', 'admin', 'platform_operator']);
 export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'pending', 'closed', 'resolved']);
 export const severityEnum = pgEnum('severity', ['low', 'medium', 'high', 'critical']);
 export const alertStatusEnum = pgEnum('alert_status', ['active', 'acknowledged', 'resolved']);
@@ -34,6 +34,9 @@ export const users = pgTable('users', {
   password: text('password'), // Optional legacy/local login
   avatarUrl: text('avatar_url'),
   isPlatformOperator: boolean('is_platform_operator').default(false),
+  resetPasswordToken: text('reset_password_token'),
+  resetPasswordExpires: timestamp('reset_password_expires', { mode: 'string' }),
+  lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
@@ -41,6 +44,12 @@ export const users = pgTable('users', {
   emailIdx: index('idx_users_email').on(table.email),
   externalIdIdx: index('idx_users_external_id').on(table.externalId),
 }));
+
+export const systemSettings = pgTable('system_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull().default({}),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+});
 
 export const memberships = pgTable('memberships', {
   id: text('id').primaryKey(),

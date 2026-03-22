@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { usePartner } from '../hooks/usePartner';
-import { ChevronDown, Globe } from 'lucide-react';
 
 export default function PartnerSwitcher() {
   const { memberships, activeMembershipId, setActiveMembershipId } = useStore();
@@ -25,41 +24,40 @@ export default function PartnerSwitcher() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-black/10 dark:bg-white/5 hover:bg-black/20 dark:hover:bg-white/10 rounded-xl border border-white/10 transition-all group"
+        className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border-2 border-black dark:border-white transition-all group"
       >
-        <div className="w-5 h-5 rounded-lg bg-brand-500/20 flex items-center justify-center border border-brand-500/30">
-          <Globe size={12} className="text-brand-400" />
-        </div>
-        <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors truncate max-w-[100px]">
-          {partnerName}
+        <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[120px]">
+          {partnerName || 'Select Partner'}
         </span>
-        <ChevronDown size={14} className={`text-gray-500 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+        <span className={`text-[8px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
       </button>
 
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-2 w-56 bg-brand-900 border border-white/10 rounded-2xl shadow-2xl z-[100] overflow-hidden"
+          className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-black border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] z-[100] overflow-hidden"
         >
-          <div className="p-3 border-b border-white/5 bg-white/5">
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 px-2">Switch Project</span>
+          <div className="p-3 border-b-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black">
+            <span className="text-[10px] font-black uppercase tracking-widest px-2">Switch Workspace</span>
           </div>
-          <div className="p-1 max-h-64 overflow-y-auto custom-scrollbar">
+          <div className="p-1 max-h-80 overflow-y-auto custom-scrollbar">
             {isPlatformOperator && (
               <button
                 onClick={() => {
                   setActiveMembershipId(null);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-3 py-2.5 rounded-xl transition-all flex items-center gap-3 ${
-                  !activeMembershipId ? 'bg-accent-500/20 text-accent-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                className={`w-full text-left px-4 py-3 border-2 mb-1 transition-all flex items-center gap-3 ${
+                  !activeMembershipId 
+                    ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' 
+                    : 'border-transparent hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
-                <div className="w-8 h-8 rounded-lg bg-accent-500/10 border border-accent-500/20 flex items-center justify-center font-bold">
+                <div className="w-8 h-8 border-2 border-current flex items-center justify-center font-black">
                   P
                 </div>
                 <div>
-                  <p className="text-xs font-bold">Platform Cockpit</p>
-                  <p className="text-[10px] opacity-60">Global Management</p>
+                  <p className="text-[10px] font-black uppercase tracking-tight">Platform Cockpit</p>
+                  <p className="text-[8px] font-bold uppercase opacity-60">Global Management</p>
                 </div>
               </button>
             )}
@@ -70,22 +68,19 @@ export default function PartnerSwitcher() {
                 onClick={() => {
                   setActiveMembershipId(m.id);
                   setIsOpen(false);
-                  // In a full implementation, we'd call /switch-partner to get a new token
-                  // For now, setting the state is enough if the manifest is already in membership
                 }}
-                className={`w-full text-left px-3 py-2.5 rounded-xl transition-all flex items-center gap-3 ${
-                  activeMembershipId === m.id ? 'bg-brand-500/20 text-brand-400' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                className={`w-full text-left px-4 py-3 border-2 mb-1 transition-all flex items-center gap-3 ${
+                  activeMembershipId === m.id 
+                    ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' 
+                    : 'border-transparent hover:bg-black/5 dark:hover:bg-white/5'
                 }`}
               >
-                <div 
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs"
-                  style={{ backgroundColor: m.manifest.primaryColor + '22', color: m.manifest.primaryColor, border: `1px solid ${m.manifest.primaryColor}44` }}
-                >
+                <div className="w-8 h-8 border-2 border-current flex items-center justify-center font-black text-xs">
                   {m.partnerName.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-xs font-bold">{m.partnerName}</p>
-                  <p className="text-[10px] opacity-60 capitalize">{m.role} · {m.manifest.industry}</p>
+                  <p className="text-[10px] font-black uppercase tracking-tight">{m.partnerName}</p>
+                  <p className="text-[8px] font-bold uppercase opacity-60">{m.role} · {m.manifest?.industry}</p>
                 </div>
               </button>
             ))}

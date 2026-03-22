@@ -6,13 +6,14 @@ Tessera is a high-performance, real-time multi-tenant customer support platform.
 
 ## 🌟 Core Features (Active)
 
-- **Real-Time Scaling**: Powered by Socket.io with Redis horizontal scaling, presence tracking, typing indicators, and read receipts.
+- **Real-Time Scaling**: Powered by Socket.io with Redis horizontal scaling, server-side identity enforcement, presence tracking, and typing indicators.
 - **Strict Monochrome Standard**: A "scorched earth" visual overhaul. Zero animations, zero motions, zero glassmorphism. Just high-contrast black and white for maximum performance and readability.
-- **Adaptive Dynamic Departments**: Organization structure is 100% data-driven. Handles any number of departments via a horizontally scrollable chip-bar UI. Each user can be assigned to multiple departments for custom visibility.
-- **Enterprise-Ready Schema**: Optimized with native PostgreSQL JSONB, Enums, and Soft-Delete capabilities. Includes full Audit Logging.
-- **Platform Management**: Global oversight for Platform Operators to manage users, partner health, and active/inactive tenant states.
-- **Partner Administration**: Partner Admins can directly manage their team, assigning existing users and inviting external users to their specific workspace.
-- **Azure Identity Ready**: Schema prepped for OIDC/Entra ID integration.
+- **Hybrid Identity Model**: Centralized identity plane with support for **Azure SSO (OIDC)** and **Local (Password)** access. Supports pre-provisioning for a zero-trust employee onboarding experience.
+- **Adaptive Workspace Switching**: Native support for users with memberships in multiple partners. Includes a "Choose Workspace" screen and live partner switcher.
+- **Enterprise-Ready Schema**: Optimized with native PostgreSQL JSONB, Enums, and strict Unique Membership constraints.
+- **Advanced Audit Logging**: System-wide traceability with granular **from -> to** state diffs, target lifecycle searching, and professional CSV export for compliance.
+- **Platform Cockpit**: Global oversight for Platform Operators to manage tenants, correct global user profiles, and monitor system-wide health (Postgres/Redis/GDPR).
+- **Partner Administration**: Local management for Partner Admins to configure departments and manage their specific team of agents and specialists.
 
 ## 🛠️ Tech Stack
 
@@ -50,12 +51,43 @@ Tessera is a high-performance, real-time multi-tenant customer support platform.
 
 *Password: `password123`*
 
+### First-Time Production Setup
+
+On first startup with no platform operators in the database, Tessera auto-creates one from environment variables:
+
+```bash
+PLATFORM_ADMIN_EMAIL=admin@yourcompany.com    # Required for bootstrap
+PLATFORM_ADMIN_PASSWORD=changeme123            # Optional — omit for SSO deployments
+```
+
+After the first operator is created, they can invite additional users and operators via the PlatformView UI.
+
 ## 🚨 Project Mandates
 
 - **STRICT B&W**: No colors, gradients, or shadows. Use solid black and white only.
 - **NO MOTION**: No animations, transitions, or special effects. The UI must be perfectly static.
 - **DYNAMIC DEPT**: Never hardcode department IDs. Read from the partner manifest.
 - **DOCKER ONLY**: Always execute commands inside containers.
+
+## 🚀 Future Roadmap
+
+These features are planned for future iterations to enhance the platform's enterprise capabilities:
+
+### 🔐 Identity & Security
+- **Multi-Factor Authentication (MFA)**: Support for Authenticator apps (TOTP) and SMS verification.
+- **Advanced Password Policies**: Customizable strength rules, mandatory rotation, and common password blocking.
+- **Session Management**: Configurable inactivity timeouts and concurrent session controls.
+- **Brute-Force Protection**: Automatic account lockout and IP-based rate limiting.
+- **Azure OIDC Integration**: Full dynamic configuration for Microsoft Entra ID (currently placeholder).
+
+### 📧 Communication & Workflow
+- **Enhanced Mail Templates**: Customizable, branded email templates for different partners.
+- **Real-Time System Alerts**: Configurable alerts for platform admins (e.g., database high usage).
+
+### 🛡️ Enterprise Audit & Compliance
+- **Cursor-Based Pagination**: Replace offset pagination in the Audit Log for high-performance scaling with millions of records.
+- **WORM Immutability**: Stream logs to tamper-proof cold storage (e.g., AWS S3 Object Lock) to prevent unauthorized database alterations.
+- **Automated Archiving**: Cron-based cold storage for logs older than a specified retention period to maintain database speed.
 
 ## 🧪 Testing
 

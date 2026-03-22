@@ -1,19 +1,30 @@
-import { createClient } from 'redis';
+import { createClient, RedisClientType } from 'redis';
 import config from '../config.js';
 import logger from './logger.js';
 
-let pubClient: any = null;
-let subClient: any = null;
+type RedisClient = RedisClientType;
+
+let pubClient: RedisClient | null = null;
+let subClient: RedisClient | null = null;
 
 export async function initRedis() {
   if (!config.REDIS_URL) return { pubClient: null, subClient: null };
 
   if (!pubClient) {
-    pubClient = createClient({ url: config.REDIS_URL });
-    subClient = pubClient.duplicate();
+    pubClient = createClient({
+      url: config.REDIS_URL,
+      socket: {
+        reconnectStrategy(retries: number) {
+          const delay = Math.min(retries * 50, 3000);
+          logger.info({ retries, delay }, 'Redis reconnecting');
+          return delay;
+        },
+      },
+    }) as RedisClient;
+    subClient = pubClient.duplicate() as RedisClient;
 
-    pubClient.on('error', (err: any) => logger.error({ err }, 'Redis Pub Client Error'));
-    subClient.on('error', (err: any) => logger.error({ err }, 'Redis Sub Client Error'));
+    pubClient.on('error', (err: Error) => logger.error({ err }, 'Redis Pub Client Error'));
+    subClient.on('error', (err: Error) => logger.error({ err }, 'Redis Sub Client Error'));
 
     try {
       await Promise.all([pubClient.connect(), subClient.connect()]);

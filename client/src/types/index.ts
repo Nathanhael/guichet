@@ -1,4 +1,4 @@
-export type UserRole = 'agent' | 'support' | 'manager' | 'admin' | 'platform_operator';
+export type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 export interface ThemeConfig {
   glassBlur?: string;

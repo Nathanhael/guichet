@@ -221,7 +221,7 @@ export function useSocket(): Socket {
     // Topic Heat Alert
     s.on('topic:alert', (alert: TopicAlert) => {
       const state = useStore.getState();
-      if (state.user?.role === 'admin' || state.user?.role === 'manager') {
+      if (state.user?.role === 'admin') {
         addTopicAlert(alert);
         playChime();
       }
@@ -233,6 +233,14 @@ export function useSocket(): Socket {
         m.partnerId === partnerId ? { ...m, status: 'inactive' as const } : m
       );
       state.setMemberships(updatedMemberships);
+    });
+
+    s.on('user:deactivated', ({ userId }: { userId: string }) => {
+      const state = useStore.getState();
+      if (state.user?.id === userId) {
+        state.logout();
+        window.location.href = '/'; // Force reload to clear all state
+      }
     });
 
     return () => {

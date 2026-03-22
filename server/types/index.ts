@@ -1,4 +1,4 @@
-export type UserRole = 'agent' | 'support' | 'admin';
+export type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 export interface User {
   id: string;
@@ -42,12 +42,14 @@ export interface Message {
   originalText: string;
   improvedText: string;
   processedText: string;
+  text?: string; // Alias for backward compatibility
   mediaUrl?: string | null;
   whisper: number; // 0 or 1
   system: number; // 0 or 1
   translationSkipped: number; // 0 or 1
   fallback: number; // 0 or 1
   timestamp: string;
+  createdAt?: string; // Alias for backward compatibility
   reactions: string; // JSON string
 }
 
