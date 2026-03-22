@@ -5,8 +5,6 @@ export default function PartnerUnavailable() {
   const isPlatformOperator = user?.isPlatformOperator;
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const isInactive = activeMembership?.status === 'inactive';
-  const isDeleted = !activeMembership && !isPlatformOperator;
-
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white">
       <div className="text-center max-w-md px-8">

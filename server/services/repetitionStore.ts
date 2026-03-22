@@ -1,5 +1,4 @@
 import { createClient } from 'redis';
-import config from '../config.js';
 import logger from '../utils/logger.js';
 
 const REPETITION_TTL = 300; // 5 minutes

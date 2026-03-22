@@ -14,7 +14,7 @@ function buildSchedule() {
       sat: { closed: true, windows: [] },
       sun: { closed: true, windows: [] },
     },
-    exceptions: [],
+    exceptions: [] as Array<{ id: string; date: string; closed?: boolean; windows?: Array<{ start: string; end: string }>; note?: string }>,
   };
 }
 

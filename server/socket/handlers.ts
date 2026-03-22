@@ -1,12 +1,10 @@
 import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import * as presenceService from '../services/presence.js';
-import { runGuards } from '../services/guards.js';
 import { query, get, run, transaction } from '../db.js';
 import { getBusinessHoursStatus, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
 import { Ticket, Message, User } from '../types/index.js';
-import { getRedisClients } from '../utils/redis.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
@@ -49,13 +47,6 @@ interface MessageSendPayload {
   cannedResponseId?: string;
 }
 
-interface ReactionTogglePayload {
-  ticketId: string;
-  messageId: string;
-  emoji: string;
-  userId: string;
-}
-
 interface Participant {
   id: string;
   name: string;
@@ -89,10 +80,6 @@ interface TicketRow {
   status: string;
   participants: string;
   created_at: string;
-}
-
-interface TicketPartnerRow {
-  partner_id: string;
 }
 
 interface TicketParticipantsRow {

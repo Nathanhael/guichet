@@ -18,7 +18,8 @@ const queryClient = new QueryClient({
 });
 
 const TRPCProvider = ({ children }: { children: React.ReactNode }) => {
-  const token = useStore((s) => s.token);
+  // Subscribe to token changes so the provider re-renders when auth state changes
+  void useStore((s) => s.token);
   
   const [trpcClient] = React.useState(() =>
     trpc.createClient({
