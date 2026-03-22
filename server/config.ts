@@ -23,6 +23,8 @@ const configSchema = z.object({
     AI_BASE_URL: z.string().url().optional(),
     AI_API_KEY: z.string().optional(),
     AZURE_OPENAI_DEPLOYMENT: z.string().optional(),
+    PLATFORM_ADMIN_EMAIL: z.string().email().optional(),
+    PLATFORM_ADMIN_PASSWORD: z.string().min(8).optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -49,6 +51,8 @@ const parseResult = configSchema.safeParse({
     AI_BASE_URL: process.env.AI_BASE_URL,
     AI_API_KEY: process.env.AI_API_KEY,
     AZURE_OPENAI_DEPLOYMENT: process.env.AZURE_OPENAI_DEPLOYMENT,
+    PLATFORM_ADMIN_EMAIL: process.env.PLATFORM_ADMIN_EMAIL,
+    PLATFORM_ADMIN_PASSWORD: process.env.PLATFORM_ADMIN_PASSWORD,
 });
 
 if (!parseResult.success) {
