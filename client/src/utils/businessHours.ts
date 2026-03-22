@@ -63,14 +63,16 @@ export function formatBusinessHoursTimestamp(value?: string, timezone?: string) 
   }
 }
 
-export function getBusinessHoursSummary(status?: BusinessHoursStatus | null) {
-  if (!status) return 'Business-hours status unavailable.';
-  if (status.message) return status.message;
-  if (status.isOpen) return 'Support is open.';
+export function getBusinessHoursSummary(status?: BusinessHoursStatus | null, t?: (key: string) => string) {
+  if (!status) return t?.('bh_status_unavailable') ?? 'Business-hours status unavailable.';
+  if (status.message && !t) return status.message;
+  if (status.isOpen) return t?.('bh_status_open') ?? 'Support is open.';
   if (status.nextOpenAt) {
-    return `Support is closed. Reopens ${formatBusinessHoursTimestamp(status.nextOpenAt, status.timezone)}.`;
+    const time = formatBusinessHoursTimestamp(status.nextOpenAt, status.timezone);
+    const template = t?.('bh_status_closed_reopens') ?? 'Support is closed. Reopens {time}.';
+    return template.replace('{time}', time ?? '');
   }
-  return 'Support is closed.';
+  return t?.('bh_status_closed') ?? 'Support is closed.';
 }
 
 export function getBusinessHoursReason(status?: BusinessHoursStatus | null) {
@@ -213,14 +215,15 @@ export function sortBusinessHoursExceptions(exceptions: BusinessHoursException[]
   });
 }
 
-export function getBusinessHoursDraftIssues(schedule: BusinessHoursSchedule) {
+export function getBusinessHoursDraftIssues(schedule: BusinessHoursSchedule, t?: (key: string) => string) {
   const issues: string[] = [];
   const seenDates = new Set<string>();
 
   for (const exception of schedule.exceptions) {
     if (!exception.date) continue;
     if (seenDates.has(exception.date)) {
-      issues.push(`Duplicate exception date: ${exception.date}`);
+      const template = t?.('bh_duplicate_exception') ?? 'Duplicate exception date: {date}';
+      issues.push(template.replace('{date}', exception.date));
     }
     seenDates.add(exception.date);
   }
