@@ -47,7 +47,7 @@ export default function AdminLabels() {
   const error = fetchError?.message || createMutation.error?.message || deleteMutation.error?.message;
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-fade-in">
+    <div className="space-y-6 min-w-[1180px] max-w-4xl mx-auto animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-ui-base01 dark:text-white tracking-tight">Label Management</h2>
@@ -75,7 +75,7 @@ export default function AdminLabels() {
 
       <div className="glass-card p-6 shadow-soft">
         <h3 className="text-sm font-bold uppercase tracking-wider text-ui-base1 mb-4">Create New Label</h3>
-        <div className="flex flex-wrap items-end gap-4">
+        <div className="flex items-end gap-4 overflow-x-auto">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-xs font-semibold text-gray-400 mb-1.5 uppercase">Label Name</label>
             <input
@@ -108,7 +108,7 @@ export default function AdminLabels() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {isLoading ? (
           <p className="text-ui-base1">Loading labels...</p>
         ) : !labels || labels.length === 0 ? (

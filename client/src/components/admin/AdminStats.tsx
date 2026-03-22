@@ -58,18 +58,18 @@ export default function AdminStats() {
 
   if (isLoading || !stats) {
     return (
-      <div className="space-y-6 max-w-7xl mx-auto p-4">
+      <div className="space-y-6 min-w-[1280px] max-w-7xl mx-auto p-4">
         <div className="flex justify-between items-center mb-8">
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-12 w-96" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-6 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <Skeleton key={i} className="h-24" />
           ))}
         </div>
         <Skeleton className="h-64 w-full" />
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <Skeleton className="h-80" />
           <Skeleton className="h-80" />
         </div>
@@ -81,14 +81,14 @@ export default function AdminStats() {
   const totalTickets = stats.total || 1;
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-6 min-w-[1280px] max-w-7xl mx-auto pb-10">
+      <div className="flex items-center justify-between gap-6">
         <div>
           <h2 className="text-2xl font-black uppercase tracking-tight text-black dark:text-white">Dashboard</h2>
           <p className="text-sm opacity-60 mt-1">Real-time performance metrics and historical trends</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-2 border-black dark:border-white p-2 bg-white dark:bg-black">
+        <div className="flex items-center gap-2 border-2 border-black dark:border-white p-2 bg-white dark:bg-black overflow-x-auto">
           {/* Department filter */}
           <div className="flex gap-1">
             {(['all', ...departments.map(d => d.id)] as string[]).map((d) => (
@@ -163,7 +163,7 @@ export default function AdminStats() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-6 gap-4">
         <StatCard label="Total Tickets" value={stats.total} color="dark" prev={stats.previousPeriod?.total} />
         <StatCard
           label="Response Time"
@@ -188,7 +188,7 @@ export default function AdminStats() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         {/* Queue health */}
         <Panel title="Queue health">
           <div className="grid grid-cols-2 gap-3 mb-3">
@@ -257,7 +257,7 @@ export default function AdminStats() {
       </Panel>
 
       {/* Support & Agent performance */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Panel title="Support performance">
           {stats.supportStats.length === 0 ? (
             <p className="text-sm opacity-60">No data yet</p>

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
+import { useBusinessHours } from '../hooks/useBusinessHours';
 import { useT } from '../i18n';
 import { MAX_OPEN_CHATS, ARCHIVE_PAGE_SIZE } from '../config';
 import ChatWindow from '../components/ChatWindow';
@@ -15,6 +16,7 @@ import { Ticket } from '../types';
 import { getTicketTime } from '../utils/dateUtils';
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import { trpc } from '../utils/trpc';
+import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 
 const DEPT_CLASSES: Record<string, string> = {
   DSC: 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black',
@@ -110,6 +112,7 @@ export default function SupportView() {
   const [archiveDept, setArchiveDept] = useState('all');
   const [toast, setToast] = useState<string | null>(null);
   const ARCHIVE_LIMIT = ARCHIVE_PAGE_SIZE;
+  const { status: businessHoursStatus } = useBusinessHours();
 
   const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
   const partnerName = activeMembership?.partnerName || 'Tessera';
@@ -126,6 +129,19 @@ export default function SupportView() {
   useEffect(() => {
     if (notificationsEnabled) requestNotificationPermission();
   }, [notificationsEnabled]);
+
+  const ticketsQuery = trpc.ticket.list.useQuery(
+    {},
+    {
+      refetchInterval: 30000,
+    }
+  );
+
+  useEffect(() => {
+    if (ticketsQuery.data && Array.isArray(ticketsQuery.data)) {
+      setTickets(ticketsQuery.data as any);
+    }
+  }, [ticketsQuery.data, setTickets]);
 
   const archiveQuery = trpc.ticket.list.useQuery(
     {
@@ -158,6 +174,17 @@ export default function SupportView() {
   const showPreview = !!previewTicket && !supportOpenTickets.includes(previewTicketId!);
   const atMaxChats = openTabTickets.length >= MAX_OPEN_CHATS;
 
+  useEffect(() => {
+    if (openTabTickets.length === 0) {
+      setActiveTab(null);
+      return;
+    }
+
+    if (!activeTab || !openTabTickets.some((ticket) => ticket.id === activeTab)) {
+      setActiveTab(openTabTickets[0].id);
+    }
+  }, [openTabTickets, activeTab]);
+
   function selectTicket(ticket: Ticket) {
     if (!user) return;
     if (supportOpenTickets.includes(ticket.id)) {
@@ -178,6 +205,15 @@ export default function SupportView() {
     setPreviewTicketId(null);
   }
 
+  function closeTab(ticketId: string) {
+    removeSupportOpenTicket(ticketId);
+
+    if (activeTab === ticketId) {
+      const remainingTickets = openTabTickets.filter((ticket) => ticket.id !== ticketId);
+      setActiveTab(remainingTickets.length > 0 ? remainingTickets[0].id : null);
+    }
+  }
+
   if (!user) return null;
 
   // Guard: partner was deleted — activeMembership is undefined
@@ -185,6 +221,21 @@ export default function SupportView() {
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
+      {businessHoursStatus && !businessHoursStatus.isOpen && (
+        <div className="px-8 py-2 bg-black text-white dark:bg-white dark:text-black border-b border-black dark:border-white text-xs font-bold">
+          <span>New ticket intake is paused.</span>
+          {businessHoursStatus.nextOpenAt ? (
+            <span className="ml-2 opacity-80">
+              Reopens {formatBusinessHoursTimestamp(businessHoursStatus.nextOpenAt, businessHoursStatus.timezone)}
+            </span>
+          ) : null}
+          {getBusinessHoursReason(businessHoursStatus) ? (
+            <span className="ml-2 opacity-80">
+              Reason: {getBusinessHoursReason(businessHoursStatus)}
+            </span>
+          ) : null}
+        </div>
+      )}
       <nav className={`px-8 flex items-center justify-between sticky top-0 z-50 border-b-2 border-black dark:border-white ${focusMode ? 'py-2 bg-black text-white' : 'py-4 bg-white dark:bg-black'}`}>
         <div className="flex items-center gap-4">
           <span className="font-black text-2xl uppercase tracking-tighter">TESSERA</span>
@@ -283,13 +334,13 @@ export default function SupportView() {
           {openTabTickets.length > 0 && (
             <div className="flex border-b-2 border-black dark:border-white overflow-x-auto">
               {openTabTickets.map((ticket) => (
-                <button
+                  <button
                   key={ticket.id}
                   onClick={() => setActiveTab(ticket.id)}
                   className={`px-6 py-3 text-[10px] font-black uppercase tracking-widest border-r-2 border-black dark:border-white ${activeTab === ticket.id ? 'bg-black dark:bg-white text-white dark:text-black' : ''}`}
                 >
                   {ticket.agentName}
-                  <span onClick={(e) => { e.stopPropagation(); removeSupportOpenTicket(ticket.id); }} className="ml-2">×</span>
+                  <span onClick={(e) => { e.stopPropagation(); closeTab(ticket.id); }} className="ml-2">×</span>
                 </button>
               ))}
             </div>
@@ -299,7 +350,7 @@ export default function SupportView() {
             {showPreview ? (
               <TicketPreview ticket={previewTicket} messages={[]} onJoin={() => joinTicket(previewTicket!)} onClose={() => setPreviewTicketId(null)} />
             ) : activeTab ? (
-              <ChatWindow ticket={tickets.find(t => t.id === activeTab)} onClose={() => removeSupportOpenTicket(activeTab!)} />
+              <ChatWindow ticket={tickets.find(t => t.id === activeTab)} onClose={() => closeTab(activeTab)} />
             ) : (
               <div className="h-full flex items-center justify-center font-black uppercase tracking-[0.2em] opacity-20 text-2xl">Ready to help</div>
             )}

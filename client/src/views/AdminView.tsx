@@ -46,15 +46,15 @@ export default function AdminView() {
   );
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
-      <nav className="bg-white dark:bg-black text-black dark:text-white px-8 py-4 flex items-center justify-between sticky top-0 z-50 border-b-2 border-black dark:border-white">
+    <div className="h-screen min-w-[1440px] flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
+      <nav className="bg-white dark:bg-black text-black dark:text-white px-8 py-4 flex items-center justify-between gap-8 sticky top-0 z-50 border-b-2 border-black dark:border-white">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">
             <span className="font-black text-2xl tracking-tighter uppercase">Tessera</span>
             <span className="text-[10px] bg-black dark:bg-white text-white dark:text-black px-2.5 py-1 font-black uppercase tracking-widest">Admin</span>
           </div>
 
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="flex items-center gap-1">
             <NavButton
               id="dashboard"
               label={t('dashboard')}
@@ -72,8 +72,8 @@ export default function AdminView() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden sm:flex flex-col items-end mr-2">
+        <div className="flex items-center gap-4 shrink-0">
+          <div className="flex flex-col items-end mr-2">
             <span className="text-[10px] font-black uppercase tracking-tight">{user.name}</span>
             <span className="text-[8px] opacity-60 font-black uppercase tracking-widest">{user.role}</span>
           </div>
@@ -91,7 +91,7 @@ export default function AdminView() {
         </div>
       </nav>
 
-      <main className="flex-1 overflow-y-auto bg-white dark:bg-black p-8 custom-scrollbar">
+      <main className="flex-1 overflow-auto bg-white dark:bg-black p-8 custom-scrollbar">
         {view === 'dashboard' && <AdminStats />}
         {view === 'team' && <AdminTeam />}
         {view === 'alerts' && <AdminAlerts />}

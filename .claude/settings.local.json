@@ -6,10 +6,6 @@
       "Bash(git remote:*)",
       "Bash(git pull:*)",
       "Bash(git:*)",
-      "Bash(npm run:*)",
-      "Bash(curl:*)",
-      "Bash(node:*)",
-      "Bash(npx:*)",
       "Bash(where node:*)",
       "Skill(commit-commands:commit)",
       "Skill(claude-md-management:revise-claude-md)",
@@ -33,7 +29,37 @@
       "mcp__plugin_context-mode_context-mode__ctx_fetch_and_index",
       "Bash(npm install:*)",
       "Bash(typescript-language-server:*)",
-      "Bash(claude plugin:*)"
+      "Bash(claude plugin:*)",
+      "Read(//d/Projects_Coding/tessera/$HOME/.claude/**)",
+      "mcp__MCP_DOCKER__mcp-find",
+      "mcp__MCP_DOCKER__mcp-add",
+      "mcp__MCP_DOCKER__mcp-config-set",
+      "Bash(netstat -ano)",
+      "mcp__MCP_DOCKER__query_database",
+      "Skill(playwright-cli)",
+      "Bash(npx playwright-cli run-code \"async page => {:*)",
+      "Bash(npx playwright-cli:*)",
+      "Bash(playwright-cli click:*)",
+      "Bash(playwright-cli snapshot:*)",
+      "Bash(playwright-cli fill:*)",
+      "Bash(playwright-cli check:*)",
+      "Bash(playwright-cli eval:*)",
+      "Bash(playwright-cli run-code:*)",
+      "Bash(playwright-cli screenshot:*)",
+      "Bash(playwright-cli close:*)",
+      "Bash(playwright-cli open:*)",
+      "Bash(playwright-cli select:*)",
+      "Bash(docker compose:*)",
+      "Bash(playwright-cli reload:*)",
+      "Bash(tsc --version)",
+      "Bash(where gemini:*)",
+      "mcp__MCP_DOCKER__scan_all_keys",
+      "mcp__MCP_DOCKER__dbsize"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "MCP_DOCKER",
+    "postgres"
+  ]
 }

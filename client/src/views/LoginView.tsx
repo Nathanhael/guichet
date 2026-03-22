@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
-import { tBrowser, useT } from '../i18n';
+import { useT } from '../i18n';
+import type { User, Membership } from '../types';
 import DarkModeToggle from '../components/DarkModeToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import SystemBackground from '../components/SystemBackground';
@@ -15,6 +16,7 @@ const DEMO_PASSWORD = 'password123';
 type DemoUser = { id: string; name: string; email?: string; role?: string; lang?: string; isPlatformOperator?: boolean };
 
 type PartnerSelection = {
+  token: string;
   user: { id: string; name: string; email?: string; isPlatformOperator?: boolean };
   memberships: { id: string; partnerId: string; partnerName: string; role: string; manifest?: { industry?: string } }[];
 };
@@ -29,14 +31,17 @@ export default function LoginView() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
+  const [isForgotLoading, setIsForgotLoading] = useState(false);
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [viewMode, setViewMode] = useState<'standard' | 'demo' | 'forgot' | 'reset'>('standard');
   const [resetToken, setResetToken] = useState('');
   const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | null>(null);
 
-  const { data: usersData, isLoading: loading } = trpc.user.list.useQuery(undefined, {
+  const { data: usersData, isLoading: loading } = trpc.user.demoList.useQuery(undefined, {
     enabled: viewMode === 'demo'
   });
   const users = (usersData || []) as DemoUser[];
@@ -67,9 +72,9 @@ export default function LoginView() {
 
   const handleLocalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoggingIn) return;
+    if (isLoginLoading) return;
     setError('');
-    setIsLoggingIn(true);
+    setIsLoginLoading(true);
     try {
       const res = await fetch('/api/v1/auth/login-local', {
         method: 'POST',
@@ -78,12 +83,11 @@ export default function LoginView() {
       });
       const data = await res.json();
       if (res.ok) {
+        setPassword('');
         const memberships = data.memberships || [];
         if (memberships.length > 1 && !data.user.isPlatformOperator) {
-          setUser(data.user);
-          setToken(data.token);
-          setMemberships(memberships);
-          setSelectingPartner({ user: data.user, memberships });
+          // Defer token persistence until partner is selected
+          setSelectingPartner({ token: data.token, user: data.user, memberships });
         } else {
           setToken(data.token);
           setUser(data.user);
@@ -98,15 +102,15 @@ export default function LoginView() {
     } catch (err) {
       setError(t('network_error'));
     } finally {
-      setIsLoggingIn(false);
+      setIsLoginLoading(false);
     }
   };
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoggingIn) return;
+    if (isForgotLoading) return;
     setError('');
-    setIsLoggingIn(true);
+    setIsForgotLoading(true);
     try {
       const res = await fetch('/api/v1/auth/forgot-password', {
         method: 'POST',
@@ -123,15 +127,15 @@ export default function LoginView() {
     } catch (err) {
       setError(t('network_error'));
     } finally {
-      setIsLoggingIn(false);
+      setIsForgotLoading(false);
     }
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoggingIn) return;
+    if (isResetLoading) return;
     setError('');
-    setIsLoggingIn(true);
+    setIsResetLoading(true);
     try {
       const res = await fetch('/api/v1/auth/reset-password', {
         method: 'POST',
@@ -149,13 +153,13 @@ export default function LoginView() {
     } catch (err) {
       setError(t('network_error'));
     } finally {
-      setIsLoggingIn(false);
+      setIsResetLoading(false);
     }
   };
 
   const handleDemoLogin = async (u: DemoUser) => {
-    if (isLoggingIn) return;
-    setIsLoggingIn(true);
+    if (isDemoLoading) return;
+    setIsDemoLoading(true);
     try {
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
@@ -166,10 +170,7 @@ export default function LoginView() {
         const data = await res.json();
         const memberships = data.memberships || [];
         if (memberships.length > 1 && !data.user.isPlatformOperator) {
-          setUser(data.user);
-          setToken(data.token);
-          setMemberships(memberships);
-          setSelectingPartner({ user: data.user, memberships });
+          setSelectingPartner({ token: data.token, user: data.user, memberships });
         } else {
           setToken(data.token);
           setUser(data.user);
@@ -184,8 +185,9 @@ export default function LoginView() {
       }
     } catch (err) {
       console.error(err);
+      setError(t('network_error'));
     } finally {
-      setIsLoggingIn(false);
+      setIsDemoLoading(false);
     }
   };
 
@@ -202,7 +204,7 @@ export default function LoginView() {
             {selectingPartner.memberships.map((m) => (
               <button
                 key={m.id}
-                onClick={() => setActiveMembershipId(m.id)}
+                onClick={() => { setToken(selectingPartner.token); setUser(selectingPartner.user as User); setMemberships(selectingPartner.memberships as Membership[]); setActiveMembershipId(m.id); }}
                 className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black flex items-center justify-between"
               >
                 <div>
@@ -213,7 +215,7 @@ export default function LoginView() {
               </button>
             ))}
             <button 
-              onClick={() => { setUser(null); setToken(null); setSelectingPartner(null); }}
+              onClick={() => setSelectingPartner(null)}
               className="w-full py-3 mt-4 text-[10px] font-black uppercase tracking-widest border-2 border-transparent hover:border-black dark:hover:border-white"
             >
               {t('cancel')}
@@ -270,7 +272,7 @@ export default function LoginView() {
               )}
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5">{t('email_label')}</label>
-                <input type="email" autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setSuccessMessage(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold placeholder:opacity-30" placeholder={t('placeholder_email')} required disabled={isLoggingIn} />
+                <input type="email" autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setSuccessMessage(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold placeholder:opacity-30" placeholder={t('placeholder_email')} required disabled={isLoginLoading} />
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1.5">
@@ -278,8 +280,8 @@ export default function LoginView() {
                   <button type="button" onClick={() => { setViewMode('forgot'); setError(''); setSuccessMessage(''); }} className="text-[9px] font-black uppercase tracking-widest opacity-40 hover:opacity-100 hover:underline">{t('forgot_password')}</button>
                 </div>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => { setPassword(e.target.value); setError(''); setSuccessMessage(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold placeholder:opacity-30" placeholder="••••••••" required disabled={isLoggingIn} />
-                  <button type="button" onMouseEnter={() => setShowPassword(true)} onMouseLeave={() => setShowPassword(false)} className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30 cursor-help hover:opacity-100">
+                  <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => { setPassword(e.target.value); setError(''); setSuccessMessage(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold placeholder:opacity-30" placeholder="••••••••" required disabled={isLoginLoading} />
+                  <button type="button" onClick={() => setShowPassword(prev => !prev)} className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30 cursor-pointer hover:opacity-100">
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
@@ -291,15 +293,15 @@ export default function LoginView() {
                 </div>
                 <label htmlFor="remember" className="text-[10px] font-black uppercase tracking-widest cursor-pointer opacity-60 select-none">{t('remember_me')}</label>
               </div>
-              <button type="submit" disabled={isLoggingIn} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
-                {isLoggingIn ? <span>{t('authenticating')}</span> : <><span>{t('login_btn')}</span><span>➔</span></>}
+              <button type="submit" disabled={isLoginLoading} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+                {isLoginLoading ? <span>{t('authenticating')}</span> : <><span>{t('login_btn')}</span><span>➔</span></>}
               </button>
             </form>
             <div className="relative flex items-center justify-center py-4">
               <div className="absolute border-t-2 border-black/10 dark:border-white/10 w-full" />
               <span className="bg-white dark:bg-black px-4 text-[9px] font-black uppercase tracking-[0.2em] opacity-30 relative z-10 italic">{t('sso_enterprise')}</span>
             </div>
-            <button onClick={() => setSuccessMessage(t('sso_coming_soon'))} className="w-full p-5 border-2 border-black dark:border-white flex items-center justify-center gap-4 hover:bg-black/5 dark:hover:bg-white/5">
+            <button onClick={() => setError(t('sso_coming_soon'))} className="w-full p-5 border-2 border-black dark:border-white flex items-center justify-center gap-4 hover:bg-black/5 dark:hover:bg-white/5">
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" /></svg>
               <span className="font-black uppercase tracking-widest">{t('sso_microsoft')}</span>
             </button>
@@ -320,10 +322,10 @@ export default function LoginView() {
                 {error && <div className="bg-black text-white dark:bg-white dark:text-black p-3 border-2 border-black dark:border-white flex items-center gap-3"><span className="text-lg font-black">!</span><p className="font-bold text-[10px] uppercase tracking-widest">{error}</p></div>}
                 <div>
                   <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5">{t('email_label')}</label>
-                  <input type="email" autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold" placeholder={t('placeholder_email')} required disabled={isLoggingIn} />
+                  <input type="email" autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold" placeholder={t('placeholder_email')} required disabled={isForgotLoading} />
                 </div>
-                <button type="submit" disabled={isLoggingIn} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
-                  {isLoggingIn ? t('loading') : t('send_reset_link')}
+                <button type="submit" disabled={isForgotLoading} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
+                  {isForgotLoading ? t('loading') : t('send_reset_link')}
                 </button>
                 <button type="button" onClick={() => { setViewMode('standard'); setError(''); }} className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100">{t('cancel')}</button>
               </form>
@@ -339,12 +341,12 @@ export default function LoginView() {
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5">{t('password_label')}</label>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold" placeholder="••••••••" required disabled={isLoggingIn} />
+                  <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold" placeholder="••••••••" required disabled={isResetLoading} />
                   <button type="button" onMouseEnter={() => setShowPassword(true)} onMouseLeave={() => setShowPassword(false)} className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30 cursor-help">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
                 </div>
               </div>
-              <button type="submit" disabled={isLoggingIn} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
-                {isLoggingIn ? t('loading') : t('update_password_btn')}
+              <button type="submit" disabled={isResetLoading} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
+                {isResetLoading ? t('loading') : t('update_password_btn')}
               </button>
             </form>
           </div>
@@ -363,7 +365,7 @@ export default function LoginView() {
               <ul className="space-y-3 pb-2">
                 {filtered.map((u) => (
                   <li key={u.id}>
-                    <button onClick={() => handleDemoLogin(u)} disabled={isLoggingIn} className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black flex items-center justify-between">
+                    <button onClick={() => handleDemoLogin(u)} disabled={isDemoLoading} className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 border-2 border-current flex items-center justify-center text-xl font-black italic">{u.name.charAt(0)}</div>
                         <div>

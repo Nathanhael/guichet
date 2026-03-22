@@ -27,7 +27,7 @@ export default function AdminTeam() {
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   return (
-    <div className="max-w-6xl border-2 border-black dark:border-white p-6">
+    <div className="min-w-[1180px] max-w-6xl border-2 border-black dark:border-white p-6">
       <div className="flex justify-between items-start mb-6">
         <div>
           <h2 className="text-lg font-black uppercase tracking-widest">Team Members</h2>
@@ -54,7 +54,7 @@ export default function AdminTeam() {
       ) : (
         <>
           <div className="border border-black dark:border-white mb-4 overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[1080px] text-left border-collapse">
               <thead>
                 <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5">
                   <th className="p-3 text-[10px] font-black uppercase tracking-widest">Name</th>
@@ -147,7 +147,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} />
-      <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 max-w-md w-full relative z-10">
+      <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 w-[480px] relative z-10">
         <h3 className="text-xl font-black uppercase tracking-tighter mb-4">Add Existing User</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -234,7 +234,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black opacity-80" onClick={() => { setTempPassword(null); onInvited(); }} />
-        <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 max-w-md w-full relative z-10">
+        <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 w-[480px] relative z-10">
           <h3 className="text-xl font-black uppercase tracking-tighter mb-4">User Invited</h3>
           <div className="space-y-4">
             <p className="text-xs font-bold uppercase tracking-widest">User created successfully.</p>
@@ -268,7 +268,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} />
-      <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 max-w-md w-full relative z-10">
+      <div className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 w-[480px] relative z-10">
         <h3 className="text-xl font-black uppercase tracking-tighter mb-4">Invite External User</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

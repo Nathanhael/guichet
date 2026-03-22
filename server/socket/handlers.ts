@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import * as presenceService from '../services/presence.js';
 import { runGuards } from '../services/guards.js';
 import { query, get, run, transaction } from '../db.js';
-import { isWithinBusinessHours, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
+import { getBusinessHoursStatus, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
 import { Ticket, Message, User } from '../types/index.js';
 import { getRedisClients } from '../utils/redis.js';
@@ -174,19 +174,27 @@ export function registerSocketHandlers(io: Server) {
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       const partnerId = socket.data.partnerId;
-      const partnerRow = partnerId ? await get('SELECT status, business_hours_start, business_hours_end, business_hours_timezone FROM partners WHERE id = $1', [partnerId]) as { status: string; business_hours_start: string | null; business_hours_end: string | null; business_hours_timezone: string | null } | undefined : null;
+      const partnerRow = partnerId ? await get('SELECT status, business_hours_schedule, business_hours_start, business_hours_end, business_hours_timezone FROM partners WHERE id = $1', [partnerId]) as { status: string; business_hours_schedule: unknown; business_hours_start: string | null; business_hours_end: string | null; business_hours_timezone: string | null } | undefined : null;
       
       if (partnerRow && partnerRow.status !== 'active') {
         return socket.emit('error', { message: 'Partner is currently inactive.' });
       }
 
       const partnerHours = partnerRow ? {
+        businessHoursSchedule: partnerRow.business_hours_schedule as any,
         businessHoursStart: partnerRow.business_hours_start,
         businessHoursEnd: partnerRow.business_hours_end,
         businessHoursTimezone: partnerRow.business_hours_timezone,
       } : undefined;
 
-      if (!isWithinBusinessHours(partnerHours)) return socket.emit('hours:closed', { message: 'The support chat is currently closed.' });
+      const businessHoursStatus = getBusinessHoursStatus(partnerHours);
+      if (!businessHoursStatus.isOpen) {
+        return socket.emit('hours:closed', {
+          code: 'BUSINESS_HOURS_CLOSED',
+          message: businessHoursStatus.message,
+          status: businessHoursStatus,
+        });
+      }
       try {
         const { agentId, agentLang, dept, ref1, ref2, text, mediaUrl } = data;
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });

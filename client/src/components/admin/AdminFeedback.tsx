@@ -248,7 +248,7 @@ export default function AdminFeedback() {
         <div className="space-y-4">
           {loadingRatings ? (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 {[1, 2, 3, 4].map((i) => (
                   <Skeleton key={i} className="h-20 w-full rounded-xl" />
                 ))}
@@ -262,7 +262,7 @@ export default function AdminFeedback() {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <div className="bg-ui-base3 dark:bg-brand-800 rounded-xl border border-ui-base2 dark:border-brand-700 p-4">
                   <p className="text-xs text-ui-base1 dark:text-gray-400">Total ratings</p>
                   <p className="text-2xl font-bold text-ui-base01 dark:text-white mt-1">{ratings.length}</p>
@@ -313,7 +313,7 @@ export default function AdminFeedback() {
 
               {Object.keys(supportRatings).length > 0 && (
                 <div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-8 mb-4">
+                  <div className="flex items-center justify-between gap-4 mt-8 mb-4">
                     <p className="text-lg font-bold text-ui-base01 dark:text-white">Ratings by Support</p>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium text-ui-base1 dark:text-gray-400">View:</span>
@@ -337,7 +337,7 @@ export default function AdminFeedback() {
                   {selectedSupport === 'ALL' ? (
                     <div className="bg-ui-base3 dark:bg-brand-800 rounded-xl border border-ui-base2 dark:border-brand-700 overflow-hidden shadow-sm animate-fade-in">
                       <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm border-collapse">
+                        <table className="w-full min-w-[960px] text-left text-sm border-collapse">
                           <thead>
                             <tr className="bg-ui-base2/50 dark:bg-brand-900/40 border-b border-ui-base2 dark:border-brand-700">
                               <th className="px-6 py-4 font-bold text-ui-base01 dark:text-gray-300">Support Name</th>
@@ -421,7 +421,7 @@ export default function AdminFeedback() {
                                 </div>
                               </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div className="grid grid-cols-2 gap-6 mt-6">
                               {/* DSC Breakdown */}
                               <div className="bg-ui-base2 dark:bg-brand-900/30 rounded-xl p-5 border border-ui-base2 dark:border-brand-700/50 relative overflow-hidden group">
                                 <div className="flex justify-between items-center mb-4">
@@ -509,7 +509,7 @@ export default function AdminFeedback() {
                     <div key={r.id} className="px-4 py-3 flex items-start gap-3">
                       <Stars value={r.rating} />
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 overflow-x-auto">
                           <span className="text-xs text-ui-base1 dark:text-gray-400">
                             Agent:{' '}
                             <span className="font-medium text-ui-base01 dark:text-gray-200">
