@@ -49,15 +49,15 @@ export async function bootstrapPlatformOperator(): Promise<void> {
         .where(eq(users.id, userId));
 
       await db.insert(auditLog).values({
-        action: 'platform_operator.bootstrapped',
-        actorId: userId,
+        action: 'platform_operator_bootstrap',
+        actorId: null,
         partnerId: null,
         targetType: 'user',
         targetId: userId,
         metadata: { email, bootstrapAction: 'promoted' },
       });
 
-      logger.info({ userId, email }, 'Existing user promoted to platform operator');
+      logger.info(`Existing user promoted to platform operator: ${email}`);
     } else {
       // Create a new platform operator user
       const userId = `u_${randomUUID().replace(/-/g, '').substring(0, 12)}`;
@@ -86,15 +86,15 @@ export async function bootstrapPlatformOperator(): Promise<void> {
       });
 
       await db.insert(auditLog).values({
-        action: 'platform_operator.bootstrapped',
-        actorId: userId,
+        action: 'platform_operator_bootstrap',
+        actorId: null,
         partnerId: null,
         targetType: 'user',
         targetId: userId,
         metadata: { email, bootstrapAction: 'created' },
       });
 
-      logger.info({ userId, email }, 'New platform operator created via bootstrap');
+      logger.info(`Platform operator bootstrapped: ${email}`);
     }
   } catch (err: unknown) {
     // Silently ignore unique-violation — another instance already bootstrapped
