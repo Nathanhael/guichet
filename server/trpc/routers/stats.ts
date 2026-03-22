@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, adminProcedure, roleProcedure } from '../trpc.js';
+import { router, roleProcedure } from '../trpc.js';
 import { query, get } from '../../db.js';
 import { computeLiveDayStats } from '../../services/stats.js';
 import { TRPCError } from '@trpc/server';

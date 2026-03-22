@@ -1,5 +1,4 @@
 import { useT } from '../i18n';
-import { usePartner } from '../hooks/usePartner';
 import MessageBubble from './MessageBubble';
 import { Ticket, Message } from '../types';
 
@@ -18,8 +17,6 @@ interface TicketPreviewProps {
 
 export default function TicketPreview({ ticket, messages, onJoin, onClose, joinDisabled }: TicketPreviewProps) {
   const t = useT();
-  const { manifest } = usePartner();
-  
   return (
     <div className="h-full flex flex-col p-4">
       <div className="bg-white dark:bg-black border-4 border-black dark:border-white flex flex-col h-full overflow-hidden">

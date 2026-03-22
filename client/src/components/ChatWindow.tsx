@@ -17,16 +17,16 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, messages, typingUsers, participantsOnline, setParticipantOnline, toggleTicketLabel, tickets, queuePosition, allLabels, darkMode, setMessages, activePartnerId, focusMode } = useStore();
+  const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode } = useStore();
   const { manifest } = usePartner();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [_mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [_unreadCount, setUnreadCount] = useState(0);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -73,7 +73,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   }, [presenceQuery.data, ticket.id, setParticipantOnline]);
 
   const ticketMessages = messages[ticket.id] || [];
-  const whoIsTyping = Object.keys(typingUsers[ticket.id] || {});
   const agentIsOnline = participantsOnline[ticket.id] ?? true;
 
   // Track scroll position
@@ -82,11 +81,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     if (!el) return;
     isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
     if (isNearBottomRef.current) setUnreadCount(0);
-  }
-
-  function scrollToBottom() {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    setUnreadCount(0);
   }
 
   function emitTyping() {
@@ -128,14 +122,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   }, []);
 
   const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
-
-  const toggleLabel = (labelId: string) => {
-    toggleTicketLabel(ticket.id, labelId);
-    setTimeout(() => {
-       const updatedLabels = useStore.getState().tickets.find(t => t.id === ticket.id)?.labels || [];
-       getSocket().emit('ticket:labels:update', { ticketId: ticket.id, labels: updatedLabels });
-    }, 0);
-  };
 
   const getLabelInfo = (id: string) => (allLabels || []).find((l) => l.id === id);
 

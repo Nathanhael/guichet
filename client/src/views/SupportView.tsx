@@ -6,22 +6,15 @@ import { useT } from '../i18n';
 import { MAX_OPEN_CHATS, ARCHIVE_PAGE_SIZE } from '../config';
 import ChatWindow from '../components/ChatWindow';
 import TicketPreview from '../components/TicketPreview';
-import SystemBackground from '../components/SystemBackground';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
-import PartnerSwitcher from '../components/PartnerSwitcher';
 import { requestNotificationPermission } from '../utils/notifications';
 import { Ticket } from '../types';
 import { getTicketTime } from '../utils/dateUtils';
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import { trpc } from '../utils/trpc';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
-
-const DEPT_CLASSES: Record<string, string> = {
-  DSC: 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black',
-  FOT: 'border-black dark:border-white bg-white dark:bg-black text-black dark:text-white',
-};
 
 interface StatusOption {
   key: string;
@@ -36,10 +29,6 @@ const STATUSES: StatusOption[] = [
   { key: 'meeting', label: 'status_meeting', dot: 'bg-slate-400' },
   { key: 'training', label: 'status_training', dot: 'bg-slate-400' },
 ];
-
-function statusDot(status: string) {
-  return STATUSES.find((s) => s.key === status)?.dot || 'bg-black dark:bg-white';
-}
 
 function StatusPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -96,7 +85,7 @@ function BellIcon({ muted }: { muted: boolean }) {
 }
 
 export default function SupportView() {
-  const { user, tickets, setTickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket, logout, unreadTickets, clearUnread, setAllLabels, setCannedResponses, focusMode, toggleFocusMode, activePartnerId, memberships, activeMembershipId, onlineSupportUsers } = useStore();
+  const { user, tickets, setTickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket, logout, clearUnread, focusMode, toggleFocusMode, memberships, activeMembershipId } = useStore();
   const t = useT();
   const [myStatus, setMyStatus] = useState('available');
   const [activeTab, setActiveTab] = useState<string | null>(null);
@@ -106,11 +95,10 @@ export default function SupportView() {
   const [previewTicketId, setPreviewTicketId] = useState<string | null>(null);
   const [sidebarTab, setSidebarTab] = useState<'queue' | 'archive'>('queue');
   const [archivedTickets, setArchivedTickets] = useState<Ticket[]>([]);
-  const [archiveTotal, setArchiveTotal] = useState(0);
-  const [archiveOffset, setArchiveOffset] = useState(0);
-  const [archiveSearch, setArchiveSearch] = useState('');
-  const [archiveDept, setArchiveDept] = useState('all');
-  const [toast, setToast] = useState<string | null>(null);
+  const [_archiveTotal, setArchiveTotal] = useState(0);
+  const [archiveOffset, _setArchiveOffset] = useState(0);
+  const [archiveSearch, _setArchiveSearch] = useState('');
+  const [archiveDept, _setArchiveDept] = useState('all');
   const ARCHIVE_LIMIT = ARCHIVE_PAGE_SIZE;
   const { status: businessHoursStatus } = useBusinessHours();
 

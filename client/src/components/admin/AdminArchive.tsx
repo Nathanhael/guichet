@@ -12,7 +12,7 @@ export default function AdminArchive() {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [search, setSearch] = useState('');
-  const [dept, setDept] = useState('all');
+  const [dept, _setDept] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [preview, setPreview] = useState<Ticket | null>(null);
@@ -127,7 +127,7 @@ export default function AdminArchive() {
               <option value="all">All labels</option>
               <option value="none">No label</option>
               <option value="any">Has label</option>
-              {allLabels.map((l) => <option key={l.id} value={l.id}>{(l as any).text || l.name}</option>)}
+              {allLabels.map((l) => <option key={l.id} value={l.id}>{l.text}</option>)}
             </select>
           )}
         </div>
@@ -174,7 +174,7 @@ export default function AdminArchive() {
                             {(ticket.labels as string[]).map((id) => {
                               const info = allLabels.find((l) => l.id === id);
                               if (!info) return null;
-                              return <span key={id} className="text-[9px] font-black uppercase border border-black dark:border-white px-1 py-0.5">{(info as any).text || info.name}</span>;
+                              return <span key={id} className="text-[9px] font-black uppercase border border-black dark:border-white px-1 py-0.5">{info.text}</span>;
                             })}
                           </div>
                         ) : <span className="opacity-30">—</span>}
@@ -224,7 +224,7 @@ export default function AdminArchive() {
                     {(preview.labels as string[]).map((id) => {
                       const info = allLabels.find((l) => l.id === id);
                       if (!info) return null;
-                      return <span key={id} className="text-[9px] font-black uppercase border border-black dark:border-white px-1 py-0.5">{(info as any).text || info.name}</span>;
+                      return <span key={id} className="text-[9px] font-black uppercase border border-black dark:border-white px-1 py-0.5">{info.text}</span>;
                     })}
                   </div>
                 )}

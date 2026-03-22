@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { router, platformProcedure } from '../trpc.js';
-import { db, run } from '../../db.js';
+import { db } from '../../db.js';
 import { partners, memberships, users, auditLog, tickets, systemSettings } from '../../db/schema.js';
 import { eq, asc, desc, sql, isNull, and, gte, lte, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { randomUUID, randomBytes } from 'crypto';
 import { getRedisClients } from '../../utils/redis.js';
 import logger from '../../utils/logger.js';
-import { broadcastPartnerDeactivation, broadcastUserDeactivation } from '../../socket/handlers.js';
+import { broadcastPartnerDeactivation } from '../../socket/handlers.js';
 import { MailService } from '../../services/mail.js';
 
 export const platformRouter = router({

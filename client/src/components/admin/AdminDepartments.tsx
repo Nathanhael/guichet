@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import useStore from '../../store/useStore';
-import { useT } from '../../i18n';
 
 export default function AdminDepartments() {
-  const t = useT();
   const { memberships, activeMembershipId } = useStore();
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   

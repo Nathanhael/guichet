@@ -26,7 +26,11 @@ export const presenceRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to change status' });
       }
 
-      const updated = await presenceService.setUserStatus(input.userId, input.status);
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
+      }
+      const updated = await presenceService.setUserStatus(input.userId, partnerId, input.status);
       if (!updated) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not online' });
       }

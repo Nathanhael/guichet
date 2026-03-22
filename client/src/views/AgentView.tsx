@@ -6,7 +6,6 @@ import { useT } from '../i18n';
 import ChatWindow from '../components/ChatWindow';
 import SystemBackground from '../components/SystemBackground';
 import DarkModeToggle from '../components/DarkModeToggle';
-import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import BusinessHoursGuard from '../components/BusinessHoursGuard';
 import FeedbackModal from '../components/FeedbackModal';
@@ -107,7 +106,7 @@ export default function AgentView() {
         <nav className="relative z-50 px-6 py-3 bg-brand-900/95 backdrop-blur-md border-b border-brand-800 text-white flex items-center justify-between shadow-lg">
           <div className="flex items-center gap-3">
             {manifest.logoUrl ? (
-              <img src={manifest.logoUrl} alt={manifest.name} className="h-8 object-contain" />
+              <img src={manifest.logoUrl} alt={activeMembership?.partnerName || 'Partner'} className="h-8 object-contain" />
             ) : (
               <span className="text-xl font-bold tracking-tight">{manifest.industry} Support</span>
             )}
@@ -184,7 +183,7 @@ export default function AgentView() {
                               : 'border-black/30 dark:border-white/30 hover:border-black dark:hover:border-white'
                           }`}
                         >
-                          {d.label}
+                          {d.name}
                         </button>
                       ))}
                     </div>

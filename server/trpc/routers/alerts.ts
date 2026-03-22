@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, roleProcedure, protectedProcedure } from '../trpc.js';
+import { router, roleProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { topicAlerts } from '../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
@@ -44,7 +44,7 @@ export const alertsRouter = router({
       try {
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-        const result = await db
+        await db
           .update(topicAlerts)
           .set({ status: 'acknowledged' })
           .where(
@@ -68,9 +68,9 @@ export const alertsRouter = router({
       try {
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-        const result = await db
+        await db
           .update(topicAlerts)
-          .set({ 
+          .set({
             status: 'resolved',
             resolvedAt: new Date().toISOString()
           })

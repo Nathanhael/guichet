@@ -1,11 +1,8 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import useStore from '../../store/useStore';
-import { useT } from '../../i18n';
-import { UserRole } from '../../types';
 
 export default function AdminTeam() {
-  const t = useT();
   const { activeMembershipId, memberships } = useStore();
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
@@ -75,8 +72,8 @@ export default function AdminTeam() {
                       </span>
                     </td>
                     <td className="p-3 text-xs uppercase opacity-80">
-                      {member.departments && member.departments.length > 0 
-                        ? member.departments.map(dId => {
+                      {member.departments && (member.departments as string[]).length > 0
+                        ? (member.departments as string[]).map((dId: string) => {
                             const dInfo = departments.find(d => d.id === dId);
                             return dInfo ? dInfo.name : dId;
                           }).join(', ')
@@ -193,8 +190,8 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
           </div>
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="flex-1 py-3 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:bg-black/5">Cancel</button>
-            <button type="submit" disabled={addMutation.isLoading} className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert">
-              {addMutation.isLoading ? 'Adding...' : 'Add User'}
+            <button type="submit" disabled={addMutation.isPending} className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert">
+              {addMutation.isPending ? 'Adding...' : 'Add User'}
             </button>
           </div>
         </form>
@@ -323,8 +320,8 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
           </div>
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="flex-1 py-3 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:bg-black/5">Cancel</button>
-            <button type="submit" disabled={inviteMutation.isLoading} className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert">
-              {inviteMutation.isLoading ? 'Sending...' : 'Generate Invite'}
+            <button type="submit" disabled={inviteMutation.isPending} className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert">
+              {inviteMutation.isPending ? 'Sending...' : 'Generate Invite'}
             </button>
           </div>
         </form>
