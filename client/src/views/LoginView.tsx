@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import useStore from '../store/useStore';
 import { useT } from '../i18n';
 import type { User, Membership } from '../types';
@@ -17,8 +17,8 @@ type DemoUser = { id: string; name: string; email?: string; role?: string; lang?
 
 type PartnerSelection = {
   token: string;
-  user: { id: string; name: string; email?: string; isPlatformOperator?: boolean };
-  memberships: { id: string; partnerId: string; partnerName: string; role: string; manifest?: { industry?: string } }[];
+  user: User;
+  memberships: Membership[];
 };
 
 export default function LoginView() {
@@ -27,6 +27,8 @@ export default function LoginView() {
   const [filter, setFilter] = useState<'all' | 'platform' | 'support' | 'admin' | 'agent'>('all');
   const [selectingPartner, setSelectingPartner] = useState<PartnerSelection | null>(null);
   
+  const busyRef = useRef(false);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -72,7 +74,8 @@ export default function LoginView() {
 
   const handleLocalLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoginLoading) return;
+    if (busyRef.current || isLoginLoading) return;
+    busyRef.current = true;
     setError('');
     setIsLoginLoading(true);
     try {
@@ -102,6 +105,7 @@ export default function LoginView() {
     } catch (err) {
       setError(t('network_error'));
     } finally {
+      busyRef.current = false;
       setIsLoginLoading(false);
     }
   };
@@ -158,7 +162,8 @@ export default function LoginView() {
   };
 
   const handleDemoLogin = async (u: DemoUser) => {
-    if (isDemoLoading) return;
+    if (busyRef.current || isDemoLoading) return;
+    busyRef.current = true;
     setIsDemoLoading(true);
     try {
       const res = await fetch('/api/v1/auth/login', {
@@ -187,6 +192,7 @@ export default function LoginView() {
       console.error(err);
       setError(t('network_error'));
     } finally {
+      busyRef.current = false;
       setIsDemoLoading(false);
     }
   };
@@ -204,7 +210,7 @@ export default function LoginView() {
             {selectingPartner.memberships.map((m) => (
               <button
                 key={m.id}
-                onClick={() => { setToken(selectingPartner.token); setUser(selectingPartner.user as User); setMemberships(selectingPartner.memberships as Membership[]); setActiveMembershipId(m.id); }}
+                onClick={() => { setToken(selectingPartner.token); setUser(selectingPartner.user); setMemberships(selectingPartner.memberships); setActiveMembershipId(m.id); }}
                 className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black flex items-center justify-between"
               >
                 <div>
@@ -374,8 +380,8 @@ export default function LoginView() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className="text-[9px] font-black uppercase tracking-widest border-2 border-current px-2 py-0.5 italic">{ROLE_LABEL[u.role] || u.role}</span>
-                        <span className="text-[10px] font-bold opacity-60">{LANG_FLAG[u.lang] || u.lang}</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest border-2 border-current px-2 py-0.5 italic">{(u.role && ROLE_LABEL[u.role]) || u.role}</span>
+                        <span className="text-[10px] font-bold opacity-60">{(u.lang && LANG_FLAG[u.lang]) || u.lang}</span>
                       </div>
                     </button>
                   </li>

@@ -1,0 +1,156 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import PlatformView from '../PlatformView';
+
+/* ------------------------------------------------------------------ */
+/*  Mocks                                                              */
+/* ------------------------------------------------------------------ */
+
+const mockLogout = vi.fn();
+
+vi.mock('../../store/useStore', () => {
+  const store = () => ({ logout: mockLogout, token: 'test' });
+  store.getState = () => ({ logout: mockLogout, token: 'test' });
+  return { default: store };
+});
+
+vi.mock('../../i18n', () => ({
+  useT: () => (key: string) => key,
+}));
+
+// Mock all child components to isolate PlatformView shell logic
+vi.mock('../../components/DarkModeToggle', () => ({
+  default: () => <div data-testid="dark-mode-toggle" />,
+}));
+
+vi.mock('../../components/LanguageSwitcher', () => ({
+  default: () => <div data-testid="language-switcher" />,
+}));
+
+vi.mock('../../components/admin/PlatformSystemHealth', () => ({
+  default: () => <div data-testid="system-health" />,
+}));
+
+vi.mock('../../components/admin/PlatformAuditLog', () => ({
+  default: () => <div data-testid="audit-log" />,
+}));
+
+vi.mock('../../components/admin/PlatformSystemSettings', () => ({
+  default: () => <div data-testid="system-settings" />,
+}));
+
+vi.mock('../../components/platform/PartnerList', () => ({
+  default: ({ onCreateClick }: { onCreateClick: () => void }) => (
+    <div data-testid="partner-list">
+      <button onClick={onCreateClick}>mock-create</button>
+    </div>
+  ),
+}));
+
+vi.mock('../../components/platform/UserTable', () => ({
+  default: ({ onInviteClick }: { onInviteClick: () => void }) => (
+    <div data-testid="user-table">
+      <button onClick={onInviteClick}>mock-invite</button>
+    </div>
+  ),
+}));
+
+vi.mock('../../components/platform/CreatePartnerModal', () => ({
+  default: ({ open }: { open: boolean }) => open ? <div data-testid="create-partner-modal" /> : null,
+}));
+
+vi.mock('../../components/platform/EditPartnerModal', () => ({
+  default: () => null,
+}));
+
+vi.mock('../../components/platform/DeletePartnerModal', () => ({
+  default: () => null,
+}));
+
+vi.mock('../../components/platform/InviteUserModal', () => ({
+  default: ({ open }: { open: boolean }) => open ? <div data-testid="invite-user-modal" /> : null,
+}));
+
+vi.mock('../../components/platform/ManageAccessModal', () => ({
+  default: () => null,
+}));
+
+vi.mock('../../components/platform/EditUserProfileModal', () => ({
+  default: () => null,
+}));
+
+/* ------------------------------------------------------------------ */
+/*  Tests                                                              */
+/* ------------------------------------------------------------------ */
+
+describe('PlatformView', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('renders nav bar with TESSERA brand and operator badge', () => {
+    render(<PlatformView />);
+    expect(screen.getByText('TESSERA')).toBeInTheDocument();
+    expect(screen.getByText('platform_operator')).toBeInTheDocument();
+  });
+
+  it('renders all 5 tab buttons', () => {
+    render(<PlatformView />);
+    expect(screen.getByText('partners_tab')).toBeInTheDocument();
+    expect(screen.getByText('users_tab')).toBeInTheDocument();
+    expect(screen.getByText('health_tab')).toBeInTheDocument();
+    expect(screen.getByText('config_tab')).toBeInTheDocument();
+    expect(screen.getByText('audit_tab')).toBeInTheDocument();
+  });
+
+  it('shows PartnerList by default (partners tab)', () => {
+    render(<PlatformView />);
+    expect(screen.getByTestId('partner-list')).toBeInTheDocument();
+  });
+
+  it('switches to UserTable when users tab is clicked', () => {
+    render(<PlatformView />);
+    fireEvent.click(screen.getByText('users_tab'));
+    expect(screen.getByTestId('user-table')).toBeInTheDocument();
+    expect(screen.queryByTestId('partner-list')).not.toBeInTheDocument();
+  });
+
+  it('switches to health tab', () => {
+    render(<PlatformView />);
+    fireEvent.click(screen.getByText('health_tab'));
+    expect(screen.getByTestId('system-health')).toBeInTheDocument();
+  });
+
+  it('switches to config tab', () => {
+    render(<PlatformView />);
+    fireEvent.click(screen.getByText('config_tab'));
+    expect(screen.getByTestId('system-settings')).toBeInTheDocument();
+  });
+
+  it('switches to audit tab', () => {
+    render(<PlatformView />);
+    fireEvent.click(screen.getByText('audit_tab'));
+    expect(screen.getByTestId('audit-log')).toBeInTheDocument();
+  });
+
+  it('calls logout when sign out is clicked', () => {
+    render(<PlatformView />);
+    fireEvent.click(screen.getByText(/sign_out/));
+    expect(mockLogout).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens CreatePartnerModal when PartnerList triggers create', () => {
+    render(<PlatformView />);
+    expect(screen.queryByTestId('create-partner-modal')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('mock-create'));
+    expect(screen.getByTestId('create-partner-modal')).toBeInTheDocument();
+  });
+
+  it('opens InviteUserModal when UserTable triggers invite', () => {
+    render(<PlatformView />);
+    fireEvent.click(screen.getByText('users_tab'));
+    expect(screen.queryByTestId('invite-user-modal')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('mock-invite'));
+    expect(screen.getByTestId('invite-user-modal')).toBeInTheDocument();
+  });
+});
