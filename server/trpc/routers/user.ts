@@ -1,13 +1,14 @@
-import { router, publicProcedure } from '../trpc.js';
+import { router, platformProcedure } from '../trpc.js';
 import { query } from '../../db.js';
 import { TRPCError } from '@trpc/server';
 
 export const userRouter = router({
-  list: publicProcedure
+  list: platformProcedure
     .query(async () => {
       try {
         const users = await query(`
-          SELECT id, name, lang, is_platform_operator
+          SELECT id, name, lang, is_platform_operator,
+            (SELECT role FROM memberships WHERE user_id = users.id LIMIT 1) as role
           FROM users
           WHERE deleted_at IS NULL
           ORDER BY is_platform_operator DESC, name ASC

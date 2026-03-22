@@ -41,7 +41,9 @@ export { httpServer };
 const allowedOrigins = config.CORS_ORIGIN.split(',');
 
 const io = new Server(httpServer, {
-  cors: { 
+  pingTimeout: 5000,
+  pingInterval: 10000,
+  cors: {
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
@@ -49,11 +51,19 @@ const io = new Server(httpServer, {
         callback(new Error('Not allowed by CORS'));
       }
     },
-    methods: ['GET', 'POST'] 
+    methods: ['GET', 'POST']
   },
 });
 
-// ... (redis setup)
+// Redis setup for Socket.io and Health Checks
+initRedis().then(({ pubClient, subClient }) => {
+  if (pubClient && subClient) {
+    io.adapter(createAdapter(pubClient, subClient));
+    logger.info('Socket.io Redis adapter initialized');
+  }
+}).catch(err => {
+  logger.error({ err }, 'Failed to initialize Redis');
+});
 
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
@@ -116,19 +126,27 @@ import { db } from './db.js';
 
 v1Router.get('/config', async (req: Request, res: Response) => {
   const partnerId = req.query.partnerId as string;
-  let partnerConfig = null;
+  let businessHoursStart = config.BUSINESS_HOURS_START;
+  let businessHoursEnd = config.BUSINESS_HOURS_END;
+  let businessHoursTimezone = 'Europe/Brussels';
 
   if (partnerId) {
-    const result = await db.select().from(partners).where(eq(partners.id, partnerId)).limit(1);
+    const result = await db.select({
+      businessHoursStart: partners.businessHoursStart,
+      businessHoursEnd: partners.businessHoursEnd,
+      businessHoursTimezone: partners.businessHoursTimezone,
+    }).from(partners).where(eq(partners.id, partnerId)).limit(1);
     if (result.length > 0) {
-      partnerConfig = result[0];
+      businessHoursStart = result[0].businessHoursStart ?? businessHoursStart;
+      businessHoursEnd = result[0].businessHoursEnd ?? businessHoursEnd;
+      businessHoursTimezone = result[0].businessHoursTimezone ?? businessHoursTimezone;
     }
   }
 
   res.json({
-    businessHoursStart: partnerConfig?.businessHoursStart ?? config.BUSINESS_HOURS_START,
-    businessHoursEnd: partnerConfig?.businessHoursEnd ?? config.BUSINESS_HOURS_END,
-    businessHoursTimezone: partnerConfig?.businessHoursTimezone ?? 'Europe/Brussels',
+    businessHoursStart,
+    businessHoursEnd,
+    businessHoursTimezone,
     uploadMaxSize: config.UPLOAD_MAX_SIZE,
     uploadAllowedTypes: config.UPLOAD_ALLOWED_TYPES,
   });
