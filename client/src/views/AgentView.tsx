@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
-import { usePartner } from '../hooks/usePartner';
+import { useBusinessHours } from '../hooks/useBusinessHours';
 import { useT } from '../i18n';
 import ChatWindow from '../components/ChatWindow';
 import SystemBackground from '../components/SystemBackground';
@@ -13,7 +13,6 @@ import FeedbackModal from '../components/FeedbackModal';
 import RatingModal from '../components/RatingModal';
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import { trpc } from '../utils/trpc';
-
 export default function AgentView() {
   const { user, logout, tickets, setTickets, activeTicketId, setActiveTicketId, focusMode, memberships, activeMembershipId } = useStore();
   const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
@@ -32,6 +31,16 @@ export default function AgentView() {
   const [showFeedback, setShowFeedback] = useState(false);
   const notificationsEnabled = useStore((s) => s.notificationsEnabled);
   const setNotificationsEnabled = useStore((s) => s.setNotificationsEnabled);
+  const { status: businessHoursStatus } = useBusinessHours();
+
+  useEffect(() => {
+    const nextDept = manifest.departments[0]?.id || 'DSC';
+    const hasSelectedDept = manifest.departments.some((department) => department.id === dept);
+
+    if (!hasSelectedDept) {
+      setDept(nextDept);
+    }
+  }, [manifest.departments, dept]);
 
   // tRPC Ticket List
   const { data: ticketList } = trpc.ticket.list.useQuery(
@@ -69,10 +78,11 @@ export default function AgentView() {
   }, []);
 
   const activeTicket = tickets.find((tk) => tk.id === activeTicketId);
+  const canCreateTicket = businessHoursStatus?.isOpen ?? true;
 
   async function createTicket(e: React.FormEvent) {
     e.preventDefault();
-    if (!user || !text.trim()) return;
+    if (!user || !text.trim() || !canCreateTicket) return;
     setLoading(true);
     getSocket().emit('ticket:new', {
       dept,
@@ -90,8 +100,8 @@ export default function AgentView() {
   if (!activeMembership) return <PartnerUnavailable />;
 
   return (
-    <BusinessHoursGuard>
-      <div className={`h-screen bg-transparent flex flex-col overflow-hidden relative transition-all duration-700 ${focusMode ? 'zen-mode' : ''}`}>
+    <BusinessHoursGuard mode={activeTicket ? 'notice' : 'block'}>
+      <div className={`h-full bg-transparent flex flex-col overflow-hidden relative transition-all duration-700 ${focusMode ? 'zen-mode' : ''}`}>
         <SystemBackground />
         
         <nav className="relative z-50 px-6 py-3 bg-brand-900/95 backdrop-blur-md border-b border-brand-800 text-white flex items-center justify-between shadow-lg">
@@ -105,16 +115,6 @@ export default function AgentView() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm font-medium text-ui-base2">{user.name}</span>
-            
-            {!activeTicketId && (
-              <button
-                onClick={() => setActiveTicketId(null)}
-                aria-label={t('new_ticket')}
-                className="bg-brand-500 hover:bg-brand-400 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-lg shadow-brand-500/20 transition-all active:scale-95"
-              >
-                {t('new_ticket')}
-              </button>
-            )}
             
             <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 p-1 border border-black dark:border-white ml-2">
               <LanguageSwitcher />
@@ -166,7 +166,7 @@ export default function AgentView() {
             </div>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-6">
-              {!loading && (
+              {!loading && canCreateTicket && (
                 <div className="w-full max-w-lg border-2 border-black dark:border-white p-8">
                   <h2 className="text-2xl font-black uppercase tracking-tight mb-2">{t('hello')}, {user.name}</h2>
                   <p className="text-sm opacity-60 mb-8">{t('choose_dept_desc')}</p>
@@ -225,7 +225,6 @@ export default function AgentView() {
                         />
                       </div>
                     </div>
-
                     <button
                       type="submit"
                       disabled={loading || !text.trim()}

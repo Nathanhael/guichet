@@ -22,6 +22,7 @@ import logger from './utils/logger.js';
 import { auth, authorize } from './middleware/auth.js';
 import * as presenceService from './services/presence.js';
 import { setIo as setBusinessHoursIo } from './services/businessHours.js';
+import { getBusinessHoursStatus } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
@@ -129,24 +130,36 @@ v1Router.get('/config', async (req: Request, res: Response) => {
   let businessHoursStart = config.BUSINESS_HOURS_START;
   let businessHoursEnd = config.BUSINESS_HOURS_END;
   let businessHoursTimezone = 'Europe/Brussels';
+  let businessHoursSchedule: unknown = null;
 
   if (partnerId) {
     const result = await db.select({
+      businessHoursSchedule: partners.businessHoursSchedule,
       businessHoursStart: partners.businessHoursStart,
       businessHoursEnd: partners.businessHoursEnd,
       businessHoursTimezone: partners.businessHoursTimezone,
     }).from(partners).where(eq(partners.id, partnerId)).limit(1);
     if (result.length > 0) {
+      businessHoursSchedule = result[0].businessHoursSchedule ?? businessHoursSchedule;
       businessHoursStart = result[0].businessHoursStart ?? businessHoursStart;
       businessHoursEnd = result[0].businessHoursEnd ?? businessHoursEnd;
       businessHoursTimezone = result[0].businessHoursTimezone ?? businessHoursTimezone;
     }
   }
 
+  const businessHoursStatus = getBusinessHoursStatus({
+    businessHoursSchedule: businessHoursSchedule as any,
+    businessHoursStart,
+    businessHoursEnd,
+    businessHoursTimezone,
+  });
+
   res.json({
     businessHoursStart,
     businessHoursEnd,
     businessHoursTimezone,
+    businessHoursSchedule,
+    businessHoursStatus,
     uploadMaxSize: config.UPLOAD_MAX_SIZE,
     uploadAllowedTypes: config.UPLOAD_ALLOWED_TYPES,
   });

@@ -2,12 +2,13 @@ import { z } from 'zod';
 import { router, platformProcedure } from '../trpc.js';
 import { db, run } from '../../db.js';
 import { partners, memberships, users, auditLog, tickets, systemSettings } from '../../db/schema.js';
-import { eq, asc, desc, sql, isNull, and, gte, lte } from 'drizzle-orm';
+import { eq, asc, desc, sql, isNull, and, gte, lte, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { randomUUID, randomBytes } from 'crypto';
 import { getRedisClients } from '../../utils/redis.js';
 import logger from '../../utils/logger.js';
 import { broadcastPartnerDeactivation, broadcastUserDeactivation } from '../../socket/handlers.js';
+import { MailService } from '../../services/mail.js';
 
 export const platformRouter = router({
   // --- System Health ---
@@ -98,8 +99,8 @@ export const platformRouter = router({
           updatedAt: new Date().toISOString(),
         });
         return { success: true, id: input.id };
-      } catch (err: any) {
-        if (err.code === '23505') {
+      } catch (err: unknown) {
+        if (err instanceof Error && 'code' in err && (err as { code: string }).code === '23505') {
           throw new TRPCError({ code: 'CONFLICT', message: 'Partner ID already exists' });
         }
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
@@ -131,10 +132,12 @@ export const platformRouter = router({
         .where(eq(partners.id, input.id));
 
       if (before[0]) {
-        const diff: any = {};
-        Object.keys(input.data).forEach(key => {
-          if ((input.data as any)[key] !== (before[0] as any)[key]) {
-            diff[key] = { from: (before[0] as any)[key], to: (input.data as any)[key] };
+        const diff: Record<string, { from: unknown; to: unknown }> = {};
+        const inputData = input.data as Record<string, unknown>;
+        const beforeData = before[0] as Record<string, unknown>;
+        Object.keys(inputData).forEach(key => {
+          if (inputData[key] !== beforeData[key]) {
+            diff[key] = { from: beforeData[key], to: inputData[key] };
           }
         });
 
@@ -190,12 +193,15 @@ export const platformRouter = router({
     .mutation(async ({ input, ctx }) => {
       try {
         await db.update(partners).set({ status: 'inactive' }).where(eq(partners.id, input.partnerId));
-        
-        // Auto-close open tickets
+
+        // Auto-close open and pending tickets
         const now = new Date().toISOString();
         await db.update(tickets)
           .set({ status: 'closed', closedAt: now, closedBy: 'System', closingNotes: 'Partner deactivated' })
-          .where(and(eq(tickets.partnerId, input.partnerId), eq(tickets.status, 'open')));
+          .where(and(
+            eq(tickets.partnerId, input.partnerId),
+            inArray(tickets.status, ['open', 'pending'])
+          ));
         
         // Broadcast to clients
         broadcastPartnerDeactivation(input.partnerId);
@@ -239,10 +245,22 @@ export const platformRouter = router({
   deletePartner: platformProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
+      // Close open and active tickets before soft-deleting
+      const now = new Date().toISOString();
+      await db.update(tickets)
+        .set({ status: 'closed', closedAt: now, closedBy: 'System', closingNotes: 'Partner deleted' })
+        .where(and(
+          eq(tickets.partnerId, input),
+          inArray(tickets.status, ['open', 'pending'])
+        ));
+
       await db.update(partners)
-        .set({ deletedAt: new Date().toISOString() })
+        .set({ deletedAt: now })
         .where(eq(partners.id, input));
-      
+
+      // Broadcast deactivation to connected clients
+      broadcastPartnerDeactivation(input);
+
       await db.insert(auditLog).values({
         action: 'partner.deleted',
         actorId: ctx.user.id,
@@ -344,7 +362,7 @@ export const platformRouter = router({
           id: memId,
           userId,
           partnerId: input.partnerId,
-          role: input.role as any,
+          role: input.role,
           departments: input.departments || []
         });
 
@@ -464,6 +482,7 @@ export const platformRouter = router({
 
         return { success: true };
       } catch (err: unknown) {
+        if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
     }),
@@ -477,7 +496,7 @@ export const platformRouter = router({
           <p style="font-weight: bold; text-transform: uppercase; font-size: 14px; opacity: 0.6;">System Test Email</p>
           <hr style="border: none; border-top: 2px solid #000; margin: 20px 0;" />
           <p>This is a test email to verify your platform's mail configuration.</p>
-          <p style="font-size: 12px; margin-top: 40px;">Sent by ${ctx.user.name} at ${new Date().toLocaleString()}</p>
+          <p style="font-size: 12px; margin-top: 40px;">Sent by operator ${ctx.user.id} at ${new Date().toLocaleString()}</p>
         </div>
       `;
       const success = await MailService.sendMail(input.email, 'Tessera - Mail Configuration Test', html);
@@ -537,9 +556,9 @@ export const platformRouter = router({
       const memBefore = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
       
       await db.update(memberships)
-        .set({ 
-          role: input.data.role as any, 
-          departments: input.data.departments || [] 
+        .set({
+          role: input.data.role,
+          departments: input.data.departments || []
         })
         .where(eq(memberships.id, input.id));
       
@@ -563,11 +582,23 @@ export const platformRouter = router({
         }
       }
 
-      // If role is platform_operator, also sync the user record
-      if (input.data.role === 'platform_operator') {
-        const mem = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
-        if (mem[0]) {
+      // Sync isPlatformOperator flag on the user record
+      const mem = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
+      if (mem[0]) {
+        if (input.data.role === 'platform_operator') {
           await db.update(users).set({ isPlatformOperator: true }).where(eq(users.id, mem[0].userId));
+        } else {
+          // Check if the user still has any other platform_operator membership
+          const otherPlatformMemberships = await db.select({ id: memberships.id })
+            .from(memberships)
+            .where(and(
+              eq(memberships.userId, mem[0].userId),
+              eq(memberships.role, 'platform_operator')
+            ))
+            .limit(1);
+          if (otherPlatformMemberships.length === 0) {
+            await db.update(users).set({ isPlatformOperator: false }).where(eq(users.id, mem[0].userId));
+          }
         }
       }
       
@@ -706,7 +737,7 @@ export const platformRouter = router({
         .where(eq(systemSettings.key, 'mail_config'))
         .limit(1);
       
-      return config[0]?.value as any || { provider: 'none' };
+      return (config[0]?.value as Record<string, unknown>) || { provider: 'none' };
     } catch (err: unknown) {
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
     }

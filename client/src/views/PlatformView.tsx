@@ -9,6 +9,7 @@ import PlatformSystemSettings from '../components/admin/PlatformSystemSettings';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 
 type PlatformTab = 'partners' | 'users' | 'health' | 'config' | 'audit';
+type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 interface PartnerMembership {
   id: string;
@@ -17,44 +18,71 @@ interface PartnerMembership {
   role: string;
 }
 
+interface Partner {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  industry: string | null;
+  status: string;
+  authMethod: 'local' | 'sso';
+  departments?: unknown;
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  ref1Label?: string | null;
+  ref2Label?: string | null;
+  businessHoursStart?: string | null;
+  businessHoursEnd?: string | null;
+  slaConfig?: unknown;
+  [key: string]: unknown;
+}
+
 interface GlobalUser {
   id: string;
   name: string;
-  email: string;
-  isPlatformOperator?: boolean;
+  email: string | null;
+  isPlatformOperator?: boolean | null;
   deletedAt?: string | null;
   lastActiveAt?: string | null;
   externalId?: string | null;
   password?: string | null;
+  lang?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   partnerMemberships?: PartnerMembership[];
+  [key: string]: unknown;
 }
 
 export default function PlatformView() {
-  const { memberships, activeMembershipId, logout } = useStore();
+  const { logout } = useStore();
   const t = useT();
   const [activeTab, setActiveTab] = useState<PlatformTab>('partners');
-  const [editingPartner, setEditingPartner] = useState<Record<string, unknown> | null>(null);
+  const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  
+
   const [createForm, setCreateForm] = useState({ id: '', name: '', logoUrl: '', industry: '', authMethod: 'local' as 'local' | 'sso' });
 
-  const [inviteForm, setInviteForm] = useState({
+  const [inviteForm, setInviteForm] = useState<{
+    email: string;
+    name: string;
+    role: UserRole;
+    partnerId: string;
+    dept: string;
+  }>({
     email: '',
     name: '',
-    role: 'support' as string,
+    role: 'support',
     partnerId: '',
     dept: ''
   });
 
   const [partnerDeleteConfirmation, setPartnerDeleteConfirmation] = useState('');
-  const [partnerToDelete, setPartnerToDelete] = useState<Record<string, unknown> | null>(null);
+  const [partnerToDelete, setPartnerToDelete] = useState<Partner | null>(null);
   const [userSearch, setUserSearch] = useState('');
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
-  const [editingUser, setEditingUser] = useState<Record<string, unknown> | null>(null);
-  const [editingUserProfile, setEditingUserProfile] = useState<Record<string, unknown> | null>(null);
-  const [addRole, setAddRole] = useState<string>('support');
-  const [addPartnerId, setAddPartnerId] = useState<string>('');
+  const [editingUser, setEditingUser] = useState<GlobalUser | null>(null);
+  const [editingUserProfile, setEditingUserProfile] = useState<GlobalUser | null>(null);
   const [inviteError, setInviteError] = useState<string>('');
   const [inviteResult, setInviteResult] = useState<{ tempPassword: string | null; isExistingUser: boolean; partnerName: string } | null>(null);
 
@@ -176,7 +204,7 @@ export default function PlatformView() {
     if (u.deletedAt) return false;
     const search = userSearch.toLowerCase();
     const matchesSearch = u.name.toLowerCase().includes(search) || (u.email || '').toLowerCase().includes(search);
-    const matchesPartner = selectedPartnerId === 'all' || (u as GlobalUser).partnerMemberships?.some((m) => m.partnerId === selectedPartnerId);
+    const matchesPartner = selectedPartnerId === 'all' || u.partnerMemberships?.some((m) => m.partnerId === selectedPartnerId);
     return matchesSearch && matchesPartner;
   });
 
@@ -243,7 +271,7 @@ export default function PlatformView() {
                         </div>
                         <div className="flex flex-wrap gap-2 mt-auto">
                           <button onClick={() => setEditingPartner(p)} className="flex-1 min-w-[80px] py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">{t('configure')}</button>
-                          <button onClick={async () => { try { await useStore.getState().enterPartnerAsOperator(p.id as string); } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to enter partner'); } }} className="flex-1 min-w-[80px] py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white hover:invert">{t('enter')}</button>
+                          <button onClick={async () => { try { await useStore.getState().enterPartnerAsOperator(p.id); } catch (err: unknown) { alert(err instanceof Error ? err.message : 'Failed to enter partner'); } }} className="flex-1 min-w-[80px] py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white hover:invert">{t('enter')}</button>
                           <button onClick={() => { if(confirm(t('confirm_deactivate_partner').replace('{name}', p.name))) deactivatePartner.mutate({ partnerId: p.id }); }} className="flex-none px-4 py-2 text-[10px] font-black uppercase tracking-widest opacity-50 hover:opacity-100 border-2 border-black dark:border-white">{t('deactivate')}</button>
                         </div>
                       </div>
@@ -328,7 +356,7 @@ export default function PlatformView() {
                             ) : (
                               <div className="flex flex-col gap-2">
                                 <div className="flex items-center gap-1.5 opacity-40"><div className="w-1.5 h-1.5 border border-black dark:border-white" /><span className="text-[9px] font-black uppercase tracking-widest">{t('status_pending')}</span></div>
-                                <button onClick={() => { const partnerId = (u as GlobalUser).partnerMemberships?.[0]?.partnerId; if (partnerId && confirm(t('confirm_resend_invite').replace('{email}', u.email))) resendInvite.mutate({ userId: u.id, partnerId }); }} className="text-[8px] font-black uppercase tracking-widest underline underline-offset-2 hover:opacity-60 text-left">{t('resend_invite')}</button>
+                                <button onClick={() => { const membershipsArr = u.partnerMemberships || []; const resolvedPartnerId: string | undefined = selectedPartnerId !== 'all' ? selectedPartnerId : membershipsArr.length === 1 ? membershipsArr[0].partnerId : undefined; if (!resolvedPartnerId) { alert(t('select_partner_for_resend')); return; } if (confirm(t('confirm_resend_invite').replace('{email}', u.email || ''))) resendInvite.mutate({ userId: u.id, partnerId: resolvedPartnerId }); }} className="text-[8px] font-black uppercase tracking-widest underline underline-offset-2 hover:opacity-60 text-left">{t('resend_invite')}</button>
                               </div>
                             )}
                           </td>
@@ -336,7 +364,7 @@ export default function PlatformView() {
                           <td className="p-4 border-r border-black/5 dark:border-white/5">
                             <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar pr-2">
                               {u.isPlatformOperator && <span className="border border-black dark:border-white text-[8px] font-black uppercase px-2 py-1 flex items-center gap-1 shrink-0 bg-black dark:bg-white text-white dark:text-black">{t('all_partners')} <span className="opacity-60 italic">(admin)</span></span>}
-                              {(u as GlobalUser).partnerMemberships?.length > 0 ? (u as GlobalUser).partnerMemberships!.map((m: PartnerMembership) => (
+                              {(u.partnerMemberships?.length ?? 0) > 0 ? u.partnerMemberships!.map((m: PartnerMembership) => (
                                 <span key={m.partnerId} className="border border-black dark:border-white text-[8px] font-black uppercase px-2 py-1 flex items-center gap-1 shrink-0">{m.partnerName} <span className="opacity-40 italic">({ROLE_LABEL[m.role] || m.role})</span></span>
                               )) : !u.isPlatformOperator && <span className="opacity-20 text-[10px] uppercase font-black tracking-widest">{t('no_active_memberships')}</span>}
                             </div>
@@ -370,11 +398,11 @@ export default function PlatformView() {
           <div className="w-full max-w-md bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
             <h2 className="text-2xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">{t('edit_profile')}</h2>
             <div className="space-y-4">
-              <div><label className="block text-[10px] font-black uppercase mb-1">{t('col_name')}</label><input type="text" className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none" value={editingUserProfile.name || ''} onChange={e => setEditingUserProfile({...editingUserProfile, name: e.target.value})} /></div>
-              <div><label className="block text-[10px] font-black uppercase mb-1">{t('email_label')}</label><input type="email" className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none" value={editingUserProfile.email || ''} onChange={e => setEditingUserProfile({...editingUserProfile, email: e.target.value})} /></div>
+              <div><label className="block text-[10px] font-black uppercase mb-1">{t('col_name')}</label><input type="text" className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none" value={editingUserProfile.name} onChange={e => setEditingUserProfile({...editingUserProfile, name: e.target.value})} /></div>
+              <div><label className="block text-[10px] font-black uppercase mb-1">{t('email_label')}</label><input type="email" className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none" value={editingUserProfile.email ?? ''} onChange={e => setEditingUserProfile({...editingUserProfile, email: e.target.value})} /></div>
               <div className="flex justify-end gap-3 mt-8">
                 <button onClick={() => setEditingUserProfile(null)} className="px-6 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white">{t('cancel')}</button>
-                <button onClick={() => updateUser.mutate({ id: editingUserProfile.id, data: { name: editingUserProfile.name, email: editingUserProfile.email } })} disabled={updateUser.isPending} className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white hover:invert">{t('save_profile')}</button>
+                <button onClick={() => updateUser.mutate({ id: editingUserProfile.id, data: { name: editingUserProfile.name, email: editingUserProfile.email ?? undefined } })} disabled={updateUser.isPending} className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white hover:invert">{t('save_profile')}</button>
               </div>
             </div>
           </div>
@@ -391,10 +419,10 @@ export default function PlatformView() {
               <button onClick={() => setEditingUser(null)} className="text-xl font-black">✕</button>
             </div>
             <div className="space-y-8">
-              {editingUser.partnerMemberships?.length > 0 ? editingUser.partnerMemberships.map((m: PartnerMembership) => (
+              {(editingUser.partnerMemberships?.length ?? 0) > 0 ? editingUser.partnerMemberships!.map((m: PartnerMembership) => (
                 <div key={m.id} className="border-2 border-black dark:border-white p-4">
                   <div className="flex justify-between items-center mb-4"><h3 className="font-black uppercase tracking-widest text-xs">{m.partnerName}</h3><button onClick={() => { if(confirm(t('confirm_revoke_access').replace('{name}', editingUser.name))) removeMembership.mutate(m.id); }} className="text-[8px] font-black uppercase tracking-widest border border-black dark:border-white px-2 py-1 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">{t('revoke_access')}</button></div>
-                  <select className="w-full bg-black/5 dark:bg-white/5 border border-black dark:border-white px-2 py-1.5 text-xs font-bold outline-none" value={m.role} onChange={(e) => updateMembership.mutate({ id: m.id, data: { role: e.target.value as string } })}>
+                  <select className="w-full bg-black/5 dark:bg-white/5 border border-black dark:border-white px-2 py-1.5 text-xs font-bold outline-none" value={m.role} onChange={(e) => updateMembership.mutate({ id: m.id, data: { role: e.target.value as UserRole } })}>
                     <option value="agent">{t('agent')}</option><option value="support">{t('support')}</option><option value="admin">{t('admin')}</option><option value="platform_operator">{t('platform_operator')}</option>
                   </select>
                 </div>
@@ -481,18 +509,18 @@ export default function PlatformView() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
           <div onClick={() => setEditingPartner(null)} className="absolute inset-0 bg-black opacity-80" />
           <div className="w-full max-w-2xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
-            <h2 className="text-2xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">{editingPartner.name as string}</h2>
+            <h2 className="text-2xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">{editingPartner.name}</h2>
             <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-1">{t('display_name')}</label>
                   <input type="text" className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
-                    value={(editingPartner.name as string) || ''} onChange={e => setEditingPartner({...editingPartner, name: e.target.value})}
+                    value={editingPartner.name} onChange={e => setEditingPartner({...editingPartner, name: e.target.value})}
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-1">{t('id_label')}</label>
-                  <div className="w-full bg-black/5 dark:bg-white/5 border-2 border-black/20 dark:border-white/20 px-3 py-2 text-sm font-bold font-mono opacity-50">{editingPartner.id as string}</div>
+                  <div className="w-full bg-black/5 dark:bg-white/5 border-2 border-black/20 dark:border-white/20 px-3 py-2 text-sm font-bold font-mono opacity-50">{editingPartner.id}</div>
                 </div>
               </div>
               <div className="flex items-center gap-4">
@@ -500,7 +528,7 @@ export default function PlatformView() {
                   <label className="block text-[10px] font-black uppercase mb-1">Logo</label>
                   <div className="flex items-center gap-3">
                     {editingPartner.logoUrl ? (
-                      <img src={editingPartner.logoUrl as string} className="w-10 h-10 object-contain border-2 border-black dark:border-white" />
+                      <img src={editingPartner.logoUrl!} className="w-10 h-10 object-contain border-2 border-black dark:border-white" />
                     ) : (
                       <div className="w-10 h-10 border-2 border-dashed border-black/20 dark:border-white/20" />
                     )}
@@ -517,7 +545,7 @@ export default function PlatformView() {
                 <div className="flex-1">
                   <label className="block text-[10px] font-black uppercase mb-1">{t('provider_label')}</label>
                   <select className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
-                    value={(editingPartner.authMethod as string) || 'local'} onChange={e => setEditingPartner({...editingPartner, authMethod: e.target.value})}>
+                    value={editingPartner.authMethod} onChange={e => setEditingPartner({...editingPartner, authMethod: e.target.value as 'local' | 'sso'})}>
                     <option value="local">Local (Email/Password)</option>
                     <option value="sso">Enterprise SSO</option>
                   </select>
@@ -527,7 +555,7 @@ export default function PlatformView() {
                 <button onClick={() => setEditingPartner(null)}
                   className="px-6 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white"
                 >{t('cancel')}</button>
-                <button onClick={() => updatePartner.mutate({ id: editingPartner.id as string, data: { name: editingPartner.name as string, logoUrl: (editingPartner.logoUrl as string) || undefined, authMethod: (editingPartner.authMethod as string) || undefined } })}
+                <button onClick={() => updatePartner.mutate({ id: editingPartner.id, data: { name: editingPartner.name, logoUrl: editingPartner.logoUrl || undefined, authMethod: editingPartner.authMethod } })}
                   disabled={updatePartner.isPending}
                   className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white disabled:opacity-20"
                 >{t('save_profile')}</button>
@@ -567,15 +595,15 @@ export default function PlatformView() {
                   <select className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
                     value={inviteForm.partnerId} onChange={e => setInviteForm({...inviteForm, partnerId: e.target.value})}>
                     <option value="">—</option>
-                    {partners?.filter((p: Record<string, unknown>) => p.status === 'active').map((p: Record<string, unknown>) => (
-                      <option key={p.id as string} value={p.id as string}>{p.name as string}</option>
+                    {partners?.filter(p => p.status === 'active').map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase mb-1">{t('col_status')}</label>
                   <select className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
-                    value={inviteForm.role} onChange={e => setInviteForm({...inviteForm, role: e.target.value})}>
+                    value={inviteForm.role} onChange={e => setInviteForm({...inviteForm, role: e.target.value as UserRole})}>
                     <option value="agent">{t('agent')}</option>
                     <option value="support">{t('support')}</option>
                     <option value="admin">{t('admin')}</option>
@@ -588,7 +616,7 @@ export default function PlatformView() {
                 <button onClick={() => { setShowInviteModal(false); setInviteError(''); }}
                   className="px-6 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white"
                 >{t('cancel')}</button>
-                <button onClick={() => inviteUser.mutate(inviteForm)}
+                <button onClick={() => inviteUser.mutate({ email: inviteForm.email, name: inviteForm.name, role: inviteForm.role, partnerId: inviteForm.partnerId, departments: inviteForm.dept ? [inviteForm.dept] : undefined })}
                   disabled={!inviteForm.email || !isValidEmail(inviteForm.email) || !inviteForm.name || (!inviteForm.partnerId && inviteForm.role !== 'platform_operator')}
                   className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white disabled:opacity-20"
                 >{t('invite_new_user')}</button>
@@ -660,13 +688,13 @@ export default function PlatformView() {
             <div className="w-16 h-16 border-4 border-black dark:border-white flex items-center justify-center mx-auto mb-6 text-2xl font-black">!</div>
             <h3 className="text-xl font-black uppercase tracking-tighter mb-2">{t('delete_permanently')}</h3>
             <p className="text-sm font-bold uppercase opacity-60 mb-6">
-              {t('confirm_remove_partner').replace('{name}', (partnerToDelete.name as string) || '')}
+              {t('confirm_remove_partner').replace('{name}', partnerToDelete.name)}
             </p>
             <div className="text-left mb-6">
               <label className="block text-[10px] font-black uppercase tracking-widest mb-1">{t('display_name')}</label>
               <input
                 type="text"
-                placeholder={partnerToDelete.name as string}
+                placeholder={partnerToDelete.name}
                 className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm font-bold outline-none"
                 value={partnerDeleteConfirmation}
                 onChange={e => setPartnerDeleteConfirmation(e.target.value)}
@@ -676,8 +704,8 @@ export default function PlatformView() {
               <button onClick={() => { setPartnerToDelete(null); setPartnerDeleteConfirmation(''); }}
                 className="flex-1 py-3 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest"
               >{t('cancel')}</button>
-              <button onClick={() => { deletePartner.mutate((partnerToDelete.id as string)); setPartnerToDelete(null); setPartnerDeleteConfirmation(''); }}
-                disabled={partnerDeleteConfirmation !== (partnerToDelete.name as string) || deletePartner.isPending}
+              <button onClick={() => { deletePartner.mutate(partnerToDelete.id); setPartnerToDelete(null); setPartnerDeleteConfirmation(''); }}
+                disabled={partnerDeleteConfirmation !== partnerToDelete.name || deletePartner.isPending}
                 className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert disabled:opacity-30 disabled:hover:invert-0"
               >{t('delete_permanently')}</button>
             </div>

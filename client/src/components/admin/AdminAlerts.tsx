@@ -16,13 +16,13 @@ export default function AdminAlerts() {
   ];
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div className="flex items-end justify-between border-b-4 border-black dark:border-white pb-4">
+    <div className="min-w-[1120px] max-w-4xl space-y-6">
+      <div className="flex items-end justify-between gap-6 border-b-4 border-black dark:border-white pb-4">
         <div>
           <h2 className="text-4xl font-black uppercase tracking-tighter">Topic Alerts</h2>
           <p className="text-sm font-bold uppercase opacity-60 mt-1 tracking-widest">Incident detection based on conversation clustering.</p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {FILTERS.map(({ value, label }) => (
             <button
               key={label}
@@ -48,7 +48,7 @@ export default function AdminAlerts() {
             <div key={alert.id} className="border-2 border-black dark:border-white p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                  <div className="flex items-center gap-2 mb-2 overflow-x-auto">
                     <span className="border border-black dark:border-white text-[10px] font-black uppercase tracking-widest px-2 py-0.5">
                       {alert.severity} severity
                     </span>

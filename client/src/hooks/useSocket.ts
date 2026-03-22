@@ -3,7 +3,7 @@ import { playChime } from '../utils/notifications';
 import { io, Socket } from 'socket.io-client';
 import useStore from '../store/useStore';
 import { SOCKET_URL } from '../config';
-import { Ticket, Message, OnlineSupport, Label } from '../types';
+import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, TopicAlert } from '../types';
 
 let socket: Socket | null = null;
 
@@ -28,7 +28,7 @@ export function useSocket(): Socket {
     updateTicket, 
     addMessage, 
     setMessages, 
-    setBusinessHoursOpen, 
+    setBusinessHoursStatus,
     setTyping, 
     setOnlineSupportUsers,
     addTopicAlert,
@@ -214,8 +214,18 @@ export function useSocket(): Socket {
     });
 
     // Outside business hours
-    s.on('hours:closed', () => {
-      setBusinessHoursOpen(false);
+    s.on('hours:closed', (payload?: { status?: BusinessHoursStatus }) => {
+      if (payload?.status) {
+        setBusinessHoursStatus(payload.status);
+      } else {
+        setBusinessHoursStatus({
+          isOpen: false,
+          timezone: 'Europe/Brussels',
+          source: 'default',
+          evaluatedAt: new Date().toISOString(),
+          message: 'Support is currently closed.',
+        });
+      }
     });
 
     // Topic Heat Alert
@@ -270,7 +280,7 @@ export function useSocket(): Socket {
       s.off('queue:position');
       listenersAttached.current = false;
     };
-  }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursOpen]);
+  }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus]);
 
   return getSocket();
 }

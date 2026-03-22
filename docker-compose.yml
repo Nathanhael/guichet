@@ -26,6 +26,8 @@ services:
       - NODE_ENV=development
       - DEBUG=socket.io:*
       - CORS_ORIGIN=http://localhost:5173,http://client:5173,http://localhost:3001,http://lb:80
+      - PLATFORM_ADMIN_EMAIL=${PLATFORM_ADMIN_EMAIL:-}
+      - PLATFORM_ADMIN_PASSWORD=${PLATFORM_ADMIN_PASSWORD:-}
     volumes:
       - ./server:/app
       - server_node_modules:/app/node_modules

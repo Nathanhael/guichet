@@ -3,36 +3,38 @@
 This file serves as the primary instructional context for Gemini CLI. The project is currently in a "Clean Slate" phase, prioritizing core chat functionality and a strict monochrome aesthetic.
 
 ## Project Overview
-**Tessera** is a real-time, multi-tenant customer support platform. All complex features (AI Pipeline, Topic Heat, Solaris Design System) have been **deactivated** to focus on a lightweight, high-performance chat core.
+**Tessera** is a high-performance, real-time, multi-tenant customer support platform. All complex features (AI Pipeline, Topic Heat, Solaris Design System) have been **deactivated** to focus on a lightweight, strictly monochrome chat core.
 
 ### Active Features
-- **Real-Time Communication**: Core chat functionality via Socket.io with Redis scaling and server-side identity enforcement.
-- **Dynamic Org Structure**: Departments are 100% data-driven via Partner JSONB. Users can be assigned to multiple departments.
+- **Real-Time Communication**: Core chat functionality via Socket.io 4.8 with Redis 8 scaling and server-side identity enforcement.
+- **Dynamic Org Structure**: Departments are 100% data-driven via Partner JSONB. Users assigned via `memberships.departments`.
 - **Partner Status**: Partners can be toggled 'active' or 'inactive'. Inactive partners block auth and close open tickets.
-- **Cross-Tenant Identity**: Centralized user management with support for Azure SSO (OIDC) and Local (Email/Password) access.
-- **Dynamic Mail Service**: System-wide email configuration (SMTP, Resend, SendGrid) manageable via Platform UI.
-- **Secure Recovery**: Automated password reset flow for local users with hashed tokens and 1-hour expiry.
+- **Cross-Tenant Identity**: Centralized user management supporting Azure SSO (OIDC) and Local (Email/Password) access.
+- **Dynamic Mail Service**: System-wide configuration (SMTP, Resend, SendGrid) manageable via Platform UI.
+- **Secure Recovery**: Automated password reset flow for local users with SHA-256 hashed tokens and 1-hour expiry.
 - **Advanced Audit Trail**: Global `audit_log` with granular `from -> to` state diffs, target searching, and CSV export.
 - **User Lifecycle Management**: Real-time "Last Active" tracking and status monitoring (SSO Linked vs. Local Active).
 - **Workspace Switching**: Smart login flow with "Choose Workspace" screen for multi-tenant users.
-- **B&W Minimalist Standard**: A strictly monochrome, static UI designed for maximum readability and zero motion.
-- **Platform Operator Oversight**: Global dashboard in `PlatformView.tsx` for managing Partners, Global Users, System Config, and Audit Logs.
+- **B&W Minimalist Standard**: Strictly monochrome, static UI designed for maximum readability and zero motion.
+- **Platform Operator Cockpit**: Global dashboard in `PlatformView.tsx` for Partners, Global Users, System Config, and Audit Logs.
 - **Partner Administration**: Local management in `AdminView.tsx` for departments, system rules, and team members.
 
 ### Tech Stack
 - **Frontend**: React 19.2, Vite 8, Tailwind CSS 4, Zustand 5.
 - **Backend**: Node.js 24 (ESM), Express 5, tRPC 11, Socket.io 4.8.
 - **Database**: PostgreSQL 18 (Drizzle ORM) + Redis 8 (Socket.io Adapter).
+- **Observability**: Prometheus, Grafana, Pino (Structured Logging).
 
 ---
 
 ## 🚨 Critical Mandates
 
-1.  **STRICT B&W**: The theme is strictly black and white. **NEVER** introduce colors, gradients, or shadows.
-2.  **ZERO MOTION**: All animations and transitions are stripped. UI must remain static.
-3.  **DYNAMIC ONLY**: Never hardcode departments (e.g., 'DSC', 'FOT'). Always read from `manifest.departments`.
-4.  **DOCKER ONLY**: Never run npm/node commands on the host machine.
-5.  **TYPE SAFETY**: Maintain 100% tRPC and Drizzle type safety.
+1.  **STRICT B&W**: The theme is strictly black (#000) and white (#FFF). **NEVER** introduce colors, gradients, or shadows.
+2.  **ZERO MOTION**: All animations and transitions are stripped. UI must remain perfectly static.
+3.  **DYNAMIC ONLY**: Never hardcode departments. Always read from `partner.departments` JSONB.
+4.  **DOCKER ONLY**: Never run npm/node commands on the host machine. All commands must go through Docker.
+5.  **TYPE SAFETY**: Maintain 100% tRPC and Drizzle type safety. No `any` types.
+6.  **MULTI-TENANCY**: Every database query must include a `partner_id` filter. No data leaks between tenants.
 
 ---
 
@@ -44,36 +46,41 @@ This file serves as the primary instructional context for Gemini CLI. The projec
 | **Run Backend Tests** | `docker compose exec server npm test` |
 | **Run Frontend Tests** | `docker compose exec client npm test` |
 | **Database Push** | `docker compose exec server npx drizzle-kit push` |
+| **Generate Migration** | `docker compose exec server npx drizzle-kit generate` |
+| **DB Explorer** | `docker compose exec server npx drizzle-kit studio` |
+| **View Server Logs** | `docker logs -f tessera-server-1` |
 
 ---
 
 ## Development Conventions
 
+- **Roles**: `agent`, `support`, `admin`, `platform_operator`.
 - **Global User Management**: Handle user invites and partner mapping in `PlatformView.tsx`.
 - **Hybrid Auth**: Pre-provision users via email; map to `external_id` upon Azure OIDC login.
-- **Adaptive UI**: Use horizontally scrollable bars for department filters to handle large lists.
-- **Senior Branching Strategy**: Always use feature branches (e.g., `feature/enterprise-sso`) for major additions. Use **Git Worktrees** to work on roadmap items without disrupting the core chat maintenance.
+- **Adaptive UI**: Use horizontally scrollable bars for department filters; sticky pagination for long lists.
+- **Senior Branching**: Use feature branches (e.g., `feature/enterprise-sso`). Use **Git Worktrees** for roadmap items.
+- **Audit Logging**: All significant actions (lifecycle, user mgmt, GDPR) MUST be recorded in `audit_log`.
+- **bcrypt**: Always import `bcryptjs` in source; production uses native C++ bindings via Dockerfile swap.
 
 ---
 
-## 🚀 Future Roadmap (Clean Slate Phase 2)
+## 🛠️ Specialized Skills
 
-### 🔐 Identity & Security
-- **MFA (Multi-Factor Authentication)**: Enforce TOTP/SMS for local users.
-- **Dynamic Password Policies**: Configure min length, complexity, and rotation.
+The project includes custom instructions in `.gemini/skills/`:
+- `architect`: Plan complex changes and Clean Architecture review.
+- `coder`: Senior TypeScript standards and TDD enforcement.
+- `socket-arch`: Backend Socket.io, Redis, and message mapping logic.
+- `ui-flow`: React components and Zustand store synchronization.
+
+---
+
+## 🚀 Future Roadmap (Phase 2)
+
+- **MFA (Multi-Factor Authentication)**: TOTP/SMS for local users.
+- **Advanced Password Policies**: Complexity and rotation enforcement.
 - **Global Session Control**: Inactivity timeouts and concurrent session limits.
-- **Account Protection**: Lockout policies and advanced IP rate limiting.
-- **Universal Enterprise SSO (OIDC)**: A single, provider-agnostic implementation (using `openid-client`) to support Microsoft Entra ID, Okta, and Google Workspace via UI configuration.
-
-### 📧 Mail & Communication
-- **Branded Templates**: Partner-specific HTML email designs.
-- **System Webhooks**: Notify external services of platform events.
-- **Advanced Monitoring**: Real-time alerts for system health metrics.
-
-### 🛡️ Enterprise Audit & Compliance
-- **Cursor-Based Pagination**: Replace offset pagination in the Audit Log for high-performance scaling.
+- **Universal SSO (OIDC)**: Provider-agnostic implementation for Okta, Google, etc.
 - **WORM Immutability**: Stream logs to tamper-proof cold storage (e.g., AWS S3 Object Lock).
-- **Automated Archiving**: Cron-based cold storage for old logs to maintain database speed.
 
 ---
 
@@ -135,6 +142,3 @@ Search results can flood context. Use 'mcp__context-mode__ctx_execute(language: 
 | 'ctx stats' | Call the 'stats' MCP tool and display the full output verbatim |
 | 'ctx doctor' | Call the 'doctor' MCP tool, run the returned shell command, display as checklist |
 | 'ctx upgrade' | Call the 'upgrade' MCP tool, run the returned shell command, display as checklist |
-
-
-

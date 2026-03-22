@@ -73,10 +73,10 @@ export default function AdminArchive() {
   });
 
   return (
-    <div className="flex gap-4 items-start">
+    <div className="min-w-[1280px] flex gap-4 items-start">
       <div className="flex-1 min-w-0">
         {/* Header + Filters */}
-        <div className="flex flex-wrap items-center gap-2 mb-4 border-b-4 border-black dark:border-white pb-4">
+        <div className="flex items-center gap-2 mb-4 border-b-4 border-black dark:border-white pb-4 overflow-x-auto">
           <h2 className="text-4xl font-black uppercase tracking-tighter mr-auto">Archive</h2>
           <button
             onClick={() => {
@@ -138,7 +138,7 @@ export default function AdminArchive() {
             {filteredTickets.length === 0 && !loading ? (
               <p className="text-center text-[10px] font-black uppercase opacity-50 py-12">No results.</p>
             ) : (
-              <table className="w-full text-sm border-collapse">
+              <table className="w-full min-w-[1120px] text-sm border-collapse">
                 <thead>
                   <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5 text-left text-[10px] font-black uppercase tracking-widest">
                     <th className="px-4 py-3">Dept</th>
@@ -170,7 +170,7 @@ export default function AdminArchive() {
                       </td>
                       <td className="px-4 py-2.5">
                         {ticket.labels && (ticket.labels as string[]).length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
+                          <div className="flex gap-1 overflow-x-auto">
                             {(ticket.labels as string[]).map((id) => {
                               const info = allLabels.find((l) => l.id === id);
                               if (!info) return null;
@@ -208,11 +208,11 @@ export default function AdminArchive() {
       {preview && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} />
-          <div className="relative w-full max-w-[550px] bg-white dark:bg-black border-l-4 border-black dark:border-white h-full flex flex-col">
+          <div className="relative w-[550px] bg-white dark:bg-black border-l-4 border-black dark:border-white h-full flex flex-col">
             {/* Preview Header */}
             <div className="px-6 py-4 border-b-2 border-black dark:border-white flex items-start justify-between gap-3 shrink-0">
               <div>
-                <div className="flex items-center gap-2 flex-wrap mb-1">
+                <div className="flex items-center gap-2 mb-1 overflow-x-auto">
                   <span className="text-[10px] font-black uppercase border border-black dark:border-white px-1.5 py-0.5">{preview.dept}</span>
                   <span className="font-black uppercase tracking-tight">{preview.agentName}</span>
                 </div>
@@ -220,7 +220,7 @@ export default function AdminArchive() {
                   {preview.supportName ? `Support: ${preview.supportName}` : 'No support joined'} · {duration(preview)}
                 </p>
                 {preview.labels && (preview.labels as string[]).length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  <div className="flex gap-1 mt-2 overflow-x-auto">
                     {(preview.labels as string[]).map((id) => {
                       const info = allLabels.find((l) => l.id === id);
                       if (!info) return null;

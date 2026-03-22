@@ -34,6 +34,45 @@ export interface Membership {
   status?: 'active' | 'inactive';
 }
 
+export type BusinessHoursDayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+
+export interface BusinessHoursWindow {
+  start: string;
+  end: string;
+}
+
+export interface BusinessHoursDaySchedule {
+  closed: boolean;
+  windows: BusinessHoursWindow[];
+}
+
+export interface BusinessHoursException {
+  id: string;
+  date: string;
+  closed?: boolean;
+  windows?: BusinessHoursWindow[];
+  note?: string;
+}
+
+export interface BusinessHoursSchedule {
+  version: 1;
+  timezone: string;
+  weekly: Record<BusinessHoursDayKey, BusinessHoursDaySchedule>;
+  exceptions: BusinessHoursException[];
+}
+
+export interface BusinessHoursStatus {
+  isOpen: boolean;
+  timezone: string;
+  source: 'weekly' | 'exception' | 'default';
+  matchedWindow?: BusinessHoursWindow;
+  activeExceptionNote?: string;
+  nextOpenAt?: string;
+  nextCloseAt?: string;
+  evaluatedAt: string;
+  message?: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -49,6 +88,8 @@ export interface AppConfig {
   businessHoursStart: string;
   businessHoursEnd: string;
   businessHoursTimezone: string;
+  businessHoursSchedule?: BusinessHoursSchedule;
+  businessHoursStatus?: BusinessHoursStatus;
   uploadMaxSize: number;
   uploadAllowedTypes: string[];
 }

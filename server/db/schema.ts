@@ -15,6 +15,7 @@ export const partners = pgTable('partners', {
   ref1Label: text('ref_1_label').default('Reference 1'),
   ref2Label: text('ref_2_label').default('Reference 2'),
   departments: jsonb('departments').default([]),
+  businessHoursSchedule: jsonb('business_hours_schedule'),
   businessHoursStart: text('business_hours_start'),
   businessHoursEnd: text('business_hours_end'),
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
