@@ -13,8 +13,7 @@ interface TicketNewPayload {
   agentId: string;
   agentLang: string;
   dept: string;
-  ref1?: string;
-  ref2?: string;
+  references?: Array<{ label: string; value: string }>;
   text?: string;
   mediaUrl?: string;
 }
@@ -44,7 +43,6 @@ interface MessageSendPayload {
   text: string;
   mediaUrl?: string;
   whisper?: boolean;
-  cannedResponseId?: string;
 }
 
 interface Participant {
@@ -60,11 +58,6 @@ interface SenderInfo {
   name: string;
   role: string;
   lang: string;
-}
-
-interface TicketReopenRow {
-  id: string;
-  reopen_count: number;
 }
 
 interface TicketRow {
@@ -183,25 +176,33 @@ export function registerSocketHandlers(io: Server) {
         });
       }
       try {
-        const { agentId, agentLang, dept, ref1, ref2, text, mediaUrl } = data;
+        const { agentId, agentLang, dept, references = [], text, mediaUrl } = data;
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
         if (!partnerId) return socket.emit('error', { message: 'No partner context' });
         if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
 
-        // Re-open detection
+        // Re-open detection — JS-side exact value match
         let reopened = false;
         let reopenCount = 0;
-        if (ref1 || ref2) {
-          const existing = await get('SELECT id, reopen_count FROM tickets WHERE (ref_1 = $1 OR ref_2 = $2) AND partner_id = $3 AND status = $4 ORDER BY created_at DESC LIMIT 1', [ref1 || null, ref2 || null, partnerId, 'closed']) as unknown as TicketReopenRow | undefined;
-          if (existing) {
+        const incomingValues = (references || []).map(r => r.value).filter(Boolean);
+        if (incomingValues.length > 0) {
+          const recentClosed = await query('SELECT id, reopen_count, "references" FROM tickets WHERE partner_id = $1 AND status = \'closed\' ORDER BY created_at DESC LIMIT 100', [partnerId]) as unknown as Array<{ id: string; reopen_count: number; references: string | Array<{ label: string; value: string }> | null }>;
+          const match = recentClosed.find(t => {
+            try {
+              const raw = typeof t.references === 'string' ? JSON.parse(t.references) : t.references;
+              const ticketRefs: Array<{ label: string; value: string }> = Array.isArray(raw) ? raw : [];
+              return ticketRefs.some(r => incomingValues.includes(r.value));
+            } catch { return false; }
+          });
+          if (match) {
             reopened = true;
-            reopenCount = (existing.reopen_count || 0) + 1;
+            reopenCount = (match.reopen_count || 0) + 1;
           }
         }
 
         const agentUser = (await get('SELECT name FROM users WHERE id = $1', [agentId])) as unknown as User;
-        const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, ref1: ref1 || null, ref2: ref2 || null, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
-        await run('INSERT INTO tickets (id, partner_id, dept, agent_id, agent_name, agent_lang, ref_1, ref_2, status, created_at, participants, reopened, reopen_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)', [ticket.id, partnerId, ticket.dept, ticket.agentId, ticket.agentName, ticket.agentLang, ticket.ref1, ticket.ref2, ticket.status, ticket.createdAt, ticket.participants, reopened, reopenCount]);
+        const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
+        await run('INSERT INTO tickets (id, partner_id, dept, agent_id, agent_name, agent_lang, "references", status, created_at, participants, reopened, reopen_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)', [ticket.id, partnerId, ticket.dept, ticket.agentId, ticket.agentName, ticket.agentLang, JSON.stringify(references), ticket.status, ticket.createdAt, ticket.participants, reopened, reopenCount]);
 
         let message: Message | null = null;
         if (text?.trim()) {

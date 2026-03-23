@@ -50,8 +50,6 @@ export const ticketRouter = router({
           const q = `%${input.search}%`;
           conditions.push(or(
             ilike(tickets.agentName, q),
-            ilike(tickets.ref1, q),
-            ilike(tickets.ref2, q),
             ilike(tickets.supportName, q)
           ));
         }

@@ -8,8 +8,7 @@ import SystemBackground from '../components/SystemBackground';
 import { trpc } from '../utils/trpc';
 import { Eye, EyeOff } from 'lucide-react';
 import LegalModal from '../components/LegalModal';
-
-const LANG_FLAG: Record<string, string> = { nl: '🇧🇪 NL', fr: '🇫🇷 FR', en: '🇬🇧 EN' };
+import { LANG_LABEL } from '../constants';
 
 const DEMO_PASSWORD = 'password123';
 
@@ -63,11 +62,46 @@ export default function LoginView() {
     users;
 
   useEffect(() => {
+    // Handle password reset token from URL query
     const params = new URLSearchParams(window.location.search);
     const token = params.get('token');
     if (token) {
       setResetToken(token);
       setViewMode('reset');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Handle SSO error from URL query
+    const ssoError = params.get('sso_error');
+    if (ssoError) {
+      if (ssoError === 'no_matching_groups') {
+        setError(t('sso_no_groups_message'));
+      } else {
+        setError(decodeURIComponent(ssoError));
+      }
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Handle SSO callback from URL hash fragment
+    const hash = window.location.hash;
+    if (hash.startsWith('#sso_callback=')) {
+      try {
+        const payload = JSON.parse(decodeURIComponent(hash.slice('#sso_callback='.length)));
+        const ssoMemberships = payload.memberships || [];
+        if (ssoMemberships.length > 1 && !payload.user.isPlatformOperator) {
+          setSelectingPartner({ token: payload.token, user: payload.user, memberships: ssoMemberships });
+        } else {
+          setToken(payload.token);
+          setUser(payload.user);
+          setMemberships(ssoMemberships);
+          if (ssoMemberships.length > 0 && !payload.user.isPlatformOperator) {
+            setActiveMembershipId(ssoMemberships[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('[SSO] Failed to parse callback payload', err);
+        setError('SSO login failed');
+      }
       window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
@@ -307,7 +341,7 @@ export default function LoginView() {
               <div className="absolute border-t-2 border-black/10 dark:border-white/10 w-full" />
               <span className="bg-white dark:bg-black px-4 text-[9px] font-black uppercase tracking-[0.2em] opacity-30 relative z-10 italic">{t('sso_enterprise')}</span>
             </div>
-            <button onClick={() => setError(t('sso_coming_soon'))} className="w-full p-5 border-2 border-black dark:border-white flex items-center justify-center gap-4 hover:bg-black/5 dark:hover:bg-white/5">
+            <button onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }} className="w-full p-5 border-2 border-black dark:border-white flex items-center justify-center gap-4 hover:bg-black/5 dark:hover:bg-white/5">
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" /></svg>
               <span className="font-black uppercase tracking-widest">{t('sso_microsoft')}</span>
             </button>
@@ -381,7 +415,7 @@ export default function LoginView() {
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
                         <span className="text-[9px] font-black uppercase tracking-widest border-2 border-current px-2 py-0.5 italic">{(u.role && ROLE_LABEL[u.role]) || u.role}</span>
-                        <span className="text-[10px] font-bold opacity-60">{(u.lang && LANG_FLAG[u.lang]) || u.lang}</span>
+                        <span className="text-[10px] font-bold opacity-60">{(u.lang && LANG_LABEL[u.lang]) || u.lang}</span>
                       </div>
                     </button>
                   </li>

@@ -28,7 +28,7 @@ export default function TicketPreview({ ticket, messages, onJoin, onClose, joinD
             </span>
             <span className="text-sm font-black uppercase tracking-tight text-black dark:text-white truncate">{ticket.agentName}</span>
             <span className="text-[10px] text-white dark:text-black bg-black dark:bg-white px-2 py-0.5 font-black uppercase tracking-widest shrink-0">
-              Preview Mode
+              {t('preview_mode')}
             </span>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border-2 border-black dark:border-white font-black hover:invert transition-all">×</button>
@@ -50,7 +50,7 @@ export default function TicketPreview({ ticket, messages, onJoin, onClose, joinD
         {/* Join bar */}
         <div className="px-6 py-4 border-t-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-between gap-4">
           {ticket.status === 'closed' ? (
-            <p className="text-sm font-black uppercase opacity-40">Conversation closed.</p>
+            <p className="text-sm font-black uppercase opacity-40">{t('conversation_closed')}</p>
           ) : (
             <>
               <p className="text-sm font-black uppercase tracking-widest text-black dark:text-white">{t('waiting_for_expert')}</p>

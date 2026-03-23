@@ -306,6 +306,16 @@ export const partnerRouter = router({
         id: z.string().optional(),
         name: z.string().min(1),
         description: z.string().optional(),
+        referenceFields: z.array(z.object({
+          label: z.string().min(1),
+        })).max(3).optional().refine(
+          (fields) => {
+            if (!fields) return true;
+            const labels = fields.map(f => f.label);
+            return new Set(labels).size === labels.length;
+          },
+          { message: 'Reference field labels must be unique within a department' }
+        ),
       })),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -316,7 +326,8 @@ export const partnerRouter = router({
         const mappedDepartments = input.departments.map(d => ({
           id: d.id ? d.id : makeSlug(d.name),
           name: d.name,
-          description: d.description || ''
+          description: d.description || '',
+          referenceFields: d.referenceFields || [],
         }));
 
         await db.update(partners)
@@ -333,7 +344,7 @@ export const partnerRouter = router({
         });
 
         logger.info({ partnerId, count: mappedDepartments.length }, 'Departments updated by Partner Admin');
-        return { success: true };
+        return { success: true, departments: mappedDepartments };
       } catch (err: unknown) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
@@ -357,7 +368,9 @@ export const partnerRouter = router({
             email: users.email,
             role: memberships.role,
             departments: memberships.departments,
-            createdAt: memberships.createdAt
+            createdAt: memberships.createdAt,
+            externalId: users.externalId,
+            lastActiveAt: users.lastActiveAt,
           })
           .from(memberships)
           .innerJoin(users, eq(memberships.userId, users.id))
@@ -374,7 +387,7 @@ export const partnerRouter = router({
   addMemberByEmail: adminProcedure
     .input(z.object({
       email: z.string().email(),
-      role: z.enum(['agent', 'support']),
+      role: z.enum(['agent', 'support', 'admin']),
       departments: z.array(z.string()).optional()
     }))
     .mutation(async ({ input, ctx }) => {
@@ -426,7 +439,7 @@ export const partnerRouter = router({
     .input(z.object({
       email: z.string().email(),
       name: z.string().min(1),
-      role: z.enum(['agent', 'support']),
+      role: z.enum(['agent', 'support', 'admin']),
       departments: z.array(z.string()).optional()
     }))
     .mutation(async ({ input, ctx }) => {

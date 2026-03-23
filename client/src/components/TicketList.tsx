@@ -1,6 +1,7 @@
 import { useT } from '../i18n';
 import { Ticket } from '../types';
 import { getTicketTime } from '../utils/dateUtils';
+import { LANG_FLAG } from '../constants';
 
 const DEPT_COLOR: Record<string, string> = {
   DSC: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
@@ -12,8 +13,6 @@ const STATUS_COLOR: Record<string, string> = {
   active: 'bg-green-100 text-green-700',
   closed: 'bg-ui-base2 text-ui-base1',
 };
-
-const LANG_FLAG: Record<string, string> = { nl: '🇧🇪', fr: '🇫🇷', en: '🇬🇧' };
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -55,9 +54,9 @@ export default function TicketList({ tickets, onSelect, activeId }: TicketListPr
                 <p className="text-sm font-semibold text-ui-base01 dark:text-gray-100 truncate">
                   {ticket.agentName || (ticket.dareRef ? `DARE: ${ticket.dareRef}` : ticket.cdbId ? `CDBID: ${ticket.cdbId}` : t('No title'))}
                 </p>
-                {ticket.ref1 && (
+                {(ticket.references || []).length > 0 && (
                   <p className="text-[11px] text-ui-base1 dark:text-gray-400 mt-0.5">
-                    {ticket.ref1}
+                    {(ticket.references || []).map(r => r.value).join(' · ')}
                   </p>
                 )}
                 <div className="mt-1 text-xs text-ui-base1 dark:text-gray-400 flex items-center gap-2">

@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
-import { usePartner } from '../hooks/usePartner';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
 import { Ticket, Message } from '../types';
 import { trpc } from '../utils/trpc';
-
-const LANG_FLAG: Record<string, string> = { nl: '🇧🇪', fr: '🇫🇷', en: '🇬🇧' };
+import { LANG_FLAG } from '../constants';
 
 interface ChatWindowProps {
   ticket?: Ticket;
@@ -18,7 +16,6 @@ interface ChatWindowProps {
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
   const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode } = useStore();
-  const { manifest } = usePartner();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
@@ -324,9 +321,9 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   />
                 )}
               </span>
-              {!focusMode && (ticket.ref1 || (ticket as any).cdbId) && (
+              {!focusMode && (ticket.references || []).length > 0 && (
                 <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
-                  {ticket.dept === 'FOT' || ticket.dept === 'fot' ? manifest.ref2Label : manifest.ref1Label}: {ticket.ref1 || (ticket as any).cdbId}
+                  {(ticket.references || []).map((ref) => `${ref.label}: ${ref.value}`).join(' · ')}
                 </span>
               )}
             </div>

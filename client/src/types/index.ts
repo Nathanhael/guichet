@@ -14,9 +14,7 @@ export interface PartnerManifest {
   logoUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
-  ref1Label: string;
-  ref2Label: string;
-  departments: { id: string; name: string; description?: string }[];
+  departments: { id: string; name: string; description?: string; referenceFields?: Array<{ label: string }> }[];
   aiRules?: string;
   themeConfig?: ThemeConfig;
   ollamaModel?: string;
@@ -99,12 +97,6 @@ export interface ZenSettings {
   notificationShield: boolean;
 }
 
-export interface CannedResponse {
-  id: string;
-  shortcut: string;
-  text: string;
-}
-
 export interface Label {
   id: string;
   name: string;
@@ -118,8 +110,7 @@ export interface Ticket {
   agentId: string;
   agentName: string;
   agentLang: string;
-  ref1?: string | null;
-  ref2?: string | null;
+  references?: Array<{ label: string; value: string }>;
   cdbId?: string | null; // legacy
   dareRef?: string | null; // legacy
   status: 'open' | 'active' | 'closed';

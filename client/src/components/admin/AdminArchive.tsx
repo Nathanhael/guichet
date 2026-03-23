@@ -163,7 +163,14 @@ export default function AdminArchive() {
                       </td>
                       <td className="px-4 py-2.5 font-bold">{ticket.agentName}</td>
                       <td className="px-4 py-2.5 font-mono text-xs opacity-60">
-                        {(ticket as any).cdbId ? `CDBID: ${(ticket as any).cdbId}` : (ticket as any).dareRef ? `Ref: ${(ticket as any).dareRef}` : '—'}
+                        {(ticket.references || []).length > 0
+                          ? (ticket.references || []).map((ref) => (
+                              <span key={ref.label} className="mr-2">
+                                <span className="opacity-60 uppercase text-[9px] font-black tracking-widest">{ref.label}:</span>{' '}
+                                <span className="font-bold">{ref.value}</span>
+                              </span>
+                            ))
+                          : '—'}
                       </td>
                       <td className="px-4 py-2.5 opacity-60">
                         {ticket.supportName || <span className="italic">Abandoned</span>}

@@ -14,6 +14,7 @@ import DeletePartnerModal from '../components/platform/DeletePartnerModal';
 import InviteUserModal from '../components/platform/InviteUserModal';
 import ManageAccessModal from '../components/platform/ManageAccessModal';
 import EditUserProfileModal from '../components/platform/EditUserProfileModal';
+import GroupMappingsPanel from '../components/platform/GroupMappingsPanel';
 import type { PlatformTab, Partner, GlobalUser } from '../components/platform/types';
 
 export default function PlatformView() {
@@ -47,7 +48,7 @@ export default function PlatformView() {
       </nav>
 
       <div className="flex border-b-2 border-black dark:border-white bg-white dark:bg-black px-8 overflow-x-auto">
-        {(['partners', 'users', 'health', 'config', 'audit'] as const).map((tab) => (
+        {(['partners', 'users', 'sso', 'health', 'config', 'audit'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -76,6 +77,7 @@ export default function PlatformView() {
               onManageAccess={setEditingUser}
             />
           )}
+          {activeTab === 'sso' && <GroupMappingsPanel />}
           {activeTab === 'health' && <PlatformSystemHealth />}
           {activeTab === 'config' && <PlatformSystemSettings />}
           {activeTab === 'audit' && <PlatformAuditLog />}

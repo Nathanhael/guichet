@@ -12,8 +12,6 @@ export const partners = pgTable('partners', {
   name: text('name').notNull(),
   logoUrl: text('logo_url'),
   industry: text('industry').default('general'),
-  ref1Label: text('ref_1_label').default('Reference 1'),
-  ref2Label: text('ref_2_label').default('Reference 2'),
   departments: jsonb('departments').default([]),
   businessHoursSchedule: jsonb('business_hours_schedule'),
   businessHoursStart: text('business_hours_start'),
@@ -70,8 +68,7 @@ export const tickets = pgTable('tickets', {
   agentId: text('agent_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   agentName: text('agent_name'),
   agentLang: text('agent_lang'),
-  ref1: text('ref_1'),
-  ref2: text('ref_2'),
+  references: jsonb('references').default([]),
   status: ticketStatusEnum('status').default('open'),
   supportId: text('support_id').references(() => users.id, { onDelete: 'set null' }),
   supportName: text('support_name'),
@@ -111,7 +108,6 @@ export const messages = pgTable('messages', {
   readAt: timestamp('read_at', { mode: 'string' }),
   reactions: jsonb('reactions').default({}),
   sentiment: real('sentiment'),
-  cannedResponseId: text('canned_response_id'),
 }, (table) => ({
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
   senderIdIdx: index('idx_messages_sender_id').on(table.senderId),
@@ -176,15 +172,6 @@ export const dailyStats = pgTable('daily_stats', {
   pk: primaryKey({ columns: [table.date, table.partnerId] }),
 }));
 
-export const cannedResponses = pgTable('canned_responses', {
-  id: text('id').primaryKey(),
-  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
-  shortcut: text('shortcut').notNull(),
-  text: text('text').notNull(),
-}, (table) => ({
-  partnerShortcutIdx: index('idx_canned_partner_shortcut').on(table.partnerId, table.shortcut),
-}));
-
 export const topicAlerts = pgTable('topic_alerts', {
   id: text('id').primaryKey(),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
@@ -198,6 +185,19 @@ export const topicAlerts = pgTable('topic_alerts', {
   resolvedAt: timestamp('resolved_at', { mode: 'string' }),
 }, (table) => ({
   partnerStatusIdx: index('idx_alerts_partner_status').on(table.partnerId, table.status),
+}));
+
+export const partnerGroupMappings = pgTable('partner_group_mappings', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  azureGroupId: text('azure_group_id').notNull(),
+  azureGroupName: text('azure_group_name'),           // Human-readable label, e.g. "BU-Telecom-Support"
+  defaultRole: roleEnum('default_role').notNull().default('agent'),
+  defaultDepartments: jsonb('default_departments').default([]),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerGroupIdx: uniqueIndex('idx_pgm_partner_group').on(table.partnerId, table.azureGroupId),
+  groupIdx: index('idx_pgm_azure_group').on(table.azureGroupId),
 }));
 
 export const auditLog = pgTable('audit_log', {

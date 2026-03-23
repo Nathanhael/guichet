@@ -1,4 +1,4 @@
-export type PlatformTab = 'partners' | 'users' | 'health' | 'config' | 'audit';
+export type PlatformTab = 'partners' | 'users' | 'sso' | 'health' | 'config' | 'audit';
 export type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 export interface PartnerMembership {
@@ -19,8 +19,6 @@ export interface Partner {
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  ref1Label?: string | null;
-  ref2Label?: string | null;
   businessHoursStart?: string | null;
   businessHoursEnd?: string | null;
   slaConfig?: unknown;

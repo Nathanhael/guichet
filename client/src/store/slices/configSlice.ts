@@ -1,15 +1,13 @@
 import { StateCreator } from 'zustand';
-import { StoreState, AppConfig, BusinessHoursStatus, CannedResponse, Label } from '../../types';
+import { StoreState, AppConfig, BusinessHoursStatus, Label } from '../../types';
 
 export interface ConfigSlice {
   appConfig: AppConfig | null;
-  cannedResponses: CannedResponse[];
   businessHoursStatus: BusinessHoursStatus | null;
   businessHoursOpen: boolean;
   allLabels: Label[];
 
   setAppConfig: (config: AppConfig) => void;
-  setCannedResponses: (responses: CannedResponse[]) => void;
   setBusinessHoursStatus: (status: BusinessHoursStatus | null) => void;
   setBusinessHoursOpen: (open: boolean) => void;
   setAllLabels: (labels: Label[]) => void;
@@ -19,7 +17,6 @@ export interface ConfigSlice {
 
 export const createConfigSlice: StateCreator<StoreState, [], [], ConfigSlice> = (set) => ({
   appConfig: null,
-  cannedResponses: [],
   businessHoursStatus: null,
   businessHoursOpen: true,
   allLabels: [],
@@ -29,7 +26,6 @@ export const createConfigSlice: StateCreator<StoreState, [], [], ConfigSlice> = 
     businessHoursStatus: config.businessHoursStatus ?? null,
     businessHoursOpen: config.businessHoursStatus?.isOpen ?? true,
   }),
-  setCannedResponses: (responses) => set({ cannedResponses: responses }),
   setBusinessHoursStatus: (status) => set({
     businessHoursStatus: status,
     businessHoursOpen: status?.isOpen ?? true,

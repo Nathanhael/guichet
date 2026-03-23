@@ -18,8 +18,7 @@ export interface Ticket {
   agentId: string;
   agentName: string;
   agentLang: string;
-  ref1?: string | null;
-  ref2?: string | null;
+  references?: Array<{ label: string; value: string }>;
   status: TicketStatus;
   supportId?: string | null;
   supportName?: string | null;

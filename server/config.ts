@@ -25,6 +25,11 @@ const configSchema = z.object({
     AZURE_OPENAI_DEPLOYMENT: z.string().optional(),
     PLATFORM_ADMIN_EMAIL: z.string().email().optional(),
     PLATFORM_ADMIN_PASSWORD: z.string().min(8).optional(),
+    // Azure Entra ID (SSO)
+    AZURE_AD_TENANT_ID: z.string().optional(),
+    AZURE_AD_CLIENT_ID: z.string().optional(),
+    AZURE_AD_CLIENT_SECRET: z.string().optional(),
+    AZURE_AD_REDIRECT_URI: z.string().url().optional(),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -53,6 +58,10 @@ const parseResult = configSchema.safeParse({
     AZURE_OPENAI_DEPLOYMENT: process.env.AZURE_OPENAI_DEPLOYMENT,
     PLATFORM_ADMIN_EMAIL: process.env.PLATFORM_ADMIN_EMAIL,
     PLATFORM_ADMIN_PASSWORD: process.env.PLATFORM_ADMIN_PASSWORD,
+    AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
+    AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
+    AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
+    AZURE_AD_REDIRECT_URI: process.env.AZURE_AD_REDIRECT_URI,
 });
 
 if (!parseResult.success) {
