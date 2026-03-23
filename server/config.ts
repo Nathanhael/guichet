@@ -9,12 +9,15 @@ const configSchema = z.object({
     SLA_THRESHOLD_MS: z.coerce.number().int().positive().default(180000),
     GDPR_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
     PURGE_INTERVAL_MS: z.coerce.number().int().positive().default(24 * 60 * 60 * 1000),
-    JWT_SECRET: z.string(),
+    JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),
     JWT_EXPIRY: z.string().default('24h'),
     MAX_EXPERTS_SHOWN: z.coerce.number().int().positive().default(8),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
     UPLOAD_MAX_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),
-    UPLOAD_ALLOWED_TYPES: z.array(z.string()).default(['image/png', 'image/jpeg', 'image/webp']),
+    UPLOAD_ALLOWED_TYPES: z.preprocess(
+      (val) => (typeof val === 'string' ? val.split(',').map(s => s.trim()) : val),
+      z.array(z.string()).default(['image/png', 'image/jpeg', 'image/webp'])
+    ),
     OLLAMA_MODEL: z.string().default('translategemma:4b'),
     METRICS_TOKEN: z.string().optional(),
     REDIS_URL: z.string().default('redis://localhost:6379'),

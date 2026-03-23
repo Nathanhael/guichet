@@ -11,6 +11,7 @@ import { platformRouter } from './routers/platform.js';
 import { platformSecurityRouter } from './routers/platformSecurity.js';
 import { partnerRouter } from './routers/partner.js';
 import { alertsRouter } from './routers/alerts.js';
+import { mfaRouter } from './routers/mfa.js';
 
 export const appRouter = router({
   label: labelRouter,
@@ -25,6 +26,7 @@ export const appRouter = router({
   platformSecurity: platformSecurityRouter,
   partner: partnerRouter,
   alerts: alertsRouter,
+  mfa: mfaRouter,
 });
 
 export type AppRouter = typeof appRouter;

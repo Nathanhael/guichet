@@ -93,26 +93,22 @@ export class MailService {
     }
   }
 
-  static async sendPasswordReset(email: string, name: string, token: string) {
-    // In a real app, this would be your frontend URL
+  static async sendPasswordReset(email: string, name: string, token: string, brand?: { partnerName?: string; logoUrl?: string }) {
+    const { renderPasswordReset } = await import('./mailTemplates.js');
     const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/reset-password?token=${token}`;
-    
-    const html = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px; color: #000;">
-        <h1 style="text-transform: uppercase; letter-spacing: -0.05em; font-weight: 900; margin-top: 0;">Tessera</h1>
-        <p style="font-weight: bold; text-transform: uppercase; font-size: 14px; opacity: 0.6;">Password Reset Request</p>
-        <hr style="border: none; border-top: 2px solid #000; margin: 20px 0;" />
-        <p>Hello ${name},</p>
-        <p>We received a request to reset your password for your Tessera account.</p>
-        <div style="margin: 30px 0;">
-          <a href="${resetLink}" style="display: inline-block; background: #000; color: #fff; text-decoration: none; padding: 15px 30px; font-weight: 900; text-transform: uppercase; font-size: 12px; letter-spacing: 0.1em;">Reset Password</a>
-        </div>
-        <p style="font-size: 12px; opacity: 0.6;">If you didn't request this, you can safely ignore this email. This link will expire in 1 hour.</p>
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-        <p style="font-size: 10px; font-weight: bold; text-transform: uppercase; opacity: 0.4;">Tessera Platform Infrastructure</p>
-      </div>
-    `;
-
+    const html = renderPasswordReset({ name, resetLink, brand });
     return this.sendMail(email, 'Reset your Tessera Password', html);
+  }
+
+  static async sendAccountLocked(email: string, name: string, lockedMinutes: number) {
+    const { renderAccountLocked } = await import('./mailTemplates.js');
+    const html = renderAccountLocked({ name, lockedMinutes });
+    return this.sendMail(email, 'Tessera — Account Temporarily Locked', html);
+  }
+
+  static async sendMfaEnabled(email: string, name: string) {
+    const { renderMfaEnabled } = await import('./mailTemplates.js');
+    const html = renderMfaEnabled({ name });
+    return this.sendMail(email, 'Tessera — Two-Factor Authentication Enabled', html);
   }
 }

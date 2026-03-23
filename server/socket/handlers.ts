@@ -1,14 +1,17 @@
 import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
+import jwt from 'jsonwebtoken';
 import * as presenceService from '../services/presence.js';
 import { query, get, run, transaction } from '../db.js';
 import { getBusinessHoursStatus, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
+import config from '../config.js';
 import { Ticket, Message, User } from '../types/index.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
+import { isRevoked } from '../services/sessionRevocation.js';
 
 interface TicketNewPayload {
   agentId: string;
@@ -95,20 +98,88 @@ export function broadcastUserDeactivation(userId: string) {
   }
 }
 
+/** Guard: check if the JWT has expired since the handshake */
+function isTokenExpired(socket: Socket): boolean {
+  const exp = socket.data.tokenExp as number | undefined;
+  if (!exp) return true;
+  return Math.floor(Date.now() / 1000) >= exp;
+}
+
+/** Guard: require socket to be identified before processing events */
+function requireIdentified(socket: Socket): boolean {
+  if (isTokenExpired(socket)) {
+    logger.info({ socketId: socket.id, userId: socket.data.userId }, '[socket] Token expired, disconnecting');
+    socket.emit('auth:expired', { message: 'Token expired — please re-authenticate' });
+    socket.disconnect(true);
+    return false;
+  }
+  if (!socket.data.userId || !socket.data.partnerId) {
+    socket.emit('error', { message: 'Not authenticated — call socket:identify first' });
+    return false;
+  }
+  return true;
+}
+
 export function registerSocketHandlers(io: Server) {
   ioInstance = io;
+
+  // ---- Socket-level JWT authentication middleware ----
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token as string | undefined;
+      if (!token) {
+        return next(new Error('Authentication required'));
+      }
+
+      const decoded = jwt.verify(token, config.JWT_SECRET) as {
+        userId: string; role: string; jti?: string; iat?: number; exp?: number;
+        isPlatformOperator?: boolean;
+      };
+
+      const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
+      if (revoked) {
+        return next(new Error('Session revoked'));
+      }
+
+      // Attach verified identity to socket data
+      socket.data.authedUserId = decoded.userId;
+      socket.data.authedIsPlatformOperator = !!decoded.isPlatformOperator;
+      socket.data.tokenExp = decoded.exp; // seconds since epoch
+      next();
+    } catch (err) {
+      logger.warn({ err: err instanceof Error ? err.message : String(err) }, '[socket] JWT auth failed');
+      next(new Error('Invalid token'));
+    }
+  });
+
   io.on('connection', (socket: Socket) => {
     logger.info({ socketId: socket.id }, '[socket] connected');
     socketioConnectionsActive.inc();
 
-    socket.on('socket:identify', async ({ userId, role, name, partnerId }: { userId: string, role: string, name: string, partnerId: string }) => {
+    socket.on('socket:identify', async ({ partnerId }: { userId?: string, role?: string, name?: string, partnerId: string }) => {
+      // Use the verified identity from JWT middleware — never trust client-supplied userId
+      const userId = socket.data.authedUserId as string;
+      if (!userId) {
+        socket.emit('error', { message: 'Not authenticated' });
+        socket.disconnect();
+        return;
+      }
+
+      // Look up the user's name from the DB (don't trust client-supplied name)
+      const userRow = await get('SELECT name, is_platform_operator FROM users WHERE id = $1', [userId]) as { name: string; isPlatformOperator: boolean } | undefined;
+      if (!userRow) {
+        socket.emit('error', { message: 'User not found' });
+        socket.disconnect();
+        return;
+      }
+      const name = userRow.name || userId;
+
       // Validate that user has a membership for the requested partner
       const membership = await get('SELECT role FROM memberships WHERE user_id = $1 AND partner_id = $2', [userId, partnerId]) as { role: string } | undefined;
       let effectiveRole: string;
       if (!membership) {
         // No membership — check if user is a platform operator
-        const userRow = await get('SELECT is_platform_operator FROM users WHERE id = $1', [userId]) as { is_platform_operator: boolean } | undefined;
-        if (!isPlatformAdmin(!!userRow?.is_platform_operator)) {
+        if (!isPlatformAdmin(!!socket.data.authedIsPlatformOperator)) {
           socket.emit('error', { message: 'Not authorized for this partner' });
           socket.disconnect();
           return;
@@ -135,16 +206,16 @@ export function registerSocketHandlers(io: Server) {
         await presenceService.broadcastOnlineSupport(partnerId);
       }
       
-      if (role === 'agent') {
+      if (effectiveRole === 'agent') {
         broadcastAgentStatus(userId, true);
       }
 
       // Re-join active ticket rooms
       try {
         let activeTickets: { id: string }[] = [];
-        if (role === 'agent') {
+        if (effectiveRole === 'agent') {
           activeTickets = await query("SELECT id FROM tickets WHERE agent_id = $1 AND partner_id = $2 AND status != 'closed'", [userId, partnerId]) as { id: string }[];
-        } else if (canUseSupportWorkflows(role as any)) {
+        } else if (canUseSupportWorkflows(effectiveRole as any)) {
           activeTickets = await query("SELECT id FROM tickets WHERE (support_id = $1 OR participants::jsonb @> $3::jsonb) AND partner_id = $2 AND status != 'closed'", [userId, partnerId, JSON.stringify([{ id: userId }])]) as { id: string }[];
         }
         for (const t of activeTickets) socket.join(`ticket:${t.id}`);
@@ -152,6 +223,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('ticket:new', async (data: TicketNewPayload) => {
+      if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       const partnerId = socket.data.partnerId;
@@ -233,15 +305,33 @@ export function registerSocketHandlers(io: Server) {
         socket.join(`ticket:${ticket.id}`);
         socket.emit('ticket:created:self', { ticket: { ...ticket, participants: [], labels: [] }, message });
         io.to(`partner:${partnerId}`).emit('ticket:created', { ticket: { ...ticket, participants: [], labels: [] }, firstMessage: message });
-        await broadcastQueuePositions();
+        await broadcastQueuePositions(partnerId);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:new] error'); }
     });
 
-    socket.on('support:join', async ({ ticketId, supportId, supportName, supportLang }: SupportJoinPayload) => {
+    socket.on('support:join', async ({ ticketId, supportLang }: SupportJoinPayload) => {
+      if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'support:join' });
       try {
+        // Use verified identity from socket.data — never trust client-supplied supportId/supportName
+        const supportId = socket.data.userId;
+        const supportName = socket.data.name;
+        const callerRole = socket.data.role;
+        const callerPartnerId = socket.data.partnerId;
+
+        // Authorization: only support/admin roles can join
+        if (!canUseSupportWorkflows(callerRole as any)) {
+          return socket.emit('error', { message: 'Not authorized to join tickets' });
+        }
+
         const ticket = await get('SELECT id, partner_id, support_id, support_name, support_lang, support_joined_at, status, participants FROM tickets WHERE id = $1', [ticketId]) as unknown as TicketRow | undefined;
         if (!ticket) return;
+
+        // Tenant isolation: ticket must belong to caller's partner
+        if (ticket.partner_id !== callerPartnerId) {
+          return socket.emit('error', { message: 'Not authorized for this ticket' });
+        }
+
         const participants = JSON.parse(ticket.participants || '[]');
         if (!participants.find((p: Participant) => p.id === supportId)) participants.push({ id: supportId, name: supportName });
         await run('UPDATE tickets SET support_id = $1, support_name = $2, support_lang = $3, support_joined_at = $4, participants = $5, status = $6 WHERE id = $7', [ticket.support_id || supportId, ticket.support_name || supportName, ticket.support_lang || supportLang, ticket.support_joined_at || new Date().toISOString(), JSON.stringify(participants), 'active', ticketId]);
@@ -249,11 +339,12 @@ export function registerSocketHandlers(io: Server) {
         const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Record<string, unknown>[]).map(mapMessageRow);
         socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
         io.to(`ticket:${ticketId}`).emit('support:joined', { ticketId, supportName, participants });
-        await broadcastQueuePositions();
+        await broadcastQueuePositions(callerPartnerId);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
     });
 
     socket.on('status:set', async ({ status }: { status: string }) => {
+      if (!requireIdentified(socket)) return;
       const userId = socket.data.userId;
       const partnerId = socket.data.partnerId;
       if (userId && partnerId) {
@@ -261,11 +352,22 @@ export function registerSocketHandlers(io: Server) {
       }
     });
 
-    socket.on('support:leave', async ({ ticketId, supportId, supportName }: SupportLeavePayload) => {
+    socket.on('support:leave', async ({ ticketId }: SupportLeavePayload) => {
+      if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'support:leave' });
       try {
-        const ticket = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as unknown as TicketParticipantsRow | undefined;
+        // Use verified identity — never trust client-supplied supportId/supportName
+        const supportId = socket.data.userId;
+        const supportName = socket.data.name;
+
+        const ticket = await get('SELECT partner_id, participants FROM tickets WHERE id = $1', [ticketId]) as unknown as (TicketParticipantsRow & { partner_id: string }) | undefined;
         if (!ticket) return;
+
+        // Tenant isolation
+        if (ticket.partner_id !== socket.data.partnerId) {
+          return socket.emit('error', { message: 'Not authorized for this ticket' });
+        }
+
         let participants = JSON.parse(ticket.participants || '[]');
         participants = participants.filter((p: Participant) => p.id !== supportId);
         await run('UPDATE tickets SET participants = $1 WHERE id = $2', [JSON.stringify(participants), ticketId]);
@@ -275,6 +377,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('ticket:close', async ({ ticketId, closingNotes }: Omit<TicketClosePayload, 'closedBy'>) => {
+      if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'ticket:close' });
       try {
         const senderId = socket.data.userId;
@@ -290,11 +393,12 @@ export function registerSocketHandlers(io: Server) {
         const now = new Date().toISOString();
         await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, senderName || 'System', closingNotes || '', ticketId]);
         io.to(`ticket:${ticketId}`).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System' });
-        await broadcastQueuePositions();
+        await broadcastQueuePositions(ticket.partner_id);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
     });
 
     socket.on('message:send', async ({ ticketId, text, mediaUrl, whisper }: Omit<MessageSendPayload, 'senderId'>) => {
+      if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'message:send' });
       try {
         const senderId = socket.data.userId;
@@ -320,14 +424,18 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('typing:start', ({ ticketId, senderName }: { ticketId: string, senderName: string }) => {
-      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName, typing: true });
+      if (!requireIdentified(socket)) return;
+      // Use verified name from socket.data
+      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName: socket.data.name || senderName, typing: true });
     });
 
     socket.on('typing:stop', ({ ticketId, senderName }: { ticketId: string, senderName: string }) => {
-      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName, typing: false });
+      if (!requireIdentified(socket)) return;
+      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName: socket.data.name || senderName, typing: false });
     });
 
     socket.on('message:delivered', async ({ ticketId, messageId }: { ticketId: string, messageId: string }) => {
+      if (!requireIdentified(socket)) return;
       if (!ticketId || !messageId) return;
       const now = new Date().toISOString();
       await run('UPDATE messages SET delivered_at = $1 WHERE id = $2 AND delivered_at IS NULL', [now, messageId]);
@@ -335,15 +443,20 @@ export function registerSocketHandlers(io: Server) {
     });
 
     socket.on('message:read', async ({ ticketId, messageIds }: { ticketId: string, messageIds: string[] }) => {
+      if (!requireIdentified(socket)) return;
       if (!ticketId || !messageIds?.length) return;
+      // Limit array length to prevent DoS via thousands of sequential DB queries
+      const MAX_BATCH = 100;
+      const limitedIds = messageIds.slice(0, MAX_BATCH);
       const now = new Date().toISOString();
-      for (const messageId of messageIds) {
+      for (const messageId of limitedIds) {
         await run('UPDATE messages SET read_at = $1 WHERE id = $2 AND read_at IS NULL', [now, messageId]);
         io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'read', timestamp: now });
       }
     });
 
     socket.on('ticket:labels:update', async ({ ticketId, labels }: { ticketId: string, labels: string[] }) => {
+      if (!requireIdentified(socket)) return;
       try {
         if (!ticketId || !Array.isArray(labels)) return;
         const senderId = socket.data.userId;
@@ -352,8 +465,23 @@ export function registerSocketHandlers(io: Server) {
         const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
         if (!ticket) return;
 
-        const membership = await get('SELECT role FROM memberships WHERE user_id = $1 AND partner_id = $2', [senderId, ticket.partner_id]) as { role: string } | undefined;
-        if (!membership) return socket.emit('error', { message: 'Not authorized for this ticket' });
+        // Tenant isolation: ticket must belong to caller's partner
+        if (ticket.partner_id !== socket.data.partnerId) {
+          return socket.emit('error', { message: 'Not authorized for this ticket' });
+        }
+
+        // Validate that all labels belong to this partner
+        if (labels.length > 0) {
+          const partnerLabels = await query(
+            `SELECT id FROM labels WHERE partner_id = $1 AND id IN (${labels.map((_, i) => `$${i + 2}`).join(',')})`,
+            [ticket.partner_id, ...labels]
+          ) as { id: string }[];
+          const validIds = new Set(partnerLabels.map(l => l.id));
+          const invalidLabels = labels.filter(l => !validIds.has(l));
+          if (invalidLabels.length > 0) {
+            return socket.emit('error', { message: 'Invalid label IDs' });
+          }
+        }
 
         await transaction(async () => {
           await run('DELETE FROM ticket_labels WHERE ticket_id = $1', [ticketId]);

@@ -1,4 +1,4 @@
-export type PlatformTab = 'partners' | 'users' | 'sso' | 'security' | 'health' | 'config' | 'audit';
+export type PlatformTab = 'partners' | 'users' | 'sso' | 'security' | 'health' | 'config' | 'audit' | 'archive';
 export type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 export interface PartnerMembership {

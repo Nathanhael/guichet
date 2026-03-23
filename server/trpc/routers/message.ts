@@ -17,16 +17,24 @@ export const messageRouter = router({
       try {
         const isSupport = canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator);
 
-        // Ownership check for agents
-        if (!isSupport) {
-          const ticketResult = await db.select({ agentId: tickets.agentId })
-            .from(tickets)
-            .where(eq(tickets.id, input.ticketId))
-            .limit(1);
-          
-          if (ticketResult.length === 0 || ticketResult[0].agentId !== ctx.user.id) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to view these messages' });
-          }
+        // Always verify the ticket belongs to the caller's partner (tenant isolation)
+        const ticketResult = await db.select({ agentId: tickets.agentId, partnerId: tickets.partnerId })
+          .from(tickets)
+          .where(eq(tickets.id, input.ticketId))
+          .limit(1);
+
+        if (ticketResult.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Ticket not found' });
+        }
+
+        // Tenant isolation: ticket must belong to caller's partner (platform operators can access any)
+        if (!ctx.user.isPlatformOperator && ticketResult[0].partnerId !== ctx.user.partnerId) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to view these messages' });
+        }
+
+        // Ownership check for agents (non-support)
+        if (!isSupport && ticketResult[0].agentId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to view these messages' });
         }
         
         let query = db.select().from(messages).where(eq(messages.ticketId, input.ticketId));
@@ -36,8 +44,7 @@ export const messageRouter = router({
           query = db.select().from(messages).where(
             and(
               eq(messages.ticketId, input.ticketId),
-              eq(messages.whisper, 0) // SQLite/Drizzle uses 0/1 for booleans sometimes, or boolean directly. 
-                                      // Checking schema.ts: whisper is integer? No, let's check.
+              eq(messages.whisper, 0) // whisper is integer (0/1) in the schema
             )
           );
         }

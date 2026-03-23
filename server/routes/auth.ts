@@ -8,14 +8,15 @@ import config from '../config.js';
 import logger from '../utils/logger.js';
 import { User } from '../types/index.js';
 import { MailService } from '../services/mail.js';
-import { hashPassword, verifyPassword } from '../utils/passwords.js';
+import { hashPassword, verifyPassword, validatePasswordStrength, isPasswordReused, PASSWORD_HISTORY_LIMIT } from '../utils/passwords.js';
+import { checkLockout, recordFailedLogin, resetFailedLogins } from '../services/accountLockout.js';
 import { buildAuthResponse, buildAuthToken, findUserByEmail, getEnterPartnerContext, listUserMemberships } from '../services/authSession.js';
 import { canAccessPartnerContext, isPlatformAdmin } from '../services/roles.js';
-import { revokeToken } from '../services/sessionRevocation.js';
+import { revokeToken, revokeUserSessions } from '../services/sessionRevocation.js';
 import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
 
 import { auditLog, partners, memberships, users } from '../db/schema.js';
-import { eq, and, ilike, isNull } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { db } from '../db.js';
 
 const router = express.Router();
@@ -29,6 +30,11 @@ function maskEmail(email: string): string {
 
 // ... (register route remains unchanged)
 
+// Per-email throttle for forgot-password: max 3 requests per email per 15 minutes
+const forgotPasswordThrottle = new Map<string, number[]>();
+const FORGOT_PW_WINDOW_MS = 15 * 60 * 1000;
+const FORGOT_PW_MAX_PER_EMAIL = 3;
+
 router.post('/forgot-password', [
     body('email').isEmail().withMessage('Valid email is required'),
     validate([])
@@ -36,6 +42,18 @@ router.post('/forgot-password', [
     try {
         const { email } = req.body;
         logger.info({ email: maskEmail(email) }, '[Auth] Password reset requested');
+
+        // Per-email rate limiting
+        const key = email.toLowerCase();
+        const now = Date.now();
+        const timestamps = (forgotPasswordThrottle.get(key) || []).filter(t => t > now - FORGOT_PW_WINDOW_MS);
+        if (timestamps.length >= FORGOT_PW_MAX_PER_EMAIL) {
+            logger.warn({ email: maskEmail(email) }, '[Auth] Forgot password per-email rate limit hit');
+            // Return success to prevent enumeration, but don't actually send
+            return res.json({ success: true, message: 'If an account exists, you will receive a reset link.' });
+        }
+        timestamps.push(now);
+        forgotPasswordThrottle.set(key, timestamps);
 
         const user = await findUserByEmail(email);
 
@@ -72,7 +90,7 @@ router.post('/forgot-password', [
 
 router.post('/reset-password', [
     body('token').notEmpty().withMessage('Token is required'),
-    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+    body('password').isLength({ min: 10 }).withMessage('Password must be at least 10 characters'),
     validate([])
 ], async (req: Request, res: Response) => {
     try {
@@ -86,17 +104,39 @@ router.post('/reset-password', [
             return res.status(400).json({ error: 'Invalid or expired reset token' });
         }
 
+        // Password strength validation
+        const strength = validatePasswordStrength(password, { email: user.email ?? undefined, name: user.name });
+        if (!strength.valid) {
+            return res.status(400).json({ error: 'Password does not meet security requirements', details: strength.errors });
+        }
+
+        // Password reuse check
+        const history = (user.passwordHistory as string[]) || [];
+        if (history.length > 0 && await isPasswordReused(password, history)) {
+            return res.status(400).json({ error: `Password was used recently. Choose a password you haven't used in the last ${PASSWORD_HISTORY_LIMIT} changes.` });
+        }
+
         const hashedPassword = await hashPassword(password);
 
+        // Update password and push old hash to history
+        const newHistory = user.password ? [user.password, ...history].slice(0, PASSWORD_HISTORY_LIMIT) : history;
+
         await db.update(users)
-            .set({ 
+            .set({
                 password: hashedPassword,
                 resetPasswordToken: null,
-                resetPasswordExpires: null
+                resetPasswordExpires: null,
+                passwordChangedAt: new Date().toISOString(),
+                passwordHistory: newHistory,
+                failedLoginAttempts: 0,
+                lockedUntil: null,
             })
             .where(eq(users.id, user.id));
 
-        logger.info({ userId: user.id }, '[Auth] Password reset successful');
+        // Revoke all existing sessions so a compromised token cannot be reused
+        await revokeUserSessions(user.id);
+
+        logger.info({ userId: user.id }, '[Auth] Password reset successful, all sessions revoked');
         res.json({ success: true, message: 'Password updated successfully' });
     } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Reset password FATAL error');
@@ -120,12 +160,27 @@ router.post('/login-local', [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Account lockout check
+        const lockout = checkLockout(user);
+        if (lockout.locked) {
+            const retryMins = Math.ceil((lockout.retryAfterMs || 0) / 60000);
+            logger.warn({ email: maskEmail(email) }, '[Auth] Local login blocked: account locked');
+            return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
+        }
+
         const isMatch = await verifyPassword(user.password, password);
 
         if (!isMatch) {
-            logger.warn({ email: maskEmail(email) }, '[Auth] Local login failed: Password mismatch');
+            const result = await recordFailedLogin(user.id);
+            logger.warn({ email: maskEmail(email), attemptsLeft: result.attemptsLeft }, '[Auth] Local login failed: Password mismatch');
+            if (result.locked) {
+                return res.status(423).json({ error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' });
+            }
             return res.status(401).json({ error: 'Invalid credentials' });
         }
+
+        // Successful login — reset lockout counter
+        await resetFailedLogins(user.id);
 
         const userMemberships = await listUserMemberships(user.id);
 
@@ -134,6 +189,31 @@ router.post('/login-local', [
         if (userMemberships.length === 0 && !isPlatformAdmin(!!user.isPlatformOperator)) {
             logger.warn({ email: maskEmail(email) }, '[Auth] Local login failed: No memberships found');
             return res.status(403).json({ error: 'User has no memberships' });
+        }
+
+        // Check if MFA is enabled
+        if (user.mfaEnabledAt) {
+            const { totpCode } = req.body;
+            if (!totpCode) {
+                // Return MFA challenge — client must re-submit with TOTP code
+                return res.status(200).json({ mfaRequired: true, userId: user.id });
+            }
+            // Verify TOTP code (import inline to avoid circular deps)
+            const { verifyTotpToken } = await import('../services/platformStepUp.js');
+            if (!user.mfaSecret || !verifyTotpToken(user.mfaSecret, totpCode)) {
+                // Check recovery codes
+                const recoveryCodes = (user.mfaRecoveryCodes as string[]) || [];
+                const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
+                const recoveryIdx = recoveryCodes.indexOf(codeHash);
+                if (recoveryIdx === -1) {
+                    return res.status(401).json({ error: 'Invalid MFA code' });
+                }
+                // Consume the recovery code
+                const updatedCodes = [...recoveryCodes];
+                updatedCodes.splice(recoveryIdx, 1);
+                await db.update(users).set({ mfaRecoveryCodes: updatedCodes }).where(eq(users.id, user.id));
+                logger.info({ userId: user.id }, '[Auth] MFA passed via recovery code');
+            }
         }
 
         const activeMemberships = userMemberships.filter(m => m.status === 'active');
@@ -152,7 +232,6 @@ router.post('/login-local', [
         logger.info({ email: maskEmail(email), partnerId: defaultMembership?.partnerId }, '[Auth] Local login successful');
 
         // Update lastActiveAt
-        logger.info({ userId: user.id }, '[Auth] Updating lastActiveAt for user');
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
         res.json(buildAuthResponse({
@@ -188,11 +267,25 @@ router.post('/login', [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Account lockout check
+        const lockout = checkLockout(user);
+        if (lockout.locked) {
+            const retryMins = Math.ceil((lockout.retryAfterMs || 0) / 60000);
+            return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
+        }
+
         const isMatch = await verifyPassword(user.password, password);
         if (!isMatch) {
-            logger.warn({ id }, '[Auth] Login failed: Password mismatch');
+            const result = await recordFailedLogin(user.id);
+            logger.warn({ id, attemptsLeft: result.attemptsLeft }, '[Auth] Login failed: Password mismatch');
+            if (result.locked) {
+                return res.status(423).json({ error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' });
+            }
             return res.status(401).json({ error: 'Invalid credentials' });
         }
+
+        // Successful login — reset lockout counter
+        await resetFailedLogins(user.id);
 
         const userMemberships = await listUserMemberships(user.id);
 
@@ -203,9 +296,28 @@ router.post('/login', [
             return res.status(403).json({ error: 'User has no memberships' });
         }
 
+        // Check if MFA is enabled
+        if (user.mfaEnabledAt) {
+            const { totpCode } = req.body;
+            if (!totpCode) {
+                return res.status(200).json({ mfaRequired: true, userId: user.id });
+            }
+            const { verifyTotpToken } = await import('../services/platformStepUp.js');
+            if (!user.mfaSecret || !verifyTotpToken(user.mfaSecret, totpCode)) {
+                const recoveryCodes = (user.mfaRecoveryCodes as string[]) || [];
+                const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
+                const recoveryIdx = recoveryCodes.indexOf(codeHash);
+                if (recoveryIdx === -1) {
+                    return res.status(401).json({ error: 'Invalid MFA code' });
+                }
+                const updatedCodes = [...recoveryCodes];
+                updatedCodes.splice(recoveryIdx, 1);
+                await db.update(users).set({ mfaRecoveryCodes: updatedCodes }).where(eq(users.id, user.id));
+                logger.info({ userId: user.id }, '[Auth] MFA passed via recovery code');
+            }
+        }
+
         const activeMemberships = userMemberships.filter(m => m.status === 'active');
-        
-        // Default to first active membership, or null if none are active
         const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
 
         const token = buildAuthToken({

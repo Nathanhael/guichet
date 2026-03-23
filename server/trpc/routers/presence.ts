@@ -10,7 +10,11 @@ export const presenceRouter = router({
       userId: z.string(),
       partnerId: z.string(),
     }))
-    .query(async ({ input }) => {
+    .query(async ({ input, ctx }) => {
+      // Authorization: only allow querying the caller's own partner (or platform operators)
+      if (!ctx.user.isPlatformOperator && input.partnerId !== ctx.user.partnerId) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to query this partner' });
+      }
       const onlineUsers = await presenceService.getOnlineUsersForPartner(input.partnerId);
       const online = onlineUsers.some(u => u.userId === input.userId);
       return { online };

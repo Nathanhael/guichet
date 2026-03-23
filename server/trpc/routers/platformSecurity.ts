@@ -48,6 +48,16 @@ function buildStatusResponse(input: {
 
 export const platformSecurityRouter = router({
   getStatus: platformBaseProcedure.query(async ({ ctx }) => {
+    // In demo mode, skip step-up entirely so all tabs are accessible
+    if (process.env.DEMO_MODE === 'true') {
+      return {
+        mfaEnabled: false,
+        mfaPending: false,
+        stepUpSatisfied: true,
+        stepUpExpiresAt: null,
+      };
+    }
+
     const user = await getPlatformSecurityUser(ctx.user.id);
     if (!user) {
       throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });

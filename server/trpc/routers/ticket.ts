@@ -28,7 +28,7 @@ export const ticketRouter = router({
       dept: z.string().optional(),
       search: z.string().optional(),
       limit: z.number().min(1).optional(),
-      offset: z.number().min(0).optional(),
+      cursor: z.string().optional(), // "createdAt|id" or "closedAt|id"
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
     }))
@@ -45,7 +45,7 @@ export const ticketRouter = router({
         if (input.agentId) conditions.push(eq(tickets.agentId, input.agentId));
         if (input.status) conditions.push(eq(tickets.status, input.status));
         if (input.dept && input.dept !== 'all') conditions.push(eq(tickets.dept, input.dept));
-        
+
         if (input.search) {
           const q = `%${input.search}%`;
           conditions.push(or(
@@ -60,50 +60,72 @@ export const ticketRouter = router({
           conditions.push(lte(tickets.createdAt, end));
         }
 
-        const where = conditions.length > 0 ? and(...conditions) : undefined;
+        const isClosed = input.status === 'closed';
+        const orderCol = isClosed ? tickets.closedAt : tickets.createdAt;
 
-        // Pagination & Count for Archive
+        // Cursor-based pagination
         if (input.limit !== undefined) {
-          const countResult = await db.select({ count: sql<number>`count(*)` }).from(tickets).where(where);
-          const total = Number(countResult[0]?.count || 0);
+          if (input.cursor) {
+            const sepIdx = input.cursor.indexOf('|');
+            if (sepIdx !== -1) {
+              const cursorTime = input.cursor.slice(0, sepIdx);
+              const cursorId = input.cursor.slice(sepIdx + 1);
+              // Closed = DESC, Open = ASC
+              if (isClosed) {
+                conditions.push(
+                  sql`(${orderCol} < ${cursorTime} OR (${orderCol} = ${cursorTime} AND ${tickets.id} < ${cursorId}))`
+                );
+              } else {
+                conditions.push(
+                  sql`(${orderCol} > ${cursorTime} OR (${orderCol} = ${cursorTime} AND ${tickets.id} > ${cursorId}))`
+                );
+              }
+            }
+          }
+
+          const where = conditions.length > 0 ? and(...conditions) : undefined;
 
           const rows = await db.select().from(tickets).where(where)
-             .orderBy(input.status === 'closed' ? desc(tickets.closedAt) : asc(tickets.createdAt))
-             .limit(input.limit).offset(input.offset || 0);
+            .orderBy(isClosed ? desc(orderCol) : asc(orderCol), isClosed ? desc(tickets.id) : asc(tickets.id))
+            .limit(input.limit + 1);
 
-          if (rows.length === 0) return { tickets: [], total };
+          const hasMore = rows.length > input.limit;
+          const pageRows = hasMore ? rows.slice(0, input.limit) : rows;
 
-          // Optimized: Fetch all labels for these tickets in ONE query
-          const ticketIds = rows.map(t => t.id);
+          if (pageRows.length === 0) return { tickets: [], nextCursor: '' };
+
+          const ticketIds = pageRows.map(t => t.id);
           const labelsMap = await fetchLabelsForTickets(ticketIds);
 
-          const ticketsWithLabels = rows.map(t => {
-            return {
-              ...t,
-              participants: t.participants || [],
-              labels: labelsMap[t.id] || [],
-            };
-          });
-
-          return { tickets: ticketsWithLabels, total };
-        }
-
-        const rows = await db.select().from(tickets).where(where)
-          .orderBy(input.status === 'closed' ? desc(tickets.closedAt) : asc(tickets.createdAt));
-        
-        if (rows.length === 0) return [];
-
-        // Optimized: Fetch all labels for these tickets in ONE query
-        const ticketIds = rows.map(t => t.id);
-        const labelsMap = await fetchLabelsForTickets(ticketIds);
-
-        const ticketsWithLabels = rows.map(t => {
-          return {
+          const ticketsWithLabels = pageRows.map(t => ({
             ...t,
             participants: t.participants || [],
             labels: labelsMap[t.id] || [],
-          };
-        });
+          }));
+
+          const lastItem = pageRows[pageRows.length - 1];
+          const cursorValue = isClosed ? lastItem.closedAt : lastItem.createdAt;
+          const nextCursor = hasMore && lastItem ? `${cursorValue}|${lastItem.id}` : '';
+
+          return { tickets: ticketsWithLabels, nextCursor };
+        }
+
+        // Non-paginated path (live queue views)
+        const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+        const rows = await db.select().from(tickets).where(where)
+          .orderBy(isClosed ? desc(orderCol) : asc(orderCol));
+
+        if (rows.length === 0) return [];
+
+        const ticketIds = rows.map(t => t.id);
+        const labelsMap = await fetchLabelsForTickets(ticketIds);
+
+        const ticketsWithLabels = rows.map(t => ({
+          ...t,
+          participants: t.participants || [],
+          labels: labelsMap[t.id] || [],
+        }));
 
         return ticketsWithLabels;
       } catch (err: unknown) {

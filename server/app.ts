@@ -177,8 +177,8 @@ v1Router.get('/health', async (_req: Request, res: Response) => {
   }
 });
 
-// Internal E2E Seeding Endpoint
-if (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') {
+// Internal E2E Seeding Endpoint — test environments only
+if (process.env.NODE_ENV === 'test') {
   v1Router.post('/seed-e2e', async (_req: Request, res: Response) => {
     try {
       const { execSync } = await import('child_process');

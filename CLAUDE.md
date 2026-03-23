@@ -23,6 +23,20 @@ docker logs -f tessera-server-1                            # Server logs
 docker logs -f tessera-client-1                            # Client logs
 ```
 
+### Database Management
+
+```bash
+npm run db:migrate                    # Apply pending Drizzle migrations
+npm run db:baseline                   # Seed migration ledger for existing DBs (one-time, interactive)
+npm run db:backup                     # Dump DB to server/backups/ (gzipped, auto-prunes to 10)
+npm run db:backup:docker              # Same, but from Docker 'db' container
+```
+
+**Migration path**:
+- Fresh database → `npm run db:migrate`
+- Existing DB with empty Drizzle ledger → `npm run db:baseline` then `db:migrate` going forward
+- Before risky migrations → `npm run db:backup` first
+
 ### Build & Production
 
 ```bash
@@ -31,6 +45,15 @@ docker compose exec client npm run preview                 # Preview production 
 docker compose -f docker-compose.prod.yml up               # Production deployment
 docker compose -f docker-compose.prod.yml build            # Build prod images
 ```
+
+### Demo Users
+
+```bash
+docker compose exec server npx tsx scripts/reset_demo_users.ts   # Reset all demo users to clean state
+docker compose exec server npx tsx seed_pg.ts                    # Full seed (partners, users, labels)
+```
+
+All demo users use password `password123`. The reset script clears lockout, MFA, platform TOTP, password history, and re-hashes passwords. When `DEMO_MODE=true`, platform step-up TOTP is auto-satisfied (bypassed server-side) so all PlatformView tabs are accessible without authenticator setup.
 
 ## Architecture
 
@@ -47,16 +70,20 @@ docker compose -f docker-compose.prod.yml build            # Build prod images
 **Services** (`server/services/`):
 - `bootstrap.ts` — First-run platform operator creation from `PLATFORM_ADMIN_EMAIL` env var
 - `gdpr.ts` — Daily purge and per-partner aggregation (30-day retention)
+- `archive.ts` — WORM audit archive (SHA-256 hash chain) + ticket archiving with summary metadata
 - `guards.ts` — Content moderation pipeline (length, caps, repetition, injection, swearing, threats, discrimination)
 - `businessHours.ts` — Business hours enforcement and queue position broadcasting
 - `presence.ts` — User online/offline tracking via Redis
 - `stats.ts` — Live statistics computation for dashboard
+- `accountLockout.ts` — 5-attempt lockout with 15-min window, email notification
+- `mail.ts` / `mailTemplates.ts` — Centralized email service + B&W templates (lockout, MFA, password reset)
 
 **Socket.io** (`server/socket/handlers.ts`):
 - All real-time event handlers. Uses Redis adapter for horizontal scaling.
 - Identity enforced server-side via `socket.data.userId` — never trust client-supplied identity fields.
 - Key events: `message:send`, `message:read`, `ticket:new`, `ticket:close`, `support:join`, `support:leave`, `typing:*`, `presence:*`, `partner:deactivated`
 - All mutation events verify partner-scope authorization before proceeding.
+- **Token expiry**: JWT `exp` is stored at handshake and checked on every event via `requireIdentified()`. Expired tokens trigger `auth:expired` → client auto-reconnects with fresh token from store.
 
 **Middleware** (`server/middleware/`):
 - `auth.ts` — JWT verification and role-based access control
@@ -75,6 +102,10 @@ docker compose -f docker-compose.prod.yml build            # Build prod images
 | `messages` | Per-ticket messages | `ticketId`, `senderId`, `text`, `whisper`, `reactions` (JSONB) |
 | `daily_stats` | Aggregated metrics | `date`, `partnerId` (composite PK), per-partner daily stats |
 | `audit_log` | Security/audit trail | `action`, `actorId`, `partnerId`, `targetType`, `targetId`, `metadata` (JSONB) |
+| `audit_archive` | WORM audit archive | SHA-256 `chainHash`, `archivedAt`, same fields as audit_log |
+| `archived_tickets` | Ticket archive | Ticket summary + `messageCount`, `archivedAt`, no message content |
+| `labels` | Ticket labels | `partnerId`, `name`, `color` |
+| `ticket_labels` | Ticket↔Label junction | `ticketId`, `labelId` |
 
 ### Client (`client/src/`)
 
@@ -101,9 +132,14 @@ docker compose -f docker-compose.prod.yml build            # Build prod images
 - **Dynamic Departments**: Never hardcode department IDs. Always read from `partner.departments` JSONB. Schema: `{ id (auto-slug), name, description? }`. IDs are immutable.
 - **Department Assignment**: `memberships.departments` is a JSONB array of dept IDs. Empty/null = generalist (sees all).
 - **TypeScript**: No `any` types. Zod schemas on backend, TypeScript interfaces in `client/src/types/index.ts`.
-- **bcrypt**: Dev uses `bcryptjs` (pure JS). Prod Dockerfile swaps to native `bcrypt` (C++) at build time. Source always imports `bcryptjs`.
+- **Argon2id**: Password hashing uses `argon2` (native C bindings). No bcrypt anywhere in the codebase.
 - **Auth Method**: Per-partner setting (`local` | `sso`) via `authMethodEnum` pgEnum. Local partners generate temp passwords on invite; SSO partners skip password creation. Invite mutations return `tempPassword: ''` (not `null`) because tRPC without superjson strips null values.
 - **Audit Logging**: All significant actions (partner lifecycle, user management, GDPR purges) recorded in `audit_log`.
+- **MFA (TOTP)**: Per-user MFA via `mfaSecret`, `mfaEnabledAt`, `mfaRecoveryCodes` (SHA-256 hashed). Setup/enable/disable via `trpc.mfa.*`. Login challenge returns `{ mfaRequired: true }` and waits for TOTP code re-submission.
+- **Account Lockout**: 5 failed login attempts → 15-minute lockout. State in `failedLoginAttempts` + `lockedUntil` columns. Email notification on lockout (fire-and-forget).
+- **Password Policies**: Min 10 chars, upper/lower/digit/special required, common password blocking, email/name inclusion check. History check prevents reuse of last 5 passwords (Argon2id verified).
+- **WORM Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Tickets archived with message count summary.
+- **Cursor-Based Pagination**: Ticket list and audit archive use keyset pagination (`createdAt|id` composite cursor). Pattern: fetch `limit+1`, detect hasMore, return `{ items, nextCursor }`.
 - **Platform Operator Bootstrap**: On first startup with no platform operators, auto-creates one from `PLATFORM_ADMIN_EMAIL` (and optional `PLATFORM_ADMIN_PASSWORD`) env vars. Runs before server accepts traffic. Race-safe, non-fatal.
 - **Platform Operator Partner Access**: Platform operators can enter any active partner's admin view via `POST /enter-partner` without needing a membership. Socket auth bypasses membership check for operators.
 
@@ -135,7 +171,7 @@ tessera/
 │   ├── routes/
 │   │   ├── auth.ts                # /api/auth/* (login, switch-partner, enter-partner)
 │   │   └── logos.ts               # /api/v1/logos
-│   ├── services/                  # Business logic (bootstrap, gdpr, guards, presence, stats)
+│   ├── services/                  # Business logic (bootstrap, gdpr, archive, guards, presence, stats, mail)
 │   ├── middleware/                 # Express middleware (auth, validator)
 │   ├── utils/                     # Logger, Redis, metrics, security
 │   ├── app.ts                     # Server bootstrap
@@ -161,10 +197,46 @@ tessera/
 │   │   │   └── helpers.tsx        # Test factories and mock builders
 │   │   └── utils/trpc.ts          # tRPC client setup
 │   └── Dockerfile
+├── testing/
+│   ├── nginx.conf                 # Reverse proxy config for load testing
+│   ├── load/                      # k6 load test scripts (smoke.js, load.js, ws.js)
+│   └── e2e/                       # Playwright E2E specs
+├── playwright.config.ts           # Playwright E2E config
+├── PLAN.md                        # Next sprint plan (MFA admin, notification prefs, API docs)
+├── .github/workflows/ci.yml      # CI: typecheck, tests, migrations, e2e, build
 ├── docker-compose.yml             # Development environment
 ├── docker-compose.prod.yml        # Production environment
+├── CHANGELOG.md                   # Project changelog
 └── CLAUDE.md                      # This file
 ```
+
+## CI Pipeline
+
+GitHub Actions (`.github/workflows/ci.yml`) runs 5 parallel jobs on push/PR to `main`:
+
+| Job | What it checks |
+|-----|----------------|
+| `lint-and-typecheck` | `tsc --noEmit` on both server and client |
+| `test-client` | Client unit tests (Vitest + jsdom) |
+| `test-server` | Server unit tests (Vitest + node) |
+| `migrate-check` | Runs `db:migrate` against a fresh Postgres 18 service container |
+| `e2e` | Playwright E2E tests against Postgres 18 + built client (Chromium) |
+
+Build only proceeds if all 5 pass.
+
+## Load Testing
+
+k6 scripts in `testing/load/`. Run via Docker:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm --network=host -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/smoke.js
+MSYS_NO_PATHCONV=1 docker run --rm --network=host -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/load.js
+```
+
+| Script | VUs | Duration | Tests |
+|--------|-----|----------|-------|
+| `smoke.js` | 1 | 30s | health, login, ticket.list |
+| `load.js` | 50 | 3m | random mix of endpoints under sustained load |
 
 ## Debugging
 

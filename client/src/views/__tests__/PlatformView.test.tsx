@@ -95,6 +95,10 @@ vi.mock('../../components/platform/EditUserProfileModal', () => ({
   default: () => null,
 }));
 
+vi.mock('../../components/admin/PlatformArchiveViewer', () => ({
+  default: () => <div data-testid="archive-viewer" />,
+}));
+
 /* ------------------------------------------------------------------ */
 /*  Tests                                                              */
 /* ------------------------------------------------------------------ */
@@ -118,6 +122,7 @@ describe('PlatformView', () => {
     expect(screen.getByText('health_tab')).toBeInTheDocument();
     expect(screen.getByText('config_tab')).toBeInTheDocument();
     expect(screen.getByText('audit_tab')).toBeInTheDocument();
+    expect(screen.getByText('archive_tab')).toBeInTheDocument();
   });
 
   it('shows PartnerList by default (partners tab)', () => {
@@ -169,6 +174,12 @@ describe('PlatformView', () => {
     expect(screen.queryByTestId('invite-user-modal')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('mock-invite'));
     expect(screen.getByTestId('invite-user-modal')).toBeInTheDocument();
+  });
+
+  it('switches to archive tab', () => {
+    render(<PlatformView />);
+    fireEvent.click(screen.getByText('archive_tab'));
+    expect(screen.getByTestId('archive-viewer')).toBeInTheDocument();
   });
 
   it('switches to security tab', () => {

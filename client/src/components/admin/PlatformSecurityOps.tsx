@@ -57,7 +57,7 @@ export default function PlatformSecurityOps() {
   const { data: users } = trpc.platform.listGlobalUsers.useQuery(undefined, {
     enabled: !!status?.stepUpSatisfied,
   });
-  const { data: auditData, isLoading } = trpc.platform.getAuditLog.useQuery({ limit: 20, offset: 0 }, {
+  const { data: auditData, isLoading } = trpc.platform.getAuditLog.useQuery({ limit: 20 }, {
     enabled: !!status?.stepUpSatisfied,
   });
 
@@ -101,7 +101,7 @@ export default function PlatformSecurityOps() {
   );
 
   const selectedUser = visibleUsers.find((user) => user.id === selectedUserId) || null;
-  const securityEvents = (auditData || []).filter((event) => SECURITY_ACTIONS.has(event.action));
+  const securityEvents = (auditData?.items || []).filter((event) => SECURITY_ACTIONS.has(event.action));
   const stepUpFormBusy = beginSetup.isPending || enableMfa.isPending || verifyStepUp.isPending;
 
   return (

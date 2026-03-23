@@ -24,7 +24,8 @@ export function isValidMediaUrl(url: string | undefined | null): boolean {
     
     // Check for common image extensions
     const ext = parsed.pathname.split('.').pop()?.toLowerCase();
-    const safeExts = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg'];
+    // SVG excluded — can contain embedded <script> tags (XSS vector)
+    const safeExts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
     if (ext && !safeExts.includes(ext)) return false;
 
     return true;

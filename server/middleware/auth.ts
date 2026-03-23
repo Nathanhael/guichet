@@ -20,11 +20,12 @@ export interface AuthRequest extends Request {
 
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
-  const queryToken = req.query.token as string;
-  
-  if (!authHeader && !queryToken) return res.status(401).json({ error: 'No token provided' });
 
-  const token = authHeader ? authHeader.split(' ')[1] : queryToken;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'No token provided' });
+  }
+
+  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET) as { userId: string; role: UserRole; isPlatformOperator: boolean; platformStepUpAt?: number; jti?: string; exp?: number; iat?: number };
     const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
@@ -51,7 +52,7 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
 export const authorize = (roles: UserRole[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(401).json({ error: 'Authentication required' });
     }
 
     const allowed =

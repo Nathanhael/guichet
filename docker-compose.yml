@@ -21,11 +21,12 @@ services:
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/tessera
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=dev-secret-key-change-in-prod
+      - JWT_SECRET=dev-secret-key-change-in-prod-minimum-32-chars
       - DISABLE_RATE_LIMIT=true
       - NODE_ENV=development
       - DEBUG=socket.io:*
       - CORS_ORIGIN=http://localhost:5173,http://client:5173,http://localhost:3001,http://lb:80
+      - DEMO_MODE=${DEMO_MODE:-false}
       - PLATFORM_ADMIN_EMAIL=${PLATFORM_ADMIN_EMAIL:-}
       - PLATFORM_ADMIN_PASSWORD=${PLATFORM_ADMIN_PASSWORD:-}
     volumes:

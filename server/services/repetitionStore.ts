@@ -31,7 +31,8 @@ export async function getRepetitionCount(redisClient: ReturnType<typeof createCl
   }
 }
 
-// In-memory fallback
+// In-memory fallback with size limits to prevent unbounded growth
+const MAX_FALLBACK_ENTRIES = 10000;
 const fallbackStore = new Map<string, { text: string; count: number }>();
 
 function fallbackGet(senderId: string, text: string): number {
@@ -39,6 +40,11 @@ function fallbackGet(senderId: string, text: string): number {
   if (entry && entry.text === text) {
     entry.count++;
     return entry.count;
+  }
+  // Evict oldest entries if store is too large
+  if (fallbackStore.size >= MAX_FALLBACK_ENTRIES) {
+    const firstKey = fallbackStore.keys().next().value;
+    if (firstKey) fallbackStore.delete(firstKey);
   }
   fallbackStore.set(senderId, { text, count: 1 });
   return 1;

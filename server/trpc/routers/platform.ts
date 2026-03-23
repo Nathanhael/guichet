@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, platformProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { partners, memberships, users, auditLog, tickets, systemSettings, partnerGroupMappings } from '../../db/schema.js';
+import { partners, memberships, users, auditLog, tickets, systemSettings, partnerGroupMappings, auditArchive, archivedTickets } from '../../db/schema.js';
 import { eq, asc, desc, sql, isNull, and, gte, lte, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { randomUUID, randomBytes } from 'crypto';
@@ -9,6 +9,7 @@ import { getRedisClients } from '../../utils/redis.js';
 import logger from '../../utils/logger.js';
 import { broadcastPartnerDeactivation } from '../../socket/handlers.js';
 import { MailService } from '../../services/mail.js';
+import { renderInviteNew, renderInviteExisting, renderInviteReminder, renderTestEmail } from '../../services/mailTemplates.js';
 import { hashPassword } from '../../utils/passwords.js';
 
 export const platformRouter = router({
@@ -383,38 +384,12 @@ export const platformRouter = router({
         // 5. Send Welcome Email if configured
         try {
           const partnerName = (await db.select({ name: partners.name }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0]?.name || input.partnerId;
-          
-          let welcomeHtml = '';
-          if (isExistingUser) {
-            welcomeHtml = `
-              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px;">
-                <h1 style="text-transform: uppercase; font-weight: 900;">Tessera</h1>
-                <p>Hello ${input.name},</p>
-                <p>You have been granted access to <strong>${partnerName}</strong> on the Tessera platform.</p>
-                <p>You can sign in using your existing credentials.</p>
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}" style="display: inline-block; background: #000; color: #fff; text-decoration: none; padding: 15px 30px; font-weight: 900; text-transform: uppercase; margin-top: 20px;">Sign In Now</a>
+          const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+          const brand = { partnerName };
 
-              </div>
-            `;
-          } else {
-            welcomeHtml = `
-              <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px;">
-                <h1 style="text-transform: uppercase; font-weight: 900;">Tessera</h1>
-                <p>Hello ${input.name},</p>
-                <p>Welcome to Tessera! You have been invited to join <strong>${partnerName}</strong>.</p>
-                ${isLocal ? `
-                  <div style="background: #f4f4f4; padding: 20px; margin: 20px 0;">
-                    <p style="margin-top: 0; font-weight: bold; text-transform: uppercase; font-size: 12px;">Your Temporary Password</p>
-                    <code style="font-size: 18px; font-weight: 900; letter-spacing: 0.05em;">${tempPassword}</code>
-                  </div>
-                ` : `
-                  <p>Please sign in using your corporate Microsoft account.</p>
-                `}
-                <a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}" style="display: inline-block; background: #000; color: #fff; text-decoration: none; padding: 15px 30px; font-weight: 900; text-transform: uppercase; margin-top: 20px;">Sign In Now</a>
-
-              </div>
-            `;
-          }
+          const welcomeHtml = isExistingUser
+            ? renderInviteExisting({ name: input.name, partnerName, loginUrl, brand })
+            : renderInviteNew({ name: input.name, partnerName, tempPassword: tempPassword ?? undefined, isLocal, loginUrl, brand });
 
           await MailService.sendMail(input.email, `Invitation to join ${partnerName} on Tessera`, welcomeHtml);
         } catch (mailErr) {
@@ -463,23 +438,14 @@ export const platformRouter = router({
           await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id));
         }
 
-        const welcomeHtml = `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px;">
-            <h1 style="text-transform: uppercase; font-weight: 900;">Tessera</h1>
-            <p>Hello ${user.name},</p>
-            <p>This is a reminder of your invitation to join <strong>${partner.name}</strong> on Tessera.</p>
-            ${tempPassword ? `
-              <div style="background: #f4f4f4; padding: 20px; margin: 20px 0;">
-                <p style="margin-top: 0; font-weight: bold; text-transform: uppercase; font-size: 12px;">Your Temporary Password</p>
-                <code style="font-size: 18px; font-weight: 900; letter-spacing: 0.05em;">${tempPassword}</code>
-              </div>
-            ` : `
-              <p>Please sign in using your existing credentials or corporate Microsoft account.</p>
-            `}
-            <a href="${process.env.FRONTEND_URL || 'http://localhost:3001'}" style="display: inline-block; background: #000; color: #fff; text-decoration: none; padding: 15px 30px; font-weight: 900; text-transform: uppercase; margin-top: 20px;">Sign In Now</a>
-
-          </div>
-        `;
+        const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+        const welcomeHtml = renderInviteReminder({
+          name: user.name,
+          partnerName: partner.name,
+          tempPassword: tempPassword ?? undefined,
+          loginUrl,
+          brand: { partnerName: partner.name },
+        });
 
         await MailService.sendMail(user.email!, `Reminder: Invitation to join ${partner.name}`, welcomeHtml);
 
@@ -503,20 +469,116 @@ export const platformRouter = router({
   sendTestEmail: platformProcedure
     .input(z.object({ email: z.string().email() }))
     .mutation(async ({ input, ctx }) => {
-      const html = `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px; text-align: center;">
-          <h1 style="text-transform: uppercase; font-weight: 900;">Tessera</h1>
-          <p style="font-weight: bold; text-transform: uppercase; font-size: 14px; opacity: 0.6;">System Test Email</p>
-          <hr style="border: none; border-top: 2px solid #000; margin: 20px 0;" />
-          <p>This is a test email to verify your platform's mail configuration.</p>
-          <p style="font-size: 12px; margin-top: 40px;">Sent by operator ${ctx.user.id} at ${new Date().toLocaleString()}</p>
-        </div>
-      `;
+      const html = renderTestEmail({ operatorId: ctx.user.id, timestamp: new Date().toLocaleString() });
       const success = await MailService.sendMail(input.email, 'Tessera - Mail Configuration Test', html);
       if (!success) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send test email. Check server logs.' });
       }
       return { success: true };
+    }),
+
+  // ─── Archive Endpoints ────────────────────────────────────────────────────
+
+  getArchivedAuditLog: platformProcedure
+    .input(z.object({
+      action: z.string().optional(),
+      partnerId: z.string().optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+      limit: z.number().min(1).max(100).default(50),
+      cursor: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const conditions = [];
+      if (input.action) conditions.push(eq(auditArchive.action, input.action));
+      if (input.partnerId) conditions.push(eq(auditArchive.partnerId, input.partnerId));
+      if (input.dateFrom) conditions.push(gte(auditArchive.createdAt, `${input.dateFrom}T00:00:00`));
+      if (input.dateTo) conditions.push(lte(auditArchive.createdAt, `${input.dateTo}T23:59:59.999`));
+
+      if (input.cursor) {
+        const sepIdx = input.cursor.indexOf('|');
+        if (sepIdx !== -1) {
+          const cursorTime = input.cursor.slice(0, sepIdx);
+          const cursorId = input.cursor.slice(sepIdx + 1);
+          conditions.push(
+            sql`(${auditArchive.createdAt} < ${cursorTime} OR (${auditArchive.createdAt} = ${cursorTime} AND ${auditArchive.id} < ${cursorId}))`
+          );
+        }
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const results = await db.select().from(auditArchive)
+        .where(whereClause)
+        .orderBy(desc(auditArchive.createdAt), desc(auditArchive.id))
+        .limit(input.limit + 1);
+
+      const hasMore = results.length > input.limit;
+      const items = hasMore ? results.slice(0, input.limit) : results;
+      const lastItem = items[items.length - 1];
+      const nextCursor = hasMore && lastItem ? `${lastItem.createdAt}|${lastItem.id}` : '';
+
+      return { items, nextCursor };
+    }),
+
+  verifyAuditChain: platformProcedure
+    .query(async () => {
+      const { verifyAuditChain } = await import('../../services/archive.js');
+      return verifyAuditChain();
+    }),
+
+  runArchive: platformProcedure
+    .mutation(async ({ ctx }) => {
+      const { archiveAuditLog, archiveTickets } = await import('../../services/archive.js');
+      const auditCount = await archiveAuditLog();
+      const ticketCount = await archiveTickets();
+
+      await db.insert(auditLog).values({
+        action: 'system.archive_run',
+        actorId: ctx.user.id,
+        targetType: 'system',
+        metadata: { auditCount, ticketCount },
+      });
+
+      return { auditCount, ticketCount };
+    }),
+
+  getArchivedTickets: platformProcedure
+    .input(z.object({
+      partnerId: z.string().optional(),
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+      limit: z.number().min(1).max(100).default(50),
+      cursor: z.string().optional(),
+    }))
+    .query(async ({ input }) => {
+      const conditions = [];
+      if (input.partnerId) conditions.push(eq(archivedTickets.partnerId, input.partnerId));
+      if (input.dateFrom) conditions.push(gte(archivedTickets.createdAt, `${input.dateFrom}T00:00:00`));
+      if (input.dateTo) conditions.push(lte(archivedTickets.createdAt, `${input.dateTo}T23:59:59.999`));
+
+      if (input.cursor) {
+        const sepIdx = input.cursor.indexOf('|');
+        if (sepIdx !== -1) {
+          const cursorTime = input.cursor.slice(0, sepIdx);
+          const cursorId = input.cursor.slice(sepIdx + 1);
+          conditions.push(
+            sql`(${archivedTickets.createdAt} < ${cursorTime} OR (${archivedTickets.createdAt} = ${cursorTime} AND ${archivedTickets.id} < ${cursorId}))`
+          );
+        }
+      }
+
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const results = await db.select().from(archivedTickets)
+        .where(whereClause)
+        .orderBy(desc(archivedTickets.createdAt), desc(archivedTickets.id))
+        .limit(input.limit + 1);
+
+      const hasMore = results.length > input.limit;
+      const items = hasMore ? results.slice(0, input.limit) : results;
+      const lastItem = items[items.length - 1];
+      const nextCursor = hasMore && lastItem ? `${lastItem.createdAt}|${lastItem.id}` : '';
+
+      return { items, nextCursor };
     }),
 
   removeMembership: platformProcedure
@@ -525,7 +587,7 @@ export const platformRouter = router({
       try {
         logger.info({ membershipId: input }, '[removeMembership] Attempting to revoke');
         const mem = await db.select().from(memberships).where(eq(memberships.id, input)).limit(1);
-        
+
         if (!mem[0]) {
           logger.warn({ membershipId: input }, '[removeMembership] Membership not found');
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
@@ -652,16 +714,16 @@ export const platformRouter = router({
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
       limit: z.number().min(1).max(100).default(50),
-      offset: z.number().min(0).default(0),
+      cursor: z.string().optional(), // ISO timestamp|uuid of last item
     }))
     .query(async ({ input }) => {
       try {
-        let conditions = [];
+        const conditions = [];
         if (input.action) conditions.push(eq(auditLog.action, input.action));
         if (input.partnerId) conditions.push(eq(auditLog.partnerId, input.partnerId));
         if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
         if (input.targetId) conditions.push(eq(auditLog.targetId, input.targetId));
-        
+
         if (input.dateFrom) {
           conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
         }
@@ -669,9 +731,22 @@ export const platformRouter = router({
           conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
         }
 
+        // Cursor-based keyset pagination: "createdAt|id"
+        if (input.cursor) {
+          const sepIdx = input.cursor.indexOf('|');
+          if (sepIdx !== -1) {
+            const cursorTime = input.cursor.slice(0, sepIdx);
+            const cursorId = input.cursor.slice(sepIdx + 1);
+            // Rows older than cursor OR same timestamp with lower id (DESC order)
+            conditions.push(
+              sql`(${auditLog.createdAt} < ${cursorTime} OR (${auditLog.createdAt} = ${cursorTime} AND ${auditLog.id} < ${cursorId}))`
+            );
+          }
+        }
+
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-        const query = db.select({
+        const results = await db.select({
           id: auditLog.id,
           action: auditLog.action,
           actorId: auditLog.actorId,
@@ -685,12 +760,15 @@ export const platformRouter = router({
         .from(auditLog)
         .leftJoin(users, eq(auditLog.actorId, users.id))
         .where(whereClause)
-        .orderBy(desc(auditLog.createdAt))
-        .limit(input.limit)
-        .offset(input.offset);
+        .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
+        .limit(input.limit + 1); // fetch one extra to determine if there's a next page
 
-        const results = await query;
-        return results;
+        const hasMore = results.length > input.limit;
+        const items = hasMore ? results.slice(0, input.limit) : results;
+        const lastItem = items[items.length - 1];
+        const nextCursor = hasMore && lastItem ? `${lastItem.createdAt}|${lastItem.id}` : '';
+
+        return { items, nextCursor };
       } catch (err: unknown) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }

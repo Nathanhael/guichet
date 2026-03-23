@@ -1,11 +1,14 @@
-import { router, platformProcedure, publicProcedure } from '../trpc.js';
+import { router, platformProcedure, publicProcedure, protectedProcedure } from '../trpc.js';
 import { query } from '../../db.js';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { revokeUserSessions } from '../../services/sessionRevocation.js';
 import { db } from '../../db.js';
-import { auditLog } from '../../db/schema.js';
+import { auditLog, users } from '../../db/schema.js';
+import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { verifyPassword, hashPassword, validatePasswordStrength, isPasswordReused, PASSWORD_HISTORY_LIMIT } from '../../utils/passwords.js';
+import logger from '../../utils/logger.js';
 
 export const userRouter = router({
   list: platformProcedure
@@ -72,5 +75,74 @@ export const userRouter = router({
           message: err instanceof Error ? err.message : String(err)
         });
       }
+    }),
+
+  /**
+   * Self-service password change for authenticated users.
+   * Requires current password, validates strength and history.
+   */
+  changePassword: protectedProcedure
+    .input(z.object({
+      currentPassword: z.string().min(1),
+      newPassword: z.string().min(10),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const userRows = await db.select({
+        password: users.password,
+        email: users.email,
+        name: users.name,
+        passwordHistory: users.passwordHistory,
+      }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+
+      const user = userRows[0];
+      if (!user?.password) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Password change not available for SSO accounts' });
+      }
+
+      // Verify current password
+      const valid = await verifyPassword(user.password, input.currentPassword);
+      if (!valid) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Current password is incorrect' });
+      }
+
+      // Validate new password strength
+      const strength = validatePasswordStrength(input.newPassword, {
+        email: user.email ?? undefined,
+        name: user.name,
+      });
+      if (!strength.valid) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: strength.errors.join('. ') });
+      }
+
+      // Check password history
+      const history = (user.passwordHistory as string[]) || [];
+      if (await isPasswordReused(input.newPassword, history)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Password was recently used. Choose a different one.' });
+      }
+
+      // Hash and save
+      const hashedNew = await hashPassword(input.newPassword);
+      const updatedHistory = [user.password, ...history].slice(0, PASSWORD_HISTORY_LIMIT);
+
+      await db.update(users).set({
+        password: hashedNew,
+        passwordChangedAt: new Date().toISOString(),
+        passwordHistory: updatedHistory,
+      }).where(eq(users.id, ctx.user.id));
+
+      // Revoke all sessions so user must re-login with new password
+      await revokeUserSessions(ctx.user.id);
+
+      await db.insert(auditLog).values({
+        action: 'security.password_changed',
+        actorId: ctx.user.id,
+        targetType: 'user',
+        targetId: ctx.user.id,
+        metadata: {},
+      });
+
+      logger.info({ userId: ctx.user.id }, '[user] Password changed via self-service');
+
+      return { success: true };
     }),
 });
