@@ -8,7 +8,7 @@ Tessera is a high-performance, real-time multi-tenant customer support platform.
 
 - **Real-Time Scaling**: Powered by Socket.io with Redis horizontal scaling, server-side identity enforcement, presence tracking, and typing indicators.
 - **Strict Monochrome Standard**: A "scorched earth" visual overhaul. Zero animations, zero motions, zero glassmorphism. Just high-contrast black and white for maximum performance and readability.
-- **Hybrid Identity Model**: Centralized identity plane with support for **Azure SSO (OIDC)** and **Local (Password)** access. Supports pre-provisioning for a zero-trust employee onboarding experience.
+- **Hybrid Identity Model**: Centralized identity plane with support for **Azure SSO (OIDC)** and **Local (Password)** access. Local credentials use **Argon2id**. Supports pre-provisioning for a zero-trust employee onboarding experience.
 - **Adaptive Workspace Switching**: Native support for users with memberships in multiple partners. Includes a "Choose Workspace" screen and live partner switcher.
 - **Enterprise-Ready Schema**: Optimized with native PostgreSQL JSONB, Enums, and strict Unique Membership constraints.
 - **Advanced Audit Logging**: System-wide traceability with granular **from -> to** state diffs, target lifecycle searching, and professional CSV export for compliance.
@@ -61,6 +61,8 @@ PLATFORM_ADMIN_PASSWORD=changeme123            # Optional — omit for SSO deplo
 ```
 
 After the first operator is created, they can invite additional users and operators via the PlatformView UI.
+
+See [Tenant Identity Spec](/D:/Projects_Coding/tessera/docs/TENANT_IDENTITY_SPEC.md) for the current internal-user/tenant model.
 
 ## 🚨 Project Mandates
 

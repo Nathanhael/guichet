@@ -8,6 +8,7 @@ import { Ticket, Message, User } from '../types/index.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
+import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 
 interface TicketNewPayload {
   agentId: string;
@@ -107,7 +108,7 @@ export function registerSocketHandlers(io: Server) {
       if (!membership) {
         // No membership — check if user is a platform operator
         const userRow = await get('SELECT is_platform_operator FROM users WHERE id = $1', [userId]) as { is_platform_operator: boolean } | undefined;
-        if (!userRow?.is_platform_operator) {
+        if (!isPlatformAdmin(!!userRow?.is_platform_operator)) {
           socket.emit('error', { message: 'Not authorized for this partner' });
           socket.disconnect();
           return;
@@ -130,7 +131,7 @@ export function registerSocketHandlers(io: Server) {
       // Join private user room for individual kill switches
       socket.join(`user:${userId}`);
 
-      if (effectiveRole === 'support' || effectiveRole === 'admin') {
+      if (canUseSupportWorkflows(effectiveRole as any)) {
         await presenceService.broadcastOnlineSupport(partnerId);
       }
       
@@ -143,7 +144,7 @@ export function registerSocketHandlers(io: Server) {
         let activeTickets: { id: string }[] = [];
         if (role === 'agent') {
           activeTickets = await query("SELECT id FROM tickets WHERE agent_id = $1 AND partner_id = $2 AND status != 'closed'", [userId, partnerId]) as { id: string }[];
-        } else if (role === 'support' || role === 'admin') {
+        } else if (canUseSupportWorkflows(role as any)) {
           activeTickets = await query("SELECT id FROM tickets WHERE (support_id = $1 OR participants::jsonb @> $3::jsonb) AND partner_id = $2 AND status != 'closed'", [userId, partnerId, JSON.stringify([{ id: userId }])]) as { id: string }[];
         }
         for (const t of activeTickets) socket.join(`ticket:${t.id}`);

@@ -7,6 +7,8 @@ import { users, memberships, partners, partnerGroupMappings, auditLog } from '..
 import { eq, and, inArray } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
+import { buildAuthResponse, buildAuthToken, listUserMemberships } from '../services/authSession.js';
+import { isPlatformAdmin } from '../services/roles.js';
 
 const router = express.Router();
 
@@ -210,28 +212,14 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       }
     }
 
-    // ---- Build JWT (same shape as local login) ----
-    const userMemberships = await db
-      .select({
-        id: memberships.id,
-        partnerId: memberships.partnerId,
-        role: memberships.role,
-        departments: memberships.departments,
-        partnerName: partners.name,
-        logoUrl: partners.logoUrl,
-        industry: partners.industry,
-        partnerDepartments: partners.departments,
-        status: partners.status,
-      })
-      .from(memberships)
-      .innerJoin(partners, eq(memberships.partnerId, partners.id))
-      .where(eq(memberships.userId, user.id));
+    // ---- Build auth payload (same shape as local login) ----
+    const userMemberships = await listUserMemberships(user.id);
 
     const activeMemberships = userMemberships.filter(m => m.status === 'active');
     const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
 
     // No memberships and not a platform operator → no access
-    if (activeMemberships.length === 0 && !user.isPlatformOperator) {
+    if (activeMemberships.length === 0 && !isPlatformAdmin(!!user.isPlatformOperator)) {
       logger.warn({ userId: user.id, oid, groupCount: azureGroups.length }, '[SSO] User authenticated but has no matching group mappings');
       await db.insert(auditLog).values({
         action: 'sso.no_matching_groups',
@@ -243,22 +231,18 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       return res.redirect(`${clientOrigin}/?sso_error=no_matching_groups`);
     }
 
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        role: defaultMembership?.role || (user.isPlatformOperator ? 'platform_operator' : 'user'),
-        departments: defaultMembership?.departments || [],
-        partnerId: defaultMembership?.partnerId,
-        membershipId: defaultMembership?.id,
-        isPlatformOperator: user.isPlatformOperator,
-      },
-      config.JWT_SECRET,
-      { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
-    );
+    const token = buildAuthToken({
+      userId: user.id,
+      role: defaultMembership?.role || 'agent',
+      departments: (defaultMembership?.departments as unknown[]) || [],
+      partnerId: defaultMembership?.partnerId,
+      membershipId: defaultMembership?.id,
+      isPlatformOperator: !!user.isPlatformOperator,
+    });
 
     // Redirect back to client with token + user data as URL fragment
     // Fragment (#) is never sent to the server — safe for tokens
-    const ssoPayload = {
+    const ssoPayload = buildAuthResponse({
       token,
       user: {
         id: user.id,
@@ -266,20 +250,8 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         lang: user.lang,
         isPlatformOperator: user.isPlatformOperator,
       },
-      memberships: activeMemberships.map(m => ({
-        id: m.id,
-        partnerId: m.partnerId,
-        partnerName: m.partnerName,
-        role: m.role,
-        departments: m.departments || [],
-        manifest: {
-          industry: m.industry,
-          logoUrl: m.logoUrl,
-          departments: m.partnerDepartments || [],
-        },
-      })),
-      activePartnerId: defaultMembership?.partnerId,
-    };
+      memberships: userMemberships,
+    });
 
     const encodedPayload = encodeURIComponent(JSON.stringify(ssoPayload));
     logger.info({ userId: user.id, memberships: activeMemberships.length }, '[SSO] Login complete, redirecting');

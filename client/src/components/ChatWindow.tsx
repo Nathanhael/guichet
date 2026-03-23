@@ -6,6 +6,7 @@ import MessageBubble from './MessageBubble';
 import { Ticket, Message } from '../types';
 import { trpc } from '../utils/trpc';
 import { LANG_FLAG } from '../constants';
+import { isSupportLike } from '../utils/roles';
 
 interface ChatWindowProps {
   ticket?: Ticket;
@@ -52,7 +53,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     }
   }, [messageQuery.data, ticket.id, setMessages]);
 
-  const isSupport = user?.role === 'support' || user?.role === 'admin';
+  const isSupport = isSupportLike(user?.role);
 
   // tRPC: Agent Presence
   const presenceQuery = trpc.presence.getOnlineStatus.useQuery(
@@ -293,7 +294,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     if (onClose) onClose();
   }
 
-  const canClose = user?.role === 'support' || user?.role === 'admin';
+  const canClose = isSupportLike(user?.role);
   const isClosed = ticket.status === 'closed';
 
   return (

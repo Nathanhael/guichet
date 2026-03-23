@@ -33,6 +33,8 @@ export const users = pgTable('users', {
   password: text('password'), // Optional legacy/local login
   avatarUrl: text('avatar_url'),
   isPlatformOperator: boolean('is_platform_operator').default(false),
+  platformTotpSecret: text('platform_totp_secret'),
+  platformTotpEnabledAt: timestamp('platform_totp_enabled_at', { mode: 'string' }),
   resetPasswordToken: text('reset_password_token'),
   resetPasswordExpires: timestamp('reset_password_expires', { mode: 'string' }),
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),

@@ -9,6 +9,7 @@ import { getRedisClients } from '../../utils/redis.js';
 import logger from '../../utils/logger.js';
 import { broadcastPartnerDeactivation } from '../../socket/handlers.js';
 import { MailService } from '../../services/mail.js';
+import { hashPassword } from '../../utils/passwords.js';
 
 export const platformRouter = router({
   // --- System Health ---
@@ -85,7 +86,7 @@ export const platformRouter = router({
       })).default([]),
       authMethod: z.enum(['local', 'sso']).default('local'),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ input, ctx }) => {
       try {
         await db.insert(partners).values({
           id: input.id,
@@ -98,6 +99,20 @@ export const platformRouter = router({
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
+
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'partner.created',
+          actorId: ctx.user.id,
+          partnerId: input.id,
+          targetType: 'partner',
+          targetId: input.id,
+          metadata: {
+            authMethod: input.authMethod,
+            industry: input.industry,
+          },
+        });
+
         return { success: true, id: input.id };
       } catch (err: unknown) {
         if (err instanceof Error && 'code' in err && (err as { code: string }).code === '23505') {
@@ -331,8 +346,7 @@ export const platformRouter = router({
           let hashedPassword: string | undefined;
           if (isLocal) {
             tempPassword = randomBytes(12).toString('base64url');
-            const { hash } = await import('bcryptjs');
-            hashedPassword = await hash(tempPassword, 10);
+            hashedPassword = await hashPassword(tempPassword);
           }
 
           await db.insert(users).values({
@@ -445,8 +459,7 @@ export const platformRouter = router({
         if (isLocal && !user.externalId) {
           // Regenerate temp password for local users who haven't linked yet
           tempPassword = randomBytes(12).toString('base64url');
-          const { hash } = await import('bcryptjs');
-          const hashedPassword = await hash(tempPassword, 10);
+          const hashedPassword = await hashPassword(tempPassword);
           await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id));
         }
 

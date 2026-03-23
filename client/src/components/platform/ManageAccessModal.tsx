@@ -3,6 +3,7 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import ConfirmDialog from '../ConfirmDialog';
 import type { GlobalUser, PartnerMembership, UserRole } from './types';
+import { getRoleDisplayName } from '../../utils/roles';
 
 interface ManageAccessModalProps {
   user: GlobalUser | null;
@@ -14,13 +15,6 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
   const utils = trpc.useUtils();
   const [localUser, setLocalUser] = useState<GlobalUser | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; confirmLabel?: string; onConfirm: () => void } | null>(null);
-
-  const ROLE_LABEL: Record<string, string> = {
-    agent: t('agent'),
-    support: t('support'),
-    admin: t('admin'),
-    platform_operator: t('platform_operator')
-  };
 
   useEffect(() => {
     if (user) setLocalUser(user);
@@ -76,10 +70,10 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
                   })} className="text-[8px] font-black uppercase tracking-widest border border-black dark:border-white px-2 py-1 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">{t('revoke_access')}</button>
                 </div>
                 <select className="w-full bg-black/5 dark:bg-white/5 border border-black dark:border-white px-2 py-1.5 text-xs font-bold outline-none" value={m.role} onChange={(e) => updateMembership.mutate({ id: m.id, data: { role: e.target.value as UserRole } })}>
-                  <option value="agent">{ROLE_LABEL.agent}</option>
-                  <option value="support">{ROLE_LABEL.support}</option>
-                  <option value="admin">{ROLE_LABEL.admin}</option>
-                  <option value="platform_operator">{ROLE_LABEL.platform_operator}</option>
+                  <option value="agent">{getRoleDisplayName('agent')}</option>
+                  <option value="support">{getRoleDisplayName('support')}</option>
+                  <option value="admin">{getRoleDisplayName('admin')}</option>
+                  <option value="platform_operator">{getRoleDisplayName('platform_operator', true)}</option>
                 </select>
               </div>
             )) : (

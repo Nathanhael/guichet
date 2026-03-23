@@ -5,6 +5,7 @@ import { query as queryVal } from 'express-validator';
 import { validate } from '../middleware/validator.js';
 import { Ticket } from '../types/index.js';
 import { auth, authorize, AuthRequest } from '../middleware/auth.js';
+import { canAccessPartnerContext, canExportTickets } from '../services/roles.js';
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ const router = express.Router();
 router.get('/export', [
   auth,
   authorize(['admin', 'support']),
+  queryVal('partnerId').optional().isString(),
   queryVal('dept').optional().isString(),
   queryVal('search').optional().isString(),
   queryVal('dateFrom').optional().isISO8601(),
@@ -22,11 +24,26 @@ router.get('/export', [
   validate([])
 ], async (req: AuthRequest, res: Response) => {
   try {
+    if (!req.user || !canExportTickets(req.user.role, req.user.isPlatformOperator)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const partnerId = req.query.partnerId as string | undefined;
+    if (!canAccessPartnerContext(req.user.isPlatformOperator, partnerId)) {
+      return res.status(400).json({ error: 'No partner context provided' });
+    }
+
     const { dept, search, dateFrom, dateTo } = req.query as { dept?: string; search?: string; dateFrom?: string; dateTo?: string };
 
     let sql = "SELECT * FROM tickets WHERE status = 'closed'";
     const params: unknown[] = [];
     let pIdx = 1;
+
+    if (partnerId) {
+      sql += ` AND partner_id = $${pIdx}`;
+      params.push(partnerId);
+      pIdx++;
+    }
 
     if (dept && dept !== 'all') {
       sql += ` AND dept = $${pIdx}`;

@@ -9,10 +9,24 @@ import { trpc } from '../utils/trpc';
 import { Eye, EyeOff } from 'lucide-react';
 import LegalModal from '../components/LegalModal';
 import { LANG_LABEL } from '../constants';
+import { getRoleDisplayName } from '../utils/roles';
 
 const DEMO_PASSWORD = 'password123';
 
 type DemoUser = { id: string; name: string; email?: string; role?: string; lang?: string; isPlatformOperator?: boolean };
+
+const HARDCODED_DEMO_USERS: DemoUser[] = [
+  { id: 'platform_bart', name: 'Bart Operator',   email: 'bart@tessera.demo',    role: 'admin',   lang: 'nl', isPlatformOperator: true },
+  { id: 'admin_dirk',    name: 'Dirk De Smedt',   email: 'dirk@tessera.demo',    role: 'admin',   lang: 'nl' },
+  { id: 'expert_alex',   name: 'Alex Johnson',     email: 'alex@tessera.demo',    role: 'support', lang: 'en' },
+  { id: 'expert_piet',   name: 'Piet Van Damme',   email: 'piet@tessera.demo',    role: 'support', lang: 'nl' },
+  { id: 'expert_sophie', name: 'Sophie Laurent',   email: 'sophie@tessera.demo',  role: 'support', lang: 'fr' },
+  { id: 'agent_jan',     name: 'Jan Peeters',      email: 'jan@tessera.demo',     role: 'agent',   lang: 'nl' },
+  { id: 'agent_karim',   name: 'Karim Benali',     email: 'karim@tessera.demo',   role: 'agent',   lang: 'fr' },
+  { id: 'agent_lisa',    name: 'Lisa Janssens',    email: 'lisa@tessera.demo',    role: 'agent',   lang: 'nl' },
+  { id: 'agent_marie',   name: 'Marie Dubois',     email: 'marie@tessera.demo',   role: 'agent',   lang: 'fr' },
+  { id: 'agent_tom',     name: 'Tom Williams',     email: 'tom@tessera.demo',     role: 'agent',   lang: 'en' },
+];
 
 type PartnerSelection = {
   token: string;
@@ -42,17 +56,12 @@ export default function LoginView() {
   const [resetToken, setResetToken] = useState('');
   const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | null>(null);
 
-  const { data: usersData, isLoading: loading } = trpc.user.demoList.useQuery(undefined, {
+  const { data: usersData } = trpc.user.demoList.useQuery(undefined, {
     enabled: viewMode === 'demo'
   });
-  const users = (usersData || []) as DemoUser[];
-
-  const ROLE_LABEL: Record<string, string> = { 
-    agent: t('agent'),
-    support: t('support'),
-    admin: t('admin'),
-    platform_operator: t('platform_operator')
-  };
+  const users: DemoUser[] = (usersData && (usersData as DemoUser[]).length > 0)
+    ? (usersData as DemoUser[])
+    : HARDCODED_DEMO_USERS;
 
   const filtered = filter === 'all' ? users :
     filter === 'platform' ? users.filter((u: DemoUser) => u.isPlatformOperator) :
@@ -198,6 +207,7 @@ export default function LoginView() {
   const handleDemoLogin = async (u: DemoUser) => {
     if (busyRef.current || isDemoLoading) return;
     busyRef.current = true;
+    setError('');
     setIsDemoLoading(true);
     try {
       const res = await fetch('/api/v1/auth/login', {
@@ -249,7 +259,7 @@ export default function LoginView() {
               >
                 <div>
                   <p className="font-black uppercase tracking-tight">{m.partnerName}</p>
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{ROLE_LABEL[m.role] || m.role} · {m.manifest?.industry}</p>
+                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{getRoleDisplayName(m.role as any, false)} · {m.manifest?.industry}</p>
                 </div>
                 <span className="text-xl font-black">➔</span>
               </button>
@@ -396,16 +406,21 @@ export default function LoginView() {
           <>
             <div className="flex border-b-2 border-black dark:border-white px-4 pt-4 bg-white dark:bg-black overflow-x-auto no-scrollbar">
               {(['all', 'platform', 'support', 'admin', 'agent'] as const).map((tab) => (
-                <button key={tab} onClick={() => setFilter(tab)} className={`px-4 py-3 text-xs font-black uppercase tracking-wider border-b-4 mr-1 shrink-0 ${filter === tab ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent opacity-30 hover:opacity-100'}`}>{tab === 'all' ? t('all') : ROLE_LABEL[tab] || tab}</button>
+                <button key={tab} onClick={() => setFilter(tab)} className={`px-4 py-3 text-xs font-black uppercase tracking-wider border-b-4 mr-1 shrink-0 ${filter === tab ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent opacity-30 hover:opacity-100'}`}>{tab === 'all' ? t('all') : tab === 'platform' ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(tab as any)}</button>
               ))}
             </div>
             <div className="p-4 max-h-[30rem] overflow-y-auto bg-white dark:bg-black">
-              {loading && <div className="flex flex-col items-center justify-center py-16 gap-4"><p className="text-[10px] font-black uppercase tracking-widest italic">{t('loading')}</p></div>}
-              {!loading && filtered.length === 0 && <p className="text-center opacity-30 py-16 font-black uppercase tracking-widest italic">{t('no_users')}</p>}
+              {error && (
+                <div className="bg-black text-white dark:bg-white dark:text-black p-3 mb-3 border-2 border-black dark:border-white flex items-center gap-3">
+                  <span className="text-lg font-black">!</span>
+                  <p className="font-bold text-[10px] uppercase tracking-widest">{error}</p>
+                </div>
+              )}
+              {filtered.length === 0 && <p className="text-center opacity-30 py-16 font-black uppercase tracking-widest italic">{t('no_users')}</p>}
               <ul className="space-y-3 pb-2">
                 {filtered.map((u) => (
                   <li key={u.id}>
-                    <button onClick={() => handleDemoLogin(u)} disabled={isDemoLoading} className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black flex items-center justify-between">
+                    <button onClick={() => handleDemoLogin(u)} disabled={isDemoLoading} className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black disabled:opacity-50 flex items-center justify-between">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 border-2 border-current flex items-center justify-center text-xl font-black italic">{u.name.charAt(0)}</div>
                         <div>
@@ -414,7 +429,7 @@ export default function LoginView() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className="text-[9px] font-black uppercase tracking-widest border-2 border-current px-2 py-0.5 italic">{(u.role && ROLE_LABEL[u.role]) || u.role}</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest border-2 border-current px-2 py-0.5 italic">{u.isPlatformOperator ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(u.role as any)}</span>
                         <span className="text-[10px] font-bold opacity-60">{(u.lang && LANG_LABEL[u.lang]) || u.lang}</span>
                       </div>
                     </button>

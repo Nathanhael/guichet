@@ -25,6 +25,7 @@ const configSchema = z.object({
     AZURE_OPENAI_DEPLOYMENT: z.string().optional(),
     PLATFORM_ADMIN_EMAIL: z.string().email().optional(),
     PLATFORM_ADMIN_PASSWORD: z.string().min(8).optional(),
+    PLATFORM_STEP_UP_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
     // Azure Entra ID (SSO)
     AZURE_AD_TENANT_ID: z.string().optional(),
     AZURE_AD_CLIENT_ID: z.string().optional(),
@@ -58,6 +59,7 @@ const parseResult = configSchema.safeParse({
     AZURE_OPENAI_DEPLOYMENT: process.env.AZURE_OPENAI_DEPLOYMENT,
     PLATFORM_ADMIN_EMAIL: process.env.PLATFORM_ADMIN_EMAIL,
     PLATFORM_ADMIN_PASSWORD: process.env.PLATFORM_ADMIN_PASSWORD,
+    PLATFORM_STEP_UP_WINDOW_MINUTES: process.env.PLATFORM_STEP_UP_WINDOW_MINUTES,
     AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,

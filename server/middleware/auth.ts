@@ -3,16 +3,22 @@ import config from '../config.js';
 import { Request, Response, NextFunction } from 'express';
 import { User, UserRole } from '../types/index.js';
 import logger from '../utils/logger.js';
+import { canManageTenant, canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
+import { isRevoked } from '../services/sessionRevocation.js';
 
 export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: UserRole;
     isPlatformOperator: boolean;
+    platformStepUpAt?: number;
+    tokenJti?: string;
+    tokenExp?: number;
+    tokenIat?: number;
   };
 }
 
-export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
   const queryToken = req.query.token as string;
   
@@ -20,11 +26,20 @@ export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
 
   const token = authHeader ? authHeader.split(' ')[1] : queryToken;
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET) as { userId: string; role: UserRole; isPlatformOperator: boolean };
+    const decoded = jwt.verify(token, config.JWT_SECRET) as { userId: string; role: UserRole; isPlatformOperator: boolean; platformStepUpAt?: number; jti?: string; exp?: number; iat?: number };
+    const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
+    if (revoked) {
+      return res.status(401).json({ error: 'Session revoked' });
+    }
+
     req.user = { 
       id: decoded.userId, 
       role: decoded.role,
-      isPlatformOperator: !!decoded.isPlatformOperator 
+      isPlatformOperator: isPlatformAdmin(!!decoded.isPlatformOperator),
+      platformStepUpAt: decoded.platformStepUpAt,
+      tokenJti: decoded.jti,
+      tokenExp: decoded.exp,
+      tokenIat: decoded.iat,
     };
     next();
   } catch (err) {
@@ -35,9 +50,19 @@ export const auth = (req: AuthRequest, res: Response, next: NextFunction) => {
 
 export const authorize = (roles: UserRole[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user) {
       return res.status(403).json({ error: 'Forbidden' });
     }
+
+    const allowed =
+      roles.includes(req.user.role) ||
+      (roles.includes('admin') && canManageTenant(req.user.role, req.user.isPlatformOperator)) ||
+      (roles.includes('support') && canUseSupportWorkflows(req.user.role, req.user.isPlatformOperator));
+
+    if (!allowed) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     next();
   };
 };

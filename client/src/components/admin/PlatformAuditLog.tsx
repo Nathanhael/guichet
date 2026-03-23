@@ -2,6 +2,75 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 
+const ACTION_OPTIONS = [
+  'partner.created',
+  'partner.config_updated',
+  'partner.deactivated',
+  'partner.reactivated',
+  'partner.deleted',
+  'platform.enter_partner',
+  'member.added',
+  'member.invited',
+  'member.removed',
+  'member.updated',
+  'user.sessions_revoked',
+  'user.deleted',
+  'sso.group_mapping_added',
+  'sso.group_mapping_updated',
+  'sso.group_mapping_removed',
+  'gdpr.purge',
+] as const;
+
+const SECURITY_ACTIONS = new Set<string>([
+  'partner.created',
+  'partner.deactivated',
+  'partner.reactivated',
+  'partner.deleted',
+  'platform.enter_partner',
+  'member.added',
+  'member.invited',
+  'member.removed',
+  'member.updated',
+  'user.sessions_revoked',
+  'user.deleted',
+  'sso.group_mapping_added',
+  'sso.group_mapping_updated',
+  'sso.group_mapping_removed',
+]);
+
+function formatAuditDetails(log: { action: string; metadata?: unknown; targetId: string | null; actorName: string | null }) {
+  const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
+
+  switch (log.action) {
+    case 'user.sessions_revoked':
+      return `Revoked active sessions for ${log.targetId || 'user'}`;
+    case 'platform.enter_partner':
+      return `Platform entry into tenant ${log.targetId || '-'}`;
+    case 'member.updated':
+      return `Role ${String(metadata.oldRole || '?')} -> ${String(metadata.newRole || '?')}`;
+    case 'member.removed':
+      return `Removed membership ${String(metadata.membershipId || log.targetId || '-')}`;
+    case 'member.invited':
+      return `Invited ${String(metadata.email || log.targetId || '-')}`;
+    case 'partner.created':
+      return `Created tenant with ${String(metadata.authMethod || 'unknown')} auth`;
+    case 'partner.deactivated':
+      return 'Tenant deactivated';
+    case 'partner.reactivated':
+      return 'Tenant reactivated';
+    case 'partner.deleted':
+      return 'Tenant deleted';
+    case 'sso.group_mapping_added':
+      return `Mapped Azure group ${String(metadata.azureGroupId || '-')}`;
+    case 'sso.group_mapping_updated':
+      return `Updated group mapping ${log.targetId || '-'}`;
+    case 'sso.group_mapping_removed':
+      return `Removed Azure group ${String(metadata.azureGroupId || '-')}`;
+    default:
+      return JSON.stringify(metadata);
+  }
+}
+
 export default function PlatformAuditLog() {
   const t = useT();
   const [page, setPage] = useState(0);
@@ -10,6 +79,7 @@ export default function PlatformAuditLog() {
   const [filterActorId, setFilterActorId] = useState('');
   const [filterTargetId, setFilterTargetId] = useState('');
   const [debouncedTargetId, setDebouncedTargetId] = useState('');
+  const [securityOnly, setSecurityOnly] = useState(false);
   
   // Date filtering state
   const [dateFrom, setDateFrom] = useState('');
@@ -47,6 +117,7 @@ export default function PlatformAuditLog() {
 
   const { data, isLoading } = trpc.platform.getAuditLog.useQuery(queryParams);
   const utils = trpc.useUtils();
+  const visibleData = securityOnly ? (data || []).filter((log) => SECURITY_ACTIONS.has(log.action)) : data;
 
   async function handleExport() {
     try {
@@ -113,6 +184,20 @@ export default function PlatformAuditLog() {
       </div>
 
       <div className="flex flex-col gap-3 bg-black/5 dark:bg-white/5 p-4 border-2 border-black dark:border-white">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => { setSecurityOnly(true); setPage(0); }}
+            className={`px-4 py-2 border-2 font-black uppercase text-[10px] tracking-widest ${securityOnly ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white' : 'border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'}`}
+          >
+            {t('security_events')}
+          </button>
+          <button
+            onClick={() => { setSecurityOnly(false); setPage(0); }}
+            className={`px-4 py-2 border-2 font-black uppercase text-[10px] tracking-widest ${!securityOnly ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white' : 'border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'}`}
+          >
+            {t('all_events')}
+          </button>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-1">
             <label className="text-[8px] font-black uppercase opacity-60 ml-1">{t('action_type')}</label>
@@ -122,16 +207,9 @@ export default function PlatformAuditLog() {
               className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-black uppercase tracking-widest outline-none"
             >
               <option value="">{t('all_actions')}</option>
-              <option value="partner.config_updated">Config Updated</option>
-              <option value="partner.deactivated">Partner Deactivated</option>
-              <option value="partner.reactivated">Partner Reactivated</option>
-              <option value="partner.deleted">Partner Deleted</option>
-              <option value="member.added">Member Added</option>
-              <option value="member.invited">Member Invited</option>
-              <option value="member.removed">Member Removed</option>
-              <option value="member.updated">Member Updated</option>
-              <option value="user.deleted">User Deleted</option>
-              <option value="gdpr.purge">GDPR Purge</option>
+              {ACTION_OPTIONS.map((action) => (
+                <option key={action} value={action}>{action}</option>
+              ))}
             </select>
           </div>
 
@@ -235,7 +313,7 @@ export default function PlatformAuditLog() {
               </tr>
             </thead>
             <tbody className="divide-y divide-black/10 dark:divide-white/10">
-              {data?.map((log) => (
+              {visibleData?.map((log) => (
                 <tr key={log.id} className="hover:bg-black/5 dark:hover:bg-white/5">
                   <td className="p-3 text-[10px] font-mono whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString()}
@@ -243,8 +321,9 @@ export default function PlatformAuditLog() {
                   <td className="p-3 text-xs font-bold uppercase">{log.action}</td>
                   <td className="p-3 text-xs uppercase">{log.actorName || <span className="opacity-50">{t('system')}</span>}</td>
                   <td className="p-3 text-xs font-mono opacity-80">{log.partnerId || '-'}</td>
-                  <td className="p-3 text-[10px] font-mono opacity-80 max-w-xs truncate" title={JSON.stringify(log.metadata)}>
-                    {JSON.stringify(log.metadata)}
+                  <td className="p-3 text-[10px] opacity-80 max-w-xs" title={JSON.stringify(log.metadata)}>
+                    <div className="font-bold uppercase tracking-wide">{formatAuditDetails(log)}</div>
+                    <div className="font-mono opacity-50 truncate">{JSON.stringify(log.metadata)}</div>
                   </td>
                 </tr>
               ))}
@@ -274,7 +353,7 @@ export default function PlatformAuditLog() {
               ← {t('newer')}
             </button>
             <button 
-              disabled={(data?.length || 0) < LIMIT}
+              disabled={(visibleData?.length || 0) < LIMIT}
               onClick={() => setPage(p => p + 1)}
               className="px-8 py-3 border-2 border-black dark:border-white disabled:opacity-30 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors font-black uppercase text-[10px] tracking-widest"
             >

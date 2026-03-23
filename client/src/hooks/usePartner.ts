@@ -1,8 +1,9 @@
 import useStore from '../store/useStore';
 import { PartnerManifest } from '../types';
+import { isPlatformAdmin } from '../utils/roles';
 
 export function usePartner() {
-  const { memberships, activeMembershipId } = useStore();
+  const { user, memberships, activeMembershipId } = useStore();
   
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   
@@ -14,6 +15,7 @@ export function usePartner() {
   const partnerName = activeMembership?.partnerName || 'Platform';
   const role = activeMembership?.role || 'platform_operator';
   const dept = activeMembership?.dept;
+  const platformAdmin = isPlatformAdmin(user);
 
   return {
     manifest,
@@ -21,6 +23,6 @@ export function usePartner() {
     partnerId: activeMembership?.partnerId,
     role,
     dept,
-    isPlatformOperator: role === 'platform_operator'
+    isPlatformOperator: platformAdmin
   };
 }

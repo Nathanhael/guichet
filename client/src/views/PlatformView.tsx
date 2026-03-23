@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useStore from '../store/useStore';
 import DarkModeToggle from '../components/DarkModeToggle';
 import { useT } from '../i18n';
 import PlatformSystemHealth from '../components/admin/PlatformSystemHealth';
 import PlatformAuditLog from '../components/admin/PlatformAuditLog';
+import PlatformSecurityOps from '../components/admin/PlatformSecurityOps';
 import PlatformSystemSettings from '../components/admin/PlatformSystemSettings';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import PartnerList from '../components/platform/PartnerList';
@@ -16,11 +17,21 @@ import ManageAccessModal from '../components/platform/ManageAccessModal';
 import EditUserProfileModal from '../components/platform/EditUserProfileModal';
 import GroupMappingsPanel from '../components/platform/GroupMappingsPanel';
 import type { PlatformTab, Partner, GlobalUser } from '../components/platform/types';
+import { trpc } from '../utils/trpc';
 
 export default function PlatformView() {
   const { logout } = useStore();
   const t = useT();
   const [activeTab, setActiveTab] = useState<PlatformTab>('partners');
+  const { data: securityStatus, isLoading: securityStatusLoading } = trpc.platformSecurity.getStatus.useQuery();
+  const stepUpLocked = securityStatusLoading || (securityStatus ? !securityStatus.stepUpSatisfied : true);
+  const effectiveTab: PlatformTab = stepUpLocked ? 'security' : activeTab;
+
+  useEffect(() => {
+    if (stepUpLocked && activeTab !== 'security') {
+      setActiveTab('security');
+    }
+  }, [activeTab, stepUpLocked]);
 
   // Modal visibility state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -48,13 +59,19 @@ export default function PlatformView() {
       </nav>
 
       <div className="flex border-b-2 border-black dark:border-white bg-white dark:bg-black px-8 overflow-x-auto">
-        {(['partners', 'users', 'sso', 'health', 'config', 'audit'] as const).map((tab) => (
+        {(['partners', 'users', 'sso', 'security', 'health', 'config', 'audit'] as const).map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => {
+              if (stepUpLocked && tab !== 'security') {
+                return;
+              }
+              setActiveTab(tab);
+            }}
+            disabled={stepUpLocked && tab !== 'security'}
             className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-4 whitespace-nowrap ${
-              activeTab === tab ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent opacity-40 hover:opacity-100'
-            }`}
+              effectiveTab === tab ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent opacity-40 hover:opacity-100'
+            } ${stepUpLocked && tab !== 'security' ? 'cursor-not-allowed opacity-20 hover:opacity-20' : ''}`}
           >
             {t(`${tab}_tab`)}
           </button>
@@ -63,24 +80,30 @@ export default function PlatformView() {
 
       <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
         <div className="max-w-6xl mx-auto">
-          {activeTab === 'partners' && (
+          {stepUpLocked && effectiveTab === 'security' && (
+            <div className="mb-6 border-2 border-black dark:border-white p-4 text-[10px] font-black uppercase tracking-widest">
+              Platform admin tabs are locked until you complete TOTP step-up verification in the security panel.
+            </div>
+          )}
+          {effectiveTab === 'partners' && (
             <PartnerList
               onCreateClick={() => setShowCreateModal(true)}
               onEditPartner={setEditingPartner}
               onDeletePartner={setPartnerToDelete}
             />
           )}
-          {activeTab === 'users' && (
+          {effectiveTab === 'users' && (
             <UserTable
               onInviteClick={() => setShowInviteModal(true)}
               onEditProfile={setEditingUserProfile}
               onManageAccess={setEditingUser}
             />
           )}
-          {activeTab === 'sso' && <GroupMappingsPanel />}
-          {activeTab === 'health' && <PlatformSystemHealth />}
-          {activeTab === 'config' && <PlatformSystemSettings />}
-          {activeTab === 'audit' && <PlatformAuditLog />}
+          {effectiveTab === 'sso' && <GroupMappingsPanel />}
+          {effectiveTab === 'security' && <PlatformSecurityOps />}
+          {effectiveTab === 'health' && <PlatformSystemHealth />}
+          {effectiveTab === 'config' && <PlatformSystemSettings />}
+          {effectiveTab === 'audit' && <PlatformAuditLog />}
         </div>
       </main>
 

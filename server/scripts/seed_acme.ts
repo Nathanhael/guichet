@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../utils/passwords.js';
 import pg from 'pg';
 import { randomUUID } from 'crypto';
 
@@ -11,7 +11,7 @@ async function run() {
   console.log('🌱 Seeding New Partner: Acme Corp...');
 
   const partnerId = 'acme-corp';
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const hashedPassword = await hashPassword('password123');
 
   try {
     // 1. Create Partner

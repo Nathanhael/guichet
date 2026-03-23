@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import * as presenceService from '../../services/presence.js';
 import { TRPCError } from '@trpc/server';
+import { canChangePresenceStatus } from '../../services/roles.js';
 
 export const presenceRouter = router({
   getOnlineStatus: protectedProcedure
@@ -22,7 +23,7 @@ export const presenceRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       // Security: Only allow admins or support to change status (or user changing their own status)
-      if (ctx.user.role !== 'admin' && ctx.user.role !== 'support' && ctx.user.id !== input.userId) {
+      if (!canChangePresenceStatus(ctx.user.role, ctx.user.id, input.userId, ctx.user.isPlatformOperator)) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to change status' });
       }
 

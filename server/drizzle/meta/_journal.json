@@ -43,6 +43,13 @@
       "when": 1774213200000,
       "tag": "0005_busy_silent_schedule",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1774303200000,
+      "tag": "0006_platform_step_up_totp",
+      "breakpoints": true
     }
   ]
 }

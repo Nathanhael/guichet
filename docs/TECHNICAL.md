@@ -45,11 +45,12 @@ Tessera is 100% data-driven. Hardcoded constants for departments have been remov
 ## 5. Hybrid Identity Model
 
 - **OIDC (Azure Managed)**: Users invited via email are linked to their corporate Azure account upon first SSO login. No local password management is required.
-- **Local (Password Access)**: Supports external partners/consultants via email/password authentication.
+- **Local (Password Access)**: Supports external partners/consultants via email/password authentication using `Argon2id` password hashing.
 - **Pre-Provisioning**: Operators define authorization (roles/partners) before the user ever arrives, ensuring a zero-trust "Day One" experience.
 - **Secure Recovery**: Implemented a token-based password reset flow for local users using SHA-256 hashed tokens and a 1-hour strict expiry.
 - **Platform Operator Bootstrap**: On first startup, the server checks for existing platform operators. If none exist and `PLATFORM_ADMIN_EMAIL` is set, it auto-creates (or promotes) the initial operator. Supports both local auth (with `PLATFORM_ADMIN_PASSWORD`) and SSO (password omitted). Race-safe for multi-replica deployments.
 - **Implicit Partner Access**: Platform operators can enter any active partner's admin view without an explicit membership, via a dedicated `/enter-partner` endpoint that issues a partner-scoped JWT with admin role.
+- **Tenant Mapping**: The current platform treats `partners` as tenants and `memberships` as the authorization link from internal users to one or more tenants. See `docs/TENANT_IDENTITY_SPEC.md`.
 
 ---
 

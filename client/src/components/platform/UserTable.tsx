@@ -3,7 +3,8 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import ConfirmDialog from '../ConfirmDialog';
 import Toast from '../Toast';
-import type { GlobalUser, PartnerMembership } from './types';
+import type { GlobalUser, PartnerMembership, UserRole } from './types';
+import { getRoleDisplayName } from '../../utils/roles';
 
 interface UserTableProps {
   onInviteClick: () => void;
@@ -21,18 +22,16 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
   const showToast = useCallback((message: string) => setToast({ message, type: 'success' }), []);
   const showError = useCallback((message: string) => setToast({ message, type: 'error' }), []);
 
-  const ROLE_LABEL: Record<string, string> = {
-    agent: t('agent'),
-    support: t('support'),
-    admin: t('admin'),
-    platform_operator: t('platform_operator')
-  };
-
   const { data: globalUsers } = trpc.platform.listGlobalUsers.useQuery();
   const { data: partners } = trpc.platform.listPartners.useQuery();
 
   const deleteUser = trpc.platform.deleteUser.useMutation({
     onSuccess: () => utils.platform.listGlobalUsers.invalidate(),
+  });
+
+  const revokeSessions = trpc.user.revokeSessions.useMutation({
+    onSuccess: () => showToast('Sessions revoked'),
+    onError: (err) => showError(`Failed to revoke sessions: ${err.message}`),
   });
 
   const resendInvite = trpc.platform.resendInvite.useMutation({
@@ -112,9 +111,9 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
                   <td className="p-4 border-r border-black/5 dark:border-white/5 text-[10px] font-black uppercase tracking-tighter">{u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleString() : t('never')}</td>
                   <td className="p-4 border-r border-black/5 dark:border-white/5">
                     <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar pr-2">
-                      {u.isPlatformOperator && <span className="border border-black dark:border-white text-[8px] font-black uppercase px-2 py-1 flex items-center gap-1 shrink-0 bg-black dark:bg-white text-white dark:text-black">{t('all_partners')} <span className="opacity-60 italic">(admin)</span></span>}
+                      {u.isPlatformOperator && <span className="border border-black dark:border-white text-[8px] font-black uppercase px-2 py-1 flex items-center gap-1 shrink-0 bg-black dark:bg-white text-white dark:text-black">{t('all_partners')} <span className="opacity-60 italic">({getRoleDisplayName('platform_operator', true)})</span></span>}
                       {(u.partnerMemberships?.length ?? 0) > 0 ? u.partnerMemberships!.map((m: PartnerMembership) => (
-                        <span key={m.partnerId} className="border border-black dark:border-white text-[8px] font-black uppercase px-2 py-1 flex items-center gap-1 shrink-0">{m.partnerName} <span className="opacity-40 italic">({ROLE_LABEL[m.role] || m.role})</span></span>
+                        <span key={m.partnerId} className="border border-black dark:border-white text-[8px] font-black uppercase px-2 py-1 flex items-center gap-1 shrink-0">{m.partnerName} <span className="opacity-40 italic">({getRoleDisplayName(m.role as UserRole)})</span></span>
                       )) : !u.isPlatformOperator && <span className="opacity-20 text-[10px] uppercase font-black tracking-widest">{t('no_active_memberships')}</span>}
                     </div>
                   </td>
@@ -122,6 +121,14 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
                     <div className="flex justify-end gap-2">
                       <button onClick={() => onEditProfile(u)} className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">{t('edit_profile')}</button>
                       <button onClick={() => onManageAccess(u)} className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black opacity-60 hover:opacity-100">{t('manage_access')}</button>
+                      <button onClick={() => setConfirmDialog({
+                        title: 'Revoke Sessions',
+                        message: `Force sign-out all active sessions for ${u.name}?`,
+                        confirmLabel: 'Revoke Sessions',
+                        onConfirm: () => { revokeSessions.mutate({ userId: u.id }); setConfirmDialog(null); }
+                      })} className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black opacity-60 hover:opacity-100">
+                        Revoke Sessions
+                      </button>
                       <button onClick={() => setConfirmDialog({
                         title: t('delete_account'),
                         message: t('confirm_delete_account').replace('{name}', u.name),

@@ -3,12 +3,8 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json* ./
-# Replace bcryptjs with native bcrypt for production performance
-RUN sed -i 's/"bcryptjs"/"bcrypt"/g; s/"\^3\.0\.2"/"\^6.0.0"/g' package.json
 RUN npm ci
 COPY . .
-# Rewrite imports from bcryptjs to bcrypt
-RUN find . -name '*.ts' -not -path './node_modules/*' -exec sed -i "s/from 'bcryptjs'/from 'bcrypt'/g" {} +
 RUN npx tsc --project tsconfig.json
 
 # Stage 2: Production dependencies only
@@ -16,7 +12,6 @@ FROM node:24-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
 COPY package.json package-lock.json* ./
-RUN sed -i 's/"bcryptjs"/"bcrypt"/g; s/"\^3\.0\.2"/"\^6.0.0"/g' package.json
 RUN npm ci --omit=dev
 
 # Stage 3: Runtime

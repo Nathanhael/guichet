@@ -4,6 +4,7 @@ import { io, Socket } from 'socket.io-client';
 import useStore from '../store/useStore';
 import { SOCKET_URL } from '../config';
 import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, TopicAlert } from '../types';
+import { isTenantAdmin } from '../utils/roles';
 
 let socket: Socket | null = null;
 
@@ -231,7 +232,7 @@ export function useSocket(): Socket {
     // Topic Heat Alert
     s.on('topic:alert', (alert: TopicAlert) => {
       const state = useStore.getState();
-      if (state.user?.role === 'admin') {
+      if (isTenantAdmin(state.user?.role)) {
         addTopicAlert(alert);
         playChime();
       }

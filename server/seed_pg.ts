@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import { hashPassword } from './utils/passwords.js';
 import { db } from './db.js';
 import { users, partners, memberships, labels } from './db/schema.js';
 import { eq } from 'drizzle-orm';
@@ -52,23 +52,23 @@ async function seed() {
 
     // 2. Create users and memberships
     const password = 'password123';
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await hashPassword(password);
 
     const demoUsers = [
         // 5 Agents (end-users / customers)
-        { id: 'agent_jan',     name: 'Jan Peeters',     role: 'agent',   departments: ['dispatch'],     lang: 'nl' },
-        { id: 'agent_marie',   name: 'Marie Dubois',    role: 'agent',   departments: ['front-office'], lang: 'fr' },
-        { id: 'agent_tom',     name: 'Tom Williams',    role: 'agent',   departments: ['dispatch'],     lang: 'en' },
-        { id: 'agent_lisa',    name: 'Lisa Janssens',   role: 'agent',   departments: ['billing'],      lang: 'nl' },
-        { id: 'agent_karim',   name: 'Karim Benali',    role: 'agent',   departments: ['front-office'], lang: 'fr' },
+        { id: 'agent_jan',     name: 'Jan Peeters',     email: 'jan@tessera.demo',     role: 'agent',   departments: ['dispatch'],     lang: 'nl' },
+        { id: 'agent_marie',   name: 'Marie Dubois',    email: 'marie@tessera.demo',   role: 'agent',   departments: ['front-office'], lang: 'fr' },
+        { id: 'agent_tom',     name: 'Tom Williams',    email: 'tom@tessera.demo',     role: 'agent',   departments: ['dispatch'],     lang: 'en' },
+        { id: 'agent_lisa',    name: 'Lisa Janssens',   email: 'lisa@tessera.demo',    role: 'agent',   departments: ['billing'],      lang: 'nl' },
+        { id: 'agent_karim',   name: 'Karim Benali',    email: 'karim@tessera.demo',   role: 'agent',   departments: ['front-office'], lang: 'fr' },
         // 3 Support (experts)
-        { id: 'expert_piet',   name: 'Piet Van Damme',  role: 'support', departments: ['dispatch'],     lang: 'nl' },
-        { id: 'expert_sophie', name: 'Sophie Laurent',  role: 'support', departments: ['front-office'], lang: 'fr' },
-        { id: 'expert_alex',   name: 'Alex Johnson',    role: 'support', departments: [],               lang: 'en' }, // generalist
+        { id: 'expert_piet',   name: 'Piet Van Damme',  email: 'piet@tessera.demo',    role: 'support', departments: ['dispatch'],     lang: 'nl' },
+        { id: 'expert_sophie', name: 'Sophie Laurent',  email: 'sophie@tessera.demo',  role: 'support', departments: ['front-office'], lang: 'fr' },
+        { id: 'expert_alex',   name: 'Alex Johnson',    email: 'alex@tessera.demo',    role: 'support', departments: [],               lang: 'en' }, // generalist
         // 1 Admin
-        { id: 'admin_dirk',    name: 'Dirk De Smedt',  role: 'admin',   departments: [],               lang: 'nl' },
+        { id: 'admin_dirk',    name: 'Dirk De Smedt',  email: 'dirk@tessera.demo',    role: 'admin',   departments: [],               lang: 'nl' },
         // 1 Platform Operator
-        { id: 'platform_bart', name: 'Bart Operator',   role: 'admin',   departments: [],               lang: 'nl', isPlatformOperator: true },
+        { id: 'platform_bart', name: 'Bart Operator',   email: 'bart@tessera.demo',    role: 'admin',   departments: [],               lang: 'nl', isPlatformOperator: true },
     ];
 
     for (const u of demoUsers) {
@@ -83,6 +83,7 @@ async function seed() {
             await db.insert(users).values({
                 id: u.id,
                 name: u.name,
+                email: u.email,
                 lang: u.lang as any,
                 password: hashedPassword,
                 isPlatformOperator: u.isPlatformOperator || false,

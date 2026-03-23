@@ -142,7 +142,7 @@ export default function AdminTeam() {
 
 function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdded: () => void }) {
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'agent'|'support'|'admin'>('agent');
+  const [role, setRole] = useState<'agent'|'support'>('agent');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
 
   const { activeMembershipId, memberships } = useStore();
@@ -184,7 +184,6 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
             >
               <option value="agent">Agent (Creates Tickets)</option>
               <option value="support">Support (Handles Tickets)</option>
-              <option value="admin">Admin (Manages Partner)</option>
             </select>
           </div>
           <div>
@@ -222,7 +221,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
 function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, onInvited: () => void }) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'agent'|'support'|'admin'>('agent');
+  const [role, setRole] = useState<'agent'|'support'>('agent');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   
@@ -316,7 +315,6 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
             >
               <option value="agent">Agent (Creates Tickets)</option>
               <option value="support">Support (Handles Tickets)</option>
-              <option value="admin">Admin (Manages Partner)</option>
             </select>
           </div>
           <div>

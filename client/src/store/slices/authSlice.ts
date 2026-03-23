@@ -12,7 +12,25 @@ export interface AuthSlice {
   setMemberships: (memberships: Membership[]) => void;
   setActiveMembershipId: (id: string | null) => void;
   enterPartnerAsOperator: (partnerId: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
+}
+
+function clearAuthState(set: (partial: Partial<StoreState>) => void) {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('memberships');
+  localStorage.removeItem('activeMembershipId');
+  localStorage.removeItem('activePartnerId');
+  set({ 
+    user: null, 
+    token: null, 
+    memberships: [], 
+    activeMembershipId: null, 
+    activePartnerId: null, 
+    tickets: [], 
+    messages: {}, 
+    activeTicketId: null 
+  });
 }
 
 function safeJsonParse<T>(key: string, fallback: T): T {
@@ -109,22 +127,22 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       localStorage.setItem('activePartnerId', partnerId);
       set({ activeMembershipId: syntheticMembershipId, activePartnerId: partnerId });
     },
-    logout: () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('memberships');
-      localStorage.removeItem('activeMembershipId');
-      localStorage.removeItem('activePartnerId');
-      set({ 
-        user: null, 
-        token: null, 
-        memberships: [], 
-        activeMembershipId: null, 
-        activePartnerId: null, 
-        tickets: [], 
-        messages: {}, 
-        activeTicketId: null 
-      });
+    logout: async () => {
+      const token = get().token;
+      if (token) {
+        try {
+          await fetch('/api/v1/auth/logout', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        } catch {
+          // Local logout should still succeed even if the network call fails.
+        }
+      }
+
+      clearAuthState(set);
     },
   };
 };

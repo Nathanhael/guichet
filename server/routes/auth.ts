@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { body } from 'express-validator';
@@ -9,8 +8,13 @@ import config from '../config.js';
 import logger from '../utils/logger.js';
 import { User } from '../types/index.js';
 import { MailService } from '../services/mail.js';
+import { hashPassword, verifyPassword } from '../utils/passwords.js';
+import { buildAuthResponse, buildAuthToken, findUserByEmail, getEnterPartnerContext, listUserMemberships } from '../services/authSession.js';
+import { canAccessPartnerContext, isPlatformAdmin } from '../services/roles.js';
+import { revokeToken } from '../services/sessionRevocation.js';
+import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
 
-import { partners, memberships, users } from '../db/schema.js';
+import { auditLog, partners, memberships, users } from '../db/schema.js';
 import { eq, and, ilike, isNull } from 'drizzle-orm';
 import { db } from '../db.js';
 
@@ -33,8 +37,7 @@ router.post('/forgot-password', [
         const { email } = req.body;
         logger.info({ email: maskEmail(email) }, '[Auth] Password reset requested');
 
-        const userResults = await db.select().from(users).where(ilike(users.email, email)).limit(1);
-        const user = userResults[0];
+        const user = await findUserByEmail(email);
 
         // Security: Always return success to prevent user enumeration
         if (!user) {
@@ -83,7 +86,7 @@ router.post('/reset-password', [
             return res.status(400).json({ error: 'Invalid or expired reset token' });
         }
 
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await hashPassword(password);
 
         await db.update(users)
             .set({ 
@@ -110,62 +113,41 @@ router.post('/login-local', [
         const { email, password } = req.body;
         logger.info({ email: maskEmail(email) }, '[Auth] Local login attempt started');
 
-        const userResults = await db.select().from(users).where(ilike(users.email, email)).limit(1);
-        const user = userResults[0];
+        const user = await findUserByEmail(email);
 
         if (!user || !user.password) {
             logger.warn({ email: maskEmail(email) }, '[Auth] Local login failed: User not found or no password');
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = await verifyPassword(user.password, password);
 
         if (!isMatch) {
             logger.warn({ email: maskEmail(email) }, '[Auth] Local login failed: Password mismatch');
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Fetch memberships and partner details using Drizzle
-        const userMemberships = await db
-            .select({
-                id: memberships.id,
-                partnerId: memberships.partnerId,
-                role: memberships.role,
-                departments: memberships.departments,
-                partnerName: partners.name,
-                logoUrl: partners.logoUrl,
-                industry: partners.industry,
-                partnerDepartments: partners.departments,
-                status: partners.status
-            })
-            .from(memberships)
-            .innerJoin(partners, eq(memberships.partnerId, partners.id))
-            .where(eq(memberships.userId, user.id));
+        const userMemberships = await listUserMemberships(user.id);
 
         logger.info({ email: maskEmail(email), membershipCount: userMemberships.length }, '[Auth] Local login membership lookup complete');
 
-        if (userMemberships.length === 0 && !user.isPlatformOperator) {
+        if (userMemberships.length === 0 && !isPlatformAdmin(!!user.isPlatformOperator)) {
             logger.warn({ email: maskEmail(email) }, '[Auth] Local login failed: No memberships found');
             return res.status(403).json({ error: 'User has no memberships' });
         }
 
         const activeMemberships = userMemberships.filter(m => m.status === 'active');
-        
-        // Default to first active membership, or null if none are active
         const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
 
-        const token = jwt.sign(
-            { 
-                userId: user.id, 
-                role: defaultMembership?.role || (user.isPlatformOperator ? 'platform_operator' : 'user'),
-                departments: defaultMembership?.departments || [],
-                partnerId: defaultMembership?.partnerId,
-                membershipId: defaultMembership?.id,
-                isPlatformOperator: user.isPlatformOperator
-            },
-            config.JWT_SECRET,
-            { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
-        );
+        const token = buildAuthToken({
+            userId: user.id,
+            role: defaultMembership?.role || 'agent',
+            departments: (defaultMembership?.departments as unknown[]) || [],
+            partnerId: defaultMembership?.partnerId,
+            membershipId: defaultMembership?.id,
+            isPlatformOperator: !!user.isPlatformOperator,
+            platformStepUpAt: undefined,
+        });
 
         logger.info({ email: maskEmail(email), partnerId: defaultMembership?.partnerId }, '[Auth] Local login successful');
 
@@ -173,28 +155,16 @@ router.post('/login-local', [
         logger.info({ userId: user.id }, '[Auth] Updating lastActiveAt for user');
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
-        res.json({
+        res.json(buildAuthResponse({
             token,
             user: {
                 id: user.id,
                 name: user.name,
                 lang: user.lang,
-                isPlatformOperator: user.isPlatformOperator
+                isPlatformOperator: user.isPlatformOperator,
             },
-            memberships: activeMemberships.map(m => ({
-                id: m.id,
-                partnerId: m.partnerId,
-                partnerName: m.partnerName,
-                role: m.role,
-                departments: m.departments || [],
-                manifest: {
-                    industry: m.industry,
-                    logoUrl: m.logoUrl,
-                    departments: m.partnerDepartments || [],
-                }
-            })),
-            activePartnerId: defaultMembership?.partnerId
-        });
+            memberships: userMemberships,
+        }));
     } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Local login FATAL error');
         res.status(500).json({ error: 'Server error during login' });
@@ -218,32 +188,17 @@ router.post('/login', [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
+        const isMatch = await verifyPassword(user.password, password);
         if (!isMatch) {
             logger.warn({ id }, '[Auth] Login failed: Password mismatch');
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Fetch memberships and partner details using Drizzle
-        const userMemberships = await db
-            .select({
-                id: memberships.id,
-                partnerId: memberships.partnerId,
-                role: memberships.role,
-                departments: memberships.departments,
-                partnerName: partners.name,
-                logoUrl: partners.logoUrl,
-                industry: partners.industry,
-                partnerDepartments: partners.departments,
-                status: partners.status
-            })
-            .from(memberships)
-            .innerJoin(partners, eq(memberships.partnerId, partners.id))
-            .where(eq(memberships.userId, user.id));
+        const userMemberships = await listUserMemberships(user.id);
 
         logger.debug({ id, membershipCount: userMemberships.length }, '[Auth] Membership lookup complete');
 
-        if (userMemberships.length === 0 && !user.isPlatformOperator) {
+        if (userMemberships.length === 0 && !isPlatformAdmin(!!user.isPlatformOperator)) {
             logger.warn({ id }, '[Auth] Login failed: No memberships found');
             return res.status(403).json({ error: 'User has no memberships' });
         }
@@ -253,46 +208,31 @@ router.post('/login', [
         // Default to first active membership, or null if none are active
         const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
 
-        const token = jwt.sign(
-            { 
-                userId: user.id, 
-                role: defaultMembership?.role || (user.isPlatformOperator ? 'platform_operator' : 'user'),
-                departments: defaultMembership?.departments || [],
-                partnerId: defaultMembership?.partnerId,
-                membershipId: defaultMembership?.id,
-                isPlatformOperator: user.isPlatformOperator
-            },
-            config.JWT_SECRET,
-            { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
-        );
+        const token = buildAuthToken({
+            userId: user.id,
+            role: defaultMembership?.role || 'agent',
+            departments: (defaultMembership?.departments as unknown[]) || [],
+            partnerId: defaultMembership?.partnerId,
+            membershipId: defaultMembership?.id,
+            isPlatformOperator: !!user.isPlatformOperator,
+            platformStepUpAt: undefined,
+        });
 
         logger.info({ id, partnerId: defaultMembership?.partnerId }, '[Auth] Login successful');
 
         // Update lastActiveAt
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
-        res.json({
+        res.json(buildAuthResponse({
             token,
             user: {
                 id: user.id,
                 name: user.name,
                 lang: user.lang,
-                isPlatformOperator: user.isPlatformOperator
+                isPlatformOperator: user.isPlatformOperator,
             },
-            memberships: activeMemberships.map(m => ({
-                id: m.id,
-                partnerId: m.partnerId,
-                partnerName: m.partnerName,
-                role: m.role,
-                departments: m.departments || [],
-                manifest: {
-                    industry: m.industry,
-                    logoUrl: m.logoUrl,
-                    departments: m.partnerDepartments || [],
-                }
-            })),
-            activePartnerId: defaultMembership?.partnerId
-        });
+            memberships: userMemberships,
+        }));
     } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Login FATAL error');
         res.status(500).json({ error: 'Server error during login' });
@@ -331,18 +271,15 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
             return res.status(403).json({ error: 'Partner is currently inactive' });
         }
 
-        const token = jwt.sign(
-            { 
-                userId: userId, 
-                role: membership.role,
-                departments: membership.departments || [],
-                partnerId: membership.partnerId,
-                membershipId: membership.id,
-                isPlatformOperator: req.user.isPlatformOperator
-            },
-            config.JWT_SECRET,
-            { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
-        );
+        const token = buildAuthToken({
+            userId,
+            role: membership.role,
+            departments: (membership.departments as unknown[]) || [],
+            partnerId: membership.partnerId,
+            membershipId: membership.id,
+            isPlatformOperator: req.user.isPlatformOperator,
+            platformStepUpAt: req.user.platformStepUpAt,
+        });
 
         res.json({
             token,
@@ -359,33 +296,36 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
     }
 });
 
+router.post('/logout', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
+    try {
+        if (req.user?.tokenJti) {
+            await revokeToken(req.user.tokenJti, req.user.tokenExp);
+        }
+        res.json({ success: true });
+    } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Logout FATAL error');
+        res.status(500).json({ error: 'Server error during logout' });
+    }
+});
+
 router.post('/enter-partner', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
     try {
         const { partnerId } = req.body;
         const userId = req.user.id;
 
-        if (!req.user.isPlatformOperator) {
+        if (!isPlatformAdmin(req.user.isPlatformOperator)) {
             return res.status(403).json({ error: 'Platform operators only' });
+        }
+
+        if (!isPlatformStepUpSatisfied(req.user.platformStepUpAt)) {
+            return res.status(403).json({ error: 'Platform step-up required' });
         }
 
         if (!partnerId) {
             return res.status(400).json({ error: 'partnerId is required' });
         }
 
-        const results = await db
-            .select({
-                id: partners.id,
-                name: partners.name,
-                status: partners.status,
-                logoUrl: partners.logoUrl,
-                industry: partners.industry,
-                partnerDepartments: partners.departments,
-            })
-            .from(partners)
-            .where(and(eq(partners.id, partnerId), isNull(partners.deletedAt)))
-            .limit(1);
-
-        const partner = results[0];
+        const partner = await getEnterPartnerContext(partnerId);
 
         if (!partner) {
             return res.status(404).json({ error: 'Partner not found' });
@@ -395,20 +335,33 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
             return res.status(403).json({ error: 'Partner is currently inactive' });
         }
 
-        const token = jwt.sign(
-            {
-                userId,
-                role: 'admin',
-                departments: [],
-                partnerId: partner.id,
-                membershipId: `platform_${userId}_${partner.id}`,
-                isPlatformOperator: true,
-            },
-            config.JWT_SECRET,
-            { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
-        );
+        if (!canAccessPartnerContext(true, partner.id)) {
+            return res.status(403).json({ error: 'Partner access denied' });
+        }
+
+        const token = buildAuthToken({
+            userId,
+            role: 'admin',
+            departments: [],
+            partnerId: partner.id,
+            membershipId: `platform_${userId}_${partner.id}`,
+            isPlatformOperator: true,
+            platformStepUpAt: req.user.platformStepUpAt,
+        });
 
         logger.info({ userId, partnerId: partner.id }, '[Auth] Platform operator entered partner');
+
+        await db.insert(auditLog).values({
+            id: crypto.randomUUID(),
+            action: 'platform.enter_partner',
+            actorId: userId,
+            partnerId: partner.id,
+            targetType: 'partner',
+            targetId: partner.id,
+            metadata: {
+                entryMode: 'platform_operator',
+            }
+        });
 
         res.json({
             token,
