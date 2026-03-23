@@ -135,8 +135,6 @@ router.post('/login-local', [
                 partnerName: partners.name,
                 logoUrl: partners.logoUrl,
                 industry: partners.industry,
-                ref1Label: partners.ref1Label,
-                ref2Label: partners.ref2Label,
                 partnerDepartments: partners.departments,
                 status: partners.status
             })
@@ -192,8 +190,6 @@ router.post('/login-local', [
                 manifest: {
                     industry: m.industry,
                     logoUrl: m.logoUrl,
-                    ref1Label: m.ref1Label,
-                    ref2Label: m.ref2Label,
                     departments: m.partnerDepartments || [],
                 }
             })),
@@ -238,8 +234,6 @@ router.post('/login', [
                 partnerName: partners.name,
                 logoUrl: partners.logoUrl,
                 industry: partners.industry,
-                ref1Label: partners.ref1Label,
-                ref2Label: partners.ref2Label,
                 partnerDepartments: partners.departments,
                 status: partners.status
             })
@@ -294,8 +288,6 @@ router.post('/login', [
                 manifest: {
                     industry: m.industry,
                     logoUrl: m.logoUrl,
-                    ref1Label: m.ref1Label,
-                    ref2Label: m.ref2Label,
                     departments: m.partnerDepartments || [],
                 }
             })),
@@ -321,8 +313,6 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
                 partnerName: partners.name,
                 logoUrl: partners.logoUrl,
                 industry: partners.industry,
-                ref1Label: partners.ref1Label,
-                ref2Label: partners.ref2Label,
                 partnerDepartments: partners.departments,
                 status: partners.status
             })
@@ -360,8 +350,6 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
             manifest: {
                 industry: membership.industry,
                 logoUrl: membership.logoUrl,
-                ref1Label: membership.ref1Label,
-                ref2Label: membership.ref2Label,
                 departments: membership.partnerDepartments || [],
             }
         });
@@ -391,8 +379,6 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
                 status: partners.status,
                 logoUrl: partners.logoUrl,
                 industry: partners.industry,
-                ref1Label: partners.ref1Label,
-                ref2Label: partners.ref2Label,
                 partnerDepartments: partners.departments,
             })
             .from(partners)
@@ -430,8 +416,6 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
             manifest: {
                 industry: partner.industry,
                 logoUrl: partner.logoUrl,
-                ref1Label: partner.ref1Label,
-                ref2Label: partner.ref2Label,
                 departments: partner.partnerDepartments || [],
             }
         });

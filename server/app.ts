@@ -15,6 +15,7 @@ import { appRouter } from './trpc/router.js';
 import uploadRoutes from './routes/uploads.js';
 import logoRoutes from './routes/logos.js';
 import authRoutes from './routes/auth.js';
+import ssoRoutes from './routes/sso.js';
 import ticketRoutes from './routes/tickets.js'; // Kept for export route support
 import { query } from './db.js';
 import config from './config.js';
@@ -111,6 +112,7 @@ v1Router.use('/tickets', ticketRoutes); // Kept for export support
 v1Router.use('/uploads', uploadRoutes);
 v1Router.use('/logos', logoRoutes);
 v1Router.use('/auth', authLimiter, authRoutes);
+v1Router.use('/auth/sso', authLimiter, ssoRoutes);
 
 // tRPC v1
 v1Router.use(

@@ -567,17 +567,6 @@ export const statsRouter = router({
             });
             return summary;
           })(),
-          cannedResponseUsage: await (async () => {
-            const cannedSql = `SELECT cr.shortcut, COUNT(*) as usage_count, AVG(r.rating) as avg_rating
-                               FROM messages m
-                               JOIN canned_responses cr ON m.canned_response_id = cr.id
-                               JOIN ratings r ON m.ticket_id = r.ticket_id
-                               JOIN tickets tk ON m.ticket_id = tk.id
-                               WHERE m.created_at::date >= $1 AND m.created_at::date <= $2 AND tk.partner_id = $3
-                               GROUP BY cr.shortcut
-                               ORDER BY usage_count DESC`;
-            return await query(cannedSql, [rangeStart, rangeEnd, partnerId]);
-          })(),
           previousPeriod,
         };
 

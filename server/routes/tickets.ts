@@ -35,7 +35,7 @@ router.get('/export', [
     }
     if (search) {
       const q = `%${search}%`;
-      sql += ` AND (agent_name ILIKE $${pIdx} OR ref_1 ILIKE $${pIdx} OR ref_2 ILIKE $${pIdx} OR support_name ILIKE $${pIdx})`;
+      sql += ` AND (agent_name ILIKE $${pIdx} OR support_name ILIKE $${pIdx})`;
       params.push(q);
       pIdx++;
     }
@@ -56,18 +56,25 @@ router.get('/export', [
     const result = (await query(sql, params)) as unknown as Ticket[];
     
     // Format as CSV
-    const headers = ['ID', 'Department', 'Agent', 'Ref 1', 'Ref 2', 'Support', 'Created At', 'Closed At', 'Status'];
-    const rows = result.map(t => [
+    const headers = ['ID', 'Department', 'Agent', 'References', 'Support', 'Created At', 'Closed At', 'Status'];
+    const rows = result.map(t => {
+      let parsedRefs: Array<{ label: string; value: string }> = [];
+      try {
+        const raw = (t as any).references;
+        parsedRefs = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw) : []) || [];
+      } catch { /* malformed JSON — skip */ }
+      const refsStr = parsedRefs.map(r => `${r.label}: ${r.value}`).join('; ');
+      return [
       t.id,
       t.dept,
       t.agentName,
-      t.ref1 || '',
-      t.ref2 || '',
+      refsStr,
       t.supportName || '',
       t.createdAt,
       t.closedAt || '',
       t.status
-    ]);
+    ];
+    });
 
     const csvContent = [
       headers.join(','),

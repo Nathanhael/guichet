@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import useStore from '../../store/useStore';
+import { useT } from '../../i18n';
 
 export default function AdminTeam() {
+  const t = useT();
   const { activeMembershipId, memberships } = useStore();
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
 
   const [page, setPage] = useState(0);
-  const LIMIT = 20;
+  const LIMIT = 50;
 
   const { data, refetch, isLoading } = trpc.partner.listMembers.useQuery(
     { limit: LIMIT, offset: page * LIMIT },
@@ -24,7 +26,7 @@ export default function AdminTeam() {
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   return (
-    <div className="min-w-[1180px] max-w-6xl border-2 border-black dark:border-white p-6">
+    <div className="min-w-[1300px] max-w-7xl border-2 border-black dark:border-white p-6">
       <div className="flex justify-between items-start mb-6">
         <div>
           <h2 className="text-lg font-black uppercase tracking-widest">Team Members</h2>
@@ -51,12 +53,13 @@ export default function AdminTeam() {
       ) : (
         <>
           <div className="border border-black dark:border-white mb-4 overflow-x-auto">
-            <table className="w-full min-w-[1080px] text-left border-collapse">
+            <table className="w-full min-w-[1200px] text-left border-collapse">
               <thead>
                 <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5">
                   <th className="p-3 text-[10px] font-black uppercase tracking-widest">Name</th>
                   <th className="p-3 text-[10px] font-black uppercase tracking-widest">Email</th>
                   <th className="p-3 text-[10px] font-black uppercase tracking-widest">Role</th>
+                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">Status</th>
                   <th className="p-3 text-[10px] font-black uppercase tracking-widest">Departments</th>
                   <th className="p-3 text-[10px] font-black uppercase tracking-widest text-right">Actions</th>
                 </tr>
@@ -70,6 +73,21 @@ export default function AdminTeam() {
                       <span className="px-2 py-0.5 border border-current text-[10px] font-black uppercase">
                         {member.role}
                       </span>
+                    </td>
+                    <td className="p-3">
+                      {member.externalId || member.lastActiveAt ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-1.5 h-1.5 bg-black dark:bg-white" />
+                          <span className="text-[9px] font-black uppercase tracking-widest">
+                            {member.externalId ? t('status_linked_sso') : t('status_active_local')}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 opacity-40">
+                          <div className="w-1.5 h-1.5 border border-black dark:border-white" />
+                          <span className="text-[9px] font-black uppercase tracking-widest">{t('status_pending')}</span>
+                        </div>
+                      )}
                     </td>
                     <td className="p-3 text-xs uppercase opacity-80">
                       {member.departments && (member.departments as string[]).length > 0
@@ -124,9 +142,9 @@ export default function AdminTeam() {
 
 function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdded: () => void }) {
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'agent'|'support'>('agent');
+  const [role, setRole] = useState<'agent'|'support'|'admin'>('agent');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
-  
+
   const { activeMembershipId, memberships } = useStore();
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
@@ -166,6 +184,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
             >
               <option value="agent">Agent (Creates Tickets)</option>
               <option value="support">Support (Handles Tickets)</option>
+              <option value="admin">Admin (Manages Partner)</option>
             </select>
           </div>
           <div>
@@ -203,7 +222,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
 function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, onInvited: () => void }) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'agent'|'support'>('agent');
+  const [role, setRole] = useState<'agent'|'support'|'admin'>('agent');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   
@@ -297,6 +316,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
             >
               <option value="agent">Agent (Creates Tickets)</option>
               <option value="support">Support (Handles Tickets)</option>
+              <option value="admin">Admin (Manages Partner)</option>
             </select>
           </div>
           <div>

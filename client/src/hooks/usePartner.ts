@@ -8,8 +8,6 @@ export function usePartner() {
   
   const manifest: PartnerManifest = activeMembership?.manifest || {
     industry: 'general',
-    ref1Label: 'Reference 1',
-    ref2Label: 'Reference 2',
     departments: []
   };
 

@@ -30,7 +30,7 @@ agent.on("connect", () => {
     console.log("\nPhase 2: Ticket Creation");
     agent.emit("ticket:new", {
       agentId: "agent_jan", agentLang: "nl", dept: "DSC",
-      ref1: "TEST-" + Date.now(),
+      references: [{ label: "Test Ref", value: "TEST-" + Date.now() }],
       text: "Mijn internet werkt niet meer sinds gisteren"
     });
   }, 500);
