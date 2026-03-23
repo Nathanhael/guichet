@@ -18,6 +18,18 @@ vi.mock('../../i18n', () => ({
   useT: () => (key: string) => key,
 }));
 
+const mockSecurityStatus = { mfaEnabled: true, mfaPending: false, stepUpSatisfied: true, stepUpExpiresAt: null };
+
+vi.mock('../../utils/trpc', () => ({
+  trpc: {
+    platformSecurity: {
+      getStatus: {
+        useQuery: () => ({ data: mockSecurityStatus }),
+      },
+    },
+  },
+}));
+
 // Mock all child components to isolate PlatformView shell logic
 vi.mock('../../components/DarkModeToggle', () => ({
   default: () => <div data-testid="dark-mode-toggle" />,
@@ -33,6 +45,10 @@ vi.mock('../../components/admin/PlatformSystemHealth', () => ({
 
 vi.mock('../../components/admin/PlatformAuditLog', () => ({
   default: () => <div data-testid="audit-log" />,
+}));
+
+vi.mock('../../components/admin/PlatformSecurityOps', () => ({
+  default: () => <div data-testid="security-ops" />,
 }));
 
 vi.mock('../../components/admin/PlatformSystemSettings', () => ({
@@ -94,10 +110,11 @@ describe('PlatformView', () => {
     expect(screen.getByText('platform_operator')).toBeInTheDocument();
   });
 
-  it('renders all 5 tab buttons', () => {
+  it('renders all platform tab buttons', () => {
     render(<PlatformView />);
     expect(screen.getByText('partners_tab')).toBeInTheDocument();
     expect(screen.getByText('users_tab')).toBeInTheDocument();
+    expect(screen.getByText('security_tab')).toBeInTheDocument();
     expect(screen.getByText('health_tab')).toBeInTheDocument();
     expect(screen.getByText('config_tab')).toBeInTheDocument();
     expect(screen.getByText('audit_tab')).toBeInTheDocument();
@@ -152,5 +169,11 @@ describe('PlatformView', () => {
     expect(screen.queryByTestId('invite-user-modal')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('mock-invite'));
     expect(screen.getByTestId('invite-user-modal')).toBeInTheDocument();
+  });
+
+  it('switches to security tab', () => {
+    render(<PlatformView />);
+    fireEvent.click(screen.getByText('security_tab'));
+    expect(screen.getByTestId('security-ops')).toBeInTheDocument();
   });
 });

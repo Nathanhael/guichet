@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../utils/passwords.js';
 import pg from 'pg';
 import { randomUUID } from 'crypto';
 
@@ -185,7 +185,7 @@ const RATING_COMMENTS = [
 async function seed() {
   console.log('🌱 Starting test data seed...\n');
 
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  const hashedPassword = await hashPassword('password123');
 
   // ── 1. Users ────────────────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ import { eq, and, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
+import { canUseSupportWorkflows } from '../../services/roles.js';
 
 export const messageRouter = router({
   list: protectedProcedure
@@ -14,7 +15,7 @@ export const messageRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const isSupport = ctx.user.role === 'support' || ctx.user.role === 'admin';
+        const isSupport = canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator);
 
         // Ownership check for agents
         if (!isSupport) {

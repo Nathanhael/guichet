@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import type { UserRole } from './types';
+import { getRoleDisplayName } from '../../utils/roles';
 
 interface InviteUserModalProps {
   open: boolean;
@@ -140,10 +141,10 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
               <label className="block text-[10px] font-black uppercase mb-1">{t('col_role')}</label>
               <select className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
                 value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })}>
-                <option value="agent">{t('agent')}</option>
-                <option value="support">{t('support')}</option>
-                <option value="admin">{t('admin')}</option>
-                <option value="platform_operator">{t('platform_operator')}</option>
+                <option value="agent">{getRoleDisplayName('agent')}</option>
+                <option value="support">{getRoleDisplayName('support')}</option>
+                <option value="admin">{getRoleDisplayName('admin')}</option>
+                <option value="platform_operator">{getRoleDisplayName('platform_operator', true)}</option>
               </select>
             </div>
           </div>

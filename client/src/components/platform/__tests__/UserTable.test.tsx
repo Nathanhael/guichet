@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import UserTable from '../UserTable';
 import type { GlobalUser, Partner } from '../types';
 
-const { mockDeleteUser, mockResendInvite, activeUser, pendingUser, deletedUser, partner } = vi.hoisted(() => {
+const { mockDeleteUser, mockResendInvite, mockRevokeSessions, activeUser, pendingUser, deletedUser, partner } = vi.hoisted(() => {
   const activeUser: GlobalUser = {
     id: 'u1', name: 'Alice', email: 'alice@example.com',
     isPlatformOperator: false, deletedAt: null,
@@ -28,6 +28,7 @@ const { mockDeleteUser, mockResendInvite, activeUser, pendingUser, deletedUser, 
   return {
     mockDeleteUser: { mutate: vi.fn(), isPending: false },
     mockResendInvite: { mutate: vi.fn(), isPending: false },
+    mockRevokeSessions: { mutate: vi.fn(), isPending: false },
     activeUser, pendingUser, deletedUser, partner,
   };
 });
@@ -61,6 +62,14 @@ vi.mock('../../../utils/trpc', () => ({
         useMutation: (opts: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
           mockResendInvite.mutate.mockImplementation(() => opts.onSuccess?.());
           return mockResendInvite;
+        },
+      },
+    },
+    user: {
+      revokeSessions: {
+        useMutation: (opts: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+          mockRevokeSessions.mutate.mockImplementation(() => opts.onSuccess?.());
+          return mockRevokeSessions;
         },
       },
     },
@@ -162,6 +171,13 @@ describe('UserTable', () => {
     const deleteButtons = screen.getAllByText('delete_account');
     fireEvent.click(deleteButtons[0]);
     expect(screen.getByText(/confirm_delete_account/)).toBeInTheDocument();
+  });
+
+  it('shows revoke sessions confirmation when revoke sessions is clicked', () => {
+    renderComponent();
+    const revokeButtons = screen.getAllByText('Revoke Sessions');
+    fireEvent.click(revokeButtons[0]);
+    expect(screen.getByText(/Force sign-out all active sessions/)).toBeInTheDocument();
   });
 
   it('shows partner membership badges', () => {

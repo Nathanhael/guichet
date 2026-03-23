@@ -8,6 +8,8 @@ import logger from '../../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import { randomBytes } from 'crypto';
 import { getBusinessHoursStatus, type BusinessHoursSchedule } from '../../services/businessHours.js';
+import { hashPassword } from '../../utils/passwords.js';
+import { canAssignTenantRole } from '../../services/roles.js';
 
 // simple slugify helper
 function makeSlug(text: string) {
@@ -387,13 +389,16 @@ export const partnerRouter = router({
   addMemberByEmail: adminProcedure
     .input(z.object({
       email: z.string().email(),
-      role: z.enum(['agent', 'support', 'admin']),
+      role: z.enum(['agent', 'support']),
       departments: z.array(z.string()).optional()
     }))
     .mutation(async ({ input, ctx }) => {
       try {
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+        if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins can only assign agent or support roles' });
+        }
 
         const targetUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
         if (targetUser.length === 0) {
@@ -439,13 +444,16 @@ export const partnerRouter = router({
     .input(z.object({
       email: z.string().email(),
       name: z.string().min(1),
-      role: z.enum(['agent', 'support', 'admin']),
+      role: z.enum(['agent', 'support']),
       departments: z.array(z.string()).optional()
     }))
     .mutation(async ({ input, ctx }) => {
       try {
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+        if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins can only assign agent or support roles' });
+        }
 
         // 1. Look up partner auth method
         const partner = await db.select({ authMethod: partners.authMethod })
@@ -472,8 +480,7 @@ export const partnerRouter = router({
         let hashedPassword: string | undefined;
         if (isLocal) {
           tempPassword = randomBytes(12).toString('base64url');
-          const { hash } = await import('bcryptjs');
-          hashedPassword = await hash(tempPassword, 10);
+          hashedPassword = await hashPassword(tempPassword);
         }
 
         await db.insert(users).values({

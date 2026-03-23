@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { getRedisClients } from '../utils/redis.js';
 import logger from '../utils/logger.js';
+import { canUseSupportWorkflows } from './roles.js';
 
 export interface OnlineUser {
   userId: string;
@@ -56,7 +57,7 @@ export async function broadcastOnlineSupport(partnerId: string) {
     const list: SupportEntry[] = [];
     for (const result of results) {
       const data = result as unknown as Record<string, string>;
-      if (data && data.userId && (data.role === 'support' || data.role === 'admin')) {
+      if (data && data.userId && canUseSupportWorkflows(data.role as any)) {
         list.push({
           userId: data.userId,
           name: data.name,
@@ -97,7 +98,7 @@ export async function identifyUser(userId: string, role: string, name: string, p
     await pubClient.sAdd(sKey, userId);
     await pubClient.expire(sKey, TTL_SECONDS);
 
-    if (role === 'support' || role === 'admin') {
+    if (canUseSupportWorkflows(role as any)) {
       await broadcastOnlineSupport(partnerId);
     }
   } catch (err) {
@@ -137,7 +138,7 @@ export async function decrementUserCount(userId: string, partnerId: string) {
     if (newCount <= 0) {
       await pubClient.del(key);
       await pubClient.sRem(setKey(partnerId), userId);
-      if (user.role === 'support' || user.role === 'admin') {
+      if (canUseSupportWorkflows(user.role as any)) {
         await broadcastOnlineSupport(partnerId);
       }
       return { role: user.role, partnerId: user.partnerId, removed: true };

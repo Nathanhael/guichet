@@ -1,10 +1,10 @@
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
-import { hash } from 'bcryptjs';
 import { db } from '../db/postgres.js';
 import { users, auditLog } from '../db/schema.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
+import { hashPassword } from '../utils/passwords.js';
 
 // PostgreSQL unique-violation error code
 const PG_UNIQUE_VIOLATION = '23505';
@@ -71,7 +71,7 @@ export async function bootstrapPlatformOperator(): Promise<void> {
 
       // Hash password only if one is configured; otherwise null (SSO path)
       const hashedPassword = config.PLATFORM_ADMIN_PASSWORD
-        ? await hash(config.PLATFORM_ADMIN_PASSWORD, 10)
+        ? await hashPassword(config.PLATFORM_ADMIN_PASSWORD)
         : null;
 
       await db.insert(users).values({

@@ -8,6 +8,7 @@ import AdminView from './views/AdminView';
 import PlatformView from './views/PlatformView';
 import AgentView from './views/AgentView';
 import DarkModeToggle from './components/DarkModeToggle';
+import { isPlatformAdmin, isTenantAdmin } from './utils/roles';
 
 const LoadingFallback = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-black">
@@ -58,7 +59,7 @@ export default function App() {
     if (!user) return <LoginView />;
 
     // If user is Platform Operator, show Platform View by default
-    if (user.isPlatformOperator && !activeMembershipId) {
+    if (isPlatformAdmin(user) && !activeMembershipId) {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <PlatformView />
@@ -70,12 +71,12 @@ export default function App() {
     const role = activeMembership?.role;
 
     // Non-platform user with no valid membership — show unavailable state
-    if (!user.isPlatformOperator && !activeMembership) {
+    if (!isPlatformAdmin(user) && !activeMembership) {
       return <NoPartnerState />;
     }
 
     // Platform Operators get Admin access to any partner they 'Enter'
-    if (user.isPlatformOperator || role === 'admin') {
+    if (isPlatformAdmin(user) || isTenantAdmin(role)) {
       return (
         <Suspense fallback={<LoadingFallback />}>
           <AdminView />

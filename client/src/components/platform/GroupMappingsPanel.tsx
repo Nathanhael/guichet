@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
+import { getRoleDisplayName } from '../../utils/roles';
 
 export default function GroupMappingsPanel() {
   const t = useT();
@@ -66,7 +67,7 @@ export default function GroupMappingsPanel() {
                   <td className="p-3 text-sm">{m.azureGroupName || <span className="opacity-30 italic">—</span>}</td>
                   <td className="p-3 text-sm">
                     <span className="px-2 py-0.5 border border-current text-[10px] font-black uppercase">
-                      {m.defaultRole}
+                      {getRoleDisplayName(m.defaultRole as 'agent' | 'support' | 'admin')}
                     </span>
                   </td>
                   <td className="p-3 text-right space-x-3">
@@ -196,9 +197,9 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
               onChange={e => setDefaultRole(e.target.value as 'agent' | 'support' | 'admin')}
               className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm uppercase font-bold"
             >
-              <option value="agent">Agent</option>
-              <option value="support">Support</option>
-              <option value="admin">Admin</option>
+              <option value="agent">{getRoleDisplayName('agent')}</option>
+              <option value="support">{getRoleDisplayName('support')}</option>
+              <option value="admin">{getRoleDisplayName('admin')}</option>
             </select>
             {defaultRole === 'admin' && (
               <p className="text-[9px] uppercase text-red-600 font-bold mt-1">{t('admin_role_warning')}</p>
@@ -263,9 +264,9 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
               onChange={e => setDefaultRole(e.target.value as 'agent' | 'support' | 'admin')}
               className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm uppercase font-bold"
             >
-              <option value="agent">Agent</option>
-              <option value="support">Support</option>
-              <option value="admin">Admin</option>
+              <option value="agent">{getRoleDisplayName('agent')}</option>
+              <option value="support">{getRoleDisplayName('support')}</option>
+              <option value="admin">{getRoleDisplayName('admin')}</option>
             </select>
             {defaultRole === 'admin' && (
               <p className="text-[9px] uppercase text-red-600 font-bold mt-1">{t('admin_role_warning')}</p>

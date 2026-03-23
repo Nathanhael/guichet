@@ -1,4 +1,4 @@
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../utils/passwords.js';
 import pg from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -29,7 +29,7 @@ async function seed() {
 
   try {
     const now = new Date().toISOString();
-    const hash = await bcrypt.hash('password123', 10);
+    const hash = await hashPassword('password123');
 
     // 1. Clean old data
     await pool.query('TRUNCATE memberships, tickets, messages, ratings, app_feedback, topic_alerts CASCADE');
