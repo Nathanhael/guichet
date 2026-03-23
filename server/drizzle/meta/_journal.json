@@ -50,6 +50,20 @@
       "when": 1774303200000,
       "tag": "0006_platform_step_up_totp",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1774504800000,
+      "tag": "0007_security_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1774591200000,
+      "tag": "0008_archive_tables",
+      "breakpoints": true
     }
   ]
 }

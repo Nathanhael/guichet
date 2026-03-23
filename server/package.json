@@ -7,6 +7,9 @@
     "start": "node dist/app.js",
     "build": "Rolldown build",
     "db:migrate": "drizzle-kit migrate",
+    "db:baseline": "npx tsx scripts/baseline_drizzle.ts",
+    "db:backup": "bash scripts/backup.sh",
+    "db:backup:docker": "bash scripts/backup.sh --docker",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"

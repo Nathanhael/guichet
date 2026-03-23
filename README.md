@@ -80,7 +80,6 @@ These features are planned for future iterations to enhance the platform's enter
 - **Advanced Password Policies**: Customizable strength rules, mandatory rotation, and common password blocking.
 - **Session Management**: Configurable inactivity timeouts and concurrent session controls.
 - **Brute-Force Protection**: Automatic account lockout and IP-based rate limiting.
-- **Azure OIDC Integration**: Full dynamic configuration for Microsoft Entra ID (currently placeholder).
 
 ### 📧 Communication & Workflow
 - **Enhanced Mail Templates**: Customizable, branded email templates for different partners.
@@ -94,6 +93,23 @@ These features are planned for future iterations to enhance the platform's enter
 ## 🧪 Testing
 
 ```bash
-docker compose exec server npm test
-docker compose exec client npm test
+# Unit tests
+docker compose exec server npm test          # Server (Vitest)
+docker compose exec client npm test          # Client (Vitest + jsdom)
+
+# E2E tests
+npm run test:e2e                             # Playwright
+
+# Load tests (requires k6 or Docker)
+docker run --rm --network=host -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/smoke.js
+docker run --rm --network=host -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/load.js
+```
+
+## 🗄️ Database Management
+
+```bash
+npm run db:migrate              # Apply pending migrations (normal use)
+npm run db:baseline             # Seed Drizzle ledger on existing DB (one-time adoption fix)
+npm run db:backup               # Backup to server/backups/ (gzipped, keeps last 10)
+npm run db:backup:docker        # Same, from Docker container
 ```

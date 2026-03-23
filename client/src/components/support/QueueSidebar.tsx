@@ -49,7 +49,6 @@ export default function QueueSidebar({
     {
       status: 'closed',
       limit: ARCHIVE_PAGE_SIZE,
-      offset: 0,
       dept: filterDept === 'all' ? undefined : filterDept,
     },
     { enabled: sidebarTab === 'archive' },
@@ -57,7 +56,7 @@ export default function QueueSidebar({
 
   useEffect(() => {
     if (archiveQuery.data) {
-      const data = archiveQuery.data as { tickets?: Ticket[]; total?: number };
+      const data = archiveQuery.data as { tickets?: Ticket[]; nextCursor?: string };
       if (data.tickets) {
         setArchivedTickets(data.tickets);
       }

@@ -6,7 +6,7 @@ import DarkModeToggle from '../components/DarkModeToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import SystemBackground from '../components/SystemBackground';
 import { trpc } from '../utils/trpc';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import LegalModal from '../components/LegalModal';
 import { LANG_LABEL } from '../constants';
 import { getRoleDisplayName } from '../utils/roles';
@@ -52,9 +52,15 @@ export default function LoginView() {
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [viewMode, setViewMode] = useState<'standard' | 'demo' | 'forgot' | 'reset'>('standard');
+  const [viewMode, setViewMode] = useState<'standard' | 'demo' | 'forgot' | 'reset' | 'mfa'>('standard');
   const [resetToken, setResetToken] = useState('');
   const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | null>(null);
+  const [totpCode, setTotpCode] = useState('');
+  // Pending MFA login credentials (stored while waiting for TOTP code)
+  const [mfaPending, setMfaPending] = useState<{
+    endpoint: string;
+    body: Record<string, unknown>;
+  } | null>(null);
 
   const { data: usersData } = trpc.user.demoList.useQuery(undefined, {
     enabled: viewMode === 'demo'
@@ -129,17 +135,24 @@ export default function LoginView() {
       });
       const data = await res.json();
       if (res.ok) {
-        setPassword('');
-        const memberships = data.memberships || [];
-        if (memberships.length > 1 && !data.user.isPlatformOperator) {
-          // Defer token persistence until partner is selected
-          setSelectingPartner({ token: data.token, user: data.user, memberships });
+        if (data.mfaRequired) {
+          // MFA challenge — store credentials and switch to MFA view
+          setMfaPending({ endpoint: '/api/v1/auth/login-local', body: { email, password, rememberMe } });
+          setViewMode('mfa');
+          setTotpCode('');
+          setError('');
         } else {
-          setToken(data.token);
-          setUser(data.user);
-          setMemberships(memberships);
-          if (memberships.length > 0 && !data.user.isPlatformOperator) {
-            setActiveMembershipId(memberships[0].id);
+          setPassword('');
+          const memberships = data.memberships || [];
+          if (memberships.length > 1 && !data.user.isPlatformOperator) {
+            setSelectingPartner({ token: data.token, user: data.user, memberships });
+          } else {
+            setToken(data.token);
+            setUser(data.user);
+            setMemberships(memberships);
+            if (memberships.length > 0 && !data.user.isPlatformOperator) {
+              setActiveMembershipId(memberships[0].id);
+            }
           }
         }
       } else {
@@ -204,6 +217,45 @@ export default function LoginView() {
     }
   };
 
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mfaPending || busyRef.current || isLoginLoading) return;
+    busyRef.current = true;
+    setError('');
+    setIsLoginLoading(true);
+    try {
+      const res = await fetch(mfaPending.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...mfaPending.body, totpCode })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPassword('');
+        setTotpCode('');
+        setMfaPending(null);
+        const memberships = data.memberships || [];
+        if (memberships.length > 1 && !data.user.isPlatformOperator) {
+          setSelectingPartner({ token: data.token, user: data.user, memberships });
+        } else {
+          setToken(data.token);
+          setUser(data.user);
+          setMemberships(memberships);
+          if (memberships.length > 0 && !data.user.isPlatformOperator) {
+            setActiveMembershipId(memberships[0].id);
+          }
+        }
+      } else {
+        setError(data.error || t('login_failed'));
+      }
+    } catch (err) {
+      setError(t('network_error'));
+    } finally {
+      busyRef.current = false;
+      setIsLoginLoading(false);
+    }
+  };
+
   const handleDemoLogin = async (u: DemoUser) => {
     if (busyRef.current || isDemoLoading) return;
     busyRef.current = true;
@@ -217,15 +269,22 @@ export default function LoginView() {
       });
       if (res.ok) {
         const data = await res.json();
-        const memberships = data.memberships || [];
-        if (memberships.length > 1 && !data.user.isPlatformOperator) {
-          setSelectingPartner({ token: data.token, user: data.user, memberships });
+        if (data.mfaRequired) {
+          setMfaPending({ endpoint: '/api/v1/auth/login', body: { id: u.id, password: DEMO_PASSWORD } });
+          setViewMode('mfa');
+          setTotpCode('');
+          setError('');
         } else {
-          setToken(data.token);
-          setUser(data.user);
-          setMemberships(memberships);
-          if (memberships.length > 0 && !data.user.isPlatformOperator) {
-            setActiveMembershipId(memberships[0].id);
+          const memberships = data.memberships || [];
+          if (memberships.length > 1 && !data.user.isPlatformOperator) {
+            setSelectingPartner({ token: data.token, user: data.user, memberships });
+          } else {
+            setToken(data.token);
+            setUser(data.user);
+            setMemberships(memberships);
+            if (memberships.length > 0 && !data.user.isPlatformOperator) {
+              setActiveMembershipId(memberships[0].id);
+            }
           }
         }
       } else {
@@ -289,9 +348,10 @@ export default function LoginView() {
           <div>
             <h1 className="text-5xl font-black uppercase tracking-tighter italic relative z-10">Tessera</h1>
             <p className="text-sm mt-2 opacity-80 font-bold uppercase tracking-widest relative z-10">
-              {viewMode === 'standard' ? t('secure_auth') : 
+              {viewMode === 'standard' ? t('secure_auth') :
                viewMode === 'forgot' ? t('reset_password_title') :
                viewMode === 'reset' ? t('create_new_password') :
+               viewMode === 'mfa' ? 'Verify Identity' :
                t('select_user')}
             </p>
           </div>
@@ -397,6 +457,47 @@ export default function LoginView() {
               </div>
               <button type="submit" disabled={isResetLoading} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
                 {isResetLoading ? t('loading') : t('update_password_btn')}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {viewMode === 'mfa' && (
+          <div className="p-8 space-y-6 bg-white dark:bg-black">
+            <div className="flex items-center gap-3 mb-2">
+              <ShieldCheck className="h-5 w-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Two-Factor Authentication</span>
+            </div>
+            <form onSubmit={handleMfaVerify} className="space-y-6">
+              <p className="text-[10px] font-bold uppercase opacity-60 tracking-tight leading-relaxed">
+                Enter the 6-digit code from your authenticator app, or use a recovery code.
+              </p>
+              {error && (
+                <div className="bg-black text-white dark:bg-white dark:text-black p-3 border-2 border-black dark:border-white flex items-center gap-3">
+                  <span className="text-lg font-black">!</span>
+                  <p className="font-bold text-[10px] uppercase tracking-widest">{error}</p>
+                </div>
+              )}
+              <div>
+                <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5">Verification Code</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={totpCode}
+                  onChange={e => { setTotpCode(e.target.value); setError(''); }}
+                  className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-mono text-center text-lg tracking-[0.3em]"
+                  placeholder="000000"
+                  required
+                  disabled={isLoginLoading}
+                  autoFocus
+                />
+              </div>
+              <button type="submit" disabled={isLoginLoading || totpCode.trim().length < 6} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
+                {isLoginLoading ? <span>{t('authenticating')}</span> : <><span>Verify</span><span>➔</span></>}
+              </button>
+              <button type="button" onClick={() => { setViewMode('standard'); setMfaPending(null); setTotpCode(''); setError(''); }} className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100">
+                {t('cancel')}
               </button>
             </form>
           </div>

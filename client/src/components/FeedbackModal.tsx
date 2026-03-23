@@ -25,9 +25,6 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
     if (!text.trim() || !user) return;
     
     createMutation.mutate({
-      userId: user.id,
-      userName: user.name,
-      role: user.role as 'agent' | 'support',
       text: text.trim(),
     });
   }

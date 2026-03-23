@@ -13,17 +13,23 @@ function userRevokedAfterKey(userId: string): string {
   return `${USER_REVOKED_AFTER_PREFIX}${userId}`;
 }
 
-export async function revokeToken(jti: string, exp?: number): Promise<void> {
+export async function revokeToken(jti: string, exp?: number): Promise<boolean> {
   const { pubClient } = getRedisClients();
-  if (!pubClient || !jti) return;
+  if (!jti) return false;
+  if (!pubClient) {
+    logger.warn({ jti }, 'Redis unavailable — token revocation could not be persisted');
+    return false;
+  }
 
   const now = Math.floor(Date.now() / 1000);
   const ttl = Math.max((exp ?? now + 60) - now, 60);
 
   try {
     await pubClient.set(revokedTokenKey(jti), '1', { EX: ttl });
+    return true;
   } catch (err) {
     logger.error({ err, jti }, 'Failed to revoke token');
+    return false;
   }
 }
 
@@ -49,7 +55,12 @@ export interface RevocationPayload {
 
 export async function isRevoked(payload: RevocationPayload): Promise<boolean> {
   const { pubClient } = getRedisClients();
-  if (!pubClient) return false;
+  if (!pubClient) {
+    // Fail closed: if Redis is unavailable, we cannot verify revocation status.
+    // Treat as revoked to prevent use of potentially compromised tokens.
+    logger.warn({ userId: payload.userId }, 'Redis unavailable — failing closed on revocation check');
+    return true;
+  }
 
   try {
     if (payload.jti) {
@@ -67,7 +78,8 @@ export async function isRevoked(payload: RevocationPayload): Promise<boolean> {
     const revokedAfter = parseInt(revokedAfterRaw, 10);
     return Number.isFinite(revokedAfter) && !!payload.iat && payload.iat <= revokedAfter;
   } catch (err) {
-    logger.error({ err, userId: payload.userId }, 'Failed to check token revocation');
-    return false;
+    logger.error({ err, userId: payload.userId }, 'Failed to check token revocation — failing closed');
+    // Fail closed on errors too
+    return true;
   }
 }

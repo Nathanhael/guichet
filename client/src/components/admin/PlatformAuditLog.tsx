@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 
@@ -73,51 +73,58 @@ function formatAuditDetails(log: { action: string; metadata?: unknown; targetId:
 
 export default function PlatformAuditLog() {
   const t = useT();
-  const [page, setPage] = useState(0);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursorStack, setCursorStack] = useState<string[]>([]); // stack of previous cursors for back-nav
   const [filterAction, setFilterAction] = useState('');
   const [filterPartnerId, setFilterPartnerId] = useState('');
   const [filterActorId, setFilterActorId] = useState('');
   const [filterTargetId, setFilterTargetId] = useState('');
   const [debouncedTargetId, setDebouncedTargetId] = useState('');
   const [securityOnly, setSecurityOnly] = useState(false);
-  
+
   // Date filtering state
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  
+
   const LIMIT = 50;
+
+  const resetCursor = useCallback(() => {
+    setCursor(undefined);
+    setCursorStack([]);
+  }, []);
 
   // Debounce the target ID search
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedTargetId(filterTargetId);
-      setPage(0); // Reset page on new search
+      resetCursor();
     }, 500);
     return () => clearTimeout(handler);
-  }, [filterTargetId]);
+  }, [filterTargetId, resetCursor]);
 
-  // Reset page when dates change
+  // Reset cursor when dates change
   useEffect(() => {
-    setPage(0);
-  }, [dateFrom, dateTo]);
+    resetCursor();
+  }, [dateFrom, dateTo, resetCursor]);
 
   const { data: partners } = trpc.platform.listPartners.useQuery();
 
   const queryParams = {
     limit: LIMIT,
-    offset: page * LIMIT,
+    cursor,
     action: filterAction || undefined,
     partnerId: filterPartnerId || undefined,
     actorId: filterActorId || undefined,
     targetId: debouncedTargetId || undefined,
-    // Add date params to the query
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   };
 
   const { data, isLoading } = trpc.platform.getAuditLog.useQuery(queryParams);
   const utils = trpc.useUtils();
-  const visibleData = securityOnly ? (data || []).filter((log) => SECURITY_ACTIONS.has(log.action)) : data;
+  const items = data?.items || [];
+  const visibleData = securityOnly ? items.filter((log) => SECURITY_ACTIONS.has(log.action)) : items;
+  const page = cursorStack.length;
 
   async function handleExport() {
     try {
@@ -164,8 +171,8 @@ export default function PlatformAuditLog() {
   }
 
   // Derive unique actors from loaded log entries
-  const actors = data
-    ? Array.from(new Map(data.filter(l => l.actorId && l.actorName).map(l => [l.actorId, l.actorName])).entries())
+  const actors = items.length
+    ? Array.from(new Map(items.filter(l => l.actorId && l.actorName).map(l => [l.actorId, l.actorName])).entries())
     : [];
 
   return (
@@ -186,13 +193,13 @@ export default function PlatformAuditLog() {
       <div className="flex flex-col gap-3 bg-black/5 dark:bg-white/5 p-4 border-2 border-black dark:border-white">
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => { setSecurityOnly(true); setPage(0); }}
+            onClick={() => { setSecurityOnly(true); resetCursor(); }}
             className={`px-4 py-2 border-2 font-black uppercase text-[10px] tracking-widest ${securityOnly ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white' : 'border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'}`}
           >
             {t('security_events')}
           </button>
           <button
-            onClick={() => { setSecurityOnly(false); setPage(0); }}
+            onClick={() => { setSecurityOnly(false); resetCursor(); }}
             className={`px-4 py-2 border-2 font-black uppercase text-[10px] tracking-widest ${!securityOnly ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white' : 'border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'}`}
           >
             {t('all_events')}
@@ -203,7 +210,7 @@ export default function PlatformAuditLog() {
             <label className="text-[8px] font-black uppercase opacity-60 ml-1">{t('action_type')}</label>
             <select
               value={filterAction}
-              onChange={e => { setFilterAction(e.target.value); setPage(0); }}
+              onChange={e => { setFilterAction(e.target.value); resetCursor(); }}
               className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-black uppercase tracking-widest outline-none"
             >
               <option value="">{t('all_actions')}</option>
@@ -217,7 +224,7 @@ export default function PlatformAuditLog() {
             <label className="text-[8px] font-black uppercase opacity-60 ml-1">{t('partner_context')}</label>
             <select
               value={filterPartnerId}
-              onChange={e => { setFilterPartnerId(e.target.value); setPage(0); }}
+              onChange={e => { setFilterPartnerId(e.target.value); resetCursor(); }}
               className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-black uppercase tracking-widest outline-none"
             >
               <option value="">{t('all_partners')}</option>
@@ -231,7 +238,7 @@ export default function PlatformAuditLog() {
             <label className="text-[8px] font-black uppercase opacity-60 ml-1">{t('actor_who')}</label>
             <select
               value={filterActorId}
-              onChange={e => { setFilterActorId(e.target.value); setPage(0); }}
+              onChange={e => { setFilterActorId(e.target.value); resetCursor(); }}
               className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-black uppercase tracking-widest outline-none"
             >
               <option value="">{t('all_actors')}</option>
@@ -261,12 +268,12 @@ export default function PlatformAuditLog() {
               <input 
                 type="date" 
                 value={dateFrom}
-                onChange={e => { setDateFrom(e.target.value); setPage(0); }}
+                onChange={e => { setDateFrom(e.target.value); resetCursor(); }}
                 className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-bold outline-none"
               />
               {dateFrom && (
                 <button 
-                  onClick={() => { setDateFrom(''); setPage(0); }}
+                  onClick={() => { setDateFrom(''); resetCursor(); }}
                   className="px-3 border-2 border-black dark:border-white bg-white dark:bg-black hover:invert text-[10px] font-black uppercase tracking-widest"
                 >
                   ✕
@@ -281,12 +288,12 @@ export default function PlatformAuditLog() {
                 type="date" 
                 value={dateTo}
                 min={dateFrom}
-                onChange={e => { setDateTo(e.target.value); setPage(0); }}
+                onChange={e => { setDateTo(e.target.value); resetCursor(); }}
                 className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-bold outline-none"
               />
               {dateTo && (
                 <button 
-                  onClick={() => { setDateTo(''); setPage(0); }}
+                  onClick={() => { setDateTo(''); resetCursor(); }}
                   className="px-3 border-2 border-black dark:border-white bg-white dark:bg-black hover:invert text-[10px] font-black uppercase tracking-widest"
                 >
                   ✕
@@ -345,16 +352,26 @@ export default function PlatformAuditLog() {
           </div>
 
           <div className="flex gap-4">
-            <button 
-              disabled={page === 0}
-              onClick={() => setPage(p => p - 1)}
+            <button
+              disabled={cursorStack.length === 0}
+              onClick={() => {
+                const stack = [...cursorStack];
+                const prev = stack.pop();
+                setCursorStack(stack);
+                setCursor(prev || undefined);
+              }}
               className="px-8 py-3 border-2 border-black dark:border-white disabled:opacity-30 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors font-black uppercase text-[10px] tracking-widest"
             >
               ← {t('newer')}
             </button>
-            <button 
-              disabled={(visibleData?.length || 0) < LIMIT}
-              onClick={() => setPage(p => p + 1)}
+            <button
+              disabled={!data?.nextCursor}
+              onClick={() => {
+                if (data?.nextCursor) {
+                  setCursorStack(prev => [...prev, cursor ?? '']);
+                  setCursor(data.nextCursor);
+                }
+              }}
               className="px-8 py-3 border-2 border-black dark:border-white disabled:opacity-30 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors font-black uppercase text-[10px] tracking-widest"
             >
               {t('older')} →

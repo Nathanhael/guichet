@@ -272,14 +272,27 @@ export function isWithinBusinessHours(partner?: {
 
 export async function broadcastAgentStatus(agentId: string, online: boolean) {
   try {
+    if (!io) return;
     const openTickets = await query('SELECT id FROM tickets WHERE agent_id = $1 AND status != $2', [agentId, 'closed']) as { id: string }[];
-    for (const ticket of openTickets) io!.to(`ticket:${ticket.id}`).emit('agent:status', { ticketId: ticket.id, agentId, online });
+    for (const ticket of openTickets) io.to(`ticket:${ticket.id}`).emit('agent:status', { ticketId: ticket.id, agentId, online });
   } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[agent:status] error'); }
 }
 
-export async function broadcastQueuePositions() {
+export async function broadcastQueuePositions(partnerId?: string) {
   try {
-    const openTickets = await query('SELECT id FROM tickets WHERE status = $1 AND support_id IS NULL ORDER BY created_at ASC', ['open']) as { id: string }[];
+    if (!io) return;
+    let openTickets: { id: string }[];
+    if (partnerId) {
+      // Scoped: only broadcast within a single partner
+      openTickets = await query('SELECT id FROM tickets WHERE status = $1 AND support_id IS NULL AND partner_id = $2 ORDER BY created_at ASC', ['open', partnerId]) as { id: string }[];
+    } else {
+      // Fallback: broadcast per-partner to avoid cross-tenant leakage
+      const partnerIds = await query('SELECT DISTINCT partner_id FROM tickets WHERE status = $1 AND support_id IS NULL', ['open']) as { partnerId: string }[];
+      for (const p of partnerIds) {
+        await broadcastQueuePositions(p.partnerId);
+      }
+      return;
+    }
     openTickets.forEach((t, index) => {
       const position = index + 1;
       io!.to(`ticket:${t.id}`).emit('queue:update', { position, etaMins: position * 2 });

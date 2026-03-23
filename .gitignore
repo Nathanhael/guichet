@@ -27,6 +27,7 @@ server/**/*.js
 *.sqlite-shm
 *.sqlite-wal
 server/database.sqlite*
+server/backups/
 
 # Logs
 logs/

@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useState, lazy } from 'react';
 import useStore from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import { useTheme } from './hooks/useTheme';
@@ -9,6 +9,9 @@ import PlatformView from './views/PlatformView';
 import AgentView from './views/AgentView';
 import DarkModeToggle from './components/DarkModeToggle';
 import { isPlatformAdmin, isTenantAdmin } from './utils/roles';
+import { Shield } from 'lucide-react';
+
+const UserSecurityModal = lazy(() => import('./components/UserSecurityModal'));
 
 const LoadingFallback = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-white dark:bg-black">
@@ -44,6 +47,7 @@ function NoPartnerState() {
 
 export default function App() {
   const { user, memberships, activeMembershipId, setActiveMembershipId } = useStore();
+  const [securityOpen, setSecurityOpen] = useState(false);
 
   useTheme();
   useSocket();
@@ -107,6 +111,23 @@ export default function App() {
     <div>
       <div className={dyslexicMode ? 'dyslexic-mode' : ''}>
         {renderView()}
+
+        {/* Global security settings trigger (visible when logged in) */}
+        {user && (
+          <button
+            onClick={() => setSecurityOpen(true)}
+            title="Account Security"
+            className="fixed bottom-6 right-6 z-50 w-10 h-10 border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+          >
+            <Shield className="h-4 w-4" />
+          </button>
+        )}
+
+        {securityOpen && (
+          <Suspense fallback={null}>
+            <UserSecurityModal onClose={() => setSecurityOpen(false)} />
+          </Suspense>
+        )}
       </div>
     </div>
   );

@@ -1,11 +1,20 @@
 import { query, run, transaction } from '../db.js';
+import { sql } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating } from '../types/index.js';
+import { archiveAuditLog, archiveTickets } from './archive.js';
 
 export async function runDailyPurge() {
   try {
+    // Step 0: Archive before purging
+    const auditArchived = await archiveAuditLog();
+    const ticketsArchived = await archiveTickets();
+    if (auditArchived > 0 || ticketsArchived > 0) {
+      logger.info({ auditArchived, ticketsArchived }, '[purge] Pre-purge archival complete');
+    }
+
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - config.GDPR_RETENTION_DAYS);
     const cutoffDate = cutoff.toISOString().slice(0, 10);
@@ -22,9 +31,10 @@ export async function runDailyPurge() {
     if (Array.isArray(datesToAggregate)) {
       for (const { date } of datesToAggregate) {
         // Find all partners that had activity on this date
-        const partnerIds = (await query('SELECT DISTINCT partner_id FROM tickets WHERE created_at::date = $1', [date])) as { partner_id: string }[];
-        
-        for (const { partner_id: partnerId } of partnerIds) {
+        // Note: query() auto-converts snake_case to camelCase, so partner_id → partnerId
+        const partnerIds = (await query('SELECT DISTINCT partner_id FROM tickets WHERE created_at::date = $1', [date])) as { partnerId: string }[];
+
+        for (const { partnerId } of partnerIds) {
           const dayTickets = (await query('SELECT * FROM tickets WHERE created_at::date = $1 AND partner_id = $2', [date, partnerId])) as unknown as Ticket[];
           const ticketIds = dayTickets.map(t => t.id);
           
@@ -75,18 +85,18 @@ export async function runDailyPurge() {
       }
     }
 
-    await transaction(async () => {
-      await run('DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < $1)', [cutoffDate]);
-      await run('DELETE FROM ratings WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < $1)', [cutoffDate]);
-      await run('DELETE FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < $1)', [cutoffDate]);
-      await run('DELETE FROM tickets WHERE created_at < $1', [cutoffDate]);
+    await transaction(async (tx) => {
+      await tx.execute(sql`DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate})`);
+      await tx.execute(sql`DELETE FROM ratings WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate})`);
+      await tx.execute(sql`DELETE FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate})`);
+      await tx.execute(sql`DELETE FROM tickets WHERE created_at < ${cutoffDate}`);
     });
 
     // Log the successful purge in audit_log
     const { auditLog: auditLogTable } = await import('../db/schema.js');
     const { db: drizzleDb } = await import('../db.js');
     await drizzleDb.insert(auditLogTable).values({
-      action: 'gdpr.purge',
+      action: 'system.gdpr_purge',
       actorId: null, // System action, no user associated
       targetType: 'system',
       metadata: { cutoffDate, success: true }

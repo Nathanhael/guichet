@@ -31,7 +31,8 @@ export interface TRPCUser {
 }
 
 export async function createContext({ req, res }: CreateExpressContextOptions) {
-  const token = req.headers.authorization?.split(' ')[1];
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1] : undefined;
   let user: TRPCUser | null = null;
 
   if (token) {

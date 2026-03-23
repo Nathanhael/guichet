@@ -29,7 +29,8 @@ function ensureConfigured(): boolean {
 }
 
 // Temporary state tokens to prevent CSRF (stored in-memory, short-lived)
-const pendingStates = new Map<string, { createdAt: number }>();
+// TODO: Move to Redis for multi-instance deployments
+const pendingStates = new Map<string, { createdAt: number; nonce: string }>();
 
 // Clean up stale states older than 10 minutes
 setInterval(() => {
@@ -46,7 +47,8 @@ router.get('/azure', (req: Request, res: Response) => {
   }
 
   const state = crypto.randomBytes(32).toString('hex');
-  pendingStates.set(state, { createdAt: Date.now() });
+  const nonce = crypto.randomBytes(32).toString('hex');
+  pendingStates.set(state, { createdAt: Date.now(), nonce });
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID()!,
@@ -55,6 +57,7 @@ router.get('/azure', (req: Request, res: Response) => {
     response_mode: 'query',
     scope: 'openid profile email',
     state,
+    nonce,
   });
 
   const url = `https://login.microsoftonline.com/${TENANT()}/oauth2/v2.0/authorize?${params}`;
@@ -78,10 +81,12 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       return res.redirect(`${clientOrigin}/?sso_error=${encodeURIComponent(error_description || azError)}`);
     }
 
-    if (!code || !state || !pendingStates.has(state)) {
+    const pendingState = pendingStates.get(state!);
+    if (!code || !state || !pendingState) {
       logger.warn('[SSO] Invalid or missing state/code');
       return res.redirect(`${clientOrigin}/?sso_error=invalid_state`);
     }
+    const expectedNonce = pendingState.nonce;
     pendingStates.delete(state);
 
     // Exchange authorization code for tokens
@@ -109,9 +114,18 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 
     const tokenData = await tokenRes.json() as { id_token: string; access_token: string };
 
-    // Decode ID token (signature already verified by Azure; we trust the direct response)
+    // Decode ID token — received directly from Microsoft's token endpoint over TLS,
+    // so the payload is trustworthy. For full OIDC compliance, consider verifying the
+    // signature against Microsoft's JWKS endpoint using a library like `jose`.
+    // TODO: Add proper JWT signature verification via JWKS for defense-in-depth.
     const idToken = tokenData.id_token;
     const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64url').toString());
+
+    // Verify nonce to prevent token replay attacks
+    if (payload.nonce !== expectedNonce) {
+      logger.warn({ expected: expectedNonce, received: payload.nonce }, '[SSO] Nonce mismatch — possible replay attack');
+      return res.redirect(`${clientOrigin}/?sso_error=nonce_mismatch`);
+    }
 
     const oid: string = payload.oid;          // Azure Object ID
     const email: string = (payload.email || payload.preferred_username || '').toLowerCase();

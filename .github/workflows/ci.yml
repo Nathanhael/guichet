@@ -41,9 +41,102 @@ jobs:
       - name: Run client tests
         run: cd client && npm test
 
+  test-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install server dependencies
+        run: cd server && npm ci
+      - name: Run server tests
+        run: cd server && npm test
+
+  migrate-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: tessera_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Install server dependencies
+        run: cd server && npm ci
+      - name: Run migrations against fresh DB
+        run: cd server && npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/tessera_ci
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: tessera_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+      - name: Install server dependencies
+        run: cd server && npm ci
+      - name: Install client dependencies
+        run: cd client && npm ci
+      - name: Run migrations
+        run: cd server && npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/tessera_e2e
+      - name: Build client
+        run: cd client && npm run build
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run Playwright tests
+        run: npx playwright test
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/tessera_e2e
+          E2E_BASE_URL: http://localhost:3001
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+
   build:
     runs-on: ubuntu-latest
-    needs: [lint-and-typecheck, test-client]
+    needs: [lint-and-typecheck, test-client, test-server, migrate-check, e2e]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

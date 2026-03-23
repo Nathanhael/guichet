@@ -10,8 +10,12 @@ const { Pool, types } = pg;
 types.setTypeParser(1114, (val: string) => val); // timestamp
 types.setTypeParser(1184, (val: string) => val); // timestamptz
 
+if (!process.env.DATABASE_URL) {
+  throw new Error('FATAL: DATABASE_URL environment variable is required');
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/tessera',
+  connectionString: process.env.DATABASE_URL,
 });
 
 pool.on('error', (err) => {

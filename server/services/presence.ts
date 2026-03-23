@@ -79,10 +79,10 @@ export async function identifyUser(userId: string, role: string, name: string, p
   const key = hashKey(partnerId, userId);
   const sKey = setKey(partnerId);
   try {
-    const exists = await pubClient.exists(key);
-    if (exists) {
-      await pubClient.hIncrBy(key, 'count', 1);
-    } else {
+    // Atomic: use HSETNX on userId field to detect first-time creation
+    const wasNew = await pubClient.hSetNX(key, 'userId', userId);
+    if (wasNew) {
+      // First connection: set all fields atomically
       await pubClient.hSet(key, {
         userId,
         name,
@@ -91,6 +91,10 @@ export async function identifyUser(userId: string, role: string, name: string, p
         status: 'available',
         count: '1',
       });
+      await pubClient.expire(key, TTL_SECONDS);
+    } else {
+      // Existing connection: just increment count and refresh TTL
+      await pubClient.hIncrBy(key, 'count', 1);
       await pubClient.expire(key, TTL_SECONDS);
     }
 

@@ -37,6 +37,13 @@ export const users = pgTable('users', {
   platformTotpEnabledAt: timestamp('platform_totp_enabled_at', { mode: 'string' }),
   resetPasswordToken: text('reset_password_token'),
   resetPasswordExpires: timestamp('reset_password_expires', { mode: 'string' }),
+  passwordChangedAt: timestamp('password_changed_at', { mode: 'string' }),
+  passwordHistory: jsonb('password_history').default([]),
+  failedLoginAttempts: integer('failed_login_attempts').default(0),
+  lockedUntil: timestamp('locked_until', { mode: 'string' }),
+  mfaSecret: text('mfa_secret'),
+  mfaEnabledAt: timestamp('mfa_enabled_at', { mode: 'string' }),
+  mfaRecoveryCodes: jsonb('mfa_recovery_codes').default([]),
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
@@ -215,4 +222,52 @@ export const auditLog = pgTable('audit_log', {
   partnerCreatedIdx: index('idx_audit_log_partner_created').on(table.partnerId, table.createdAt),
   actorCreatedIdx: index('idx_audit_log_actor_created').on(table.actorId, table.createdAt),
   actionIdx: index('idx_audit_log_action').on(table.action),
+}));
+
+// ─── Archive Tables ──────────────────────────────────────────────────────────
+
+/**
+ * WORM audit archive — tamper-evident chain of audit log snapshots.
+ * Each row includes a SHA-256 hash linking it to the previous entry,
+ * forming a hash chain that detects any retroactive modification.
+ */
+export const auditArchive = pgTable('audit_archive', {
+  id: text('id').primaryKey(),                       // same as original audit_log.id
+  action: text('action').notNull(),
+  actorId: text('actor_id'),
+  partnerId: text('partner_id'),
+  targetType: text('target_type'),
+  targetId: text('target_id'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  archivedAt: timestamp('archived_at', { mode: 'string' }).notNull().defaultNow(),
+  chainHash: text('chain_hash').notNull(),           // SHA-256(prev_hash + row_data)
+}, (table) => ({
+  createdAtIdx: index('idx_audit_archive_created').on(table.createdAt),
+  archivedAtIdx: index('idx_audit_archive_archived').on(table.archivedAt),
+  partnerIdx: index('idx_audit_archive_partner').on(table.partnerId),
+}));
+
+/**
+ * Archived tickets — closed tickets moved here before GDPR purge deletes them.
+ * Retains summary data for compliance without keeping PII-heavy messages.
+ */
+export const archivedTickets = pgTable('archived_tickets', {
+  id: text('id').primaryKey(),                       // same as original ticket id
+  partnerId: text('partner_id').notNull(),
+  dept: text('dept').notNull(),
+  agentId: text('agent_id'),
+  supportId: text('support_id'),
+  status: text('status').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
+  closedAt: timestamp('closed_at', { mode: 'string' }),
+  closedBy: text('closed_by'),
+  closingNotes: text('closing_notes'),
+  reopenCount: integer('reopen_count').default(0),
+  messageCount: integer('message_count').default(0),
+  archivedAt: timestamp('archived_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerIdx: index('idx_archived_tickets_partner').on(table.partnerId),
+  createdAtIdx: index('idx_archived_tickets_created').on(table.createdAt),
+  archivedAtIdx: index('idx_archived_tickets_archived').on(table.archivedAt),
 }));

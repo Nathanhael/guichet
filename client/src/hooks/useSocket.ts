@@ -16,6 +16,12 @@ export function getSocket(): Socket {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+      auth: {
+        // Pass JWT token for server-side socket authentication
+        get token() {
+          return useStore.getState().token;
+        },
+      },
     });
   }
   return socket;
@@ -254,6 +260,19 @@ export function useSocket(): Socket {
       }
     });
 
+    // Token expired — reconnect to trigger a fresh handshake with current token
+    s.on('auth:expired', () => {
+      const state = useStore.getState();
+      if (state.token) {
+        // Token still in store (e.g. refreshed) — reconnect with it
+        s.disconnect();
+        s.connect();
+      } else {
+        // No token — session is truly gone
+        state.logout();
+      }
+    });
+
     return () => {
       // Do NOT disconnect — socket is shared. Only remove listeners on strict-mode double-effect.
       s.off('connect');
@@ -279,6 +298,10 @@ export function useSocket(): Socket {
       s.off('support:left');
       s.off('message:status');
       s.off('queue:position');
+      s.off('partner:deactivated');
+      s.off('user:deactivated');
+      s.off('auth:expired');
+      s.off('queue:update');
       listenersAttached.current = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus]);

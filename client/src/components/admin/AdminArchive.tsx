@@ -9,8 +9,8 @@ const LIMIT = 25;
 export default function AdminArchive() {
   const { token } = useStore();
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [total, setTotal] = useState(0);
-  const [offset, setOffset] = useState(0);
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState('');
   const [dept, _setDept] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
@@ -25,7 +25,7 @@ export default function AdminArchive() {
   const ticketsQuery = trpc.ticket.list.useQuery({
     status: 'closed',
     limit: LIMIT,
-    offset,
+    cursor,
     dept: dept === 'all' ? undefined : dept,
     search: search.trim() || undefined,
     dateFrom: dateFrom || undefined,
@@ -36,11 +36,11 @@ export default function AdminArchive() {
     if (ticketsQuery.data) {
       const data = ticketsQuery.data as any;
       if (data.tickets) {
-        setTickets((prev) => offset === 0 ? data.tickets : [...prev, ...data.tickets]);
-        setTotal(data.total);
+        setTickets((prev) => !cursor ? data.tickets : [...prev, ...data.tickets]);
+        setHasMore(!!data.nextCursor);
       }
     }
-  }, [ticketsQuery.data, offset]);
+  }, [ticketsQuery.data, cursor]);
 
   const messagesQuery = trpc.message.list.useQuery(
     { ticketId: preview?.id || '' },
@@ -51,7 +51,7 @@ export default function AdminArchive() {
     if (messagesQuery.data) setPreviewMessages(messagesQuery.data as any);
   }, [messagesQuery.data]);
 
-  useEffect(() => { setOffset(0); }, [search, dept, dateFrom, dateTo]);
+  useEffect(() => { setCursor(undefined); setTickets([]); setHasMore(false); }, [search, dept, dateFrom, dateTo]);
 
   function duration(tk: Ticket) {
     if (!tk.closedAt || !tk.createdAt) return '—';
@@ -197,14 +197,17 @@ export default function AdminArchive() {
           </div>
 
           <div className="px-4 py-3 border-t border-black/20 dark:border-white/20 flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase opacity-60">{tickets.length} of {total} chats</span>
-            {tickets.length < total && (
+            <span className="text-[10px] font-black uppercase opacity-60">{tickets.length} chats loaded</span>
+            {hasMore && (
               <button
-                onClick={() => setOffset(tickets.length)}
+                onClick={() => {
+                  const data = ticketsQuery.data as any;
+                  if (data?.nextCursor) setCursor(data.nextCursor);
+                }}
                 disabled={loading}
                 className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 disabled:opacity-30"
               >
-                {loading ? 'Loading…' : `Load more (${total - tickets.length} remaining)`}
+                {loading ? 'Loading…' : 'Load more'}
               </button>
             )}
           </div>

@@ -33,6 +33,6 @@ export function mapMessageRow(row: any): Message {
     fallback: 0,
     timestamp: createdAt,
     createdAt: createdAt, // Alias for backward compatibility
-    reactions: typeof reactions === 'string' ? reactions : JSON.stringify(reactions),
+    reactions: JSON.stringify(reactions),
   };
 }

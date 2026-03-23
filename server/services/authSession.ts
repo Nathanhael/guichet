@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { eq, and, ilike, isNull } from 'drizzle-orm';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 import { db } from '../db.js';
 import { memberships, partners, users } from '../db/schema.js';
 import config from '../config.js';
@@ -99,7 +99,11 @@ export function buildAuthResponse(input: {
 }
 
 export async function findUserByEmail(email: string) {
-  const rows = await db.select().from(users).where(ilike(users.email, email)).limit(1);
+  // Use lower() + eq() for case-insensitive matching instead of ilike()
+  // to prevent LIKE wildcard injection (e.g. '%@evil.com')
+  const rows = await db.select().from(users).where(
+    eq(sql`lower(${users.email})`, email.toLowerCase())
+  ).limit(1);
   return rows[0];
 }
 
