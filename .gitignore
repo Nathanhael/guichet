@@ -11,6 +11,9 @@ build/
 .next/
 out/
 
+# Compiled TS output in source tree (should live in dist/ only)
+server/**/*.js
+
 # Environment
 .env
 .env.local
