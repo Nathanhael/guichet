@@ -358,12 +358,16 @@ export function registerSocketHandlers(io: Server) {
             await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [message.id, message.ticketId, message.senderId, message.senderName, message.senderRole, message.senderLang, message.originalText, mediaUrl || null, 0, 0, message.timestamp, '{}']);
           }
         }
-        // Calculate SLA due dates based on partner config
+        // Calculate SLA due dates based on partner config (respects business hours if enabled)
         const slaConfig = parseSlaConfig(partnerRow?.sla_config);
         const sla = getEffectiveSla(slaConfig, dept);
         const createdDate = new Date(ticket.createdAt);
-        const slaResponseDueAt = calculateSlaDueDate(createdDate, sla.responseMs).toISOString();
-        const slaResolutionDueAt = calculateSlaDueDate(createdDate, sla.resolutionMs).toISOString();
+        const slaOpts = {
+          businessHoursOnly: slaConfig?.businessHoursOnly,
+          partnerHours: partnerHours,
+        };
+        const slaResponseDueAt = calculateSlaDueDate(createdDate, sla.responseMs, slaOpts).toISOString();
+        const slaResolutionDueAt = calculateSlaDueDate(createdDate, sla.resolutionMs, slaOpts).toISOString();
         await run('UPDATE tickets SET sla_response_due_at = $1, sla_resolution_due_at = $2 WHERE id = $3', [slaResponseDueAt, slaResolutionDueAt, ticket.id]);
         const ticketWithSla = { ...ticket, slaResponseDueAt, slaResolutionDueAt, slaBreached: false };
 

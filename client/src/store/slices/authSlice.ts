@@ -142,6 +142,11 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
         }
       }
 
+      // Clear service worker cache to prevent stale authenticated data on shared devices
+      if ('caches' in window) {
+        caches.keys().then((keys) => keys.forEach((key) => caches.delete(key))).catch(() => {});
+      }
+
       clearAuthState(set);
     },
   };
