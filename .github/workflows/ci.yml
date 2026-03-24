@@ -120,6 +120,21 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/tessera_e2e
       - name: Build client
         run: cd client && npm run build
+      - name: Start server
+        run: cd server && npx tsx index.ts &
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/tessera_e2e
+          JWT_SECRET: ci-test-secret-that-is-at-least-32-chars
+          PLATFORM_ADMIN_EMAIL: alice@acme.com
+          PLATFORM_ADMIN_PASSWORD: password123
+          NODE_ENV: test
+      - name: Wait for server
+        run: |
+          for i in $(seq 1 30); do
+            curl -s http://localhost:3001/api/v1/health > /dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          echo "Server failed to start within 30s" && exit 1
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run Playwright tests
