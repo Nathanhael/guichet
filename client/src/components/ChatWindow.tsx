@@ -3,6 +3,7 @@ import useStore from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
+import CannedResponsePicker from './CannedResponsePicker';
 import { Ticket, Message } from '../types';
 import { trpc } from '../utils/trpc';
 import { LANG_FLAG } from '../constants';
@@ -16,7 +17,7 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode } = useStore();
+  const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, onlineSupportUsers } = useStore();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
@@ -25,6 +26,8 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const [_mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [_unreadCount, setUnreadCount] = useState(0);
+  const [showCannedPicker, setShowCannedPicker] = useState(false);
+  const [showTransferMenu, setShowTransferMenu] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -198,12 +201,12 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       const data = await res.json();
       if (!res.ok) {
         console.error('Upload failed:', data.error || 'Unknown error');
-        setMediaPreview(null);
+        clearMedia();
         return;
       }
       setMediaUrl(data.url);
     } catch {
-      setMediaPreview(null);
+      clearMedia();
     } finally {
       setUploading(false);
     }
@@ -294,6 +297,15 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     if (onClose) onClose();
   }
 
+  function transferTicket(targetSupportId?: string) {
+    getSocket().emit('ticket:transfer', { ticketId: ticket!.id, targetSupportId: targetSupportId || undefined });
+    setShowTransferMenu(false);
+    if (onClose) onClose();
+  }
+
+  // Other support agents available for transfer (exclude self)
+  const transferTargets = (onlineSupportUsers || []).filter(s => s.userId !== user?.id);
+
   const canClose = isSupportLike(user?.role);
   const isClosed = ticket.status === 'closed';
 
@@ -376,6 +388,48 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
           {canClose && !isClosed && (
             <div className="flex items-center gap-2">
+              {/* Transfer button */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowTransferMenu(!showTransferMenu)}
+                  title={t('transfer') || 'Transfer'}
+                  className={`text-xs font-bold transition-all duration-300 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-300 dark:border-slate-700 rounded-xl active:scale-95 hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
+                >
+                  {t('transfer') || 'Transfer'}
+                </button>
+                {showTransferMenu && (
+                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl min-w-[200px] z-50 overflow-hidden">
+                    <button
+                      onClick={() => transferTicket()}
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800"
+                    >
+                      {t('return_to_queue') || 'Return to queue'}
+                    </button>
+                    {transferTargets.length > 0 && (
+                      <div className="px-3 py-1.5">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                          {t('transfer_to') || 'Transfer to'}
+                        </span>
+                      </div>
+                    )}
+                    {transferTargets.map((s) => (
+                      <button
+                        key={s.userId}
+                        onClick={() => transferTicket(s.userId)}
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-950/30 flex items-center gap-2"
+                      >
+                        <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+                        <span className="font-medium">{s.name}</span>
+                      </button>
+                    ))}
+                    {transferTargets.length === 0 && (
+                      <div className="px-4 py-2 text-[10px] text-slate-400 italic">
+                        {t('no_other_support_online') || 'No other support online'}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={leaveTicket}
                 title={t('leave')}
@@ -465,6 +519,28 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
         </div>
       </div>
 
+      {/* Typing indicator */}
+      {(() => {
+        const ticketTyping = typingUsers[ticket.id] || {};
+        const typers = Object.keys(ticketTyping).filter(name => ticketTyping[name] && name !== user?.name);
+        if (typers.length === 0) return null;
+        return (
+          <div className="px-6 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-black border-t border-slate-100 dark:border-slate-900 animate-in fade-in slide-in-from-bottom-1">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="flex gap-0.5">
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </span>
+              {typers.length === 1
+                ? `${typers[0]} ${t('is_typing') || 'is typing...'}`
+                : `${typers.join(', ')} ${t('are_typing') || 'are typing...'}`
+              }
+            </span>
+          </div>
+        );
+      })()}
+
       {/* Input */}
       {!isClosed && (
         <form onSubmit={sendMessage} className={`border-t p-4 pb-6 transition-all duration-500 ${whisperMode
@@ -517,17 +593,39 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               </label>
             </div>
 
-            <textarea
-              value={text}
-              onChange={(e) => { setText(e.target.value); emitTyping(); }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-              }}
-              onPaste={handlePaste}
-              placeholder={t('type_message')}
-              rows={1}
-              className="flex-1 resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 max-h-32 scrollbar-none"
-            />
+            <div className="relative flex-1">
+              {/* Canned response picker */}
+              {showCannedPicker && isSupport && (
+                <CannedResponsePicker
+                  inputText={text}
+                  dept={ticket.dept}
+                  onSelect={(body) => { setText(body); setShowCannedPicker(false); }}
+                  onClose={() => setShowCannedPicker(false)}
+                />
+              )}
+              <textarea
+                value={text}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setText(val);
+                  // Show canned picker when typing "/" at start
+                  if (isSupport && val.startsWith('/')) {
+                    setShowCannedPicker(true);
+                  } else {
+                    setShowCannedPicker(false);
+                  }
+                  emitTyping();
+                }}
+                onKeyDown={(e) => {
+                  if (showCannedPicker) return; // Let picker handle keys
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+                }}
+                onPaste={handlePaste}
+                placeholder={isSupport ? (t('type_message_slash') || 'Type a message or / for quick replies') : t('type_message')}
+                rows={1}
+                className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 max-h-32 scrollbar-none"
+              />
+            </div>
 
             <button
               type="submit"

@@ -118,6 +118,8 @@ export const messages = pgTable('messages', {
   readAt: timestamp('read_at', { mode: 'string' }),
   reactions: jsonb('reactions').default({}),
   sentiment: real('sentiment'),
+  editedAt: timestamp('edited_at', { mode: 'string' }),
+  deletedAt: timestamp('deleted_at', { mode: 'string' }),
 }, (table) => ({
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
   senderIdIdx: index('idx_messages_sender_id').on(table.senderId),
@@ -223,6 +225,23 @@ export const auditLog = pgTable('audit_log', {
   partnerCreatedIdx: index('idx_audit_log_partner_created').on(table.partnerId, table.createdAt),
   actorCreatedIdx: index('idx_audit_log_actor_created').on(table.actorId, table.createdAt),
   actionIdx: index('idx_audit_log_action').on(table.action),
+}));
+
+// ─── Canned Responses ────────────────────────────────────────────────────────
+
+export const cannedResponses = pgTable('canned_responses', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  dept: text('dept'),                                  // null = all departments
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  shortcut: text('shortcut'),                          // e.g. "/greet", "/close"
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerIdx: index('idx_canned_partner').on(table.partnerId),
+  shortcutIdx: index('idx_canned_shortcut').on(table.partnerId, table.shortcut),
 }));
 
 // ─── Archive Tables ──────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import PartnerUnavailable from '../components/PartnerUnavailable';
 import SupportNav from '../components/support/SupportNav';
 import QueueSidebar from '../components/support/QueueSidebar';
 import ChatTabBar from '../components/support/ChatTabBar';
+import CustomerInfoPanel from '../components/support/CustomerInfoPanel';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 import { Ticket } from '../types';
@@ -160,26 +161,33 @@ export default function SupportView() {
             onCloseTab={closeTab}
           />
 
-          <div className="flex-1 overflow-hidden">
-            {showPreview ? (
-              <TicketPreview
-                ticket={previewTicket!}
-                messages={[]}
-                onJoin={() => joinTicket(previewTicket!)}
-                onClose={() => setPreviewTicket(null)}
-                joinDisabled={atMaxChats}
-              />
-            ) : activeTab ? (
-              <ChatWindow
-                key={activeTab}
-                ticket={tickets.find((tk) => tk.id === activeTab)}
-                onClose={() => closeTab(activeTab)}
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center font-black uppercase tracking-[0.2em] opacity-20 text-2xl">
-                {t('ready_to_help')}
-              </div>
-            )}
+          <div className="flex-1 overflow-hidden flex">
+            <div className="flex-1 overflow-hidden">
+              {showPreview ? (
+                <TicketPreview
+                  ticket={previewTicket!}
+                  onJoin={() => joinTicket(previewTicket!)}
+                  onClose={() => setPreviewTicket(null)}
+                  joinDisabled={atMaxChats}
+                />
+              ) : activeTab ? (
+                <ChatWindow
+                  key={activeTab}
+                  ticket={tickets.find((tk) => tk.id === activeTab)}
+                  onClose={() => closeTab(activeTab)}
+                />
+              ) : (
+                <div className="h-full flex items-center justify-center font-black uppercase tracking-[0.2em] opacity-20 text-2xl">
+                  {t('ready_to_help')}
+                </div>
+              )}
+            </div>
+
+            {/* Customer context panel */}
+            {activeTab && !showPreview && !focusMode && (() => {
+              const activeTicket = tickets.find((tk) => tk.id === activeTab);
+              return activeTicket ? <CustomerInfoPanel ticket={activeTicket} /> : null;
+            })()}
           </div>
         </main>
       </div>

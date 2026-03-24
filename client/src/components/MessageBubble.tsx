@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import useStore from '../store/useStore';
 import UserAvatar from './UserAvatar';
 import BionicText from './BionicText';
+import { getSocket } from '../hooks/useSocket';
+import { useT } from '../i18n';
 import { Message } from '../types';
 
 interface MessageBubbleProps {
@@ -13,6 +16,13 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true }: MessageBubbleProps) {
   const { user, participantsOnline, bionicReading } = useStore();
+  const t = useT();
+  const [showActions, setShowActions] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+
+  const isDeleted = !!(message as any).deletedAt;
+  const isEdited = !!(message as any).editedAt;
 
   if (message.system) {
     return (
@@ -27,13 +37,34 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const isMine = message.senderId === user?.id;
   const isWhisper = !!message.whisper;
 
-  const mainText = message.text || '';
-  const displayText = mainText;
+  const displayText = isDeleted ? (t('message_deleted') || 'This message was deleted') : (message.text || '');
 
-  const time = new Date(message.timestamp).toLocaleTimeString('en-GB', {
+  const time = new Date(message.timestamp || message.createdAt || '').toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  // Check if message is within edit window (15 min)
+  const ageMs = Date.now() - new Date(message.timestamp || message.createdAt || '').getTime();
+  const canEdit = isMine && !message.system && !isDeleted && ageMs < 15 * 60 * 1000;
+  const canDelete = (isMine || useStore.getState().user?.role !== 'agent') && !message.system && !isDeleted;
+
+  function startEdit() {
+    setEditText(message.text || message.originalText || '');
+    setEditing(true);
+    setShowActions(false);
+  }
+
+  function submitEdit() {
+    if (!editText.trim()) return;
+    getSocket().emit('message:edit', { ticketId, messageId: message.id, text: editText.trim() });
+    setEditing(false);
+  }
+
+  function deleteMessage() {
+    getSocket().emit('message:delete', { ticketId, messageId: message.id });
+    setShowActions(false);
+  }
 
   const bubbleClasses = isMine
     ? 'bubble-sent'
@@ -42,47 +73,71 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
       : 'bubble-received';
 
   return (
-    <div className={`flex w-full ${isGroupEnd ? 'mb-4' : 'mb-1'} px-4 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+    <div
+      className={`group flex w-full ${isGroupEnd ? 'mb-4' : 'mb-1'} px-4 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}
+      onMouseEnter={() => !isDeleted && setShowActions(true)}
+      onMouseLeave={() => { setShowActions(false); }}
+    >
       <div className={`flex flex-col justify-end w-8 shrink-0 ${isMine ? 'ml-3' : 'mr-3'}`}>
         {!isMine && isGroupStart && !isWhisper && (
-          <UserAvatar 
-            userId={message.senderId} 
-            name={message.senderName || 'User'} 
-            size="sm" 
-            showStatus 
+          <UserAvatar
+            userId={message.senderId}
+            name={message.senderName || 'User'}
+            size="sm"
+            showStatus
             isOnline={participantsOnline[ticketId]}
           />
         )}
       </div>
 
-      <div className={`relative max-w-[75%] min-w-[60px] px-4 py-2.5 ${
-        isMine 
-          ? (isGroupStart ? '' : '') 
-          : (isGroupStart ? '' : '')
-      } ${bubbleClasses}`}>
-        
+      <div className={`relative max-w-[75%] min-w-[60px] px-4 py-2.5 ${bubbleClasses} ${isDeleted ? 'opacity-50 italic' : ''}`}>
+
         {!isMine && !isWhisper && isGroupStart && (
           <div className="text-[11px] font-black mb-1 uppercase tracking-tight opacity-60">
             {message.senderName}
           </div>
         )}
-        
+
         {isWhisper && isGroupStart && (
           <div className="flex items-center gap-1.5 mb-1 text-[10px] font-black uppercase tracking-widest">
-            Internal Note
+            {t('internal_note') || 'Internal Note'}
           </div>
         )}
 
         <div className="relative">
-          <div className="text-[15px] break-words whitespace-pre-wrap leading-normal font-medium tracking-tight uppercase">
-            {bionicReading ? (
-              <BionicText text={displayText} />
-            ) : (
-              displayText
-            )}
-          </div>
+          {editing ? (
+            <div className="flex flex-col gap-2">
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitEdit(); }
+                  if (e.key === 'Escape') setEditing(false);
+                }}
+                className="w-full resize-none bg-white/50 dark:bg-black/50 border border-black dark:border-white rounded px-2 py-1 text-sm"
+                rows={2}
+                autoFocus
+              />
+              <div className="flex gap-1 justify-end">
+                <button onClick={() => setEditing(false)} className="text-[9px] font-black uppercase px-2 py-0.5 opacity-60 hover:opacity-100">
+                  {t('cancel') || 'Cancel'}
+                </button>
+                <button onClick={submitEdit} className="text-[9px] font-black uppercase px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black">
+                  {t('save') || 'Save'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-[15px] break-words whitespace-pre-wrap leading-normal font-medium tracking-tight uppercase">
+              {bionicReading && !isDeleted ? (
+                <BionicText text={displayText} />
+              ) : (
+                displayText
+              )}
+            </div>
+          )}
 
-          {message.mediaUrl && (
+          {message.mediaUrl && !isDeleted && (
             <div className="mt-3 border-2 border-black dark:border-white">
               <img
                 src={message.mediaUrl}
@@ -94,13 +149,40 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
         </div>
 
         <div className={`flex items-center justify-end gap-2 mt-2 -mr-1 opacity-40`}>
+          {isEdited && !isDeleted && (
+            <span className="text-[9px] font-bold italic">{t('edited') || 'edited'}</span>
+          )}
           <span className="text-[10px] font-black tracking-tight uppercase">
             {time}
           </span>
-          {isMine && (
+          {isMine && !isDeleted && (
             <span className="text-[10px] font-black">{message.readAt ? 'R' : 'D'}</span>
           )}
         </div>
+
+        {/* Action buttons (hover) */}
+        {showActions && !editing && (canEdit || canDelete) && (
+          <div className={`absolute top-0 ${isMine ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity`}>
+            {canEdit && (
+              <button
+                onClick={startEdit}
+                title={t('edit') || 'Edit'}
+                className="w-6 h-6 flex items-center justify-center rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-600 text-[10px] shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              </button>
+            )}
+            {canDelete && (
+              <button
+                onClick={deleteMessage}
+                title={t('delete') || 'Delete'}
+                className="w-6 h-6 flex items-center justify-center rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-red-600 text-[10px] shadow-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
