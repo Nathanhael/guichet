@@ -71,6 +71,20 @@
       "when": 1774677600000,
       "tag": "0009_notification_preferences",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1774764000000,
+      "tag": "0010_canned_responses",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1774850400000,
+      "tag": "0011_message_edit_delete",
+      "breakpoints": true
     }
   ]
 }
