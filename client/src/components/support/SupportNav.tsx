@@ -7,6 +7,7 @@ import StatusPicker from '../StatusPicker';
 interface SupportNavProps {
   partnerName: string;
   logoUrl?: string;
+  onToggleSidebar: () => void;
 }
 
 /**
@@ -14,7 +15,7 @@ interface SupportNavProps {
  * Contains: TESSERA brand, partner logo, user name, status picker,
  * toolbar (lang/focus/neuro/dark/notifications), sign-out.
  */
-export default function SupportNav({ partnerName, logoUrl }: SupportNavProps) {
+export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: SupportNavProps) {
   const user = useStore((s) => s.user);
   const logout = useStore((s) => s.logout);
   const focusMode = useStore((s) => s.focusMode);
@@ -30,6 +31,17 @@ export default function SupportNav({ partnerName, logoUrl }: SupportNavProps) {
       }`}
     >
       <div className="flex items-center gap-4">
+        {!focusMode && (
+          <button
+            onClick={onToggleSidebar}
+            className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            aria-label={t('queue')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+        )}
         <span className="font-black text-2xl uppercase tracking-tighter">TESSERA</span>
         {!focusMode && (
           <div className="flex items-center gap-3">
