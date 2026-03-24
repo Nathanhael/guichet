@@ -15,6 +15,7 @@ export interface SessionMembership {
   industry: string | null;
   partnerDepartments: unknown;
   status: string;
+  authMethod: string;
 }
 
 export async function listUserMemberships(userId: string): Promise<SessionMembership[]> {
@@ -29,6 +30,7 @@ export async function listUserMemberships(userId: string): Promise<SessionMember
       industry: partners.industry,
       partnerDepartments: partners.departments,
       status: partners.status,
+      authMethod: partners.authMethod,
     })
     .from(memberships)
     .innerJoin(partners, eq(memberships.partnerId, partners.id))
@@ -92,6 +94,7 @@ export function buildAuthResponse(input: {
         industry: m.industry,
         logoUrl: m.logoUrl,
         departments: m.partnerDepartments || [],
+        authMethod: m.authMethod,
       },
     })),
     activePartnerId: defaultMembership?.partnerId,

@@ -1,6 +1,13 @@
 {
   "name": "tessera",
   "private": true,
+  "scripts": {
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "cd server && npx vitest run",
+    "test:client": "cd client && npx vitest run",
+    "test:e2e": "npx playwright test",
+    "typecheck": "cd server && npx tsc --noEmit && cd ../client && npx tsc --noEmit"
+  },
   "devDependencies": {
     "@playwright/test": "^1.52.0"
   },

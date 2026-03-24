@@ -29,7 +29,7 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
   const [form, setForm] = useState<{
     name: string;
     logoUrl: string | null;
-    authMethod: 'local' | 'sso';
+    authMethod: 'local' | 'sso' | 'both';
     aiEnabled: boolean;
     aiFeatures: AiFeatures;
   }>({ name: '', logoUrl: null, authMethod: 'local', aiEnabled: false, aiFeatures: {} });
@@ -121,9 +121,10 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
             <div className="flex-1">
               <label className="block text-[10px] font-black uppercase mb-1">{t('provider_label')}</label>
               <select className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
-                value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' })}>
+                value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' | 'both' })}>
                 <option value="local">Local (Email/Password)</option>
                 <option value="sso">Enterprise SSO</option>
+                <option value="both">Both (Local + SSO)</option>
               </select>
             </div>
           </div>

@@ -15,7 +15,7 @@ import {
 import type { AiAction } from '../../services/ai/types.js';
 import { db } from '../../db.js';
 import { messages as messagesTable, tickets } from '../../db/schema.js';
-import { eq, and, asc, isNull } from 'drizzle-orm';
+import { eq, and, asc, isNull, isNotNull } from 'drizzle-orm';
 import { canUseSupportWorkflows } from '../../services/roles.js';
 import logger from '../../utils/logger.js';
 
@@ -241,5 +241,80 @@ export const aiRouter = router({
       await setCachedSummary(input.ticketId, summary);
 
       return { summary, cached: false };
+    }),
+
+  /**
+   * Get sentiment analysis for a ticket's messages.
+   * Returns average sentiment, trend, and count of scored messages.
+   * Only available to support/admin users.
+   */
+  getTicketSentiment: protectedProcedure
+    .input(z.object({ ticketId: z.string() }))
+    .query(async ({ input, ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+      // Only support/admin can view sentiment
+      if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only support staff can view sentiment data' });
+      }
+
+      // Verify ticket exists and belongs to this partner
+      const [ticket] = await db
+        .select({ id: tickets.id, partnerId: tickets.partnerId })
+        .from(tickets)
+        .where(eq(tickets.id, input.ticketId))
+        .limit(1);
+
+      if (!ticket) throw new TRPCError({ code: 'NOT_FOUND', message: 'Ticket not found' });
+      if (ticket.partnerId !== partnerId) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Ticket does not belong to your tenant' });
+      }
+
+      // Query messages with non-null sentiment, ordered by creation time
+      const scored = await db
+        .select({
+          sentiment: messagesTable.sentiment,
+        })
+        .from(messagesTable)
+        .where(
+          and(
+            eq(messagesTable.ticketId, input.ticketId),
+            isNull(messagesTable.deletedAt),
+            isNotNull(messagesTable.sentiment),
+          ),
+        )
+        .orderBy(asc(messagesTable.createdAt));
+
+      const count = scored.length;
+
+      if (count === 0) {
+        return { average: 0, trend: 'stable' as const, count: 0 };
+      }
+
+      const scores = scored.map((m) => m.sentiment as number);
+
+      // Compute average
+      const sum = scores.reduce((a, b) => a + b, 0);
+      const average = Math.round((sum / count) * 100) / 100;
+
+      // Compute trend: compare first-half average vs second-half average
+      const mid = Math.floor(count / 2);
+      let trend: 'improving' | 'worsening' | 'stable' = 'stable';
+
+      if (count >= 2) {
+        const firstHalf = scores.slice(0, mid || 1);
+        const secondHalf = scores.slice(mid || 1);
+
+        const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+        const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+        const diff = secondAvg - firstAvg;
+
+        // Threshold of 0.1 to avoid noise
+        if (diff > 0.1) trend = 'improving';
+        else if (diff < -0.1) trend = 'worsening';
+      }
+
+      return { average, trend, count };
     }),
 });

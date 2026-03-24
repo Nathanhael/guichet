@@ -224,10 +224,12 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   const [role, setRole] = useState<'agent'|'support'>('agent');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
-  
+  const [authMethod, setAuthMethod] = useState<'local' | 'sso'>('local');
+
   const { activeMembershipId, memberships } = useStore();
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
+  const partnerAuthMethod = activeMembership?.manifest?.authMethod;
 
   const inviteMutation = trpc.partner.inviteExternalUser.useMutation({
     onSuccess: (data) => {
@@ -242,7 +244,10 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    inviteMutation.mutate({ email, name, role, departments: selectedDepts });
+    inviteMutation.mutate({
+      email, name, role, departments: selectedDepts,
+      ...(partnerAuthMethod === 'both' ? { authMethod } : {}),
+    });
   };
 
   if (tempPassword) {
@@ -317,13 +322,32 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
               <option value="support">Support (Handles Tickets)</option>
             </select>
           </div>
+          {partnerAuthMethod === 'both' && (
+            <div>
+              <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Auth Method</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="inviteAuthMethod" value="local" checked={authMethod === 'local'}
+                    onChange={() => setAuthMethod('local')}
+                    className="accent-black dark:accent-white w-4 h-4" />
+                  <span className="text-xs font-bold uppercase">Local (Email + Password)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="inviteAuthMethod" value="sso" checked={authMethod === 'sso'}
+                    onChange={() => setAuthMethod('sso')}
+                    className="accent-black dark:accent-white w-4 h-4" />
+                  <span className="text-xs font-bold uppercase">SSO (Sign in with Microsoft)</span>
+                </label>
+              </div>
+            </div>
+          )}
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Departments (Optional)</label>
             <div className="space-y-2 max-h-32 overflow-y-auto border border-black/20 dark:border-white/20 p-2">
               {departments.map(d => (
                 <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={selectedDepts.includes(d.id)}
                     onChange={(e) => {
                       if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);

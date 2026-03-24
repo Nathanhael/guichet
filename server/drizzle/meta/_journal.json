@@ -85,6 +85,27 @@
       "when": 1774850400000,
       "tag": "0011_message_edit_delete",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1774936800000,
+      "tag": "0012_ai_service_layer",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1775023200000,
+      "tag": "0013_sla_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1775109600000,
+      "tag": "0014_flexible_auth",
+      "breakpoints": true
     }
   ]
 }

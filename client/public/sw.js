@@ -1,9 +1,10 @@
-const CACHE_NAME = 'tessera-v2';
+const CACHE_NAME = 'tessera-v3';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
 ];
 
+// Install: cache app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -11,6 +12,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// Activate: clean old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -22,6 +24,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Fetch: network-first for API, cache-first for static
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -29,32 +32,85 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Skip Socket.io requests
+  // Skip Socket.io and WebSocket requests
   if (url.pathname.startsWith('/socket.io')) return;
 
-  // API calls: network-first, cache fallback
-  if (url.pathname.startsWith('/api/v1')) {
+  // Skip browser extensions
+  if (url.protocol === 'chrome-extension:') return;
+
+  // tRPC/API calls: network-first with cache fallback
+  if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          // Only cache successful responses
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
-        .catch(() => caches.match(request).then((r) => r || new Response('Offline', { status: 503 })))
+        .catch(() => caches.match(request).then((r) => r || new Response(
+          JSON.stringify({ error: 'offline' }),
+          { status: 503, headers: { 'Content-Type': 'application/json' } }
+        )))
     );
     return;
   }
 
-  // Static assets: cache-first
+  // Static assets: stale-while-revalidate
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+      const fetchPromise = fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
         return response;
-      });
+      }).catch(() => cached);
+
+      return cached || fetchPromise;
+    })
+  );
+});
+
+// Push notifications
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    const options = {
+      body: data.body || '',
+      icon: '/icons/icon-192.svg',
+      badge: '/icons/icon-192.svg',
+      tag: data.tag || 'tessera-notification',
+      data: { url: data.url || '/' },
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'Tessera', options)
+    );
+  } catch {
+    // Silently fail for malformed push data
+  }
+});
+
+// Notification click: focus or open the app
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Focus existing tab if found
+      for (const client of clients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise open a new window
+      return self.clients.openWindow(url);
     })
   );
 });

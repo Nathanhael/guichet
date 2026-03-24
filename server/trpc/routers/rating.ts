@@ -1,8 +1,9 @@
-import { router, roleProcedure } from '../trpc.js';
+import { router, roleProcedure, adminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { ratings, tickets } from '../../db/schema.js';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { ratings, tickets, users } from '../../db/schema.js';
+import { desc, eq, inArray, sql, and, gte, lte } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
 import logger from '../../utils/logger.js';
 
 export const ratingRouter = router({
@@ -38,4 +39,61 @@ export const ratingRouter = router({
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
     }
   }),
+
+  getStaffRatings: adminProcedure
+    .input(z.object({
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        // Tenant isolation
+        if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) {
+          return [];
+        }
+
+        // Build conditions for the ratings query
+        const conditions = [];
+
+        // Scope to partner's tickets (tenant isolation)
+        if (ctx.user.partnerId) {
+          const partnerTicketIds = db.select({ id: tickets.id })
+            .from(tickets)
+            .where(eq(tickets.partnerId, ctx.user.partnerId));
+          conditions.push(inArray(ratings.ticketId, partnerTicketIds));
+        }
+
+        // Date range filters
+        if (input.dateFrom) {
+          conditions.push(gte(ratings.createdAt, input.dateFrom));
+        }
+        if (input.dateTo) {
+          // Include the full end date by adding one day
+          const endDate = new Date(input.dateTo);
+          endDate.setDate(endDate.getDate() + 1);
+          conditions.push(lte(ratings.createdAt, endDate.toISOString().slice(0, 10)));
+        }
+
+        const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+        const data = await db
+          .select({
+            supportId: ratings.supportId,
+            supportName: sql<string>`COALESCE(${users.name}, 'Unknown')`.as('support_name'),
+            avgRating: sql<number>`ROUND(AVG(${ratings.rating})::numeric, 2)`.as('avg_rating'),
+            totalRatings: sql<number>`COUNT(*)::int`.as('total_ratings'),
+          })
+          .from(ratings)
+          .leftJoin(users, eq(ratings.supportId, users.id))
+          .where(whereClause)
+          .groupBy(ratings.supportId, users.name)
+          .orderBy(sql`AVG(${ratings.rating}) DESC`);
+
+        return data;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error({ err: message }, 'tRPC: Error getting staff ratings');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+      }
+    }),
 });

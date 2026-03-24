@@ -85,7 +85,7 @@ export const platformRouter = router({
         name: z.string(),
         description: z.string().optional()
       })).default([]),
-      authMethod: z.enum(['local', 'sso']).default('local'),
+      authMethod: z.enum(['local', 'sso', 'both']).default('local'),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -137,7 +137,7 @@ export const platformRouter = router({
           description: z.string().optional(),
           isActive: z.boolean().default(true)
         })).optional(),
-        authMethod: z.enum(['local', 'sso']).optional(),
+        authMethod: z.enum(['local', 'sso', 'both']).optional(),
         // AI configuration
         aiEnabled: z.boolean().optional(),
         aiFeatures: z.object({
@@ -324,7 +324,8 @@ export const platformRouter = router({
       name: z.string(),
       role: z.enum(['agent', 'support', 'admin', 'platform_operator']),
       partnerId: z.string(),
-      departments: z.array(z.string()).optional()
+      departments: z.array(z.string()).optional(),
+      authMethod: z.enum(['local', 'sso', 'both']).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -338,7 +339,12 @@ export const platformRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
         }
 
-        const isLocal = partner[0].authMethod === 'local';
+        // Determine effective auth method for this user:
+        // - If caller specified per-user authMethod, use that
+        // - If partner is 'both', default to 'local' unless caller specified 'sso'
+        // - Otherwise use partner's authMethod
+        const userAuthMethod = input.authMethod ?? (partner[0].authMethod === 'both' ? 'local' : partner[0].authMethod);
+        const isLocal = userAuthMethod === 'local';
         let tempPassword: string | null = null;
         let isExistingUser = false;
 
@@ -349,10 +355,14 @@ export const platformRouter = router({
         if (existing.length > 0) {
           userId = existing[0].id;
           isExistingUser = true;
+          // If partner supports 'both', set per-user auth method
+          if (partner[0].authMethod === 'both' && input.authMethod) {
+            await db.update(users).set({ authMethod: input.authMethod }).where(eq(users.id, userId));
+          }
         } else {
           userId = `u_${randomUUID().slice(0, 8)}`;
 
-          // Generate temp password only for new users on local partners
+          // Generate temp password only for new users with local auth
           let hashedPassword: string | undefined;
           if (isLocal) {
             tempPassword = randomBytes(12).toString('base64url');
@@ -365,6 +375,7 @@ export const platformRouter = router({
             name: input.name,
             password: hashedPassword,
             isPlatformOperator: input.role === 'platform_operator',
+            authMethod: partner[0].authMethod === 'both' ? userAuthMethod : undefined,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
@@ -413,7 +424,7 @@ export const platformRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: userId,
-          metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: partner[0].authMethod }
+          metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: userAuthMethod }
         });
 
         return { userId, membershipId: memId, tempPassword: tempPassword ?? '', isExistingUser: isExistingUser ?? false };

@@ -5,7 +5,7 @@ export const roleEnum = pgEnum('user_role', ['agent', 'support', 'admin', 'platf
 export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'pending', 'closed', 'resolved']);
 export const severityEnum = pgEnum('severity', ['low', 'medium', 'high', 'critical']);
 export const alertStatusEnum = pgEnum('alert_status', ['active', 'acknowledged', 'resolved']);
-export const authMethodEnum = pgEnum('auth_method', ['local', 'sso']);
+export const authMethodEnum = pgEnum('auth_method', ['local', 'sso', 'both']);
 
 export const partners = pgTable('partners', {
   id: text('id').primaryKey(),
@@ -19,6 +19,8 @@ export const partners = pgTable('partners', {
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   status: text('status').notNull().default('active'),
   authMethod: authMethodEnum('auth_method').notNull().default('local'),
+  // SLA configuration
+  slaConfig: jsonb('sla_config').default({}),
   // AI configuration
   aiEnabled: boolean('ai_enabled').default(false),
   aiProvider: text('ai_provider').default('ollama'),
@@ -51,6 +53,7 @@ export const users = pgTable('users', {
   mfaEnabledAt: timestamp('mfa_enabled_at', { mode: 'string' }),
   mfaRecoveryCodes: jsonb('mfa_recovery_codes').default([]),
   notificationPreferences: jsonb('notification_preferences').default({}),
+  authMethod: text('auth_method'),  // Per-user auth method override (null = use partner default)
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
@@ -98,6 +101,9 @@ export const tickets = pgTable('tickets', {
   participants: jsonb('participants').default([]),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
+  slaResponseDueAt: text('sla_response_due_at'),
+  slaResolutionDueAt: text('sla_resolution_due_at'),
+  slaBreached: boolean('sla_breached').default(false),
 }, (table) => ({
   partnerIdIdx: index('idx_tickets_partner_id').on(table.partnerId),
   agentIdIdx: index('idx_tickets_agent_id').on(table.agentId),

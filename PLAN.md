@@ -795,9 +795,9 @@ _Finishes remaining AI features, adds collision detection._
 
 ```
  4. AI Translation                  ✅ DONE  ← merged into Sprint 1 (auto-translate in chat)
- 5. AI Sentiment Detection          ⬜ TODO  ← background/async AI
- 6. AI Auto-Summarize on Close      ⬜ TODO  ← hooks into ticket lifecycle
- 7. Collision Detection             ⬜ TODO  ← socket.io real-time feature
+ 5. AI Sentiment Detection          ✅ DONE  ← background/async AI
+ 6. AI Auto-Summarize on Close      ✅ DONE  ← hooks into ticket lifecycle
+ 7. Collision Detection             ✅ DONE  ← socket.io real-time feature
 ```
 
 **E2E scope**: Socket.io test helpers, multi-browser collision tests, sentiment/translation UI
@@ -809,9 +809,9 @@ _Finishes remaining AI features, adds collision detection._
 _Operational improvements: SLA, CSAT, auth flexibility._
 
 ```
- 8. CSAT Improvements               ⬜ TODO  ← extends existing rating system
-10. SLA Improvements                ⬜ TODO  ← per-tenant SLA, breach alerts
-11. Flexible Auth — SSO + Local     ⬜ TODO  ← can be built in parallel
+ 8. CSAT Improvements               ✅ DONE  ← extends existing rating system
+10. SLA Improvements                ✅ DONE  ← per-tenant SLA, breach alerts
+11. Flexible Auth — SSO + Local     ✅ DONE  ← can be built in parallel
 ```
 
 **E2E scope**: SLA timer assertions, CSAT auto-prompt flow, dual-auth login tests
@@ -823,7 +823,7 @@ _Operational improvements: SLA, CSAT, auth flexibility._
 _PWA rollout after all features are stable._
 
 ```
- 9. PWA Mobile App                  ⬜ TODO  ← all features must work on mobile
+ 9. PWA Mobile App                  ✅ DONE  ← all features must work on mobile
 ```
 
 **E2E scope**: Mobile viewport tests, service worker, push notifications, offline

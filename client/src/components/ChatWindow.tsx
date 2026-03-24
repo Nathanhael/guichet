@@ -8,6 +8,8 @@ import { Ticket, Message } from '../types';
 import { trpc } from '../utils/trpc';
 import { LANG_FLAG } from '../constants';
 import { isSupportLike } from '../utils/roles';
+import { Eye } from 'lucide-react';
+import SlaIndicator from './SlaIndicator';
 
 interface ChatWindowProps {
   ticket?: Ticket;
@@ -17,7 +19,7 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, onlineSupportUsers } = useStore();
+  const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, onlineSupportUsers, setRatingPrompt } = useStore();
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
@@ -33,6 +35,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const [summary, setSummary] = useState<string | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [viewers, setViewers] = useState<Array<{ userId: string; userName: string }>>([]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -156,6 +159,41 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     }
   }, [presenceQuery.data, ticketId, setParticipantOnline]);
 
+  // ── Collision Detection: emit viewing/left events ──────────────────────────
+  useEffect(() => {
+    if (!ticketId) return;
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.emit('ticket:viewing', { ticketId });
+
+    return () => {
+      socket.emit('ticket:left', { ticketId });
+    };
+  }, [ticketId]);
+
+  // ── Collision Detection: listen for viewer updates ────────────────────────
+  useEffect(() => {
+    if (!ticketId) return;
+    const socket = getSocket();
+    if (!socket) return;
+
+    const currentUserId = user?.id;
+
+    function handleViewers({ ticketId: tid, viewers: v }: { ticketId: string; viewers: Array<{ userId: string; userName: string }> }) {
+      if (tid === ticketId) {
+        const others = v.filter((viewer) => viewer.userId !== currentUserId);
+        setViewers(others);
+      }
+    }
+
+    socket.on('ticket:viewers', handleViewers);
+    return () => {
+      socket.off('ticket:viewers', handleViewers);
+      setViewers([]);
+    };
+  }, [ticketId, user?.id]);
+
   const ticketMessages = ticket ? (messages[ticket.id] || []) : [];
   const agentIsOnline = ticket ? (participantsOnline[ticket.id] ?? true) : true;
 
@@ -216,13 +254,23 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   }, [ticketMessages.length, ticketId, user?.id]);
 
   useEffect(() => {
-    if (ticket?.status === 'closed' && onClose) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (ticket?.status === 'closed') {
+      // Auto-prompt rating for agents (not support) when ticket is closed
+      if (!isSupport && ticket.supportId && ticket.supportName) {
+        setRatingPrompt({
+          ticketId: ticket.id,
+          supportId: ticket.supportId,
+          supportName: ticket.supportName,
+        });
+      }
+      if (onClose) {
+        const timer = setTimeout(() => {
+          onClose();
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [ticket?.status, onClose]);
+  }, [ticket?.status, onClose, isSupport, ticket?.id, ticket?.supportId, ticket?.supportName, setRatingPrompt]);
 
   useEffect(() => {
     if (!ticketId) return;
@@ -466,6 +514,11 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 })}
               </div>
             )}
+
+            {/* SLA Indicator — only for support, open tickets without support response */}
+            {!focusMode && isSupport && !isClosed && !liveTicket.supportJoinedAt && liveTicket.slaResponseDueAt && (
+              <SlaIndicator dueAt={liveTicket.slaResponseDueAt} breached={liveTicket.slaBreached} />
+            )}
           </div>
         </div>
 
@@ -637,9 +690,19 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
         </div>
       )}
 
+      {/* Collision Detection: who else is viewing */}
+      {viewers.length > 0 && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 px-4 py-2 text-sm text-amber-700 dark:text-amber-300 flex items-center gap-2">
+          <Eye className="w-4 h-4 shrink-0" />
+          <span>
+            {viewers.map(v => v.userName).join(' and ')} {viewers.length === 1 ? 'is' : 'are'} also viewing this ticket
+          </span>
+        </div>
+      )}
+
       {/* Messages */}
-      <div 
-        ref={scrollContainerRef} 
+      <div
+        ref={scrollContainerRef}
         onScroll={handleScroll} 
         className={`flex-1 overflow-y-auto p-6 scrollbar-thin relative transition-all duration-700 bg-slate-50 dark:bg-black`}
       >

@@ -35,7 +35,7 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
   return (
     <aside
       className={`${
-        isOpen ? 'w-80 border-r-2 border-black/20 dark:border-white/20' : 'w-0 border-r-0'
+        isOpen ? 'w-80 border-r-2 border-black/20 dark:border-white/20 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-2xl max-md:bg-white max-md:dark:bg-black' : 'w-0 border-r-0'
       } shrink-0 overflow-hidden transition-all duration-200 bg-white/60 dark:bg-brand-900/60 backdrop-blur-sm flex flex-col`}
     >
       {/* Header */}
