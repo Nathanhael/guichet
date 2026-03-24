@@ -9,6 +9,7 @@ import config from '../config.js';
 import logger from '../utils/logger.js';
 import { buildAuthResponse, buildAuthToken, listUserMemberships } from '../services/authSession.js';
 import { isPlatformAdmin } from '../services/roles.js';
+import { getRedisClients } from '../utils/redis.js';
 
 const router = express.Router();
 
@@ -28,27 +29,44 @@ function ensureConfigured(): boolean {
   return !!(TENANT() && CLIENT_ID() && CLIENT_SECRET() && REDIRECT_URI());
 }
 
-// Temporary state tokens to prevent CSRF (stored in-memory, short-lived)
-// TODO: Move to Redis for multi-instance deployments
-const pendingStates = new Map<string, { createdAt: number; nonce: string }>();
+// SSO CSRF state tokens stored in Redis with 10-minute TTL (multi-instance safe)
+const SSO_STATE_PREFIX = 'sso:state:';
+const SSO_STATE_TTL = 600; // 10 minutes
 
-// Clean up stale states older than 10 minutes
-setInterval(() => {
-  const cutoff = Date.now() - 10 * 60 * 1000;
-  for (const [key, val] of pendingStates) {
-    if (val.createdAt < cutoff) pendingStates.delete(key);
+async function setSsoState(state: string, nonce: string): Promise<void> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) throw new Error('Redis not available');
+    await pubClient.set(`${SSO_STATE_PREFIX}${state}`, JSON.stringify({ nonce, createdAt: Date.now() }), { EX: SSO_STATE_TTL });
+  } catch (err) {
+    logger.error({ err }, '[SSO] Failed to store state in Redis');
   }
-}, 60 * 1000);
+}
+
+async function getSsoState(state: string): Promise<{ nonce: string } | null> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) throw new Error('Redis not available');
+    const raw = await pubClient.get(`${SSO_STATE_PREFIX}${state}`);
+    if (!raw) return null;
+    // Delete immediately (one-time use)
+    await pubClient.del(`${SSO_STATE_PREFIX}${state}`);
+    return JSON.parse(raw);
+  } catch (err) {
+    logger.error({ err }, '[SSO] Failed to retrieve state from Redis');
+    return null;
+  }
+}
 
 // ---- Step 1: Redirect to Microsoft ----
-router.get('/azure', (req: Request, res: Response) => {
+router.get('/azure', async (req: Request, res: Response) => {
   if (!ensureConfigured()) {
     return res.status(501).json({ error: 'Azure SSO is not configured' });
   }
 
   const state = crypto.randomBytes(32).toString('hex');
   const nonce = crypto.randomBytes(32).toString('hex');
-  pendingStates.set(state, { createdAt: Date.now(), nonce });
+  await setSsoState(state, nonce);
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID()!,
@@ -81,13 +99,12 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       return res.redirect(`${clientOrigin}/?sso_error=${encodeURIComponent(error_description || azError)}`);
     }
 
-    const pendingState = pendingStates.get(state!);
+    const pendingState = state ? await getSsoState(state) : null;
     if (!code || !state || !pendingState) {
       logger.warn('[SSO] Invalid or missing state/code');
       return res.redirect(`${clientOrigin}/?sso_error=invalid_state`);
     }
     const expectedNonce = pendingState.nonce;
-    pendingStates.delete(state);
 
     // Exchange authorization code for tokens
     const tokenRes = await fetch(

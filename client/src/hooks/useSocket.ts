@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { playChime } from '../utils/notifications';
+import { notify, updateTitleBadge } from '../utils/notifications';
 import { io, Socket } from 'socket.io-client';
 import useStore from '../store/useStore';
 import { SOCKET_URL } from '../config';
@@ -84,9 +84,21 @@ export function useSocket(): Socket {
       useStore.getState().setConnectionStatus('reconnecting');
     });
 
+    s.on('error', (err: { message?: string }) => {
+      console.error('[socket] Server error:', err?.message || err);
+    });
+
     // New ticket created (broadcast to support/admins)
     s.on('ticket:created', ({ ticket }: { ticket: Ticket }) => {
       addTicket(ticket);
+      const state = useStore.getState();
+      if (state.notificationsEnabled && state.user?.role !== 'agent') {
+        notify(`New ticket: ${ticket.agentName}`, {
+          body: `${ticket.dept} — ${ticket.agentName}`,
+          tag: `ticket-${ticket.id}`,
+        });
+      }
+      updateTitleBadge();
     });
 
     // Agent: own ticket confirmed
@@ -110,11 +122,17 @@ export function useSocket(): Socket {
     // New message in any open ticket
     s.on('message:new', (message: Message) => {
       addMessage(message.ticketId, message);
-      // Mark unread and play sound if not the sender's own message
+      // Mark unread, notify, and play sound if not the sender's own message
       const state = useStore.getState();
       if (message.senderId !== state.user?.id) {
         state.markUnread(message.ticketId);
-        playChime();
+        if (state.notificationsEnabled) {
+          notify(message.senderName || 'New message', {
+            body: message.text || message.originalText || '',
+            tag: `msg-${message.ticketId}`, // Collapse multiple from same ticket
+          });
+        }
+        updateTitleBadge();
         // Automatically mark as delivered since client received it
         s.emit('message:delivered', { ticketId: message.ticketId, messageId: message.id });
       }
@@ -207,6 +225,26 @@ export function useSocket(): Socket {
       updateTicket(ticketId, updates);
     });
 
+    // Ticket transferred
+    s.on('ticket:transferred', ({ ticketId, toId, toName }: { ticketId: string; fromId: string; fromName: string; toId: string | null; toName: string | null }) => {
+      if (toId) {
+        updateTicket(ticketId, { supportId: toId, supportName: toName || undefined });
+      } else {
+        updateTicket(ticketId, { supportId: null as any, supportName: undefined, status: 'open' });
+      }
+    });
+
+    // Ticket assigned to a support agent (used for transfer notifications)
+    s.on('ticket:assigned', ({ ticketId, supportId, supportName }: { ticketId: string; supportId: string; supportName: string }) => {
+      const state = useStore.getState();
+      if (supportId === state.user?.id && state.notificationsEnabled) {
+        notify(`Ticket assigned to you`, {
+          body: `${supportName} — you have a new ticket`,
+          tag: `assign-${ticketId}`,
+        });
+      }
+    });
+
     // Room-specific label update
     s.on('ticket:labels:updated', ({ ticketId, labels }: { ticketId: string; labels: string[] }) => {
       updateTicket(ticketId, { labels });
@@ -240,7 +278,12 @@ export function useSocket(): Socket {
       const state = useStore.getState();
       if (isTenantAdmin(state.user?.role)) {
         addTopicAlert(alert);
-        playChime();
+        if (state.notificationsEnabled) {
+          notify(`Topic alert: ${alert.topic || 'Trending'}`, {
+            body: alert.summary || '',
+            tag: `alert-${alert.id}`,
+          });
+        }
       }
     });
 
@@ -302,6 +345,8 @@ export function useSocket(): Socket {
       s.off('user:deactivated');
       s.off('auth:expired');
       s.off('queue:update');
+      s.off('ticket:transferred');
+      s.off('ticket:assigned');
       listenersAttached.current = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus]);
