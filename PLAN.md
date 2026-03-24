@@ -277,15 +277,17 @@ These items were identified but deferred — tackle after the three features abo
 
 | # | Item | Effort |
 |---|------|--------|
-| 1 | CSP headers (Helmet config) | Small |
-| 2 | SSO state → Redis | Small |
-| 3 | Rate limit uploads + tRPC | Medium |
-| 4 | SSO JWT signature verification (JWKS) | Medium |
-| 5 | React error boundaries per view | Small |
-| 6 | Socket.io `error` event listener | Small |
-| 7 | Socket disconnect resource cleanup | Medium |
-| 8 | tRPC retry config | Small |
-| 9 | Expand test coverage (socket, uploads, tRPC routers) | Large |
-| 10 | Multi-tenant isolation integration tests | Medium |
-| 11 | Pre-commit hooks (husky + lint) | Small |
-| 12 | GDPR purge jitter | Small |
+| # | Item | Effort | Status |
+|---|------|--------|--------|
+| 1 | CSP headers (Helmet config) | Small | ✅ Done 2026-03-24 |
+| 2 | SSO state → Redis | Small | ✅ Done 2026-03-24 |
+| 3 | Rate limit uploads + tRPC | Medium | |
+| 4 | SSO JWT signature verification (JWKS) | Medium | |
+| 5 | React error boundaries per view | Small | ✅ Done 2026-03-24 |
+| 6 | Socket.io `error` event listener | Small | ✅ Done 2026-03-24 |
+| 7 | Socket disconnect resource cleanup | Medium | |
+| 8 | tRPC retry config | Small | ✅ Done 2026-03-24 |
+| 9 | Expand test coverage (socket, uploads, tRPC routers) | Large | |
+| 10 | Multi-tenant isolation integration tests | Medium | |
+| 11 | Pre-commit hooks (husky + lint) | Small | |
+| 12 | GDPR purge jitter | Small | ✅ Done 2026-03-24 |
