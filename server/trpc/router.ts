@@ -13,8 +13,10 @@ import { partnerRouter } from './routers/partner.js';
 import { alertsRouter } from './routers/alerts.js';
 import { mfaRouter } from './routers/mfa.js';
 import { cannedResponseRouter } from './routers/cannedResponse.js';
+import { aiRouter } from './routers/ai.js';
 
 export const appRouter = router({
+  ai: aiRouter,
   cannedResponse: cannedResponseRouter,
   label: labelRouter,
   ticket: ticketRouter,

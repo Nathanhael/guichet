@@ -28,6 +28,11 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const [_unreadCount, setUnreadCount] = useState(0);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
+  const [originalText, setOriginalText] = useState<string | null>(null);
+  const [improving, setImproving] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [showSummary, setShowSummary] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -56,6 +61,85 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       setMessages(ticketId, messageQuery.data as any);
     }
   }, [messageQuery.data, ticketId, setMessages]);
+
+  // tRPC: AI Config (to show/hide Improve button)
+  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
+    enabled: !!user && ticket?.status !== 'closed',
+  });
+  const aiConfig = aiConfigQuery.data;
+
+  const improveMutation = trpc.ai.improveMessage.useMutation();
+  const improvementMode = aiConfig?.messageImprovement ?? 'off';
+
+  async function handleImprove() {
+    if (improving || text.trim().length < 10) return;
+    setImproving(true);
+    setOriginalText(text);
+    try {
+      const result = await improveMutation.mutateAsync({
+        text: text.trim(),
+        role: isSupport ? 'support' : 'agent',
+      });
+      setText(result.improved);
+    } catch {
+      // On failure, keep original text
+      setOriginalText(null);
+    } finally {
+      setImproving(false);
+    }
+  }
+
+  function revertImprove() {
+    if (originalText !== null) {
+      setText(originalText);
+      setOriginalText(null);
+    }
+  }
+
+  /** For 'forced' mode: improve text before sending, then send. */
+  async function improveAndSend() {
+    if (improving) return;
+    const trimmed = text.trim();
+    if (!trimmed && !mediaUrl) return;
+
+    // Only improve if text is long enough and not already improved
+    if (trimmed.length >= 10 && originalText === null) {
+      setImproving(true);
+      try {
+        const result = await improveMutation.mutateAsync({
+          text: trimmed,
+          role: isSupport ? 'support' : 'agent',
+        });
+        // Send the improved version directly
+        doSend(result.improved);
+      } catch {
+        // On AI failure, send original text (graceful degradation)
+        doSend(trimmed);
+      } finally {
+        setImproving(false);
+      }
+    } else {
+      doSend(trimmed);
+    }
+  }
+
+  // tRPC: Chat Summarization
+  const summarizeMutation = trpc.ai.summarizeChat.useMutation();
+  const canSummarize = isSupport && aiConfig?.chatSummarization === true;
+
+  async function handleSummarize(refresh = false) {
+    if (summarizing || !ticketId) return;
+    setSummarizing(true);
+    try {
+      const result = await summarizeMutation.mutateAsync({ ticketId, refresh });
+      setSummary(result.summary);
+      setShowSummary(true);
+    } catch {
+      // Silently fail
+    } finally {
+      setSummarizing(false);
+    }
+  }
 
   // tRPC: Agent Presence
   const presenceQuery = trpc.presence.getOnlineStatus.useQuery(
@@ -241,10 +325,9 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  function sendMessage(e?: React.FormEvent) {
-    if (e) e.preventDefault();
-    const trimmed = text.trim();
-    if (!trimmed && !mediaUrl) return;
+  /** Core send logic — emits socket event with the given text. */
+  function doSend(finalText: string) {
+    const display = finalText || '📎';
 
     const optimisticMsg: Message = {
       id: `pending-${Object.keys(messages).length}-${Date.now()}`,
@@ -253,10 +336,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       senderName: user?.name || '',
       senderRole: user?.role || 'agent',
       senderLang: user?.lang || 'en',
-      originalText: trimmed || '📎',
-      improvedText: trimmed || '📎',
-      processedText: trimmed || '📎',
-      text: trimmed || '📎',
+      originalText: display,
+      improvedText: display,
+      processedText: display,
+      text: display,
       mediaUrl: mediaUrl || undefined,
       whisper: whisperMode,
       system: 0,
@@ -272,13 +355,28 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     getSocket().emit('message:send', {
       ticketId: ticket!.id,
       senderLang: user?.lang,
-      text: trimmed || '📎',
+      text: display,
       mediaUrl,
       whisper: whisperMode,
     });
     setText('');
+    setOriginalText(null);
     clearMedia();
     stopTyping();
+  }
+
+  function sendMessage(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed && !mediaUrl) return;
+
+    // In 'forced' mode, auto-improve before sending
+    if (improvementMode === 'forced' && trimmed.length >= 10 && originalText === null) {
+      improveAndSend();
+      return;
+    }
+
+    doSend(trimmed);
   }
 
   function closeTicket() {
@@ -390,6 +488,28 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             </button>
           )}
 
+          {/* Summarize button (support/admin only) */}
+          {canSummarize && !isClosed && (
+            <button
+              onClick={() => handleSummarize()}
+              disabled={summarizing}
+              title="AI: Summarize conversation"
+              className={`text-xs font-bold transition-all duration-300 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/50 border border-violet-300 dark:border-violet-700 rounded-xl active:scale-95 hidden sm:flex items-center gap-1.5 ${focusMode ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
+            >
+              {summarizing ? (
+                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              )}
+              {!focusMode && 'Summarize'}
+            </button>
+          )}
+
           {canClose && !isClosed && (
             <div className="flex items-center gap-2">
               {/* Transfer button */}
@@ -479,6 +599,44 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
         </div>
       </div>
 
+      {/* AI Summary Card */}
+      {showSummary && summary && (
+        <div className="px-6 py-3 bg-violet-50 dark:bg-violet-950/30 border-b border-violet-200 dark:border-violet-800 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                <span className="text-[10px] font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">AI Summary</span>
+              </div>
+              <p className="text-sm text-violet-900 dark:text-violet-200 leading-relaxed">{summary}</p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => handleSummarize(true)}
+                disabled={summarizing}
+                title="Refresh summary"
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-200 dark:hover:bg-violet-800 text-violet-500 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${summarizing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setShowSummary(false)}
+                title="Dismiss"
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-200 dark:hover:bg-violet-800 text-violet-500 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div 
         ref={scrollContainerRef} 
@@ -561,6 +719,25 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             </div>
             )}
 
+            {/* AI improved — revert bar */}
+            {originalText !== null && (
+              <div className="flex items-center justify-between mb-2 px-3 py-1.5 rounded-xl bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 animate-in fade-in slide-in-from-bottom-1">
+                <span className="text-[10px] font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                  AI improved
+                </span>
+                <button
+                  type="button"
+                  onClick={revertImprove}
+                  className="text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 underline underline-offset-2"
+                >
+                  Revert to original
+                </button>
+              </div>
+            )}
+
             <div className={`flex items-end gap-3 p-1.5 rounded-[1.25rem] border transition-colors duration-300 ${
               whisperMode 
                 ? 'bg-white/50 dark:bg-black/20 border-amber-300 dark:border-amber-800' 
@@ -631,10 +808,33 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               />
             </div>
 
+            {/* AI Improve button — only in 'optional' mode */}
+            {improvementMode === 'optional' && text.trim().length >= 10 && !originalText && (
+              <button
+                type="button"
+                onClick={handleImprove}
+                disabled={improving}
+                title="AI: Improve message"
+                className="w-10 h-10 rounded-xl transition-all duration-300 flex items-center justify-center text-slate-400 hover:text-violet-500 hover:bg-violet-500/10 disabled:opacity-30 active:scale-90"
+              >
+                {improving ? (
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                  </svg>
+                )}
+              </button>
+            )}
+
             <button
               type="submit"
-              disabled={uploading || (!text.trim() && !mediaUrl)}
-              className="bg-blue-600 hover:bg-blue-500 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-all duration-300 disabled:opacity-30 disabled:grayscale active:scale-90"
+              disabled={uploading || improving || (!text.trim() && !mediaUrl)}
+              className={`${improvementMode === 'forced' && text.trim().length >= 10 ? 'bg-violet-600 hover:bg-violet-500' : 'bg-blue-600 hover:bg-blue-500'} text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-all duration-300 disabled:opacity-30 disabled:grayscale active:scale-90`}
+              title={improvementMode === 'forced' ? 'AI will improve before sending' : undefined}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 rotate-90" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />

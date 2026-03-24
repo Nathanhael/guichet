@@ -138,6 +138,15 @@ export const platformRouter = router({
           isActive: z.boolean().default(true)
         })).optional(),
         authMethod: z.enum(['local', 'sso']).optional(),
+        // AI configuration
+        aiEnabled: z.boolean().optional(),
+        aiFeatures: z.object({
+          messageImprovement: z.enum(['off', 'optional', 'forced']).optional(),
+          chatSummarization: z.boolean().optional(),
+          translation: z.boolean().optional(),
+          sentimentDetection: z.boolean().optional(),
+          autoSummarizeOnClose: z.boolean().optional(),
+        }).optional(),
       })
     }))
     .mutation(async ({ input, ctx }) => {

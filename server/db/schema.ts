@@ -19,6 +19,12 @@ export const partners = pgTable('partners', {
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   status: text('status').notNull().default('active'),
   authMethod: authMethodEnum('auth_method').notNull().default('local'),
+  // AI configuration
+  aiEnabled: boolean('ai_enabled').default(false),
+  aiProvider: text('ai_provider').default('ollama'),
+  aiModel: text('ai_model'),
+  aiConfig: jsonb('ai_config').default({}),
+  aiFeatures: jsonb('ai_features').default({}),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
@@ -290,4 +296,36 @@ export const archivedTickets = pgTable('archived_tickets', {
   partnerIdx: index('idx_archived_tickets_partner').on(table.partnerId),
   createdAtIdx: index('idx_archived_tickets_created').on(table.createdAt),
   archivedAtIdx: index('idx_archived_tickets_archived').on(table.archivedAt),
+}));
+
+// ─── AI Service Tables ──────────────────────────────────────────────────────
+
+export const aiPromptTemplates = pgTable('ai_prompt_templates', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  partnerId: text('partner_id').references(() => partners.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(),  // classify, suggest, summarize, improve, translate, sentiment, match_canned
+  template: text('template').notNull(),
+  model: text('model'),              // override model per action
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerActionIdx: uniqueIndex('idx_ai_prompts_partner_action').on(table.partnerId, table.action),
+}));
+
+export const aiUsageLog = pgTable('ai_usage_log', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  inputTokens: integer('input_tokens'),
+  outputTokens: integer('output_tokens'),
+  latencyMs: integer('latency_ms'),
+  success: boolean('success').notNull().default(true),
+  errorMessage: text('error_message'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerCreatedIdx: index('idx_ai_usage_partner_created').on(table.partnerId, table.createdAt),
+  userCreatedIdx: index('idx_ai_usage_user_created').on(table.userId, table.createdAt),
 }));

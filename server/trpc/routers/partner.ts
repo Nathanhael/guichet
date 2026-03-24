@@ -10,6 +10,8 @@ import { randomBytes } from 'crypto';
 import { getBusinessHoursStatus, type BusinessHoursSchedule } from '../../services/businessHours.js';
 import { hashPassword } from '../../utils/passwords.js';
 import { canAssignTenantRole } from '../../services/roles.js';
+import { getPartnerAiConfig } from '../../services/ai/config.js';
+import config from '../../config.js';
 
 // simple slugify helper
 function makeSlug(text: string) {
@@ -210,10 +212,24 @@ export const partnerRouter = router({
       const result = await db.select().from(partners).where(eq(partners.id, partnerId)).limit(1);
       if (result.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
 
-      return result[0];
+      // Strip sensitive AI configuration (API keys, provider config) from the response
+      const { aiConfig, aiProvider, aiModel, ...safePartner } = result[0];
+      return safePartner;
     } catch (err: unknown) {
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
     }
+  }),
+
+  getAiConfig: protectedProcedure.query(async ({ ctx }) => {
+    const partnerId = ctx.user.partnerId;
+    if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+    const aiConfig = await getPartnerAiConfig(partnerId);
+
+    return {
+      globalAiEnabled: config.AI_ENABLED,
+      ...aiConfig,
+    };
   }),
 
   getBusinessHours: protectedProcedure.query(async ({ ctx }) => {

@@ -5,6 +5,8 @@ import BionicText from './BionicText';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import { Message } from '../types';
+import { useAutoTranslation } from '../hooks/useTranslation';
+import { trpc } from '../utils/trpc';
 
 interface MessageBubbleProps {
   message: Message;
@@ -17,6 +19,22 @@ interface MessageBubbleProps {
 export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true }: MessageBubbleProps) {
   const { user, participantsOnline, bionicReading } = useStore();
   const t = useT();
+
+  // AI config for translation
+  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
+    enabled: !!user,
+    staleTime: 60_000, // cache for 1 min to avoid re-fetching per bubble
+  });
+  const translationEnabled = aiConfigQuery.data?.translation === true;
+
+  // Auto-translate if senderLang !== viewerLang
+  const { translated, loading: translating, showOriginal, setShowOriginal, needsTranslation } = useAutoTranslation({
+    messageId: message.id,
+    text: message.text || message.originalText || '',
+    senderLang: message.senderLang || '',
+    viewerLang: user?.lang || 'en',
+    enabled: translationEnabled && !message.system && !message.whisper,
+  });
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
@@ -37,7 +55,9 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const isMine = message.senderId === user?.id;
   const isWhisper = !!message.whisper;
 
-  const displayText = isDeleted ? (t('message_deleted') || 'This message was deleted') : (message.text || '');
+  const originalDisplayText = isDeleted ? (t('message_deleted') || 'This message was deleted') : (message.text || '');
+  // Show translated text if available and user hasn't toggled to original
+  const displayText = (!isDeleted && translated && !showOriginal) ? translated : originalDisplayText;
 
   const time = new Date(message.timestamp || message.createdAt || '').toLocaleTimeString('en-GB', {
     hour: '2-digit',
@@ -147,6 +167,28 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             </div>
           )}
         </div>
+
+        {/* Translation indicator */}
+        {needsTranslation && !isDeleted && (
+          <div className="flex items-center gap-2 mt-1.5 -mb-0.5">
+            {translating ? (
+              <span className="text-[9px] font-bold opacity-40 italic flex items-center gap-1">
+                <svg className="animate-spin h-2.5 w-2.5" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                translating...
+              </span>
+            ) : translated ? (
+              <button
+                onClick={() => setShowOriginal(!showOriginal)}
+                className="text-[9px] font-bold opacity-40 hover:opacity-70 transition-opacity underline underline-offset-2"
+              >
+                {showOriginal ? 'Show translation' : `Show original (${message.senderLang})`}
+              </button>
+            ) : null}
+          </div>
+        )}
 
         <div className={`flex items-center justify-end gap-2 mt-2 -mr-1 opacity-40`}>
           {isEdited && !isDeleted && (
