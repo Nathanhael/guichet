@@ -264,25 +264,9 @@ npm install -D @types/swagger-jsdoc @types/swagger-ui-express
 ## Implementation Order
 
 ```
-1. MFA Admin Management     (~2 hours)  — Quick win, high value
-   ├── Backend: disableMfa + unlockUser mutations
-   ├── Email template
-   ├── Frontend: badges + action buttons in UserTable
-   └── Tests
-
-2. API Documentation         (~3 hours)  — Self-contained
-   ├── Install swagger deps
-   ├── Annotate REST routes
-   ├── Mount Swagger UI
-   ├── Generate tRPC reference
-   └── Platform nav link
-
-3. Notification Preferences  (~4 hours)  — Most plumbing
-   ├── Migration + schema
-   ├── tRPC endpoints
-   ├── Mail service preference checks
-   ├── Frontend toggles
-   └── Tests
+1. MFA Admin Management     ✅ DONE 2026-03-24
+2. API Documentation         ✅ DONE 2026-03-24
+3. Notification Preferences  ✅ DONE 2026-03-24
 ```
 
 ---
