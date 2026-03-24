@@ -1,9 +1,11 @@
 // @ts-ignore nodemailer types may not be installed
 import nodemailer from 'nodemailer';
 import { db } from '../db.js';
-import { systemSettings } from '../db/schema.js';
+import { systemSettings, users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from '../utils/logger.js';
+
+export type NotificationType = 'accountLocked' | 'mfaEnabled' | 'mfaDisabled' | 'passwordChanged';
 
 export interface MailConfig {
   provider: 'none' | 'smtp' | 'resend' | 'sendgrid';
@@ -100,25 +102,41 @@ export class MailService {
     return this.sendMail(email, 'Reset your Tessera Password', html);
   }
 
-  static async sendAccountLocked(email: string, name: string, lockedMinutes: number) {
+  /** Check if a user has opted out of a notification type. Missing key = opted in (default true). */
+  static async shouldNotify(userId: string, notificationType: NotificationType): Promise<boolean> {
+    try {
+      const rows = await db.select({ prefs: users.notificationPreferences })
+        .from(users).where(eq(users.id, userId)).limit(1);
+      const prefs = (rows[0]?.prefs ?? {}) as Record<string, boolean>;
+      return prefs[notificationType] !== false; // default true when key missing
+    } catch {
+      return true; // fail-open: send if we can't check
+    }
+  }
+
+  static async sendAccountLocked(email: string, name: string, lockedMinutes: number, userId?: string) {
+    if (userId && !(await this.shouldNotify(userId, 'accountLocked'))) return false;
     const { renderAccountLocked } = await import('./mailTemplates.js');
     const html = renderAccountLocked({ name, lockedMinutes });
     return this.sendMail(email, 'Tessera — Account Temporarily Locked', html);
   }
 
-  static async sendMfaEnabled(email: string, name: string) {
+  static async sendMfaEnabled(email: string, name: string, userId?: string) {
+    if (userId && !(await this.shouldNotify(userId, 'mfaEnabled'))) return false;
     const { renderMfaEnabled } = await import('./mailTemplates.js');
     const html = renderMfaEnabled({ name });
     return this.sendMail(email, 'Tessera — Two-Factor Authentication Enabled', html);
   }
 
-  static async sendMfaDisabledByAdmin(email: string, name: string) {
+  static async sendMfaDisabledByAdmin(email: string, name: string, userId?: string) {
+    if (userId && !(await this.shouldNotify(userId, 'mfaDisabled'))) return false;
     const { renderMfaDisabledByAdmin } = await import('./mailTemplates.js');
     const html = renderMfaDisabledByAdmin({ name });
     return this.sendMail(email, 'Tessera — Two-Factor Authentication Disabled', html);
   }
 
   static async sendAccountUnlocked(email: string, name: string) {
+    // Account unlock is always sent (security-critical, no opt-out)
     const { renderAccountUnlocked } = await import('./mailTemplates.js');
     const html = renderAccountUnlocked({ name });
     return this.sendMail(email, 'Tessera — Account Unlocked', html);

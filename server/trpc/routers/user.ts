@@ -145,4 +145,41 @@ export const userRouter = router({
 
       return { success: true };
     }),
+
+  /** Get notification preferences for the current user */
+  getNotificationPrefs: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await db.select({ notificationPreferences: users.notificationPreferences })
+      .from(users).where(eq(users.id, ctx.user.id)).limit(1);
+    return (rows[0]?.notificationPreferences ?? {}) as Record<string, boolean>;
+  }),
+
+  /** Update notification preferences (merge, not replace) */
+  updateNotificationPrefs: protectedProcedure
+    .input(z.object({
+      accountLocked: z.boolean().optional(),
+      mfaEnabled: z.boolean().optional(),
+      mfaDisabled: z.boolean().optional(),
+      passwordChanged: z.boolean().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const rows = await db.select({ notificationPreferences: users.notificationPreferences })
+        .from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      const current = (rows[0]?.notificationPreferences ?? {}) as Record<string, boolean>;
+      const merged = { ...current, ...input };
+
+      await db.update(users).set({
+        notificationPreferences: merged,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(users.id, ctx.user.id));
+
+      await db.insert(auditLog).values({
+        action: 'user.notification_prefs_updated',
+        actorId: ctx.user.id,
+        targetType: 'user',
+        targetId: ctx.user.id,
+        metadata: input,
+      });
+
+      return merged;
+    }),
 });

@@ -706,7 +706,7 @@ export const platformRouter = router({
       });
 
       if (target[0].email) {
-        MailService.sendMfaDisabledByAdmin(target[0].email, target[0].name).catch(() => {});
+        MailService.sendMfaDisabledByAdmin(target[0].email, target[0].name, targetUserId).catch(() => {});
       }
 
       return { success: true };

@@ -107,7 +107,7 @@ export const mfaRouter = router({
 
       // Send confirmation email (fire-and-forget)
       if (user.email) {
-        MailService.sendMfaEnabled(user.email, user.name).catch(() => {});
+        MailService.sendMfaEnabled(user.email, user.name, ctx.user.id).catch(() => {});
       }
 
       return { recoveryCodes: plain };
