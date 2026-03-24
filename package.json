@@ -6,10 +6,21 @@
     "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "install:all": "npm install --prefix server && npm install --prefix client && npm install --prefix e2e",
     "test:e2e": "npm test --prefix e2e",
-    "test:e2e:mock": "npm run test:mock --prefix e2e"
+    "test:e2e:mock": "npm run test:mock --prefix e2e",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "server/**/*.ts": [
+      "bash -c 'cd server && npx tsc --noEmit --pretty'"
+    ],
+    "client/**/*.{ts,tsx}": [
+      "bash -c 'cd client && npx tsc --noEmit --pretty'"
+    ]
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
   },
   "dependencies": {
     "@playwright/test": "^1.58.2",
