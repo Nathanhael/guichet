@@ -61,7 +61,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 
 **API Layer**:
 - **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. Procedures in `server/trpc/routers/` organized by domain. Input validation via Zod.
-- **Express Routes**: Limited to Auth (`server/routes/auth.ts`) and Logos (`server/routes/logos.ts`).
+- **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`).
 
 **tRPC Middleware** (`server/trpc/trpc.ts`):
 - `publicProcedure` → `protectedProcedure` → `adminProcedure` / `platformProcedure`
@@ -81,7 +81,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 **Socket.io** (`server/socket/handlers.ts`):
 - All real-time event handlers. Uses Redis adapter for horizontal scaling.
 - Identity enforced server-side via `socket.data.userId` — never trust client-supplied identity fields.
-- Key events: `message:send`, `message:read`, `ticket:new`, `ticket:close`, `support:join`, `support:leave`, `typing:*`, `presence:*`, `partner:deactivated`
+- Key events: `message:send`, `message:read`, `message:edit`, `message:delete`, `ticket:new`, `ticket:close`, `ticket:reopen`, `ticket:transfer`, `ticket:labels:update`, `support:join`, `support:leave`, `typing:*`, `presence:*`, `partner:deactivated`, `canned:list`, `canned:create`, `canned:update`, `canned:delete`
 - All mutation events verify partner-scope authorization before proceeding.
 - **Token expiry**: JWT `exp` is stored at handshake and checked on every event via `requireIdentified()`. Expired tokens trigger `auth:expired` → client auto-reconnects with fresh token from store.
 
@@ -98,14 +98,15 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 | `users` | Global user accounts | `id`, `email`, `password`, `lang` (nl/fr/en), `isPlatformOperator` |
 | `partners` | Tenant organizations | `id`, `name`, `status` (active/inactive), `authMethod` (local/sso), `departments` (JSONB), `logoUrl`, `industry` |
 | `memberships` | User-Partner junction | `userId`, `partnerId`, `role`, `departments` (JSONB array of dept IDs) |
-| `tickets` | Support tickets | `id`, `partnerId`, `agentId`, `status` (open/active/closed), `participants` (JSONB) |
-| `messages` | Per-ticket messages | `ticketId`, `senderId`, `text`, `whisper`, `reactions` (JSONB) |
+| `tickets` | Support tickets | `id`, `partnerId`, `agentId`, `status` (open/pending/closed/resolved), `participants` (JSONB) |
+| `messages` | Per-ticket messages | `ticketId`, `senderId`, `body`, `whisper`, `reactions` (JSONB), `editedAt`, `deletedAt` |
 | `daily_stats` | Aggregated metrics | `date`, `partnerId` (composite PK), per-partner daily stats |
 | `audit_log` | Security/audit trail | `action`, `actorId`, `partnerId`, `targetType`, `targetId`, `metadata` (JSONB) |
 | `audit_archive` | WORM audit archive | SHA-256 `chainHash`, `archivedAt`, same fields as audit_log |
 | `archived_tickets` | Ticket archive | Ticket summary + `messageCount`, `archivedAt`, no message content |
 | `labels` | Ticket labels | `partnerId`, `name`, `color` |
 | `ticket_labels` | Ticket↔Label junction | `ticketId`, `labelId` |
+| `canned_responses` | Per-partner response templates | `partnerId`, `title`, `body`, `shortcut`, `category`, `createdBy` |
 
 ### Client (`client/src/`)
 

@@ -71,24 +71,25 @@ See [Tenant Identity Spec](/D:/Projects_Coding/tessera/docs/TENANT_IDENTITY_SPEC
 - **DYNAMIC DEPT**: Never hardcode department IDs. Read from the partner manifest.
 - **DOCKER ONLY**: Always execute commands inside containers.
 
+## 🔒 Security & Compliance (Active)
+
+- **Multi-Factor Authentication (MFA)**: TOTP-based per-user MFA with authenticator app QR setup, 8 SHA-256 recovery codes, and admin force-disable.
+- **Advanced Password Policies**: Min 10 chars, upper/lower/digit/special required, common password blocking, email/name inclusion check, last-5 password reuse prevention (Argon2id).
+- **Account Lockout**: 5 failed login attempts triggers 15-minute lockout with email notification and audit trail.
+- **Session Revocation**: JTI-based token blacklisting via Redis with per-user "revoke all" for platform operators.
+- **Platform Step-Up Security**: Time-limited TOTP elevation (15 min window) for sensitive platform operations.
+- **Centralized Email Templates**: B&W branded templates for lockout, MFA, password reset, and invite notifications.
+- **WORM Audit Archive**: Tamper-evident SHA-256 hash chain with automatic archival before GDPR purge and chain integrity verification.
+- **Cursor-Based Pagination**: Keyset pagination (createdAt|id composite) for audit logs, ticket archives, and ticket lists.
+- **Ticket Archiving**: Closed tickets archived with summary metadata before GDPR purge deletes originals.
+- **Canned Responses**: Per-partner response templates with shortcut keys for support agents.
+- **Notification Preferences**: Per-user opt-out for email types (lockout, MFA, password changes).
+
 ## 🚀 Future Roadmap
 
-These features are planned for future iterations to enhance the platform's enterprise capabilities:
-
-### 🔐 Identity & Security
-- **Multi-Factor Authentication (MFA)**: Support for Authenticator apps (TOTP) and SMS verification.
-- **Advanced Password Policies**: Customizable strength rules, mandatory rotation, and common password blocking.
-- **Session Management**: Configurable inactivity timeouts and concurrent session controls.
-- **Brute-Force Protection**: Automatic account lockout and IP-based rate limiting.
-
-### 📧 Communication & Workflow
-- **Enhanced Mail Templates**: Customizable, branded email templates for different partners.
-- **Real-Time System Alerts**: Configurable alerts for platform admins (e.g., database high usage).
-
-### 🛡️ Enterprise Audit & Compliance
-- **Cursor-Based Pagination**: Replace offset pagination in the Audit Log for high-performance scaling with millions of records.
-- **WORM Immutability**: Stream logs to tamper-proof cold storage (e.g., AWS S3 Object Lock) to prevent unauthorized database alterations.
-- **Automated Archiving**: Cron-based cold storage for logs older than a specified retention period to maintain database speed.
+- **Real-Time System Alerts**: Configurable alerts for platform admins (e.g., database high usage, Redis memory).
+- **AI Intelligence Hub**: Sentiment analysis, topic clustering, and automated conversation summaries (currently deactivated).
+- **Predictive Staffing**: Forecasting support coverage needs based on volume velocity.
 
 ## 🧪 Testing
 

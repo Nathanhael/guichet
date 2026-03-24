@@ -27,7 +27,7 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET) as { userId: string; role: UserRole; isPlatformOperator: boolean; platformStepUpAt?: number; jti?: string; exp?: number; iat?: number };
+    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as { userId: string; role: UserRole; isPlatformOperator: boolean; platformStepUpAt?: number; jti?: string; exp?: number; iat?: number };
     const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
     if (revoked) {
       return res.status(401).json({ error: 'Session revoked' });

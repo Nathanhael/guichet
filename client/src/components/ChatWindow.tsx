@@ -40,41 +40,127 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const labelsMenuRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef<string | null>(null);
 
-  if (!ticket) return null;
+  const isSupport = isSupportLike(user?.role);
+  const ticketId = ticket?.id ?? '';
 
   // tRPC: Message History
   const messageQuery = trpc.message.list.useQuery(
-    { ticketId: ticket.id },
-    { 
-      enabled: !!ticket.id,
+    { ticketId },
+    {
+      enabled: !!ticketId,
     }
   );
 
   useEffect(() => {
-    if (messageQuery.data) {
-      setMessages(ticket.id, messageQuery.data as any);
+    if (messageQuery.data && ticketId) {
+      setMessages(ticketId, messageQuery.data as any);
     }
-  }, [messageQuery.data, ticket.id, setMessages]);
-
-  const isSupport = isSupportLike(user?.role);
+  }, [messageQuery.data, ticketId, setMessages]);
 
   // tRPC: Agent Presence
   const presenceQuery = trpc.presence.getOnlineStatus.useQuery(
-    { userId: ticket.agentId || '', partnerId: activePartnerId || '' },
+    { userId: ticket?.agentId || '', partnerId: activePartnerId || '' },
     {
-      enabled: isSupport && !!ticket.agentId && ticket.status !== 'closed' && !!activePartnerId,
+      enabled: isSupport && !!ticket?.agentId && ticket?.status !== 'closed' && !!activePartnerId,
       refetchInterval: 10000, // Check every 10s
     }
   );
 
   useEffect(() => {
-    if (presenceQuery.data) {
-      setParticipantOnline(ticket.id, presenceQuery.data.online);
+    if (presenceQuery.data && ticketId) {
+      setParticipantOnline(ticketId, presenceQuery.data.online);
     }
-  }, [presenceQuery.data, ticket.id, setParticipantOnline]);
+  }, [presenceQuery.data, ticketId, setParticipantOnline]);
 
-  const ticketMessages = messages[ticket.id] || [];
-  const agentIsOnline = participantsOnline[ticket.id] ?? true;
+  const ticketMessages = ticket ? (messages[ticket.id] || []) : [];
+  const agentIsOnline = ticket ? (participantsOnline[ticket.id] ?? true) : true;
+
+  // Reset initial-scroll tracker when switching tickets
+  useEffect(() => {
+    if (!ticketId) return;
+    initialScrollDoneRef.current = null;
+    prevMessageCountRef.current = 0;
+    setUnreadCount(0);
+  }, [ticketId]);
+
+  // Handle outside click for labels menu
+  useEffect(() => {
+    function onOutsideClick(e: MouseEvent) {
+      if (labelsMenuRef.current && !labelsMenuRef.current.contains(e.target as Node)) {
+        // setShowLabelsMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', onOutsideClick, true);
+    return () => document.removeEventListener('mousedown', onOutsideClick, true);
+  }, []);
+
+  useEffect(() => {
+    if (!ticketId) return;
+    const count = ticketMessages.length;
+    if (count === 0) return;
+
+    if (initialScrollDoneRef.current !== ticketId) {
+      initialScrollDoneRef.current = ticketId;
+      prevMessageCountRef.current = count;
+      requestAnimationFrame(() => {
+        const el = scrollContainerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+      return;
+    }
+
+    const newMessages = count - prevMessageCountRef.current;
+    prevMessageCountRef.current = count;
+
+    if (newMessages <= 0) return;
+
+    const lastMsg = ticketMessages[count - 1];
+    if (isNearBottomRef.current || lastMsg?.senderId === user?.id) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setUnreadCount(0);
+
+      const unreadIds = ticketMessages
+        .filter(m => m.senderId !== user?.id && !m.readAt)
+        .map(m => m.id);
+
+      if (unreadIds.length > 0 && document.hasFocus()) {
+        getSocket().emit('message:read', { ticketId, messageIds: unreadIds });
+      }
+    } else {
+      setUnreadCount((prev) => prev + newMessages);
+    }
+  }, [ticketMessages.length, ticketId, user?.id]);
+
+  useEffect(() => {
+    if (ticket?.status === 'closed' && onClose) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [ticket?.status, onClose]);
+
+  useEffect(() => {
+    if (!ticketId) return;
+    function onFocus() {
+      const unreadIds = ticketMessages
+        .filter(m => m.senderId !== user?.id && !m.readAt)
+        .map(m => m.id);
+
+      if (unreadIds.length > 0) {
+        getSocket().emit('message:read', { ticketId, messageIds: unreadIds });
+        setUnreadCount(0);
+      }
+    }
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [ticketMessages, ticketId, user?.id]);
+
+  if (!ticket) return null;
+
+  const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
+
+  const getLabelInfo = (id: string) => (allLabels || []).find((l) => l.id === id);
 
   // Track scroll position
   function handleScroll() {
@@ -103,88 +189,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       getSocket().emit('typing:stop', { ticketId: ticket!.id, senderName: user?.name });
     }
   }
-
-  // Reset initial-scroll tracker when switching tickets
-  useEffect(() => {
-    initialScrollDoneRef.current = null;
-    prevMessageCountRef.current = 0;
-    setUnreadCount(0);
-  }, [ticket.id]);
-
-  // Handle outside click for labels menu
-  useEffect(() => {
-    function onOutsideClick(e: MouseEvent) {
-      if (labelsMenuRef.current && !labelsMenuRef.current.contains(e.target as Node)) {
-        // setShowLabelsMenu(false);
-      }
-    }
-    document.addEventListener('mousedown', onOutsideClick, true);
-    return () => document.removeEventListener('mousedown', onOutsideClick, true);
-  }, []);
-
-  const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
-
-  const getLabelInfo = (id: string) => (allLabels || []).find((l) => l.id === id);
-
-  useEffect(() => {
-    const count = ticketMessages.length;
-    if (count === 0) return;
-
-    if (initialScrollDoneRef.current !== ticket.id) {
-      initialScrollDoneRef.current = ticket.id;
-      prevMessageCountRef.current = count;
-      requestAnimationFrame(() => {
-        const el = scrollContainerRef.current;
-        if (el) el.scrollTop = el.scrollHeight;
-      });
-      return;
-    }
-
-    const newMessages = count - prevMessageCountRef.current;
-    prevMessageCountRef.current = count;
-
-    if (newMessages <= 0) return;
-
-    const lastMsg = ticketMessages[count - 1];
-    if (isNearBottomRef.current || lastMsg?.senderId === user?.id) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-      setUnreadCount(0);
-
-      const unreadIds = ticketMessages
-        .filter(m => m.senderId !== user?.id && !m.readAt)
-        .map(m => m.id);
-
-      if (unreadIds.length > 0 && document.hasFocus()) {
-        getSocket().emit('message:read', { ticketId: ticket.id, messageIds: unreadIds });
-      }
-    } else {
-      setUnreadCount((prev) => prev + newMessages);
-    }
-  }, [ticketMessages.length, ticket.id, user?.id]);
-
-  useEffect(() => {
-    if (ticket.status === 'closed' && onClose) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [ticket.status, onClose]);
-
-  useEffect(() => {
-    function onFocus() {
-      const unreadIds = ticketMessages
-        .filter(m => m.senderId !== user?.id && !m.readAt)
-        .map(m => m.id);
-
-      if (unreadIds.length > 0) {
-        getSocket().emit('message:read', { ticketId: ticket!.id, messageIds: unreadIds });
-        setUnreadCount(0);
-      }
-    }
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [ticketMessages, ticket.id, user?.id]);
 
   async function uploadFile(file: File) {
     const { token } = useStore.getState();

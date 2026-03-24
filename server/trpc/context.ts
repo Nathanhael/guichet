@@ -37,7 +37,7 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
+      const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as JwtPayload;
       const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
       if (revoked) {
         return { req, res, user: null };
