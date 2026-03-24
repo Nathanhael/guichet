@@ -13,6 +13,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - API documentation: Swagger UI at `/api/v1/docs/` for REST endpoints (auth, uploads, logos, health)
 - tRPC reference documentation at `/api/v1/trpc-reference` (68 procedures across 13 routers)
 - OpenAPI annotations on all Express route handlers
+- Notification preferences: per-user opt-out for email types (account lockout, MFA changes, password changes)
+- Notification toggle UI in security modal with B&W toggle switches
+- DB migration 0009: `notification_preferences` JSONB column on users table
 - Database backup script (`npm run db:backup`) with auto-pruning
 - Database baseline script for adopting Drizzle on existing DBs
 - Socket.io token expiry detection — expired JWTs are caught and clients auto-reconnect

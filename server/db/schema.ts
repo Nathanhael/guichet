@@ -44,6 +44,7 @@ export const users = pgTable('users', {
   mfaSecret: text('mfa_secret'),
   mfaEnabledAt: timestamp('mfa_enabled_at', { mode: 'string' }),
   mfaRecoveryCodes: jsonb('mfa_recovery_codes').default([]),
+  notificationPreferences: jsonb('notification_preferences').default({}),
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),

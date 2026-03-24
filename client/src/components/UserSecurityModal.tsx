@@ -1,8 +1,15 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { trpc } from '../utils/trpc';
-import { Shield, X, Copy, Check, KeyRound } from 'lucide-react';
+import { Shield, X, Copy, Check, KeyRound, Bell } from 'lucide-react';
 
 type Step = 'status' | 'setup' | 'verify' | 'recovery' | 'disable' | 'regenerate' | 'password';
+
+const NOTIFICATION_LABELS: Record<string, string> = {
+  accountLocked: 'Account lockout alerts',
+  mfaEnabled: 'MFA enabled confirmation',
+  mfaDisabled: 'MFA disabled by admin alert',
+  passwordChanged: 'Password change confirmation',
+};
 
 export default function UserSecurityModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<Step>('status');
@@ -57,6 +64,15 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
       setConfirmPassword('');
     },
   });
+
+  const { data: notifPrefs } = trpc.user.getNotificationPrefs.useQuery();
+  const updateNotifPrefs = trpc.user.updateNotificationPrefs.useMutation({
+    onSuccess: () => utils.user.getNotificationPrefs.invalidate(),
+  });
+
+  const toggleNotif = useCallback((key: string, current: boolean) => {
+    updateNotifPrefs.mutate({ [key]: !current } as Record<string, boolean>);
+  }, [updateNotifPrefs]);
 
   const busy = beginSetup.isPending || enable.isPending || disable.isPending || regenerate.isPending || changePassword.isPending;
   const error = beginSetup.error || enable.error || disable.error || regenerate.error || changePassword.error;
@@ -143,6 +159,30 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 >
                   <KeyRound className="h-3 w-3" /> Change Password
                 </button>
+              </div>
+
+              {/* Notification Preferences */}
+              <div className="border-t border-black/10 dark:border-white/10 pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Bell className="h-3.5 w-3.5 opacity-60" />
+                  <div className="text-[10px] font-black uppercase tracking-widest opacity-60">Email Notifications</div>
+                </div>
+                {Object.entries(NOTIFICATION_LABELS).map(([key, label]) => {
+                  const enabled = notifPrefs?.[key] !== false;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => toggleNotif(key, enabled)}
+                      disabled={updateNotifPrefs.isPending}
+                      className="w-full flex items-center justify-between p-3 border border-black/10 dark:border-white/10 hover:border-black dark:hover:border-white"
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
+                      <div className={`w-8 h-4 border-2 border-black dark:border-white relative ${enabled ? 'bg-black dark:bg-white' : ''}`}>
+                        <div className={`absolute top-0 w-3 h-3 ${enabled ? 'right-0 bg-white dark:bg-black' : 'left-0 bg-black/20 dark:bg-white/20'}`} />
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </>
           ) : step === 'password' ? (

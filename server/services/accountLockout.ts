@@ -65,7 +65,7 @@ export async function recordFailedLogin(userId: string): Promise<{ locked: boole
       const userRow = await db.select({ email: users.email, name: users.name })
         .from(users).where(eq(users.id, userId)).limit(1);
       if (userRow[0]?.email) {
-        MailService.sendAccountLocked(userRow[0].email, userRow[0].name, LOCKOUT_MINUTES).catch(() => {});
+        MailService.sendAccountLocked(userRow[0].email, userRow[0].name, LOCKOUT_MINUTES, userId).catch(() => {});
       }
     } catch { /* best-effort */ }
 
