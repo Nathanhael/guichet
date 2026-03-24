@@ -2,12 +2,14 @@ import { Suspense, useEffect, useState, lazy } from 'react';
 import useStore from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import { useTheme } from './hooks/useTheme';
+import { initTitleBadgeListener } from './utils/notifications';
 import LoginView from './views/LoginView';
 import SupportView from './views/SupportView';
 import AdminView from './views/AdminView';
 import PlatformView from './views/PlatformView';
 import AgentView from './views/AgentView';
 import DarkModeToggle from './components/DarkModeToggle';
+import ErrorBoundary from './components/ErrorBoundary';
 import { isPlatformAdmin, isTenantAdmin } from './utils/roles';
 import { Shield } from 'lucide-react';
 
@@ -52,6 +54,9 @@ export default function App() {
   useTheme();
   useSocket();
 
+  // Initialize tab title badge listener (clears badge on window focus)
+  useEffect(() => { initTitleBadgeListener(); }, []);
+
   // Auto-clear stale activeMembershipId for non-platform users
   useEffect(() => {
     if (!user || !activeMembershipId || user.isPlatformOperator) return;
@@ -65,9 +70,11 @@ export default function App() {
     // If user is Platform Operator, show Platform View by default
     if (isPlatformAdmin(user) && !activeMembershipId) {
       return (
-        <Suspense fallback={<LoadingFallback />}>
-          <PlatformView />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <PlatformView />
+          </Suspense>
+        </ErrorBoundary>
       );
     }
 
@@ -82,26 +89,32 @@ export default function App() {
     // Platform Operators get Admin access to any partner they 'Enter'
     if (isPlatformAdmin(user) || isTenantAdmin(role)) {
       return (
-        <Suspense fallback={<LoadingFallback />}>
-          <AdminView />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <AdminView />
+          </Suspense>
+        </ErrorBoundary>
       );
     }
 
     // End-user / customer agent view
     if (role === 'agent') {
       return (
-        <Suspense fallback={<LoadingFallback />}>
-          <AgentView />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<LoadingFallback />}>
+            <AgentView />
+          </Suspense>
+        </ErrorBoundary>
       );
     }
 
     // Support staff view
     return (
-      <Suspense fallback={<LoadingFallback />}>
-        <SupportView />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingFallback />}>
+          <SupportView />
+        </Suspense>
+      </ErrorBoundary>
     );
   };
 

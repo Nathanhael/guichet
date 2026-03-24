@@ -68,7 +68,21 @@ initRedis().then(({ pubClient, subClient }) => {
 });
 
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // Swagger UI needs inline scripts
+      styleSrc: ["'self'", "'unsafe-inline'"],  // Swagger UI + Tailwind
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'", "ws:", "wss:", ...allowedOrigins],
+      fontSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+    },
+  },
 }));
 app.use(cors({ 
   origin: (origin, callback) => {
@@ -239,9 +253,17 @@ app.get('/metrics', async (req: Request, res: Response) => {
 });
 
 
-// GDPR purge
-runDailyPurge();
-setInterval(runDailyPurge, config.PURGE_INTERVAL_MS);
+// GDPR purge — run initial after random delay (1-60 min jitter to avoid predictable timing)
+const purgeJitterMs = Math.floor(Math.random() * 60 * 60 * 1000);
+setTimeout(() => {
+  runDailyPurge();
+  // Subsequent runs: interval ± 1h jitter
+  setInterval(() => {
+    const jitter = Math.floor(Math.random() * 2 * 60 * 60 * 1000) - 60 * 60 * 1000; // ±1h
+    setTimeout(runDailyPurge, Math.max(0, jitter));
+  }, config.PURGE_INTERVAL_MS);
+}, purgeJitterMs);
+logger.info({ purgeJitterMin: Math.round(purgeJitterMs / 60000) }, '[GDPR] Purge scheduled with jitter');
 
 // Socket.IO handlers
 registerSocketHandlers(io);
