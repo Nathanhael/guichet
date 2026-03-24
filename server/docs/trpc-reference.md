@@ -36,6 +36,16 @@ Client access: `trpc.<router>.<procedure>`
 | Procedure | Type | Auth | Description |
 |-----------|------|------|-------------|
 | `list` | query | protected | List messages for a ticket |
+| `search` | query | role(support, admin) | Full-text search across message content. Input: `{ query, partnerId }` |
+
+## cannedResponse
+
+| Procedure | Type | Auth | Description |
+|-----------|------|------|-------------|
+| `list` | query | role(support, admin) | List canned responses for current partner (with optional category filter) |
+| `create` | mutation | admin | Create a canned response. Input: `{ title, body, shortcut?, category? }` |
+| `update` | mutation | admin | Update a canned response. Input: `{ id, title?, body?, shortcut?, category? }` |
+| `delete` | mutation | admin | Delete a canned response by ID |
 
 ## presence
 
@@ -72,6 +82,8 @@ Client access: `trpc.<router>.<procedure>`
 | `demoList` | query | public | List demo users (only when DEMO_MODE=true) |
 | `revokeSessions` | mutation | platform | Force sign-out all sessions for a user. Input: `{ userId }` |
 | `changePassword` | mutation | protected | Change own password. Input: `{ currentPassword, newPassword }`. Validates strength, checks history (last 5), revokes all sessions |
+| `getNotificationPrefs` | query | protected | Get current user's notification preferences |
+| `updateNotificationPrefs` | mutation | protected | Update notification preferences (partial merge). Input: `{ accountLocked?, mfaEnabled?, mfaDisabled?, passwordChanged? }` |
 
 ## mfa
 

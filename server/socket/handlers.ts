@@ -131,7 +131,7 @@ export function registerSocketHandlers(io: Server) {
         return next(new Error('Authentication required'));
       }
 
-      const decoded = jwt.verify(token, config.JWT_SECRET) as {
+      const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as {
         userId: string; role: string; jti?: string; iat?: number; exp?: number;
         isPlatformOperator?: boolean;
       };
@@ -344,7 +344,7 @@ export function registerSocketHandlers(io: Server) {
             THEN (COALESCE(participants, '[]')::jsonb || $6::jsonb)::text
             ELSE participants
           END,
-          status = 'active'
+          status = 'open'
         WHERE id = $7`, [supportId, supportName, supportLang, new Date().toISOString(), `[${participantJson}]`, participantJson, ticketId]);
 
         // Read back updated participants for broadcast

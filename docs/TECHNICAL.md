@@ -54,10 +54,24 @@ Tessera is 100% data-driven. Hardcoded constants for departments have been remov
 
 ---
 
-## 6. Communication & Activity
+## 6. Security Hardening
+
+- **Multi-Factor Authentication (MFA)**: Per-user TOTP setup/enable/disable via tRPC. Login challenge returns `{ mfaRequired: true }` and waits for TOTP code or recovery code. 8 SHA-256 hashed recovery codes generated on enable.
+- **Account Lockout**: 5 failed login attempts triggers 15-minute lockout. State tracked in `failedLoginAttempts` + `lockedUntil` columns. Email notification on lockout.
+- **Advanced Password Policies**: Min 10 chars, max 128 chars, upper/lower/digit/special required, common password blocking (~160 entries), email/name inclusion check. Last 5 passwords checked for reuse (Argon2id verified).
+- **Platform Step-Up**: Time-limited TOTP elevation for platform operators. Configurable via `REQUIRE_PLATFORM_STEP_UP` flag.
+- **WORM Audit Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Ticket archiving with message count summary.
+- **JWT Algorithm Pinning**: All `jwt.verify()` calls specify `{ algorithms: ['HS256'] }` to prevent algorithm confusion attacks.
+- **CSP Headers**: Helmet configured with Content Security Policy for XSS mitigation.
+- **Rate Limiting**: Express rate limits on auth endpoints. Per-email forgot-password throttle (3 requests per 15 minutes).
+
+## 7. Communication & Activity
 
 - **Dynamic Mail Service**: A centralized `MailService` that retrieves provider settings (SMTP, Resend, SendGrid) from the database at runtime, allowing for hot-swapping email providers without redeploys.
+- **Centralized Mail Templates**: B&W branded HTML templates for lockout, MFA enabled, MFA disabled by admin, password reset, invite, and reminder emails. XSS-safe escaping via `escapeHtml()`.
+- **Canned Responses**: Per-partner response templates with title, body, shortcut key, and category. CRUD management for admins, `/` picker in chat for support agents.
 - **User Activity Lifecycle**: The system tracks `last_active_at` for all users across both Local and SSO login paths, providing real-time visibility into platform adoption.
+- **Notification Preferences**: Per-user opt-out for email notification types (account lockout, MFA changes, password changes). Opt-out model — everything on by default.
 
 ---
 
@@ -68,4 +82,4 @@ Tessera is 100% data-driven. Hardcoded constants for departments have been remov
 - **Reusable UI Primitives**: Custom `ConfirmDialog` and `Toast` components replace all native `alert()`/`confirm()` calls for consistent UX.
 - **Full i18n**: All UI strings use `useT()` with translations in English, French, and Dutch (`i18n.ts`). Business hours, admin views, and platform views are fully translated.
 - **State Synchronization**: Strict single-page-app behaviors using Zustand for global state and tRPC for seamless query invalidation and refetching.
-- **Test Coverage**: Vitest + React Testing Library with 66 tests across 9 files covering all platform components. Tests mock tRPC at the hook level using `vi.hoisted()` for clean isolation.
+- **Test Coverage**: Vitest + React Testing Library with 94 tests across 16 files covering platform components, auth middleware, socket handlers, account lockout, message mapping, and security utilities. Tests mock tRPC at the hook level using `vi.hoisted()` for clean isolation.

@@ -40,6 +40,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Self-service password change** — authenticated users can change their own password with strength validation, history check, and session revocation
 - **Archive viewer UI** — PlatformView "Archive" tab with audit log browser, ticket browser, chain verification, and manual archive trigger
 - CI: Playwright E2E job with Postgres service container, browser install, and failure artifact upload
+- **Canned responses** — per-partner response templates with shortcut keys, category grouping, and `/` picker in chat
+- **Message edit/delete** — support agents can edit or soft-delete their own messages (admins can delete any)
+- **Ticket transfer** — support agents can transfer tickets to another online support user
+- **Ticket search** — full-text search across message content from the queue sidebar
+- **Customer info panel** — sidebar showing agent details, past tickets, and reference fields
+- DB migration 0010: `canned_responses` table with `title`, `body`, `shortcut`, `category`, `created_by`
+- DB migration 0011: `edited_at` and `deleted_at` columns on messages table
 
 ### Changed
 - Ticket list pagination migrated from offset-based to cursor-based keyset pagination (AdminArchive, QueueSidebar)
