@@ -32,8 +32,10 @@ ALTER TABLE "llm_summaries" ALTER COLUMN "updated_at" SET DEFAULT now();--> stat
 ALTER TABLE "memberships" ALTER COLUMN "role" SET DATA TYPE "public"."user_role" USING "role"::"public"."user_role";--> statement-breakpoint
 ALTER TABLE "memberships" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
 ALTER TABLE "messages" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
+ALTER TABLE "messages" ALTER COLUMN "reactions" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "messages" ALTER COLUMN "reactions" SET DATA TYPE jsonb USING COALESCE("reactions"::jsonb, '{}'::jsonb);--> statement-breakpoint
 ALTER TABLE "messages" ALTER COLUMN "reactions" SET DEFAULT '{}'::jsonb;--> statement-breakpoint
+ALTER TABLE "partners" ALTER COLUMN "departments" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "partners" ALTER COLUMN "departments" SET DATA TYPE jsonb USING COALESCE("departments"::jsonb, '[]'::jsonb);--> statement-breakpoint
 ALTER TABLE "partners" ALTER COLUMN "departments" SET DEFAULT '[]'::jsonb;--> statement-breakpoint
 ALTER TABLE "partners" ALTER COLUMN "ai_enabled" SET DEFAULT false;--> statement-breakpoint
@@ -42,6 +44,7 @@ ALTER TABLE "ratings" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-
 ALTER TABLE "tickets" ALTER COLUMN "status" SET DEFAULT 'open'::"public"."ticket_status";--> statement-breakpoint
 ALTER TABLE "tickets" ALTER COLUMN "status" SET DATA TYPE "public"."ticket_status" USING "status"::"public"."ticket_status";--> statement-breakpoint
 ALTER TABLE "tickets" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
+ALTER TABLE "tickets" ALTER COLUMN "participants" DROP DEFAULT;--> statement-breakpoint
 ALTER TABLE "tickets" ALTER COLUMN "participants" SET DATA TYPE jsonb USING COALESCE("participants"::jsonb, '[]'::jsonb);--> statement-breakpoint
 ALTER TABLE "tickets" ALTER COLUMN "participants" SET DEFAULT '[]'::jsonb;--> statement-breakpoint
 ALTER TABLE "topic_alerts" ALTER COLUMN "severity" SET DEFAULT 'medium'::"public"."severity";--> statement-breakpoint
@@ -74,6 +77,6 @@ CREATE INDEX "idx_users_email" ON "users" USING btree ("email");--> statement-br
 CREATE INDEX "idx_users_external_id" ON "users" USING btree ("external_id");--> statement-breakpoint
 ALTER TABLE "partners" DROP COLUMN "primary_color";--> statement-breakpoint
 ALTER TABLE "partners" DROP COLUMN "secondary_color";--> statement-breakpoint
-ALTER TABLE "partners" DROP COLUMN "theme_config";--> statement-breakpoint
+ALTER TABLE "partners" DROP COLUMN IF EXISTS "theme_config";--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_email_unique" UNIQUE("email");--> statement-breakpoint
 ALTER TABLE "users" ADD CONSTRAINT "users_external_id_unique" UNIQUE("external_id");
