@@ -108,6 +108,18 @@ export const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again later.' }
 });
 
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') ? 999999 : 10,
+  message: { error: 'Too many upload requests, please try again later.' }
+});
+
+const trpcLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') ? 999999 : 200,
+  message: { error: 'Too many requests, please try again later.' }
+});
+
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   logger.info({ method: req.method, url: req.url }, `Incoming ${req.method} request`);
@@ -136,14 +148,15 @@ v1Router.get('/trpc-reference', (_req: Request, res: Response) => {
 });
 
 v1Router.use('/tickets', ticketRoutes); // Kept for export support
-v1Router.use('/uploads', uploadRoutes);
-v1Router.use('/logos', logoRoutes);
+v1Router.use('/uploads', uploadLimiter, uploadRoutes);
+v1Router.use('/logos', uploadLimiter, logoRoutes);
 v1Router.use('/auth', authLimiter, authRoutes);
 v1Router.use('/auth/sso', authLimiter, ssoRoutes);
 
 // tRPC v1
 v1Router.use(
   '/trpc',
+  trpcLimiter,
   trpcExpress.createExpressMiddleware({
     router: appRouter,
     createContext,

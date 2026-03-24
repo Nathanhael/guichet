@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import * as jose from 'jose';
 import { v4 as uuid } from 'uuid';
 import { db } from '../db.js';
 import { users, memberships, partners, partnerGroupMappings, auditLog } from '../db/schema.js';
@@ -27,6 +28,21 @@ const REDIRECT_URI = () => config.AZURE_AD_REDIRECT_URI;
 
 function ensureConfigured(): boolean {
   return !!(TENANT() && CLIENT_ID() && CLIENT_SECRET() && REDIRECT_URI());
+}
+
+// Lazily-created JWKS client for Azure AD token signature verification
+let cachedJwks: { tenantId: string; jwks: ReturnType<typeof jose.createRemoteJWKSet> } | null = null;
+function getJwks() {
+  const tenantId = TENANT()!;
+  if (!cachedJwks || cachedJwks.tenantId !== tenantId) {
+    cachedJwks = {
+      tenantId,
+      jwks: jose.createRemoteJWKSet(
+        new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`)
+      ),
+    };
+  }
+  return cachedJwks.jwks;
 }
 
 // SSO CSRF state tokens stored in Redis with 10-minute TTL (multi-instance safe)
@@ -131,22 +147,31 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 
     const tokenData = await tokenRes.json() as { id_token: string; access_token: string };
 
-    // Decode ID token — received directly from Microsoft's token endpoint over TLS,
-    // so the payload is trustworthy. For full OIDC compliance, consider verifying the
-    // signature against Microsoft's JWKS endpoint using a library like `jose`.
-    // TODO: Add proper JWT signature verification via JWKS for defense-in-depth.
+    // Verify ID token signature against Microsoft's JWKS endpoint
     const idToken = tokenData.id_token;
-    const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64url').toString());
-
-    // Verify nonce to prevent token replay attacks
-    if (payload.nonce !== expectedNonce) {
-      logger.warn({ expected: expectedNonce, received: payload.nonce }, '[SSO] Nonce mismatch — possible replay attack');
-      return res.redirect(`${clientOrigin}/?sso_error=nonce_mismatch`);
+    let payload: jose.JWTPayload;
+    try {
+      const result = await jose.jwtVerify(idToken, getJwks(), {
+        issuer: `https://login.microsoftonline.com/${TENANT()}/v2.0`,
+        audience: CLIENT_ID()!,
+      });
+      payload = result.payload;
+    } catch (verifyErr) {
+      logger.error({ err: verifyErr instanceof Error ? verifyErr.message : String(verifyErr) }, '[SSO] ID token signature verification failed');
+      return res.redirect(`${clientOrigin}/?sso_error=token_verification_failed`);
     }
 
-    const oid: string = payload.oid;          // Azure Object ID
-    const email: string = (payload.email || payload.preferred_username || '').toLowerCase();
-    const name: string = payload.name || email;
+    // Azure-specific claims from the verified payload
+    const claims = payload as jose.JWTPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string> };
+
+    // Verify nonce to prevent token replay attacks
+    if (claims.nonce !== expectedNonce) {
+      logger.warn({ expected: expectedNonce, received: claims.nonce }, '[SSO] Nonce mismatch — possible replay attack');
+      return res.redirect(`${clientOrigin}/?sso_error=nonce_mismatch`);
+    }
+    const oid: string = claims.oid || '';
+    const email: string = (claims.email || claims.preferred_username || '').toLowerCase();
+    const name: string = claims.name || email;
 
     if (!oid || !email) {
       logger.error({ hasOid: !!oid, hasEmail: !!email }, '[SSO] Missing oid or email in ID token');
@@ -188,9 +213,9 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
     // ---- Auto-membership: group-based partner mapping ----
-    const azureGroups: string[] = payload.groups || [];
+    const azureGroups: string[] = claims.groups || [];
 
-    if (azureGroups.length === 0 && payload._claim_names?.groups) {
+    if (azureGroups.length === 0 && claims._claim_names?.groups) {
       // Group overage — Azure omitted groups claim (user has 200+ groups)
       logger.warn({ userId: user.id, oid }, '[SSO] Group overage detected — groups claim missing, _claim_names present. User may need manual membership.');
     }

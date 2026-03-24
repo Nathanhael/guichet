@@ -332,9 +332,24 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
-        const participants = JSON.parse(ticket.participants || '[]');
-        if (!participants.find((p: Participant) => p.id === supportId)) participants.push({ id: supportId, name: supportName });
-        await run('UPDATE tickets SET support_id = $1, support_name = $2, support_lang = $3, support_joined_at = $4, participants = $5, status = $6 WHERE id = $7', [ticket.support_id || supportId, ticket.support_name || supportName, ticket.support_lang || supportLang, ticket.support_joined_at || new Date().toISOString(), JSON.stringify(participants), 'active', ticketId]);
+        // Atomic participant update using JSONB to avoid race conditions
+        const participantJson = JSON.stringify({ id: supportId, name: supportName });
+        await run(`UPDATE tickets SET
+          support_id = COALESCE(support_id, $1),
+          support_name = COALESCE(support_name, $2),
+          support_lang = COALESCE(support_lang, $3),
+          support_joined_at = COALESCE(support_joined_at, $4),
+          participants = CASE
+            WHEN NOT (COALESCE(participants, '[]')::jsonb @> $5::jsonb)
+            THEN (COALESCE(participants, '[]')::jsonb || $6::jsonb)::text
+            ELSE participants
+          END,
+          status = 'active'
+        WHERE id = $7`, [supportId, supportName, supportLang, new Date().toISOString(), `[${participantJson}]`, participantJson, ticketId]);
+
+        // Read back updated participants for broadcast
+        const updated = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as { participants: string } | undefined;
+        const participants = JSON.parse(updated?.participants || '[]');
         socket.join(`ticket:${ticketId}`);
         const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Record<string, unknown>[]).map(mapMessageRow);
         socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
@@ -382,16 +397,26 @@ export function registerSocketHandlers(io: Server) {
       try {
         const senderId = socket.data.userId;
         const senderName = socket.data.name;
+        const callerRole = socket.data.role;
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
+
+        // Authorization: only support/admin roles can close tickets
+        if (!canUseSupportWorkflows(callerRole as any)) {
+          return socket.emit('error', { message: 'Only support staff can close tickets' });
+        }
 
         const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
         if (!ticket) return;
 
-        const membership = await get('SELECT role FROM memberships WHERE user_id = $1 AND partner_id = $2', [senderId, ticket.partner_id]) as { role: string } | undefined;
-        if (!membership) return socket.emit('error', { message: 'Not authorized for this ticket' });
+        // Tenant isolation: ticket must belong to caller's partner
+        if (ticket.partner_id !== socket.data.partnerId) {
+          return socket.emit('error', { message: 'Not authorized for this ticket' });
+        }
 
+        // Limit closing notes length to prevent abuse
+        const sanitizedNotes = closingNotes ? closingNotes.slice(0, 2000) : '';
         const now = new Date().toISOString();
-        await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, senderName || 'System', closingNotes || '', ticketId]);
+        await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, senderName || 'System', sanitizedNotes, ticketId]);
         io.to(`ticket:${ticketId}`).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System' });
         await broadcastQueuePositions(ticket.partner_id);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
@@ -410,49 +435,198 @@ export function registerSocketHandlers(io: Server) {
         logger.info({ ticketFound: !!ticket, status: ticket?.status }, '[message:send] Ticket lookup');
         if (!ticket || ticket.status === 'closed') return;
         
+        // Tenant isolation: ticket must belong to caller's partner
+        if (ticket.partner_id !== socket.data.partnerId) {
+          return socket.emit('error', { message: 'Not authorized for this ticket' });
+        }
+
         const sender = (await get('SELECT u.name, m.role, u.lang FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [senderId, ticket.partner_id])) as unknown as SenderInfo;
-        
+
         logger.info({ senderFound: !!sender, role: sender?.role }, '[message:send] Sender lookup');
         if (!sender) return logger.error({ senderId }, '[message:send] sender not found or no membership for ticket partner');
 
+        // Authorization: only support/admin can send whispers
+        const isWhisper = whisper && canUseSupportWorkflows(sender.role as any);
+        if (whisper && !isWhisper) {
+          logger.warn({ senderId, role: sender.role }, '[message:send] Non-support user attempted whisper');
+        }
+
         const messageId = uuidv4();
         const now = new Date().toISOString();
-        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, text, mediaUrl || null, whisper ? 1 : 0, 0, now, '{}']);
-        io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, senderLang: sender.lang, text: text, originalText: text, mediaUrl, whisper: !!whisper, system: false, timestamp: now, createdAt: now, reactions: {} });
+        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, text, mediaUrl || null, isWhisper ? 1 : 0, 0, now, '{}']);
+        io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, senderLang: sender.lang, text: text, originalText: text, mediaUrl, whisper: !!isWhisper, system: false, timestamp: now, createdAt: now, reactions: {} });
         logger.info({ messageId }, '[message:send] Emitted message:new');
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
     });
 
-    socket.on('typing:start', ({ ticketId, senderName }: { ticketId: string, senderName: string }) => {
+    socket.on('typing:start', ({ ticketId }: { ticketId: string, senderName?: string }) => {
       if (!requireIdentified(socket)) return;
-      // Use verified name from socket.data
-      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName: socket.data.name || senderName, typing: true });
+      // Only emit if socket is actually in the ticket room (i.e., is a participant)
+      if (!ticketId || !socket.rooms.has(`ticket:${ticketId}`)) return;
+      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName: socket.data.name, typing: true });
     });
 
-    socket.on('typing:stop', ({ ticketId, senderName }: { ticketId: string, senderName: string }) => {
+    socket.on('typing:stop', ({ ticketId }: { ticketId: string, senderName?: string }) => {
       if (!requireIdentified(socket)) return;
-      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName: socket.data.name || senderName, typing: false });
+      if (!ticketId || !socket.rooms.has(`ticket:${ticketId}`)) return;
+      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName: socket.data.name, typing: false });
     });
 
     socket.on('message:delivered', async ({ ticketId, messageId }: { ticketId: string, messageId: string }) => {
       if (!requireIdentified(socket)) return;
       if (!ticketId || !messageId) return;
-      const now = new Date().toISOString();
-      await run('UPDATE messages SET delivered_at = $1 WHERE id = $2 AND delivered_at IS NULL', [now, messageId]);
-      io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'delivered', timestamp: now });
+      try {
+        // Tenant isolation: verify ticket belongs to caller's partner
+        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
+        if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+
+        // Only update messages that belong to this ticket
+        const now = new Date().toISOString();
+        await run('UPDATE messages SET delivered_at = $1 WHERE id = $2 AND ticket_id = $3 AND delivered_at IS NULL', [now, messageId, ticketId]);
+        io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'delivered', timestamp: now });
+      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delivered] error'); }
     });
 
     socket.on('message:read', async ({ ticketId, messageIds }: { ticketId: string, messageIds: string[] }) => {
       if (!requireIdentified(socket)) return;
       if (!ticketId || !messageIds?.length) return;
-      // Limit array length to prevent DoS via thousands of sequential DB queries
-      const MAX_BATCH = 100;
-      const limitedIds = messageIds.slice(0, MAX_BATCH);
-      const now = new Date().toISOString();
-      for (const messageId of limitedIds) {
-        await run('UPDATE messages SET read_at = $1 WHERE id = $2 AND read_at IS NULL', [now, messageId]);
-        io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'read', timestamp: now });
-      }
+      try {
+        // Tenant isolation: verify ticket belongs to caller's partner
+        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
+        if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+
+        // Limit array length to prevent DoS
+        const MAX_BATCH = 100;
+        const limitedIds = messageIds.slice(0, MAX_BATCH);
+        const now = new Date().toISOString();
+
+        // Batch update: scope to ticket_id for safety
+        if (limitedIds.length > 0) {
+          const placeholders = limitedIds.map((_, i) => `$${i + 3}`).join(',');
+          await run(`UPDATE messages SET read_at = $1 WHERE ticket_id = $2 AND id IN (${placeholders}) AND read_at IS NULL`, [now, ticketId, ...limitedIds]);
+        }
+
+        // Broadcast status for each message
+        for (const messageId of limitedIds) {
+          io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'read', timestamp: now });
+        }
+      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:read] error'); }
+    });
+
+    // ── Message Edit ─────────────────────────────────────────────────────────
+    socket.on('message:edit', async ({ ticketId, messageId, text: newText }: { ticketId: string; messageId: string; text: string }) => {
+      if (!requireIdentified(socket)) return;
+      socketioEventsTotal.inc({ event: 'message:edit' });
+      try {
+        const senderId = socket.data.userId;
+        if (!senderId || !ticketId || !messageId || !newText?.trim()) return;
+
+        // Verify ticket belongs to caller's partner
+        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
+        if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+
+        // Only allow editing own messages within 15 minutes
+        const msg = await get('SELECT sender_id, created_at, system, deleted_at FROM messages WHERE id = $1 AND ticket_id = $2', [messageId, ticketId]) as { sender_id: string; created_at: string; system: number; deleted_at: string | null } | undefined;
+        if (!msg) return;
+        if (msg.sender_id !== senderId) return socket.emit('error', { message: 'Can only edit your own messages' });
+        if (msg.system) return socket.emit('error', { message: 'Cannot edit system messages' });
+        if (msg.deleted_at) return socket.emit('error', { message: 'Cannot edit deleted messages' });
+
+        const ageMs = Date.now() - new Date(msg.created_at).getTime();
+        const MAX_EDIT_WINDOW = 15 * 60 * 1000; // 15 minutes
+        if (ageMs > MAX_EDIT_WINDOW) return socket.emit('error', { message: 'Edit window has expired (15 min)' });
+
+        const now = new Date().toISOString();
+        await run('UPDATE messages SET text = $1, edited_at = $2 WHERE id = $3', [newText.trim(), now, messageId]);
+
+        io.to(`ticket:${ticketId}`).emit('message:edited', { ticketId, messageId, text: newText.trim(), editedAt: now });
+      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:edit] error'); }
+    });
+
+    // ── Message Delete ────────────────────────────────────────────────────────
+    socket.on('message:delete', async ({ ticketId, messageId }: { ticketId: string; messageId: string }) => {
+      if (!requireIdentified(socket)) return;
+      socketioEventsTotal.inc({ event: 'message:delete' });
+      try {
+        const senderId = socket.data.userId;
+        if (!senderId || !ticketId || !messageId) return;
+
+        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
+        if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+
+        const msg = await get('SELECT sender_id, system, deleted_at FROM messages WHERE id = $1 AND ticket_id = $2', [messageId, ticketId]) as { sender_id: string; system: number; deleted_at: string | null } | undefined;
+        if (!msg) return;
+
+        // Support/admin can delete any non-system message; others only their own
+        const callerRole = socket.data.role;
+        if (!canUseSupportWorkflows(callerRole as any) && msg.sender_id !== senderId) {
+          return socket.emit('error', { message: 'Can only delete your own messages' });
+        }
+        if (msg.system) return socket.emit('error', { message: 'Cannot delete system messages' });
+        if (msg.deleted_at) return; // Already deleted
+
+        const now = new Date().toISOString();
+        await run('UPDATE messages SET deleted_at = $1, text = $2 WHERE id = $3', [now, '', messageId]);
+
+        io.to(`ticket:${ticketId}`).emit('message:deleted', { ticketId, messageId, deletedAt: now });
+      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delete] error'); }
+    });
+
+    // ── Ticket Transfer ──────────────────────────────────────────────────────
+    socket.on('ticket:transfer', async ({ ticketId, targetSupportId }: { ticketId: string; targetSupportId?: string }) => {
+      if (!requireIdentified(socket)) return;
+      socketioEventsTotal.inc({ event: 'ticket:transfer' });
+      try {
+        const senderId = socket.data.userId;
+        const senderName = socket.data.name;
+        const callerRole = socket.data.role;
+        const callerPartnerId = socket.data.partnerId;
+
+        if (!canUseSupportWorkflows(callerRole as any)) {
+          return socket.emit('error', { message: 'Only support staff can transfer tickets' });
+        }
+
+        const ticket = await get('SELECT id, partner_id, support_id, support_name, participants FROM tickets WHERE id = $1', [ticketId]) as unknown as TicketRow | undefined;
+        if (!ticket) return socket.emit('error', { message: 'Ticket not found' });
+        if (ticket.partner_id !== callerPartnerId) return socket.emit('error', { message: 'Not authorized' });
+
+        const now = new Date().toISOString();
+
+        if (targetSupportId) {
+          // Transfer to a specific support agent
+          const targetUser = await get('SELECT name FROM users WHERE id = $1', [targetSupportId]) as { name: string } | undefined;
+          if (!targetUser) return socket.emit('error', { message: 'Target user not found' });
+
+          // Update ticket assignment
+          await run('UPDATE tickets SET support_id = $1, support_name = $2 WHERE id = $3', [targetSupportId, targetUser.name, ticketId]);
+
+          // Add system message
+          const sysId = uuidv4();
+          const sysText = `Ticket transferred from ${senderName} to ${targetUser.name}`;
+          await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [sysId, ticketId, '__system__', 'System', 'admin', 'en', sysText, 0, 1, now, '{}']);
+
+          io.to(`ticket:${ticketId}`).emit('message:new', { id: sysId, ticketId, senderId: '__system__', senderName: 'System', senderRole: 'admin', senderLang: 'en', text: sysText, originalText: sysText, whisper: false, system: true, timestamp: now, createdAt: now, reactions: {} });
+          io.to(`ticket:${ticketId}`).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: targetSupportId, toName: targetUser.name });
+
+          // Notify the target support agent via partner room
+          io.to(`partner:${callerPartnerId}`).emit('ticket:assigned', { ticketId, supportId: targetSupportId, supportName: targetUser.name });
+        } else {
+          // Return to queue — unassign support
+          await run('UPDATE tickets SET support_id = NULL, support_name = NULL, status = $1 WHERE id = $2', ['open', ticketId]);
+
+          const sysId = uuidv4();
+          const sysText = `${senderName} returned ticket to queue`;
+          await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [sysId, ticketId, '__system__', 'System', 'admin', 'en', sysText, 0, 1, now, '{}']);
+
+          io.to(`ticket:${ticketId}`).emit('message:new', { id: sysId, ticketId, senderId: '__system__', senderName: 'System', senderRole: 'admin', senderLang: 'en', text: sysText, originalText: sysText, whisper: false, system: true, timestamp: now, createdAt: now, reactions: {} });
+          io.to(`ticket:${ticketId}`).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: null, toName: null });
+
+          await broadcastQueuePositions(callerPartnerId);
+        }
+
+        // Remove sender from the ticket room
+        socket.leave(`ticket:${ticketId}`);
+      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:transfer] error'); }
     });
 
     socket.on('ticket:labels:update', async ({ ticketId, labels }: { ticketId: string, labels: string[] }) => {
@@ -499,6 +673,18 @@ export function registerSocketHandlers(io: Server) {
       socketioConnectionsActive.dec();
       const userId = socket.data.userId;
       const partnerId = socket.data.partnerId;
+      const userName = socket.data.name;
+
+      // Clear typing indicators for all ticket rooms this socket was in
+      if (userId && userName) {
+        for (const room of socket.rooms) {
+          if (room.startsWith('ticket:')) {
+            const ticketId = room.replace('ticket:', '');
+            socket.to(room).emit('typing:update', { ticketId, senderName: userName, typing: false });
+          }
+        }
+      }
+
       if (userId && partnerId) {
         const result = await presenceService.decrementUserCount(userId, partnerId);
         if (result && result.removed && result.role === 'agent') {
