@@ -10,6 +10,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Account unlock: platform operators can unlock locked-out users from the user table
 - Email notifications for admin-initiated MFA disable and account unlock
 - `REQUIRE_PLATFORM_STEP_UP` config flag (default `false`) to control platform TOTP step-up enforcement
+- API documentation: Swagger UI at `/api/v1/docs/` for REST endpoints (auth, uploads, logos, health)
+- tRPC reference documentation at `/api/v1/trpc-reference` (68 procedures across 13 routers)
+- OpenAPI annotations on all Express route handlers
 - Database backup script (`npm run db:backup`) with auto-pruning
 - Database baseline script for adopting Drizzle on existing DBs
 - Socket.io token expiry detection — expired JWTs are caught and clients auto-reconnect

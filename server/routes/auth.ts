@@ -35,6 +35,32 @@ const forgotPasswordThrottle = new Map<string, number[]>();
 const FORGOT_PW_WINDOW_MS = 15 * 60 * 1000;
 const FORGOT_PW_MAX_PER_EMAIL = 3;
 
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request a password reset email
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200:
+ *         description: Always returns success to prevent user enumeration
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 message: { type: string }
+ */
 router.post('/forgot-password', [
     body('email').isEmail().withMessage('Valid email is required'),
     validate([])
@@ -88,6 +114,28 @@ router.post('/forgot-password', [
     }
 });
 
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     summary: Reset password using a reset token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password]
+ *             properties:
+ *               token: { type: string, description: Token from reset email }
+ *               password: { type: string, minLength: 10, description: 'Must meet strength requirements (upper/lower/digit/special)' }
+ *     responses:
+ *       200:
+ *         description: Password updated and all sessions revoked
+ *       400:
+ *         description: Invalid/expired token or password too weak
+ */
 router.post('/reset-password', [
     body('token').notEmpty().withMessage('Token is required'),
     body('password').isLength({ min: 10 }).withMessage('Password must be at least 10 characters'),
@@ -144,6 +192,37 @@ router.post('/reset-password', [
     }
 });
 
+/**
+ * @openapi
+ * /auth/login-local:
+ *   post:
+ *     summary: Authenticate with email and password
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string, format: email }
+ *               password: { type: string }
+ *               totpCode: { type: string, description: '6-digit TOTP or recovery code (required if MFA enabled)' }
+ *     responses:
+ *       200:
+ *         description: JWT token + user profile, or MFA challenge
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/LoginResponse'
+ *                 - $ref: '#/components/schemas/MfaChallengeResponse'
+ *       401:
+ *         description: Invalid credentials or invalid MFA code
+ *       423:
+ *         description: Account locked due to failed attempts
+ */
 router.post('/login-local', [
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required'),
@@ -250,6 +329,37 @@ router.post('/login-local', [
     }
 });
 
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     summary: Authenticate with user ID and password (demo mode)
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [id, password]
+ *             properties:
+ *               id: { type: string, description: User ID }
+ *               password: { type: string }
+ *               totpCode: { type: string, description: '6-digit TOTP or recovery code (required if MFA enabled)' }
+ *     responses:
+ *       200:
+ *         description: JWT token + user profile, or MFA challenge
+ *         content:
+ *           application/json:
+ *             schema:
+ *               oneOf:
+ *                 - $ref: '#/components/schemas/LoginResponse'
+ *                 - $ref: '#/components/schemas/MfaChallengeResponse'
+ *       401:
+ *         description: Invalid credentials
+ *       423:
+ *         description: Account locked
+ */
 router.post('/login', [
     body('id').notEmpty().withMessage('User ID is required'),
     body('password').notEmpty().withMessage('Password is required'),
@@ -351,6 +461,29 @@ router.post('/login', [
     }
 });
 
+/**
+ * @openapi
+ * /auth/switch-partner:
+ *   post:
+ *     summary: Switch active partner context
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [membershipId]
+ *             properties:
+ *               membershipId: { type: string, description: Target membership ID }
+ *     responses:
+ *       200:
+ *         description: New JWT token scoped to the target partner
+ *       403:
+ *         description: Invalid membership or partner inactive
+ */
 router.post('/switch-partner', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
     try {
         const { membershipId } = req.body;
@@ -408,6 +541,18 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
     }
 });
 
+/**
+ * @openapi
+ * /auth/logout:
+ *   post:
+ *     summary: Revoke the current session token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token revoked successfully
+ */
 router.post('/logout', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
     try {
         if (req.user?.tokenJti) {
@@ -420,6 +565,31 @@ router.post('/logout', (await import('../middleware/auth.js')).auth, async (req:
     }
 });
 
+/**
+ * @openapi
+ * /auth/enter-partner:
+ *   post:
+ *     summary: Platform operator enters a partner's admin context
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [partnerId]
+ *             properties:
+ *               partnerId: { type: string }
+ *     responses:
+ *       200:
+ *         description: New JWT scoped to partner with admin role
+ *       403:
+ *         description: Not a platform operator, or step-up required, or partner inactive
+ *       404:
+ *         description: Partner not found
+ */
 router.post('/enter-partner', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
     try {
         const { partnerId } = req.body;
