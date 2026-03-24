@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import UserTable from '../UserTable';
 import type { GlobalUser, Partner } from '../types';
 
-const { mockDeleteUser, mockResendInvite, mockRevokeSessions, activeUser, pendingUser, deletedUser, partner } = vi.hoisted(() => {
+const { mockDeleteUser, mockResendInvite, mockRevokeSessions, mockDisableMfa, mockUnlockUser, activeUser, pendingUser, deletedUser, partner } = vi.hoisted(() => {
   const activeUser: GlobalUser = {
     id: 'u1', name: 'Alice', email: 'alice@example.com',
     isPlatformOperator: false, deletedAt: null,
@@ -29,6 +29,8 @@ const { mockDeleteUser, mockResendInvite, mockRevokeSessions, activeUser, pendin
     mockDeleteUser: { mutate: vi.fn(), isPending: false },
     mockResendInvite: { mutate: vi.fn(), isPending: false },
     mockRevokeSessions: { mutate: vi.fn(), isPending: false },
+    mockDisableMfa: { mutate: vi.fn(), isPending: false },
+    mockUnlockUser: { mutate: vi.fn(), isPending: false },
     activeUser, pendingUser, deletedUser, partner,
   };
 });
@@ -62,6 +64,18 @@ vi.mock('../../../utils/trpc', () => ({
         useMutation: (opts: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
           mockResendInvite.mutate.mockImplementation(() => opts.onSuccess?.());
           return mockResendInvite;
+        },
+      },
+      disableUserMfa: {
+        useMutation: (opts: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+          mockDisableMfa.mutate.mockImplementation(() => opts.onSuccess?.());
+          return mockDisableMfa;
+        },
+      },
+      unlockUser: {
+        useMutation: (opts: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
+          mockUnlockUser.mutate.mockImplementation(() => opts.onSuccess?.());
+          return mockUnlockUser;
         },
       },
     },
