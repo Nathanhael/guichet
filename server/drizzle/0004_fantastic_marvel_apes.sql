@@ -20,21 +20,21 @@ ALTER TABLE "tickets" DROP CONSTRAINT "tickets_agent_id_users_id_fk";
 ALTER TABLE "tickets" DROP CONSTRAINT "tickets_support_id_users_id_fk";
 --> statement-breakpoint
 ALTER TABLE "app_feedback" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
-ALTER TABLE "daily_stats" ALTER COLUMN "dept_counts" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "daily_stats" ALTER COLUMN "dept_counts" SET DATA TYPE jsonb USING COALESCE("dept_counts"::jsonb, '{}'::jsonb);--> statement-breakpoint
 ALTER TABLE "daily_stats" ALTER COLUMN "dept_counts" SET DEFAULT '{}'::jsonb;--> statement-breakpoint
-ALTER TABLE "daily_stats" ALTER COLUMN "ratings_by_dept" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "daily_stats" ALTER COLUMN "ratings_by_dept" SET DATA TYPE jsonb USING COALESCE("ratings_by_dept"::jsonb, '{}'::jsonb);--> statement-breakpoint
 ALTER TABLE "daily_stats" ALTER COLUMN "ratings_by_dept" SET DEFAULT '{}'::jsonb;--> statement-breakpoint
-ALTER TABLE "daily_stats" ALTER COLUMN "hourly" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "daily_stats" ALTER COLUMN "hourly" SET DATA TYPE jsonb USING COALESCE("hourly"::jsonb, '{}'::jsonb);--> statement-breakpoint
 ALTER TABLE "daily_stats" ALTER COLUMN "hourly" SET DEFAULT '{}'::jsonb;--> statement-breakpoint
-ALTER TABLE "llm_summaries" ALTER COLUMN "questions" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "llm_summaries" ALTER COLUMN "questions" SET DATA TYPE jsonb USING COALESCE("questions"::jsonb, '[]'::jsonb);--> statement-breakpoint
 ALTER TABLE "llm_summaries" ALTER COLUMN "questions" SET DEFAULT '[]'::jsonb;--> statement-breakpoint
 ALTER TABLE "llm_summaries" ALTER COLUMN "updated_at" SET DEFAULT now();--> statement-breakpoint
 ALTER TABLE "memberships" ALTER COLUMN "role" SET DATA TYPE "public"."user_role" USING "role"::"public"."user_role";--> statement-breakpoint
 ALTER TABLE "memberships" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
 ALTER TABLE "messages" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
-ALTER TABLE "messages" ALTER COLUMN "reactions" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "messages" ALTER COLUMN "reactions" SET DATA TYPE jsonb USING COALESCE("reactions"::jsonb, '{}'::jsonb);--> statement-breakpoint
 ALTER TABLE "messages" ALTER COLUMN "reactions" SET DEFAULT '{}'::jsonb;--> statement-breakpoint
-ALTER TABLE "partners" ALTER COLUMN "departments" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "partners" ALTER COLUMN "departments" SET DATA TYPE jsonb USING COALESCE("departments"::jsonb, '[]'::jsonb);--> statement-breakpoint
 ALTER TABLE "partners" ALTER COLUMN "departments" SET DEFAULT '[]'::jsonb;--> statement-breakpoint
 ALTER TABLE "partners" ALTER COLUMN "ai_enabled" SET DEFAULT false;--> statement-breakpoint
 ALTER TABLE "partners" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
@@ -42,7 +42,7 @@ ALTER TABLE "ratings" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-
 ALTER TABLE "tickets" ALTER COLUMN "status" SET DEFAULT 'open'::"public"."ticket_status";--> statement-breakpoint
 ALTER TABLE "tickets" ALTER COLUMN "status" SET DATA TYPE "public"."ticket_status" USING "status"::"public"."ticket_status";--> statement-breakpoint
 ALTER TABLE "tickets" ALTER COLUMN "created_at" SET DEFAULT now();--> statement-breakpoint
-ALTER TABLE "tickets" ALTER COLUMN "participants" SET DATA TYPE jsonb;--> statement-breakpoint
+ALTER TABLE "tickets" ALTER COLUMN "participants" SET DATA TYPE jsonb USING COALESCE("participants"::jsonb, '[]'::jsonb);--> statement-breakpoint
 ALTER TABLE "tickets" ALTER COLUMN "participants" SET DEFAULT '[]'::jsonb;--> statement-breakpoint
 ALTER TABLE "topic_alerts" ALTER COLUMN "severity" SET DEFAULT 'medium'::"public"."severity";--> statement-breakpoint
 ALTER TABLE "topic_alerts" ALTER COLUMN "severity" SET DATA TYPE "public"."severity" USING "severity"::"public"."severity";--> statement-breakpoint

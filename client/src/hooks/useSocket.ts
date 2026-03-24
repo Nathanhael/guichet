@@ -182,6 +182,16 @@ export function useSocket(): Socket {
       }
     });
 
+    // Message edited
+    s.on('message:edited', ({ ticketId, messageId, text, editedAt }: { ticketId: string; messageId: string; text: string; editedAt: string }) => {
+      useStore.getState().updateMessageState(ticketId, messageId, { text, originalText: text, editedAt } as any);
+    });
+
+    // Message deleted
+    s.on('message:deleted', ({ ticketId, messageId, deletedAt }: { ticketId: string; messageId: string; deletedAt: string }) => {
+      useStore.getState().updateMessageState(ticketId, messageId, { text: '', deletedAt } as any);
+    });
+
     // Reaction updated
     s.on('reaction:updated', ({ ticketId, messageId, reactions }: { ticketId: string; messageId: string; reactions: any }) => {
       useStore.getState().updateMessageReaction(ticketId, messageId, reactions);
@@ -347,6 +357,8 @@ export function useSocket(): Socket {
       s.off('queue:update');
       s.off('ticket:transferred');
       s.off('ticket:assigned');
+      s.off('message:edited');
+      s.off('message:deleted');
       listenersAttached.current = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus]);

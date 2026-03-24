@@ -149,6 +149,13 @@ export default function TicketForm({ manifest }: TicketFormProps) {
             ))}
           </div>
 
+          {/* Department welcome message */}
+          {selectedDept?.welcomeMessage && (
+            <div className="border-l-4 border-black dark:border-white pl-4 py-2 text-sm opacity-80">
+              {selectedDept.welcomeMessage}
+            </div>
+          )}
+
           {/* Reference fields */}
           {refFields.length > 0 && (
             <div className="space-y-4">

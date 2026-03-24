@@ -12,8 +12,10 @@ import { platformSecurityRouter } from './routers/platformSecurity.js';
 import { partnerRouter } from './routers/partner.js';
 import { alertsRouter } from './routers/alerts.js';
 import { mfaRouter } from './routers/mfa.js';
+import { cannedResponseRouter } from './routers/cannedResponse.js';
 
 export const appRouter = router({
+  cannedResponse: cannedResponseRouter,
   label: labelRouter,
   ticket: ticketRouter,
   message: messageRouter,

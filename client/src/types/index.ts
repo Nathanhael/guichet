@@ -14,7 +14,7 @@ export interface PartnerManifest {
   logoUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
-  departments: { id: string; name: string; description?: string; referenceFields?: Array<{ label: string }> }[];
+  departments: { id: string; name: string; description?: string; welcomeMessage?: string; referenceFields?: Array<{ label: string }> }[];
   aiRules?: string;
   themeConfig?: ThemeConfig;
   ollamaModel?: string;

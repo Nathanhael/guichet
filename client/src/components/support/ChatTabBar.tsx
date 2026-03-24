@@ -1,5 +1,7 @@
 import { useT } from '../../i18n';
+import useStore from '../../store/useStore';
 import { Ticket } from '../../types';
+import { MAX_OPEN_CHATS } from '../../config';
 
 interface ChatTabBarProps {
   tabs: Ticket[];
@@ -10,17 +12,27 @@ interface ChatTabBarProps {
 
 /**
  * Horizontal tab strip showing all open support chat sessions.
- * Each tab shows agent name and a separate close button.
+ * Each tab shows agent name, unread badge, and a close button.
  */
 export default function ChatTabBar({ tabs, activeTab, onSelectTab, onCloseTab }: ChatTabBarProps) {
   const t = useT();
+  const unreadTickets = useStore((s) => s.unreadTickets);
 
-  if (tabs.length === 0) return null;
+  if (tabs.length === 0) {
+    return (
+      <div className="border-b-2 border-black dark:border-white px-4 py-2">
+        <span className="text-[9px] font-black uppercase tracking-widest opacity-30">
+          {t('no_active_chats') || 'No active chats'}
+        </span>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex border-b-2 border-black dark:border-white overflow-x-auto">
+    <div className="flex items-center border-b-2 border-black dark:border-white overflow-x-auto">
       {tabs.map((ticket) => {
         const isActive = activeTab === ticket.id;
+        const hasUnread = !isActive && unreadTickets.has(ticket.id);
 
         return (
           <div
@@ -31,9 +43,13 @@ export default function ChatTabBar({ tabs, activeTab, onSelectTab, onCloseTab }:
           >
             <button
               onClick={() => onSelectTab(ticket.id)}
-              className="px-6 py-3 text-[10px] font-black uppercase tracking-widest"
+              className="px-6 py-3 text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+              title={ticket.agentName}
             >
-              {ticket.agentName}
+              {ticket.agentName || t('unknown')}
+              {hasUnread && (
+                <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 animate-pulse" />
+              )}
             </button>
             <button
               onClick={() => onCloseTab(ticket.id)}
@@ -45,6 +61,10 @@ export default function ChatTabBar({ tabs, activeTab, onSelectTab, onCloseTab }:
           </div>
         );
       })}
+      {/* Tab capacity indicator */}
+      <span className="ml-auto px-4 text-[9px] font-bold uppercase tracking-wider opacity-30 shrink-0">
+        {tabs.length}/{MAX_OPEN_CHATS}
+      </span>
     </div>
   );
 }

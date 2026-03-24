@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import useStore from '../store/useStore';
 import { useBusinessHours } from '../hooks/useBusinessHours';
+import { useT } from '../i18n';
 import ChatWindow from '../components/ChatWindow';
 import SystemBackground from '../components/SystemBackground';
 import BusinessHoursGuard from '../components/BusinessHoursGuard';
@@ -23,7 +24,9 @@ export default function AgentView() {
   const memberships = useStore((s) => s.memberships);
   const activeMembershipId = useStore((s) => s.activeMembershipId);
   const unreadTickets = useStore((s) => s.unreadTickets);
+  const queuePosition = useStore((s) => s.queuePosition);
 
+  const t = useT();
   const [showFeedback, setShowFeedback] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -88,6 +91,24 @@ export default function AgentView() {
           )}
 
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">
+            {/* Queue position indicator */}
+            {queuePosition && queuePosition.position > 0 && !activeTicket && agentTickets.some(tk => tk.status === 'open') && (
+              <div className="px-6 py-3 bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-900 flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-xs font-black">
+                  {queuePosition.position}
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-blue-900 dark:text-blue-200">
+                    {t('queue_position') || 'Queue position'}: #{queuePosition.position}
+                  </p>
+                  {queuePosition.etaMins > 0 && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      {t('estimated_wait') || 'Estimated wait'}: ~{queuePosition.etaMins} {t('minutes') || 'min'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
             {activeTicket ? (
               <div className="flex-1 min-h-0 w-full animate-fade-in">
                 <div className="h-full flex flex-col overflow-hidden bg-white/50 backdrop-blur-md dark:bg-brand-900/40">
