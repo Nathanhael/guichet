@@ -53,7 +53,7 @@ docker compose exec server npx tsx scripts/reset_demo_users.ts   # Reset all dem
 docker compose exec server npx tsx seed_pg.ts                    # Full seed (partners, users, labels)
 ```
 
-All demo users use password `password123`. The reset script clears lockout, MFA, platform TOTP, password history, and re-hashes passwords. When `DEMO_MODE=true`, platform step-up TOTP is auto-satisfied (bypassed server-side) so all PlatformView tabs are accessible without authenticator setup.
+All demo users use password `password123`. The reset script clears lockout, MFA, platform TOTP, password history, and re-hashes passwords. Platform step-up TOTP is controlled by `REQUIRE_PLATFORM_STEP_UP` (default `false`). When `false`, all PlatformView tabs are accessible without authenticator setup. Set to `true` in production to enforce TOTP verification before accessing platform admin.
 
 ## Architecture
 

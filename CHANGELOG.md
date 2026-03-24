@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- MFA admin management: platform operators can see MFA status badges and force-disable MFA for any user
+- Account unlock: platform operators can unlock locked-out users from the user table
+- Email notifications for admin-initiated MFA disable and account unlock
+- `REQUIRE_PLATFORM_STEP_UP` config flag (default `false`) to control platform TOTP step-up enforcement
 - Database backup script (`npm run db:backup`) with auto-pruning
 - Database baseline script for adopting Drizzle on existing DBs
 - Socket.io token expiry detection — expired JWTs are caught and clients auto-reconnect
