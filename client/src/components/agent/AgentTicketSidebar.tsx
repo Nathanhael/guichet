@@ -35,7 +35,7 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
   return (
     <aside
       className={`${
-        isOpen ? 'w-72 border-r-2 border-black/20 dark:border-white/20' : 'w-0 border-r-0'
+        isOpen ? 'w-80 border-r-2 border-black/20 dark:border-white/20' : 'w-0 border-r-0'
       } shrink-0 overflow-hidden transition-all duration-200 bg-white/60 dark:bg-brand-900/60 backdrop-blur-sm flex flex-col`}
     >
       {/* Header */}
@@ -67,10 +67,10 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
             <button
               key={ticket.id}
               onClick={() => selectTicket(ticket.id)}
-              className={`w-full text-left px-4 py-3 border-b border-black/10 dark:border-white/10 border-l-4 transition-colors ${
+              className={`w-full text-left px-4 py-3 border-b border-black/10 dark:border-white/10 transition-colors ${
                 isActive
-                  ? 'bg-black/10 dark:bg-white/10 border-l-black dark:border-l-white'
-                  : 'border-l-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                  ? 'bg-black dark:bg-white text-white dark:text-black'
+                  : 'hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >
               <div className="flex items-start justify-between gap-2">

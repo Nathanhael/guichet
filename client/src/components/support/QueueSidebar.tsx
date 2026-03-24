@@ -11,6 +11,7 @@ interface QueueSidebarProps {
   activeTab: string | null;
   previewTicketId: string | null;
   atMaxChats: boolean;
+  isOpen: boolean;
   onSelectTicket: (ticket: Ticket) => void;
   onPreviewArchived: (ticket: Ticket) => void;
 }
@@ -25,6 +26,7 @@ export default function QueueSidebar({
   activeTab,
   previewTicketId,
   atMaxChats,
+  isOpen,
   onSelectTicket,
   onPreviewArchived,
 }: QueueSidebarProps) {
@@ -98,7 +100,9 @@ export default function QueueSidebar({
   );
 
   return (
-    <aside className="w-80 bg-white dark:bg-black border-r-2 border-black dark:border-white flex flex-col overflow-hidden">
+    <aside className={`${
+      isOpen ? 'w-80 border-r-2 border-black dark:border-white' : 'w-0 border-r-0'
+    } shrink-0 overflow-hidden transition-all duration-200 bg-white dark:bg-black flex flex-col`}>
       {/* Header: tabs + dept chips */}
       <div className="px-4 py-3 border-b-2 border-black dark:border-white">
         <h2 className="font-black text-[10px] uppercase tracking-[0.2em] mb-2">

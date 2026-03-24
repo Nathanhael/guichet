@@ -33,6 +33,7 @@ export default function SupportView() {
 
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
   const partnerName = activeMembership?.partnerName || 'Tessera';
@@ -139,15 +140,16 @@ export default function SupportView() {
         </div>
       )}
 
-      <SupportNav partnerName={partnerName} logoUrl={logoUrl} />
+      <SupportNav partnerName={partnerName} logoUrl={logoUrl} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
 
       <div className="flex flex-1 overflow-hidden">
-        {!focusMode && activeMembership && (
+        {activeMembership && (
           <QueueSidebar
             activeMembership={activeMembership}
             activeTab={activeTab}
             previewTicketId={previewTicket?.id || null}
             atMaxChats={atMaxChats}
+            isOpen={!focusMode && sidebarOpen}
             onSelectTicket={selectTicket}
             onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
           />

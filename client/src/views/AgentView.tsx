@@ -86,7 +86,7 @@ export default function AgentView() {
             <AgentTicketSidebar
               tickets={agentTickets}
               unreadCount={unreadCount}
-              isOpen={sidebarOpen}
+              isOpen={!focusMode && sidebarOpen}
             />
           )}
 
