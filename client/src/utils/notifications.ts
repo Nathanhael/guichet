@@ -1,8 +1,35 @@
+const BASE_TITLE = 'Tessera';
+
 export function requestNotificationPermission(): void {
     if (!('Notification' in window)) return;
     if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         Notification.requestPermission();
     }
+}
+
+/**
+ * Update browser tab title with unread count badge.
+ * Reads unreadTickets from the store.
+ */
+export function updateTitleBadge(): void {
+    try {
+        // Dynamically import to avoid circular dependency
+        const { default: useStore } = require('../store/useStore');
+        const count = useStore.getState().unreadTickets.size;
+        document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE;
+    } catch {
+        // Ignore — store not yet initialized
+    }
+}
+
+/**
+ * Clear the title badge when window gets focus.
+ * Should be called once on app init.
+ */
+export function initTitleBadgeListener(): void {
+    window.addEventListener('focus', () => {
+        document.title = BASE_TITLE;
+    });
 }
 
 // Synthesize a clean, professional 'chime' using Web Audio API
