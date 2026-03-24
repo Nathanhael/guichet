@@ -8,6 +8,16 @@ export interface PartnerMembership {
   role: string;
 }
 
+export type ImprovementMode = 'off' | 'optional' | 'forced';
+
+export interface AiFeatures {
+  messageImprovement?: ImprovementMode;
+  chatSummarization?: boolean;
+  translation?: boolean;
+  sentimentDetection?: boolean;
+  autoSummarizeOnClose?: boolean;
+}
+
 export interface Partner {
   id: string;
   name: string;
@@ -22,6 +32,8 @@ export interface Partner {
   businessHoursStart?: string | null;
   businessHoursEnd?: string | null;
   slaConfig?: unknown;
+  aiEnabled?: boolean | null;
+  aiFeatures?: AiFeatures | unknown;
   [key: string]: unknown;
 }
 

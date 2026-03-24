@@ -12,6 +12,7 @@ import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
+import { invalidateSummary } from '../services/ai/summaryCache.js';
 
 interface TicketNewPayload {
   agentId: string;
@@ -456,6 +457,8 @@ export function registerSocketHandlers(io: Server) {
         await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, text, mediaUrl || null, isWhisper ? 1 : 0, 0, now, '{}']);
         io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, senderLang: sender.lang, text: text, originalText: text, mediaUrl, whisper: !!isWhisper, system: false, timestamp: now, createdAt: now, reactions: {} });
         logger.info({ messageId }, '[message:send] Emitted message:new');
+        // Invalidate cached AI summary for this ticket (fire-and-forget)
+        invalidateSummary(ticketId).catch(() => {});
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
     });
 
