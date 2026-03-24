@@ -285,7 +285,7 @@ These items were identified but deferred — tackle after the three features abo
 | 6 | Socket.io `error` event listener | Small | ✅ Done 2026-03-24 |
 | 7 | Socket disconnect resource cleanup | Medium | ✅ Done 2026-03-24 |
 | 8 | tRPC retry config | Small | ✅ Done 2026-03-24 |
-| 9 | Expand test coverage (socket, uploads, tRPC routers) | Large | |
-| 10 | Multi-tenant isolation integration tests | Medium | |
+| 9 | Expand test coverage (socket, uploads, tRPC routers) | Large | ✅ Done 2026-03-24 |
+| 10 | Multi-tenant isolation integration tests | Medium | ✅ Done 2026-03-24 |
 | 11 | Pre-commit hooks (husky + lint) | Small | ✅ Done 2026-03-24 |
 | 12 | GDPR purge jitter | Small | ✅ Done 2026-03-24 |
