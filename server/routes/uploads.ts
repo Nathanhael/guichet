@@ -30,6 +30,37 @@ const upload = multer({ storage, fileFilter, limits: { fileSize: config.UPLOAD_M
 
 const router = Router();
 
+/**
+ * @openapi
+ * /v1/uploads:
+ *   post:
+ *     summary: Upload a file attachment
+ *     tags: [Uploads]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: 'Allowed types: image/png, image/jpeg, image/webp (max 5MB)'
+ *     responses:
+ *       200:
+ *         description: Upload successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 url: { type: string, description: Relative URL to the uploaded file }
+ *       400:
+ *         description: Invalid file type or size exceeded
+ */
 router.post('/', auth, (req: Request, res: Response) => {
   upload.single('file')(req, res, async (err: unknown) => {
     if (err instanceof multer.MulterError) {

@@ -106,7 +106,20 @@ const rootUploadDir = path.join(__dirname, 'uploads');
 app.use('/uploads', express.static(rootUploadDir));
 
 // API v1 Routing
+import swaggerUi from 'swagger-ui-express';
+import { openapiSpec } from './docs/openapi.js';
 const v1Router = express.Router();
+
+// API Documentation (Swagger UI)
+v1Router.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Tessera API Documentation',
+}));
+
+// Serve tRPC reference markdown as plain text
+v1Router.get('/trpc-reference', (_req: Request, res: Response) => {
+  res.type('text/markdown').sendFile(path.join(__dirname, 'docs', 'trpc-reference.md'));
+});
 
 v1Router.use('/tickets', ticketRoutes); // Kept for export support
 v1Router.use('/uploads', uploadRoutes);
@@ -167,6 +180,25 @@ v1Router.get('/config', async (req: Request, res: Response) => {
   });
 });
 
+/**
+ * @openapi
+ * /v1/health:
+ *   get:
+ *     summary: Health check
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: System healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, example: ok }
+ *                 database: { type: string, example: connected }
+ *       503:
+ *         description: Database unreachable
+ */
 v1Router.get('/health', async (_req: Request, res: Response) => {
   try {
     await query('SELECT 1');
