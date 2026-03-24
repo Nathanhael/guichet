@@ -680,6 +680,70 @@ export const platformRouter = router({
       return { success: true };
     }),
 
+  // --- MFA Admin Management ---
+  disableUserMfa: platformProcedure
+    .input(z.string())
+    .mutation(async ({ input: targetUserId, ctx }) => {
+      const target = await db.select({ id: users.id, name: users.name, email: users.email, mfaEnabledAt: users.mfaEnabledAt })
+        .from(users).where(eq(users.id, targetUserId)).limit(1);
+      if (!target[0]) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      if (!target[0].mfaEnabledAt) throw new TRPCError({ code: 'BAD_REQUEST', message: 'MFA is not enabled for this user' });
+
+      await db.update(users).set({
+        mfaSecret: null,
+        mfaEnabledAt: null,
+        mfaRecoveryCodes: [],
+        updatedAt: new Date().toISOString(),
+      }).where(eq(users.id, targetUserId));
+
+      await db.insert(auditLog).values({
+        id: randomUUID(),
+        action: 'security.mfa_disabled_by_admin',
+        actorId: ctx.user.id,
+        targetType: 'user',
+        targetId: targetUserId,
+        metadata: { targetName: target[0].name },
+      });
+
+      if (target[0].email) {
+        MailService.sendMfaDisabledByAdmin(target[0].email, target[0].name).catch(() => {});
+      }
+
+      return { success: true };
+    }),
+
+  unlockUser: platformProcedure
+    .input(z.string())
+    .mutation(async ({ input: targetUserId, ctx }) => {
+      const target = await db.select({ id: users.id, name: users.name, email: users.email, lockedUntil: users.lockedUntil, failedLoginAttempts: users.failedLoginAttempts })
+        .from(users).where(eq(users.id, targetUserId)).limit(1);
+      if (!target[0]) throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+      if (!target[0].lockedUntil && (target[0].failedLoginAttempts ?? 0) === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'User is not locked' });
+      }
+
+      await db.update(users).set({
+        lockedUntil: null,
+        failedLoginAttempts: 0,
+        updatedAt: new Date().toISOString(),
+      }).where(eq(users.id, targetUserId));
+
+      await db.insert(auditLog).values({
+        id: randomUUID(),
+        action: 'security.user_unlocked_by_admin',
+        actorId: ctx.user.id,
+        targetType: 'user',
+        targetId: targetUserId,
+        metadata: { targetName: target[0].name },
+      });
+
+      if (target[0].email) {
+        MailService.sendAccountUnlocked(target[0].email, target[0].name).catch(() => {});
+      }
+
+      return { success: true };
+    }),
+
   deleteUser: platformProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {

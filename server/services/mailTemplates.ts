@@ -155,6 +155,33 @@ export function renderMfaEnabled(opts: {
   `, opts.brand);
 }
 
+export function renderMfaDisabledByAdmin(opts: {
+  name: string;
+  brand?: BrandContext;
+}): string {
+  return baseLayout(`
+    ${heading('MFA Disabled by Administrator')}
+    ${separator()}
+    <p>Hello ${escapeHtml(opts.name)},</p>
+    <p>A platform administrator has disabled two-factor authentication on your Tessera account.</p>
+    <p>Your account is now accessible with your password only. We strongly recommend re-enabling MFA at your earliest convenience.</p>
+    <p style="font-size: 12px; opacity: 0.6;">If you did not request this change, contact your administrator immediately.</p>
+  `, opts.brand);
+}
+
+export function renderAccountUnlocked(opts: {
+  name: string;
+  brand?: BrandContext;
+}): string {
+  return baseLayout(`
+    ${heading('Account Unlocked')}
+    ${separator()}
+    <p>Hello ${escapeHtml(opts.name)},</p>
+    <p>A platform administrator has unlocked your Tessera account. You can now sign in again.</p>
+    <p style="font-size: 12px; opacity: 0.6;">If your account was locked due to suspicious activity, we recommend changing your password immediately.</p>
+  `, opts.brand);
+}
+
 export function renderTestEmail(opts: {
   operatorId: string;
   timestamp: string;

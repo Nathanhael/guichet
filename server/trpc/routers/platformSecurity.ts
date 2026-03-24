@@ -6,6 +6,7 @@ import { auditLog, users } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { router, platformBaseProcedure } from '../trpc.js';
 import { buildAuthToken } from '../../services/authSession.js';
+import config from '../../config.js';
 import {
   buildTotpUri,
   generateTotpSecret,
@@ -48,8 +49,8 @@ function buildStatusResponse(input: {
 
 export const platformSecurityRouter = router({
   getStatus: platformBaseProcedure.query(async ({ ctx }) => {
-    // In demo mode, skip step-up entirely so all tabs are accessible
-    if (process.env.DEMO_MODE === 'true') {
+    // When step-up is not required, auto-satisfy so all tabs are accessible
+    if (!config.REQUIRE_PLATFORM_STEP_UP) {
       return {
         mfaEnabled: false,
         mfaPending: false,

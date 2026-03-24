@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
-import { useT } from '../../i18n';
 
 const LIMIT = 50;
 
 type SubTab = 'audit' | 'tickets';
 
 export default function PlatformArchiveViewer() {
-  const t = useT();
   const [subTab, setSubTab] = useState<SubTab>('audit');
 
   return (
@@ -42,7 +40,6 @@ export default function PlatformArchiveViewer() {
 function AuditArchivePanel() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allItems, setAllItems] = useState<any[]>([]);
-  const [hasMore, setHasMore] = useState(false);
   const [actionFilter, setActionFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -75,7 +72,6 @@ function AuditArchivePanel() {
   function resetAndReload() {
     setCursor(undefined);
     setAllItems([]);
-    setHasMore(false);
   }
 
   function fmt(iso?: string) {
@@ -187,7 +183,7 @@ function AuditArchivePanel() {
           <span className="text-[10px] font-black uppercase opacity-60">{items.length} entries loaded</span>
           {nextCursor && (
             <button
-              onClick={() => { setAllItems(items); setHasMore(true); setCursor(nextCursor); }}
+              onClick={() => { setAllItems(items); setCursor(nextCursor); }}
               disabled={query.isFetching}
               className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 disabled:opacity-30"
             >

@@ -35,6 +35,9 @@ export interface GlobalUser {
   externalId?: string | null;
   password?: string | null;
   lang?: string | null;
+  mfaEnabledAt?: string | null;
+  lockedUntil?: string | null;
+  failedLoginAttempts?: number | null;
   createdAt?: string;
   updatedAt?: string;
   partnerMemberships?: PartnerMembership[];

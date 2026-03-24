@@ -111,4 +111,16 @@ export class MailService {
     const html = renderMfaEnabled({ name });
     return this.sendMail(email, 'Tessera — Two-Factor Authentication Enabled', html);
   }
+
+  static async sendMfaDisabledByAdmin(email: string, name: string) {
+    const { renderMfaDisabledByAdmin } = await import('./mailTemplates.js');
+    const html = renderMfaDisabledByAdmin({ name });
+    return this.sendMail(email, 'Tessera — Two-Factor Authentication Disabled', html);
+  }
+
+  static async sendAccountUnlocked(email: string, name: string) {
+    const { renderAccountUnlocked } = await import('./mailTemplates.js');
+    const html = renderAccountUnlocked({ name });
+    return this.sendMail(email, 'Tessera — Account Unlocked', html);
+  }
 }
