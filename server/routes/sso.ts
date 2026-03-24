@@ -5,7 +5,7 @@ import * as jose from 'jose';
 import { v4 as uuid } from 'uuid';
 import { db } from '../db.js';
 import { users, memberships, partners, partnerGroupMappings, auditLog } from '../db/schema.js';
-import { eq, and, inArray } from 'drizzle-orm';
+import { eq, and, inArray, or } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { buildAuthResponse, buildAuthToken, listUserMemberships } from '../services/authSession.js';
@@ -233,7 +233,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         .innerJoin(partners, eq(partnerGroupMappings.partnerId, partners.id))
         .where(and(
           inArray(partnerGroupMappings.azureGroupId, azureGroups),
-          eq(partners.authMethod, 'sso'),
+          or(eq(partners.authMethod, 'sso'), eq(partners.authMethod, 'both')),
           eq(partners.status, 'active'),
         ));
 

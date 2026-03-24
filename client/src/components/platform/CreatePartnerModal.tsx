@@ -12,14 +12,14 @@ interface CreatePartnerModalProps {
 export default function CreatePartnerModal({ open, onClose }: CreatePartnerModalProps) {
   const t = useT();
   const utils = trpc.useUtils();
-  const [form, setForm] = useState({ id: '', name: '', logoUrl: '', industry: '', authMethod: 'local' as 'local' | 'sso' });
+  const [form, setForm] = useState({ id: '', name: '', logoUrl: '', industry: '', authMethod: 'local' as 'local' | 'sso' | 'both' });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showError = useCallback((message: string) => setToast({ message, type: 'error' }), []);
 
   const createPartner = trpc.platform.createPartner.useMutation({
     onSuccess: () => {
       utils.platform.listPartners.invalidate();
-      setForm({ id: '', name: '', logoUrl: '', industry: '', authMethod: 'local' });
+      setForm({ id: '', name: '', logoUrl: '', industry: '', authMethod: 'local' as 'local' | 'sso' | 'both' });
       onClose();
     },
     onError: (err) => showError(err.message),
@@ -86,9 +86,10 @@ export default function CreatePartnerModal({ open, onClose }: CreatePartnerModal
             <div className="flex-1">
               <label className="block text-[10px] font-black uppercase mb-1">{t('provider_label')}</label>
               <select className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
-                value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' })}>
+                value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' | 'both' })}>
                 <option value="local">Local (Email/Password)</option>
                 <option value="sso">Enterprise SSO</option>
+                <option value="both">Both (Local + SSO)</option>
               </select>
             </div>
           </div>

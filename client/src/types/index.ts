@@ -18,6 +18,7 @@ export interface PartnerManifest {
   aiRules?: string;
   themeConfig?: ThemeConfig;
   ollamaModel?: string;
+  authMethod?: 'local' | 'sso' | 'both';
 }
 
 export interface Membership {
@@ -125,6 +126,9 @@ export interface Ticket {
   participants: any[];
   labels: string[];
   summary?: string | null;
+  slaResponseDueAt?: string | null;
+  slaResolutionDueAt?: string | null;
+  slaBreached?: boolean;
 }
 
 export interface Message {

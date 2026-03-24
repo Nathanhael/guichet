@@ -5,6 +5,7 @@ import { getTicketTime } from '../../utils/dateUtils';
 import { trpc } from '../../utils/trpc';
 import { ARCHIVE_PAGE_SIZE } from '../../config';
 import { Ticket, Membership } from '../../types';
+import SlaIndicator from '../SlaIndicator';
 
 interface QueueSidebarProps {
   activeMembership: Membership;
@@ -101,7 +102,7 @@ export default function QueueSidebar({
 
   return (
     <aside className={`${
-      isOpen ? 'w-80 border-r-2 border-black dark:border-white' : 'w-0 border-r-0'
+      isOpen ? 'w-80 border-r-2 border-black dark:border-white max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-2xl' : 'w-0 border-r-0'
     } shrink-0 overflow-hidden transition-all duration-200 bg-white dark:bg-black flex flex-col`}>
       {/* Header: tabs + dept chips */}
       <div className="px-4 py-3 border-b-2 border-black dark:border-white">
@@ -241,6 +242,9 @@ export default function QueueSidebar({
                       </span>
                       <span className="text-[9px] opacity-60 uppercase">{getTicketTime(ticket.createdAt)}</span>
                       {isUnread && <span className="w-2 h-2 bg-black dark:bg-white rounded-full shrink-0" />}
+                      {ticket.slaResponseDueAt && !ticket.supportJoinedAt && (
+                        <SlaIndicator dueAt={ticket.slaResponseDueAt} breached={ticket.slaBreached} compact />
+                      )}
                     </div>
                     <p className="text-sm font-black uppercase truncate">{ticket.agentName}</p>
                   </li>

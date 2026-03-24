@@ -294,6 +294,78 @@ export default function AdminStats() {
           )}
         </Panel>
       </div>
+
+      {/* Team Satisfaction */}
+      <TeamSatisfaction dateFrom={statsDateFrom} dateTo={statsDateTo} />
     </div>
+  );
+}
+
+function StarRating({ value }: { value: number }) {
+  const stars = [];
+  for (let i = 1; i <= 5; i++) {
+    const filled = i <= Math.round(value);
+    stars.push(
+      <svg
+        key={i}
+        xmlns="http://www.w3.org/2000/svg"
+        className={`h-4 w-4 inline-block ${filled ? 'text-black dark:text-white' : 'text-black/20 dark:text-white/20'}`}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+      >
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      </svg>
+    );
+  }
+  return <span className="inline-flex gap-0.5">{stars}</span>;
+}
+
+function TeamSatisfaction({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { data: staffRatings, isLoading } = trpc.rating.getStaffRatings.useQuery(
+    {
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+    },
+    { refetchInterval: 30000 }
+  );
+
+  return (
+    <Panel title="Team Satisfaction">
+      {isLoading ? (
+        <Skeleton className="h-32 w-full" />
+      ) : !staffRatings || staffRatings.length === 0 ? (
+        <p className="text-sm opacity-60">No ratings yet</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="border-b-2 border-black dark:border-white">
+                <th className="text-[10px] font-black uppercase tracking-widest py-2 pr-4">Support Staff</th>
+                <th className="text-[10px] font-black uppercase tracking-widest py-2 pr-4">Avg Rating</th>
+                <th className="text-[10px] font-black uppercase tracking-widest py-2 pr-4">Stars</th>
+                <th className="text-[10px] font-black uppercase tracking-widest py-2 text-right">Total Ratings</th>
+              </tr>
+            </thead>
+            <tbody>
+              {staffRatings.map((staff) => {
+                const avg = Number(staff.avgRating) || 0;
+                const colorClass =
+                  avg >= 4 ? 'text-green-700 dark:text-green-400' :
+                  avg >= 3 ? 'text-yellow-700 dark:text-yellow-400' :
+                  'text-red-700 dark:text-red-400';
+                return (
+                  <tr key={staff.supportId} className="border-b border-black/10 dark:border-white/10">
+                    <td className="py-2 pr-4 text-sm font-bold">{staff.supportName}</td>
+                    <td className={`py-2 pr-4 text-sm font-black tabular-nums ${colorClass}`}>{avg.toFixed(1)}</td>
+                    <td className="py-2 pr-4"><StarRating value={avg} /></td>
+                    <td className="py-2 text-sm font-bold opacity-60 text-right">{staff.totalRatings}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Panel>
   );
 }

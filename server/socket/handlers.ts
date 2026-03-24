@@ -13,6 +13,9 @@ import { mapMessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 import { invalidateSummary } from '../services/ai/summaryCache.js';
+import { autoSummarizeOnClose } from '../services/ai/autoSummarize.js';
+import { scoreSentiment } from '../services/ai/sentiment.js';
+import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../services/sla.js';
 
 interface TicketNewPayload {
   agentId: string;
@@ -85,6 +88,58 @@ interface TicketParticipantsRow {
 }
 
 let ioInstance: Server | null = null;
+
+// ── Collision Detection: ticket viewer tracking ─────────────────────────────
+// Map<ticketId, Map<socketId, { userId: string; userName: string }>>
+const ticketViewers = new Map<string, Map<string, { userId: string; userName: string }>>();
+
+function addViewer(ticketId: string, socketId: string, userId: string, userName: string) {
+  if (!ticketViewers.has(ticketId)) {
+    ticketViewers.set(ticketId, new Map());
+  }
+  ticketViewers.get(ticketId)!.set(socketId, { userId, userName });
+}
+
+function removeViewer(ticketId: string, socketId: string) {
+  const viewers = ticketViewers.get(ticketId);
+  if (!viewers) return;
+  viewers.delete(socketId);
+  if (viewers.size === 0) {
+    ticketViewers.delete(ticketId);
+  }
+}
+
+function removeViewerFromAll(socketId: string) {
+  const affectedTickets: string[] = [];
+  for (const [ticketId, viewers] of ticketViewers) {
+    if (viewers.has(socketId)) {
+      viewers.delete(socketId);
+      affectedTickets.push(ticketId);
+      if (viewers.size === 0) {
+        ticketViewers.delete(ticketId);
+      }
+    }
+  }
+  return affectedTickets;
+}
+
+function getViewers(ticketId: string): Array<{ userId: string; userName: string }> {
+  const viewers = ticketViewers.get(ticketId);
+  if (!viewers) return [];
+  // Deduplicate by userId (same user may have multiple sockets)
+  const seen = new Map<string, { userId: string; userName: string }>();
+  for (const entry of viewers.values()) {
+    if (!seen.has(entry.userId)) {
+      seen.set(entry.userId, entry);
+    }
+  }
+  return Array.from(seen.values());
+}
+
+function broadcastViewers(io: Server, ticketId: string) {
+  const viewers = getViewers(ticketId);
+  io.to(`ticket:${ticketId}`).emit('ticket:viewers', { ticketId, viewers });
+}
 
 export function broadcastPartnerDeactivation(partnerId: string) {
   if (ioInstance) {
@@ -228,7 +283,7 @@ export function registerSocketHandlers(io: Server) {
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       const partnerId = socket.data.partnerId;
-      const partnerRow = partnerId ? await get('SELECT status, business_hours_schedule, business_hours_start, business_hours_end, business_hours_timezone FROM partners WHERE id = $1', [partnerId]) as { status: string; business_hours_schedule: unknown; business_hours_start: string | null; business_hours_end: string | null; business_hours_timezone: string | null } | undefined : null;
+      const partnerRow = partnerId ? await get('SELECT status, business_hours_schedule, business_hours_start, business_hours_end, business_hours_timezone, sla_config FROM partners WHERE id = $1', [partnerId]) as { status: string; business_hours_schedule: unknown; business_hours_start: string | null; business_hours_end: string | null; business_hours_timezone: string | null; sla_config: unknown } | undefined : null;
       
       if (partnerRow && partnerRow.status !== 'active') {
         return socket.emit('error', { message: 'Partner is currently inactive.' });
@@ -303,9 +358,18 @@ export function registerSocketHandlers(io: Server) {
             await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [message.id, message.ticketId, message.senderId, message.senderName, message.senderRole, message.senderLang, message.originalText, mediaUrl || null, 0, 0, message.timestamp, '{}']);
           }
         }
+        // Calculate SLA due dates based on partner config
+        const slaConfig = parseSlaConfig(partnerRow?.sla_config);
+        const sla = getEffectiveSla(slaConfig, dept);
+        const createdDate = new Date(ticket.createdAt);
+        const slaResponseDueAt = calculateSlaDueDate(createdDate, sla.responseMs).toISOString();
+        const slaResolutionDueAt = calculateSlaDueDate(createdDate, sla.resolutionMs).toISOString();
+        await run('UPDATE tickets SET sla_response_due_at = $1, sla_resolution_due_at = $2 WHERE id = $3', [slaResponseDueAt, slaResolutionDueAt, ticket.id]);
+        const ticketWithSla = { ...ticket, slaResponseDueAt, slaResolutionDueAt, slaBreached: false };
+
         socket.join(`ticket:${ticket.id}`);
-        socket.emit('ticket:created:self', { ticket: { ...ticket, participants: [], labels: [] }, message });
-        io.to(`partner:${partnerId}`).emit('ticket:created', { ticket: { ...ticket, participants: [], labels: [] }, firstMessage: message });
+        socket.emit('ticket:created:self', { ticket: { ...ticketWithSla, participants: [], labels: [] }, message });
+        io.to(`partner:${partnerId}`).emit('ticket:created', { ticket: { ...ticketWithSla, participants: [], labels: [] }, firstMessage: message });
         await broadcastQueuePositions(partnerId);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:new] error'); }
     });
@@ -420,7 +484,47 @@ export function registerSocketHandlers(io: Server) {
         await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, senderName || 'System', sanitizedNotes, ticketId]);
         io.to(`ticket:${ticketId}`).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System' });
         await broadcastQueuePositions(ticket.partner_id);
+
+        // Fire-and-forget AI auto-summarize
+        autoSummarizeOnClose(ticket.partner_id, senderId, ticketId, io).catch(() => {});
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
+    });
+
+    // ── Rating Submit ──────────────────────────────────────────────────────────
+    socket.on('rating:submit', async ({ ticketId, agentId, supportId, rating, comment }: { ticketId: string; agentId: string; supportId: string; rating: number; comment: string | null }) => {
+      if (!requireIdentified(socket)) return;
+      socketioEventsTotal.inc({ event: 'rating:submit' });
+      try {
+        if (!ticketId || !agentId || !supportId || typeof rating !== 'number' || rating < 1 || rating > 5) {
+          logger.warn('[rating:submit] invalid payload');
+          return;
+        }
+        const intRating = Math.round(rating);
+
+        // Tenant isolation: verify ticket belongs to caller's partner and caller is the agent
+        const ticket = await get('SELECT partner_id, agent_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string; agent_id: string } | undefined;
+        if (!ticket || ticket.partner_id !== socket.data.partnerId) {
+          return socket.emit('error', { message: 'Not authorized' });
+        }
+        if (ticket.agent_id !== socket.data.userId) {
+          return socket.emit('error', { message: 'Only the ticket agent can submit a rating' });
+        }
+
+        // Prevent duplicate ratings per ticket
+        const existing = await get('SELECT id FROM ratings WHERE ticket_id = $1', [ticketId]) as { id: string } | undefined;
+        if (existing) {
+          logger.info({ ticketId }, '[rating:submit] Rating already exists, ignoring');
+          return;
+        }
+
+        const id = uuidv4();
+        const safeComment = comment ? comment.slice(0, 2000) : null;
+        await run(
+          'INSERT INTO ratings (id, ticket_id, agent_id, support_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6)',
+          [id, ticketId, agentId, supportId, intRating, safeComment]
+        );
+        io.to(`ticket:${ticketId}`).emit('rating:submitted', { ticketId, agentId, supportId, rating: intRating });
+      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[rating:submit] error'); }
     });
 
     socket.on('message:send', async ({ ticketId, text, mediaUrl, whisper }: Omit<MessageSendPayload, 'senderId'>) => {
@@ -459,6 +563,10 @@ export function registerSocketHandlers(io: Server) {
         logger.info({ messageId }, '[message:send] Emitted message:new');
         // Invalidate cached AI summary for this ticket (fire-and-forget)
         invalidateSummary(ticketId).catch(() => {});
+        // Fire-and-forget sentiment scoring (skip whispers — internal notes shouldn't affect sentiment)
+        if (!isWhisper) {
+          scoreSentiment(ticket.partner_id, senderId, messageId, text).catch(() => {});
+        }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
     });
 
@@ -672,6 +780,32 @@ export function registerSocketHandlers(io: Server) {
       }
     });
 
+    // ── Collision Detection: ticket viewing ───────────────────────────────────
+    socket.on('ticket:viewing', async ({ ticketId }: { ticketId: string }) => {
+      if (!requireIdentified(socket)) return;
+      const callerRole = socket.data.role;
+      if (!canUseSupportWorkflows(callerRole as any)) return;
+      if (!ticketId) return;
+
+      const userId = socket.data.userId as string;
+      const userName = socket.data.name as string;
+
+      // Join the socket room if not already in it
+      if (!socket.rooms.has(`ticket:${ticketId}`)) {
+        socket.join(`ticket:${ticketId}`);
+      }
+
+      addViewer(ticketId, socket.id, userId, userName);
+      broadcastViewers(io, ticketId);
+    });
+
+    socket.on('ticket:left', ({ ticketId }: { ticketId: string }) => {
+      if (!requireIdentified(socket)) return;
+      if (!ticketId) return;
+      removeViewer(ticketId, socket.id);
+      broadcastViewers(io, ticketId);
+    });
+
     socket.on('disconnect', async () => {
       socketioConnectionsActive.dec();
       const userId = socket.data.userId;
@@ -686,6 +820,12 @@ export function registerSocketHandlers(io: Server) {
             socket.to(room).emit('typing:update', { ticketId, senderName: userName, typing: false });
           }
         }
+      }
+
+      // Clear viewer tracking for this socket and broadcast updates
+      const affectedTickets = removeViewerFromAll(socket.id);
+      for (const ticketId of affectedTickets) {
+        broadcastViewers(io, ticketId);
       }
 
       if (userId && partnerId) {

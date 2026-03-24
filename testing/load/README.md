@@ -35,6 +35,8 @@ K6_BASE_URL=https://staging.example.com k6 run testing/load/smoke.js
 | `smoke.js` | 1 | 30s | Sanity check — does the app respond? |
 | `load.js` | 50 | 3m | Sustained load — find bottlenecks |
 | `ws.js` | 25 | 90s | WebSocket (Socket.io) connection stress |
+| `load-500.js` | 500 | 5.5m | HTTP load — validate 500 concurrent users |
+| `ws-500.js` | 500 | 5m | WebSocket — 500 concurrent connections |
 
 ### WebSocket test
 

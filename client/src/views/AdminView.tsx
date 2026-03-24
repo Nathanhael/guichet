@@ -51,8 +51,8 @@ export default function AdminView() {
   );
 
   return (
-    <div className="h-screen min-w-[1440px] flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
-      <nav className="bg-white dark:bg-black text-black dark:text-white px-8 py-4 flex items-center justify-between gap-8 sticky top-0 z-50 border-b-2 border-black dark:border-white">
+    <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
+      <nav className="bg-white dark:bg-black text-black dark:text-white px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-4 md:gap-8 sticky top-0 z-50 border-b-2 border-black dark:border-white">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">
             <button
@@ -96,7 +96,7 @@ export default function AdminView() {
 
       <div className="flex flex-row flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-52' : 'w-14'} h-full border-r-2 border-black dark:border-white overflow-hidden flex-shrink-0 transition-all duration-200`}>
+        <aside className={`${sidebarOpen ? 'w-52 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-2xl max-md:bg-white max-md:dark:bg-black max-md:top-[57px]' : 'w-14 max-md:w-0 max-md:hidden'} h-full border-r-2 border-black dark:border-white overflow-hidden flex-shrink-0 transition-all duration-200`}>
           {sidebarOpen && <div className="text-[9px] font-black uppercase tracking-widest opacity-40 px-4 pt-6 pb-2 select-none">Overview</div>}
           {!sidebarOpen && <div className="pt-4" />}
           <NavButton

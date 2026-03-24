@@ -203,6 +203,11 @@ export const validatedBusinessHoursScheduleSchema = businessHoursScheduleSchema.
   });
 });
 
+const slaByDepartmentSchema = z.record(z.string(), z.object({
+  responseMs: z.number().int().positive(),
+  resolutionMs: z.number().int().positive(),
+}));
+
 export const partnerRouter = router({
   getManifest: adminProcedure.query(async ({ ctx }) => {
     try {
@@ -231,6 +236,66 @@ export const partnerRouter = router({
       ...aiConfig,
     };
   }),
+
+  getSlaConfig: adminProcedure.query(async ({ ctx }) => {
+    const partnerId = ctx.user.partnerId;
+    if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+    const result = await db.select({ slaConfig: partners.slaConfig }).from(partners).where(eq(partners.id, partnerId)).limit(1);
+    if (result.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+
+    const { parseSlaConfig } = await import('../../services/sla.js');
+    const parsed = parseSlaConfig(result[0].slaConfig);
+
+    return {
+      defaultResponseMs: parsed?.defaultResponseMs ?? config.SLA_THRESHOLD_MS,
+      defaultResolutionMs: parsed?.defaultResolutionMs ?? 24 * 60 * 60 * 1000,
+      byDepartment: parsed?.byDepartment ?? {},
+      businessHoursOnly: parsed?.businessHoursOnly ?? false,
+    };
+  }),
+
+  updateSlaConfig: adminProcedure
+    .input(z.object({
+      defaultResponseMs: z.number().int().positive().optional(),
+      defaultResolutionMs: z.number().int().positive().optional(),
+      byDepartment: slaByDepartmentSchema.optional(),
+      businessHoursOnly: z.boolean().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+      // Build the new SLA config, merging with existing
+      const existing = await db.select({ slaConfig: partners.slaConfig }).from(partners).where(eq(partners.id, partnerId)).limit(1);
+      if (existing.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+
+      const { parseSlaConfig } = await import('../../services/sla.js');
+      const current = parseSlaConfig(existing[0].slaConfig);
+
+      const newConfig = {
+        defaultResponseMs: input.defaultResponseMs ?? current?.defaultResponseMs ?? config.SLA_THRESHOLD_MS,
+        defaultResolutionMs: input.defaultResolutionMs ?? current?.defaultResolutionMs ?? 24 * 60 * 60 * 1000,
+        byDepartment: input.byDepartment ?? current?.byDepartment ?? {},
+        businessHoursOnly: input.businessHoursOnly ?? current?.businessHoursOnly ?? false,
+      };
+
+      await db.update(partners)
+        .set({ slaConfig: newConfig })
+        .where(eq(partners.id, partnerId));
+
+      await db.insert(auditLog).values({
+        action: 'partner.sla_config_updated',
+        actorId: ctx.user.id,
+        partnerId,
+        targetType: 'partner',
+        targetId: partnerId,
+        metadata: { slaConfig: newConfig },
+      });
+
+      logger.info({ partnerId }, 'SLA config updated by Partner Admin');
+      return { success: true, slaConfig: newConfig };
+    }),
 
   getBusinessHours: protectedProcedure.query(async ({ ctx }) => {
     try {
@@ -461,7 +526,8 @@ export const partnerRouter = router({
       email: z.string().email(),
       name: z.string().min(1),
       role: z.enum(['agent', 'support']),
-      departments: z.array(z.string()).optional()
+      departments: z.array(z.string()).optional(),
+      authMethod: z.enum(['local', 'sso']).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -481,7 +547,12 @@ export const partnerRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
         }
 
-        const isLocal = partner[0].authMethod === 'local';
+        // Determine effective auth method for this user:
+        // - If caller specified per-user authMethod, use that (only meaningful when partner is 'both')
+        // - If partner is 'both', default to 'local' unless caller specified 'sso'
+        // - Otherwise use partner's authMethod
+        const userAuthMethod = input.authMethod ?? (partner[0].authMethod === 'both' ? 'local' : partner[0].authMethod);
+        const isLocal = userAuthMethod === 'local';
 
         // 2. Check for existing user
         const existingUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
@@ -504,6 +575,7 @@ export const partnerRouter = router({
           email: input.email,
           name: input.name,
           password: hashedPassword,
+          authMethod: partner[0].authMethod === 'both' ? userAuthMethod : undefined,
         });
 
         // 4. Create membership
@@ -523,11 +595,11 @@ export const partnerRouter = router({
           partnerId: partnerId,
           targetType: 'user',
           targetId: newUserId,
-          metadata: { role: input.role, departments: input.departments, email: input.email, authMethod: partner[0].authMethod }
+          metadata: { role: input.role, departments: input.departments, email: input.email, authMethod: userAuthMethod }
         });
 
         // Never log plaintext passwords
-        logger.info({ userId: newUserId, authMethod: partner[0].authMethod }, '[inviteExternalUser] User created');
+        logger.info({ userId: newUserId, authMethod: userAuthMethod }, '[inviteExternalUser] User created');
         return { success: true, userId: newUserId, tempPassword: tempPassword ?? '' };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
