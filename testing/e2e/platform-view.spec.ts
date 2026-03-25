@@ -14,6 +14,13 @@ import { test, expect, type Page } from '@playwright/test';
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const DEMO_PASSWORD = 'password123';
 
+/** Wait for a platform tab to become enabled (security status query resolved) then click it */
+async function clickPlatformTab(page: Page, tabName: RegExp, timeout = 15000) {
+  const enabledTab = page.locator('button:not([disabled])', { hasText: tabName }).first();
+  await enabledTab.waitFor({ state: 'visible', timeout });
+  await enabledTab.click();
+}
+
 async function loginAsDemo(page: Page, userId: string) {
   // Must navigate first so localStorage is accessible (same-origin)
   await page.goto(BASE);
@@ -100,13 +107,8 @@ test.describe('Partner Management', () => {
   });
 
   test('partner list is visible on partners tab', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    // Click the partners tab (it may already be active)
-    const partnersTab = page.getByRole('button', { name: /partners/i }).first();
-    if (await partnersTab.isVisible().catch(() => false)) {
-      await partnersTab.click();
-      await page.waitForTimeout(1500);
-    }
+    await clickPlatformTab(page, /partners/i);
+    await page.waitForTimeout(1500);
 
     // Partner list should show partner entries or a "create" button
     const hasPartnerContent = await page.getByText(/partner|create|add/i).first().isVisible().catch(() => false);
@@ -116,12 +118,8 @@ test.describe('Partner Management', () => {
   });
 
   test('create partner button is available', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const partnersTab = page.getByRole('button', { name: /partners/i }).first();
-    if (await partnersTab.isVisible().catch(() => false)) {
-      await partnersTab.click();
-      await page.waitForTimeout(1500);
-    }
+    await clickPlatformTab(page, /partners/i);
+    await page.waitForTimeout(1500);
 
     // Look for create/add partner button
     const createBtn = page.getByRole('button', { name: /create|add|new/i }).first();
@@ -147,52 +145,36 @@ test.describe('Tab Navigation', () => {
   });
 
   test('can navigate to users tab', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const usersTab = page.getByRole('button', { name: /users/i }).first();
-    if (await usersTab.isVisible().catch(() => false)) {
-      await usersTab.click();
-      await page.waitForTimeout(1500);
-      // Users tab should show user table or invite button
-      const hasUserContent = await page.getByText(/user|invite|email|role/i).first().isVisible().catch(() => false);
-      const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-      expect(errorVisible).toBeFalsy();
-    }
+    await clickPlatformTab(page, /users/i);
+    await page.waitForTimeout(1500);
+    // Users tab should show user table or invite button
+    const hasUserContent = await page.getByText(/user|invite|email|role/i).first().isVisible().catch(() => false);
+    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    expect(errorVisible).toBeFalsy();
   });
 
   test('can navigate to health tab', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const healthTab = page.getByRole('button', { name: /health/i }).first();
-    if (await healthTab.isVisible().catch(() => false)) {
-      await healthTab.click();
-      await page.waitForTimeout(1500);
-      // Health tab should show system health info (postgres, redis, etc.)
-      const hasHealthContent = await page.getByText(/postgres|redis|gdpr|connections|memory/i).first().isVisible().catch(() => false);
-      const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-      expect(errorVisible).toBeFalsy();
-    }
+    await clickPlatformTab(page, /health/i);
+    await page.waitForTimeout(1500);
+    // Health tab should show system health info (postgres, redis, etc.)
+    const hasHealthContent = await page.getByText(/postgres|redis|gdpr|connections|memory/i).first().isVisible().catch(() => false);
+    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    expect(errorVisible).toBeFalsy();
   });
 
   test('can navigate to audit tab', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const auditTab = page.getByRole('button', { name: /audit/i }).first();
-    if (await auditTab.isVisible().catch(() => false)) {
-      await auditTab.click();
-      await page.waitForTimeout(1500);
-      // Audit log tab should load without errors
-      const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-      expect(errorVisible).toBeFalsy();
-    }
+    await clickPlatformTab(page, /audit/i);
+    await page.waitForTimeout(1500);
+    // Audit log tab should load without errors
+    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    expect(errorVisible).toBeFalsy();
   });
 
   test('can navigate to config tab', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const configTab = page.getByRole('button', { name: /config/i }).first();
-    if (await configTab.isVisible().catch(() => false)) {
-      await configTab.click();
-      await page.waitForTimeout(1500);
-      const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-      expect(errorVisible).toBeFalsy();
-    }
+    await clickPlatformTab(page, /config/i);
+    await page.waitForTimeout(1500);
+    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    expect(errorVisible).toBeFalsy();
   });
 
   test('security tab shows step-up verification', async ({ page }) => {
@@ -209,14 +191,10 @@ test.describe('Tab Navigation', () => {
   });
 
   test('SSO/group mappings tab loads', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const ssoTab = page.getByRole('button', { name: /sso/i }).first();
-    if (await ssoTab.isVisible().catch(() => false)) {
-      await ssoTab.click();
-      await page.waitForTimeout(1500);
-      const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-      expect(errorVisible).toBeFalsy();
-    }
+    await clickPlatformTab(page, /sso/i);
+    await page.waitForTimeout(1500);
+    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    expect(errorVisible).toBeFalsy();
   });
 });
 
@@ -227,38 +205,30 @@ test.describe('User Management', () => {
   });
 
   test('user table shows users with roles', async ({ page }) => {
+    await clickPlatformTab(page, /users/i);
     await page.waitForTimeout(2000);
-    const usersTab = page.getByRole('button', { name: /users/i }).first();
-    if (await usersTab.isVisible().catch(() => false)) {
-      await usersTab.click();
-      await page.waitForTimeout(2000);
-      // Should show a table or list of users
-      const hasTable = await page.locator('table').first().isVisible().catch(() => false);
-      const hasList = await page.getByText(/email|role|name/i).first().isVisible().catch(() => false);
-      // At least one should be present if not locked behind step-up
-      const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-      expect(errorVisible).toBeFalsy();
-    }
+    // Should show a table or list of users
+    const hasTable = await page.locator('table').first().isVisible().catch(() => false);
+    const hasList = await page.getByText(/email|role|name/i).first().isVisible().catch(() => false);
+    // At least one should be present if not locked behind step-up
+    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    expect(errorVisible).toBeFalsy();
   });
 
   test('invite user button opens modal', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const usersTab = page.getByRole('button', { name: /users/i }).first();
-    if (await usersTab.isVisible().catch(() => false)) {
-      await usersTab.click();
-      await page.waitForTimeout(1500);
-      const inviteBtn = page.getByRole('button', { name: /invite/i }).first();
-      if (await inviteBtn.isVisible().catch(() => false)) {
-        await inviteBtn.click();
-        await page.waitForTimeout(500);
-        // Modal should appear with email field
-        const modal = page.getByText(/invite.*user|email|send.*invite/i).first();
-        const modalVisible = await modal.isVisible().catch(() => false);
-        // Close modal
-        const closeBtn = page.getByRole('button', { name: /cancel|close/i }).first();
-        if (await closeBtn.isVisible().catch(() => false)) {
-          await closeBtn.click();
-        }
+    await clickPlatformTab(page, /users/i);
+    await page.waitForTimeout(1500);
+    const inviteBtn = page.getByRole('button', { name: /invite/i }).first();
+    if (await inviteBtn.isVisible().catch(() => false)) {
+      await inviteBtn.click();
+      await page.waitForTimeout(500);
+      // Modal should appear with email field
+      const modal = page.getByText(/invite.*user|email|send.*invite/i).first();
+      const modalVisible = await modal.isVisible().catch(() => false);
+      // Close modal
+      const closeBtn = page.getByRole('button', { name: /cancel|close/i }).first();
+      if (await closeBtn.isVisible().catch(() => false)) {
+        await closeBtn.click();
       }
     }
   });
