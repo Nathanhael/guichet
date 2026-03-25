@@ -15,7 +15,7 @@ const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 /** Wait for the React app to mount (login form or app content visible) */
 async function waitForApp(page: import('@playwright/test').Page) {
   await page.goto(BASE);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
   // Wait for React to mount — look for the login form OR the app shell
   await page.waitForSelector('form, [data-testid="app-shell"]', { timeout: 15000 });
 }

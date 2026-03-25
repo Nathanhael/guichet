@@ -21,7 +21,7 @@ const NEW_PASSWORD = 'NewSecure!Pass1';
 /** Wait for the React app to mount (login form visible) */
 async function waitForLoginForm(page: Page) {
   await page.goto(BASE);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
   // Wait for React to mount — look for the login form
   await page.waitForSelector('form', { timeout: 15000 });
 }
@@ -63,7 +63,7 @@ test.describe('Password Reset Flow', () => {
     const fakeToken = crypto.randomBytes(32).toString('hex');
 
     await page.goto(`${BASE}/reset-password?token=${fakeToken}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('load');
 
     // The reset form should be visible
     await expect(page.getByText(/new password/i).first()).toBeVisible({ timeout: 5000 });
