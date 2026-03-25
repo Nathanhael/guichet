@@ -288,8 +288,8 @@ import { existsSync } from 'fs';
 const clientDist = path.resolve(__dirname, '../client/dist');
 if (existsSync(clientDist)) {
   app.use(express.static(clientDist));
-  // SPA fallback — must come after all API routes
-  app.get('*', (_req: Request, res: Response) => {
+  // SPA fallback — must come after all API routes (app.use avoids Express 5 path-to-regexp wildcard issue)
+  app.use((_req: Request, res: Response) => {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
