@@ -1,12 +1,15 @@
 import { hashPassword } from '../utils/passwords.js';
 import pg from 'pg';
-import { v4 as uuidv4 } from 'uuid';
 
 const DB_URL = process.env.DATABASE_URL || 'postgresql://user:password@db:5432/tessera';
 
 const TEST_PARTNER_A = { id: 'test-partner-a', name: 'Test Partner A', industry: 'Technology' };
 const TEST_PARTNER_B = { id: 'test-partner-b', name: 'Test Partner B', industry: 'Technology' };
 const DEFAULT_PARTNER = { id: 'tessera-main', name: 'Tessera Main', industry: 'Telecommunications' };
+
+const PLATFORM_USERS = [
+  { id: 'platform_bart', name: 'Bart Operator' },
+];
 
 const TEST_USERS = [
   { id: 'e2e-agent-a', name: 'E2E Agent A', role: 'agent', partnerId: TEST_PARTNER_A.id, lang: 'en' },
@@ -20,7 +23,7 @@ const TEST_USERS = [
   { id: 'expert_piet', name: 'Expert Piet', role: 'support', partnerId: DEFAULT_PARTNER.id, lang: 'nl' },
   { id: 'expert_sophie', name: 'Expert Sophie', role: 'support', partnerId: DEFAULT_PARTNER.id, lang: 'fr' },
   { id: 'expert_alex', name: 'Expert Alex', role: 'support', partnerId: DEFAULT_PARTNER.id, lang: 'en' },
-  { id: 'admin_dirk', name: 'Admin Dirk', role: 'admin', partnerId: DEFAULT_PARTNER.id, lang: 'nl' }
+  { id: 'admin_dirk', name: 'Admin Dirk', role: 'admin', partnerId: DEFAULT_PARTNER.id, lang: 'nl' },
 ];
 
 async function seed() {
@@ -28,25 +31,37 @@ async function seed() {
   console.log('🌱 Starting E2E server-side seed...');
 
   try {
-    const now = new Date().toISOString();
     const hash = await hashPassword('password123');
 
-    // 1. Clean old data
-    await pool.query('TRUNCATE memberships, tickets, messages, ratings, app_feedback, topic_alerts CASCADE');
-    await pool.query("DELETE FROM users WHERE id LIKE 'e2e-%' OR id LIKE 'agent_%' OR id LIKE 'expert_%' OR id LIKE 'admin_%'");
+    // 1. Clean old data — cascading DELETEs handle child rows (memberships, tickets, etc.)
+    await pool.query(
+      `DELETE FROM users WHERE id LIKE 'e2e-%' OR id LIKE 'agent_%' OR id LIKE 'expert_%'
+       OR id LIKE 'admin_%' OR id = 'platform_bart'`
+    );
     await pool.query("DELETE FROM partners WHERE id LIKE 'test-partner-%' OR id = 'tessera-main'");
 
     // 2. Insert Partners
+    const DEPTS = JSON.stringify([{ id: 'DSC', label: 'Dispatch' }, { id: 'FOT', label: 'Front Office' }]);
     for (const p of [TEST_PARTNER_A, TEST_PARTNER_B, DEFAULT_PARTNER]) {
       console.log(`  - Partner: ${p.id}`);
       await pool.query(
-        `INSERT INTO partners (id, name, industry, departments, created_at)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [p.id, p.name, p.industry, JSON.stringify([{ id: 'DSC', label: 'Dispatch' }, { id: 'FOT', label: 'Front Office' }]), now]
+        `INSERT INTO partners (id, name, industry, departments)
+         VALUES ($1, $2, $3, $4)`,
+        [p.id, p.name, p.industry, DEPTS]
       );
     }
 
-    // 3. Insert Users & Memberships
+    // 3. Insert platform operator users (no memberships needed)
+    for (const u of PLATFORM_USERS) {
+      console.log(`  - Platform user: ${u.id}`);
+      await pool.query(
+        `INSERT INTO users (id, name, lang, password, is_platform_operator)
+         VALUES ($1, $2, 'en', $3, true)`,
+        [u.id, u.name, hash]
+      );
+    }
+
+    // 4. Insert regular users & memberships
     for (const u of TEST_USERS) {
       console.log(`  - User: ${u.id}`);
       await pool.query(
@@ -56,9 +71,9 @@ async function seed() {
       );
 
       await pool.query(
-        `INSERT INTO memberships (id, user_id, partner_id, role, dept, created_at)
-         VALUES ($1, $2, $3, $4, 'DSC', $5)`,
-        [`mem_${u.id}`, u.id, u.partnerId, u.role, now]
+        `INSERT INTO memberships (id, user_id, partner_id, role, departments)
+         VALUES ($1, $2, $3, $4, '[]')`,
+        [`mem_${u.id}`, u.id, u.partnerId, u.role]
       );
     }
 
