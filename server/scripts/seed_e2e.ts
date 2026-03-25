@@ -36,9 +36,11 @@ async function seed() {
     const hash = await hashPassword('password123');
 
     // 1. Clean old data — cascading DELETEs handle child rows (memberships, tickets, etc.)
+    //    Also remove any user with emails used by seed platform users (avoids unique constraint violations)
     await pool.query(
       `DELETE FROM users WHERE id LIKE 'e2e-%' OR id LIKE 'agent_%' OR id LIKE 'expert_%'
-       OR id LIKE 'admin_%' OR id = 'platform_bart' OR id = 'alice_platform'`
+       OR id LIKE 'admin_%' OR id = 'platform_bart' OR id = 'alice_platform'
+       OR email IN ('alice@acme.com')`
     );
     await pool.query("DELETE FROM partners WHERE id LIKE 'test-partner-%' OR id = 'tessera-main'");
 
