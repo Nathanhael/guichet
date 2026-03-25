@@ -127,6 +127,20 @@
       "when": 1775368800000,
       "tag": "0017_add_last_active_at",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1775455200000,
+      "tag": "0018_password_reset_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1775541600000,
+      "tag": "0019_partners_auth_method",
+      "breakpoints": true
     }
   ]
 }
