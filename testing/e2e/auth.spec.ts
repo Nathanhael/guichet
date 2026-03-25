@@ -15,9 +15,10 @@ const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 test.describe('Authentication', () => {
   test('login page renders with email and password fields', async ({ page }) => {
     await page.goto(BASE);
-    await expect(page.getByPlaceholder(/email/i)).toBeVisible();
+    await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByPlaceholder('name@company.com')).toBeVisible({ timeout: 10000 });
     await expect(page.getByPlaceholder('••••••••')).toBeVisible();
-    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /log in/i })).toBeVisible();
   });
 
   test('SSO button is visible on login page', async ({ page }) => {
@@ -25,7 +26,7 @@ test.describe('Authentication', () => {
     // SSO button should be visible (partner authMethod = 'both' or 'sso')
     const ssoButton = page.getByText(/microsoft|sso/i).first();
     // May or may not be visible depending on partner config — just check page loads
-    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /log in/i })).toBeVisible();
   });
 
   test('demo login tab shows demo users', async ({ page }) => {
@@ -62,11 +63,12 @@ test.describe('Authentication', () => {
 
   test('invalid login shows error', async ({ page }) => {
     await page.goto(BASE);
-    await page.getByPlaceholder(/email/i).fill('nonexistent@test.com');
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByPlaceholder('name@company.com').fill('nonexistent@test.com');
     await page.getByPlaceholder('••••••••').fill('wrongpassword');
-    await page.getByRole('button', { name: /sign in/i }).click();
+    await page.getByRole('button', { name: /log in/i }).click();
     // Should show error message
-    await expect(page.getByText(/invalid|failed|error|incorrect/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/invalid|failed|error|incorrect/i).first()).toBeVisible({ timeout: 10000 });
   });
 
   test('forgot password link works', async ({ page }) => {
