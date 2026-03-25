@@ -8,6 +8,7 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
     headless: true,
     screenshot: 'only-on-failure',
+    locale: 'en-US',
   },
   projects: [
     {
