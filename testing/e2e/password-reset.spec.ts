@@ -65,15 +65,16 @@ async function requestResetAndGetToken(request: Page['request']): Promise<string
 test.describe('Password Reset Flow', () => {
   test('forgot password form shows success message', async ({ page }) => {
     await page.goto(BASE);
+    await page.waitForLoadState('domcontentloaded');
 
     // Find and click the "Forgot Password" link
     await page.getByText(/forgot/i).click();
 
     // Should now be in forgot mode
-    await expect(page.getByText(/reset link/i).first()).toBeVisible();
+    await expect(page.getByText(/send you a link|reset your password/i).first()).toBeVisible({ timeout: 5000 });
 
     // Fill email and submit
-    await page.getByPlaceholder(/email/i).fill(TEST_EMAIL);
+    await page.getByPlaceholder('name@company.com').fill(TEST_EMAIL);
     await page.getByRole('button', { name: /send reset/i }).click();
 
     // Should show success message (enumeration-safe — always succeeds)
@@ -107,15 +108,16 @@ test.describe('Password Reset Flow', () => {
 
   test('login works with original credentials', async ({ page }) => {
     await page.goto(BASE);
+    await page.waitForLoadState('domcontentloaded');
 
     // Fill login form
-    await page.getByPlaceholder(/email/i).fill(TEST_EMAIL);
+    await page.getByPlaceholder('name@company.com').fill(TEST_EMAIL);
     await page.getByPlaceholder('••••••••').fill(ORIGINAL_PASSWORD);
-    await page.getByRole('button', { name: /sign in/i }).click();
+    await page.getByRole('button', { name: /log in/i }).click();
 
     // Should see something indicating successful login (not the login form)
     // Wait for either a redirect or the app to load
-    await expect(page.getByText(/sign in/i).first()).toBeHidden({ timeout: 10000 }).catch(() => {
+    await expect(page.getByText(/log in/i).first()).toBeHidden({ timeout: 10000 }).catch(() => {
       // If still visible, check for error
     });
 

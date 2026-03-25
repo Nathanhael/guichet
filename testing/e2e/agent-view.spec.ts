@@ -15,18 +15,22 @@ const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const DEMO_PASSWORD = 'password123';
 
 async function loginAsDemo(page: Page, userId: string) {
+  // Must navigate first so localStorage is accessible (same-origin)
+  await page.goto(BASE);
   const res = await page.request.post(`${BASE}/api/v1/auth/login`, {
     data: { id: userId, password: DEMO_PASSWORD },
   });
   if (res.ok()) {
     const data = await res.json();
-    await page.evaluate((token) => {
-      localStorage.setItem('tessera-token', token);
-    }, data.token);
+    // Set auth state using the same keys the Zustand store reads
     await page.evaluate(({ token, user, memberships }) => {
-      const state = JSON.parse(localStorage.getItem('tessera-store') || '{}');
-      state.state = { ...state.state, token, user, memberships };
-      localStorage.setItem('tessera-store', JSON.stringify(state));
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('memberships', JSON.stringify(memberships));
+      if (memberships?.length > 0) {
+        localStorage.setItem('activeMembershipId', memberships[0].id);
+        localStorage.setItem('activePartnerId', memberships[0].partnerId);
+      }
     }, data);
     await page.goto(BASE);
   }
