@@ -282,3 +282,14 @@ logger.info({ purgeJitterMin: Math.round(purgeJitterMs / 60000) }, '[GDPR] Purge
 registerSocketHandlers(io);
 
 setBusinessHoursIo(io);
+
+// Serve built client (production / CI / test — skipped when dist doesn't exist i.e. Docker dev)
+import { existsSync } from 'fs';
+const clientDist = path.resolve(__dirname, '../client/dist');
+if (existsSync(clientDist)) {
+  app.use(express.static(clientDist));
+  // SPA fallback — must come after all API routes
+  app.get('*', (_req: Request, res: Response) => {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}

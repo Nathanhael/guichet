@@ -121,6 +121,14 @@ jobs:
         run: cd server && npm run db:migrate
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/tessera_e2e
+      - name: Seed E2E database
+        run: cd server && npx tsx scripts/seed_e2e.ts
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/tessera_e2e
+          JWT_SECRET: ci-test-secret-that-is-at-least-32-chars
+          PLATFORM_ADMIN_EMAIL: alice@acme.com
+          PLATFORM_ADMIN_PASSWORD: password123
+          NODE_ENV: test
       - name: Build client
         run: cd client && npm run build
       - name: Start server
