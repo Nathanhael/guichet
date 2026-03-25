@@ -132,7 +132,7 @@ jobs:
       - name: Build client
         run: cd client && npm run build
       - name: Start server
-        run: cd server && npx tsx index.ts &
+        run: cd server && npx tsx index.ts > /tmp/server.log 2>&1 &
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/tessera_e2e
           JWT_SECRET: ci-test-secret-that-is-at-least-32-chars
@@ -141,11 +141,13 @@ jobs:
           NODE_ENV: test
       - name: Wait for server
         run: |
-          for i in $(seq 1 30); do
+          for i in $(seq 1 60); do
             curl -s http://localhost:3001/api/v1/health > /dev/null 2>&1 && exit 0
             sleep 1
           done
-          echo "Server failed to start within 30s" && exit 1
+          echo "=== Server failed to start within 60s. Server logs: ==="
+          cat /tmp/server.log
+          exit 1
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
       - name: Run Playwright tests
@@ -159,6 +161,12 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report/
+      - name: Upload server log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-log
+          path: /tmp/server.log
 
   build:
     runs-on: ubuntu-latest
