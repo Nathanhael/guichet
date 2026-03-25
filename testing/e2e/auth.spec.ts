@@ -12,17 +12,24 @@ import { test, expect } from '@playwright/test';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 
+/** Wait for the React app to mount (login form or app content visible) */
+async function waitForApp(page: import('@playwright/test').Page) {
+  await page.goto(BASE);
+  await page.waitForLoadState('networkidle');
+  // Wait for React to mount — look for the login form OR the app shell
+  await page.waitForSelector('form, [data-testid="app-shell"]', { timeout: 15000 });
+}
+
 test.describe('Authentication', () => {
   test('login page renders with email and password fields', async ({ page }) => {
-    await page.goto(BASE);
-    await page.waitForLoadState('domcontentloaded');
+    await waitForApp(page);
     await expect(page.getByPlaceholder('name@company.com')).toBeVisible({ timeout: 10000 });
     await expect(page.getByPlaceholder('••••••••')).toBeVisible();
     await expect(page.getByRole('button', { name: /log in/i })).toBeVisible();
   });
 
   test('SSO button is visible on login page', async ({ page }) => {
-    await page.goto(BASE);
+    await waitForApp(page);
     // SSO button should be visible (partner authMethod = 'both' or 'sso')
     const ssoButton = page.getByText(/microsoft|sso/i).first();
     // May or may not be visible depending on partner config — just check page loads
@@ -30,7 +37,7 @@ test.describe('Authentication', () => {
   });
 
   test('demo login tab shows demo users', async ({ page }) => {
-    await page.goto(BASE);
+    await waitForApp(page);
     // Click on demo tab
     const demoTab = page.getByText(/demo/i).first();
     if (await demoTab.isVisible()) {
@@ -41,7 +48,7 @@ test.describe('Authentication', () => {
   });
 
   test('demo user can log in and see the app', async ({ page }) => {
-    await page.goto(BASE);
+    await waitForApp(page);
     // Switch to demo tab
     const demoTab = page.getByText(/demo/i).first();
     if (await demoTab.isVisible()) {
@@ -62,8 +69,7 @@ test.describe('Authentication', () => {
   });
 
   test('invalid login shows error', async ({ page }) => {
-    await page.goto(BASE);
-    await page.waitForLoadState('domcontentloaded');
+    await waitForApp(page);
     await page.getByPlaceholder('name@company.com').fill('nonexistent@test.com');
     await page.getByPlaceholder('••••••••').fill('wrongpassword');
     await page.getByRole('button', { name: /log in/i }).click();
@@ -72,7 +78,7 @@ test.describe('Authentication', () => {
   });
 
   test('forgot password link works', async ({ page }) => {
-    await page.goto(BASE);
+    await waitForApp(page);
     const forgotLink = page.getByText(/forgot/i).first();
     if (await forgotLink.isVisible()) {
       await forgotLink.click();
