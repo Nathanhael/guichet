@@ -102,6 +102,7 @@ export default function AdminArchive() {
           />
           <input
             type="date"
+            aria-label="Start date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
@@ -109,6 +110,7 @@ export default function AdminArchive() {
           <span className="text-xs font-black">→</span>
           <input
             type="date"
+            aria-label="End date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
             className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
@@ -217,8 +219,8 @@ export default function AdminArchive() {
       {/* Preview Panel */}
       {preview && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} />
-          <div className="relative w-[550px] bg-white dark:bg-black border-l-4 border-black dark:border-white h-full flex flex-col">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} aria-label="Close" />
+          <div role="dialog" className="relative w-[550px] bg-white dark:bg-black border-l-4 border-black dark:border-white h-full flex flex-col">
             {/* Preview Header */}
             <div className="px-6 py-4 border-b-2 border-black dark:border-white flex items-start justify-between gap-3 shrink-0">
               <div>
@@ -239,7 +241,7 @@ export default function AdminArchive() {
                   </div>
                 )}
               </div>
-              <button onClick={() => setPreview(null)} className="w-8 h-8 border-2 border-black dark:border-white flex items-center justify-center font-black shrink-0">✕</button>
+              <button onClick={() => setPreview(null)} aria-label="Close" className="w-8 h-8 border-2 border-black dark:border-white flex items-center justify-center font-black shrink-0">✕</button>
             </div>
 
             {/* Messages */}

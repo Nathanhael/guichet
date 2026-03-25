@@ -48,14 +48,14 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
   return (
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-        <div onClick={onClose} className="absolute inset-0 bg-black opacity-80" />
-        <div className="w-full max-w-2xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black opacity-80" />
+        <div role="dialog" className="w-full max-w-2xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
           <div className="flex justify-between items-start mb-6 border-b-2 border-black dark:border-white pb-4">
             <div>
               <h2 className="text-2xl font-black uppercase tracking-tighter">{t('manage_access')}</h2>
               <p className="text-sm font-bold uppercase opacity-60 tracking-widest">{localUser.name}</p>
             </div>
-            <button onClick={onClose} className="text-xl font-black">{'\u2715'}</button>
+            <button onClick={onClose} aria-label="Close" className="text-xl font-black">{'\u2715'}</button>
           </div>
           <div className="space-y-8">
             {(localUser.partnerMemberships?.length ?? 0) > 0 ? localUser.partnerMemberships!.map((m: PartnerMembership) => (

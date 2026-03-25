@@ -38,8 +38,8 @@ export default function CreatePartnerModal({ open, onClose }: CreatePartnerModal
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-      <div onClick={onClose} className="absolute inset-0 bg-black opacity-80" />
-      <div className="w-full max-w-xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
+      <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black opacity-80" />
+      <div role="dialog" className="w-full max-w-xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
         <h2 className="text-2xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">{t('create_new_partner')}</h2>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -69,7 +69,7 @@ export default function CreatePartnerModal({ open, onClose }: CreatePartnerModal
               <label className="block text-[10px] font-black uppercase mb-1">Logo</label>
               <div className="flex items-center gap-3">
                 {form.logoUrl ? (
-                  <img src={form.logoUrl} className="w-10 h-10 object-contain border-2 border-black dark:border-white" />
+                  <img src={form.logoUrl} alt="Partner logo preview" className="w-10 h-10 object-contain border-2 border-black dark:border-white" />
                 ) : (
                   <div className="w-10 h-10 border-2 border-dashed border-black/20 dark:border-white/20" />
                 )}

@@ -43,7 +43,9 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       return { darkMode: next };
     }),
 
+  // TODO: stub implementation — wire up dyslexic mode toggle (e.g. toggle class on <html>, persist to localStorage)
   toggleDyslexicMode: () => {},
+  // TODO: stub implementation — wire up bionic reading toggle (persist to localStorage, update state)
   toggleBionicReading: () => {},
   toggleMonochromeMode: () =>
     set((state) => {
@@ -53,6 +55,7 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       else document.documentElement.classList.remove('monochrome-mode');
       return { monochromeMode: next };
     }),
+  // TODO: stub implementation — wire up focus mode toggle (hide non-essential UI, persist to localStorage)
   toggleFocusMode: () => {},
 
   updateZenSettings: (updates) =>
