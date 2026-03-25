@@ -73,10 +73,10 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'"], // Swagger UI needs inline scripts
-      styleSrc: ["'self'", "'unsafe-inline'"],  // Swagger UI + Tailwind
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],  // Swagger UI + Tailwind + Google Fonts
       imgSrc: ["'self'", "data:", "blob:"],
       connectSrc: ["'self'", "ws:", "wss:", ...allowedOrigins],
-      fontSrc: ["'self'"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       baseUri: ["'self'"],

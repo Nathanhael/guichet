@@ -17,7 +17,7 @@ const DEMO_PASSWORD = 'password123';
 async function loginAsDemo(page: Page, userId: string) {
   // Navigate first so localStorage is accessible (same-origin)
   await page.goto(BASE);
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
   const res = await page.request.post(`${BASE}/api/v1/auth/login`, {
     data: { id: userId, password: DEMO_PASSWORD },
     failOnStatusCode: false,
@@ -39,7 +39,7 @@ async function loginAsDemo(page: Page, userId: string) {
   }, data);
   // Reload so the Zustand store reads the new auth state from localStorage
   await page.reload();
-  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('load');
   return res;
 }
 
