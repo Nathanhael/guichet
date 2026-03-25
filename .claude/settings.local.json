@@ -54,7 +54,8 @@
       "Bash(tsc --version)",
       "Bash(where gemini:*)",
       "mcp__MCP_DOCKER__scan_all_keys",
-      "mcp__MCP_DOCKER__dbsize"
+      "mcp__MCP_DOCKER__dbsize",
+      "Skill(commit-commands:commit-push-pr)"
     ]
   },
   "enableAllProjectMcpServers": true,
