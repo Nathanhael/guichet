@@ -18,6 +18,20 @@ const DEFAULT_RESOLUTION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ONE_MINUTE_MS = 60_000;
 const MAX_LOOKAHEAD_DAYS = 30; // safety limit
 
+function validateDeptConfig(raw: unknown): Record<string, SlaDepartmentConfig> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const result: Record<string, SlaDepartmentConfig> = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (val && typeof val === 'object') {
+      const v = val as Record<string, unknown>;
+      if (typeof v.responseMs === 'number' && typeof v.resolutionMs === 'number') {
+        result[key] = { responseMs: v.responseMs, resolutionMs: v.resolutionMs };
+      }
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 /**
  * Parse a raw JSONB value from the database into a typed SlaConfig or null.
  */
@@ -29,7 +43,7 @@ export function parseSlaConfig(raw: unknown): SlaConfig | null {
   return {
     defaultResponseMs: typeof obj.defaultResponseMs === 'number' ? obj.defaultResponseMs : config.SLA_THRESHOLD_MS,
     defaultResolutionMs: typeof obj.defaultResolutionMs === 'number' ? obj.defaultResolutionMs : DEFAULT_RESOLUTION_MS,
-    byDepartment: (obj.byDepartment && typeof obj.byDepartment === 'object') ? obj.byDepartment as Record<string, SlaDepartmentConfig> : undefined,
+    byDepartment: validateDeptConfig(obj.byDepartment),
     businessHoursOnly: typeof obj.businessHoursOnly === 'boolean' ? obj.businessHoursOnly : false,
   };
 }
@@ -89,7 +103,7 @@ export function calculateSlaDueDate(
     return new Date(createdAt.getTime() + slaMs);
   }
 
-  // Business-hours-aware: walk forward minute by minute, only counting open minutes
+  // Business-hours-aware: jump through open/closed windows instead of walking minute-by-minute
   let remainingMs = slaMs;
   let cursor = new Date(createdAt.getTime());
   const maxEnd = createdAt.getTime() + MAX_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000;
@@ -98,17 +112,34 @@ export function calculateSlaDueDate(
     const status = getBusinessHoursStatus(options.partnerHours, cursor);
 
     if (status.isOpen) {
-      // Count this minute as business time
-      const step = Math.min(remainingMs, ONE_MINUTE_MS);
-      remainingMs -= step;
-      cursor = new Date(cursor.getTime() + step);
+      if (status.nextCloseAt) {
+        // Calculate time until this window closes
+        const closeTime = new Date(status.nextCloseAt).getTime();
+        const availableMs = closeTime - cursor.getTime();
+        if (availableMs <= 0) {
+          // Edge case: nextCloseAt is in the past, advance by 1 minute
+          cursor = new Date(cursor.getTime() + ONE_MINUTE_MS);
+          continue;
+        }
+        if (remainingMs <= availableMs) {
+          // SLA fits within this window
+          cursor = new Date(cursor.getTime() + remainingMs);
+          remainingMs = 0;
+        } else {
+          // Consume the rest of this window and continue
+          remainingMs -= availableMs;
+          cursor = new Date(closeTime);
+        }
+      } else {
+        // No close time — consume all remaining
+        cursor = new Date(cursor.getTime() + remainingMs);
+        remainingMs = 0;
+      }
     } else if (status.nextOpenAt) {
-      // Skip ahead to the next open time
       const nextOpen = new Date(status.nextOpenAt);
       if (nextOpen.getTime() > cursor.getTime()) {
         cursor = nextOpen;
       } else {
-        // Safety: advance by 1 minute to avoid infinite loop
         cursor = new Date(cursor.getTime() + ONE_MINUTE_MS);
       }
     } else {

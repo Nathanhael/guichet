@@ -38,12 +38,16 @@ self.addEventListener('fetch', (event) => {
   // Skip browser extensions
   if (url.protocol === 'chrome-extension:') return;
 
-  // tRPC/API calls: network-first with cache fallback
+  // tRPC/API calls: network-only for authenticated endpoints, cache only public ones
   if (url.pathname.startsWith('/api/')) {
+    // Don't cache tRPC batch requests (contain authenticated data)
+    if (url.pathname.includes('/trpc/')) {
+      return; // Let the browser handle normally — no SW caching
+    }
+    // Cache other API calls (public endpoints like health, manifest) with network-first
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Only cache successful responses
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));

@@ -152,8 +152,18 @@ export const platformRouter = router({
     .mutation(async ({ input, ctx }) => {
       const before = await db.select().from(partners).where(eq(partners.id, input.id)).limit(1);
       
+      // Explicitly pick only allowed fields — never spread unsanitized input
+      const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      if (input.data.name !== undefined) updateData.name = input.data.name;
+      if (input.data.logoUrl !== undefined) updateData.logoUrl = input.data.logoUrl;
+      if (input.data.industry !== undefined) updateData.industry = input.data.industry;
+      if (input.data.departments !== undefined) updateData.departments = input.data.departments;
+      if (input.data.authMethod !== undefined) updateData.authMethod = input.data.authMethod;
+      if (input.data.aiEnabled !== undefined) updateData.aiEnabled = input.data.aiEnabled;
+      if (input.data.aiFeatures !== undefined) updateData.aiFeatures = input.data.aiFeatures;
+
       await db.update(partners)
-        .set({ ...input.data, updatedAt: new Date().toISOString() })
+        .set(updateData)
         .where(eq(partners.id, input.id));
 
       if (before[0]) {

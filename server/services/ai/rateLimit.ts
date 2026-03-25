@@ -36,30 +36,27 @@ export async function checkRateLimit(
     const minuteKey = `ai:rate:${partnerId}:minute`;
     const dayKey = `ai:rate:${partnerId}:day`;
 
-    // Atomic: increment both counters and set TTL if new
+    // Atomic: increment both counters in one pipeline
+    // Only set TTL when the counter is newly created (count === 1)
+    // to maintain a fixed-window rate limiter (not sliding).
     const multi = r.multi();
     multi.incr(minuteKey);
-    multi.ttl(minuteKey);
     multi.incr(dayKey);
-    multi.ttl(dayKey);
     const results = await multi.exec();
 
-    // results: [minuteCount, minuteTtl, dayCount, dayTtl]
     const minuteCount = Number(results[0]);
-    const minuteTtl = Number(results[1]);
-    const dayCount = Number(results[2]);
-    const dayTtl = Number(results[3]);
+    const dayCount = Number(results[1]);
 
-    // Set expiry for new keys (TTL -1 means no expiry set yet)
-    if (minuteTtl === -1) await r.expire(minuteKey, 60);
-    if (dayTtl === -1) await r.expire(dayKey, 86400);
+    // Set expiry only on first increment (fixed window)
+    if (minuteCount === 1) await r.expire(minuteKey, 60);
+    if (dayCount === 1) await r.expire(dayKey, 86400);
 
     if (minuteCount > perMinute) {
-      return { allowed: false, retryAfterSeconds: Math.max(minuteTtl, 1), limitHit: 'minute' };
+      return { allowed: false, retryAfterSeconds: 60, limitHit: 'minute' };
     }
 
     if (dayCount > perDay) {
-      return { allowed: false, retryAfterSeconds: Math.max(dayTtl, 1), limitHit: 'day' };
+      return { allowed: false, retryAfterSeconds: 86400, limitHit: 'day' };
     }
 
     return { allowed: true };

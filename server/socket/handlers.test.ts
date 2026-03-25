@@ -234,7 +234,7 @@ describe('socket:identify', () => {
     expect(socket.data.userId).toBe('u1');
     expect(socket.data.role).toBe('support');
     expect(socket.data.partnerId).toBe('partner-1');
-    expect(identifyUserMock).toHaveBeenCalledWith('u1', 'support', 'Test User', 'partner-1');
+    expect(identifyUserMock).toHaveBeenCalledWith('u1', 'support', 'Test User', 'partner-1', false);
     expect(socket.join).toHaveBeenCalledWith('partner:partner-1');
     expect(socket.join).toHaveBeenCalledWith('user:u1');
   });

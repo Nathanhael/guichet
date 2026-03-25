@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { trpc } from '../utils/trpc';
 
 /**
@@ -20,11 +20,40 @@ function cacheSet(key: string, value: string) {
 }
 
 /**
+ * Concurrency limiter for translation API calls.
+ * Only MAX_CONCURRENT translations can be in-flight at once; the rest are queued.
+ */
+let inFlight = 0;
+const MAX_CONCURRENT = 3;
+const queue: Array<() => void> = [];
+
+function acquireSlot(): Promise<void> {
+  if (inFlight < MAX_CONCURRENT) {
+    inFlight++;
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => queue.push(() => { inFlight++; resolve(); }));
+}
+
+function releaseSlot() {
+  inFlight--;
+  const next = queue.shift();
+  if (next) next();
+}
+
+/**
  * Hook for auto-translating a message when senderLang !== viewerLang.
+ *
+ * Translation is NOT fired automatically on mount. Call `translate()` to
+ * trigger translation on demand (e.g. when the message becomes visible).
+ * A module-level concurrency limiter ensures at most 3 translations are
+ * in-flight at once.
  *
  * Returns:
  * - `translated`: the translated text (or null while loading / if same lang)
  * - `loading`: whether a translation is in progress
+ * - `translate`: function to trigger translation on demand
+ * - `needsTranslation`: whether the message needs translation
  * - `showOriginal` / `setShowOriginal`: toggle to view original text
  */
 export function useAutoTranslation(opts: {
@@ -52,11 +81,8 @@ export function useAutoTranslation(opts: {
     return () => { isMounted.current = false; };
   }, []);
 
-  useEffect(() => {
-    if (!needsTranslation) {
-      setTranslated(null);
-      return;
-    }
+  const translate = useCallback(async () => {
+    if (!needsTranslation) return;
 
     // Already cached
     if (translationCache.has(cacheKey)) {
@@ -67,34 +93,37 @@ export function useAutoTranslation(opts: {
     // Don't translate very short texts (emojis, media-only)
     if (!text || text.length < 2) return;
 
-    let cancelled = false;
+    // Already loading or already translated
+    if (loading || translated) return;
+
     setLoading(true);
 
-    translateMutation
-      .mutateAsync({
+    await acquireSlot();
+    try {
+      if (!isMounted.current) return;
+
+      const result = await translateMutation.mutateAsync({
         text,
         targetLang: viewerLang as 'nl' | 'en' | 'fr',
-      })
-      .then((result) => {
-        if (!cancelled && isMounted.current) {
-          cacheSet(cacheKey, result.translated);
-          setTranslated(result.translated);
-        }
-      })
-      .catch(() => {
-        // Silently fail — show original text
-      })
-      .finally(() => {
-        if (!cancelled && isMounted.current) setLoading(false);
       });
 
-    return () => { cancelled = true; };
+      if (isMounted.current) {
+        cacheSet(cacheKey, result.translated);
+        setTranslated(result.translated);
+      }
+    } catch {
+      // Silently fail — show original text
+    } finally {
+      releaseSlot();
+      if (isMounted.current) setLoading(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messageId, text, senderLang, viewerLang, enabled]);
+  }, [messageId, text, senderLang, viewerLang, enabled, needsTranslation, loading, translated]);
 
   return {
     translated: needsTranslation ? translated : null,
     loading: needsTranslation ? loading : false,
+    translate,
     showOriginal,
     setShowOriginal,
     needsTranslation: !!needsTranslation,

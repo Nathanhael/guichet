@@ -4,6 +4,7 @@ interface SlaIndicatorProps {
   dueAt: string;
   breached?: boolean;
   compact?: boolean;
+  totalMs?: number; // total SLA duration for percentage-based color
 }
 
 function getTimeRemaining(dueAt: string): { totalMs: number; minutes: number; seconds: number } {
@@ -16,12 +17,17 @@ function getTimeRemaining(dueAt: string): { totalMs: number; minutes: number; se
   return { totalMs, minutes, seconds };
 }
 
-function getSlaColor(totalMs: number, breached?: boolean): 'green' | 'yellow' | 'red' {
-  if (breached || totalMs <= 0) return 'red';
-  // We don't know the original total, so use absolute thresholds:
-  // < 2 minutes = red, < 5 minutes = yellow, else green
-  if (totalMs < 2 * 60 * 1000) return 'red';
-  if (totalMs < 5 * 60 * 1000) return 'yellow';
+function getSlaColor(remainingMs: number, breached?: boolean, slaTotalMs?: number): 'green' | 'yellow' | 'red' {
+  if (breached || remainingMs <= 0) return 'red';
+  if (slaTotalMs && slaTotalMs > 0) {
+    const pct = remainingMs / slaTotalMs;
+    if (pct < 0.1) return 'red';
+    if (pct < 0.25) return 'yellow';
+    return 'green';
+  }
+  // Fallback to absolute thresholds
+  if (remainingMs < 2 * 60 * 1000) return 'red';
+  if (remainingMs < 5 * 60 * 1000) return 'yellow';
   return 'green';
 }
 
@@ -42,7 +48,7 @@ const DOT_CLASSES = {
  * - Full mode (compact=false): shows "SLA: Respond within X min"
  * - Compact mode (compact=true): shows just a colored dot
  */
-export default function SlaIndicator({ dueAt, breached, compact }: SlaIndicatorProps) {
+export default function SlaIndicator({ dueAt, breached, compact, totalMs: slaTotalMs }: SlaIndicatorProps) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
@@ -54,7 +60,7 @@ export default function SlaIndicator({ dueAt, breached, compact }: SlaIndicatorP
   void now;
 
   const { totalMs, minutes, seconds } = getTimeRemaining(dueAt);
-  const color = getSlaColor(totalMs, breached);
+  const color = getSlaColor(totalMs, breached, slaTotalMs);
 
   if (compact) {
     return (

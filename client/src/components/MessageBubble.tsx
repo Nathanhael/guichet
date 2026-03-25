@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useStore from '../store/useStore';
 import UserAvatar from './UserAvatar';
 import BionicText from './BionicText';
@@ -27,14 +27,19 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   });
   const translationEnabled = aiConfigQuery.data?.translation === true;
 
-  // Auto-translate if senderLang !== viewerLang
-  const { translated, loading: translating, showOriginal, setShowOriginal, needsTranslation } = useAutoTranslation({
+  // Auto-translate if senderLang !== viewerLang (lazy — queued via concurrency limiter)
+  const { translated, loading: translating, translate, showOriginal, setShowOriginal, needsTranslation } = useAutoTranslation({
     messageId: message.id,
     text: message.text || message.originalText || '',
     senderLang: message.senderLang || '',
     viewerLang: user?.lang || 'en',
     enabled: translationEnabled && !message.system && !message.whisper,
   });
+
+  // Trigger translation on first render — concurrency limiter in the hook prevents N simultaneous API calls
+  useEffect(() => {
+    if (needsTranslation) translate();
+  }, [needsTranslation, translate]);
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
