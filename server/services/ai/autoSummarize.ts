@@ -14,7 +14,7 @@ import {
   formatMessagesForAi,
   checkRateLimit,
 } from './index.js';
-import { db } from '../../db/postgres.js';
+import { db } from '../../db.js';
 import { messages as messagesTable, tickets } from '../../db/schema.js';
 import { eq, and, asc, isNull, sql } from 'drizzle-orm';
 import type { Server } from 'socket.io';

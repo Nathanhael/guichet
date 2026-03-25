@@ -9,40 +9,57 @@ const DEFAULTS: Record<AiAction, string> = {
   classify: `Classify the following support message into one of these categories: {{categories}}.
 Reply with ONLY the category name, nothing else.
 
-Message: {{text}}`,
+Message:
+<user_content>
+{{text}}
+</user_content>`,
 
   suggest: `You are a helpful support assistant. Based on the conversation below, suggest a professional and clear reply for the support agent to send.
 
 Conversation:
+<user_content>
 {{messages}}
+</user_content>
 
 Suggested reply:`,
 
   summarize: `Summarize this support conversation in 2-3 sentences. Include: the problem reported, what has been tried, and the current status.
 
 Conversation:
-{{messages}}`,
+<user_content>
+{{messages}}
+</user_content>`,
 
   improve: `Rewrite the following message to be clearer, more professional, and well-structured. Keep the same meaning and tone. Do not add information that wasn't in the original.
 
 Original message:
+<user_content>
 {{text}}
+</user_content>
 
 Improved message:`,
 
   translate: `Translate the following text to {{targetLang}}. Preserve the tone and meaning. Reply with ONLY the translation, nothing else.
 
-Text: {{text}}`,
+Text:
+<user_content>
+{{text}}
+</user_content>`,
 
   sentiment: `Analyze the sentiment of this message on a scale from -1.0 (very negative) to 1.0 (very positive). Reply with ONLY a number, nothing else.
 
-Message: {{text}}`,
+Message:
+<user_content>
+{{text}}
+</user_content>`,
 
   match_canned: `Given these canned responses:
 {{responses}}
 
 And this customer message:
+<user_content>
 {{text}}
+</user_content>
 
 Which canned response best matches? Reply with ONLY the response ID, or "none" if no good match.`,
 };
@@ -95,5 +112,11 @@ export async function getPromptTemplate(
  * Replaces {{key}} with the corresponding value.
  */
 export function interpolate(template: string, vars: Record<string, string>): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const value = vars[key] ?? '';
+    // Escape XML delimiter tags to prevent prompt injection
+    return value
+      .replace(/<user_content>/gi, '&lt;user_content&gt;')
+      .replace(/<\/user_content>/gi, '&lt;/user_content&gt;');
+  });
 }

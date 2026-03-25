@@ -1,7 +1,7 @@
 import { router, roleProcedure, adminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { ratings, tickets, users } from '../../db/schema.js';
-import { desc, eq, inArray, sql, and, gte, lte } from 'drizzle-orm';
+import { desc, eq, inArray, sql, and, gte, lt } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import logger from '../../utils/logger.js';
@@ -63,15 +63,15 @@ export const ratingRouter = router({
           conditions.push(inArray(ratings.ticketId, partnerTicketIds));
         }
 
-        // Date range filters
+        // Date range filters — use ISO strings for timestamp comparison (column is PgTimestampString)
         if (input.dateFrom) {
-          conditions.push(gte(ratings.createdAt, input.dateFrom));
+          conditions.push(gte(ratings.createdAt, new Date(input.dateFrom).toISOString()));
         }
         if (input.dateTo) {
-          // Include the full end date by adding one day
+          // End of day: add one day and use exclusive upper bound
           const endDate = new Date(input.dateTo);
           endDate.setDate(endDate.getDate() + 1);
-          conditions.push(lte(ratings.createdAt, endDate.toISOString().slice(0, 10)));
+          conditions.push(lt(ratings.createdAt, endDate.toISOString()));
         }
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

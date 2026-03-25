@@ -90,6 +90,7 @@ interface TicketParticipantsRow {
 let ioInstance: Server | null = null;
 
 // ── Collision Detection: ticket viewer tracking ─────────────────────────────
+// NOTE: In-memory only — collision detection works per-instance. For multi-instance, migrate to Redis.
 // Map<ticketId, Map<socketId, { userId: string; userName: string }>>
 const ticketViewers = new Map<string, Map<string, { userId: string; userName: string }>>();
 
@@ -250,7 +251,7 @@ export function registerSocketHandlers(io: Server) {
       socket.data.name = name;
       socket.data.partnerId = partnerId;
 
-      await presenceService.identifyUser(userId, effectiveRole, name, partnerId);
+      await presenceService.identifyUser(userId, effectiveRole, name, partnerId, !!socket.data.authedIsPlatformOperator);
       
       // Join partner-specific room for broadcasts
       socket.join(`partner:${partnerId}`);
@@ -258,7 +259,7 @@ export function registerSocketHandlers(io: Server) {
       // Join private user room for individual kill switches
       socket.join(`user:${userId}`);
 
-      if (canUseSupportWorkflows(effectiveRole as any)) {
+      if (canUseSupportWorkflows(effectiveRole as any, !!socket.data.authedIsPlatformOperator)) {
         await presenceService.broadcastOnlineSupport(partnerId);
       }
       
@@ -271,7 +272,7 @@ export function registerSocketHandlers(io: Server) {
         let activeTickets: { id: string }[] = [];
         if (effectiveRole === 'agent') {
           activeTickets = await query("SELECT id FROM tickets WHERE agent_id = $1 AND partner_id = $2 AND status != 'closed'", [userId, partnerId]) as { id: string }[];
-        } else if (canUseSupportWorkflows(effectiveRole as any)) {
+        } else if (canUseSupportWorkflows(effectiveRole as any, !!socket.data.authedIsPlatformOperator)) {
           activeTickets = await query("SELECT id FROM tickets WHERE (support_id = $1 OR participants::jsonb @> $3::jsonb) AND partner_id = $2 AND status != 'closed'", [userId, partnerId, JSON.stringify([{ id: userId }])]) as { id: string }[];
         }
         for (const t of activeTickets) socket.join(`ticket:${t.id}`);
@@ -389,7 +390,7 @@ export function registerSocketHandlers(io: Server) {
         const callerPartnerId = socket.data.partnerId;
 
         // Authorization: only support/admin roles can join
-        if (!canUseSupportWorkflows(callerRole as any)) {
+        if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator)) {
           return socket.emit('error', { message: 'Not authorized to join tickets' });
         }
 
@@ -470,7 +471,7 @@ export function registerSocketHandlers(io: Server) {
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
 
         // Authorization: only support/admin roles can close tickets
-        if (!canUseSupportWorkflows(callerRole as any)) {
+        if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator)) {
           return socket.emit('error', { message: 'Only support staff can close tickets' });
         }
 
@@ -495,24 +496,29 @@ export function registerSocketHandlers(io: Server) {
     });
 
     // ── Rating Submit ──────────────────────────────────────────────────────────
-    socket.on('rating:submit', async ({ ticketId, agentId, supportId, rating, comment }: { ticketId: string; agentId: string; supportId: string; rating: number; comment: string | null }) => {
+    socket.on('rating:submit', async ({ ticketId, agentId, rating, comment }: { ticketId: string; agentId: string; rating: number; comment: string | null }) => {
       if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'rating:submit' });
       try {
-        if (!ticketId || !agentId || !supportId || typeof rating !== 'number' || rating < 1 || rating > 5) {
+        if (!ticketId || !agentId || typeof rating !== 'number' || rating < 1 || rating > 5) {
           logger.warn('[rating:submit] invalid payload');
           return;
         }
         const intRating = Math.round(rating);
 
         // Tenant isolation: verify ticket belongs to caller's partner and caller is the agent
-        const ticket = await get('SELECT partner_id, agent_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string; agent_id: string } | undefined;
+        // Read support_id from the ticket instead of trusting client-provided value
+        const ticket = await get('SELECT partner_id, agent_id, support_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string; agent_id: string; support_id: string | null } | undefined;
         if (!ticket || ticket.partner_id !== socket.data.partnerId) {
           return socket.emit('error', { message: 'Not authorized' });
         }
         if (ticket.agent_id !== socket.data.userId) {
           return socket.emit('error', { message: 'Only the ticket agent can submit a rating' });
         }
+        if (!ticket.support_id) {
+          return socket.emit('error', { message: 'No support user assigned to this ticket' });
+        }
+        const supportId = ticket.support_id;
 
         // Prevent duplicate ratings per ticket
         const existing = await get('SELECT id FROM ratings WHERE ticket_id = $1', [ticketId]) as { id: string } | undefined;
@@ -555,7 +561,7 @@ export function registerSocketHandlers(io: Server) {
         if (!sender) return logger.error({ senderId }, '[message:send] sender not found or no membership for ticket partner');
 
         // Authorization: only support/admin can send whispers
-        const isWhisper = whisper && canUseSupportWorkflows(sender.role as any);
+        const isWhisper = whisper && canUseSupportWorkflows(sender.role as any, !!socket.data.authedIsPlatformOperator);
         if (whisper && !isWhisper) {
           logger.warn({ senderId, role: sender.role }, '[message:send] Non-support user attempted whisper');
         }
@@ -674,7 +680,7 @@ export function registerSocketHandlers(io: Server) {
 
         // Support/admin can delete any non-system message; others only their own
         const callerRole = socket.data.role;
-        if (!canUseSupportWorkflows(callerRole as any) && msg.sender_id !== senderId) {
+        if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator) && msg.sender_id !== senderId) {
           return socket.emit('error', { message: 'Can only delete your own messages' });
         }
         if (msg.system) return socket.emit('error', { message: 'Cannot delete system messages' });
@@ -697,7 +703,7 @@ export function registerSocketHandlers(io: Server) {
         const callerRole = socket.data.role;
         const callerPartnerId = socket.data.partnerId;
 
-        if (!canUseSupportWorkflows(callerRole as any)) {
+        if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator)) {
           return socket.emit('error', { message: 'Only support staff can transfer tickets' });
         }
 
@@ -788,8 +794,12 @@ export function registerSocketHandlers(io: Server) {
     socket.on('ticket:viewing', async ({ ticketId }: { ticketId: string }) => {
       if (!requireIdentified(socket)) return;
       const callerRole = socket.data.role;
-      if (!canUseSupportWorkflows(callerRole as any)) return;
+      if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator)) return;
       if (!ticketId) return;
+
+      // Tenant isolation: verify ticket belongs to caller's partner
+      const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
+      if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
 
       const userId = socket.data.userId as string;
       const userName = socket.data.name as string;
@@ -840,4 +850,17 @@ export function registerSocketHandlers(io: Server) {
       }
     });
   });
+
+  // Periodic cleanup of stale viewer entries (every 5 minutes)
+  // .unref() prevents this timer from keeping the process alive on shutdown
+  setInterval(() => {
+    for (const [ticketId, viewers] of ticketViewers) {
+      for (const [socketId] of viewers) {
+        if (!io.sockets.sockets.has(socketId)) {
+          viewers.delete(socketId);
+        }
+      }
+      if (viewers.size === 0) ticketViewers.delete(ticketId);
+    }
+  }, 5 * 60 * 1000).unref();
 }

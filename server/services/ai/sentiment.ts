@@ -4,7 +4,7 @@
 // Never throws — all errors are caught and logged.
 
 import { isFeatureEnabled, getProvider, getPromptTemplate, interpolate, logUsage, checkRateLimit } from './index.js';
-import { db } from '../../db/postgres.js';
+import { db } from '../../db.js';
 import { messages } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from '../../utils/logger.js';

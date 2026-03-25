@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import config from '../../config.js';
 import { db } from '../../db/postgres.js';
 import { partners } from '../../db/schema.js';
@@ -13,6 +14,12 @@ import { OpenAiCompatibleProvider } from './openai-compatible.js';
 // partner settings creates a new instance.
 
 const providerCache = new Map<string, AiProvider>();
+const MAX_CACHE_SIZE = 100;
+
+function hashKey(key?: string): string {
+  if (!key) return 'none';
+  return createHash('sha256').update(key).digest('hex').slice(0, 8);
+}
 
 function cacheKey(provider: string, ...parts: (string | undefined)[]): string {
   return [provider, ...parts.filter(Boolean)].join(':');
@@ -88,9 +95,14 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
         partnerId,
         partner.aiModel ?? undefined,
         aiConfig.baseUrl as string | undefined,
+        hashKey(aiConfig.apiKey as string | undefined),
       );
 
       if (!providerCache.has(key)) {
+        if (providerCache.size >= MAX_CACHE_SIZE) {
+          const firstKey = providerCache.keys().next().value;
+          if (firstKey) providerCache.delete(firstKey);
+        }
         logger.info({ partnerId, provider: partner.aiProvider }, 'Creating per-partner AI provider');
         providerCache.set(
           key,
@@ -110,6 +122,10 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
   const key = cacheKey(config.AI_PROVIDER, config.AI_BASE_URL, config.OLLAMA_HOST);
 
   if (!providerCache.has(key)) {
+    if (providerCache.size >= MAX_CACHE_SIZE) {
+      const firstKey = providerCache.keys().next().value;
+      if (firstKey) providerCache.delete(firstKey);
+    }
     logger.info({ provider: config.AI_PROVIDER }, 'Creating global AI provider');
     providerCache.set(key, buildProvider(config.AI_PROVIDER));
   }

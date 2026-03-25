@@ -11,6 +11,8 @@ export class AzureOpenAiProvider implements AiProvider {
   private apiKey: string;
   private deployment: string;
   private apiVersion = '2024-06-01';
+  private availableCache: { result: boolean; ts: number } | null = null;
+  private static AVAILABILITY_CACHE_TTL = 60_000; // 1 minute
 
   constructor(baseUrl: string, apiKey: string, deployment: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, '');
@@ -113,6 +115,10 @@ export class AzureOpenAiProvider implements AiProvider {
   }
 
   async isAvailable(): Promise<boolean> {
+    if (this.availableCache && Date.now() - this.availableCache.ts < AzureOpenAiProvider.AVAILABILITY_CACHE_TTL) {
+      return this.availableCache.result;
+    }
+    let result = false;
     try {
       // Simple HEAD-style check — Azure returns 405 for GET but that means the endpoint is reachable
       const res = await fetch(this.endpoint, {
@@ -127,9 +133,11 @@ export class AzureOpenAiProvider implements AiProvider {
         }),
         signal: AbortSignal.timeout(5000),
       });
-      return res.ok;
+      result = res.ok;
     } catch {
-      return false;
+      result = false;
     }
+    this.availableCache = { result, ts: Date.now() };
+    return result;
   }
 }
