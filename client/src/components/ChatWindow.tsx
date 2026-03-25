@@ -25,8 +25,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const [closing, setClosing] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  // TODO: _mediaPreview value is never read — only setMediaPreview is used. Wire up preview UI or remove.
   const [_mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  // TODO: _unreadCount value is never read — only setUnreadCount is used. Wire up unread badge UI or remove.
   const [_unreadCount, setUnreadCount] = useState(0);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
@@ -546,6 +548,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             <button
               onClick={() => handleSummarize()}
               disabled={summarizing}
+              aria-label="Summarize conversation"
               title="AI: Summarize conversation"
               className={`text-xs font-bold transition-all duration-300 bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/50 border border-violet-300 dark:border-violet-700 rounded-xl active:scale-95 hidden sm:flex items-center gap-1.5 ${focusMode ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
             >
@@ -569,6 +572,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               <div className="relative">
                 <button
                   onClick={() => setShowTransferMenu(!showTransferMenu)}
+                  aria-label={t('transfer') || 'Transfer'}
                   title={t('transfer') || 'Transfer'}
                   className={`text-xs font-bold transition-all duration-300 bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 border border-slate-300 dark:border-slate-700 rounded-xl active:scale-95 hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
                 >
@@ -642,6 +646,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 e.stopPropagation();
                 onClose();
               }}
+              aria-label="Close"
               className="w-8 h-8 flex items-center justify-center rounded-xl hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-all duration-300"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -669,6 +674,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               <button
                 onClick={() => handleSummarize(true)}
                 disabled={summarizing}
+                aria-label="Refresh summary"
                 title="Refresh summary"
                 className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-200 dark:hover:bg-violet-800 text-violet-500 transition-colors"
               >
@@ -678,6 +684,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               </button>
               <button
                 onClick={() => setShowSummary(false)}
+                aria-label="Dismiss summary"
                 title="Dismiss"
                 className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-violet-200 dark:hover:bg-violet-800 text-violet-500 transition-colors"
               >
@@ -811,6 +818,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 <button
                   type="button"
                   onClick={() => setWhisperMode((v) => !v)}
+                  aria-label={t('whisper_mode') || 'Toggle whisper mode'}
                   title={t('whisper_mode')}
                   className={`w-10 h-10 rounded-xl transition-all duration-300 flex items-center justify-center ${whisperMode
                     ? 'bg-amber-500 text-white shadow-md'
@@ -831,6 +839,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   ref={fileRef}
                   type="file"
                   accept="image/*"
+                  aria-label="Attach file"
                   className="hidden"
                   onChange={handleFileChange}
                 />
@@ -848,6 +857,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 />
               )}
               <textarea
+                aria-label="Type a message"
                 value={text}
                 onChange={(e) => {
                   const val = e.target.value;
@@ -877,6 +887,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 type="button"
                 onClick={handleImprove}
                 disabled={improving}
+                aria-label="Improve message"
                 title="AI: Improve message"
                 className="w-10 h-10 rounded-xl transition-all duration-300 flex items-center justify-center text-slate-400 hover:text-violet-500 hover:bg-violet-500/10 disabled:opacity-30 active:scale-90"
               >

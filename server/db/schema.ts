@@ -145,7 +145,11 @@ export const ratings = pgTable('ratings', {
   rating: integer('rating').notNull(),
   comment: text('comment'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-});
+}, (table) => ({
+  ticketIdIdx: index('idx_ratings_ticket_id').on(table.ticketId),
+  supportIdIdx: index('idx_ratings_support_id').on(table.supportId),
+  createdAtIdx: index('idx_ratings_created_at').on(table.createdAt),
+}));
 
 export const appFeedback = pgTable('app_feedback', {
   id: text('id').primaryKey(),

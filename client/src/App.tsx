@@ -3,16 +3,16 @@ import useStore from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import { useTheme } from './hooks/useTheme';
 import { initTitleBadgeListener } from './utils/notifications';
-import LoginView from './views/LoginView';
-import SupportView from './views/SupportView';
-import AdminView from './views/AdminView';
-import PlatformView from './views/PlatformView';
-import AgentView from './views/AgentView';
 import DarkModeToggle from './components/DarkModeToggle';
 import ErrorBoundary from './components/ErrorBoundary';
 import { isPlatformAdmin, isTenantAdmin } from './utils/roles';
 import { Shield } from 'lucide-react';
 
+const LoginView = lazy(() => import('./views/LoginView'));
+const SupportView = lazy(() => import('./views/SupportView'));
+const AdminView = lazy(() => import('./views/AdminView'));
+const PlatformView = lazy(() => import('./views/PlatformView'));
+const AgentView = lazy(() => import('./views/AgentView'));
 const UserSecurityModal = lazy(() => import('./components/UserSecurityModal'));
 
 const LoadingFallback = () => (
@@ -65,7 +65,7 @@ export default function App() {
   }, [user, activeMembershipId, memberships, setActiveMembershipId]);
 
   const renderView = () => {
-    if (!user) return <LoginView />;
+    if (!user) return <Suspense fallback={<LoadingFallback />}><LoginView /></Suspense>;
 
     // If user is Platform Operator, show Platform View by default
     if (isPlatformAdmin(user) && !activeMembershipId) {

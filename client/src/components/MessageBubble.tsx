@@ -11,7 +11,6 @@ import { trpc } from '../utils/trpc';
 interface MessageBubbleProps {
   message: Message;
   ticketId: string;
-  searchQuery?: string;
   isGroupStart?: boolean;
   isGroupEnd?: boolean;
 }

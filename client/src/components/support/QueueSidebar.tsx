@@ -130,6 +130,7 @@ export default function QueueSidebar({
         {sidebarTab === 'search' && (
           <input
             type="text"
+            aria-label="Search tickets"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('search_messages') || 'Search messages...'}

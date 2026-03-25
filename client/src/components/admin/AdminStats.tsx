@@ -136,6 +136,7 @@ export default function AdminStats() {
           <div className="flex items-center gap-2">
             <input
               type="date"
+              aria-label="Start date"
               value={statsDateFrom}
               onChange={(e) => { setStatsDateFrom(e.target.value); setActivePreset(null); }}
               className="border-2 border-black dark:border-white bg-transparent px-3 py-1.5 text-xs font-bold text-black dark:text-white outline-none"
@@ -143,6 +144,7 @@ export default function AdminStats() {
             <span className="text-xs opacity-50">→</span>
             <input
               type="date"
+              aria-label="End date"
               value={statsDateTo}
               onChange={(e) => { setStatsDateTo(e.target.value); setActivePreset(null); }}
               className="border-2 border-black dark:border-white bg-transparent px-3 py-1.5 text-xs font-bold text-black dark:text-white outline-none"

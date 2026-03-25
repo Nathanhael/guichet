@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { router, roleProcedure } from '../trpc.js';
-import { query, get } from '../../db.js';
-import { computeLiveDayStats } from '../../services/stats.js';
+import { query } from '../../db.js';
+import { computeLiveDayStats, calculatePercentile } from '../../services/stats.js';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
-import { Ticket, User } from '../../types/index.js';
+import { Ticket } from '../../types/index.js';
 
 interface HistoricalStatRow {
   date: string;
@@ -123,6 +123,7 @@ interface LabelCountRow {
 }
 
 export const statsRouter = router({
+  // NOTE: This is a heavy endpoint. Client refetch interval should be 60s+ (not 30s).
   getGlobalStats: roleProcedure(['admin', 'support'])
     .input(z.object({
       dateFrom: z.string().optional(),
@@ -166,6 +167,7 @@ export const statsRouter = router({
         }
 
         const historicalStats = (await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2 AND partner_id = $3', [rangeStart, rangeEnd, partnerId])) as unknown as HistoricalStatRow[];
+        const historicalStatsMap = new Map<string, HistoricalStatRow>(historicalStats.map(s => [s.date, s]));
         const ticketsSql = `SELECT * FROM tickets WHERE created_at::date >= $1 AND created_at::date <= $2 AND partner_id = $3`;
         const allLiveTicketsRaw = (await query(ticketsSql, [rangeStart, rangeEnd, partnerId])) as unknown as Ticket[];
         const allLiveTickets = (excludeWeekends)
@@ -180,6 +182,7 @@ export const statsRouter = router({
 
         const liveTickets = (dept && dept !== 'all') ? allLiveTickets.filter(t => t.dept === dept) : allLiveTickets;
         const liveTicketIds = liveTickets.map(t => t.id);
+        const ticketMap = new Map<string, Ticket>(allLiveTickets.map(t => [t.id, t]));
 
         let liveRatings: RatingRow[] = [];
         if (liveTicketIds.length > 0) {
@@ -209,7 +212,7 @@ export const statsRouter = router({
 
         for (const date of allDays) {
           let dayData: DayData;
-          const hist = historicalStats.find(s => s.date === date);
+          const hist = historicalStatsMap.get(date);
 
           if (hist) {
             const histDeptCounts = JSON.parse(hist.deptCounts || '{}');
@@ -276,8 +279,9 @@ export const statsRouter = router({
             }
           } else {
             const dayTickets = liveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
-            const dayRatings = liveRatings.filter(r => dayTickets.some(t => t.id === r.ticketId));
-            const dayMessages = liveMessages.filter(m => dayTickets.some(t => t.id === m.ticketId));
+            const dayTicketIdSet = new Set<string>(dayTickets.map(t => t.id));
+            const dayRatings = liveRatings.filter(r => dayTicketIdSet.has(r.ticketId));
+            const dayMessages = liveMessages.filter(m => dayTicketIdSet.has(m.ticketId));
             dayData = computeLiveDayStats(dayTickets, dayRatings, dept, dayMessages) as unknown as DayData;
           }
 
@@ -408,9 +412,6 @@ export const statsRouter = router({
         // p95 calculation
         let globalP95 = 0;
         if (allResponseTimes.length > 0) {
-            globalP95 = computeLiveDayStats([], [], 'all', []).p95ResponseMs; // Use the helper logic
-            // Wait, I need a better way to call calculatePercentile.
-            const { calculatePercentile } = await import('../../services/stats.js');
             globalP95 = calculatePercentile(allResponseTimes, 95);
         } else if (historicalStats.length > 0) {
             globalP95 = Math.max(...historicalStats.map(s => s.p95ResponseMs));
@@ -424,7 +425,7 @@ export const statsRouter = router({
         // Sentiment by dept
         const sentimentByDept: Record<string, { sum: number; count: number }> = {};
         liveMessages.forEach(m => {
-          const ticket = allLiveTickets.find(t => t.id === m.ticket_id);
+          const ticket = ticketMap.get(m.ticket_id);
           if (ticket && m.sentiment != null) {
             if (!sentimentByDept[ticket.dept]) sentimentByDept[ticket.dept] = { sum: 0, count: 0 };
             sentimentByDept[ticket.dept].sum += m.sentiment;
@@ -453,16 +454,25 @@ export const statsRouter = router({
           support.trendMap[dateKey]++;
         });
 
+        // Batch-fetch user names for supportIds not already in supportMap (avoids N+1 queries)
+        const missingSupportIds = [...new Set(liveRatings.map(r => r.supportId).filter(id => id && !supportMap[id]))];
+        const supportUserMap = new Map<string, string>();
+        if (missingSupportIds.length > 0) {
+          const placeholders = missingSupportIds.map((_, i) => `$${i + 1}`).join(',');
+          const users = (await query(`SELECT id, name FROM users WHERE id IN (${placeholders})`, missingSupportIds)) as unknown as { id: string; name: string }[];
+          users.forEach(u => supportUserMap.set(u.id, u.name));
+        }
+
         for (const r of liveRatings) {
           if (!r.supportId) continue;
           if (!supportMap[r.supportId]) {
-            const u = (await get('SELECT name FROM users WHERE id = $1', [r.supportId])) as unknown as User;
-            supportMap[r.supportId] = { id: r.supportId, name: u?.name || 'Unknown Support', total: 0, today: 0, trendMap: {}, ratingSum: 0, ratingCount: 0, deptStats: {} };
+            const name = supportUserMap.get(r.supportId) || 'Unknown Support';
+            supportMap[r.supportId] = { id: r.supportId, name, total: 0, today: 0, trendMap: {}, ratingSum: 0, ratingCount: 0, deptStats: {} };
           }
           const support = supportMap[r.supportId];
           support.ratingSum += r.rating;
           support.ratingCount++;
-          const ticket = allLiveTickets.find(t => t.id === r.ticketId);
+          const ticket = ticketMap.get(r.ticketId);
           const d = ticket?.dept || 'Unknown';
           if (!support.deptStats[d]) support.deptStats[d] = { sum: 0, count: 0, tickets: 0 };
           support.deptStats[d].sum += r.rating;

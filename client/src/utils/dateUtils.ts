@@ -10,18 +10,6 @@ export const formatDate = (date: any, options: Intl.DateTimeFormatOptions = { ho
   return d.toLocaleTimeString(locale, options);
 };
 
-export const formatFullDate = (date: any, options: Intl.DateTimeFormatOptions = { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }, locale = 'en-GB'): string => {
-  const d = safeDate(date);
-  if (!d) return '—';
-  return d.toLocaleString(locale, options);
-};
-
-export const isToday = (date: any): boolean => {
-  const d = safeDate(date);
-  if (!d) return false;
-  return new Date().toDateString() === d.toDateString();
-};
-
 export const getTicketTime = (iso: string | undefined): string => {
   const d = safeDate(iso);
   if (!d) return '—';

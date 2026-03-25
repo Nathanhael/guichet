@@ -28,8 +28,8 @@ export default function DeletePartnerModal({ partner, onClose }: DeletePartnerMo
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
-      <div onClick={onClose} className="absolute inset-0 bg-black opacity-80" />
-      <div className="w-full max-w-md bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8 text-center">
+      <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black opacity-80" />
+      <div role="dialog" className="w-full max-w-md bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8 text-center">
         <div className="w-16 h-16 border-4 border-black dark:border-white flex items-center justify-center mx-auto mb-6 text-2xl font-black">!</div>
         <h3 className="text-xl font-black uppercase tracking-tighter mb-2">{t('delete_permanently')}</h3>
         <p className="text-sm font-bold uppercase opacity-60 mb-6">

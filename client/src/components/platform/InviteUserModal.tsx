@@ -51,8 +51,8 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
   if (result) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-        <div onClick={() => setResult(null)} className="absolute inset-0 bg-black opacity-80" />
-        <div className="w-full max-w-md bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
+        <div onClick={() => setResult(null)} aria-label="Close" className="absolute inset-0 bg-black opacity-80" />
+        <div role="dialog" className="w-full max-w-md bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
           <h2 className="text-xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">
             {t('invite_resent_success')}
           </h2>
@@ -105,8 +105,8 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-      <div onClick={onClose} className="absolute inset-0 bg-black opacity-80" />
-      <div className="w-full max-w-xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
+      <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black opacity-80" />
+      <div role="dialog" className="w-full max-w-xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
         <h2 className="text-2xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">{t('invite_new_user')}</h2>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
