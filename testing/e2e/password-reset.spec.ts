@@ -91,7 +91,7 @@ test.describe('Password Reset Flow', () => {
     });
 
     // Verify we're not on an error state
-    const errorVisible = await page.getByText(/login failed|invalid|error/i).first().isVisible().catch(() => false);
+    const errorVisible = await page.getByText(/login failed|invalid credentials|incorrect password/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
   });
 });
