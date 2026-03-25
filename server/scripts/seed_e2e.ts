@@ -8,7 +8,9 @@ const TEST_PARTNER_B = { id: 'test-partner-b', name: 'Test Partner B', industry:
 const DEFAULT_PARTNER = { id: 'tessera-main', name: 'Tessera Main', industry: 'Telecommunications' };
 
 const PLATFORM_USERS = [
-  { id: 'platform_bart', name: 'Bart Operator' },
+  { id: 'platform_bart', name: 'Bart Operator', email: null },
+  // alice@acme.com is used as the E2E test login for password-reset tests
+  { id: 'alice_platform', name: 'Alice Admin', email: 'alice@acme.com' },
 ];
 
 const TEST_USERS = [
@@ -36,7 +38,7 @@ async function seed() {
     // 1. Clean old data — cascading DELETEs handle child rows (memberships, tickets, etc.)
     await pool.query(
       `DELETE FROM users WHERE id LIKE 'e2e-%' OR id LIKE 'agent_%' OR id LIKE 'expert_%'
-       OR id LIKE 'admin_%' OR id = 'platform_bart'`
+       OR id LIKE 'admin_%' OR id = 'platform_bart' OR id = 'alice_platform'`
     );
     await pool.query("DELETE FROM partners WHERE id LIKE 'test-partner-%' OR id = 'tessera-main'");
 
@@ -55,9 +57,9 @@ async function seed() {
     for (const u of PLATFORM_USERS) {
       console.log(`  - Platform user: ${u.id}`);
       await pool.query(
-        `INSERT INTO users (id, name, lang, password, is_platform_operator)
-         VALUES ($1, $2, 'en', $3, true)`,
-        [u.id, u.name, hash]
+        `INSERT INTO users (id, name, lang, password, email, is_platform_operator)
+         VALUES ($1, $2, 'en', $3, $4, true)`,
+        [u.id, u.name, hash, u.email]
       );
     }
 
