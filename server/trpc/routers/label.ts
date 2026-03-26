@@ -5,13 +5,23 @@ import { db } from '../../db.js';
 import { labels, ticketLabels } from '../../db/schema.js';
 import { eq, and, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import { notFound, conflict, wrapError } from '../../utils/trpcErrors.js';
 import type { Server } from 'socket.io';
-import logger from '../../utils/logger.js';
 
 interface RequestWithSocketIO {
   app: { get(key: 'io'): Server | undefined; get(key: string): unknown };
 }
 
+function emitToPartner(ctx: { req: unknown; user: { partnerId?: string | null } }, event: string, data: unknown) {
+  const io = (ctx.req as unknown as RequestWithSocketIO).app.get('io');
+  if (io && ctx.user.partnerId) {
+    io.to(`partner:${ctx.user.partnerId}`).emit(event, data);
+  }
+}
+
+// NOTE: label router intentionally uses protectedProcedure/adminProcedure instead of
+// partnerScopedProcedure because platform operators can list labels across ALL partners
+// (no partnerId filter). The other CRUD ops still require partner context manually.
 export const labelRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     try {
@@ -22,7 +32,7 @@ export const labelRouter = router({
         conditions.push(eq(labels.partnerId, ctx.user.partnerId!));
       }
 
-      const data = await db.select({
+      return await db.select({
         id: labels.id,
         text: labels.name,
         color: labels.color,
@@ -30,12 +40,8 @@ export const labelRouter = router({
       .from(labels)
       .where(conditions.length > 0 ? conditions[0] : undefined)
       .orderBy(asc(labels.name));
-      
-      return data;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      logger.error({ err: message }, 'tRPC: Error fetching labels');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+      wrapError(err, 'Error fetching labels');
     }
   }),
 
@@ -56,20 +62,14 @@ export const labelRouter = router({
           color: input.color,
         });
 
-        const io = (ctx.req as unknown as RequestWithSocketIO).app.get('io');
-        if (io) {
-          // Emit only to partner-specific room if we implement that later, for now global is fine but scoped is better
-          io.to(`partner:${ctx.user.partnerId}`).emit('label:created', { id, text: input.text, color: input.color });
-        }
+        emitToPartner(ctx, 'label:created', { id, text: input.text, color: input.color });
 
         return { id, ...input };
       } catch (err: unknown) {
         if (err instanceof Error && 'code' in err && (err as Error & { code: string }).code === '23505') {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Label name already exists for this partner' });
+          throw conflict('Label name already exists for this partner');
         }
-        const message = err instanceof Error ? err.message : String(err);
-        logger.error({ err: message }, 'tRPC: Error creating label');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        wrapError(err, 'Error creating label');
       }
     }),
 
@@ -83,25 +83,20 @@ export const labelRouter = router({
         }
 
         await db.transaction(async (tx) => {
-          // Verify ownership first
           const existing = await tx.select().from(labels).where(and(...conditions)).limit(1);
-          if (existing.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Label not found or access denied' });
+          if (existing.length === 0) {
+            throw new TRPCError({ code: 'NOT_FOUND', message: 'Label not found or access denied' });
+          }
 
           await tx.delete(ticketLabels).where(eq(ticketLabels.labelId, id));
           await tx.delete(labels).where(eq(labels.id, id));
         });
 
-        const io = (ctx.req as unknown as RequestWithSocketIO).app.get('io');
-        if (io && ctx.user.partnerId) {
-          io.to(`partner:${ctx.user.partnerId}`).emit('label:deleted', { id });
-        }
+        emitToPartner(ctx, 'label:deleted', { id });
 
         return { success: true };
       } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        const message = err instanceof Error ? err.message : String(err);
-        logger.error({ err: message, labelId: id }, 'tRPC: Error deleting label');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        wrapError(err, 'Error deleting label');
       }
     }),
 });

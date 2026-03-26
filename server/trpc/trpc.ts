@@ -44,8 +44,30 @@ export const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next();
 });
 
+// Middleware that requires an active partner context.
+// Narrows ctx.user.partnerId to string (non-null).
+// Use for any procedure that needs partner-scoped data.
+export const partnerScopedProcedure = protectedProcedure.use(({ ctx, next }) => {
+  if (!ctx.user.partnerId) {
+    throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+  }
+  return next({
+    ctx: {
+      user: { ...ctx.user, partnerId: ctx.user.partnerId },
+    },
+  });
+});
+
+// Partner-scoped + admin role required
+export const partnerAdminProcedure = partnerScopedProcedure.use(({ ctx, next }) => {
+  if (!isTenantAdmin(ctx.user.role) && !isPlatformAdmin(ctx.user.isPlatformOperator)) {
+    throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+  return next();
+});
+
 // Helper for dynamic role checks
-export const roleProcedure = (roles: UserRole[]) => 
+export const roleProcedure = (roles: UserRole[]) =>
   protectedProcedure.use(({ ctx, next }) => {
     // Platform operators can bypass role checks to manage data across any partner
     if (!roles.includes(ctx.user.role) && !isPlatformAdmin(ctx.user.isPlatformOperator)) {

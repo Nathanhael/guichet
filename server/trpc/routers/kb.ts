@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { router, protectedProcedure, adminProcedure } from '../trpc.js';
+import { router, partnerScopedProcedure, partnerAdminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { kbArticles } from '../../db/schema.js';
 import { eq, and, asc, ilike, or, sql } from 'drizzle-orm';
-import { TRPCError } from '@trpc/server';
+import { notFound } from '../../utils/trpcErrors.js';
 
 
 function slugify(text: string): string {
@@ -15,20 +15,28 @@ function slugify(text: string): string {
     .slice(0, 80);
 }
 
+/* Shared select columns to avoid repetition */
+const articleListColumns = {
+  id: kbArticles.id,
+  title: kbArticles.title,
+  body: kbArticles.body,
+  dept: kbArticles.dept,
+  tags: kbArticles.tags,
+  slug: kbArticles.slug,
+} as const;
+
 export const kbRouter = router({
   /**
    * List KB articles for the current partner.
    * All authenticated users can view published articles; admin sees drafts too.
    */
-  list: protectedProcedure
+  list: partnerScopedProcedure
     .input(z.object({
       dept: z.string().optional(),
       tag: z.string().optional(),
       includeUnpublished: z.boolean().optional(),
     }).optional())
     .query(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) return [];
-
       const conditions = [eq(kbArticles.partnerId, ctx.user.partnerId)];
 
       // Non-admin users only see published
@@ -45,12 +53,7 @@ export const kbRouter = router({
 
       const rows = await db
         .select({
-          id: kbArticles.id,
-          title: kbArticles.title,
-          body: kbArticles.body,
-          dept: kbArticles.dept,
-          tags: kbArticles.tags,
-          slug: kbArticles.slug,
+          ...articleListColumns,
           published: kbArticles.published,
           createdAt: kbArticles.createdAt,
           updatedAt: kbArticles.updatedAt,
@@ -72,24 +75,14 @@ export const kbRouter = router({
 
   /**
    * Full-text keyword search across title + body.
-   * Uses simple ILIKE for now — upgrade to pg_trgm or AI embeddings later.
    */
-  search: protectedProcedure
+  search: partnerScopedProcedure
     .input(z.object({ query: z.string().min(1).max(200) }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) return [];
-
       const q = `%${input.query}%`;
 
       return db
-        .select({
-          id: kbArticles.id,
-          title: kbArticles.title,
-          body: kbArticles.body,
-          dept: kbArticles.dept,
-          tags: kbArticles.tags,
-          slug: kbArticles.slug,
-        })
+        .select(articleListColumns)
         .from(kbArticles)
         .where(and(
           eq(kbArticles.partnerId, ctx.user.partnerId),
@@ -104,20 +97,12 @@ export const kbRouter = router({
    * AI-powered search — ask a question, get relevant articles ranked by relevance.
    * Falls back to keyword search when AI is unavailable.
    */
-  aiSearch: protectedProcedure
+  aiSearch: partnerScopedProcedure
     .input(z.object({ question: z.string().min(1).max(500) }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) return { articles: [], aiAnswer: '' };
-
       // Fetch all published articles for this partner
       const articles = await db
-        .select({
-          id: kbArticles.id,
-          title: kbArticles.title,
-          body: kbArticles.body,
-          dept: kbArticles.dept,
-          tags: kbArticles.tags,
-        })
+        .select(articleListColumns)
         .from(kbArticles)
         .where(and(
           eq(kbArticles.partnerId, ctx.user.partnerId),
@@ -187,13 +172,7 @@ Only return valid JSON, nothing else.`,
         // Fallback to keyword search
         const q = `%${input.question}%`;
         const fallback = await db
-          .select({
-            id: kbArticles.id,
-            title: kbArticles.title,
-            body: kbArticles.body,
-            dept: kbArticles.dept,
-            tags: kbArticles.tags,
-          })
+          .select(articleListColumns)
           .from(kbArticles)
           .where(and(
             eq(kbArticles.partnerId, ctx.user.partnerId),
@@ -210,11 +189,9 @@ Only return valid JSON, nothing else.`,
     }),
 
   /** Get a single article by ID */
-  getById: protectedProcedure
+  getById: partnerScopedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) return null;
-
       const rows = await db
         .select()
         .from(kbArticles)
@@ -225,7 +202,7 @@ Only return valid JSON, nothing else.`,
     }),
 
   /** Create a new KB article (admin only) */
-  create: adminProcedure
+  create: partnerAdminProcedure
     .input(z.object({
       title: z.string().min(1).max(200),
       body: z.string().min(1).max(50000),
@@ -235,10 +212,6 @@ Only return valid JSON, nothing else.`,
       published: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
       const id = uuidv4();
       const now = new Date().toISOString();
       const slug = input.slug?.trim() || slugify(input.title);
@@ -261,7 +234,7 @@ Only return valid JSON, nothing else.`,
     }),
 
   /** Update a KB article (admin only) */
-  update: adminProcedure
+  update: partnerAdminProcedure
     .input(z.object({
       id: z.string(),
       title: z.string().min(1).max(200).optional(),
@@ -272,19 +245,13 @@ Only return valid JSON, nothing else.`,
       published: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
       const existing = await db
         .select({ id: kbArticles.id })
         .from(kbArticles)
         .where(and(eq(kbArticles.id, input.id), eq(kbArticles.partnerId, ctx.user.partnerId)))
         .limit(1);
 
-      if (existing.length === 0) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Article not found' });
-      }
+      if (existing.length === 0) throw notFound('Article');
 
       const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (input.title !== undefined) updates.title = input.title;
@@ -299,13 +266,9 @@ Only return valid JSON, nothing else.`,
     }),
 
   /** Delete a KB article (admin only) */
-  delete: adminProcedure
+  delete: partnerAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
       await db
         .delete(kbArticles)
         .where(and(eq(kbArticles.id, input.id), eq(kbArticles.partnerId, ctx.user.partnerId)));

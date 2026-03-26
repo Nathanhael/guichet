@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc.js';
+import { router, partnerScopedProcedure } from '../trpc.js';
 import { TRPCError } from '@trpc/server';
+import { notFound, forbidden } from '../../utils/trpcErrors.js';
 import {
   getProvider,
   isFeatureEnabled,
@@ -109,14 +110,13 @@ export const aiRouter = router({
    * Improve a message — rewrites for clarity and professionalism.
    * Available to both agents and support staff.
    */
-  improveMessage: protectedProcedure
+  improveMessage: partnerScopedProcedure
     .input(z.object({
       text: z.string().min(10, 'Message must be at least 10 characters').max(5000, 'Message too long (max 5000 chars)'),
       role: z.enum(['agent', 'support']),
     }))
     .mutation(async ({ input, ctx }) => {
       const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
       const result = await runAiAction({
         partnerId,
@@ -138,14 +138,13 @@ export const aiRouter = router({
    * Translate a message to a target language.
    * Used for on-the-fly translation when senderLang !== viewerLang.
    */
-  translateMessage: protectedProcedure
+  translateMessage: partnerScopedProcedure
     .input(z.object({
       text: z.string().min(1).max(5000, 'Message too long (max 5000 chars)'),
       targetLang: z.enum(['nl', 'en', 'fr']),
     }))
     .mutation(async ({ input, ctx }) => {
       const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
       const result = await runAiAction({
         partnerId,
@@ -168,18 +167,17 @@ export const aiRouter = router({
    * Only available to support/admin users.
    * Results are cached in Redis with a 30-min TTL.
    */
-  summarizeChat: protectedProcedure
+  summarizeChat: partnerScopedProcedure
     .input(z.object({
       ticketId: z.string(),
       refresh: z.boolean().optional().default(false),
     }))
     .mutation(async ({ input, ctx }) => {
       const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
       // Only support/admin can summarize
       if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only support staff can summarize chats' });
+        throw forbidden('Only support staff can summarize chats');
       }
 
       // Verify ticket exists and belongs to this partner
@@ -189,9 +187,9 @@ export const aiRouter = router({
         .where(eq(tickets.id, input.ticketId))
         .limit(1);
 
-      if (!ticket) throw new TRPCError({ code: 'NOT_FOUND', message: 'Ticket not found' });
+      if (!ticket) throw notFound('Ticket');
       if (ticket.partnerId !== partnerId) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Ticket does not belong to your tenant' });
+        throw forbidden('Ticket does not belong to your tenant');
       }
 
       // Check cache (unless refresh is requested)
@@ -248,15 +246,14 @@ export const aiRouter = router({
    * Returns average sentiment, trend, and count of scored messages.
    * Only available to support/admin users.
    */
-  getTicketSentiment: protectedProcedure
+  getTicketSentiment: partnerScopedProcedure
     .input(z.object({ ticketId: z.string() }))
     .query(async ({ input, ctx }) => {
       const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
       // Only support/admin can view sentiment
       if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only support staff can view sentiment data' });
+        throw forbidden('Only support staff can view sentiment data');
       }
 
       // Verify ticket exists and belongs to this partner
@@ -266,9 +263,9 @@ export const aiRouter = router({
         .where(eq(tickets.id, input.ticketId))
         .limit(1);
 
-      if (!ticket) throw new TRPCError({ code: 'NOT_FOUND', message: 'Ticket not found' });
+      if (!ticket) throw notFound('Ticket');
       if (ticket.partnerId !== partnerId) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Ticket does not belong to your tenant' });
+        throw forbidden('Ticket does not belong to your tenant');
       }
 
       // Query messages with non-null sentiment, ordered by creation time
@@ -322,13 +319,12 @@ export const aiRouter = router({
    * Get average sentiment per open ticket for the current partner.
    * Used by support queue sidebar to show sentiment dots.
    */
-  getTicketSentiments: protectedProcedure
+  getTicketSentiments: partnerScopedProcedure
     .query(async ({ ctx }) => {
       const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
       if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only support staff can view sentiment data' });
+        throw forbidden('Only support staff can view sentiment data');
       }
 
       const results = await db
@@ -359,14 +355,13 @@ export const aiRouter = router({
    * Get open tickets with negative average sentiment (< -0.3).
    * Used by admin dashboard to flag tickets needing attention.
    */
-  getNegativeSentimentTickets: protectedProcedure
+  getNegativeSentimentTickets: partnerScopedProcedure
     .input(z.object({ limit: z.number().min(1).max(50).optional().default(10) }))
     .query(async ({ input, ctx }) => {
       const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
       if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) {
-        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only support/admin can view sentiment data' });
+        throw forbidden('Only support/admin can view sentiment data');
       }
 
       // Find open tickets with avg sentiment < -0.3

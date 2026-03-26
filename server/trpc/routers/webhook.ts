@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
-import { router, adminProcedure } from '../trpc.js';
+import { router, partnerAdminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { webhooks, webhookLogs } from '../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
-import { TRPCError } from '@trpc/server';
+import { notFound } from '../../utils/trpcErrors.js';
 
 const WEBHOOK_EVENTS = [
   'ticket.created',
@@ -19,11 +19,23 @@ const WEBHOOK_EVENTS = [
   '*',
 ] as const;
 
+const webhookEventsSchema = z.array(z.enum(WEBHOOK_EVENTS)).min(1);
+
+/** Verify a webhook exists and belongs to the current partner. */
+async function verifyWebhookOwnership(id: string, partnerId: string) {
+  const rows = await db
+    .select({ id: webhooks.id })
+    .from(webhooks)
+    .where(and(eq(webhooks.id, id), eq(webhooks.partnerId, partnerId)))
+    .limit(1);
+
+  if (rows.length === 0) throw notFound('Webhook');
+  return rows[0];
+}
+
 export const webhookRouter = router({
   /** List all webhooks for the current partner */
-  list: adminProcedure.query(async ({ ctx }) => {
-    if (!ctx.user.partnerId) return [];
-
+  list: partnerAdminProcedure.query(async ({ ctx }) => {
     return db
       .select({
         id: webhooks.id,
@@ -39,17 +51,13 @@ export const webhookRouter = router({
   }),
 
   /** Create a new webhook endpoint */
-  create: adminProcedure
+  create: partnerAdminProcedure
     .input(z.object({
       url: z.string().url().max(2000),
-      events: z.array(z.enum(WEBHOOK_EVENTS)).min(1),
+      events: webhookEventsSchema,
       description: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
       const id = uuidv4();
       const secret = randomBytes(32).toString('hex');
       const now = new Date().toISOString();
@@ -71,28 +79,16 @@ export const webhookRouter = router({
     }),
 
   /** Update a webhook */
-  update: adminProcedure
+  update: partnerAdminProcedure
     .input(z.object({
       id: z.string(),
       url: z.string().url().max(2000).optional(),
-      events: z.array(z.enum(WEBHOOK_EVENTS)).min(1).optional(),
+      events: webhookEventsSchema.optional(),
       description: z.string().max(200).nullable().optional(),
       active: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
-      const existing = await db
-        .select({ id: webhooks.id })
-        .from(webhooks)
-        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)))
-        .limit(1);
-
-      if (existing.length === 0) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Webhook not found' });
-      }
+      await verifyWebhookOwnership(input.id, ctx.user.partnerId);
 
       const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (input.url !== undefined) updates.url = input.url;
@@ -105,22 +101,10 @@ export const webhookRouter = router({
     }),
 
   /** Regenerate the signing secret for a webhook */
-  regenerateSecret: adminProcedure
+  regenerateSecret: partnerAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
-      const existing = await db
-        .select({ id: webhooks.id })
-        .from(webhooks)
-        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)))
-        .limit(1);
-
-      if (existing.length === 0) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Webhook not found' });
-      }
+      await verifyWebhookOwnership(input.id, ctx.user.partnerId);
 
       const newSecret = randomBytes(32).toString('hex');
       await db.update(webhooks)
@@ -131,13 +115,9 @@ export const webhookRouter = router({
     }),
 
   /** Delete a webhook */
-  delete: adminProcedure
+  delete: partnerAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
       await db
         .delete(webhooks)
         .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)));
@@ -146,14 +126,12 @@ export const webhookRouter = router({
     }),
 
   /** Get recent delivery logs for a webhook */
-  logs: adminProcedure
+  logs: partnerAdminProcedure
     .input(z.object({
       webhookId: z.string(),
       limit: z.number().min(1).max(100).optional(),
     }))
     .query(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) return [];
-
       // Verify webhook belongs to partner
       const hook = await db
         .select({ id: webhooks.id })
@@ -179,22 +157,10 @@ export const webhookRouter = router({
     }),
 
   /** Test-fire a webhook with a sample payload */
-  test: adminProcedure
+  test: partnerAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
-      const hook = await db
-        .select()
-        .from(webhooks)
-        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)))
-        .limit(1);
-
-      if (hook.length === 0) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Webhook not found' });
-      }
+      await verifyWebhookOwnership(input.id, ctx.user.partnerId);
 
       // Fire a test event
       const { fireWebhooks } = await import('../../services/webhookDispatch.js');
