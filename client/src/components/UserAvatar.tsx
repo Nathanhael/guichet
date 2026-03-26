@@ -25,17 +25,17 @@ export default function UserAvatar({ name, avatarUrl, size = 'md', showStatus = 
     .toUpperCase();
 
   return (
-    <div className={`relative shrink-0 border border-black dark:border-white bg-white dark:bg-black flex items-center justify-center font-black ${sizeClasses[size]}`}>
+    <div className={`relative shrink-0 border border-border bg-bg-elevated flex items-center justify-center font-bold ${sizeClasses[size]}`}>
       {avatarUrl ? (
-        <img src={avatarUrl} alt={name} className="w-full h-full object-cover grayscale" />
+        <img src={avatarUrl} alt={name} className="w-full h-full object-cover" />
       ) : (
-        <span className="text-black dark:text-white uppercase">{initials}</span>
+        <span className="text-text-primary uppercase">{initials}</span>
       )}
 
       {showStatus && (
-        <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 border-2 border-white dark:border-black transition-colors duration-300 ${
-            isOnline ? 'bg-black dark:bg-white' : 'bg-slate-300 dark:bg-slate-700'
-          }`} 
+        <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 border-2 border-bg-surface ${
+            isOnline ? 'bg-accent-green' : 'bg-text-muted'
+          }`}
         />
       )}
     </div>

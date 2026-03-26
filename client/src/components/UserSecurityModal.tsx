@@ -84,13 +84,13 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 dark:bg-white/10">
-      <div className="bg-white dark:bg-black border-2 border-black dark:border-white w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg-base/80">
+      <div className="bg-bg-surface border border-border-heavy w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b-2 border-black dark:border-white">
+        <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center gap-3">
             <Shield className="h-5 w-5" />
-            <h2 className="text-lg font-black uppercase tracking-tighter">Account Security</h2>
+            <h2 className="text-lg font-bold uppercase tracking-tighter">Account Security</h2>
           </div>
           <button onClick={onClose} className="p-1 hover:opacity-60">
             <X className="h-5 w-5" />
@@ -104,9 +104,9 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
             <>
               {/* MFA Status */}
               <div className="space-y-2">
-                <div className="text-[10px] font-black uppercase tracking-widest opacity-60">Two-Factor Authentication</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Two-Factor Authentication</div>
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 ${status?.enabled ? 'bg-green-600' : 'bg-black/20 dark:bg-white/20'}`} />
+                  <div className={`w-3 h-3 ${status?.enabled ? 'bg-green-600' : 'bg-text-muted'}`} />
                   <span className="text-sm font-bold uppercase">
                     {status?.enabled ? 'Enabled' : 'Not Enabled'}
                   </span>
@@ -118,7 +118,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 )}
               </div>
 
-              <div className="border-t border-black/10 dark:border-white/10 pt-4 space-y-3">
+              <div className="border-t border-border pt-4 space-y-3">
                 {!status?.enabled ? (
                   <>
                     <p className="text-[10px] uppercase opacity-60 leading-relaxed">
@@ -127,7 +127,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                     <button
                       onClick={() => beginSetup.mutate()}
                       disabled={busy}
-                      className="w-full p-4 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+                      className="w-full p-4 border border-border-heavy bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
                     >
                       {beginSetup.isPending ? 'Starting...' : 'Enable Two-Factor Authentication'}
                     </button>
@@ -136,7 +136,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                   <div className="space-y-3">
                     <button
                       onClick={() => { setStep('regenerate'); setCode(''); }}
-                      className="w-full p-3 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+                      className="w-full p-3 border border-border-heavy font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
                     >
                       Regenerate Recovery Codes
                     </button>
@@ -151,21 +151,21 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
               </div>
 
               {/* Password Change */}
-              <div className="border-t border-black/10 dark:border-white/10 pt-4 space-y-2">
-                <div className="text-[10px] font-black uppercase tracking-widest opacity-60">Password</div>
+              <div className="border-t border-border pt-4 space-y-2">
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Password</div>
                 <button
                   onClick={() => { setStep('password'); setPwSuccess(false); changePassword.reset(); }}
-                  className="w-full p-3 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center justify-center gap-2"
+                  className="w-full p-3 border border-border-heavy font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center justify-center gap-2"
                 >
                   <KeyRound className="h-3 w-3" /> Change Password
                 </button>
               </div>
 
               {/* Notification Preferences */}
-              <div className="border-t border-black/10 dark:border-white/10 pt-4 space-y-3">
+              <div className="border-t border-border pt-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Bell className="h-3.5 w-3.5 opacity-60" />
-                  <div className="text-[10px] font-black uppercase tracking-widest opacity-60">Email Notifications</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Email Notifications</div>
                 </div>
                 {Object.entries(NOTIFICATION_LABELS).map(([key, label]) => {
                   const enabled = notifPrefs?.[key] !== false;
@@ -174,11 +174,11 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                       key={key}
                       onClick={() => toggleNotif(key, enabled)}
                       disabled={updateNotifPrefs.isPending}
-                      className="w-full flex items-center justify-between p-3 border border-black/10 dark:border-white/10 hover:border-black dark:hover:border-white"
+                      className="w-full flex items-center justify-between p-3 border border-border hover:border-border-heavy"
                     >
                       <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
-                      <div className={`w-8 h-4 border-2 border-black dark:border-white relative ${enabled ? 'bg-black dark:bg-white' : ''}`}>
-                        <div className={`absolute top-0 w-3 h-3 ${enabled ? 'right-0 bg-white dark:bg-black' : 'left-0 bg-black/20 dark:bg-white/20'}`} />
+                      <div className={`w-8 h-4 border border-border-heavy relative ${enabled ? 'bg-accent-blue' : ''}`}>
+                        <div className={`absolute top-0 w-3 h-3 ${enabled ? 'right-0 bg-bg-surface' : 'left-0 bg-text-muted'}`} />
                       </div>
                     </button>
                   );
@@ -189,10 +189,10 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
             <>
               {/* Password Change Form */}
               <div className="space-y-4">
-                <div className="text-[10px] font-black uppercase tracking-widest opacity-60">Change Password</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Change Password</div>
                 {pwSuccess ? (
                   <div className="space-y-4 text-center py-4">
-                    <div className="w-12 h-12 border-4 border-black dark:border-white flex items-center justify-center mx-auto text-xl font-black">✓</div>
+                    <div className="w-12 h-12 border border-border-heavy flex items-center justify-center mx-auto text-xl font-black">✓</div>
                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">Password updated. You will be signed out shortly.</p>
                   </div>
                 ) : (
@@ -207,7 +207,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                         autoComplete="current-password"
                         value={currentPassword}
                         onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full border-2 border-black dark:border-white bg-transparent p-3 text-sm outline-none"
+                        className="w-full input-field p-3"
                         placeholder="••••••••"
                       />
                     </div>
@@ -218,7 +218,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                         autoComplete="new-password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full border-2 border-black dark:border-white bg-transparent p-3 text-sm outline-none"
+                        className="w-full input-field p-3"
                         placeholder="••••••••"
                       />
                     </div>
@@ -229,7 +229,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                         autoComplete="new-password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full border-2 border-black dark:border-white bg-transparent p-3 text-sm outline-none"
+                        className="w-full input-field p-3"
                         placeholder="••••••••"
                       />
                       {confirmPassword && newPassword !== confirmPassword && (
@@ -239,7 +239,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                     <button
                       onClick={() => changePassword.mutate({ currentPassword, newPassword })}
                       disabled={busy || !currentPassword || newPassword.length < 10 || newPassword !== confirmPassword}
-                      className="w-full p-4 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+                      className="w-full p-4 border border-border-heavy bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
                     >
                       {changePassword.isPending ? 'Updating...' : 'Update Password'}
                     </button>
@@ -247,7 +247,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 )}
                 <button
                   onClick={() => { setStep('status'); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPwSuccess(false); changePassword.reset(); }}
-                  className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100"
+                  className="w-full text-[10px] font-bold uppercase tracking-widest opacity-40 hover:opacity-100"
                 >
                   {pwSuccess ? 'Close' : 'Cancel'}
                 </button>
@@ -257,14 +257,14 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
             <>
               {/* Setup: show manual key + verify */}
               <div className="space-y-4">
-                <div className="text-[10px] font-black uppercase tracking-widest opacity-60">Step 1: Add to Authenticator</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Step 1: Add to Authenticator</div>
                 <p className="text-[10px] uppercase opacity-60 leading-relaxed">
                   Open your authenticator app and add a new account using this manual entry key:
                 </p>
 
                 {beginSetup.data && (
                   <>
-                    <div className="border-2 border-black dark:border-white p-4 space-y-3">
+                    <div className="border border-border-heavy p-4 space-y-3">
                       <div>
                         <div className="text-[8px] uppercase opacity-50 mb-1">Manual Entry Key</div>
                         <div className="font-mono text-sm tracking-widest break-all select-all">{beginSetup.data.manualEntryKey}</div>
@@ -275,21 +275,21 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                       </div>
                     </div>
 
-                    <div className="text-[10px] font-black uppercase tracking-widest opacity-60 pt-2">Step 2: Verify</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest opacity-60 pt-2">Step 2: Verify</div>
                     <p className="text-[10px] uppercase opacity-60">Enter the 6-digit code from your authenticator app to activate MFA.</p>
 
                     <input
                       value={code}
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                       placeholder="123456"
-                      className="w-full border-2 border-black dark:border-white bg-transparent p-3 text-center text-lg font-mono tracking-[0.3em] outline-none"
+                      className="w-full input-field p-3 text-center text-lg font-mono tracking-[0.3em]"
                       autoFocus
                     />
 
                     <button
                       onClick={() => enable.mutate({ code })}
                       disabled={code.length !== 6 || busy}
-                      className="w-full p-4 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+                      className="w-full p-4 border border-border-heavy bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
                     >
                       {enable.isPending ? 'Verifying...' : 'Activate MFA'}
                     </button>
@@ -298,7 +298,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
 
                 <button
                   onClick={() => setStep('status')}
-                  className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100 pt-2"
+                  className="w-full text-[10px] font-bold uppercase tracking-widest opacity-40 hover:opacity-100 pt-2"
                 >
                   Cancel
                 </button>
@@ -308,17 +308,17 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
             <>
               {/* Recovery Codes Display */}
               <div className="space-y-4">
-                <div className="border-2 border-black dark:border-white p-4 bg-black/5 dark:bg-white/5">
+                <div className="border border-border-heavy p-4 bg-bg-elevated">
                   <div className="flex items-center gap-2 mb-3">
                     <Shield className="h-4 w-4" />
-                    <span className="text-[10px] font-black uppercase tracking-widest">Recovery Codes</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Recovery Codes</span>
                   </div>
                   <p className="text-[10px] uppercase opacity-60 leading-relaxed mb-4">
                     Save these codes in a secure location. Each code can only be used once. You will not be able to see them again.
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     {recoveryCodes.map((code, i) => (
-                      <div key={i} className="font-mono text-sm tracking-widest p-2 border border-black/20 dark:border-white/20 text-center select-all">
+                      <div key={i} className="font-mono text-sm tracking-widest p-2 border border-border text-center select-all">
                         {code}
                       </div>
                     ))}
@@ -327,14 +327,14 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
 
                 <button
                   onClick={handleCopyRecoveryCodes}
-                  className="w-full p-3 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center justify-center gap-2"
+                  className="w-full p-3 border border-border-heavy font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center justify-center gap-2"
                 >
                   {copied ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy All Codes</>}
                 </button>
 
                 <button
                   onClick={() => { setStep('status'); setRecoveryCodes([]); }}
-                  className="w-full p-4 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest hover:invert"
+                  className="w-full p-4 border border-border-heavy bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest hover:invert"
                 >
                   I've Saved My Codes
                 </button>
@@ -344,7 +344,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
             <>
               {/* Disable MFA */}
               <div className="space-y-4">
-                <div className="text-[10px] font-black uppercase tracking-widest opacity-60">Disable Two-Factor Authentication</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Disable Two-Factor Authentication</div>
                 <p className="text-[10px] uppercase opacity-60 leading-relaxed">
                   Enter your current 6-digit authenticator code to disable MFA. This will make your account less secure.
                 </p>
@@ -353,7 +353,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="123456"
-                  className="w-full border-2 border-black dark:border-white bg-transparent p-3 text-center text-lg font-mono tracking-[0.3em] outline-none"
+                  className="w-full input-field p-3 text-center text-lg font-mono tracking-[0.3em]"
                   autoFocus
                 />
 
@@ -367,7 +367,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
 
                 <button
                   onClick={() => setStep('status')}
-                  className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100"
+                  className="w-full text-[10px] font-bold uppercase tracking-widest opacity-40 hover:opacity-100"
                 >
                   Cancel
                 </button>
@@ -377,7 +377,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
             <>
               {/* Regenerate Recovery Codes */}
               <div className="space-y-4">
-                <div className="text-[10px] font-black uppercase tracking-widest opacity-60">Regenerate Recovery Codes</div>
+                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Regenerate Recovery Codes</div>
                 <p className="text-[10px] uppercase opacity-60 leading-relaxed">
                   This will invalidate all existing recovery codes. Enter your current 6-digit authenticator code to proceed.
                 </p>
@@ -386,21 +386,21 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="123456"
-                  className="w-full border-2 border-black dark:border-white bg-transparent p-3 text-center text-lg font-mono tracking-[0.3em] outline-none"
+                  className="w-full input-field p-3 text-center text-lg font-mono tracking-[0.3em]"
                   autoFocus
                 />
 
                 <button
                   onClick={() => regenerate.mutate({ code })}
                   disabled={code.length !== 6 || busy}
-                  className="w-full p-4 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+                  className="w-full p-4 border border-border-heavy bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
                 >
                   {regenerate.isPending ? 'Regenerating...' : 'Generate New Codes'}
                 </button>
 
                 <button
                   onClick={() => setStep('status')}
-                  className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100"
+                  className="w-full text-[10px] font-bold uppercase tracking-widest opacity-40 hover:opacity-100"
                 >
                   Cancel
                 </button>
@@ -409,7 +409,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
           ) : null}
 
           {error && (
-            <div className="border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black p-3 flex items-center gap-3">
+            <div className="border border-border-heavy bg-black text-white dark:bg-white dark:text-black p-3 flex items-center gap-3">
               <span className="text-lg font-black">!</span>
               <p className="font-bold text-[10px] uppercase tracking-widest">{error.message}</p>
             </div>

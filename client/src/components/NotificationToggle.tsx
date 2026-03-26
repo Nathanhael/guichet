@@ -15,10 +15,10 @@ export default function NotificationToggle() {
       onClick={() => setNotificationsEnabled(!notificationsEnabled)}
       title={notificationsEnabled ? t('notifications_on') : t('enable_notifications')}
       aria-label={notificationsEnabled ? t('mute_notifications') : t('enable_notifications')}
-      className={`p-2 flex items-center justify-center transition-all duration-300 ${
+      className={`p-2 flex items-center justify-center ${
         notificationsEnabled
-          ? 'text-accent-400 bg-white/10 shadow-sm'
-          : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
+          ? 'text-accent-blue bg-bg-elevated'
+          : 'text-text-muted hover:text-text-primary'
       }`}
     >
       {notificationsEnabled ? (
