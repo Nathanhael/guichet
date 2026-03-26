@@ -39,7 +39,7 @@ export default function LoginView() {
   const t = useT();
   const [filter, setFilter] = useState<'all' | 'platform' | 'support' | 'admin' | 'agent'>('all');
   const [selectingPartner, setSelectingPartner] = useState<PartnerSelection | null>(null);
-  
+
   const busyRef = useRef(false);
 
   const [email, setEmail] = useState('');
@@ -302,30 +302,30 @@ export default function LoginView() {
 
   if (selectingPartner) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-black dark:text-white relative bg-white dark:bg-black">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-[var(--color-text-primary)] relative">
         <SystemBackground />
-        <div className="w-full max-w-lg overflow-hidden relative z-10 border-2 border-black dark:border-white bg-white dark:bg-black">
-          <div className="bg-black dark:bg-white px-8 py-10 text-white dark:text-black">
-            <h1 className="text-2xl font-black uppercase tracking-tighter italic">{t('choose_workspace')}</h1>
-            <p className="text-sm mt-2 opacity-80 font-bold uppercase tracking-widest">{selectingPartner.user.name}</p>
+        <div className="w-full max-w-lg overflow-hidden relative z-10 border border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)]">
+          <div className="bg-[var(--color-text-primary)] px-8 py-10" style={{ color: 'var(--color-bg-base)' }}>
+            <h1 className="text-xl font-mono font-bold uppercase tracking-[3px]">{t('choose_workspace')}</h1>
+            <p className="mono-label mt-2" style={{ opacity: 0.8 }}>{selectingPartner.user.name}</p>
           </div>
           <div className="p-6 space-y-3">
             {selectingPartner.memberships.map((m) => (
               <button
                 key={m.id}
                 onClick={() => { setToken(selectingPartner.token); setUser(selectingPartner.user); setMemberships(selectingPartner.memberships); setActiveMembershipId(m.id); }}
-                className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black flex items-center justify-between"
+                className="w-full text-left p-4 border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white hover:border-[var(--color-accent-blue)] flex items-center justify-between"
               >
                 <div>
-                  <p className="font-black uppercase tracking-tight">{m.partnerName}</p>
-                  <p className="text-[10px] font-bold opacity-60 uppercase tracking-widest">{getRoleDisplayName(m.role as any, false)} · {m.manifest?.industry}</p>
+                  <p className="font-mono font-bold uppercase tracking-tight text-[var(--color-text-primary)]">{m.partnerName}</p>
+                  <p className="mono-label text-[var(--color-text-secondary)] mt-0.5">{getRoleDisplayName(m.role as any, false)} · {m.manifest?.industry}</p>
                 </div>
-                <span className="text-xl font-black">➔</span>
+                <span className="text-xl font-bold text-[var(--color-text-secondary)]">➔</span>
               </button>
             ))}
-            <button 
+            <button
               onClick={() => setSelectingPartner(null)}
-              className="w-full py-3 mt-4 text-[10px] font-black uppercase tracking-widest border-2 border-transparent hover:border-black dark:hover:border-white"
+              className="w-full py-3 mt-4 mono-label text-[var(--color-text-muted)] border border-transparent hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
             >
               {t('cancel')}
             </button>
@@ -336,18 +336,18 @@ export default function LoginView() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-black dark:text-white relative bg-white dark:bg-black">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-[var(--color-text-primary)] relative">
       <SystemBackground />
-      <div className="absolute top-6 right-6 z-50 flex items-center gap-2 bg-black/5 dark:bg-white/5 p-1 border border-black dark:border-white">
+      <div className="absolute top-6 right-6 z-50 flex items-center gap-2 bg-[var(--color-bg-elevated)] p-1 border border-[var(--color-border)]">
         <LanguageSwitcher />
         <DarkModeToggle />
       </div>
 
-      <div className="w-full max-w-lg overflow-hidden relative z-10 border-2 border-black dark:border-white bg-white dark:bg-black">
-        <div className="bg-black dark:bg-white px-8 py-10 text-white dark:text-black relative overflow-hidden flex justify-between items-start">
+      <div className="w-full max-w-lg overflow-hidden relative z-10 border border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)]">
+        <div className="bg-[var(--color-text-primary)] px-8 py-10 relative overflow-hidden flex justify-between items-start" style={{ color: 'var(--color-bg-base)' }}>
           <div>
-            <h1 className="text-5xl font-black uppercase tracking-tighter italic relative z-10">Tessera</h1>
-            <p className="text-sm mt-2 opacity-80 font-bold uppercase tracking-widest relative z-10">
+            <h1 className="text-5xl font-mono font-bold uppercase tracking-tighter italic relative z-10">Tessera</h1>
+            <p className="mono-label mt-2 relative z-10" style={{ opacity: 0.8 }}>
               {viewMode === 'standard' ? t('secure_auth') :
                viewMode === 'forgot' ? t('reset_password_title') :
                viewMode === 'reset' ? t('create_new_password') :
@@ -356,9 +356,10 @@ export default function LoginView() {
             </p>
           </div>
           {(viewMode === 'standard' || viewMode === 'demo') && (
-            <button 
+            <button
               onClick={() => { setError(''); setSuccessMessage(''); setViewMode(viewMode === 'standard' ? 'demo' : 'standard'); }}
-              className="text-[10px] font-black uppercase tracking-widest border-2 border-current px-3 py-1.5 hover:bg-white dark:hover:bg-black hover:text-black dark:hover:text-white"
+              className="mono-label border border-current px-3 py-1.5 hover:bg-[var(--color-bg-base)] hover:text-[var(--color-text-primary)]"
+              style={{ color: 'inherit' }}
             >
               {viewMode === 'standard' ? t('demo_mode') : t('standard_login')}
             </button>
@@ -366,96 +367,106 @@ export default function LoginView() {
         </div>
 
         {viewMode === 'standard' && (
-          <div className="p-8 space-y-6 bg-white dark:bg-black">
+          <div className="p-8 space-y-6 bg-[var(--color-bg-surface)]">
             {successMessage && (
-              <div className="bg-white text-black dark:bg-black dark:text-white p-3 border-2 border-black dark:border-white flex items-center gap-3">
-                <span className="text-lg font-black">✓</span>
-                <p className="font-bold text-[10px] uppercase tracking-widest">{successMessage}</p>
+              <div className="p-3 border border-[var(--color-accent-green)] text-[var(--color-accent-green)] flex items-center gap-3">
+                <span className="text-lg font-bold">✓</span>
+                <p className="mono-label">{successMessage}</p>
               </div>
             )}
             <form onSubmit={handleLocalLogin} className="space-y-5">
               {error && (
-                <div className="bg-black text-white dark:bg-white dark:text-black p-3 border-2 border-black dark:border-white flex items-center gap-3">
-                  <span className="text-lg font-black">!</span>
-                  <p className="font-bold text-[10px] uppercase tracking-widest">{error}</p>
+                <div className="p-3 border border-[var(--color-accent-red)] text-[var(--color-accent-red)] flex items-center gap-3">
+                  <span className="text-lg font-bold">!</span>
+                  <p className="mono-label">{error}</p>
                 </div>
               )}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5">{t('email_label')}</label>
-                <input type="email" autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setSuccessMessage(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold placeholder:opacity-30" placeholder={t('placeholder_email')} required disabled={isLoginLoading} />
+                <label className="mono-label block mb-1.5 text-[var(--color-text-secondary)]">{t('email_label')}</label>
+                <input type="email" autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); setSuccessMessage(''); }} className="input-field w-full" placeholder={t('placeholder_email')} required disabled={isLoginLoading} />
               </div>
               <div>
                 <div className="flex justify-between items-center mb-1.5">
-                  <label className="block text-[10px] font-black uppercase tracking-widest">{t('password_label')}</label>
-                  <button type="button" onClick={() => { setViewMode('forgot'); setError(''); setSuccessMessage(''); }} className="text-[9px] font-black uppercase tracking-widest opacity-40 hover:opacity-100 hover:underline">{t('forgot_password')}</button>
+                  <label className="mono-label text-[var(--color-text-secondary)]">{t('password_label')}</label>
+                  <button type="button" onClick={() => { setViewMode('forgot'); setError(''); setSuccessMessage(''); }} className="mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:underline">{t('forgot_password')}</button>
                 </div>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => { setPassword(e.target.value); setError(''); setSuccessMessage(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold placeholder:opacity-30" placeholder="••••••••" required disabled={isLoginLoading} />
-                  <button type="button" onClick={() => setShowPassword(prev => !prev)} className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30 cursor-pointer hover:opacity-100">
+                  <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={e => { setPassword(e.target.value); setError(''); setSuccessMessage(''); }} className="input-field w-full pr-12" placeholder="••••••••" required disabled={isLoginLoading} />
+                  <button type="button" onClick={() => setShowPassword(prev => !prev)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] cursor-pointer hover:text-[var(--color-text-primary)]">
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
               </div>
               <div className="flex items-center gap-3 py-1">
                 <div className="relative flex items-center">
-                  <input id="remember" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-5 h-5 border-2 border-black dark:border-white bg-transparent appearance-none cursor-pointer checked:bg-black dark:checked:bg-white" />
-                  {rememberMe && <span className="absolute inset-0 flex items-center justify-center pointer-events-none text-white dark:text-black font-black text-xs">✓</span>}
+                  <input id="remember" type="checkbox" checked={rememberMe} onChange={e => setRememberMe(e.target.checked)} className="w-4 h-4 border border-[var(--color-border)] bg-[var(--color-bg-surface)] appearance-none cursor-pointer checked:bg-[var(--color-text-primary)]" />
+                  {rememberMe && <span className="absolute inset-0 flex items-center justify-center pointer-events-none text-[var(--color-bg-base)] font-bold text-xs">✓</span>}
                 </div>
-                <label htmlFor="remember" className="text-[10px] font-black uppercase tracking-widest cursor-pointer opacity-60 select-none">{t('remember_me')}</label>
+                <label htmlFor="remember" className="mono-label cursor-pointer text-[var(--color-text-muted)] select-none">{t('remember_me')}</label>
               </div>
-              <button type="submit" disabled={isLoginLoading} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3">
+              <button type="submit" disabled={isLoginLoading} className="btn-primary w-full flex items-center justify-center gap-3">
                 {isLoginLoading ? <span>{t('authenticating')}</span> : <><span>{t('login_btn')}</span><span>➔</span></>}
               </button>
             </form>
             <div className="relative flex items-center justify-center py-4">
-              <div className="absolute border-t-2 border-black/10 dark:border-white/10 w-full" />
-              <span className="bg-white dark:bg-black px-4 text-[9px] font-black uppercase tracking-[0.2em] opacity-30 relative z-10 italic">{t('sso_enterprise')}</span>
+              <div className="absolute border-t border-[var(--color-border)] w-full" />
+              <span className="bg-[var(--color-bg-surface)] px-4 mono-label text-[var(--color-text-faint)] relative z-10 italic">{t('sso_enterprise')}</span>
             </div>
-            <button onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }} className="w-full p-5 border-2 border-black dark:border-white flex items-center justify-center gap-4 hover:bg-black/5 dark:hover:bg-white/5">
+            <button onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }} className="btn-secondary w-full flex items-center justify-center gap-4">
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" /></svg>
-              <span className="font-black uppercase tracking-widest">{t('sso_microsoft')}</span>
+              <span className="mono-label">{t('sso_microsoft')}</span>
             </button>
           </div>
         )}
 
         {viewMode === 'forgot' && (
-          <div className="p-8 space-y-6 bg-white dark:bg-black">
+          <div className="p-8 space-y-6 bg-[var(--color-bg-surface)]">
             {successMessage ? (
               <div className="space-y-6 text-center py-8">
-                <div className="w-16 h-16 border-4 border-black dark:border-white flex items-center justify-center mx-auto text-2xl font-black italic">✓</div>
-                <p className="font-bold text-xs uppercase tracking-widest leading-relaxed px-4">{successMessage}</p>
-                <button onClick={() => { setViewMode('standard'); setSuccessMessage(''); }} className="text-[10px] font-black uppercase tracking-widest underline underline-offset-4 hover:opacity-60">{t('back_to_login')}</button>
+                <div className="w-16 h-16 border border-[var(--color-border-heavy)] flex items-center justify-center mx-auto text-2xl font-bold italic text-[var(--color-text-primary)]">✓</div>
+                <p className="mono-label text-[var(--color-text-secondary)] leading-relaxed px-4">{successMessage}</p>
+                <button onClick={() => { setViewMode('standard'); setSuccessMessage(''); }} className="mono-label text-[var(--color-text-muted)] underline underline-offset-4 hover:text-[var(--color-text-primary)]">{t('back_to_login')}</button>
               </div>
             ) : (
               <form onSubmit={handleForgotPassword} className="space-y-6">
-                <p className="text-[10px] font-bold uppercase opacity-60 tracking-tight leading-relaxed">{t('reset_password_desc')}</p>
-                {error && <div className="bg-black text-white dark:bg-white dark:text-black p-3 border-2 border-black dark:border-white flex items-center gap-3"><span className="text-lg font-black">!</span><p className="font-bold text-[10px] uppercase tracking-widest">{error}</p></div>}
+                <p className="mono-label text-[var(--color-text-secondary)] leading-relaxed">{t('reset_password_desc')}</p>
+                {error && (
+                  <div className="p-3 border border-[var(--color-accent-red)] text-[var(--color-accent-red)] flex items-center gap-3">
+                    <span className="text-lg font-bold">!</span>
+                    <p className="mono-label">{error}</p>
+                  </div>
+                )}
                 <div>
-                  <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5">{t('email_label')}</label>
-                  <input type="email" autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold" placeholder={t('placeholder_email')} required disabled={isForgotLoading} />
+                  <label className="mono-label block mb-1.5 text-[var(--color-text-secondary)]">{t('email_label')}</label>
+                  <input type="email" autoComplete="email" value={email} onChange={e => { setEmail(e.target.value); setError(''); }} className="input-field w-full" placeholder={t('placeholder_email')} required disabled={isForgotLoading} />
                 </div>
-                <button type="submit" disabled={isForgotLoading} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
+                <button type="submit" disabled={isForgotLoading} className="btn-primary w-full flex items-center justify-center gap-3">
                   {isForgotLoading ? t('loading') : t('send_reset_link')}
                 </button>
-                <button type="button" onClick={() => { setViewMode('standard'); setError(''); }} className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100">{t('cancel')}</button>
+                <button type="button" onClick={() => { setViewMode('standard'); setError(''); }} className="w-full mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">{t('cancel')}</button>
               </form>
             )}
           </div>
         )}
 
         {viewMode === 'reset' && (
-          <div className="p-8 space-y-6 bg-white dark:bg-black">
+          <div className="p-8 space-y-6 bg-[var(--color-bg-surface)]">
             <form onSubmit={handleResetPassword} className="space-y-6">
-              <p className="text-[10px] font-bold uppercase opacity-60 tracking-tight leading-relaxed">{t('new_password_desc')}</p>
-              {error && <div className="bg-black text-white dark:bg-white dark:text-black p-3 border-2 border-black dark:border-white flex items-center gap-3"><span className="text-lg font-black">!</span><p className="font-bold text-[10px] uppercase tracking-widest">{error}</p></div>}
+              <p className="mono-label text-[var(--color-text-secondary)] leading-relaxed">{t('new_password_desc')}</p>
+              {error && (
+                <div className="p-3 border border-[var(--color-accent-red)] text-[var(--color-accent-red)] flex items-center gap-3">
+                  <span className="text-lg font-bold">!</span>
+                  <p className="mono-label">{error}</p>
+                </div>
+              )}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5">{t('password_label')}</label>
+                <label className="mono-label block mb-1.5 text-[var(--color-text-secondary)]">{t('password_label')}</label>
                 <div className="relative">
-                  <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-bold" placeholder="••••••••" required disabled={isResetLoading} />
-                  <button type="button" onMouseEnter={() => setShowPassword(true)} onMouseLeave={() => setShowPassword(false)} className="absolute right-4 top-1/2 -translate-y-1/2 opacity-30 cursor-help">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                  <input type={showPassword ? 'text' : 'password'} autoComplete="new-password" value={password} onChange={e => { setPassword(e.target.value); setError(''); }} className="input-field w-full pr-12" placeholder="••••••••" required disabled={isResetLoading} />
+                  <button type="button" onMouseEnter={() => setShowPassword(true)} onMouseLeave={() => setShowPassword(false)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--color-text-faint)] cursor-help hover:text-[var(--color-text-primary)]">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
                 </div>
               </div>
-              <button type="submit" disabled={isResetLoading} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
+              <button type="submit" disabled={isResetLoading} className="btn-primary w-full flex items-center justify-center gap-3">
                 {isResetLoading ? t('loading') : t('update_password_btn')}
               </button>
             </form>
@@ -463,40 +474,40 @@ export default function LoginView() {
         )}
 
         {viewMode === 'mfa' && (
-          <div className="p-8 space-y-6 bg-white dark:bg-black">
+          <div className="p-8 space-y-6 bg-[var(--color-bg-surface)]">
             <div className="flex items-center gap-3 mb-2">
-              <ShieldCheck className="h-5 w-5" />
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Two-Factor Authentication</span>
+              <ShieldCheck className="h-5 w-5 text-[var(--color-text-secondary)]" />
+              <span className="mono-label text-[var(--color-text-secondary)]">Two-Factor Authentication</span>
             </div>
             <form onSubmit={handleMfaVerify} className="space-y-6">
-              <p className="text-[10px] font-bold uppercase opacity-60 tracking-tight leading-relaxed">
+              <p className="mono-label text-[var(--color-text-secondary)] leading-relaxed">
                 Enter the 6-digit code from your authenticator app, or use a recovery code.
               </p>
               {error && (
-                <div className="bg-black text-white dark:bg-white dark:text-black p-3 border-2 border-black dark:border-white flex items-center gap-3">
-                  <span className="text-lg font-black">!</span>
-                  <p className="font-bold text-[10px] uppercase tracking-widest">{error}</p>
+                <div className="p-3 border border-[var(--color-accent-red)] text-[var(--color-accent-red)] flex items-center gap-3">
+                  <span className="text-lg font-bold">!</span>
+                  <p className="mono-label">{error}</p>
                 </div>
               )}
               <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest mb-1.5">Verification Code</label>
+                <label className="mono-label block mb-1.5 text-[var(--color-text-secondary)]">Verification Code</label>
                 <input
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   value={totpCode}
                   onChange={e => { setTotpCode(e.target.value); setError(''); }}
-                  className="w-full p-4 border-2 border-black dark:border-white bg-transparent outline-none focus:ring-0 font-mono text-center text-lg tracking-[0.3em]"
+                  className="input-field w-full font-mono text-center text-lg tracking-[0.3em]"
                   placeholder="000000"
                   required
                   disabled={isLoginLoading}
                   autoFocus
                 />
               </div>
-              <button type="submit" disabled={isLoginLoading || totpCode.trim().length < 6} className="w-full p-5 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black font-black uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3">
+              <button type="submit" disabled={isLoginLoading || totpCode.trim().length < 6} className="btn-primary w-full flex items-center justify-center gap-3">
                 {isLoginLoading ? <span>{t('authenticating')}</span> : <><span>Verify</span><span>➔</span></>}
               </button>
-              <button type="button" onClick={() => { setViewMode('standard'); setMfaPending(null); setTotpCode(''); setError(''); }} className="w-full text-[10px] font-black uppercase tracking-widest opacity-40 hover:opacity-100">
+              <button type="button" onClick={() => { setViewMode('standard'); setMfaPending(null); setTotpCode(''); setError(''); }} className="w-full mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">
                 {t('cancel')}
               </button>
             </form>
@@ -505,33 +516,33 @@ export default function LoginView() {
 
         {viewMode === 'demo' && (
           <>
-            <div className="flex border-b-2 border-black dark:border-white px-4 pt-4 bg-white dark:bg-black overflow-x-auto no-scrollbar">
+            <div className="flex border-b border-[var(--color-border-heavy)] px-4 pt-4 bg-[var(--color-bg-surface)] overflow-x-auto no-scrollbar">
               {(['all', 'platform', 'support', 'admin', 'agent'] as const).map((tab) => (
-                <button key={tab} onClick={() => setFilter(tab)} className={`px-4 py-3 text-xs font-black uppercase tracking-wider border-b-4 mr-1 shrink-0 ${filter === tab ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent opacity-30 hover:opacity-100'}`}>{tab === 'all' ? t('all') : tab === 'platform' ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(tab as any)}</button>
+                <button key={tab} onClick={() => setFilter(tab)} className={`px-4 py-3 mono-label border-b-2 mr-1 shrink-0 ${filter === tab ? 'border-[var(--color-text-primary)] text-[var(--color-text-primary)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}>{tab === 'all' ? t('all') : tab === 'platform' ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(tab as any)}</button>
               ))}
             </div>
-            <div className="p-4 max-h-[30rem] overflow-y-auto bg-white dark:bg-black">
+            <div className="p-4 max-h-[30rem] overflow-y-auto bg-[var(--color-bg-surface)]">
               {error && (
-                <div className="bg-black text-white dark:bg-white dark:text-black p-3 mb-3 border-2 border-black dark:border-white flex items-center gap-3">
-                  <span className="text-lg font-black">!</span>
-                  <p className="font-bold text-[10px] uppercase tracking-widest">{error}</p>
+                <div className="p-3 mb-3 border border-[var(--color-accent-red)] text-[var(--color-accent-red)] flex items-center gap-3">
+                  <span className="text-lg font-bold">!</span>
+                  <p className="mono-label">{error}</p>
                 </div>
               )}
-              {filtered.length === 0 && <p className="text-center opacity-30 py-16 font-black uppercase tracking-widest italic">{t('no_users')}</p>}
-              <ul className="space-y-3 pb-2">
+              {filtered.length === 0 && <p className="text-center mono-label text-[var(--color-text-faint)] py-16 italic">{t('no_users')}</p>}
+              <ul className="space-y-2 pb-2">
                 {filtered.map((u) => (
                   <li key={u.id}>
-                    <button onClick={() => handleDemoLogin(u)} disabled={isDemoLoading} className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black disabled:opacity-50 flex items-center justify-between">
+                    <button onClick={() => handleDemoLogin(u)} disabled={isDemoLoading} className="w-full text-left p-4 border border-[var(--color-border)] hover:border-[var(--color-accent-blue)] hover:bg-[var(--color-bg-elevated)] disabled:opacity-50 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 border-2 border-current flex items-center justify-center text-xl font-black italic">{u.name.charAt(0)}</div>
+                        <div className="w-10 h-10 border border-[var(--color-border-heavy)] flex items-center justify-center text-lg font-bold italic text-[var(--color-text-primary)]">{u.name.charAt(0)}</div>
                         <div>
-                          <p className="font-black uppercase tracking-tight text-lg">{u.name}</p>
-                          <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest">{u.email || 'DEMO_IDENTITY'}</p>
+                          <p className="mono-id text-[var(--color-text-primary)]">{u.name}</p>
+                          <p className="mono-label text-[var(--color-text-muted)] mt-0.5">{u.email || 'DEMO_IDENTITY'}</p>
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className="text-[9px] font-black uppercase tracking-widest border-2 border-current px-2 py-0.5 italic">{u.isPlatformOperator ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(u.role as any)}</span>
-                        <span className="text-[10px] font-bold opacity-60">{(u.lang && LANG_LABEL[u.lang]) || u.lang}</span>
+                        <span className="badge">{u.isPlatformOperator ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(u.role as any)}</span>
+                        <span className="mono-label text-[var(--color-text-muted)]">{(u.lang && LANG_LABEL[u.lang]) || u.lang}</span>
                       </div>
                     </button>
                   </li>
@@ -542,9 +553,9 @@ export default function LoginView() {
         )}
       </div>
 
-      <div className="mt-12 flex gap-8 opacity-30 hover:opacity-100">
-        <button onClick={() => setLegalModal('privacy')} className="text-[9px] font-black uppercase tracking-widest hover:underline">{t('privacy_policy')}</button>
-        <button onClick={() => setLegalModal('terms')} className="text-[9px] font-black uppercase tracking-widest hover:underline">{t('terms_of_service')}</button>
+      <div className="mt-12 flex gap-8 text-[var(--color-text-faint)] hover:text-[var(--color-text-muted)]">
+        <button onClick={() => setLegalModal('privacy')} className="mono-label hover:underline">{t('privacy_policy')}</button>
+        <button onClick={() => setLegalModal('terms')} className="mono-label hover:underline">{t('terms_of_service')}</button>
       </div>
       {legalModal && <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />}
     </div>
