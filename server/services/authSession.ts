@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import type { Response } from 'express';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { db } from '../db.js';
 import { memberships, partners, users } from '../db/schema.js';
@@ -108,6 +109,44 @@ export async function findUserByEmail(email: string) {
     eq(sql`lower(${users.email})`, email.toLowerCase())
   ).limit(1);
   return rows[0];
+}
+
+const COOKIE_NAME = 'tessera_token';
+const EXPIRY_COOKIE_NAME = 'session_expires';
+
+function cookieOptions(httpOnly: boolean) {
+  return {
+    httpOnly,
+    secure: config.COOKIE_SECURE,
+    sameSite: 'lax' as const,
+    path: '/',
+    ...(config.COOKIE_DOMAIN ? { domain: config.COOKIE_DOMAIN } : {}),
+  };
+}
+
+/** Parse JWT_EXPIRY string (e.g. '24h', '7d', '3600') into seconds */
+export function parseExpiryToSeconds(expiry: string): number {
+  const match = expiry.match(/^(\d+)(s|m|h|d)?$/);
+  if (!match) return 86400;
+  const value = parseInt(match[1], 10);
+  switch (match[2]) {
+    case 'd': return value * 86400;
+    case 'h': return value * 3600;
+    case 'm': return value * 60;
+    case 's': default: return value;
+  }
+}
+
+export function setAuthCookie(res: Response, token: string, expiresInSeconds: number): void {
+  const maxAgeMs = expiresInSeconds * 1000;
+  res.cookie(COOKIE_NAME, token, { ...cookieOptions(true), maxAge: maxAgeMs });
+  const expiresAt = Math.floor(Date.now() / 1000) + expiresInSeconds;
+  res.cookie(EXPIRY_COOKIE_NAME, String(expiresAt), { ...cookieOptions(false), maxAge: maxAgeMs });
+}
+
+export function clearAuthCookie(res: Response): void {
+  res.clearCookie(COOKIE_NAME, cookieOptions(true));
+  res.clearCookie(EXPIRY_COOKIE_NAME, cookieOptions(false));
 }
 
 export async function getEnterPartnerContext(partnerId: string) {
