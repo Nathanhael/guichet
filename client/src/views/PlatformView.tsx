@@ -43,23 +43,23 @@ export default function PlatformView() {
   const [editingUserProfile, setEditingUserProfile] = useState<GlobalUser | null>(null);
 
   return (
-    <div className="h-screen flex flex-col bg-white dark:bg-black text-black dark:text-white overflow-hidden font-sans">
-      <nav className="px-8 py-4 border-b-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-between sticky top-0 z-50">
+    <div className="h-screen flex flex-col bg-[var(--color-bg-base)] text-[var(--color-text-primary)] overflow-hidden font-sans">
+      <nav className="px-8 py-4 border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-4">
-          <span className="text-2xl font-black uppercase tracking-tighter">TESSERA</span>
-          <div className="h-6 w-px bg-black dark:bg-white opacity-20 mx-2" />
-          <span className="text-[10px] font-black px-2 py-1 bg-black dark:bg-white text-white dark:text-black uppercase tracking-widest mr-4">{t('platform_operator')}</span>
+          <span className="text-2xl font-bold uppercase tracking-tighter font-mono">TESSERA</span>
+          <div className="h-6 w-px bg-[var(--color-border)] mx-2" />
+          <span className="text-[10px] font-bold px-2 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] uppercase tracking-widest mr-4 font-mono">{t('platform_operator')}</span>
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 p-1 border border-black dark:border-white">
+          <div className="flex items-center gap-2 bg-[var(--color-bg-elevated)] p-1 border border-[var(--color-border)]">
             <LanguageSwitcher />
             <DarkModeToggle />
           </div>
-          <button onClick={logout} className="text-black dark:text-white hover:line-through text-xs font-black uppercase tracking-widest">{'\u279c'} {t('sign_out')}</button>
+          <button onClick={logout} className="text-[var(--color-text-primary)] hover:line-through text-xs font-bold uppercase tracking-widest font-mono">&#10142; {t('sign_out')}</button>
         </div>
       </nav>
 
-      <div className="flex border-b-2 border-black dark:border-white bg-white dark:bg-black px-8 overflow-x-auto">
+      <div className="flex border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] px-8 overflow-x-auto">
         {(['partners', 'users', 'sso', 'security', 'health', 'config', 'audit', 'archive'] as const).map((tab) => (
           <button
             key={tab}
@@ -70,9 +70,11 @@ export default function PlatformView() {
               setActiveTab(tab);
             }}
             disabled={stepUpLocked && tab !== 'security'}
-            className={`px-8 py-4 text-[10px] font-black uppercase tracking-widest border-b-4 whitespace-nowrap ${
-              effectiveTab === tab ? 'border-black dark:border-white text-black dark:text-white' : 'border-transparent opacity-40 hover:opacity-100'
-            } ${stepUpLocked && tab !== 'security' ? 'cursor-not-allowed opacity-20 hover:opacity-20' : ''}`}
+            className={`px-8 py-4 text-[10px] font-bold font-mono uppercase tracking-widest border-b-2 whitespace-nowrap ${
+              effectiveTab === tab
+                ? 'border-[var(--color-accent-blue)] text-[var(--color-accent-blue)]'
+                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+            } ${stepUpLocked && tab !== 'security' ? 'cursor-not-allowed opacity-20 hover:text-[var(--color-text-muted)]' : ''}`}
           >
             {t(`${tab}_tab`)}
           </button>
@@ -82,7 +84,7 @@ export default function PlatformView() {
       <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
         <div className="max-w-6xl mx-auto">
           {stepUpLocked && effectiveTab === 'security' && (
-            <div className="mb-6 border-2 border-black dark:border-white p-4 text-[10px] font-black uppercase tracking-widest">
+            <div className="mb-6 border border-[var(--color-border-heavy)] p-4 text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--color-text-secondary)]">
               Platform admin tabs are locked until you complete TOTP step-up verification in the security panel.
             </div>
           )}
