@@ -26,7 +26,6 @@ describe('auth session helpers', () => {
 
   it('filters inactive memberships from the auth response and picks the first active partner', () => {
     const response = buildAuthResponse({
-      token: 'signed-token',
       user: {
         id: 'user-1',
         name: 'Alice',
@@ -59,7 +58,7 @@ describe('auth session helpers', () => {
       ],
     });
 
-    expect(response.token).toBe('signed-token');
+    expect(response).not.toHaveProperty('token');
     expect(response.user).toEqual({
       id: 'user-1',
       name: 'Alice',
@@ -140,7 +139,6 @@ describe('auth session helpers', () => {
 
   it('returns no active partner when the user only has platform-level access', () => {
     const response = buildAuthResponse({
-      token: 'signed-token',
       user: {
         id: 'platform-1',
         name: 'Bob',

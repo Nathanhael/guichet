@@ -5,7 +5,7 @@ import { db } from '../../db.js';
 import { auditLog, users } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { router, platformBaseProcedure } from '../trpc.js';
-import { buildAuthToken } from '../../services/authSession.js';
+import { buildAuthToken, setAuthCookie, parseExpiryToSeconds } from '../../services/authSession.js';
 import config from '../../config.js';
 import {
   buildTotpUri,
@@ -147,8 +147,9 @@ export const platformSecurityRouter = router({
         platformStepUpAt,
       });
 
+      setAuthCookie(ctx.res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+
       return {
-        token,
         stepUpExpiresAt: getPlatformStepUpExpiry(platformStepUpAt),
       };
     }),
@@ -175,6 +176,8 @@ export const platformSecurityRouter = router({
         platformStepUpAt,
       });
 
+      setAuthCookie(ctx.res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+
       await db.insert(auditLog).values({
         id: randomUUID(),
         action: 'security.platform_step_up_verified',
@@ -185,7 +188,6 @@ export const platformSecurityRouter = router({
       });
 
       return {
-        token,
         stepUpExpiresAt: getPlatformStepUpExpiry(platformStepUpAt),
       };
     }),

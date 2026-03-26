@@ -16,12 +16,7 @@ export function getSocket(): Socket {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      auth: {
-        // Pass JWT token for server-side socket authentication
-        get token() {
-          return useStore.getState().token;
-        },
-      },
+      withCredentials: true,
     });
   }
   return socket;
@@ -313,15 +308,15 @@ export function useSocket(): Socket {
       }
     });
 
-    // Token expired — reconnect to trigger a fresh handshake with current token
+    // Token expired — reconnect to trigger a fresh handshake with current cookie
     s.on('auth:expired', () => {
       const state = useStore.getState();
-      if (state.token) {
-        // Token still in store (e.g. refreshed) — reconnect with it
+      if (state.user) {
+        // User still logged in — reconnect with cookie
         s.disconnect();
         s.connect();
       } else {
-        // No token — session is truly gone
+        // No session — truly gone
         state.logout();
       }
     });

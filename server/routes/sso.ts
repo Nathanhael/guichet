@@ -1,6 +1,5 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
 import * as jose from 'jose';
 import { v4 as uuid } from 'uuid';
 import { db } from '../db.js';
@@ -296,10 +295,8 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       isPlatformOperator: !!user.isPlatformOperator,
     });
 
-    // Redirect back to client with token + user data as URL fragment
-    // Fragment (#) is never sent to the server — safe for tokens
+    // Redirect back to client with user data as URL fragment (token travels via HttpOnly cookie only)
     const ssoPayload = buildAuthResponse({
-      token,
       user: {
         id: user.id,
         name: user.name,

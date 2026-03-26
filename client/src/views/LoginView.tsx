@@ -29,13 +29,12 @@ const HARDCODED_DEMO_USERS: DemoUser[] = [
 ];
 
 type PartnerSelection = {
-  token: string;
   user: User;
   memberships: Membership[];
 };
 
 export default function LoginView() {
-  const { setUser, setToken, setMemberships, setActiveMembershipId } = useStore();
+  const { setUser, setMemberships, setActiveMembershipId } = useStore();
   const t = useT();
   const [filter, setFilter] = useState<'all' | 'platform' | 'support' | 'admin' | 'agent'>('all');
   const [selectingPartner, setSelectingPartner] = useState<PartnerSelection | null>(null);
@@ -104,9 +103,8 @@ export default function LoginView() {
         const payload = JSON.parse(decodeURIComponent(hash.slice('#sso_callback='.length)));
         const ssoMemberships = payload.memberships || [];
         if (ssoMemberships.length > 1 && !payload.user.isPlatformOperator) {
-          setSelectingPartner({ token: payload.token, user: payload.user, memberships: ssoMemberships });
+          setSelectingPartner({ user: payload.user, memberships: ssoMemberships });
         } else {
-          setToken(payload.token);
           setUser(payload.user);
           setMemberships(ssoMemberships);
           if (ssoMemberships.length > 0 && !payload.user.isPlatformOperator) {
@@ -131,6 +129,7 @@ export default function LoginView() {
       const res = await fetch('/api/v1/auth/login-local', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email, password, rememberMe })
       });
       const data = await res.json();
@@ -145,9 +144,8 @@ export default function LoginView() {
           setPassword('');
           const memberships = data.memberships || [];
           if (memberships.length > 1 && !data.user.isPlatformOperator) {
-            setSelectingPartner({ token: data.token, user: data.user, memberships });
+            setSelectingPartner({ user: data.user, memberships });
           } else {
-            setToken(data.token);
             setUser(data.user);
             setMemberships(memberships);
             if (memberships.length > 0 && !data.user.isPlatformOperator) {
@@ -227,6 +225,7 @@ export default function LoginView() {
       const res = await fetch(mfaPending.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ ...mfaPending.body, totpCode })
       });
       const data = await res.json();
@@ -236,9 +235,8 @@ export default function LoginView() {
         setMfaPending(null);
         const memberships = data.memberships || [];
         if (memberships.length > 1 && !data.user.isPlatformOperator) {
-          setSelectingPartner({ token: data.token, user: data.user, memberships });
+          setSelectingPartner({ user: data.user, memberships });
         } else {
-          setToken(data.token);
           setUser(data.user);
           setMemberships(memberships);
           if (memberships.length > 0 && !data.user.isPlatformOperator) {
@@ -265,6 +263,7 @@ export default function LoginView() {
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ id: u.id, password: DEMO_PASSWORD })
       });
       if (res.ok) {
@@ -277,9 +276,8 @@ export default function LoginView() {
         } else {
           const memberships = data.memberships || [];
           if (memberships.length > 1 && !data.user.isPlatformOperator) {
-            setSelectingPartner({ token: data.token, user: data.user, memberships });
+            setSelectingPartner({ user: data.user, memberships });
           } else {
-            setToken(data.token);
             setUser(data.user);
             setMemberships(memberships);
             if (memberships.length > 0 && !data.user.isPlatformOperator) {
@@ -313,7 +311,7 @@ export default function LoginView() {
             {selectingPartner.memberships.map((m) => (
               <button
                 key={m.id}
-                onClick={() => { setToken(selectingPartner.token); setUser(selectingPartner.user); setMemberships(selectingPartner.memberships); setActiveMembershipId(m.id); }}
+                onClick={() => { setUser(selectingPartner.user); setMemberships(selectingPartner.memberships); setActiveMembershipId(m.id); }}
                 className="w-full text-left p-4 border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black flex items-center justify-between"
               >
                 <div>
