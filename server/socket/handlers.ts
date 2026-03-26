@@ -9,7 +9,7 @@ import config from '../config.js';
 import { Ticket, Message, User, UserRole } from '../types/index.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
-import { mapMessageRow, MessageRow } from '../utils/messageMapper.js';
+import { mapMessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 import { invalidateSummary } from '../services/ai/summaryCache.js';
@@ -183,7 +183,15 @@ export function registerSocketHandlers(io: Server) {
   // ---- Socket-level JWT authentication middleware ----
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token as string | undefined;
+      let token = socket.handshake.auth?.token as string | undefined;
+      if (!token && socket.handshake.headers?.cookie) {
+        const cookies = socket.handshake.headers.cookie.split(';').reduce((acc: Record<string, string>, c: string) => {
+          const [key, ...val] = c.trim().split('=');
+          if (key) acc[key] = val.join('=');
+          return acc;
+        }, {});
+        token = cookies['tessera_token'];
+      }
       if (!token) {
         return next(new Error('Authentication required'));
       }
@@ -422,7 +430,7 @@ export function registerSocketHandlers(io: Server) {
         const updated = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as { participants: string } | undefined;
         const participants = JSON.parse(updated?.participants || '[]');
         socket.join(`ticket:${ticketId}`);
-        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as MessageRow[]).map(mapMessageRow);
+        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Record<string, unknown>[]).map(mapMessageRow);
         socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
         io.to(`ticket:${ticketId}`).emit('support:joined', { ticketId, supportName, participants });
         await broadcastQueuePositions(callerPartnerId);

@@ -325,7 +325,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   }
 
   async function uploadFile(file: File) {
-    const { token } = useStore.getState();
     setMediaPreview(URL.createObjectURL(file));
     setUploading(true);
     try {
@@ -333,7 +332,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       form.append('file', file);
       const res = await fetch('/api/v1/uploads', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include',
         body: form
       });
       const data = await res.json();

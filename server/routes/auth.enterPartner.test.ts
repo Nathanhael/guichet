@@ -139,6 +139,7 @@ describe('auth enter-partner route', () => {
     const res = await request(app).post('/enter-partner').send({ partnerId: 'tenant-a' });
 
     expect(res.status).toBe(200);
+    expect(res.body).not.toHaveProperty('token');
     expect(res.body.activePartnerId).toBe('tenant-a');
     expect(res.body.manifest).toEqual({
       industry: 'telecom',
@@ -146,7 +147,12 @@ describe('auth enter-partner route', () => {
       departments: [{ id: 'billing', name: 'Billing' }],
     });
 
-    const decoded = jwt.verify(res.body.token, process.env.JWT_SECRET!) as Record<string, unknown>;
+    // Token should be in Set-Cookie header, not response body
+    const cookies = res.headers['set-cookie'];
+    const tokenCookie = (Array.isArray(cookies) ? cookies : [cookies]).find((c: string) => c.startsWith('tessera_token='));
+    expect(tokenCookie).toBeDefined();
+    const cookieToken = tokenCookie!.split(';')[0].split('=').slice(1).join('=');
+    const decoded = jwt.verify(cookieToken, process.env.JWT_SECRET!) as Record<string, unknown>;
     expect(decoded.userId).toBe('platform-1');
     expect(decoded.role).toBe('admin');
     expect(decoded.partnerId).toBe('tenant-a');

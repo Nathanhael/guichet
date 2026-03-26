@@ -6,9 +6,7 @@ export interface AuthSlice {
   memberships: Membership[];
   activeMembershipId: string | null;
   activePartnerId: string | null;
-  token: string | null;
   setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
   setMemberships: (memberships: Membership[]) => void;
   setActiveMembershipId: (id: string | null) => void;
   enterPartnerAsOperator: (partnerId: string) => Promise<void>;
@@ -16,20 +14,18 @@ export interface AuthSlice {
 }
 
 function clearAuthState(set: (partial: Partial<StoreState>) => void) {
-  localStorage.removeItem('token');
   localStorage.removeItem('user');
   localStorage.removeItem('memberships');
   localStorage.removeItem('activeMembershipId');
   localStorage.removeItem('activePartnerId');
-  set({ 
-    user: null, 
-    token: null, 
-    memberships: [], 
-    activeMembershipId: null, 
-    activePartnerId: null, 
-    tickets: [], 
-    messages: {}, 
-    activeTicketId: null 
+  set({
+    user: null,
+    memberships: [],
+    activeMembershipId: null,
+    activePartnerId: null,
+    tickets: [],
+    messages: {},
+    activeTicketId: null
   });
 }
 
@@ -43,24 +39,23 @@ function safeJsonParse<T>(key: string, fallback: T): T {
   }
 }
 
-function isTokenExpired(token: string | null): boolean {
-  if (!token) return true;
+/** Check if the session is expired using the companion session_expires cookie */
+function isSessionExpired(): boolean {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    // exp is in seconds, Date.now() is in ms
-    return payload.exp * 1000 < Date.now();
+    const match = document.cookie.match(/(?:^|;\s*)session_expires=(\d+)/);
+    if (!match) return true;
+    const expiresAt = parseInt(match[1], 10);
+    return expiresAt * 1000 < Date.now();
   } catch {
     return true;
   }
 }
 
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, get) => {
-  const storedToken = localStorage.getItem('token');
-  const expired = isTokenExpired(storedToken);
+  const expired = isSessionExpired();
 
-  // If token is expired, clear everything
-  if (expired && storedToken) {
-    localStorage.removeItem('token');
+  // If session cookie is expired, clear everything
+  if (expired) {
     localStorage.removeItem('user');
     localStorage.removeItem('memberships');
     localStorage.removeItem('activeMembershipId');
@@ -72,17 +67,11 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     memberships: expired ? [] : safeJsonParse('memberships', []),
     activeMembershipId: expired ? null : localStorage.getItem('activeMembershipId') || null,
     activePartnerId: expired ? null : localStorage.getItem('activePartnerId') || null,
-    token: expired ? null : storedToken,
 
     setUser: (user) => {
       if (user) localStorage.setItem('user', JSON.stringify(user));
       else localStorage.removeItem('user');
       set({ user });
-    },
-    setToken: (token) => {
-      if (token) localStorage.setItem('token', token);
-      else localStorage.removeItem('token');
-      set({ token });
     },
     setMemberships: (memberships) => {
       if (memberships) localStorage.setItem('memberships', JSON.stringify(memberships));
@@ -97,7 +86,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
         set({ activeMembershipId: null, activePartnerId: null });
         return;
       }
-      
+
       const membership = get().memberships.find(m => m.id === id);
       if (membership) {
         localStorage.setItem('activePartnerId', membership.partnerId);
@@ -109,37 +98,31 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       }
     },
     enterPartnerAsOperator: async (partnerId: string) => {
-      const token = get().token;
       const res = await fetch('/api/v1/auth/enter-partner', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ partnerId })
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.error || 'Failed to enter partner');
       }
-      const data = await res.json();
+      await res.json();
       const userId = get().user?.id;
       const syntheticMembershipId = `platform_${userId}_${partnerId}`;
-      get().setToken(data.token);
       localStorage.setItem('activeMembershipId', syntheticMembershipId);
       localStorage.setItem('activePartnerId', partnerId);
       set({ activeMembershipId: syntheticMembershipId, activePartnerId: partnerId });
     },
     logout: async () => {
-      const token = get().token;
-      if (token) {
-        try {
-          await fetch('/api/v1/auth/logout', {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          });
-        } catch {
-          // Local logout should still succeed even if the network call fails.
-        }
+      try {
+        await fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        });
+      } catch {
+        // Local logout should still succeed even if the network call fails.
       }
 
       // Clear service worker cache to prevent stale authenticated data on shared devices

@@ -65,7 +65,6 @@ export function buildAuthToken(input: {
 }
 
 export function buildAuthResponse(input: {
-  token: string;
   user: {
     id: string;
     name: string;
@@ -78,7 +77,6 @@ export function buildAuthResponse(input: {
   const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
 
   return {
-    token: input.token,
     user: {
       id: input.user.id,
       name: input.user.name,

@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { body } from 'express-validator';
 import { get, run } from '../db.js';
@@ -316,7 +315,6 @@ router.post('/login-local', [
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
         res.json(buildAuthResponse({
-            token,
             user: {
                 id: user.id,
                 name: user.name,
@@ -449,7 +447,6 @@ router.post('/login', [
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
         res.json(buildAuthResponse({
-            token,
             user: {
                 id: user.id,
                 name: user.name,
@@ -532,7 +529,6 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
         res.json({
-            token,
             activePartnerId: membership.partnerId,
             manifest: {
                 industry: membership.industry,
@@ -655,7 +651,6 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
         res.json({
-            token,
             activePartnerId: partner.id,
             manifest: {
                 industry: partner.industry,
