@@ -10,7 +10,8 @@ const configSchema = z.object({
     GDPR_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
     AUDIT_ARCHIVE_DELAY_DAYS: z.coerce.number().int().positive().default(2),
     COOKIE_DOMAIN: z.string().optional(),
-    COOKIE_SECURE: z.preprocess(v => v === 'true' || v === '1' || v === true, z.boolean()).default(false),
+    // Default to true (secure). Set COOKIE_SECURE=false only for local dev (no HTTPS).
+    COOKIE_SECURE: z.preprocess(v => v === 'false' || v === '0' ? false : v === 'true' || v === '1' || v === true ? true : v, z.boolean()).default(true),
     PURGE_INTERVAL_MS: z.coerce.number().int().positive().default(24 * 60 * 60 * 1000),
     JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),
     JWT_EXPIRY: z.string().default('24h'),

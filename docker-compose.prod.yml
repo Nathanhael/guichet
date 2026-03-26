@@ -25,6 +25,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - CORS_ORIGIN=${CORS_ORIGIN}
+      - COOKIE_SECURE=true
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
     extra_hosts:
       - "host.docker.internal:host-gateway"
