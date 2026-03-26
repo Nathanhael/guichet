@@ -26,15 +26,15 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
 
   return (
     <nav
-      className={`px-8 flex items-center justify-between sticky top-0 z-50 border-b-2 border-black dark:border-white ${
-        focusMode ? 'py-2 bg-black text-white' : 'py-4 bg-white dark:bg-black'
+      className={`px-8 flex items-center justify-between sticky top-0 z-50 border-b border-[var(--color-border)] ${
+        focusMode ? 'py-2 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]' : 'py-4 bg-[var(--color-bg-surface)]'
       }`}
     >
       <div className="flex items-center gap-4">
         {!focusMode && (
           <button
             onClick={onToggleSidebar}
-            className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+            className="p-1.5 hover:bg-[var(--color-accent-blue)] hover:text-white"
             aria-label={t('queue')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -42,14 +42,14 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
             </svg>
           </button>
         )}
-        <span className="font-black text-2xl uppercase tracking-tighter">TESSERA</span>
+        <span className="font-bold text-2xl uppercase tracking-tighter">TESSERA</span>
         {!focusMode && (
           <div className="flex items-center gap-3">
-            <div className="h-6 w-px bg-black dark:bg-white opacity-20" />
+            <div className="h-6 w-px bg-[var(--color-border)]" />
             {logoUrl ? (
               <img src={logoUrl} alt={partnerName} className="h-8 object-contain" />
             ) : (
-              <span className="text-[10px] font-black px-3 py-1 uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black">
+              <span className="mono-label px-3 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]">
                 {partnerName}
               </span>
             )}
@@ -59,7 +59,7 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
 
       <div className="flex items-center gap-6">
         {!focusMode && (
-          <div className="flex items-center gap-2 px-4 py-1.5 border-2 border-black dark:border-white bg-white dark:bg-black font-black uppercase text-[10px]">
+          <div className="flex items-center gap-2 px-4 py-1.5 border border-[var(--color-border)] font-bold uppercase text-[10px]">
             {user.name}
           </div>
         )}
@@ -72,8 +72,8 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
             aria-label={focusMode ? t('exit_focus') : t('enter_focus')}
             className={`w-8 h-8 flex items-center justify-center ${
               focusMode
-                ? 'bg-white text-black invert'
-                : 'text-white dark:text-black hover:bg-white dark:hover:bg-black hover:text-black dark:hover:text-white'
+                ? 'bg-[var(--color-bg-base)] text-[var(--color-text-primary)]'
+                : 'hover:bg-[var(--color-accent-blue)] hover:text-white'
             }`}
           >
             Z
@@ -83,7 +83,7 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
 
         <button
           onClick={logout}
-          className="text-black dark:text-white hover:line-through text-xs font-black uppercase tracking-widest"
+          className="text-[var(--color-text-primary)] hover:line-through text-xs font-bold uppercase tracking-wide"
         >
           {t('sign_out')}
         </button>
