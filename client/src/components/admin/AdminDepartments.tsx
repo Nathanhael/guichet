@@ -204,27 +204,27 @@ export default function AdminDepartments() {
     <div className="max-w-5xl">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-lg font-black uppercase tracking-widest">Departments</h2>
-          <p className="text-xs uppercase opacity-60 mt-1">{t('manage_departments') || 'Manage your organization structure'}</p>
+          <h2 className="text-lg font-bold uppercase tracking-wide">Departments</h2>
+          <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-1">{t('manage_departments') || 'Manage your organization structure'}</p>
         </div>
         <button
           onClick={handleAdd}
           disabled={isSaving}
-          className="flex items-center gap-2 px-6 py-2 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-xs tracking-widest disabled:opacity-50"
+          className="btn-primary disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" />
           Add Department
         </button>
       </div>
 
-      <div className="border-2 border-black dark:border-white">
+      <div className="surface-card">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_1fr_1fr_100px_80px] border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5">
-          <div className="px-4 py-3 text-[9px] font-black uppercase tracking-widest opacity-60">Name</div>
-          <div className="px-4 py-3 text-[9px] font-black uppercase tracking-widest opacity-60">Description</div>
-          <div className="px-4 py-3 text-[9px] font-black uppercase tracking-widest opacity-60">{t('ref_fields_label') || 'Ref Fields'}</div>
-          <div className="px-4 py-3 text-[9px] font-black uppercase tracking-widest opacity-60 text-center">Members</div>
-          <div className="px-4 py-3 text-[9px] font-black uppercase tracking-widest opacity-60 text-center"></div>
+        <div className="grid grid-cols-[1fr_1fr_1fr_100px_80px] border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Name</div>
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Description</div>
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('ref_fields_label') || 'Ref Fields'}</div>
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide text-center">Members</div>
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide text-center"></div>
         </div>
 
         {/* Rows */}
@@ -232,26 +232,26 @@ export default function AdminDepartments() {
           <div key={dept.id || `new-${idx}`}>
             {editingIdx === idx && editDraft ? (
               /* Edit mode */
-              <div className="border-b border-black/20 dark:border-white/20 p-4 space-y-4 bg-black/[0.02] dark:bg-white/[0.02]">
+              <div className="border-b border-[var(--color-border)] p-4 space-y-4 bg-black/[0.02] dark:bg-white/[0.02]">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">Name *</label>
+                    <label className="mono-label mb-1 block">Name *</label>
                     <input
                       type="text"
                       value={editDraft.name}
                       onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
-                      className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm font-bold uppercase"
+                      className="input-field w-full uppercase"
                       placeholder="e.g. Sales"
                       autoFocus
                     />
                   </div>
                   <div>
-                    <label className="block text-[9px] font-black uppercase tracking-widest opacity-60 mb-1">Description</label>
+                    <label className="mono-label mb-1 block">Description</label>
                     <input
                       type="text"
                       value={editDraft.description}
                       onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
-                      className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm"
+                      className="input-field w-full"
                       placeholder="Briefly describe this department"
                     />
                   </div>
@@ -259,7 +259,7 @@ export default function AdminDepartments() {
 
                 {/* Reference Fields */}
                 <div>
-                  <label className="block text-[9px] font-black uppercase tracking-widest opacity-60 mb-2">{t('ref_fields_label') || 'Reference Fields'}</label>
+                  <label className="mono-label mb-2 block">{t('ref_fields_label') || 'Reference Fields'}</label>
                   <div className="space-y-2">
                     {editDraft.referenceFields.map((field, fIdx) => (
                       <div key={fIdx} className="flex items-center gap-2">
@@ -267,12 +267,12 @@ export default function AdminDepartments() {
                           type="text"
                           value={field.label}
                           onChange={(e) => updateRefFieldLabel(fIdx, e.target.value)}
-                          className="flex-1 border-2 border-black dark:border-white bg-transparent p-2 text-sm"
+                          className="input-field flex-1"
                           placeholder={t('ref_field_placeholder') || 'Field label (e.g. Invoice Number)'}
                         />
                         <button
                           onClick={() => removeRefField(fIdx)}
-                          className="w-8 h-8 flex items-center justify-center border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black"
+                          className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -282,7 +282,7 @@ export default function AdminDepartments() {
                   <button
                     onClick={addRefField}
                     disabled={editDraft.referenceFields.length >= 3}
-                    className="mt-2 text-[10px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 disabled:opacity-20 disabled:cursor-not-allowed"
+                    className="mt-2 mono-label text-[var(--color-text-secondary)] hover:opacity-100 disabled:opacity-20 disabled:cursor-not-allowed"
                   >
                     + {t('add_ref_field') || 'Add Field'}
                     {editDraft.referenceFields.length >= 3 && <span className="ml-2 normal-case">({t('max_ref_fields') || 'Maximum 3 fields'})</span>}
@@ -293,14 +293,14 @@ export default function AdminDepartments() {
                   <button
                     onClick={saveEdit}
                     disabled={isSaving}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-50"
+                    className="btn-primary disabled:opacity-50"
                   >
                     <Check className="h-3.5 w-3.5" />
                     Save
                   </button>
                   <button
                     onClick={cancelEdit}
-                    className="flex items-center gap-1.5 px-4 py-2 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest"
+                    className="btn-secondary"
                   >
                     <X className="h-3.5 w-3.5" />
                     Cancel
@@ -309,10 +309,10 @@ export default function AdminDepartments() {
               </div>
             ) : (
               /* View mode */
-              <div className={`grid grid-cols-[1fr_1fr_1fr_100px_80px] border-b border-black/20 dark:border-white/20 ${deletingIdx === idx ? '' : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'}`}>
+              <div className={`grid grid-cols-[1fr_1fr_1fr_100px_80px] border-b border-[var(--color-border)] ${deletingIdx === idx ? '' : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'}`}>
                 <div className="px-4 py-3 font-bold text-sm uppercase">{dept.name}</div>
-                <div className="px-4 py-3 text-sm opacity-60">{dept.description || '—'}</div>
-                <div className="px-4 py-3 text-xs opacity-60">
+                <div className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">{dept.description || '—'}</div>
+                <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
                   {dept.referenceFields.length > 0
                     ? dept.referenceFields.map(f => f.label).join(', ')
                     : '—'}
@@ -321,14 +321,14 @@ export default function AdminDepartments() {
                 <div className="px-4 py-3 flex items-center justify-center gap-1">
                   <button
                     onClick={() => startEdit(idx)}
-                    className="w-7 h-7 flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10"
+                    className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
                     title="Edit"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => startDelete(idx)}
-                    className="w-7 h-7 flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10"
+                    className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
                     title="Delete"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -339,8 +339,8 @@ export default function AdminDepartments() {
 
             {/* Delete confirmation */}
             {deletingIdx === idx && editingIdx !== idx && (
-              <div className="border-b border-black/20 dark:border-white/20 px-4 py-3 bg-black/5 dark:bg-white/5 flex items-center gap-4">
-                <span className="text-xs font-black uppercase tracking-widest">
+              <div className="border-b border-[var(--color-border)] px-4 py-3 bg-black/5 dark:bg-white/5 flex items-center gap-4">
+                <span className="text-xs font-bold uppercase tracking-wide">
                   {(memberCounts[dept.id] || 0) > 0
                     ? `${memberCounts[dept.id]} member${memberCounts[dept.id] === 1 ? '' : 's'} will become generalists.`
                     : 'Delete this department?'}
@@ -348,13 +348,13 @@ export default function AdminDepartments() {
                 <button
                   onClick={confirmDelete}
                   disabled={isSaving}
-                  className="px-3 py-1.5 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-50"
+                  className="btn-danger disabled:opacity-50"
                 >
                   Confirm
                 </button>
                 <button
                   onClick={() => setDeletingIdx(null)}
-                  className="px-3 py-1.5 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest"
+                  className="btn-secondary"
                 >
                   Cancel
                 </button>
@@ -364,7 +364,7 @@ export default function AdminDepartments() {
         ))}
 
         {departments.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm opacity-40 font-black uppercase tracking-widest">
+          <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)] font-bold uppercase tracking-wide">
             No departments configured
           </div>
         )}

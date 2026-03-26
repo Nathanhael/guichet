@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
-import useStore from '../../store/useStore';
 import { trpc } from '../../utils/trpc';
 
 const LIMIT = 25;
 
 export default function AdminArchive() {
-  const { token } = useStore();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
@@ -76,8 +74,8 @@ export default function AdminArchive() {
     <div className="min-w-[1280px] flex gap-4 items-start">
       <div className="flex-1 min-w-0">
         {/* Header + Filters */}
-        <div className="flex items-center gap-2 mb-4 border-b-4 border-black dark:border-white pb-4 overflow-x-auto">
-          <h2 className="text-4xl font-black uppercase tracking-tighter mr-auto">Archive</h2>
+        <div className="flex items-center gap-2 mb-4 border-b border-[var(--color-border)] pb-4 overflow-x-auto">
+          <h2 className="text-4xl font-bold uppercase tracking-tighter mr-auto">Archive</h2>
           <button
             onClick={() => {
               const params = new URLSearchParams();
@@ -85,10 +83,9 @@ export default function AdminArchive() {
               if (search.trim()) params.set('search', search.trim());
               if (dateFrom) params.set('dateFrom', dateFrom);
               if (dateTo) params.set('dateTo', dateTo);
-              params.set('token', token || '');
               window.open(`/api/v1/tickets/export?${params.toString()}`, '_blank');
             }}
-            className="px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
+            className="btn-secondary"
             title={t('export_csv')}
           >
             {t('export_csv')}
@@ -98,25 +95,25 @@ export default function AdminArchive() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search agent, ref, support…"
-            className="border-2 border-black dark:border-white px-3 py-1.5 text-sm font-bold bg-transparent outline-none w-52"
+            className="input-field w-52"
           />
           <input
             type="date"
             aria-label="Start date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
+            className="input-field"
           />
-          <span className="text-xs font-black">→</span>
+          <span className="text-xs font-bold">→</span>
           <input
             type="date"
             aria-label="End date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
+            className="input-field"
           />
           {(dateFrom || dateTo) && (
-            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-2 py-1">
+            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="mono-label border border-[var(--color-border)] px-2 py-1">
               ✕ Clear
             </button>
           )}
@@ -124,7 +121,7 @@ export default function AdminArchive() {
             <select
               value={labelFilter}
               onChange={(e) => setLabelFilter(e.target.value)}
-              className="border-2 border-black dark:border-white px-2 py-1.5 text-xs font-black bg-transparent outline-none uppercase"
+              className="input-field text-xs font-bold uppercase"
             >
               <option value="all">All labels</option>
               <option value="none">No label</option>
@@ -135,14 +132,14 @@ export default function AdminArchive() {
         </div>
 
         {/* Table */}
-        <div className="border-2 border-black dark:border-white overflow-hidden">
+        <div className="surface-card overflow-hidden">
           <div className="overflow-x-auto">
             {filteredTickets.length === 0 && !loading ? (
-              <p className="text-center text-[10px] font-black uppercase opacity-50 py-12">No results.</p>
+              <p className="text-center mono-label text-[var(--color-text-muted)] py-12">No results.</p>
             ) : (
               <table className="w-full min-w-[1120px] text-sm border-collapse">
                 <thead>
-                  <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5 text-left text-[10px] font-black uppercase tracking-widest">
+                  <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5 text-left font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
                     <th className="px-4 py-3">Dept</th>
                     <th className="px-4 py-3">Agent</th>
                     <th className="px-4 py-3">Ref</th>
@@ -153,7 +150,7 @@ export default function AdminArchive() {
                     <th className="px-4 py-3">Closed</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-black/20 dark:divide-white/20">
+                <tbody className="divide-y divide-[var(--color-border)]">
                   {filteredTickets.map((ticket) => (
                     <tr
                       key={ticket.id}
@@ -161,20 +158,20 @@ export default function AdminArchive() {
                       className={`cursor-pointer ${preview?.id === ticket.id ? 'bg-black/10 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
                     >
                       <td className="px-4 py-2.5">
-                        <span className="text-[10px] font-black uppercase border border-black dark:border-white px-1.5 py-0.5">{ticket.dept}</span>
+                        <span className="mono-label border border-[var(--color-border)] px-1.5 py-0.5">{ticket.dept}</span>
                       </td>
                       <td className="px-4 py-2.5 font-bold">{ticket.agentName}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs opacity-60">
+                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">
                         {(ticket.references || []).length > 0
                           ? (ticket.references || []).map((ref) => (
                               <span key={ref.label} className="mr-2">
-                                <span className="opacity-60 uppercase text-[9px] font-black tracking-widest">{ref.label}:</span>{' '}
+                                <span className="text-[var(--color-text-secondary)] uppercase text-[9px] font-bold tracking-wide">{ref.label}:</span>{' '}
                                 <span className="font-bold">{ref.value}</span>
                               </span>
                             ))
                           : '—'}
                       </td>
-                      <td className="px-4 py-2.5 opacity-60">
+                      <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">
                         {ticket.supportName || <span className="italic">Abandoned</span>}
                       </td>
                       <td className="px-4 py-2.5">
@@ -183,14 +180,14 @@ export default function AdminArchive() {
                             {(ticket.labels as string[]).map((id) => {
                               const info = allLabels.find((l) => l.id === id);
                               if (!info) return null;
-                              return <span key={id} className="text-[9px] font-black uppercase border border-black dark:border-white px-1 py-0.5">{info.text}</span>;
+                              return <span key={id} className="font-mono text-[9px] uppercase border border-[var(--color-border)] px-1 py-0.5">{info.text}</span>;
                             })}
                           </div>
                         ) : <span className="opacity-30">—</span>}
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-xs opacity-60">{duration(ticket)}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(ticket.createdAt)}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(ticket.closedAt || undefined)}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">{duration(ticket)}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(ticket.createdAt)}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(ticket.closedAt || undefined)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,8 +195,8 @@ export default function AdminArchive() {
             )}
           </div>
 
-          <div className="px-4 py-3 border-t border-black/20 dark:border-white/20 flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase opacity-60">{tickets.length} chats loaded</span>
+          <div className="px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between">
+            <span className="mono-label text-[var(--color-text-secondary)]">{tickets.length} chats loaded</span>
             {hasMore && (
               <button
                 onClick={() => {
@@ -207,7 +204,7 @@ export default function AdminArchive() {
                   if (data?.nextCursor) setCursor(data.nextCursor);
                 }}
                 disabled={loading}
-                className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 disabled:opacity-30"
+                className="btn-secondary disabled:opacity-30"
               >
                 {loading ? 'Loading…' : 'Load more'}
               </button>
@@ -220,15 +217,15 @@ export default function AdminArchive() {
       {preview && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} aria-label="Close" />
-          <div role="dialog" className="relative w-[550px] bg-white dark:bg-black border-l-4 border-black dark:border-white h-full flex flex-col">
+          <div role="dialog" className="relative w-[550px] bg-[var(--color-bg-surface)] border-l border-[var(--color-border)] h-full flex flex-col">
             {/* Preview Header */}
-            <div className="px-6 py-4 border-b-2 border-black dark:border-white flex items-start justify-between gap-3 shrink-0">
+            <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-start justify-between gap-3 shrink-0">
               <div>
                 <div className="flex items-center gap-2 mb-1 overflow-x-auto">
-                  <span className="text-[10px] font-black uppercase border border-black dark:border-white px-1.5 py-0.5">{preview.dept}</span>
-                  <span className="font-black uppercase tracking-tight">{preview.agentName}</span>
+                  <span className="mono-label border border-[var(--color-border)] px-1.5 py-0.5">{preview.dept}</span>
+                  <span className="font-bold uppercase tracking-tight">{preview.agentName}</span>
                 </div>
-                <p className="text-xs font-mono opacity-60">
+                <p className="text-xs font-mono text-[var(--color-text-secondary)]">
                   {preview.supportName ? `Support: ${preview.supportName}` : 'No support joined'} · {duration(preview)}
                 </p>
                 {preview.labels && (preview.labels as string[]).length > 0 && (
@@ -236,41 +233,41 @@ export default function AdminArchive() {
                     {(preview.labels as string[]).map((id) => {
                       const info = allLabels.find((l) => l.id === id);
                       if (!info) return null;
-                      return <span key={id} className="text-[9px] font-black uppercase border border-black dark:border-white px-1 py-0.5">{info.text}</span>;
+                      return <span key={id} className="font-mono text-[9px] uppercase border border-[var(--color-border)] px-1 py-0.5">{info.text}</span>;
                     })}
                   </div>
                 )}
               </div>
-              <button onClick={() => setPreview(null)} aria-label="Close" className="w-8 h-8 border-2 border-black dark:border-white flex items-center justify-center font-black shrink-0">✕</button>
+              <button onClick={() => setPreview(null)} aria-label="Close" className="w-8 h-8 border border-[var(--color-border)] flex items-center justify-center font-bold shrink-0">✕</button>
             </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {previewMessages.length === 0 ? (
-                <p className="text-center text-[10px] font-black uppercase opacity-50 mt-8">No messages.</p>
+                <p className="text-center mono-label text-[var(--color-text-muted)] mt-8">No messages.</p>
               ) : previewMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`px-3 py-2 border ${msg.whisper ? 'border-black/40 dark:border-white/40 bg-black/5 dark:bg-white/5' : 'border-transparent'}`}
+                  className={`px-3 py-2 border ${msg.whisper ? 'border-[var(--color-border)] bg-black/5 dark:bg-white/5' : 'border-transparent'}`}
                 >
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-sm font-black uppercase tracking-tight">{msg.senderName}</span>
-                    <span className="text-[10px] font-mono opacity-50">
+                    <span className="text-sm font-bold uppercase tracking-tight">{msg.senderName}</span>
+                    <span className="text-[10px] font-mono text-[var(--color-text-muted)]">
                       {new Date(msg.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    {msg.whisper && <span className="text-[9px] font-black uppercase border border-black dark:border-white px-1">whisper</span>}
+                    {msg.whisper && <span className="font-mono text-[9px] uppercase border border-[var(--color-border)] px-1">whisper</span>}
                   </div>
                   <p className="text-sm leading-relaxed break-words">{msg.text}</p>
                   {msg.mediaUrl && (
-                    <img src={msg.mediaUrl} alt="attachment" className="mt-2 max-h-60 object-contain border border-black dark:border-white" />
+                    <img src={msg.mediaUrl} alt="attachment" className="mt-2 max-h-60 object-contain border border-[var(--color-border)]" />
                   )}
                 </div>
               ))}
             </div>
 
             {/* Preview Footer */}
-            <div className="px-6 py-3 border-t-2 border-black dark:border-white shrink-0">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-50 text-center">Read-only archive — conversation closed</p>
+            <div className="px-6 py-3 border-t border-[var(--color-border)] shrink-0">
+              <p className="mono-label text-[var(--color-text-muted)] text-center">Read-only archive — conversation closed</p>
             </div>
           </div>
         </div>

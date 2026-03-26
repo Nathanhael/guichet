@@ -95,7 +95,7 @@ export default function AdminBusinessHours() {
     setIsDirty(true);
   }
 
-  if (isLoading) return <div className="p-8 text-xs font-black uppercase tracking-widest opacity-50">{t('loading')}</div>;
+  if (isLoading) return <div className="p-8 mono-label text-[var(--color-text-muted)]">{t('loading')}</div>;
 
   const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri'] as const;
   const primaryWindow = weekdays
@@ -104,10 +104,10 @@ export default function AdminBusinessHours() {
 
   return (
     <div className="min-w-[1120px] max-w-5xl space-y-6">
-      <div className="flex items-end justify-between gap-6 border-b-4 border-black dark:border-white pb-4">
+      <div className="flex items-end justify-between gap-6 border-b border-[var(--color-border)] pb-4">
         <div>
-          <h2 className="text-4xl font-black uppercase tracking-tighter">{t('bh_title')}</h2>
-          <p className="text-sm font-bold uppercase opacity-60 mt-1 tracking-widest">{t('bh_desc')}</p>
+          <h2 className="text-4xl font-bold uppercase tracking-tighter">{t('bh_title')}</h2>
+          <p className="text-sm font-bold uppercase text-[var(--color-text-secondary)] mt-1 tracking-wide">{t('bh_desc')}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -115,7 +115,7 @@ export default function AdminBusinessHours() {
               setSchedule(createDefaultBusinessHoursSchedule(schedule.timezone));
               setIsDirty(true);
             }}
-            className="px-4 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
+            className="btn-secondary"
           >
             {t('bh_reset')}
           </button>
@@ -133,7 +133,7 @@ export default function AdminBusinessHours() {
                 businessHoursTimezone: schedule.timezone,
               });
             }}
-            className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+            className="btn-primary disabled:opacity-30"
           >
             {mutation.isPending ? t('bh_saving') : t('bh_save')}
           </button>
@@ -141,15 +141,15 @@ export default function AdminBusinessHours() {
       </div>
 
       {mutation.error && (
-        <div className="border-2 border-black dark:border-white p-4 bg-black text-white dark:bg-white dark:text-black">
-          <p className="text-[10px] font-black uppercase tracking-widest">{t('bh_validation_error')}</p>
+        <div className="border border-[var(--color-border)] p-4 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]">
+          <p className="mono-label">{t('bh_validation_error')}</p>
           <p className="text-sm font-bold mt-2">{mutation.error.message}</p>
         </div>
       )}
 
       {draftIssues.length > 0 && (
-        <div className="border-2 border-black dark:border-white p-4 bg-black text-white dark:bg-white dark:text-black">
-          <p className="text-[10px] font-black uppercase tracking-widest">{t('bh_draft_issues')}</p>
+        <div className="border border-[var(--color-border)] p-4 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]">
+          <p className="mono-label">{t('bh_draft_issues')}</p>
           <div className="mt-2 space-y-1 text-sm font-bold">
             {draftIssues.map((issue) => (
               <p key={issue}>{issue}</p>
@@ -158,78 +158,78 @@ export default function AdminBusinessHours() {
         </div>
       )}
 
-      <div className="border-2 border-black dark:border-white p-6 space-y-6">
+      <div className="surface-card p-6 space-y-6">
         <div className="grid grid-cols-[220px_1fr_1fr] gap-6 items-end">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-2">{t('bh_timezone')}</label>
+            <label className="mono-label mb-2 block">{t('bh_timezone')}</label>
             <select
               value={schedule.timezone}
               onChange={(e) => {
                 setSchedule((current) => ({ ...current, timezone: e.target.value }));
                 setIsDirty(true);
               }}
-              className="w-full bg-transparent border-2 border-black dark:border-white px-4 py-2 text-sm font-bold outline-none"
+              className="input-field w-full"
             >
               {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
             </select>
           </div>
 
-          <div className="border border-black/20 dark:border-white/20 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">{t('bh_saved_status')}</p>
+          <div className="border border-[var(--color-border)] p-4">
+            <p className="mono-label text-[var(--color-text-secondary)] mb-1">{t('bh_saved_status')}</p>
             <p className="text-sm font-bold">{getBusinessHoursSummary(status, t)}</p>
             {getBusinessHoursReason(status) && (
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mt-2">
+              <p className="mono-label text-[var(--color-text-secondary)] mt-2">
                 {getBusinessHoursReason(status)}
               </p>
             )}
             {status?.nextOpenAt && (
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mt-2">
+              <p className="mono-label text-[var(--color-text-secondary)] mt-2">
                 {t('bh_next_open')} {formatBusinessHoursTimestamp(status.nextOpenAt, status.timezone)}
               </p>
             )}
             {status?.nextCloseAt && (
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mt-1">
+              <p className="mono-label text-[var(--color-text-secondary)] mt-1">
                 {t('bh_next_close')} {formatBusinessHoursTimestamp(status.nextCloseAt, status.timezone)}
               </p>
             )}
           </div>
 
-          <div className="border border-black/20 dark:border-white/20 p-4">
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">{t('bh_draft_preview')}</p>
+          <div className="border border-[var(--color-border)] p-4">
+            <p className="mono-label text-[var(--color-text-secondary)] mb-1">{t('bh_draft_preview')}</p>
             <p className="text-sm font-bold">{getBusinessHoursSummary(draftStatus, t)}</p>
             {getBusinessHoursReason(draftStatus) && (
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mt-2">
+              <p className="mono-label text-[var(--color-text-secondary)] mt-2">
                 {getBusinessHoursReason(draftStatus)}
               </p>
             )}
             {draftStatus.nextOpenAt && (
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mt-2">
+              <p className="mono-label text-[var(--color-text-secondary)] mt-2">
                 {t('bh_next_open')} {formatBusinessHoursTimestamp(draftStatus.nextOpenAt, draftStatus.timezone)}
               </p>
             )}
             {draftStatus.nextCloseAt && (
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mt-1">
+              <p className="mono-label text-[var(--color-text-secondary)] mt-1">
                 {t('bh_next_close')} {formatBusinessHoursTimestamp(draftStatus.nextCloseAt, draftStatus.timezone)}
               </p>
             )}
           </div>
         </div>
 
-        <div className="border-2 border-black dark:border-white overflow-hidden">
+        <div className="border border-[var(--color-border)] overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5">
-                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest">{t('bh_col_day')}</th>
-                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest">{t('bh_col_closed')}</th>
-                <th className="px-4 py-3 text-[10px] font-black uppercase tracking-widest">{t('bh_col_windows')}</th>
+              <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+                <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_day')}</th>
+                <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_closed')}</th>
+                <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_windows')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-black/20 dark:divide-white/20">
+            <tbody className="divide-y divide-[var(--color-border)]">
               {BUSINESS_HOURS_DAY_ORDER.map((day) => {
                 const daySchedule = schedule.weekly[day];
                 return (
                   <tr key={day}>
-                    <td className="px-4 py-4 text-sm font-black uppercase tracking-widest">{t(`day_${day}`)}</td>
+                    <td className="px-4 py-4 text-sm font-bold uppercase tracking-wide">{t(`day_${day}`)}</td>
                     <td className="px-4 py-4">
                       <button
                         onClick={() => updateSchedule((next) => {
@@ -239,10 +239,10 @@ export default function AdminBusinessHours() {
                             next.weekly[day].windows = [{ start: '07:30', end: '22:30' }];
                           }
                         })}
-                        className={`px-3 py-2 border-2 text-[10px] font-black uppercase tracking-widest ${
+                        className={`px-3 py-2 border mono-label ${
                           daySchedule.closed
-                            ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-                            : 'border-black/20 dark:border-white/20'
+                            ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
+                            : 'border-[var(--color-border)]'
                         }`}
                       >
                         {daySchedule.closed ? t('bh_closed') : t('bh_open')}
@@ -250,7 +250,7 @@ export default function AdminBusinessHours() {
                     </td>
                     <td className="px-4 py-4">
                       {daySchedule.closed ? (
-                        <span className="text-xs font-bold uppercase opacity-50 tracking-widest">{t('bh_no_intake_windows')}</span>
+                        <span className="text-xs font-bold uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_no_intake_windows')}</span>
                       ) : (
                         <div className="space-y-3">
                           {daySchedule.windows.map((window, index) => (
@@ -261,16 +261,16 @@ export default function AdminBusinessHours() {
                                 onChange={(e) => updateSchedule((next) => {
                                   next.weekly[day].windows[index].start = e.target.value;
                                 })}
-                                className="border-2 border-black dark:border-white bg-transparent px-3 py-2 text-sm font-bold outline-none"
+                                className="input-field"
                               />
-                              <span className="text-xs font-black uppercase tracking-widest opacity-60">{t('bh_to')}</span>
+                              <span className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('bh_to')}</span>
                               <input
                                 type="time"
                                 value={window.end}
                                 onChange={(e) => updateSchedule((next) => {
                                   next.weekly[day].windows[index].end = e.target.value;
                                 })}
-                                className="border-2 border-black dark:border-white bg-transparent px-3 py-2 text-sm font-bold outline-none"
+                                className="input-field"
                               />
                               <button
                                 onClick={() => updateSchedule((next) => {
@@ -279,7 +279,7 @@ export default function AdminBusinessHours() {
                                     next.weekly[day].closed = true;
                                   }
                                 })}
-                                className="px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
+                                className="btn-secondary"
                               >
                                 {t('bh_remove')}
                               </button>
@@ -289,7 +289,7 @@ export default function AdminBusinessHours() {
                             onClick={() => updateSchedule((next) => {
                               next.weekly[day].windows.push({ start: '07:30', end: '22:30' });
                             })}
-                            className="px-3 py-2 border border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
+                            className="btn-secondary"
                           >
                             {t('bh_add_window')}
                           </button>
@@ -303,11 +303,11 @@ export default function AdminBusinessHours() {
           </table>
         </div>
 
-        <div className="border-2 border-black dark:border-white overflow-hidden">
-          <div className="px-4 py-3 border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5 flex items-center justify-between">
+        <div className="border border-[var(--color-border)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest">{t('bh_exceptions')}</p>
-              <p className="text-xs font-bold opacity-60 mt-1">{t('bh_exceptions_desc')}</p>
+              <p className="mono-label">{t('bh_exceptions')}</p>
+              <p className="text-xs font-bold text-[var(--color-text-secondary)] mt-1">{t('bh_exceptions_desc')}</p>
             </div>
             <button
               onClick={() => {
@@ -325,7 +325,7 @@ export default function AdminBusinessHours() {
                 }));
                 setIsDirty(true);
               }}
-              className="px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
+              className="btn-secondary"
             >
               {t('bh_add_exception')}
             </button>
@@ -333,15 +333,15 @@ export default function AdminBusinessHours() {
 
           <div className="p-4 space-y-4">
             {schedule.exceptions.length === 0 ? (
-              <p className="text-xs font-bold uppercase tracking-widest opacity-50">{t('bh_no_exceptions')}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('bh_no_exceptions')}</p>
             ) : (
               sortBusinessHoursExceptions(schedule.exceptions).map((exception) => {
                 const index = schedule.exceptions.findIndex((item) => item.id === exception.id);
                 return (
-                <div key={exception.id} className="border border-black/20 dark:border-white/20 p-4 space-y-3">
+                <div key={exception.id} className="border border-[var(--color-border)] p-4 space-y-3">
                   <div className="grid grid-cols-[180px_140px_1fr_auto] gap-3 items-end">
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest mb-2">{t('bh_date')}</label>
+                      <label className="mono-label mb-2 block">{t('bh_date')}</label>
                       <input
                         type="date"
                         value={exception.date}
@@ -354,11 +354,11 @@ export default function AdminBusinessHours() {
                           });
                           setIsDirty(true);
                         }}
-                        className="w-full border-2 border-black dark:border-white bg-transparent px-3 py-2 text-sm font-bold outline-none"
+                        className="input-field w-full"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest mb-2">{t('bh_mode')}</label>
+                      <label className="mono-label mb-2 block">{t('bh_mode')}</label>
                       <button
                       onClick={() => {
                         setSchedule((current) => {
@@ -376,17 +376,17 @@ export default function AdminBusinessHours() {
                         });
                         setIsDirty(true);
                         }}
-                        className={`w-full px-3 py-2 border-2 text-[10px] font-black uppercase tracking-widest ${
+                        className={`w-full px-3 py-2 border mono-label ${
                           exception.closed
-                            ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-                            : 'border-black/20 dark:border-white/20'
+                            ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
+                            : 'border-[var(--color-border)]'
                         }`}
                       >
                         {exception.closed ? t('bh_closed') : t('bh_custom_hours')}
                       </button>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-black uppercase tracking-widest mb-2">{t('bh_note')}</label>
+                      <label className="mono-label mb-2 block">{t('bh_note')}</label>
                       <input
                         type="text"
                         value={exception.note ?? ''}
@@ -399,7 +399,7 @@ export default function AdminBusinessHours() {
                           });
                           setIsDirty(true);
                         }}
-                        className="w-full border-2 border-black dark:border-white bg-transparent px-3 py-2 text-sm font-bold outline-none"
+                        className="input-field w-full"
                         placeholder={t('bh_note_placeholder')}
                       />
                     </div>
@@ -411,14 +411,14 @@ export default function AdminBusinessHours() {
                         }));
                         setIsDirty(true);
                       }}
-                      className="px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
+                      className="btn-secondary"
                     >
                       {t('bh_remove')}
                     </button>
                   </div>
 
                   {exception.note?.trim() && (
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                    <p className="mono-label text-[var(--color-text-secondary)]">
                       {t('bh_current_note')} {exception.note.trim()}
                     </p>
                   )}
@@ -439,9 +439,9 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className="border-2 border-black dark:border-white bg-transparent px-3 py-2 text-sm font-bold outline-none"
+                            className="input-field"
                           />
-                          <span className="text-xs font-black uppercase tracking-widest opacity-60">{t('bh_to')}</span>
+                          <span className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('bh_to')}</span>
                           <input
                             type="time"
                             value={window.end}
@@ -454,7 +454,7 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className="border-2 border-black dark:border-white bg-transparent px-3 py-2 text-sm font-bold outline-none"
+                            className="input-field"
                           />
                           <button
                             onClick={() => {
@@ -466,7 +466,7 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className="px-3 py-2 border border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
+                            className="btn-secondary"
                           >
                             {t('bh_remove_window')}
                           </button>
@@ -485,7 +485,7 @@ export default function AdminBusinessHours() {
                           });
                           setIsDirty(true);
                         }}
-                        className="px-3 py-2 border border-black dark:border-white text-[10px] font-black uppercase tracking-widest"
+                        className="btn-secondary"
                       >
                         {t('bh_add_window')}
                       </button>
@@ -498,9 +498,9 @@ export default function AdminBusinessHours() {
         </div>
       </div>
 
-      <div className="border border-black/20 dark:border-white/20 p-4">
-        <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-1">{t('bh_how_it_works')}</p>
-        <p className="text-xs opacity-60 leading-relaxed">
+      <div className="border border-[var(--color-border)] p-4">
+        <p className="mono-label text-[var(--color-text-secondary)] mb-1">{t('bh_how_it_works')}</p>
+        <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
           {t('bh_how_it_works_desc')}
         </p>
       </div>
