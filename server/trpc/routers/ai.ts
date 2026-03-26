@@ -15,7 +15,7 @@ import {
 import type { AiAction } from '../../services/ai/types.js';
 import { db } from '../../db.js';
 import { messages as messagesTable, tickets } from '../../db/schema.js';
-import { eq, and, asc, isNull, isNotNull } from 'drizzle-orm';
+import { eq, and, asc, isNull, isNotNull, ne, sql, avg } from 'drizzle-orm';
 import { canUseSupportWorkflows } from '../../services/roles.js';
 import logger from '../../utils/logger.js';
 
@@ -316,5 +316,109 @@ export const aiRouter = router({
       }
 
       return { average, trend, count };
+    }),
+
+  /**
+   * Get average sentiment per open ticket for the current partner.
+   * Used by support queue sidebar to show sentiment dots.
+   */
+  getTicketSentiments: protectedProcedure
+    .query(async ({ ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+      if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only support staff can view sentiment data' });
+      }
+
+      const results = await db
+        .select({
+          ticketId: messagesTable.ticketId,
+          avgSentiment: avg(messagesTable.sentiment).mapWith(Number),
+        })
+        .from(messagesTable)
+        .innerJoin(tickets, eq(messagesTable.ticketId, tickets.id))
+        .where(
+          and(
+            eq(tickets.partnerId, partnerId),
+            ne(tickets.status, 'closed'),
+            isNull(messagesTable.deletedAt),
+            isNotNull(messagesTable.sentiment),
+          ),
+        )
+        .groupBy(messagesTable.ticketId);
+
+      const map: Record<string, number> = {};
+      for (const r of results) {
+        map[r.ticketId] = Math.round((r.avgSentiment ?? 0) * 100) / 100;
+      }
+      return map;
+    }),
+
+  /**
+   * Get open tickets with negative average sentiment (< -0.3).
+   * Used by admin dashboard to flag tickets needing attention.
+   */
+  getNegativeSentimentTickets: protectedProcedure
+    .input(z.object({ limit: z.number().min(1).max(50).optional().default(10) }))
+    .query(async ({ input, ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+      if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Only support/admin can view sentiment data' });
+      }
+
+      // Find open tickets with avg sentiment < -0.3
+      const results = await db
+        .select({
+          ticketId: messagesTable.ticketId,
+          avgSentiment: avg(messagesTable.sentiment).mapWith(Number),
+          messageCount: sql<number>`count(*)`.mapWith(Number),
+        })
+        .from(messagesTable)
+        .innerJoin(tickets, eq(messagesTable.ticketId, tickets.id))
+        .where(
+          and(
+            eq(tickets.partnerId, partnerId),
+            ne(tickets.status, 'closed'),
+            isNull(messagesTable.deletedAt),
+            isNotNull(messagesTable.sentiment),
+          ),
+        )
+        .groupBy(messagesTable.ticketId)
+        .having(sql`avg(${messagesTable.sentiment}) < -0.3`)
+        .orderBy(sql`avg(${messagesTable.sentiment}) asc`)
+        .limit(input.limit);
+
+      // Enrich with ticket info
+      const ticketIds = results.map(r => r.ticketId);
+      if (ticketIds.length === 0) return [];
+
+      const ticketInfo = await db
+        .select({
+          id: tickets.id,
+          agentName: tickets.agentName,
+          dept: tickets.dept,
+          status: tickets.status,
+          createdAt: tickets.createdAt,
+        })
+        .from(tickets)
+        .where(sql`${tickets.id} IN (${sql.join(ticketIds.map(id => sql`${id}`), sql`, `)})`);
+
+      const ticketMap = new Map(ticketInfo.map(t => [t.id, t]));
+
+      return results.map(r => {
+        const t = ticketMap.get(r.ticketId);
+        return {
+          ticketId: r.ticketId,
+          avgSentiment: Math.round((r.avgSentiment ?? 0) * 100) / 100,
+          messageCount: r.messageCount,
+          agentName: t?.agentName ?? 'Unknown',
+          dept: t?.dept ?? '',
+          status: t?.status ?? '',
+          createdAt: t?.createdAt ?? '',
+        };
+      });
     }),
 });

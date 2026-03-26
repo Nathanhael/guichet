@@ -10,6 +10,9 @@ import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminLabels from '../components/admin/AdminLabels';
+import AdminCannedResponses from '../components/admin/AdminCannedResponses';
+import AdminKnowledgeBase from '../components/admin/AdminKnowledgeBase';
+import AdminWebhooks from '../components/admin/AdminWebhooks';
 import AdminBusinessHours from '../components/admin/AdminBusinessHours';
 import AdminDepartments from '../components/admin/AdminDepartments';
 import AdminAlerts from '../components/admin/AdminAlerts';
@@ -18,7 +21,7 @@ import PartnerUnavailable from '../components/PartnerUnavailable';
 import { usePartner } from '../hooks/usePartner';
 import { Flame, Building2, Users } from 'lucide-react';
 
-type AdminTab = 'dashboard' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels';
+type AdminTab = 'dashboard' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned_responses' | 'knowledge_base' | 'webhooks';
 
 export default function AdminView() {
   const { user, logout, memberships, activeMembershipId } = useStore();
@@ -118,6 +121,9 @@ export default function AdminView() {
           {sidebarOpen ? <div className="text-[9px] font-black uppercase tracking-widest opacity-40 px-4 pt-6 pb-2 select-none">Configuration</div> : <div className="pt-4 border-t border-black/10 dark:border-white/10 mt-2" />}
           <NavButton id="business_hours" label="Business Hours" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
           <NavButton id="labels" label={t('labels')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>} />
+          <NavButton id="canned_responses" label={t('canned_responses')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>} />
+          <NavButton id="knowledge_base" label={t('knowledge_base')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>} />
+          <NavButton id="webhooks" label={t('webhooks')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" /></svg>} />
         </aside>
 
         {/* Content */}
@@ -131,6 +137,9 @@ export default function AdminView() {
           {view === 'archive' && <AdminArchive />}
           {view === 'feedback' && <AdminFeedback />}
           {view === 'labels' && <AdminLabels />}
+          {view === 'canned_responses' && <AdminCannedResponses />}
+          {view === 'knowledge_base' && <AdminKnowledgeBase />}
+          {view === 'webhooks' && <AdminWebhooks />}
         </main>
       </div>
     </div>

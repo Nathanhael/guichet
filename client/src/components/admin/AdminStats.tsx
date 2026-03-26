@@ -14,6 +14,8 @@ import {
 } from 'recharts';
 import { trpc } from '../../utils/trpc';
 import useStore from '../../store/useStore';
+import { exportDashboardCSV, exportDashboardPDF } from '../../utils/exportDashboard';
+import { Download, FileText, AlertTriangle } from 'lucide-react';
 
 export default function AdminStats() {
   const { memberships, activeMembershipId } = useStore();
@@ -86,6 +88,23 @@ export default function AdminStats() {
         <div>
           <h2 className="text-2xl font-black uppercase tracking-tight text-black dark:text-white">Dashboard</h2>
           <p className="text-sm opacity-60 mt-1">Real-time performance metrics and historical trends</p>
+        </div>
+
+        <div className="flex gap-1 shrink-0">
+          <button
+            onClick={() => exportDashboardCSV(stats as any)}
+            className="flex items-center gap-1.5 px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+            title="Export as CSV"
+          >
+            <Download className="h-3.5 w-3.5" /> CSV
+          </button>
+          <button
+            onClick={() => exportDashboardPDF(stats as any)}
+            className="flex items-center gap-1.5 px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+            title="Export as PDF"
+          >
+            <FileText className="h-3.5 w-3.5" /> PDF
+          </button>
         </div>
 
         <div className="flex items-center gap-2 border-2 border-black dark:border-white p-2 bg-white dark:bg-black overflow-x-auto">
@@ -240,6 +259,9 @@ export default function AdminStats() {
         </Panel>
       </div>
 
+      {/* Sentiment Analysis */}
+      <SentimentPanel stats={stats as any} />
+
       {/* Trend chart */}
       <Panel
         title={`Tickets Trend (${
@@ -299,6 +321,108 @@ export default function AdminStats() {
 
       {/* Team Satisfaction */}
       <TeamSatisfaction dateFrom={statsDateFrom} dateTo={statsDateTo} />
+    </div>
+  );
+}
+
+function SentimentDot({ score }: { score: number }) {
+  const color = score >= 0.3 ? 'bg-emerald-500' : score >= -0.3 ? 'bg-amber-400' : 'bg-rose-500';
+  return <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`} />;
+}
+
+function sentimentLabel(score: number): string {
+  if (score >= 0.3) return 'Positive';
+  if (score >= -0.3) return 'Neutral';
+  return 'Negative';
+}
+
+function SentimentPanel({ stats }: { stats: any }) {
+  const { data: negativeTix } = trpc.ai.getNegativeSentimentTickets.useQuery(
+    { limit: 10 },
+    { refetchInterval: 30000 }
+  );
+
+  const score = stats.sentimentScore ?? 0;
+  const sentimentByDept: Record<string, { avg: number | null; count: number }> = stats.sentimentByDept || {};
+  const trendData = (stats.dailyTrend || [])
+    .filter((d: any) => d.sentiment != null)
+    .map((d: any) => ({
+      date: d.date,
+      sentiment: d.sentiment,
+    }));
+
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      {/* Overall Sentiment */}
+      <Panel title="Sentiment Score">
+        <div className="flex items-center gap-4 mb-4">
+          <SentimentDot score={score} />
+          <span className="text-3xl font-black tracking-tighter">{score.toFixed(2)}</span>
+          <span className="text-xs font-bold uppercase opacity-60">{sentimentLabel(score)}</span>
+        </div>
+
+        {/* Per-department breakdown */}
+        {Object.keys(sentimentByDept).length > 0 && (
+          <div className="mt-3 pt-3 border-t-2 border-black/10 dark:border-white/10">
+            <p className="text-[10px] uppercase font-black opacity-60 mb-2 tracking-widest">By Department</p>
+            <div className="space-y-1.5">
+              {Object.entries(sentimentByDept).map(([dept, data]) => (
+                <div key={dept} className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase">{dept}</span>
+                  <div className="flex items-center gap-2">
+                    <SentimentDot score={data.avg ?? 0} />
+                    <span className="text-xs font-bold tabular-nums">{data.avg?.toFixed(2) ?? '—'}</span>
+                    <span className="text-[9px] opacity-40">({data.count})</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Panel>
+
+      {/* Sentiment Trend */}
+      <Panel title="Sentiment Trend">
+        {trendData.length < 2 ? (
+          <p className="text-sm opacity-60 py-4 text-center">Not enough data for trend</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={160}>
+            <LineChart data={trendData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#93a1a1" />
+              <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={Math.ceil(trendData.length / 6)} />
+              <YAxis tick={{ fontSize: 9 }} domain={[-1, 1]} ticks={[-1, -0.5, 0, 0.5, 1]} />
+              <Tooltip formatter={(v) => [Number(v).toFixed(2), 'Sentiment']} />
+              <Line type="monotone" dataKey="sentiment" stroke="#000000" strokeWidth={2} dot={false} name="Sentiment" />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
+      </Panel>
+
+      {/* Needs Attention */}
+      <Panel title="Needs Attention">
+        {!negativeTix || !Array.isArray(negativeTix) || negativeTix.length === 0 ? (
+          <p className="text-sm opacity-60 py-4 text-center">No negative sentiment tickets</p>
+        ) : (
+          <div className="space-y-2 max-h-[200px] overflow-y-auto">
+            {negativeTix.map((t) => (
+              <div
+                key={t.ticketId}
+                className="flex items-center gap-3 p-2 border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 rounded"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black truncate">{t.agentName}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black uppercase px-1 py-0.5 border border-current">{t.dept}</span>
+                    <span className="text-[9px] opacity-60">{t.messageCount} msgs</span>
+                  </div>
+                </div>
+                <span className="text-xs font-black text-rose-600 dark:text-rose-400 tabular-nums">{t.avgSentiment.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </Panel>
     </div>
   );
 }

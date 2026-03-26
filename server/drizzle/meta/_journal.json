@@ -141,6 +141,20 @@
       "when": 1775541600000,
       "tag": "0019_partners_auth_method",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1775628000000,
+      "tag": "0020_knowledge_base",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1775714400000,
+      "tag": "0021_webhooks",
+      "breakpoints": true
     }
   ]
 }

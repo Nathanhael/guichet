@@ -13,11 +13,14 @@ import { partnerRouter } from './routers/partner.js';
 import { alertsRouter } from './routers/alerts.js';
 import { mfaRouter } from './routers/mfa.js';
 import { cannedResponseRouter } from './routers/cannedResponse.js';
+import { kbRouter } from './routers/kb.js';
+import { webhookRouter } from './routers/webhook.js';
 import { aiRouter } from './routers/ai.js';
 
 export const appRouter = router({
   ai: aiRouter,
   cannedResponse: cannedResponseRouter,
+  kb: kbRouter,
   label: labelRouter,
   ticket: ticketRouter,
   message: messageRouter,
@@ -31,6 +34,7 @@ export const appRouter = router({
   partner: partnerRouter,
   alerts: alertsRouter,
   mfa: mfaRouter,
+  webhook: webhookRouter,
 });
 
 export type AppRouter = typeof appRouter;

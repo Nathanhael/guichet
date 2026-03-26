@@ -11,6 +11,7 @@ import SupportNav from '../components/support/SupportNav';
 import QueueSidebar from '../components/support/QueueSidebar';
 import ChatTabBar from '../components/support/ChatTabBar';
 import CustomerInfoPanel from '../components/support/CustomerInfoPanel';
+import AiCopilotSidebar from '../components/support/AiCopilotSidebar';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 import { Ticket } from '../types';
@@ -189,6 +190,12 @@ export default function SupportView() {
             {activeTab && !showPreview && !focusMode && (() => {
               const activeTicket = tickets.find((tk) => tk.id === activeTab);
               return activeTicket ? <CustomerInfoPanel ticket={activeTicket} /> : null;
+            })()}
+
+            {/* AI Copilot sidebar */}
+            {activeTab && !showPreview && !focusMode && (() => {
+              const activeTicket = tickets.find((tk) => tk.id === activeTab);
+              return activeTicket ? <AiCopilotSidebar ticket={activeTicket} /> : null;
             })()}
           </div>
         </main>

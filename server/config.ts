@@ -28,7 +28,7 @@ const configSchema = z.object({
     AZURE_OPENAI_DEPLOYMENT: z.string().optional(),
     PLATFORM_ADMIN_EMAIL: z.preprocess(v => v === '' ? undefined : v, z.string().email().optional()),
     PLATFORM_ADMIN_PASSWORD: z.preprocess(v => v === '' ? undefined : v, z.string().min(8).optional()),
-    REQUIRE_PLATFORM_STEP_UP: z.coerce.boolean().default(false),
+    REQUIRE_PLATFORM_STEP_UP: z.preprocess(v => v === 'true' || v === '1' || v === true, z.boolean()).default(false),
     PLATFORM_STEP_UP_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
     // Azure Entra ID (SSO)
     AZURE_AD_TENANT_ID: z.string().optional(),

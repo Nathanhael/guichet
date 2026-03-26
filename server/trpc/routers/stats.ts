@@ -552,7 +552,7 @@ export const statsRouter = router({
             support: h.dayCount > 0 ? Math.round((h.support / h.dayCount) * 10) / 10 : 0,
             slaHealth: h.slaResolved > 0 ? Math.round((h.slaCompliant / h.slaResolved) * 100) : 100
           })).sort((a, b) => a.hour - b.hour),
-          dailyTrend, trendGranularity, supportStats, agentStats, slaHealth, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
+          dailyTrend, trendGranularity, supportStats, agentStats, slaHealth, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, sentimentByDept: sentimentByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
           waitingOver3: waitingTickets.filter(t => t.createdAt && (now.getTime() - new Date(t.createdAt).getTime()) > 3 * 60 * 1000).length,
           deptCounts: totalDeptCounts, resolutionRate: totalCount > 0 ? Math.round((totalClosed / totalCount) * 100) : 0,
           avgConcurrency: supportIdsAgg.size > 0 ? Math.round((totalCount / supportIdsAgg.size) * 10) / 10 : 0,
