@@ -86,38 +86,38 @@ export default function AdminStats() {
     <div className="space-y-6 min-w-[1280px] max-w-7xl mx-auto pb-10">
       <div className="flex items-center justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-black uppercase tracking-tight text-black dark:text-white">Dashboard</h2>
-          <p className="text-sm opacity-60 mt-1">Real-time performance metrics and historical trends</p>
+          <h2 className="text-2xl font-bold uppercase tracking-tight">Dashboard</h2>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">Real-time performance metrics and historical trends</p>
         </div>
 
         <div className="flex gap-1 shrink-0">
           <button
             onClick={() => exportDashboardCSV(stats as any)}
-            className="flex items-center gap-1.5 px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+            className="btn-secondary"
             title="Export as CSV"
           >
             <Download className="h-3.5 w-3.5" /> CSV
           </button>
           <button
             onClick={() => exportDashboardPDF(stats as any)}
-            className="flex items-center gap-1.5 px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+            className="btn-secondary"
             title="Export as PDF"
           >
             <FileText className="h-3.5 w-3.5" /> PDF
           </button>
         </div>
 
-        <div className="flex items-center gap-2 border-2 border-black dark:border-white p-2 bg-white dark:bg-black overflow-x-auto">
+        <div className="flex items-center gap-2 border border-[var(--color-border)] p-2 bg-[var(--color-bg-surface)] overflow-x-auto">
           {/* Department filter */}
           <div className="flex gap-1">
             {(['all', ...departments.map(d => d.id)] as string[]).map((d) => (
               <button
                 key={d}
                 onClick={() => setStatsDept(d)}
-                className={`px-3 py-1.5 text-xs font-black uppercase border-2 ${
+                className={`px-3 py-1.5 text-xs font-bold uppercase border ${
                   statsDept === d
-                    ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
-                    : 'border-transparent text-black dark:text-white opacity-50 hover:opacity-100'
+                    ? 'border-[var(--color-border)] bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
                 }`}
               >
                 {d === 'all' ? 'All' : (departments.find(dep => dep.id === d)?.name || d)}
@@ -125,7 +125,7 @@ export default function AdminStats() {
             ))}
           </div>
 
-          <div className="w-px h-6 bg-black dark:bg-white opacity-20 mx-1" />
+          <div className="w-px h-6 bg-[var(--color-border)] mx-1" />
 
           {/* Date presets */}
           <div className="flex gap-1">
@@ -138,10 +138,10 @@ export default function AdminStats() {
               <button
                 key={key}
                 onClick={() => applyPreset(key)}
-                className={`px-2.5 py-1.5 text-xs font-black uppercase border-2 ${
+                className={`px-2.5 py-1.5 text-xs font-bold uppercase border ${
                   activePreset === key
-                    ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
-                    : 'border-transparent text-black dark:text-white opacity-50 hover:opacity-100'
+                    ? 'border-[var(--color-border)] bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
                 }`}
               >
                 {label}
@@ -149,7 +149,7 @@ export default function AdminStats() {
             ))}
           </div>
 
-          <div className="w-px h-6 bg-black dark:bg-white opacity-20 mx-1" />
+          <div className="w-px h-6 bg-[var(--color-border)] mx-1" />
 
           {/* Date range */}
           <div className="flex items-center gap-2">
@@ -158,20 +158,20 @@ export default function AdminStats() {
               aria-label="Start date"
               value={statsDateFrom}
               onChange={(e) => { setStatsDateFrom(e.target.value); setActivePreset(null); }}
-              className="border-2 border-black dark:border-white bg-transparent px-3 py-1.5 text-xs font-bold text-black dark:text-white outline-none"
+              className="input-field text-xs"
             />
-            <span className="text-xs opacity-50">→</span>
+            <span className="text-xs text-[var(--color-text-muted)]">→</span>
             <input
               type="date"
               aria-label="End date"
               value={statsDateTo}
               onChange={(e) => { setStatsDateTo(e.target.value); setActivePreset(null); }}
-              className="border-2 border-black dark:border-white bg-transparent px-3 py-1.5 text-xs font-bold text-black dark:text-white outline-none"
+              className="input-field text-xs"
             />
             {(statsDept !== 'all' || statsDateFrom || statsDateTo) && (
               <button
                 onClick={() => { setStatsDept('all'); setStatsDateFrom(''); setStatsDateTo(''); setActivePreset(null); }}
-                className="p-1.5 border-2 border-black dark:border-white text-black dark:text-white opacity-50 hover:opacity-100"
+                className="p-1.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:opacity-100"
                 title="Clear all filters"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -213,15 +213,15 @@ export default function AdminStats() {
         {/* Queue health */}
         <Panel title="Queue health">
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className={`border-2 p-3 ${stats.oldestWaitMinutes > 3 ? 'border-black dark:border-white' : 'border-black/20 dark:border-white/20'}`}>
-              <p className="text-xs uppercase font-bold opacity-60">Oldest waiting</p>
-              <p className={`text-2xl font-black mt-0.5 ${stats.oldestWaitMinutes > 3 ? 'text-black dark:text-white' : 'opacity-40'}`}>
+            <div className={`border p-3 ${stats.oldestWaitMinutes > 3 ? 'border-[var(--color-border)]' : 'border-[var(--color-border)]'}`}>
+              <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)]">Oldest waiting</p>
+              <p className={`text-2xl font-bold mt-0.5 ${stats.oldestWaitMinutes > 3 ? '' : 'text-[var(--color-text-muted)]'}`}>
                 {stats.oldestWaitMinutes > 0 ? `${stats.oldestWaitMinutes}m` : '—'}
               </p>
             </div>
-            <div className={`border-2 p-3 ${stats.waitingOver3 > 0 ? 'border-black dark:border-white' : 'border-black/20 dark:border-white/20'}`}>
-              <p className="text-xs uppercase font-bold opacity-60">Waiting &gt;3 min</p>
-              <p className={`text-2xl font-black mt-0.5 ${stats.waitingOver3 > 0 ? 'text-black dark:text-white' : 'opacity-40'}`}>
+            <div className={`border p-3 ${stats.waitingOver3 > 0 ? 'border-[var(--color-border)]' : 'border-[var(--color-border)]'}`}>
+              <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)]">Waiting &gt;3 min</p>
+              <p className={`text-2xl font-bold mt-0.5 ${stats.waitingOver3 > 0 ? '' : 'text-[var(--color-text-muted)]'}`}>
                 {stats.waitingOver3}
               </p>
             </div>
@@ -229,8 +229,8 @@ export default function AdminStats() {
 
           {/* Department distribution */}
           {departments.length > 0 && (
-            <div className="mt-4 pt-4 border-t-2 border-black/10 dark:border-white/10">
-              <p className="text-[10px] uppercase font-black opacity-60 mb-3 tracking-widest">Dept distribution</p>
+            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
+              <p className="mono-label text-[var(--color-text-secondary)] mb-3">Dept distribution</p>
               <div className="space-y-2">
                 {departments.map((dept) => {
                   const count = deptCounts[dept.id] || 0;
@@ -238,11 +238,11 @@ export default function AdminStats() {
                   return (
                     <div key={dept.id}>
                       <div className="flex justify-between mb-1">
-                        <span className="text-[10px] font-black uppercase">{dept.name}</span>
-                        <span className="text-[10px] font-bold opacity-60">{count} ({pct}%)</span>
+                        <span className="text-[10px] font-bold uppercase">{dept.name}</span>
+                        <span className="text-[10px] font-bold text-[var(--color-text-secondary)]">{count} ({pct}%)</span>
                       </div>
                       <div className="h-1.5 w-full bg-black/10 dark:bg-white/10">
-                        <div className="h-full bg-black dark:bg-white" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-[var(--color-text-primary)]" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
@@ -254,7 +254,7 @@ export default function AdminStats() {
 
         <Panel title="Online now">
           <div className="py-4 text-center">
-            <p className="text-sm opacity-60">Live presence monitoring active</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">Live presence monitoring active</p>
           </div>
         </Panel>
       </div>
@@ -284,7 +284,7 @@ export default function AdminStats() {
       <div className="grid grid-cols-2 gap-4">
         <Panel title="Support performance">
           {stats.supportStats.length === 0 ? (
-            <p className="text-sm opacity-60">No data yet</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.supportStats.length * 40)}>
               <BarChart data={stats.supportStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
@@ -302,7 +302,7 @@ export default function AdminStats() {
 
         <Panel title="Agent performance">
           {stats.agentStats.length === 0 ? (
-            <p className="text-sm opacity-60">No data yet</p>
+            <p className="text-sm text-[var(--color-text-secondary)]">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.agentStats.length * 40)}>
               <BarChart data={stats.agentStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
@@ -326,7 +326,7 @@ export default function AdminStats() {
 }
 
 function SentimentDot({ score }: { score: number }) {
-  const style = score >= 0.3 ? 'bg-black dark:bg-white' : score >= -0.3 ? 'bg-black/40 dark:bg-white/40' : 'border-2 border-black dark:border-white bg-transparent';
+  const style = score >= 0.3 ? 'bg-[var(--color-text-primary)]' : score >= -0.3 ? 'bg-black/40 dark:bg-white/40' : 'border border-[var(--color-border)] bg-transparent';
   return <span className={`inline-block w-2.5 h-2.5 rounded-full ${style}`} />;
 }
 
@@ -357,22 +357,22 @@ function SentimentPanel({ stats }: { stats: any }) {
       <Panel title="Sentiment Score">
         <div className="flex items-center gap-4 mb-4">
           <SentimentDot score={score} />
-          <span className="text-3xl font-black tracking-tighter">{score.toFixed(2)}</span>
-          <span className="text-xs font-bold uppercase opacity-60">{sentimentLabel(score)}</span>
+          <span className="text-3xl font-bold tracking-tighter">{score.toFixed(2)}</span>
+          <span className="text-xs font-bold uppercase text-[var(--color-text-secondary)]">{sentimentLabel(score)}</span>
         </div>
 
         {/* Per-department breakdown */}
         {Object.keys(sentimentByDept).length > 0 && (
-          <div className="mt-3 pt-3 border-t-2 border-black/10 dark:border-white/10">
-            <p className="text-[10px] uppercase font-black opacity-60 mb-2 tracking-widest">By Department</p>
+          <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
+            <p className="mono-label text-[var(--color-text-secondary)] mb-2">By Department</p>
             <div className="space-y-1.5">
               {Object.entries(sentimentByDept).map(([dept, data]) => (
                 <div key={dept} className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase">{dept}</span>
+                  <span className="text-[10px] font-bold uppercase">{dept}</span>
                   <div className="flex items-center gap-2">
                     <SentimentDot score={data.avg ?? 0} />
                     <span className="text-xs font-bold tabular-nums">{data.avg?.toFixed(2) ?? '—'}</span>
-                    <span className="text-[9px] opacity-40">({data.count})</span>
+                    <span className="text-[9px] text-[var(--color-text-muted)]">({data.count})</span>
                   </div>
                 </div>
               ))}
@@ -384,7 +384,7 @@ function SentimentPanel({ stats }: { stats: any }) {
       {/* Sentiment Trend */}
       <Panel title="Sentiment Trend">
         {trendData.length < 2 ? (
-          <p className="text-sm opacity-60 py-4 text-center">Not enough data for trend</p>
+          <p className="text-sm text-[var(--color-text-secondary)] py-4 text-center">Not enough data for trend</p>
         ) : (
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={trendData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
@@ -401,23 +401,23 @@ function SentimentPanel({ stats }: { stats: any }) {
       {/* Needs Attention */}
       <Panel title="Needs Attention">
         {!negativeTix || !Array.isArray(negativeTix) || negativeTix.length === 0 ? (
-          <p className="text-sm opacity-60 py-4 text-center">No negative sentiment tickets</p>
+          <p className="text-sm text-[var(--color-text-secondary)] py-4 text-center">No negative sentiment tickets</p>
         ) : (
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
             {negativeTix.map((t) => (
               <div
                 key={t.ticketId}
-                className="flex items-center gap-3 p-2 border border-black dark:border-white bg-black/5 dark:bg-white/5"
+                className="flex items-center gap-3 p-2 border border-[var(--color-border)] bg-black/5 dark:bg-white/5"
               >
-                <AlertTriangle className="h-3.5 w-3.5 text-black dark:text-white shrink-0" />
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black truncate">{t.agentName}</p>
+                  <p className="text-xs font-bold truncate">{t.agentName}</p>
                   <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black uppercase px-1 py-0.5 border border-current">{t.dept}</span>
-                    <span className="text-[9px] opacity-60">{t.messageCount} msgs</span>
+                    <span className="text-[9px] font-bold uppercase px-1 py-0.5 border border-[var(--color-border)]">{t.dept}</span>
+                    <span className="text-[9px] text-[var(--color-text-secondary)]">{t.messageCount} msgs</span>
                   </div>
                 </div>
-                <span className="text-xs font-black text-black dark:text-white tabular-nums">{t.avgSentiment.toFixed(2)}</span>
+                <span className="text-xs font-bold tabular-nums">{t.avgSentiment.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -435,7 +435,7 @@ function StarRating({ value }: { value: number }) {
       <svg
         key={i}
         xmlns="http://www.w3.org/2000/svg"
-        className={`h-4 w-4 inline-block ${filled ? 'text-black dark:text-white' : 'text-black/20 dark:text-white/20'}`}
+        className={`h-4 w-4 inline-block ${filled ? 'text-[var(--color-text-primary)]' : 'text-black/20 dark:text-white/20'}`}
         viewBox="0 0 24 24"
         fill="currentColor"
       >
@@ -460,31 +460,31 @@ function TeamSatisfaction({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
       {isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : !staffRatings || staffRatings.length === 0 ? (
-        <p className="text-sm opacity-60">No ratings yet</p>
+        <p className="text-sm text-[var(--color-text-secondary)]">No ratings yet</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="border-b-2 border-black dark:border-white">
-                <th className="text-[10px] font-black uppercase tracking-widest py-2 pr-4">Support Staff</th>
-                <th className="text-[10px] font-black uppercase tracking-widest py-2 pr-4">Avg Rating</th>
-                <th className="text-[10px] font-black uppercase tracking-widest py-2 pr-4">Stars</th>
-                <th className="text-[10px] font-black uppercase tracking-widest py-2 text-right">Total Ratings</th>
+              <tr className="border-b border-[var(--color-border)]">
+                <th className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide py-2 pr-4">Support Staff</th>
+                <th className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide py-2 pr-4">Avg Rating</th>
+                <th className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide py-2 pr-4">Stars</th>
+                <th className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide py-2 text-right">Total Ratings</th>
               </tr>
             </thead>
             <tbody>
               {staffRatings.map((staff) => {
                 const avg = Number(staff.avgRating) || 0;
                 const colorClass =
-                  avg >= 4 ? 'text-black dark:text-white' :
-                  avg >= 3 ? 'text-black dark:text-white opacity-60' :
-                  'text-black dark:text-white opacity-40';
+                  avg >= 4 ? '' :
+                  avg >= 3 ? 'text-[var(--color-text-secondary)]' :
+                  'text-[var(--color-text-muted)]';
                 return (
-                  <tr key={staff.supportId} className="border-b border-black/10 dark:border-white/10">
+                  <tr key={staff.supportId} className="border-b border-[var(--color-border)]">
                     <td className="py-2 pr-4 text-sm font-bold">{staff.supportName}</td>
-                    <td className={`py-2 pr-4 text-sm font-black tabular-nums ${colorClass}`}>{avg.toFixed(1)}</td>
+                    <td className={`py-2 pr-4 text-sm font-bold tabular-nums ${colorClass}`}>{avg.toFixed(1)}</td>
                     <td className="py-2 pr-4"><StarRating value={avg} /></td>
-                    <td className="py-2 text-sm font-bold opacity-60 text-right">{staff.totalRatings}</td>
+                    <td className="py-2 text-sm font-bold text-[var(--color-text-secondary)] text-right">{staff.totalRatings}</td>
                   </tr>
                 );
               })}

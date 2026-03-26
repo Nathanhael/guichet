@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import ConfirmDialog from '../ConfirmDialog';
-import useStore from '../../store/useStore';
 
 const SECURITY_ACTIONS = new Set([
   'partner.created',
@@ -46,7 +45,6 @@ function summarizeEvent(action: string, metadata: unknown, targetId: string | nu
 
 export default function PlatformSecurityOps() {
   const t = useT();
-  const { setToken } = useStore();
   const [selectedUserId, setSelectedUserId] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [verificationCode, setVerificationCode] = useState('');
@@ -69,8 +67,7 @@ export default function PlatformSecurityOps() {
   });
 
   const enableMfa = trpc.platformSecurity.enable.useMutation({
-    onSuccess: async (data) => {
-      setToken(data.token);
+    onSuccess: async () => {
       setSetupSecret(null);
       setVerificationCode('');
       await utils.platformSecurity.getStatus.invalidate();
@@ -79,8 +76,7 @@ export default function PlatformSecurityOps() {
   });
 
   const verifyStepUp = trpc.platformSecurity.verify.useMutation({
-    onSuccess: async (data) => {
-      setToken(data.token);
+    onSuccess: async () => {
       setVerificationCode('');
       await utils.platformSecurity.getStatus.invalidate();
       await utils.platform.getAuditLog.invalidate();
@@ -107,39 +103,39 @@ export default function PlatformSecurityOps() {
   return (
     <div className="max-w-6xl space-y-8">
       <div>
-        <h2 className="text-2xl font-black uppercase tracking-tighter">{t('security_tab')}</h2>
-        <p className="text-xs uppercase font-bold opacity-60 mt-1 tracking-widest">
+        <h2 className="text-2xl font-bold uppercase tracking-tight">{t('security_tab')}</h2>
+        <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)] mt-1 tracking-wide">
           Centralized controls for incident response and privileged session containment.
         </p>
       </div>
 
-      <section className="border-2 border-black dark:border-white p-6 space-y-4">
+      <section className="surface-card p-6 space-y-4">
         <div>
-          <h3 className="text-lg font-black uppercase tracking-widest">Platform Step-Up</h3>
-          <p className="text-[10px] uppercase opacity-60 mt-1">
+          <h3 className="text-lg font-bold uppercase tracking-wide">Platform Step-Up</h3>
+          <p className="text-[10px] uppercase text-[var(--color-text-secondary)] mt-1">
             Platform admin actions now require a recent TOTP verification. Complete setup once, then verify to unlock the rest of this view.
           </p>
         </div>
 
         {statusLoading ? (
-          <div className="text-[10px] font-black uppercase opacity-50">{t('loading_log')}</div>
+          <div className="font-mono text-[9px] font-bold uppercase text-[var(--color-text-muted)]">{t('loading_log')}</div>
         ) : !status?.mfaEnabled ? (
           <div className="space-y-4">
-            <div className="text-[10px] uppercase opacity-70">
+            <div className="text-[10px] uppercase text-[var(--color-text-secondary)]">
               {setupSecret
                 ? 'Add this manual key to your authenticator app, then enter a 6-digit code to enable step-up.'
                 : 'Start platform MFA setup to protect cross-tenant admin access.'}
             </div>
 
             {setupSecret && (
-              <div className="border border-black dark:border-white p-4 space-y-2">
+              <div className="border border-[var(--color-border)] p-4 space-y-2">
                 <div>
-                  <div className="text-[10px] uppercase opacity-50">Manual Entry Key</div>
+                  <div className="mono-label">Manual Entry Key</div>
                   <div className="font-mono text-sm tracking-widest break-all">{setupSecret.manualEntryKey}</div>
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase opacity-50">OTPAuth URL</div>
-                  <div className="font-mono text-[10px] break-all opacity-80">{setupSecret.otpauthUrl}</div>
+                  <div className="mono-label">OTPAuth URL</div>
+                  <div className="font-mono text-[10px] break-all text-[var(--color-text-secondary)]">{setupSecret.otpauthUrl}</div>
                 </div>
               </div>
             )}
@@ -148,25 +144,25 @@ export default function PlatformSecurityOps() {
               <button
                 onClick={() => beginSetup.mutate()}
                 disabled={stepUpFormBusy}
-                className="px-6 py-3 border-2 border-black dark:border-white bg-white dark:bg-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+                className="btn-secondary disabled:opacity-30"
               >
                 {beginSetup.isPending ? 'Starting...' : setupSecret ? 'Reset Setup Key' : 'Start Setup'}
               </button>
 
               <div className="flex-1">
-                <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Verification Code</label>
+                <label className="mono-label mb-1 block">Verification Code</label>
                 <input
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
                   placeholder="123456"
-                  className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-3 text-sm font-mono outline-none"
+                  className="input-field w-full"
                 />
               </div>
 
               <button
                 onClick={() => enableMfa.mutate({ code: verificationCode })}
                 disabled={!setupSecret || verificationCode.trim().length < 6 || stepUpFormBusy}
-                className="px-6 py-3 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+                className="btn-primary disabled:opacity-30"
               >
                 {enableMfa.isPending ? 'Enabling...' : 'Enable Step-Up'}
               </button>
@@ -182,7 +178,7 @@ export default function PlatformSecurityOps() {
           <div className="space-y-4">
             <div className="flex flex-col md:flex-row md:items-end gap-4">
               <div className="flex-1">
-                <div className="text-[10px] uppercase opacity-50">Step-Up Status</div>
+                <div className="mono-label">Step-Up Status</div>
                 <div className="text-sm font-bold uppercase">
                   {status.stepUpSatisfied
                     ? `Verified until ${status.stepUpExpiresAt ? new Date(status.stepUpExpiresAt).toLocaleTimeString() : '-'}`
@@ -191,19 +187,19 @@ export default function PlatformSecurityOps() {
               </div>
 
               <div className="flex-1">
-                <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Verification Code</label>
+                <label className="mono-label mb-1 block">Verification Code</label>
                 <input
                   value={verificationCode}
                   onChange={(e) => setVerificationCode(e.target.value)}
                   placeholder="123456"
-                  className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-3 text-sm font-mono outline-none"
+                  className="input-field w-full"
                 />
               </div>
 
               <button
                 onClick={() => verifyStepUp.mutate({ code: verificationCode })}
                 disabled={verificationCode.trim().length < 6 || stepUpFormBusy}
-                className="px-6 py-3 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+                className="btn-primary disabled:opacity-30"
               >
                 {verifyStepUp.isPending ? 'Verifying...' : status.stepUpSatisfied ? 'Refresh Step-Up' : 'Verify Step-Up'}
               </button>
@@ -216,21 +212,21 @@ export default function PlatformSecurityOps() {
         )}
       </section>
 
-      <section className={`border-2 border-black dark:border-white p-6 space-y-4 ${status?.stepUpSatisfied ? '' : 'opacity-40'}`}>
+      <section className={`surface-card p-6 space-y-4 ${status?.stepUpSatisfied ? '' : 'opacity-40'}`}>
         <div>
-          <h3 className="text-lg font-black uppercase tracking-widest">Session Containment</h3>
-          <p className="text-[10px] uppercase opacity-60 mt-1">
+          <h3 className="text-lg font-bold uppercase tracking-wide">Session Containment</h3>
+          <p className="text-[10px] uppercase text-[var(--color-text-secondary)] mt-1">
             Force sign-out all active sessions for a selected user. Use this for compromise response, break-glass cleanup, or access containment.
           </p>
         </div>
 
         <div className="flex flex-col md:flex-row gap-4 md:items-end">
           <div className="flex-1">
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1">User</label>
+            <label className="mono-label mb-1 block">User</label>
             <select
               value={selectedUserId}
               onChange={(e) => setSelectedUserId(e.target.value)}
-              className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-3 text-sm font-bold outline-none"
+              className="input-field w-full"
             >
               <option value="">Select user</option>
               {visibleUsers.map((user) => (
@@ -244,53 +240,53 @@ export default function PlatformSecurityOps() {
           <button
             onClick={() => setConfirmOpen(true)}
             disabled={!status?.stepUpSatisfied || !selectedUserId || revokeSessions.isPending}
-            className="px-6 py-3 border-2 border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+            className="btn-primary disabled:opacity-30"
           >
             {revokeSessions.isPending ? 'Revoking...' : 'Revoke Sessions'}
           </button>
         </div>
 
-        <div className="border-t border-black/10 dark:border-white/10 pt-4 text-[10px] uppercase opacity-60 space-y-1">
+        <div className="border-t border-[var(--color-border)] pt-4 text-[10px] uppercase text-[var(--color-text-secondary)] space-y-1">
           <p>Break-glass recovery should be followed by full session revocation and password rotation.</p>
           <p>See `docs/BREAK_GLASS_RUNBOOK.md` for the operating procedure.</p>
         </div>
       </section>
 
-      <section className={`border-2 border-black dark:border-white p-6 space-y-4 ${status?.stepUpSatisfied ? '' : 'opacity-40'}`}>
+      <section className={`surface-card p-6 space-y-4 ${status?.stepUpSatisfied ? '' : 'opacity-40'}`}>
         <div>
-          <h3 className="text-lg font-black uppercase tracking-widest">Recent Security Events</h3>
-          <p className="text-[10px] uppercase opacity-60 mt-1">
+          <h3 className="text-lg font-bold uppercase tracking-wide">Recent Security Events</h3>
+          <p className="text-[10px] uppercase text-[var(--color-text-secondary)] mt-1">
             Latest privileged changes across tenant access, lifecycle actions, SSO mappings, and forced sign-outs.
           </p>
         </div>
 
         {!status?.stepUpSatisfied ? (
-          <div className="py-6 text-center uppercase font-black opacity-50">Complete step-up to view privileged audit data.</div>
+          <div className="py-6 text-center uppercase font-bold text-[var(--color-text-muted)]">Complete step-up to view privileged audit data.</div>
         ) : isLoading ? (
-          <div className="py-6 text-center uppercase font-black opacity-50">{t('loading_log')}</div>
+          <div className="py-6 text-center uppercase font-bold text-[var(--color-text-muted)]">{t('loading_log')}</div>
         ) : (
-          <div className="border border-black dark:border-white overflow-x-auto">
+          <div className="border border-[var(--color-border)] overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[720px]">
               <thead>
-                <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5">
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_time')}</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_action')}</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_actor')}</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_details')}</th>
+                <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_time')}</th>
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_action')}</th>
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_actor')}</th>
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_details')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/10 dark:divide-white/10">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 {securityEvents.map((event) => (
-                  <tr key={event.id} className="hover:bg-black/5 dark:hover:bg-white/5">
+                  <tr key={event.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                     <td className="p-3 text-[10px] font-mono whitespace-nowrap">{new Date(event.createdAt).toLocaleString()}</td>
                     <td className="p-3 text-xs font-bold uppercase">{event.action}</td>
                     <td className="p-3 text-xs uppercase">{event.actorName || t('system')}</td>
-                    <td className="p-3 text-[10px] opacity-80">{summarizeEvent(event.action, event.metadata, event.targetId)}</td>
+                    <td className="p-3 text-[10px] text-[var(--color-text-secondary)]">{summarizeEvent(event.action, event.metadata, event.targetId)}</td>
                   </tr>
                 ))}
                 {securityEvents.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-[10px] font-black uppercase tracking-widest opacity-40">
+                    <td colSpan={4} className="p-8 text-center font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
                       No security events found.
                     </td>
                   </tr>

@@ -17,17 +17,17 @@ export default function AdminAlerts() {
 
   return (
     <div className="min-w-[1120px] max-w-4xl space-y-6">
-      <div className="flex items-end justify-between gap-6 border-b-4 border-black dark:border-white pb-4">
+      <div className="flex items-end justify-between gap-6 border-b border-[var(--color-border)] pb-4">
         <div>
-          <h2 className="text-4xl font-black uppercase tracking-tighter">Topic Alerts</h2>
-          <p className="text-sm font-bold uppercase opacity-60 mt-1 tracking-widest">Incident detection based on conversation clustering.</p>
+          <h2 className="text-4xl font-bold uppercase tracking-tighter">Topic Alerts</h2>
+          <p className="text-sm font-bold uppercase text-[var(--color-text-secondary)] mt-1 tracking-wide">Incident detection based on conversation clustering.</p>
         </div>
         <div className="flex gap-1 overflow-x-auto">
           {FILTERS.map(({ value, label }) => (
             <button
               key={label}
               onClick={() => setFilter(value)}
-              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white ${filter === value ? 'bg-black dark:bg-white text-white dark:text-black' : ''}`}
+              className={`px-4 py-2 mono-label border border-[var(--color-border)] ${filter === value ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]' : ''}`}
             >
               {label}
             </button>
@@ -36,32 +36,32 @@ export default function AdminAlerts() {
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center text-[10px] font-black uppercase opacity-50 tracking-widest">Loading alerts...</div>
+        <div className="py-8 text-center mono-label text-[var(--color-text-muted)]">Loading alerts...</div>
       ) : !alerts?.length ? (
-        <div className="border-2 border-black dark:border-white p-12 text-center">
-          <p className="font-black uppercase tracking-widest text-lg">No {filter ?? ''} alerts</p>
-          <p className="text-xs uppercase opacity-60 mt-2">All departments are operating normally.</p>
+        <div className="surface-card p-12 text-center">
+          <p className="font-bold uppercase tracking-wide text-lg">No {filter ?? ''} alerts</p>
+          <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-2">All departments are operating normally.</p>
         </div>
       ) : (
         <div className="space-y-3">
           {alerts.map((alert) => (
-            <div key={alert.id} className="border-2 border-black dark:border-white p-5">
+            <div key={alert.id} className="surface-card p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 overflow-x-auto">
-                    <span className="border border-black dark:border-white text-[10px] font-black uppercase tracking-widest px-2 py-0.5">
+                    <span className="border border-[var(--color-border)] mono-label px-2 py-0.5">
                       {alert.severity} severity
                     </span>
-                    <span className="border border-black dark:border-white text-[10px] font-black uppercase tracking-widest px-2 py-0.5 opacity-60">
+                    <span className="border border-[var(--color-border)] mono-label px-2 py-0.5 text-[var(--color-text-secondary)]">
                       {alert.dept}
                     </span>
-                    <span className="text-[10px] font-mono opacity-60">
+                    <span className="text-[10px] font-mono text-[var(--color-text-secondary)]">
                       {new Date(alert.createdAt).toLocaleString()}
                     </span>
                   </div>
-                  <h3 className="text-lg font-black uppercase tracking-tight mb-1">{alert.topic}</h3>
+                  <h3 className="text-lg font-bold uppercase tracking-tight mb-1">{alert.topic}</h3>
                   <p className="text-sm opacity-80 mb-3">{alert.summary}</p>
-                  <p className="text-[10px] font-black uppercase opacity-60">{alert.ticketCount} tickets</p>
+                  <p className="mono-label text-[var(--color-text-secondary)]">{alert.ticketCount} tickets</p>
                 </div>
 
                 <div className="flex flex-col gap-2 shrink-0">
@@ -69,7 +69,7 @@ export default function AdminAlerts() {
                     <button
                       onClick={() => acknowledgeMutation.mutate(alert.id)}
                       disabled={acknowledgeMutation.isPending}
-                      className="px-4 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                      className="btn-secondary disabled:opacity-30"
                     >
                       Acknowledge
                     </button>
@@ -78,14 +78,14 @@ export default function AdminAlerts() {
                     <button
                       onClick={() => resolveMutation.mutate(alert.id)}
                       disabled={resolveMutation.isPending}
-                      className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+                      className="btn-primary disabled:opacity-30"
                     >
                       Resolve
                     </button>
                   )}
                   {alert.status === 'resolved' && (
                     <div className="text-right">
-                      <p className="text-[10px] font-black uppercase opacity-60 tracking-widest">Resolved</p>
+                      <p className="mono-label text-[var(--color-text-secondary)]">Resolved</p>
                       <p className="text-xs font-mono">{alert.resolvedAt ? new Date(alert.resolvedAt).toLocaleTimeString() : '—'}</p>
                     </div>
                   )}
