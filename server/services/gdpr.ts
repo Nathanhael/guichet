@@ -4,15 +4,23 @@ import config from '../config.js';
 import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
-import { archiveAuditLog, archiveTickets } from './archive.js';
+import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
 
 export async function runDailyPurge() {
   try {
-    // Step 0: Archive before purging
+    // Step 0: Archive before purging (uses AUDIT_ARCHIVE_DELAY_DAYS, default 2 days)
     const auditArchived = await archiveAuditLog();
     const ticketsArchived = await archiveTickets();
     if (auditArchived > 0 || ticketsArchived > 0) {
       logger.info({ auditArchived, ticketsArchived }, '[purge] Pre-purge archival complete');
+    }
+
+    // Step 0.5: Verify audit chain integrity after archival
+    const chainResult = await verifyAuditChain();
+    if (!chainResult.valid) {
+      logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked }, '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken');
+    } else if (chainResult.checked > 0) {
+      logger.info({ checked: chainResult.checked }, '[purge] Audit chain integrity verified');
     }
 
     const cutoff = new Date();

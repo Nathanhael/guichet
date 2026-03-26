@@ -36,8 +36,6 @@ export default function RatingModal() {
     if (rating === 0 || !user || !ratingPrompt) return;
     getSocket().emit('rating:submit', {
       ticketId: ratingPrompt.ticketId,
-      agentId: user.id,
-      supportId: ratingPrompt.supportId,
       rating,
       comment: comment.trim() || null,
     });
