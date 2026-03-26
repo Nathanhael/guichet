@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { Plus, Trash2, RefreshCw } from 'lucide-react';
+import ErrorBox from './ErrorBox';
 
 export default function AdminLabels() {
   const t = useT();
@@ -65,11 +66,7 @@ export default function AdminLabels() {
         </button>
       </div>
 
-      {error && (
-        <div className="border-2 border-rose-500 bg-rose-500/5 px-4 py-3 mb-6 flex items-center gap-3">
-          <span className="text-xs font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">{error}</span>
-        </div>
-      )}
+      <ErrorBox error={error} />
 
       {/* Create new label */}
       <div className="border-2 border-black dark:border-white p-5 mb-6">

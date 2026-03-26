@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
-import { router, protectedProcedure, adminProcedure } from '../trpc.js';
+import { router, partnerScopedProcedure, partnerAdminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { cannedResponses } from '../../db/schema.js';
 import { eq, and, asc, isNull, or } from 'drizzle-orm';
-import { TRPCError } from '@trpc/server';
+import { notFound, conflict } from '../../utils/trpcErrors.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
 
 export const cannedResponseRouter = router({
@@ -12,10 +12,9 @@ export const cannedResponseRouter = router({
    * List canned responses for the current partner.
    * Support/admin can see all; optionally filter by department.
    */
-  list: protectedProcedure
+  list: partnerScopedProcedure
     .input(z.object({ dept: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) return [];
       if (!canUseSupportWorkflows(ctx.user.role) && !ctx.user.isPlatformOperator) return [];
 
       const conditions = [eq(cannedResponses.partnerId, ctx.user.partnerId)];
@@ -42,7 +41,7 @@ export const cannedResponseRouter = router({
   /**
    * Create a new canned response (admin only).
    */
-  create: adminProcedure
+  create: partnerAdminProcedure
     .input(z.object({
       title: z.string().min(1).max(100),
       body: z.string().min(1).max(5000),
@@ -50,10 +49,6 @@ export const cannedResponseRouter = router({
       shortcut: z.string().max(50).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
       // Validate shortcut uniqueness within partner
       if (input.shortcut) {
         const existing = await db
@@ -66,7 +61,7 @@ export const cannedResponseRouter = router({
           .limit(1);
 
         if (existing.length > 0) {
-          throw new TRPCError({ code: 'CONFLICT', message: `Shortcut "${input.shortcut}" already exists` });
+          throw conflict(`Shortcut "${input.shortcut}" already exists`);
         }
       }
 
@@ -91,7 +86,7 @@ export const cannedResponseRouter = router({
   /**
    * Update a canned response (admin only).
    */
-  update: adminProcedure
+  update: partnerAdminProcedure
     .input(z.object({
       id: z.string(),
       title: z.string().min(1).max(100).optional(),
@@ -100,10 +95,6 @@ export const cannedResponseRouter = router({
       shortcut: z.string().max(50).nullable().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
       // Verify it belongs to this partner
       const existing = await db
         .select({ id: cannedResponses.id })
@@ -111,9 +102,7 @@ export const cannedResponseRouter = router({
         .where(and(eq(cannedResponses.id, input.id), eq(cannedResponses.partnerId, ctx.user.partnerId)))
         .limit(1);
 
-      if (existing.length === 0) {
-        throw new TRPCError({ code: 'NOT_FOUND', message: 'Canned response not found' });
-      }
+      if (existing.length === 0) throw notFound('Canned response');
 
       const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (input.title !== undefined) updates.title = input.title;
@@ -128,13 +117,9 @@ export const cannedResponseRouter = router({
   /**
    * Delete a canned response (admin only).
    */
-  delete: adminProcedure
+  delete: partnerAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      if (!ctx.user.partnerId) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-      }
-
       await db
         .delete(cannedResponses)
         .where(and(eq(cannedResponses.id, input.id), eq(cannedResponses.partnerId, ctx.user.partnerId)));

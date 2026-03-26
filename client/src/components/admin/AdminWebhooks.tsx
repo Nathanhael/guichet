@@ -5,6 +5,7 @@ import {
   Plus, Trash2, RefreshCw, Pencil, X, Check, Webhook,
   Play, Eye, EyeOff, KeyRound, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import ErrorBox from './ErrorBox';
 
 const ALL_EVENTS = [
   'ticket.created',
@@ -156,11 +157,7 @@ export default function AdminWebhooks() {
         </div>
       </div>
 
-      {error && (
-        <div className="border-2 border-rose-500 bg-rose-500/5 px-4 py-3 mb-6">
-          <span className="text-xs font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">{error}</span>
-        </div>
-      )}
+      <ErrorBox error={error} />
 
       {/* Secret reveal banner */}
       {revealedSecret && (
