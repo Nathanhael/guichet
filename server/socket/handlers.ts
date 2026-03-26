@@ -9,7 +9,7 @@ import config from '../config.js';
 import { Ticket, Message, User, UserRole } from '../types/index.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
-import { mapMessageRow } from '../utils/messageMapper.js';
+import { mapMessageRow, MessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 import { invalidateSummary } from '../services/ai/summaryCache.js';
@@ -18,7 +18,7 @@ import { scoreSentiment } from '../services/ai/sentiment.js';
 import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../services/sla.js';
 
 interface TicketNewPayload {
-  agentId: string;
+  agentId?: string; // Deprecated — server uses socket.data.userId instead
   agentLang: string;
   dept: string;
   references?: Array<{ label: string; value: string }>;
@@ -306,7 +306,8 @@ export function registerSocketHandlers(io: Server) {
         });
       }
       try {
-        const { agentId, agentLang, dept, references = [], text, mediaUrl } = data;
+        const { agentLang, dept, references = [], text, mediaUrl } = data;
+        const agentId = socket.data.userId; // Server-side identity — never trust client-supplied agentId
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
         if (!partnerId) return socket.emit('error', { message: 'No partner context' });
         if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
@@ -421,7 +422,7 @@ export function registerSocketHandlers(io: Server) {
         const updated = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as { participants: string } | undefined;
         const participants = JSON.parse(updated?.participants || '[]');
         socket.join(`ticket:${ticketId}`);
-        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Record<string, unknown>[]).map(mapMessageRow);
+        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as MessageRow[]).map(mapMessageRow);
         socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
         io.to(`ticket:${ticketId}`).emit('support:joined', { ticketId, supportName, participants });
         await broadcastQueuePositions(callerPartnerId);
@@ -496,15 +497,16 @@ export function registerSocketHandlers(io: Server) {
     });
 
     // ── Rating Submit ──────────────────────────────────────────────────────────
-    socket.on('rating:submit', async ({ ticketId, agentId, rating, comment }: { ticketId: string; agentId: string; rating: number; comment: string | null }) => {
+    socket.on('rating:submit', async ({ ticketId, rating, comment }: { ticketId: string; rating: number; comment: string | null }) => {
       if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'rating:submit' });
       try {
-        if (!ticketId || !agentId || typeof rating !== 'number' || rating < 1 || rating > 5) {
+        if (!ticketId || typeof rating !== 'number' || rating < 1 || rating > 5) {
           logger.warn('[rating:submit] invalid payload');
           return;
         }
         const intRating = Math.round(rating);
+        const agentId = socket.data.userId; // Server-side identity — never trust client-supplied agentId
 
         // Tenant isolation: verify ticket belongs to caller's partner and caller is the agent
         // Read support_id from the ticket instead of trusting client-provided value
@@ -715,8 +717,8 @@ export function registerSocketHandlers(io: Server) {
 
         if (targetSupportId) {
           // Transfer to a specific support agent
-          const targetUser = await get('SELECT name FROM users WHERE id = $1', [targetSupportId]) as { name: string } | undefined;
-          if (!targetUser) return socket.emit('error', { message: 'Target user not found' });
+          const targetUser = await get('SELECT u.name FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [targetSupportId, callerPartnerId]) as { name: string } | undefined;
+          if (!targetUser) return socket.emit('error', { message: 'Target user not found or not a member of this partner' });
 
           // Update ticket assignment
           await run('UPDATE tickets SET support_id = $1, support_name = $2 WHERE id = $3', [targetSupportId, targetUser.name, ticketId]);

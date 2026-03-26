@@ -265,7 +265,27 @@ app.get('/metrics', async (req: Request, res: Response) => {
 });
 
 
-// GDPR purge — run initial after random delay (1-60 min jitter to avoid predictable timing)
+// GDPR purge — startup catch-up + scheduled runs
+// Check if a purge is overdue by looking at the most recent audit entry age
+(async () => {
+  try {
+    const { query: rawQuery } = await import('./db.js');
+    const result = await rawQuery('SELECT MAX(created_at) as oldest FROM audit_log') as { oldest: string | null }[];
+    const oldest = result?.[0]?.oldest;
+    if (oldest) {
+      const ageMs = Date.now() - new Date(oldest).getTime();
+      const archiveThresholdMs = config.AUDIT_ARCHIVE_DELAY_DAYS * 24 * 60 * 60 * 1000;
+      if (ageMs > archiveThresholdMs) {
+        logger.info({ ageHours: Math.round(ageMs / 3600000) }, '[GDPR] Overdue audit entries detected — running catch-up purge');
+        await runDailyPurge();
+      }
+    }
+  } catch (err) {
+    logger.warn({ err }, '[GDPR] Startup catch-up check failed (non-fatal)');
+  }
+})();
+
+// Regular schedule: initial after random delay (1-60 min jitter), then interval ± 1h
 const purgeJitterMs = Math.floor(Math.random() * 60 * 60 * 1000);
 setTimeout(() => {
   runDailyPurge();

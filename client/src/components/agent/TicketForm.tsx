@@ -80,7 +80,6 @@ export default function TicketForm({ manifest }: TicketFormProps) {
     setLoading(true);
     getSocket().emit('ticket:new', {
       dept,
-      agentId: user.id,
       agentLang: user.lang,
       references: references.filter((r) => r.value.trim() !== ''),
       text: text.trim(),

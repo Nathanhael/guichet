@@ -10,7 +10,7 @@
  */
 
 import crypto from 'crypto';
-import { db } from '../db.js';
+import { db, transaction } from '../db.js';
 import { auditLog, auditArchive, tickets, archivedTickets, messages } from '../db/schema.js';
 import { lte, desc, eq, and, inArray, sql } from 'drizzle-orm';
 import logger from '../utils/logger.js';
@@ -28,11 +28,14 @@ function computeChainHash(previousHash: string, rowData: Record<string, unknown>
 }
 
 /**
- * Archive audit log entries older than `retentionDays` into the WORM audit_archive table.
+ * Archive audit log entries older than `archiveDelayDays` into the WORM audit_archive table.
+ * Uses AUDIT_ARCHIVE_DELAY_DAYS (default 2) — decoupled from GDPR retention to minimize
+ * the tamper window where audit entries are mutable in the live table.
+ * The entire operation is wrapped in a transaction to prevent partial chain states on crash.
  * Returns the count of archived rows.
  */
-export async function archiveAuditLog(retentionDays?: number): Promise<number> {
-  const days = retentionDays ?? config.GDPR_RETENTION_DAYS;
+export async function archiveAuditLog(archiveDelayDays?: number): Promise<number> {
+  const days = archiveDelayDays ?? config.AUDIT_ARCHIVE_DELAY_DAYS;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffStr = cutoff.toISOString();
@@ -54,40 +57,46 @@ export async function archiveAuditLog(retentionDays?: number): Promise<number> {
       .limit(1);
     let prevHash = lastArchived[0]?.chainHash || '0'.repeat(64); // genesis hash
 
-    const archivedIds: string[] = [];
     const now = new Date().toISOString();
 
-    for (const row of rows) {
-      const rowData = {
-        id: row.id,
-        action: row.action,
-        actorId: row.actorId,
-        partnerId: row.partnerId,
-        targetType: row.targetType,
-        targetId: row.targetId,
-        metadata: row.metadata,
-        createdAt: row.createdAt,
-      };
+    // Wrap insert + delete in a single transaction to prevent partial chain states
+    const archivedCount = await transaction(async (tx) => {
+      const archivedIds: string[] = [];
 
-      const chainHash = computeChainHash(prevHash, rowData);
+      for (const row of rows) {
+        const rowData = {
+          id: row.id,
+          action: row.action,
+          actorId: row.actorId,
+          partnerId: row.partnerId,
+          targetType: row.targetType,
+          targetId: row.targetId,
+          metadata: row.metadata,
+          createdAt: row.createdAt,
+        };
 
-      await db.insert(auditArchive).values({
-        ...rowData,
-        archivedAt: now,
-        chainHash,
-      }).onConflictDoNothing(); // idempotent — skip if already archived
+        const chainHash = computeChainHash(prevHash, rowData);
 
-      prevHash = chainHash;
-      archivedIds.push(row.id);
-    }
+        await tx.insert(auditArchive).values({
+          ...rowData,
+          archivedAt: now,
+          chainHash,
+        }).onConflictDoNothing(); // idempotent — skip if already archived
 
-    // Delete archived entries from the live table
-    if (archivedIds.length > 0) {
-      await db.delete(auditLog).where(inArray(auditLog.id, archivedIds));
-    }
+        prevHash = chainHash;
+        archivedIds.push(row.id);
+      }
 
-    logger.info({ count: archivedIds.length, cutoff: cutoffStr }, '[archive] Audit log entries archived');
-    return archivedIds.length;
+      // Delete archived entries from the live table (same transaction)
+      if (archivedIds.length > 0) {
+        await tx.delete(auditLog).where(inArray(auditLog.id, archivedIds));
+      }
+
+      return archivedIds.length;
+    });
+
+    logger.info({ count: archivedCount, cutoff: cutoffStr, delayDays: days }, '[archive] Audit log entries archived');
+    return archivedCount;
   } catch (err) {
     logger.error({ err }, '[archive] Failed to archive audit log');
     return 0;
