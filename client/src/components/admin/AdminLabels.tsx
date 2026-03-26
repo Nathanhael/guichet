@@ -112,7 +112,7 @@ export default function AdminLabels() {
 
       {/* Labels list */}
       <div className="surface-card">
-        <div className="grid grid-cols-[auto_1fr_60px] border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+        <div className="grid grid-cols-[auto_1fr_60px] border-b border-[var(--color-border)] bg-bg-elevated">
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide w-16 text-center">Color</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Label</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide"></div>

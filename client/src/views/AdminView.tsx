@@ -72,7 +72,7 @@ export default function AdminView() {
             {manifest.logoUrl ? (
               <img src={manifest.logoUrl} alt={partnerName} className="h-6 object-contain" />
             ) : (
-              <span className="w-6 h-6 flex items-center justify-center bg-black/10 dark:bg-white/10 text-[10px] font-bold uppercase">{partnerName.charAt(0)}</span>
+              <span className="w-6 h-6 flex items-center justify-center bg-bg-elevated text-[10px] font-bold uppercase">{partnerName.charAt(0)}</span>
             )}
             <span className="mono-label text-[var(--color-text-muted)]">{partnerName}</span>
           </div>
@@ -86,7 +86,7 @@ export default function AdminView() {
 
           <PartnerSwitcher />
 
-          <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 p-1 border border-[var(--color-border)]">
+          <div className="flex items-center gap-2 bg-bg-elevated p-1 border border-[var(--color-border)]">
             <LanguageSwitcher />
             <NeuroToggle />
             <DarkModeToggle />

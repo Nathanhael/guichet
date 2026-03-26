@@ -190,7 +190,7 @@ export default function PlatformAuditLog() {
         </button>
       </div>
 
-      <div className="flex flex-col gap-3 bg-black/5 dark:bg-white/5 p-4 border border-[var(--color-border)]">
+      <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { setSecurityOnly(true); resetCursor(); }}
@@ -311,7 +311,7 @@ export default function PlatformAuditLog() {
         <div className="surface-card overflow-x-auto flex-1 mb-[72px]">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
-              <tr className="bg-black/5 dark:bg-white/5 border-b border-[var(--color-border)]">
+              <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
                 <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_time')}</th>
                 <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_action')}</th>
                 <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_actor')}</th>

@@ -218,7 +218,7 @@ export default function AdminBusinessHours() {
         <div className="border border-[var(--color-border)] overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+              <tr className="border-b border-[var(--color-border)] bg-bg-elevated">
                 <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_day')}</th>
                 <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_closed')}</th>
                 <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_windows')}</th>
@@ -304,7 +304,7 @@ export default function AdminBusinessHours() {
         </div>
 
         <div className="border border-[var(--color-border)] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-[var(--color-border)] bg-bg-elevated flex items-center justify-between">
             <div>
               <p className="mono-label">{t('bh_exceptions')}</p>
               <p className="text-xs font-bold text-[var(--color-text-secondary)] mt-1">{t('bh_exceptions_desc')}</p>

@@ -55,7 +55,7 @@ export default function AdminTeam() {
           <div className="border border-[var(--color-border)] mb-4 overflow-x-auto">
             <table className="w-full min-w-[1200px] text-left border-collapse">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+                <tr className="border-b border-[var(--color-border)] bg-bg-elevated">
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Name</th>
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Email</th>
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Role</th>

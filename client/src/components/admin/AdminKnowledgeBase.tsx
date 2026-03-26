@@ -238,7 +238,7 @@ export default function AdminKnowledgeBase() {
 
       {/* Articles list */}
       <div className="surface-card">
-        <div className="grid grid-cols-[1fr_80px_100px_100px_80px] border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+        <div className="grid grid-cols-[1fr_80px_100px_100px_80px] border-b border-[var(--color-border)] bg-bg-elevated">
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Title</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Dept</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Tags</div>
@@ -318,7 +318,7 @@ export default function AdminKnowledgeBase() {
                     </div>
                     <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)] flex items-center gap-1 flex-wrap">
                       {((a.tags as string[]) || []).slice(0, 3).map((t) => (
-                        <span key={t} className="px-1.5 py-0.5 bg-black/5 dark:bg-white/5 text-[9px] font-bold">{t}</span>
+                        <span key={t} className="px-1.5 py-0.5 bg-bg-elevated text-[9px] font-bold">{t}</span>
                       ))}
                     </div>
                     <div className="px-4 py-3 flex items-center">

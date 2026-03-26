@@ -85,7 +85,7 @@ export default function BusinessHoursGuard({ children, mode = 'block' }: Busines
   if (businessHoursStatus && !businessHoursStatus.isOpen && mode === 'notice') {
     return (
       <div className="h-screen flex flex-col overflow-hidden">
-        <div className="shrink-0 px-4 py-2 border-b border-black/10 dark:border-white/10 bg-black text-white dark:bg-white dark:text-black text-xs font-bold">
+        <div className="shrink-0 px-4 py-2 border-b border-border bg-black text-white dark:bg-white dark:text-black text-xs font-bold">
           <span>Support is currently closed.</span>
           {businessHoursStatus.nextOpenAt && (
             <span className="ml-2 opacity-80">

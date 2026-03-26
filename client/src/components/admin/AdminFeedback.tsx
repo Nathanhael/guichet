@@ -98,7 +98,7 @@ export default function AdminFeedback() {
             className={`px-3 py-1.5 text-xs font-medium ${
               tab === 'feedback'
                 ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-                : 'bg-black/5 dark:bg-white/5 text-[var(--color-text-secondary)] hover:opacity-100'
+                : 'bg-bg-elevated text-[var(--color-text-secondary)] hover:opacity-100'
             }`}
           >
             Feedback ({feedback.length})
@@ -108,7 +108,7 @@ export default function AdminFeedback() {
             className={`px-3 py-1.5 text-xs font-medium ${
               tab === 'ratings'
                 ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-                : 'bg-black/5 dark:bg-white/5 text-[var(--color-text-secondary)] hover:opacity-100'
+                : 'bg-bg-elevated text-[var(--color-text-secondary)] hover:opacity-100'
             }`}
           >
             Ratings ({ratings.length})
@@ -152,7 +152,7 @@ export default function AdminFeedback() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-bold">{f.userName}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-wide bg-black/5 dark:bg-white/5 text-[var(--color-text-secondary)] px-2 py-0.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wide bg-bg-elevated text-[var(--color-text-secondary)] px-2 py-0.5">
                             {f.role}
                           </span>
                         </div>
@@ -187,11 +187,11 @@ export default function AdminFeedback() {
             <div className="mt-8 border-t border-[var(--color-border)] pt-6">
               <button
                 onClick={() => setShowDismissed(!showDismissed)}
-                className="w-full flex items-center justify-between text-left p-4 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-[var(--color-border)]"
+                className="w-full flex items-center justify-between text-left p-4 bg-bg-elevated hover:bg-bg-elevated border border-[var(--color-border)]"
               >
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold">Dismissed Feedback</span>
-                  <span className="bg-black/10 dark:bg-white/10 text-[var(--color-text-secondary)] text-xs font-semibold px-2.5 py-1">
+                  <span className="bg-bg-elevated text-[var(--color-text-secondary)] text-xs font-semibold px-2.5 py-1">
                     {dismissedFeedback.length}
                   </span>
                 </div>
@@ -213,13 +213,13 @@ export default function AdminFeedback() {
                   {dismissedFeedback.map((f) => (
                     <div
                       key={f.id}
-                      className="bg-black/5 dark:bg-white/5 border border-[var(--color-border)] p-4 opacity-75"
+                      className="bg-bg-elevated border border-[var(--color-border)] p-4 opacity-75"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-semibold text-[var(--color-text-secondary)]">{f.userName}</span>
                           <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)]">{f.role}</span>
-                          <span className="text-xs bg-black/5 dark:bg-white/5 px-2 py-0.5 flex items-center gap-1 font-medium border border-[var(--color-border)]">
+                          <span className="text-xs bg-bg-elevated px-2 py-0.5 flex items-center gap-1 font-medium border border-[var(--color-border)]">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                               <path
                                 fillRule="evenodd"
@@ -301,7 +301,7 @@ export default function AdminFeedback() {
                         >
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                         </svg>
-                        <div className="flex-1 h-2 bg-black/10 dark:bg-white/10 overflow-hidden">
+                        <div className="flex-1 h-2 bg-bg-elevated overflow-hidden">
                           <div className="h-full bg-[var(--color-text-primary)]" style={{ width: `${pct}%` }} />
                         </div>
                         <span className="text-xs text-[var(--color-text-secondary)] w-8">{count}</span>
@@ -339,7 +339,7 @@ export default function AdminFeedback() {
                       <div className="overflow-x-auto">
                         <table className="w-full min-w-[960px] text-left text-sm border-collapse">
                           <thead>
-                            <tr className="bg-black/5 dark:bg-white/5 border-b border-[var(--color-border)]">
+                            <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
                               <th className="px-6 py-4 font-mono text-[9px] uppercase text-[var(--color-text-muted)]">Support Name</th>
                               <th className="px-6 py-4 font-mono text-[9px] uppercase text-[var(--color-text-muted)] text-center">Avg Rating</th>
                               <th className="px-6 py-4 font-mono text-[9px] uppercase text-[var(--color-text-muted)] text-center">Trend</th>
@@ -353,7 +353,7 @@ export default function AdminFeedback() {
                               .map(([name, e]) => {
                                 const avg = (e.sum / e.total).toFixed(1);
                                 return (
-                                  <tr key={name} className="hover:bg-black/5 dark:hover:bg-white/5">
+                                  <tr key={name} className="hover:bg-bg-elevated">
                                     <td className="px-6 py-4">
                                       <span className="font-bold">{name}</span>
                                     </td>
@@ -372,7 +372,7 @@ export default function AdminFeedback() {
                                       </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                      <span className="bg-black/5 dark:bg-white/5 text-[var(--color-text-secondary)] px-2 py-1 text-xs font-bold">
+                                      <span className="bg-bg-elevated text-[var(--color-text-secondary)] px-2 py-1 text-xs font-bold">
                                         {e.total}
                                       </span>
                                     </td>
@@ -411,7 +411,7 @@ export default function AdminFeedback() {
                                   </div>
                                 </div>
                                 <div className="h-10 w-px bg-[var(--color-border)] mx-1" />
-                                <div className="bg-black/5 dark:bg-white/5 px-4 py-2 text-center">
+                                <div className="bg-bg-elevated px-4 py-2 text-center">
                                   <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">Total Ratings</p>
                                   <p className="text-lg font-bold">{e.total}</p>
                                 </div>
@@ -419,28 +419,28 @@ export default function AdminFeedback() {
                             </div>
                             <div className="grid grid-cols-2 gap-6 mt-6">
                               {/* DSC Breakdown */}
-                              <div className="bg-black/5 dark:bg-white/5 p-5 border border-[var(--color-border)] relative overflow-hidden">
+                              <div className="bg-bg-elevated p-5 border border-[var(--color-border)] relative overflow-hidden">
                                 <div className="flex justify-between items-center mb-4">
                                   <div>
                                     <span className="text-sm font-bold uppercase tracking-wide">DSC</span>
                                     <p className="text-xs text-[var(--color-text-secondary)]">Customer Support</p>
                                   </div>
-                                  <span className="text-xs font-bold bg-black/10 dark:bg-white/10 px-3 py-1">
+                                  <span className="text-xs font-bold bg-bg-elevated px-3 py-1">
                                     {e.depts.DSC.total} ratings
                                   </span>
                                 </div>
                                 {e.depts.DSC.total > 0 ? (
                                   <div className="space-y-3">
-                                    <div className="flex justify-between items-center bg-black/5 dark:bg-white/5 p-2">
+                                    <div className="flex justify-between items-center bg-bg-elevated p-2">
                                       <span className="text-xs font-medium text-[var(--color-text-secondary)]">Average Score</span>
                                       <span className="text-lg font-bold">{(e.depts.DSC.sum / e.depts.DSC.total).toFixed(1)}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                      <div className="bg-black/5 dark:bg-white/5 p-2 text-center border border-[var(--color-border)]">
+                                      <div className="bg-bg-elevated p-2 text-center border border-[var(--color-border)]">
                                         <span className="block text-[10px] font-bold uppercase">5 Stars</span>
                                         <span className="text-lg font-bold">{e.depts.DSC.count5}</span>
                                       </div>
-                                      <div className="bg-black/5 dark:bg-white/5 p-2 text-center border border-[var(--color-border)]">
+                                      <div className="bg-bg-elevated p-2 text-center border border-[var(--color-border)]">
                                         <span className="block text-[10px] text-[var(--color-text-secondary)] font-bold uppercase">1-2 Stars</span>
                                         <span className="text-lg font-bold text-[var(--color-text-secondary)]">{e.depts.DSC.countLow}</span>
                                       </div>
@@ -454,28 +454,28 @@ export default function AdminFeedback() {
                               </div>
 
                               {/* FOT Breakdown */}
-                              <div className="bg-black/5 dark:bg-white/5 p-5 border border-[var(--color-border)]">
+                              <div className="bg-bg-elevated p-5 border border-[var(--color-border)]">
                                 <div className="flex justify-between items-center mb-4">
                                   <div>
                                     <span className="text-sm font-bold uppercase tracking-wide">FOT</span>
                                     <p className="text-xs text-[var(--color-text-secondary)]">Front Office Team</p>
                                   </div>
-                                  <span className="text-xs font-bold bg-black/10 dark:bg-white/10 px-3 py-1">
+                                  <span className="text-xs font-bold bg-bg-elevated px-3 py-1">
                                     {e.depts.FOT.total} ratings
                                   </span>
                                 </div>
                                 {e.depts.FOT.total > 0 ? (
                                   <div className="space-y-3">
-                                    <div className="flex justify-between items-center bg-black/5 dark:bg-white/5 p-2">
+                                    <div className="flex justify-between items-center bg-bg-elevated p-2">
                                       <span className="text-xs font-medium text-[var(--color-text-secondary)]">Average Score</span>
                                       <span className="text-lg font-bold">{(e.depts.FOT.sum / e.depts.FOT.total).toFixed(1)}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                      <div className="bg-black/5 dark:bg-white/5 p-2 text-center border border-[var(--color-border)]">
+                                      <div className="bg-bg-elevated p-2 text-center border border-[var(--color-border)]">
                                         <span className="block text-[10px] font-bold uppercase">5 Stars</span>
                                         <span className="text-lg font-bold">{e.depts.FOT.count5}</span>
                                       </div>
-                                      <div className="bg-black/5 dark:bg-white/5 p-2 text-center border border-[var(--color-border)]">
+                                      <div className="bg-bg-elevated p-2 text-center border border-[var(--color-border)]">
                                         <span className="block text-[10px] text-[var(--color-text-secondary)] font-bold uppercase">1-2 Stars</span>
                                         <span className="text-lg font-bold text-[var(--color-text-secondary)]">{e.depts.FOT.countLow}</span>
                                       </div>

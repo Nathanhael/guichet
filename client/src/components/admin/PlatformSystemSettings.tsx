@@ -46,8 +46,8 @@ export default function PlatformSystemSettings() {
 
   if (isLoading) {
     return <div className="space-y-4">
-      <div className="h-12 bg-black/5 dark:bg-white/5 w-full" />
-      <div className="h-64 bg-black/5 dark:bg-white/5 w-full" />
+      <div className="h-12 bg-bg-elevated w-full" />
+      <div className="h-64 bg-bg-elevated w-full" />
     </div>;
   }
 
@@ -193,7 +193,7 @@ export default function PlatformSystemSettings() {
         </div>
 
         <div className="space-y-6">
-          <div className="surface-card p-6 bg-black/5 dark:bg-white/5">
+          <div className="surface-card p-6 bg-bg-elevated">
             <h3 className="text-xs font-bold uppercase tracking-wide mb-4 border-b border-[var(--color-border)] pb-2">{t('config_info_title')}</h3>
             <div className="space-y-4 text-[10px] font-bold uppercase tracking-tight leading-relaxed">
               <p>{t('config_info_text')}</p>
@@ -201,7 +201,7 @@ export default function PlatformSystemSettings() {
             </div>
           </div>
 
-          <div className="surface-card p-6 bg-black/5 dark:bg-white/5">
+          <div className="surface-card p-6 bg-bg-elevated">
             <h3 className="text-xs font-bold uppercase tracking-wide mb-4 border-b border-[var(--color-border)] pb-2">{t('providers_list_title')}</h3>
             <ul className="space-y-3 text-[9px] font-bold uppercase tracking-wide">
               <li className="flex items-center gap-2"><div className="w-1.5 h-1.5 bg-[var(--color-text-primary)]" /> {t('provider_resend_rec')}</li>

@@ -167,7 +167,7 @@ export default function AdminWebhooks() {
               <p className="font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] mb-1">
                 Signing Secret — copy now, it won't be shown again
               </p>
-              <code className="text-xs font-mono bg-black/5 dark:bg-white/5 px-2 py-1 select-all break-all">{revealedSecret}</code>
+              <code className="text-xs font-mono bg-bg-elevated px-2 py-1 select-all break-all">{revealedSecret}</code>
             </div>
             <button onClick={() => setRevealedSecret(null)} className="p-1 shrink-0 hover:bg-[var(--color-accent-blue)] hover:text-white">
               <X className="h-4 w-4" />
@@ -320,7 +320,7 @@ export default function AdminWebhooks() {
                   <div className="px-4 py-2 flex items-center justify-between">
                     <div className="flex flex-wrap gap-1">
                       {((h.events as string[]) || []).map((e) => (
-                        <span key={e} className="px-1.5 py-0.5 bg-black/5 dark:bg-white/5 text-[8px] font-bold uppercase tracking-wide">
+                        <span key={e} className="px-1.5 py-0.5 bg-bg-elevated text-[8px] font-bold uppercase tracking-wide">
                           {e === '*' ? 'ALL EVENTS' : e}
                         </span>
                       ))}

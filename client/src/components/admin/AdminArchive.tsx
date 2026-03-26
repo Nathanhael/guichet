@@ -139,7 +139,7 @@ export default function AdminArchive() {
             ) : (
               <table className="w-full min-w-[1120px] text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5 text-left font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
+                  <tr className="border-b border-[var(--color-border)] bg-bg-elevated text-left font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
                     <th className="px-4 py-3">Dept</th>
                     <th className="px-4 py-3">Agent</th>
                     <th className="px-4 py-3">Ref</th>
@@ -155,7 +155,7 @@ export default function AdminArchive() {
                     <tr
                       key={ticket.id}
                       onClick={() => setPreview(preview?.id === ticket.id ? null : ticket)}
-                      className={`cursor-pointer ${preview?.id === ticket.id ? 'bg-black/10 dark:bg-white/10' : 'hover:bg-black/5 dark:hover:bg-white/5'}`}
+                      className={`cursor-pointer ${preview?.id === ticket.id ? 'bg-bg-elevated' : 'hover:bg-bg-elevated'}`}
                     >
                       <td className="px-4 py-2.5">
                         <span className="mono-label border border-[var(--color-border)] px-1.5 py-0.5">{ticket.dept}</span>
@@ -248,7 +248,7 @@ export default function AdminArchive() {
               ) : previewMessages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`px-3 py-2 border ${msg.whisper ? 'border-[var(--color-border)] bg-black/5 dark:bg-white/5' : 'border-transparent'}`}
+                  className={`px-3 py-2 border ${msg.whisper ? 'border-[var(--color-border)] bg-bg-elevated' : 'border-transparent'}`}
                 >
                   <div className="flex items-baseline gap-2 mb-1">
                     <span className="text-sm font-bold uppercase tracking-tight">{msg.senderName}</span>
