@@ -7,7 +7,7 @@ export function Stars({ value }: { value: number }) {
         <svg
           key={n}
           xmlns="http://www.w3.org/2000/svg"
-          className={`h-3.5 w-3.5 transition-colors duration-500 ${n <= value ? 'text-amber-400 drop-shadow-[0_0_3px_rgba(251,191,36,0.4)]' : 'text-ui-base2 dark:text-gray-600'}`}
+          className={`h-3.5 w-3.5 ${n <= value ? 'text-black dark:text-white' : 'text-black/20 dark:text-white/20'}`}
           viewBox="0 0 24 24"
           fill="currentColor"
         >
@@ -20,11 +20,11 @@ export function Stars({ value }: { value: number }) {
 
 export function Panel({ title, badge, className = '', children }: { title: string; badge?: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className={`glass-card p-6 shadow-soft hover:shadow-2xl hover:translate-y-[-2px] ${className}`}>
+    <div className={`border-2 border-black dark:border-white p-6 ${className}`}>
       <div className="flex items-center justify-between mb-5">
-        <p className="text-xs font-bold text-ui-base1 dark:text-gray-400 tracking-widest uppercase">{title}</p>
+        <p className="text-xs font-bold text-black dark:text-white opacity-60 tracking-widest uppercase">{title}</p>
         {badge && (
-          <span className="px-2.5 py-1 rounded-lg bg-brand-500/10 text-brand-500 text-[10px] font-black uppercase tracking-tighter border border-brand-500/20 shadow-sm">
+          <span className="px-2.5 py-1 bg-black/5 dark:bg-white/5 text-black dark:text-white text-[10px] font-black uppercase tracking-tighter border border-black dark:border-white">
             {badge}
           </span>
         )}
@@ -42,17 +42,7 @@ interface StatCardProps {
   invertTrend?: boolean;
 }
 
-export function StatCard({ label, value, color, prev, invertTrend }: StatCardProps) {
-  const colors = {
-    red: 'bg-gradient-to-br from-rose-50/50 to-rose-100/30 text-rose-600 border-rose-200/40 dark:from-rose-900/20 dark:to-transparent dark:text-rose-400 dark:border-rose-900/30',
-    yellow: 'bg-gradient-to-br from-amber-50/50 to-amber-100/30 text-amber-700 border-amber-200/40 dark:from-amber-900/20 dark:to-transparent dark:text-amber-400 dark:border-amber-900/30',
-    green: 'bg-gradient-to-br from-emerald-50/50 to-emerald-100/30 text-emerald-700 border-emerald-200/40 dark:from-emerald-900/20 dark:to-transparent dark:text-emerald-400 dark:border-emerald-900/30',
-    purple: 'bg-gradient-to-br from-purple-50/50 to-purple-100/30 text-purple-700 border-purple-200/40 dark:from-purple-900/20 dark:to-transparent dark:text-purple-400 dark:border-purple-900/30',
-    teal: 'bg-gradient-to-br from-teal-50/50 to-teal-100/30 text-teal-700 border-teal-200/40 dark:from-teal-900/20 dark:to-transparent dark:text-teal-400 dark:border-teal-900/30',
-    gray: 'bg-gradient-to-br from-ui-base3/50 to-ui-base2/30 text-ui-base1 border-ui-base2/40 dark:from-slate-800/30 dark:to-transparent dark:text-slate-300 dark:border-slate-700/30',
-    dark: 'bg-gradient-to-br from-ui-base03 to-ui-base02 text-white border-ui-base03/50 shadow-lg',
-  };
-
+export function StatCard({ label, value, prev, invertTrend }: StatCardProps) {
   let trendEl = null;
   if (prev !== undefined && prev !== null) {
     const current = typeof value === 'number' ? value : parseFloat(String(value).replace(/[^0-9.-]/g, ''));
@@ -64,7 +54,7 @@ export function StatCard({ label, value, color, prev, invertTrend }: StatCardPro
         const isUp = delta > 0;
         const isGood = invertTrend ? !isUp : isUp;
         trendEl = (
-          <span className={`inline-flex items-center gap-1 text-[10px] font-black mt-2 px-2 py-0.5 rounded-full border ${isGood ? 'text-emerald-600 bg-emerald-500/10 border-emerald-500/20' : 'text-rose-600 bg-rose-500/10 border-rose-500/20'}`}>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-black mt-2 px-2 py-0.5 border ${isGood ? 'text-black dark:text-white border-black dark:border-white' : 'text-black dark:text-white opacity-60 border-black/40 dark:border-white/40'}`}>
             {isUp ? '↑' : '↓'} {Math.abs(pct)}%
           </span>
         );
@@ -73,7 +63,7 @@ export function StatCard({ label, value, color, prev, invertTrend }: StatCardPro
   }
 
   return (
-    <div className={`rounded-2xl border p-5 shadow-sm hover:-translate-y-1.5 hover:shadow-xl transition-all duration-500 backdrop-blur-sm ${colors[color] || colors.gray}`}>
+    <div className="border-2 border-black dark:border-white p-5 bg-black/5 dark:bg-white/5">
       <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 leading-none">{label}</p>
       <p className="text-3xl font-black mt-2 tracking-tighter leading-none">{value}</p>
       {trendEl}
@@ -82,5 +72,5 @@ export function StatCard({ label, value, color, prev, invertTrend }: StatCardPro
 }
 
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`glass-skeleton ${className}`} />;
+  return <div className={`bg-black/10 dark:bg-white/10 ${className}`} />;
 }

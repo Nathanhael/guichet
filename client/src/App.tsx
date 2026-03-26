@@ -37,7 +37,7 @@ function NoPartnerState() {
           <DarkModeToggle />
           <button
             onClick={logout}
-            className="px-6 py-3 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-all"
+            className="px-6 py-3 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black"
           >
             Sign Out
           </button>
@@ -130,7 +130,7 @@ export default function App() {
           <button
             onClick={() => setSecurityOpen(true)}
             title="Account Security"
-            className="fixed bottom-6 right-6 z-50 w-10 h-10 border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+            className="fixed bottom-6 right-6 z-50 w-10 h-10 border-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-center hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
           >
             <Shield className="h-4 w-4" />
           </button>

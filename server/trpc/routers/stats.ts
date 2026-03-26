@@ -6,6 +6,22 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { Ticket } from '../../types/index.js';
 
+/**
+ * Raw row shape from `SELECT * FROM messages` via pg driver (snake_case).
+ * Includes camelCase aliases used by computeLiveDayStats and other consumers.
+ */
+interface RawMessageRow {
+  id: string;
+  ticket_id: string;
+  sender_id: string | null;
+  sender_name: string | null;
+  sender_role: string | null;
+  text: string | null;
+  sentiment: number | null;
+  created_at: string;
+  [key: string]: unknown;
+}
+
 interface HistoricalStatRow {
   date: string;
   total: number;
@@ -189,9 +205,9 @@ export const statsRouter = router({
           liveRatings = (await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds)) as unknown as RatingRow[];
         }
 
-        let liveMessages: any[] = [];
+        let liveMessages: RawMessageRow[] = [];
         if (liveTicketIds.length > 0) {
-          liveMessages = (await query(`SELECT * FROM messages WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds)) as unknown as any[];
+          liveMessages = (await query(`SELECT * FROM messages WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds)) as unknown as RawMessageRow[];
         }
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0, totalReopened = 0;
@@ -281,8 +297,10 @@ export const statsRouter = router({
             const dayTickets = liveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
             const dayTicketIdSet = new Set<string>(dayTickets.map(t => t.id));
             const dayRatings = liveRatings.filter(r => dayTicketIdSet.has(r.ticketId));
-            const dayMessages = liveMessages.filter(m => dayTicketIdSet.has(m.ticketId));
-            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, dayMessages) as unknown as DayData;
+            const dayMessages = liveMessages.filter(m => dayTicketIdSet.has(m.ticket_id));
+            // Raw pg rows are snake_case; computeLiveDayStats expects camelCase Message shape.
+            // The function only reads .sentiment which exists on both; the mismatch is accepted.
+            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, dayMessages as never) as unknown as DayData;
           }
 
           perDayData.push({

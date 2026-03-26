@@ -5,7 +5,7 @@ import { db } from '../../db.js';
 import { labels, ticketLabels } from '../../db/schema.js';
 import { eq, and, asc } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import { notFound, conflict, wrapError } from '../../utils/trpcErrors.js';
+import { conflict, wrapError } from '../../utils/trpcErrors.js';
 import type { Server } from 'socket.io';
 
 interface RequestWithSocketIO {

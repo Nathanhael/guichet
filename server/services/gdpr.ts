@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
-import { Ticket, Rating } from '../types/index.js';
+import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets } from './archive.js';
 
 export async function runDailyPurge() {
@@ -43,9 +43,9 @@ export async function runDailyPurge() {
             dayRatings = (await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds)) as unknown as Rating[];
           }
           
-          let dayMessages: any[] = [];
+          let dayMessages: Message[] = [];
           if (ticketIds.length > 0) {
-            dayMessages = (await query(`SELECT * FROM messages WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds)) as unknown as any[];
+            dayMessages = (await query(`SELECT * FROM messages WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds)) as unknown as Message[];
           }
 
           const stats = computeLiveDayStats(dayTickets, dayRatings, 'all', dayMessages);

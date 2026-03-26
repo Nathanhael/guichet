@@ -9,6 +9,10 @@ import { canAccessPartnerContext, canExportTickets } from '../services/roles.js'
 
 const router = express.Router();
 
+function escapeLikePattern(s: string): string {
+  return s.replace(/[%_\\]/g, '\\$&');
+}
+
 /**
  * LEGACY EXPORT ROUTE
  * Kept because tRPC is not ideal for direct binary/CSV downloads in browser windows.
@@ -29,6 +33,9 @@ router.get('/export', [
     }
 
     const partnerId = req.query.partnerId as string | undefined;
+    if (!partnerId) {
+      return res.status(400).json({ error: 'partnerId is required' });
+    }
     if (!canAccessPartnerContext(req.user.isPlatformOperator, partnerId)) {
       return res.status(400).json({ error: 'No partner context provided' });
     }
@@ -39,11 +46,9 @@ router.get('/export', [
     const params: unknown[] = [];
     let pIdx = 1;
 
-    if (partnerId) {
-      sql += ` AND partner_id = $${pIdx}`;
-      params.push(partnerId);
-      pIdx++;
-    }
+    sql += ` AND partner_id = $${pIdx}`;
+    params.push(partnerId);
+    pIdx++;
 
     if (dept && dept !== 'all') {
       sql += ` AND dept = $${pIdx}`;
@@ -51,8 +56,8 @@ router.get('/export', [
       pIdx++;
     }
     if (search) {
-      const q = `%${search}%`;
-      sql += ` AND (agent_name ILIKE $${pIdx} OR support_name ILIKE $${pIdx})`;
+      const q = `%${escapeLikePattern(search)}%`;
+      sql += ` AND (agent_name ILIKE $${pIdx} ESCAPE '\\' OR support_name ILIKE $${pIdx} ESCAPE '\\')`;
       params.push(q);
       pIdx++;
     }
@@ -68,7 +73,7 @@ router.get('/export', [
       pIdx++;
     }
 
-    sql += ' ORDER BY closed_at DESC';
+    sql += ' ORDER BY closed_at DESC LIMIT 10000';
 
     const result = (await query(sql, params)) as unknown as Ticket[];
     
@@ -77,9 +82,9 @@ router.get('/export', [
     const rows = result.map(t => {
       let parsedRefs: Array<{ label: string; value: string }> = [];
       try {
-        const raw = (t as any).references;
+        const raw = t.references;
         parsedRefs = Array.isArray(raw) ? raw : (typeof raw === 'string' ? JSON.parse(raw) : []) || [];
-      } catch { /* malformed JSON — skip */ }
+      } catch { logger.warn({ raw: t.references }, 'Malformed JSON in ticket participants'); }
       const refsStr = parsedRefs.map(r => `${r.label}: ${r.value}`).join('; ');
       return [
       t.id,
@@ -104,8 +109,8 @@ router.get('/export', [
 
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    logger.error({ err: errMsg, query: req.query }, 'Error exporting tickets');
-    res.status(500).json({ error: errMsg });
+    logger.error({ err: errMsg, query: req.query }, 'Ticket export failed');
+    res.status(500).json({ error: 'Server error processing request' });
   }
 });
 

@@ -22,8 +22,7 @@ import config from './config.js';
 import logger from './utils/logger.js';
 import { auth, authorize } from './middleware/auth.js';
 import * as presenceService from './services/presence.js';
-import { setIo as setBusinessHoursIo } from './services/businessHours.js';
-import { getBusinessHoursStatus } from './services/businessHours.js';
+import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
@@ -190,7 +189,7 @@ v1Router.get('/config', async (req: Request, res: Response) => {
   }
 
   const businessHoursStatus = getBusinessHoursStatus({
-    businessHoursSchedule: businessHoursSchedule as any,
+    businessHoursSchedule: businessHoursSchedule as BusinessHoursSchedule | null,
     businessHoursStart,
     businessHoursEnd,
     businessHoursTimezone,

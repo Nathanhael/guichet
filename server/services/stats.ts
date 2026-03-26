@@ -1,6 +1,16 @@
 import config from '../config.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 
+/** Extended ticket with DB columns not on the base Ticket interface */
+interface TicketWithReopened extends Ticket {
+  reopened?: boolean;
+}
+
+/** Extended message with sentiment score from AI analysis */
+interface MessageWithSentiment extends Message {
+  sentiment?: number | null;
+}
+
 export function calculatePercentile(values: number[], percentile: number): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -8,7 +18,7 @@ export function calculatePercentile(values: number[], percentile: number): numbe
   return sorted[index];
 }
 
-export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], deptFilter?: string, dayMessages: Message[] = []) {
+export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings: Rating[], deptFilter?: string, dayMessages: MessageWithSentiment[] = []) {
   let tickets = dayTickets;
   let ratings = dayRatings;
   let messages = dayMessages;
@@ -49,7 +59,7 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
       if (!t.supportJoinedAt) abandoned++;
     }
 
-    if ((t as any).reopened) reopened++;
+    if (t.reopened) reopened++;
 
     if (t.supportJoinedAt) {
       const responseTime = new Date(t.supportJoinedAt).getTime() - createdAt.getTime();
@@ -79,8 +89,8 @@ export function computeLiveDayStats(dayTickets: Ticket[], dayRatings: Rating[], 
     ratingsByDept[d].count++;
   });
 
-  const sentimentSum = messages.reduce((s, m) => s + ((m as any).sentiment || 0), 0);
-  const sentimentCount = messages.filter(m => (m as any).sentiment !== undefined && (m as any).sentiment !== null).length;
+  const sentimentSum = messages.reduce((s, m) => s + (m.sentiment || 0), 0);
+  const sentimentCount = messages.filter(m => m.sentiment !== undefined && m.sentiment !== null).length;
 
   const resolved = tickets.filter(t => t.supportJoinedAt);
   const compliant = resolved.filter(t => (new Date(t.supportJoinedAt!).getTime() - new Date(t.createdAt).getTime()) <= config.SLA_THRESHOLD_MS).length;
