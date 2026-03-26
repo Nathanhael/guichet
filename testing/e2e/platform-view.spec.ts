@@ -34,12 +34,15 @@ async function loginAsDemo(page: Page, userId: string) {
     return res;
   }
   const data = await res.json();
-  // Set auth state using the same keys the Zustand store reads
+  // Set auth state using the same keys the Zustand store reads.
+  // For platform operators, do NOT set activeMembershipId so they land on PlatformView
+  // (App.tsx shows PlatformView when isPlatformAdmin && !activeMembershipId).
   await page.evaluate(({ token, user, memberships }) => {
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
+    // Force English locale for consistent E2E assertions
+    localStorage.setItem('user', JSON.stringify({ ...user, lang: 'en' }));
     localStorage.setItem('memberships', JSON.stringify(memberships));
-    if (memberships?.length > 0) {
+    if (!user.isPlatformOperator && memberships?.length > 0) {
       localStorage.setItem('activeMembershipId', memberships[0].id);
       localStorage.setItem('activePartnerId', memberships[0].partnerId);
     }
@@ -145,7 +148,7 @@ test.describe('Tab Navigation', () => {
   });
 
   test('can navigate to users tab', async ({ page }) => {
-    await clickPlatformTab(page, /users/i);
+    await clickPlatformTab(page, /users|gebruikers|utilisateurs/i);
     await page.waitForTimeout(1500);
     // Users tab should show user table or invite button
     const hasUserContent = await page.getByText(/user|invite|email|role/i).first().isVisible().catch(() => false);
@@ -154,7 +157,7 @@ test.describe('Tab Navigation', () => {
   });
 
   test('can navigate to health tab', async ({ page }) => {
-    await clickPlatformTab(page, /health/i);
+    await clickPlatformTab(page, /health|gezondheid|santé/i);
     await page.waitForTimeout(1500);
     // Health tab should show system health info (postgres, redis, etc.)
     const hasHealthContent = await page.getByText(/postgres|redis|gdpr|connections|memory/i).first().isVisible().catch(() => false);
@@ -205,7 +208,7 @@ test.describe('User Management', () => {
   });
 
   test('user table shows users with roles', async ({ page }) => {
-    await clickPlatformTab(page, /users/i);
+    await clickPlatformTab(page, /users|gebruikers|utilisateurs/i);
     await page.waitForTimeout(2000);
     // Should show a table or list of users
     const hasTable = await page.locator('table').first().isVisible().catch(() => false);
@@ -216,7 +219,7 @@ test.describe('User Management', () => {
   });
 
   test('invite user button opens modal', async ({ page }) => {
-    await clickPlatformTab(page, /users/i);
+    await clickPlatformTab(page, /users|gebruikers|utilisateurs/i);
     await page.waitForTimeout(1500);
     const inviteBtn = page.getByRole('button', { name: /invite/i }).first();
     if (await inviteBtn.isVisible().catch(() => false)) {

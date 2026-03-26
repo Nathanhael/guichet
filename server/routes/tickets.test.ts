@@ -41,7 +41,7 @@ describe('tickets export route', () => {
     const res = await request(app).get('/export');
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'No partner context provided' });
+    expect(res.body).toEqual({ error: 'partnerId is required' });
     expect(queryMock).not.toHaveBeenCalled();
   });
 
