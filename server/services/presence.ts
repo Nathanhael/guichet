@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { getRedisClients } from '../utils/redis.js';
 import logger from '../utils/logger.js';
+import type { UserRole } from '../types/index.js';
 import { canUseSupportWorkflows } from './roles.js';
 
 export interface OnlineUser {
@@ -57,7 +58,7 @@ export async function broadcastOnlineSupport(partnerId: string) {
     const list: SupportEntry[] = [];
     for (const result of results) {
       const data = result as unknown as Record<string, string>;
-      if (data && data.userId && canUseSupportWorkflows(data.role as any, data.isPlatformOperator === '1')) {
+      if (data && data.userId && canUseSupportWorkflows(data.role as UserRole, data.isPlatformOperator === '1')) {
         list.push({
           userId: data.userId,
           name: data.name,
@@ -103,7 +104,7 @@ export async function identifyUser(userId: string, role: string, name: string, p
     await pubClient.sAdd(sKey, userId);
     await pubClient.expire(sKey, TTL_SECONDS);
 
-    if (canUseSupportWorkflows(role as any, isPlatformOperator)) {
+    if (canUseSupportWorkflows(role as UserRole, isPlatformOperator)) {
       await broadcastOnlineSupport(partnerId);
     }
   } catch (err) {
@@ -143,7 +144,7 @@ export async function decrementUserCount(userId: string, partnerId: string) {
     if (newCount <= 0) {
       await pubClient.del(key);
       await pubClient.sRem(setKey(partnerId), userId);
-      if (canUseSupportWorkflows(user.role as any, user.isPlatformOperator === '1')) {
+      if (canUseSupportWorkflows(user.role as UserRole, user.isPlatformOperator === '1')) {
         await broadcastOnlineSupport(partnerId);
       }
       return { role: user.role, partnerId: user.partnerId, removed: true };

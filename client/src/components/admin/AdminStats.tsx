@@ -93,14 +93,14 @@ export default function AdminStats() {
         <div className="flex gap-1 shrink-0">
           <button
             onClick={() => exportDashboardCSV(stats as any)}
-            className="flex items-center gap-1.5 px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
             title="Export as CSV"
           >
             <Download className="h-3.5 w-3.5" /> CSV
           </button>
           <button
             onClick={() => exportDashboardPDF(stats as any)}
-            className="flex items-center gap-1.5 px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
             title="Export as PDF"
           >
             <FileText className="h-3.5 w-3.5" /> PDF
@@ -326,8 +326,8 @@ export default function AdminStats() {
 }
 
 function SentimentDot({ score }: { score: number }) {
-  const color = score >= 0.3 ? 'bg-emerald-500' : score >= -0.3 ? 'bg-amber-400' : 'bg-rose-500';
-  return <span className={`inline-block w-2.5 h-2.5 rounded-full ${color}`} />;
+  const style = score >= 0.3 ? 'bg-black dark:bg-white' : score >= -0.3 ? 'bg-black/40 dark:bg-white/40' : 'border-2 border-black dark:border-white bg-transparent';
+  return <span className={`inline-block w-2.5 h-2.5 rounded-full ${style}`} />;
 }
 
 function sentimentLabel(score: number): string {
@@ -407,9 +407,9 @@ function SentimentPanel({ stats }: { stats: any }) {
             {negativeTix.map((t) => (
               <div
                 key={t.ticketId}
-                className="flex items-center gap-3 p-2 border border-rose-200 dark:border-rose-900/40 bg-rose-50/50 dark:bg-rose-950/20 rounded"
+                className="flex items-center gap-3 p-2 border border-black dark:border-white bg-black/5 dark:bg-white/5"
               >
-                <AlertTriangle className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                <AlertTriangle className="h-3.5 w-3.5 text-black dark:text-white shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-black truncate">{t.agentName}</p>
                   <div className="flex items-center gap-2">
@@ -417,7 +417,7 @@ function SentimentPanel({ stats }: { stats: any }) {
                     <span className="text-[9px] opacity-60">{t.messageCount} msgs</span>
                   </div>
                 </div>
-                <span className="text-xs font-black text-rose-600 dark:text-rose-400 tabular-nums">{t.avgSentiment.toFixed(2)}</span>
+                <span className="text-xs font-black text-black dark:text-white tabular-nums">{t.avgSentiment.toFixed(2)}</span>
               </div>
             ))}
           </div>
@@ -476,9 +476,9 @@ function TeamSatisfaction({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
               {staffRatings.map((staff) => {
                 const avg = Number(staff.avgRating) || 0;
                 const colorClass =
-                  avg >= 4 ? 'text-green-700 dark:text-green-400' :
-                  avg >= 3 ? 'text-yellow-700 dark:text-yellow-400' :
-                  'text-red-700 dark:text-red-400';
+                  avg >= 4 ? 'text-black dark:text-white' :
+                  avg >= 3 ? 'text-black dark:text-white opacity-60' :
+                  'text-black dark:text-white opacity-40';
                 return (
                   <tr key={staff.supportId} className="border-b border-black/10 dark:border-white/10">
                     <td className="py-2 pr-4 text-sm font-bold">{staff.supportName}</td>

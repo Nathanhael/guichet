@@ -6,7 +6,7 @@ import fs from 'fs';
 import crypto from 'crypto';
 import { fileTypeFromFile } from 'file-type';
 import config from '../config.js';
-import { auth, authorize } from '../middleware/auth.js';
+import { auth, authorize, AuthRequest } from '../middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const logoDir = path.join(__dirname, '..', 'uploads', 'logos');
@@ -66,7 +66,8 @@ const router = Router();
  *       403:
  *         description: Not a platform operator
  */
-router.post('/', auth, (req: any, res: Response) => {
+router.post('/', auth, (req: AuthRequest, res: Response) => {
+  if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
   if (!req.user.isPlatformOperator) {
     return res.status(403).json({ error: 'Only platform operators can upload logos' });
   }

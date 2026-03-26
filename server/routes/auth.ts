@@ -7,6 +7,7 @@ import { validate } from '../middleware/validator.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { User } from '../types/index.js';
+import { AuthRequest } from '../middleware/auth.js';
 import { MailService } from '../services/mail.js';
 import { hashPassword, verifyPassword, validatePasswordStrength, isPasswordReused, PASSWORD_HISTORY_LIMIT } from '../utils/passwords.js';
 import { checkLockout, recordFailedLogin, resetFailedLogins } from '../services/accountLockout.js';
@@ -484,8 +485,9 @@ router.post('/login', [
  *       403:
  *         description: Invalid membership or partner inactive
  */
-router.post('/switch-partner', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
+router.post('/switch-partner', (await import('../middleware/auth.js')).auth, async (req: AuthRequest, res: Response) => {
     try {
+        if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { membershipId } = req.body;
         const userId = req.user.id;
 
@@ -553,9 +555,10 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
  *       200:
  *         description: Token revoked successfully
  */
-router.post('/logout', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
+router.post('/logout', (await import('../middleware/auth.js')).auth, async (req: AuthRequest, res: Response) => {
     try {
-        if (req.user?.tokenJti) {
+        if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+        if (req.user.tokenJti) {
             await revokeToken(req.user.tokenJti, req.user.tokenExp);
         }
         res.json({ success: true });
@@ -590,8 +593,9 @@ router.post('/logout', (await import('../middleware/auth.js')).auth, async (req:
  *       404:
  *         description: Partner not found
  */
-router.post('/enter-partner', (await import('../middleware/auth.js')).auth, async (req: any, res: Response) => {
+router.post('/enter-partner', (await import('../middleware/auth.js')).auth, async (req: AuthRequest, res: Response) => {
     try {
+        if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         const { partnerId } = req.body;
         const userId = req.user.id;
 

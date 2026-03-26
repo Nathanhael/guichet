@@ -3,10 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import * as presenceService from '../services/presence.js';
 import { query, get, run, transaction } from '../db.js';
-import { getBusinessHoursStatus, broadcastQueuePositions, broadcastAgentStatus } from '../services/businessHours.js';
+import { getBusinessHoursStatus, broadcastQueuePositions, broadcastAgentStatus, BusinessHoursSchedule } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
 import config from '../config.js';
-import { Ticket, Message, User } from '../types/index.js';
+import { Ticket, Message, User, UserRole } from '../types/index.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
@@ -233,7 +233,7 @@ export function registerSocketHandlers(io: Server) {
 
       // Validate that user has a membership for the requested partner
       const membership = await get('SELECT role FROM memberships WHERE user_id = $1 AND partner_id = $2', [userId, partnerId]) as { role: string } | undefined;
-      let effectiveRole: string;
+      let effectiveRole: UserRole;
       if (!membership) {
         // No membership — check if user is a platform operator
         if (!isPlatformAdmin(!!socket.data.authedIsPlatformOperator)) {
@@ -243,7 +243,7 @@ export function registerSocketHandlers(io: Server) {
         }
         effectiveRole = 'admin';
       } else {
-        effectiveRole = membership.role;
+        effectiveRole = membership.role as UserRole;
       }
 
       socket.data.userId = userId;
@@ -259,7 +259,7 @@ export function registerSocketHandlers(io: Server) {
       // Join private user room for individual kill switches
       socket.join(`user:${userId}`);
 
-      if (canUseSupportWorkflows(effectiveRole as any, !!socket.data.authedIsPlatformOperator)) {
+      if (canUseSupportWorkflows(effectiveRole, !!socket.data.authedIsPlatformOperator)) {
         await presenceService.broadcastOnlineSupport(partnerId);
       }
       
@@ -272,7 +272,7 @@ export function registerSocketHandlers(io: Server) {
         let activeTickets: { id: string }[] = [];
         if (effectiveRole === 'agent') {
           activeTickets = await query("SELECT id FROM tickets WHERE agent_id = $1 AND partner_id = $2 AND status != 'closed'", [userId, partnerId]) as { id: string }[];
-        } else if (canUseSupportWorkflows(effectiveRole as any, !!socket.data.authedIsPlatformOperator)) {
+        } else if (canUseSupportWorkflows(effectiveRole, !!socket.data.authedIsPlatformOperator)) {
           activeTickets = await query("SELECT id FROM tickets WHERE (support_id = $1 OR participants::jsonb @> $3::jsonb) AND partner_id = $2 AND status != 'closed'", [userId, partnerId, JSON.stringify([{ id: userId }])]) as { id: string }[];
         }
         for (const t of activeTickets) socket.join(`ticket:${t.id}`);
@@ -291,7 +291,7 @@ export function registerSocketHandlers(io: Server) {
       }
 
       const partnerHours = partnerRow ? {
-        businessHoursSchedule: partnerRow.business_hours_schedule as any,
+        businessHoursSchedule: partnerRow.business_hours_schedule as BusinessHoursSchedule | null,
         businessHoursStart: partnerRow.business_hours_start,
         businessHoursEnd: partnerRow.business_hours_end,
         businessHoursTimezone: partnerRow.business_hours_timezone,
@@ -390,7 +390,7 @@ export function registerSocketHandlers(io: Server) {
         const callerPartnerId = socket.data.partnerId;
 
         // Authorization: only support/admin roles can join
-        if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator)) {
+        if (!canUseSupportWorkflows(callerRole as UserRole, !!socket.data.authedIsPlatformOperator)) {
           return socket.emit('error', { message: 'Not authorized to join tickets' });
         }
 
@@ -471,7 +471,7 @@ export function registerSocketHandlers(io: Server) {
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
 
         // Authorization: only support/admin roles can close tickets
-        if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator)) {
+        if (!canUseSupportWorkflows(callerRole as UserRole, !!socket.data.authedIsPlatformOperator)) {
           return socket.emit('error', { message: 'Only support staff can close tickets' });
         }
 
@@ -561,7 +561,7 @@ export function registerSocketHandlers(io: Server) {
         if (!sender) return logger.error({ senderId }, '[message:send] sender not found or no membership for ticket partner');
 
         // Authorization: only support/admin can send whispers
-        const isWhisper = whisper && canUseSupportWorkflows(sender.role as any, !!socket.data.authedIsPlatformOperator);
+        const isWhisper = whisper && canUseSupportWorkflows(sender.role as UserRole, !!socket.data.authedIsPlatformOperator);
         if (whisper && !isWhisper) {
           logger.warn({ senderId, role: sender.role }, '[message:send] Non-support user attempted whisper');
         }
@@ -680,7 +680,7 @@ export function registerSocketHandlers(io: Server) {
 
         // Support/admin can delete any non-system message; others only their own
         const callerRole = socket.data.role;
-        if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator) && msg.sender_id !== senderId) {
+        if (!canUseSupportWorkflows(callerRole as UserRole, !!socket.data.authedIsPlatformOperator) && msg.sender_id !== senderId) {
           return socket.emit('error', { message: 'Can only delete your own messages' });
         }
         if (msg.system) return socket.emit('error', { message: 'Cannot delete system messages' });
@@ -703,7 +703,7 @@ export function registerSocketHandlers(io: Server) {
         const callerRole = socket.data.role;
         const callerPartnerId = socket.data.partnerId;
 
-        if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator)) {
+        if (!canUseSupportWorkflows(callerRole as UserRole, !!socket.data.authedIsPlatformOperator)) {
           return socket.emit('error', { message: 'Only support staff can transfer tickets' });
         }
 
@@ -794,7 +794,7 @@ export function registerSocketHandlers(io: Server) {
     socket.on('ticket:viewing', async ({ ticketId }: { ticketId: string }) => {
       if (!requireIdentified(socket)) return;
       const callerRole = socket.data.role;
-      if (!canUseSupportWorkflows(callerRole as any, !!socket.data.authedIsPlatformOperator)) return;
+      if (!canUseSupportWorkflows(callerRole as UserRole, !!socket.data.authedIsPlatformOperator)) return;
       if (!ticketId) return;
 
       // Tenant isolation: verify ticket belongs to caller's partner

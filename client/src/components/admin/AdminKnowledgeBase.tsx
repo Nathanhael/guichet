@@ -139,7 +139,7 @@ export default function AdminKnowledgeBase() {
             className="p-2 hover:bg-black/5 dark:hover:bg-white/5"
             title="Refresh"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'opacity-40' : ''}`} />
           </button>
         </div>
       </div>
@@ -322,21 +322,21 @@ export default function AdminKnowledgeBase() {
                       ))}
                     </div>
                     <div className="px-4 py-3 flex items-center">
-                      <span className={`text-[9px] font-black uppercase tracking-widest ${a.published ? 'opacity-60' : 'text-amber-600 dark:text-amber-400'}`}>
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${a.published ? 'opacity-60' : 'opacity-40 font-black'}`}>
                         {a.published ? 'Published' : 'Draft'}
                       </span>
                     </div>
                     <div className="px-4 py-3 flex items-center justify-end gap-1">
                       <button
                         onClick={(e) => { e.stopPropagation(); togglePublished(a); }}
-                        className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-opacity"
+                        className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10"
                         title={a.published ? 'Unpublish' : 'Publish'}
                       >
                         {a.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); startEdit(a); }}
-                        className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-opacity"
+                        className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10"
                         title="Edit"
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -344,7 +344,7 @@ export default function AdminKnowledgeBase() {
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteMutation.mutate({ id: a.id }); }}
                         disabled={deleteMutation.isPending}
-                        className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-opacity disabled:opacity-50"
+                        className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 disabled:opacity-50"
                         title="Delete"
                       >
                         <Trash2 className="h-3.5 w-3.5" />

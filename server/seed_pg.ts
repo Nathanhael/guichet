@@ -3,6 +3,7 @@ import { db } from './db.js';
 import { users, partners, memberships, labels } from './db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from './utils/logger.js';
+import type { UserRole } from './types/index.js';
 
 async function seed() {
     console.log('Starting database seed...');
@@ -54,7 +55,7 @@ async function seed() {
     const password = 'password123';
     const hashedPassword = await hashPassword(password);
 
-    const demoUsers = [
+    const demoUsers: Array<{ id: string; name: string; email: string; role: UserRole; departments: string[]; lang: string; isPlatformOperator?: boolean }> = [
         // 5 Agents (end-users / customers)
         { id: 'agent_jan',     name: 'Jan Peeters',     email: 'jan@tessera.demo',     role: 'agent',   departments: ['dispatch'],     lang: 'nl' },
         { id: 'agent_marie',   name: 'Marie Dubois',    email: 'marie@tessera.demo',   role: 'agent',   departments: ['front-office'], lang: 'fr' },
@@ -84,7 +85,7 @@ async function seed() {
                 id: u.id,
                 name: u.name,
                 email: u.email,
-                lang: u.lang as any,
+                lang: u.lang,
                 password: hashedPassword,
                 isPlatformOperator: u.isPlatformOperator || false,
                 createdAt: new Date().toISOString(),
@@ -95,7 +96,7 @@ async function seed() {
                 id: `mem_${u.id}`,
                 userId: u.id,
                 partnerId: partnerId,
-                role: u.role as any,
+                role: u.role,
                 departments: u.departments,
                 createdAt: new Date().toISOString()
             });
