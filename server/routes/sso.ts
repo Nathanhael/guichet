@@ -8,7 +8,7 @@ import { users, memberships, partners, partnerGroupMappings, auditLog } from '..
 import { eq, and, inArray, or } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
-import { buildAuthResponse, buildAuthToken, listUserMemberships } from '../services/authSession.js';
+import { buildAuthResponse, buildAuthToken, listUserMemberships, setAuthCookie, parseExpiryToSeconds } from '../services/authSession.js';
 import { isPlatformAdmin } from '../services/roles.js';
 import { getRedisClients } from '../utils/redis.js';
 
@@ -312,6 +312,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     const encodedPayload = encodeURIComponent(JSON.stringify(ssoPayload));
     logger.info({ userId: user.id, memberships: activeMemberships.length }, '[SSO] Login complete, redirecting');
 
+    setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
     // Redirect to client origin with SSO data in the hash fragment
     res.redirect(`${clientOrigin}/#sso_callback=${encodedPayload}`);
   } catch (err: unknown) {

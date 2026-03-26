@@ -11,7 +11,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { MailService } from '../services/mail.js';
 import { hashPassword, verifyPassword, validatePasswordStrength, isPasswordReused, PASSWORD_HISTORY_LIMIT } from '../utils/passwords.js';
 import { checkLockout, recordFailedLogin, resetFailedLogins } from '../services/accountLockout.js';
-import { buildAuthResponse, buildAuthToken, findUserByEmail, getEnterPartnerContext, listUserMemberships } from '../services/authSession.js';
+import { buildAuthResponse, buildAuthToken, findUserByEmail, getEnterPartnerContext, listUserMemberships, setAuthCookie, clearAuthCookie, parseExpiryToSeconds } from '../services/authSession.js';
 import { canAccessPartnerContext, isPlatformAdmin } from '../services/roles.js';
 import { revokeToken, revokeUserSessions } from '../services/sessionRevocation.js';
 import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
@@ -314,6 +314,7 @@ router.post('/login-local', [
         // Update lastActiveAt
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
+        setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
         res.json(buildAuthResponse({
             token,
             user: {
@@ -446,6 +447,7 @@ router.post('/login', [
         // Update lastActiveAt
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
+        setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
         res.json(buildAuthResponse({
             token,
             user: {
@@ -528,6 +530,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
             platformStepUpAt: req.user.platformStepUpAt,
         });
 
+        setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
         res.json({
             token,
             activePartnerId: membership.partnerId,
@@ -561,6 +564,7 @@ router.post('/logout', (await import('../middleware/auth.js')).auth, async (req:
         if (req.user.tokenJti) {
             await revokeToken(req.user.tokenJti, req.user.tokenExp);
         }
+        clearAuthCookie(res);
         res.json({ success: true });
     } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Logout FATAL error');
@@ -649,6 +653,7 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
             }
         });
 
+        setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
         res.json({
             token,
             activePartnerId: partner.id,
