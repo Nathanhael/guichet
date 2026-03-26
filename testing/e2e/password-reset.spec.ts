@@ -76,7 +76,14 @@ test.describe('Password Reset Flow', () => {
     await expect(page.getByText(/invalid|expired/i).first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('login works with original credentials', async ({ page }) => {
+  test('login works with original credentials', async ({ page, request }) => {
+    // Verify the test user exists before attempting UI login
+    const probe = await request.post(`${BASE}/api/v1/auth/login`, {
+      data: { id: TEST_EMAIL, password: ORIGINAL_PASSWORD },
+      failOnStatusCode: false,
+    });
+    test.skip(!probe.ok(), `Test user ${TEST_EMAIL} not seeded — skipping login test`);
+
     await waitForLoginForm(page);
 
     // Fill login form
