@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
+import { parse as parseCookie } from 'cookie';
 import * as presenceService from '../services/presence.js';
 import { query, get, run, transaction } from '../db.js';
 import { getBusinessHoursStatus, broadcastQueuePositions, broadcastAgentStatus, BusinessHoursSchedule } from '../services/businessHours.js';
@@ -185,11 +186,7 @@ export function registerSocketHandlers(io: Server) {
     try {
       let token = socket.handshake.auth?.token as string | undefined;
       if (!token && socket.handshake.headers?.cookie) {
-        const cookies = socket.handshake.headers.cookie.split(';').reduce((acc: Record<string, string>, c: string) => {
-          const [key, ...val] = c.trim().split('=');
-          if (key) acc[key] = val.join('=');
-          return acc;
-        }, {});
+        const cookies = parseCookie(socket.handshake.headers.cookie);
         token = cookies['tessera_token'];
       }
       if (!token) {
