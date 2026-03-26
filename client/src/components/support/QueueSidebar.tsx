@@ -108,11 +108,11 @@ export default function QueueSidebar({
 
   return (
     <aside className={`${
-      isOpen ? 'w-80 border-r-2 border-black dark:border-white max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-2xl' : 'w-0 border-r-0'
-    } shrink-0 overflow-hidden transition-all duration-200 bg-white dark:bg-black flex flex-col`}>
+      isOpen ? 'w-80 border-r border-[var(--color-border)] max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40' : 'w-0 border-r-0'
+    } shrink-0 overflow-hidden bg-[var(--color-bg-surface)] flex flex-col`}>
       {/* Header: tabs + dept chips */}
-      <div className="px-4 py-3 border-b-2 border-black dark:border-white">
-        <h2 className="font-black text-[10px] uppercase tracking-[0.2em] mb-2">
+      <div className="px-4 py-3 border-b border-[var(--color-border)]">
+        <h2 className="mono-label mb-2">
           {sidebarTab === 'queue' ? t('queue') : t('archive')}
         </h2>
 
@@ -121,10 +121,10 @@ export default function QueueSidebar({
             <button
               key={tab}
               onClick={() => setSidebarTab(tab)}
-              className={`flex-1 text-[9px] font-black uppercase py-1 border ${
+              className={`flex-1 text-[9px] font-bold uppercase py-1 border ${
                 sidebarTab === tab
-                  ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-                  : 'border-black/10'
+                  ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
+                  : 'border-[var(--color-border)] opacity-50'
               }`}
             >
               {tab === 'search' ? (t('search') || 'Search') : t(tab)}
@@ -140,7 +140,7 @@ export default function QueueSidebar({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('search_messages') || 'Search messages...'}
-            className="w-full px-3 py-1.5 text-xs border-2 border-black dark:border-white bg-transparent font-bold placeholder:font-normal mb-1"
+            className="input-field mb-1"
             autoFocus
           />
         )}
@@ -149,10 +149,10 @@ export default function QueueSidebar({
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
           <button
             onClick={() => setFilterDept('all')}
-            className={`shrink-0 px-3 py-1 text-[9px] font-black uppercase border ${
+            className={`shrink-0 px-3 py-1 text-[9px] font-bold uppercase border ${
               filterDept === 'all'
-                ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-                : 'bg-white dark:bg-black text-black dark:text-white border-black/10 dark:border-white/10'
+                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
+                : 'border-[var(--color-border)] opacity-50 hover:opacity-100'
             }`}
           >
             {t('all')}
@@ -161,10 +161,10 @@ export default function QueueSidebar({
             <button
               key={dept.id}
               onClick={() => setFilterDept(dept.id)}
-              className={`shrink-0 px-3 py-1 text-[9px] font-black uppercase border ${
+              className={`shrink-0 px-3 py-1 text-[9px] font-bold uppercase border ${
                 filterDept === dept.id
-                  ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-                  : 'bg-white dark:bg-black text-black dark:text-white border-black/10 dark:border-white/10'
+                  ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
+                  : 'border-[var(--color-border)] opacity-50 hover:opacity-100'
               }`}
             >
               {dept.name}
@@ -177,27 +177,27 @@ export default function QueueSidebar({
       <div className="flex-1 overflow-y-auto">
         {/* At max chats banner */}
         {atMaxChats && sidebarTab === 'queue' && (
-          <div className="px-4 py-2 bg-black/5 dark:bg-white/5 text-[9px] font-black uppercase tracking-wider text-center opacity-60">
+          <div className="px-4 py-2 bg-[var(--color-bg-base)] text-[9px] font-bold uppercase tracking-wider text-center opacity-60">
             {t('max_chats_reached') || 'Maximum chats reached'}
           </div>
         )}
 
-        <ul className="divide-y-2 divide-black dark:divide-white">
+        <ul className="divide-y divide-[var(--color-border)]">
           {sidebarTab === 'search' ? (
             searchResults.isLoading ? (
               <li className="p-8 text-center">
-                <svg className="animate-spin h-5 w-5 mx-auto mb-2 opacity-30" viewBox="0 0 24 24">
+                <svg className="h-5 w-5 mx-auto mb-2 opacity-30" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
               </li>
             ) : searchQuery.length < 2 ? (
               <li className="p-8 text-center">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-20">{t('type_to_search') || 'Type at least 2 characters'}</p>
+                <p className="mono-label opacity-20">{t('type_to_search') || 'Type at least 2 characters'}</p>
               </li>
             ) : !searchResults.data?.length ? (
               <li className="p-8 text-center">
-                <p className="text-[10px] font-black uppercase tracking-widest opacity-20">{t('no_results') || 'No results'}</p>
+                <p className="mono-label opacity-20">{t('no_results') || 'No results'}</p>
               </li>
             ) : (searchResults.data || []).map((result: any) => (
               <li
@@ -213,21 +213,21 @@ export default function QueueSidebar({
                     }
                   }
                 }}
-                className="p-3 cursor-pointer hover:bg-black/5"
+                className="p-3 cursor-pointer hover:bg-[var(--color-accent-blue)] hover:text-white"
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[9px] font-black px-1.5 py-0.5 border border-current uppercase">{result.ticketDept}</span>
+                  <span className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase">{result.ticketDept}</span>
                   <span className="text-[9px] font-bold truncate">{result.agentName}</span>
                   <span className={`text-[9px] uppercase ${result.ticketStatus === 'closed' ? 'opacity-40' : ''}`}>{result.ticketStatus}</span>
                 </div>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate">{result.text}</p>
-                <span className="text-[9px] opacity-40">{result.senderName} · {getTicketTime(result.createdAt)}</span>
+                <p className="text-[11px] opacity-70 truncate">{result.text}</p>
+                <span className="mono-timestamp">{result.senderName} · {getTicketTime(result.createdAt)}</span>
               </li>
             ))
           ) : sidebarTab === 'queue'
             ? queueFiltered.length === 0 ? (
                 <li className="p-8 text-center">
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-20">{t('queue_empty') || 'Queue empty'}</p>
+                  <p className="mono-label opacity-20">{t('queue_empty') || 'Queue empty'}</p>
                 </li>
               ) : queueFiltered.map((ticket) => {
                 const isOpen = supportOpenTickets.includes(ticket.id);
@@ -237,18 +237,18 @@ export default function QueueSidebar({
                   <li
                     key={ticket.id}
                     onClick={() => !atMaxChats || isOpen ? onSelectTicket(ticket) : undefined}
-                    className={`p-4 cursor-pointer ${
+                    className={`surface-card cursor-pointer ${
                       activeTab === ticket.id
-                        ? 'bg-black dark:bg-white text-white dark:text-black'
-                        : 'hover:bg-black/5'
+                        ? 'border-l-[3px] border-l-[var(--color-accent-blue)]'
+                        : ''
                     } ${atMaxChats && !isOpen ? 'opacity-40 cursor-not-allowed' : ''}`}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[9px] font-black px-1.5 py-0.5 border border-current uppercase">
+                      <span className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase">
                         {ticket.dept}
                       </span>
-                      <span className="text-[9px] opacity-60 uppercase">{getTicketTime(ticket.createdAt)}</span>
-                      {isUnread && <span className="w-2 h-2 bg-black dark:bg-white rounded-full shrink-0" />}
+                      <span className="mono-timestamp">{getTicketTime(ticket.createdAt)}</span>
+                      {isUnread && <span className="w-2 h-2 bg-[var(--color-accent-blue)] rounded-full shrink-0" />}
                       {sentimentMap && sentimentMap[ticket.id] != null && (
                         <SentimentDot score={sentimentMap[ticket.id]} compact />
                       )}
@@ -256,7 +256,7 @@ export default function QueueSidebar({
                         <SlaIndicator dueAt={ticket.slaResponseDueAt} breached={ticket.slaBreached} compact />
                       )}
                     </div>
-                    <p className="text-sm font-black uppercase truncate">{ticket.agentName}</p>
+                    <p className="text-sm font-bold uppercase truncate">{ticket.agentName}</p>
                   </li>
                 );
               })
@@ -264,33 +264,33 @@ export default function QueueSidebar({
               <>
                 {archiveQuery.isLoading && archivedTickets.length === 0 ? (
                   <li className="p-8 text-center">
-                    <svg className="animate-spin h-5 w-5 mx-auto mb-2 opacity-30" viewBox="0 0 24 24">
+                    <svg className="h-5 w-5 mx-auto mb-2 opacity-30" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-20">{t('loading') || 'Loading...'}</p>
+                    <p className="mono-label opacity-20">{t('loading') || 'Loading...'}</p>
                   </li>
                 ) : archivedTickets.length === 0 ? (
                   <li className="p-8 text-center">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-20">{t('no_archived') || 'No archived tickets'}</p>
+                    <p className="mono-label opacity-20">{t('no_archived') || 'No archived tickets'}</p>
                   </li>
                 ) : archivedTickets.map((ticket) => (
                   <li
                     key={ticket.id}
                     onClick={() => onPreviewArchived(ticket)}
-                    className={`p-4 cursor-pointer ${
+                    className={`surface-card cursor-pointer ${
                       previewTicketId === ticket.id
-                        ? 'bg-black dark:bg-white text-white dark:text-black'
-                        : 'hover:bg-black/5'
+                        ? 'border-l-[3px] border-l-[var(--color-accent-blue)]'
+                        : ''
                     }`}
                   >
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[9px] font-black px-1.5 py-0.5 border border-current uppercase">
+                      <span className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase">
                         {ticket.dept}
                       </span>
-                      <span className="text-[9px] opacity-60 uppercase">{getTicketTime(ticket.createdAt)}</span>
+                      <span className="mono-timestamp">{getTicketTime(ticket.createdAt)}</span>
                     </div>
-                    <p className="text-sm font-black uppercase truncate">{ticket.agentName}</p>
+                    <p className="text-sm font-bold uppercase truncate">{ticket.agentName}</p>
                   </li>
                 ))}
                 {/* Load more button */}
@@ -299,7 +299,7 @@ export default function QueueSidebar({
                     <button
                       onClick={() => archiveQuery.refetch()}
                       disabled={archiveQuery.isFetching}
-                      className="w-full py-2 text-[9px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black dark:hover:bg-white hover:text-white dark:hover:text-black transition-all disabled:opacity-30"
+                      className="w-full py-2 text-[9px] font-bold uppercase tracking-wide border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-30"
                     >
                       {archiveQuery.isFetching ? (t('loading') || 'Loading...') : (t('load_more') || 'Load more')}
                     </button>
@@ -312,7 +312,7 @@ export default function QueueSidebar({
 
       {/* Queue count footer */}
       {sidebarTab === 'queue' && (
-        <div className="px-4 py-2 border-t-2 border-black dark:border-white text-[9px] font-black uppercase tracking-widest opacity-40 text-center">
+        <div className="px-4 py-2 border-t border-[var(--color-border)] mono-label opacity-40 text-center">
           {queueFiltered.length} {t('in_queue') || 'in queue'}
         </div>
       )}

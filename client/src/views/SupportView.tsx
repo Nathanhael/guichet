@@ -123,10 +123,10 @@ export default function SupportView() {
   // ── Render ──
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
+    <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
       {/* Business hours notice bar */}
       {businessHoursStatus && !businessHoursStatus.isOpen && (
-        <div className="px-8 py-2 bg-black text-white dark:bg-white dark:text-black border-b border-black dark:border-white text-xs font-bold">
+        <div className="px-8 py-2 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-b border-[var(--color-border)] text-xs font-bold">
           <span>{t('intake_paused')}</span>
           {businessHoursStatus.nextOpenAt && (
             <span className="ml-2 opacity-80">
@@ -156,7 +156,7 @@ export default function SupportView() {
           />
         )}
 
-        <main className="flex-1 flex flex-col overflow-hidden bg-white dark:bg-black">
+        <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
           <ChatTabBar
             tabs={openTabTickets}
             activeTab={activeTab}
@@ -180,7 +180,7 @@ export default function SupportView() {
                   onClose={() => closeTab(activeTab)}
                 />
               ) : (
-                <div className="h-full flex items-center justify-center font-black uppercase tracking-[0.2em] opacity-20 text-2xl">
+                <div className="h-full flex items-center justify-center font-bold uppercase tracking-wide opacity-20 text-2xl">
                   {t('ready_to_help')}
                 </div>
               )}
