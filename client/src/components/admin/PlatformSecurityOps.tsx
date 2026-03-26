@@ -268,7 +268,7 @@ export default function PlatformSecurityOps() {
           <div className="border border-[var(--color-border)] overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[720px]">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+                <tr className="border-b border-[var(--color-border)] bg-bg-elevated">
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_time')}</th>
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_action')}</th>
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_actor')}</th>

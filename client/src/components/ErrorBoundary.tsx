@@ -31,7 +31,7 @@ class ErrorBoundary extends React.Component<Props, State> {
                 <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6">
                     <h1 className="text-2xl font-black uppercase tracking-tighter mb-4 text-red-500">Component failed to load</h1>
                     {this.state.error && (
-                        <div className="w-full max-w-3xl bg-black/5 dark:bg-white/5 border-2 border-red-500 p-4 overflow-auto custom-scrollbar">
+                        <div className="w-full max-w-3xl bg-bg-elevated border-2 border-red-500 p-4 overflow-auto custom-scrollbar">
                             <p className="font-bold text-sm mb-2">{this.state.error.toString()}</p>
                             <pre className="text-[10px] opacity-60 whitespace-pre-wrap">{this.state.errorInfo?.componentStack || this.state.error.stack}</pre>
                         </div>

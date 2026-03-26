@@ -148,7 +148,7 @@ function AuditArchivePanel() {
           ) : (
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5 text-left">
+                <tr className="border-b border-[var(--color-border)] bg-bg-elevated text-left">
                   <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Action</th>
                   <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Actor</th>
                   <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Target</th>
@@ -264,7 +264,7 @@ function TicketArchivePanel() {
           ) : (
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5 text-left">
+                <tr className="border-b border-[var(--color-border)] bg-bg-elevated text-left">
                   <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Dept</th>
                   <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Agent</th>
                   <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Support</th>

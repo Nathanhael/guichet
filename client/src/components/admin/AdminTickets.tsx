@@ -111,7 +111,7 @@ export default function AdminTickets() {
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-[10px] font-bold px-1.5 py-0.5 uppercase ${
-                      previewTicketId === tk.id ? 'bg-white/20' : 'bg-black/5 dark:bg-white/5'
+                      previewTicketId === tk.id ? 'bg-white/20' : 'bg-bg-elevated'
                     }`}>
                       {tk.dept}
                     </span>

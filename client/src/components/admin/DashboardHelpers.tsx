@@ -24,7 +24,7 @@ export function Panel({ title, badge, className = '', children }: { title: strin
       <div className="flex items-center justify-between mb-5">
         <p className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{title}</p>
         {badge && (
-          <span className="px-2.5 py-1 bg-black/5 dark:bg-white/5 text-[10px] font-bold uppercase tracking-tighter border border-[var(--color-border)]">
+          <span className="px-2.5 py-1 bg-bg-elevated text-[10px] font-bold uppercase tracking-tighter border border-[var(--color-border)]">
             {badge}
           </span>
         )}
@@ -72,5 +72,5 @@ export function StatCard({ label, value, prev, invertTrend }: StatCardProps) {
 }
 
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`bg-black/10 dark:bg-white/10 ${className}`} />;
+  return <div className={`bg-bg-elevated ${className}`} />;
 }

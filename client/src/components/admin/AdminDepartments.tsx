@@ -219,7 +219,7 @@ export default function AdminDepartments() {
 
       <div className="surface-card">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_1fr_1fr_100px_80px] border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+        <div className="grid grid-cols-[1fr_1fr_1fr_100px_80px] border-b border-[var(--color-border)] bg-bg-elevated">
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Name</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Description</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('ref_fields_label') || 'Ref Fields'}</div>
@@ -339,7 +339,7 @@ export default function AdminDepartments() {
 
             {/* Delete confirmation */}
             {deletingIdx === idx && editingIdx !== idx && (
-              <div className="border-b border-[var(--color-border)] px-4 py-3 bg-black/5 dark:bg-white/5 flex items-center gap-4">
+              <div className="border-b border-[var(--color-border)] px-4 py-3 bg-bg-elevated flex items-center gap-4">
                 <span className="text-xs font-bold uppercase tracking-wide">
                   {(memberCounts[dept.id] || 0) > 0
                     ? `${memberCounts[dept.id]} member${memberCounts[dept.id] === 1 ? '' : 's'} will become generalists.`

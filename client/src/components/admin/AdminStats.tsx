@@ -241,7 +241,7 @@ export default function AdminStats() {
                         <span className="text-[10px] font-bold uppercase">{dept.name}</span>
                         <span className="text-[10px] font-bold text-[var(--color-text-secondary)]">{count} ({pct}%)</span>
                       </div>
-                      <div className="h-1.5 w-full bg-black/10 dark:bg-white/10">
+                      <div className="h-1.5 w-full bg-bg-elevated">
                         <div className="h-full bg-[var(--color-text-primary)]" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
@@ -326,7 +326,7 @@ export default function AdminStats() {
 }
 
 function SentimentDot({ score }: { score: number }) {
-  const style = score >= 0.3 ? 'bg-[var(--color-text-primary)]' : score >= -0.3 ? 'bg-black/40 dark:bg-white/40' : 'border border-[var(--color-border)] bg-transparent';
+  const style = score >= 0.3 ? 'bg-[var(--color-text-primary)]' : score >= -0.3 ? 'bg-text-muted' : 'border border-[var(--color-border)] bg-transparent';
   return <span className={`inline-block w-2.5 h-2.5 rounded-full ${style}`} />;
 }
 
@@ -407,7 +407,7 @@ function SentimentPanel({ stats }: { stats: any }) {
             {negativeTix.map((t) => (
               <div
                 key={t.ticketId}
-                className="flex items-center gap-3 p-2 border border-[var(--color-border)] bg-black/5 dark:bg-white/5"
+                className="flex items-center gap-3 p-2 border border-[var(--color-border)] bg-bg-elevated"
               >
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1 min-w-0">

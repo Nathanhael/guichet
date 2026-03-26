@@ -174,7 +174,7 @@ export default function AdminCannedResponses() {
 
       {/* Responses list */}
       <div className="surface-card">
-        <div className="grid grid-cols-[1fr_100px_100px_80px] border-b border-[var(--color-border)] bg-black/5 dark:bg-white/5">
+        <div className="grid grid-cols-[1fr_100px_100px_80px] border-b border-[var(--color-border)] bg-bg-elevated">
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Title</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Dept</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Shortcut</div>
