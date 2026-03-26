@@ -26,26 +26,26 @@ export default function LegalModal({ type, onClose }: LegalModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-white/20"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-bg-base/80"
       onClick={onClose}
     >
       <div
-        className="relative flex flex-col w-full max-w-2xl max-h-[85vh] bg-white dark:bg-black border-2 border-black dark:border-white overflow-hidden"
+        className="relative flex flex-col w-full max-w-2xl max-h-[85vh] bg-bg-surface border border-border-heavy overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky header */}
-        <div className="sticky top-0 z-10 flex items-start justify-between px-6 py-4 bg-black dark:bg-white">
+        <div className="sticky top-0 z-10 flex items-start justify-between px-6 py-4 bg-bg-elevated border-b border-border">
           <div>
-            <h2 className="text-base font-black uppercase tracking-widest text-white dark:text-black">
+            <h2 className="text-base font-bold uppercase tracking-widest text-text-primary">
               {title}
             </h2>
-            <p className="mt-0.5 text-xs text-white/70 dark:text-black/70">
+            <p className="mt-0.5 text-xs text-text-muted">
               {t('legal_last_updated')}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="ml-4 mt-0.5 text-white dark:text-black"
+            className="ml-4 mt-0.5 text-text-secondary hover:text-text-primary"
             aria-label="Close"
           >
             <X size={18} />
@@ -56,17 +56,17 @@ export default function LegalModal({ type, onClose }: LegalModalProps) {
         <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
           {sections.map((section, index) => (
             <div key={index}>
-              <h3 className="text-xs font-black uppercase tracking-widest text-black dark:text-white mb-2">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-text-primary mb-2">
                 {index + 1}. {section.title}
               </h3>
-              <p className="text-sm leading-relaxed opacity-80 whitespace-pre-line text-black dark:text-white">
+              <p className="text-sm leading-relaxed whitespace-pre-line text-text-secondary">
                 {section.body}
               </p>
             </div>
           ))}
 
           {/* Footer */}
-          <p className="text-xs opacity-60 text-black dark:text-white border-t border-black dark:border-white pt-4">
+          <p className="text-xs text-text-muted border-t border-border pt-4">
             {t('legal_footer')}
           </p>
         </div>

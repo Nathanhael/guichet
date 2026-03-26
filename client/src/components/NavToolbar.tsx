@@ -13,7 +13,7 @@ interface NavToolbarProps {
  */
 export default function NavToolbar({ children }: NavToolbarProps) {
   return (
-    <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 p-1 border border-black dark:border-white">
+    <div className="flex items-center gap-2 bg-bg-elevated p-1 border border-border">
       <LanguageSwitcher />
       <DarkModeToggle />
       {children}

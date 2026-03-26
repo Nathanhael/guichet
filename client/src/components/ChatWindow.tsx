@@ -462,28 +462,28 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const isClosed = ticket.status === 'closed';
 
   return (
-    <div className={`relative flex flex-col h-full bg-white dark:bg-black border-2 border-black dark:border-white flex-1 min-h-0 overflow-hidden`}>
+    <div className={`relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden`}>
       {/* Header */}
-      <div className={`relative z-50 flex items-center justify-between px-6 border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5 ${focusMode ? 'py-2' : 'py-4'}`}>
+      <div className={`relative z-50 flex items-center justify-between px-6 border-b-2 border-border-heavy bg-bg-elevated ${focusMode ? 'py-2' : 'py-4'}`}>
         <div className="min-w-0 pr-4">
           <div className="flex items-center gap-3 flex-wrap">
             {!focusMode && (
-              <span className="text-[10px] font-black px-2.5 py-1 shrink-0 uppercase tracking-widest bg-black/10 dark:bg-white/10 text-black dark:text-white border border-black dark:border-white">
+              <span className="text-[10px] font-bold px-2.5 py-1 shrink-0 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy">
                 {ticket.dept}
               </span>
             )}
             <div className="flex flex-col">
-              <span className={`font-bold text-black dark:text-white truncate flex items-center gap-2 min-w-0 ${focusMode ? 'text-sm opacity-80' : 'text-base'}`}>
+              <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${focusMode ? 'text-sm opacity-80' : 'text-base'}`}>
                 {ticket.agentName}
                 {isSupport && !isClosed && (
                   <span
                     title={agentIsOnline ? 'Agent online' : 'Agent offline'}
-                    className={`w-2 h-2 rounded-full shrink-0 ${agentIsOnline ? 'bg-black dark:bg-white' : 'border border-black/40 dark:border-white/40'}`}
+                    className={`w-2 h-2 rounded-full shrink-0 ${agentIsOnline ? 'bg-text-primary' : 'border border-border'}`}
                   />
                 )}
               </span>
               {!focusMode && (ticket.references || []).length > 0 && (
-                <span className="text-[10px] font-bold text-black dark:text-white opacity-40 uppercase tracking-tighter">
+                <span className="text-[10px] font-bold text-text-primary opacity-40 uppercase tracking-tighter">
                   {(ticket.references || []).map((ref) => `${ref.label}: ${ref.value}`).join(' · ')}
                 </span>
               )}
@@ -504,7 +504,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   return (
                     <span
                       key={id}
-                      className={`text-[9px] font-black px-2 py-0.5 uppercase tracking-widest bg-black/10 dark:bg-white/10 text-black dark:text-white border border-black dark:border-white`}
+                      className={`text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy`}
                     >
                       {info.text}
                     </span>
@@ -525,7 +525,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             <button
               onClick={onFocus}
               title={focused ? 'Restore split' : 'Maximize'}
-              className="w-8 h-8 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white opacity-60 hover:opacity-100"
+              className="w-8 h-8 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
             >
               {focused ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -546,10 +546,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               disabled={summarizing}
               aria-label="Summarize conversation"
               title="AI: Summarize conversation"
-              className={`text-xs font-bold bg-black/5 dark:bg-white/5 text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 border border-black dark:border-white hidden sm:flex items-center gap-1.5 ${focusMode ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
+              className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:flex items-center gap-1.5 ${focusMode ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
             >
               {summarizing ? (
-                <span className="text-[10px] font-black opacity-40">...</span>
+                <span className="text-[10px] font-bold opacity-40">...</span>
               ) : (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -567,21 +567,21 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   onClick={() => setShowTransferMenu(!showTransferMenu)}
                   aria-label={t('transfer') || 'Transfer'}
                   title={t('transfer') || 'Transfer'}
-                  className={`text-xs font-bold bg-black/5 dark:bg-white/5 text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 border border-black dark:border-white hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
+                  className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
                 >
                   {t('transfer') || 'Transfer'}
                 </button>
                 {showTransferMenu && (
-                  <div className="absolute right-0 top-full mt-1 bg-white dark:bg-black border-2 border-black dark:border-white min-w-[200px] z-50 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[200px] z-50 overflow-hidden">
                     <button
                       onClick={() => transferTicket()}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-black/5 dark:hover:bg-white/5 border-b border-black/10 dark:border-white/10"
+                      className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-bg-elevated border-b border-border"
                     >
                       {t('return_to_queue') || 'Return to queue'}
                     </button>
                     {transferTargets.length > 0 && (
                       <div className="px-3 py-1.5">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-black dark:text-white opacity-40">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-text-primary opacity-40">
                           {t('transfer_to') || 'Transfer to'}
                         </span>
                       </div>
@@ -590,14 +590,14 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                       <button
                         key={s.userId}
                         onClick={() => transferTicket(s.userId)}
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-black/5 dark:hover:bg-white/5 flex items-center gap-2"
+                        className="w-full text-left px-4 py-2 text-xs hover:bg-bg-elevated flex items-center gap-2"
                       >
-                        <span className="w-2 h-2 rounded-full bg-black dark:bg-white shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-text-primary shrink-0" />
                         <span className="font-medium">{s.name}</span>
                       </button>
                     ))}
                     {transferTargets.length === 0 && (
-                      <div className="px-4 py-2 text-[10px] text-black dark:text-white opacity-40 italic">
+                      <div className="px-4 py-2 text-[10px] text-text-primary opacity-40 italic">
                         {t('no_other_support_online') || 'No other support online'}
                       </div>
                     )}
@@ -607,7 +607,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               <button
                 onClick={leaveTicket}
                 title={t('leave')}
-                className={`text-xs font-bold bg-black/5 dark:bg-white/5 text-black dark:text-white hover:bg-black/10 dark:hover:bg-white/10 border border-black dark:border-white hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
+                className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
               >
                 {t('leave') || 'Leave'}
               </button>
@@ -617,10 +617,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   closeTicket();
                 }}
                 disabled={closing}
-                className={`text-xs font-black bg-black dark:bg-white text-white dark:text-black hover:bg-black/80 dark:hover:bg-white/80 border border-black dark:border-white flex items-center gap-2 ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
+                className={`text-xs font-bold bg-accent-blue text-white hover:bg-accent-blue/80 border border-border-heavy flex items-center gap-2 ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
               >
                 {closing ? (
-                  <span className="text-[10px] font-black opacity-40 shrink-0">...</span>
+                  <span className="text-[10px] font-bold opacity-40 shrink-0">...</span>
                 ) : (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -637,7 +637,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 onClose();
               }}
               aria-label="Close"
-              className="w-8 h-8 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white opacity-60 hover:opacity-100"
+              className="w-8 h-8 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -649,16 +649,16 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
       {/* AI Summary Card */}
       {showSummary && summary && (
-        <div className="px-6 py-3 bg-black/5 dark:bg-white/5 border-b-2 border-black dark:border-white">
+        <div className="px-6 py-3 bg-bg-elevated border-b-2 border-border-heavy">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1.5 mb-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-black dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                 </svg>
-                <span className="text-[10px] font-black uppercase tracking-widest text-black dark:text-white">AI Summary</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-text-primary">AI Summary</span>
               </div>
-              <p className="text-sm text-black dark:text-white leading-relaxed">{summary}</p>
+              <p className="text-sm text-text-primary leading-relaxed">{summary}</p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
               <button
@@ -666,7 +666,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 disabled={summarizing}
                 aria-label="Refresh summary"
                 title="Refresh summary"
-                className="w-7 h-7 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white opacity-60 hover:opacity-100"
+                className="w-7 h-7 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${summarizing ? 'opacity-40' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -676,7 +676,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 onClick={() => setShowSummary(false)}
                 aria-label="Dismiss summary"
                 title="Dismiss"
-                className="w-7 h-7 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/5 text-black dark:text-white opacity-60 hover:opacity-100"
+                className="w-7 h-7 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -689,7 +689,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
       {/* Collision Detection: who else is viewing */}
       {viewers.length > 0 && (
-        <div className="bg-black/5 dark:bg-white/5 border-b-2 border-black dark:border-white px-4 py-2 text-sm text-black dark:text-white flex items-center gap-2">
+        <div className="bg-bg-elevated border-b-2 border-border-heavy px-4 py-2 text-sm text-text-primary flex items-center gap-2">
           <Eye className="w-4 h-4 shrink-0" />
           <span>
             {viewers.map(v => v.userName).join(' and ')} {viewers.length === 1 ? 'is' : 'are'} also viewing this ticket
@@ -701,12 +701,12 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll} 
-        className={`flex-1 overflow-y-auto p-6 scrollbar-thin relative bg-white dark:bg-black`}
+        className={`flex-1 overflow-y-auto p-6 scrollbar-thin relative bg-bg-surface`}
       >
         <div className="space-y-1 mb-8">
           {ticketMessages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 opacity-40">
-              <svg className="w-12 h-12 text-black dark:text-white opacity-40 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-12 h-12 text-text-primary opacity-40 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.855-1.246L3 20l1.226-3.746A9.233 9.233 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               <p className="text-sm font-medium tracking-wide italic">{t('no_messages')}</p>
@@ -747,12 +747,12 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
         const typers = Object.keys(ticketTyping).filter(name => ticketTyping[name] && name !== user?.name);
         if (typers.length === 0) return null;
         return (
-          <div className="px-6 py-1.5 text-[11px] font-bold text-black dark:text-white opacity-40 bg-white dark:bg-black border-t border-black/10 dark:border-white/10">
+          <div className="px-6 py-1.5 text-[11px] font-bold text-text-primary opacity-40 bg-bg-surface border-t border-border">
             <span className="inline-flex items-center gap-1.5">
               <span className="flex gap-0.5">
-                <span className="w-1 h-1 bg-black dark:bg-white rounded-full" style={{ animationDelay: '0ms' }} />
-                <span className="w-1 h-1 bg-black dark:bg-white rounded-full" style={{ animationDelay: '150ms' }} />
-                <span className="w-1 h-1 bg-black dark:bg-white rounded-full" style={{ animationDelay: '300ms' }} />
+                <span className="w-1 h-1 bg-text-primary rounded-full" style={{ animationDelay: '0ms' }} />
+                <span className="w-1 h-1 bg-text-primary rounded-full" style={{ animationDelay: '150ms' }} />
+                <span className="w-1 h-1 bg-text-primary rounded-full" style={{ animationDelay: '300ms' }} />
               </span>
               {typers.length === 1
                 ? `${typers[0]} ${t('is_typing') || 'is typing...'}`
@@ -766,14 +766,14 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
       {/* Input */}
       {!isClosed && (
         <form onSubmit={sendMessage} className={`border-t-2 p-4 pb-6 ${whisperMode
-          ? 'bg-black/10 dark:bg-white/10 border-black dark:border-white'
-          : 'bg-white dark:bg-black border-black dark:border-white'
+          ? 'bg-bg-elevated border-border-heavy'
+          : 'bg-bg-surface border-border-heavy'
           }`}>
           <div className="max-w-4xl mx-auto w-full">
             {whisperMode && (
             <div className="flex items-center gap-2 mb-3">
-              <div className="px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-widest">Whisper</div>
-              <p className="text-[10px] text-black dark:text-white font-bold uppercase tracking-tight opacity-80">
+              <div className="px-2 py-0.5 bg-accent-blue text-white text-[9px] font-bold uppercase tracking-widest">Whisper</div>
+              <p className="text-[10px] text-text-primary font-bold uppercase tracking-tight opacity-80">
                 {t('whisper_hint')}
               </p>
             </div>
@@ -781,8 +781,8 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
             {/* AI improved — revert bar */}
             {originalText !== null && (
-              <div className="flex items-center justify-between mb-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 border border-black dark:border-white">
-                <span className="text-[10px] font-bold text-black dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+              <div className="flex items-center justify-between mb-2 px-3 py-1.5 bg-bg-elevated border border-border-heavy">
+                <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
                   </svg>
@@ -791,7 +791,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 <button
                   type="button"
                   onClick={revertImprove}
-                  className="text-[10px] font-bold text-black dark:text-white hover:opacity-60 underline underline-offset-2"
+                  className="text-[10px] font-bold text-text-primary hover:opacity-60 underline underline-offset-2"
                 >
                   Revert to original
                 </button>
@@ -800,8 +800,8 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
             <div className={`flex items-end gap-3 p-1.5 border-2 ${
               whisperMode
-                ? 'bg-white dark:bg-black border-black dark:border-white'
-                : 'bg-black/5 dark:bg-white/5 border-black dark:border-white'
+                ? 'bg-bg-surface border-border-heavy'
+                : 'bg-bg-elevated border-border-heavy'
             }`}>
             <div className="flex items-center self-center px-1">
               {isSupport && (
@@ -811,8 +811,8 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   aria-label={t('whisper_mode') || 'Toggle whisper mode'}
                   title={t('whisper_mode')}
                   className={`w-10 h-10 flex items-center justify-center ${whisperMode
-                    ? 'bg-black dark:bg-white text-white dark:text-black'
-                    : 'text-black dark:text-white opacity-40 hover:opacity-100'
+                    ? 'bg-accent-blue text-white'
+                    : 'text-text-primary opacity-40 hover:opacity-100'
                     }`}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -821,7 +821,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 </button>
               )}
 
-              <label className="w-10 h-10 flex items-center justify-center text-black dark:text-white opacity-40 hover:opacity-100 cursor-pointer" title="Attach file">
+              <label className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 cursor-pointer" title="Attach file">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
@@ -867,7 +867,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 onPaste={handlePaste}
                 placeholder={isSupport ? (t('type_message_slash') || 'Type a message or / for quick replies') : t('type_message')}
                 rows={1}
-                className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-black dark:text-white placeholder:opacity-30 max-h-32 scrollbar-none"
+                className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 max-h-32 scrollbar-none"
               />
             </div>
 
@@ -879,10 +879,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 disabled={improving}
                 aria-label="Improve message"
                 title="AI: Improve message"
-                className="w-10 h-10 flex items-center justify-center text-black dark:text-white opacity-40 hover:opacity-100 disabled:opacity-30"
+                className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 disabled:opacity-30"
               >
                 {improving ? (
-                  <span className="text-[10px] font-black opacity-40">...</span>
+                  <span className="text-[10px] font-bold opacity-40">...</span>
                 ) : (
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
@@ -894,7 +894,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             <button
               type="submit"
               disabled={uploading || improving || (!text.trim() && !mediaUrl)}
-              className="bg-black dark:bg-white text-white dark:text-black w-10 h-10 flex items-center justify-center disabled:opacity-30"
+              className="bg-accent-blue text-white w-10 h-10 flex items-center justify-center disabled:opacity-30"
               title={improvementMode === 'forced' ? 'AI will improve before sending' : undefined}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 rotate-90" viewBox="0 0 20 20" fill="currentColor">
