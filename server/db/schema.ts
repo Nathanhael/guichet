@@ -308,6 +308,58 @@ export const archivedTickets = pgTable('archived_tickets', {
   archivedAtIdx: index('idx_archived_tickets_archived').on(table.archivedAt),
 }));
 
+// ─── Knowledge Base ─────────────────────────────────────────────────────────
+
+export const kbArticles = pgTable('kb_articles', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  dept: text('dept'),                              // null = all departments
+  tags: jsonb('tags').default([]),                  // string[] for filtering
+  slug: text('slug'),                              // URL-friendly key
+  published: boolean('published').notNull().default(true),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerIdx: index('idx_kb_partner').on(table.partnerId),
+  partnerSlugIdx: uniqueIndex('idx_kb_partner_slug').on(table.partnerId, table.slug),
+  partnerPublishedIdx: index('idx_kb_partner_published').on(table.partnerId, table.published),
+}));
+
+// ─── Webhooks ───────────────────────────────────────────────────────────────
+
+export const webhooks = pgTable('webhooks', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  secret: text('secret').notNull(),                // HMAC-SHA256 signing key
+  events: jsonb('events').notNull().default([]),    // string[] e.g. ['ticket.created','ticket.closed']
+  description: text('description'),
+  active: boolean('active').notNull().default(true),
+  createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerIdx: index('idx_webhooks_partner').on(table.partnerId),
+  partnerActiveIdx: index('idx_webhooks_partner_active').on(table.partnerId, table.active),
+}));
+
+export const webhookLogs = pgTable('webhook_logs', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  webhookId: text('webhook_id').notNull().references(() => webhooks.id, { onDelete: 'cascade' }),
+  event: text('event').notNull(),
+  payload: jsonb('payload').notNull().default({}),
+  statusCode: integer('status_code'),
+  responseBody: text('response_body'),
+  error: text('error'),
+  durationMs: integer('duration_ms'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  webhookCreatedIdx: index('idx_webhook_logs_webhook_created').on(table.webhookId, table.createdAt),
+}));
+
 // ─── AI Service Tables ──────────────────────────────────────────────────────
 
 export const aiPromptTemplates = pgTable('ai_prompt_templates', {

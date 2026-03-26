@@ -246,6 +246,7 @@ export interface AdminStats {
   p95ResponseMinutes?: number;
   reopenRate?: number;
   sentimentScore?: number;
+  sentimentByDept?: Record<string, { avg: number | null; count: number }>;
   avgRating: number;
   abandonedCount: number;
   slaHealth: number;

@@ -450,6 +450,60 @@ const translations: Translations = {
     day_fri: 'Friday',
     day_sat: 'Saturday',
     day_sun: 'Sunday',
+
+    // Canned Responses
+    canned_responses: 'Canned Responses',
+    canned_responses_desc: 'Pre-written replies for quick agent responses',
+    create_new_response: 'Create New Response',
+    no_canned_responses: 'No canned responses yet',
+    shortcut: 'Shortcut',
+    body_preview: 'Body Preview',
+    variables_hint: 'Variables: {{agentName}} {{supportName}} {{ticketId}}',
+
+    // Knowledge Base
+    knowledge_base: 'Knowledge Base',
+    knowledge_base_desc: 'FAQ articles and guides for your team',
+    new_article: 'New Article',
+    search_articles: 'Search articles by title, content, or tags...',
+    no_articles: 'No articles yet',
+    no_matching_articles: 'No matching articles',
+    article_preview: 'Article Preview',
+    published: 'Published',
+    draft: 'Draft',
+    publish: 'Publish',
+    unpublish: 'Unpublish',
+    tags: 'Tags',
+    content: 'Content',
+
+    // Webhooks
+    webhooks: 'Webhooks',
+    webhooks_desc: 'HTTP callbacks for real-time event notifications',
+    new_webhook: 'New Webhook Endpoint',
+    no_webhooks: 'No webhooks configured',
+    signing_secret: 'Signing Secret',
+    signing_secret_warn: 'Copy now, it won\'t be shown again',
+    wh_events: 'Events',
+    wh_paused: 'Paused',
+    wh_regenerate_secret: 'Regenerate secret',
+    wh_recent_deliveries: 'Recent Deliveries',
+    wh_no_deliveries: 'No deliveries yet',
+
+    // AI Copilot
+    ai_copilot: 'AI Copilot',
+    ai_sentiment: 'Sentiment',
+    ai_summary: 'Summary',
+    ai_analyzing: 'Analyzing...',
+    ai_unavailable: 'AI unavailable',
+    ai_no_summary: 'No summary yet',
+    ai_suggested_articles: 'Suggested Articles',
+    ai_search_kb: 'Search Knowledge Base',
+    ai_quick_tips: 'Quick Tips',
+    ai_tip_slash: 'Type / in the message box to use canned responses',
+    ai_tip_sparkle: 'Sparkle button improves message tone with AI',
+    ai_tip_sentiment_drop: 'Sentiment dropping — consider acknowledging the customer\'s frustration',
+
+    // Dashboard Export
+    export_pdf: 'PDF',
   },
 
   fr: {
@@ -880,6 +934,60 @@ const translations: Translations = {
     day_fri: 'Vendredi',
     day_sat: 'Samedi',
     day_sun: 'Dimanche',
+
+    // Canned Responses
+    canned_responses: 'R\u00e9ponses pr\u00e9d\u00e9finies',
+    canned_responses_desc: 'R\u00e9ponses pr\u00e9-\u00e9crites pour des r\u00e9ponses rapides',
+    create_new_response: 'Nouvelle r\u00e9ponse',
+    no_canned_responses: 'Aucune r\u00e9ponse pr\u00e9d\u00e9finie',
+    shortcut: 'Raccourci',
+    body_preview: 'Aper\u00e7u du contenu',
+    variables_hint: 'Variables : {{agentName}} {{supportName}} {{ticketId}}',
+
+    // Knowledge Base
+    knowledge_base: 'Base de connaissances',
+    knowledge_base_desc: 'Articles FAQ et guides pour votre \u00e9quipe',
+    new_article: 'Nouvel article',
+    search_articles: 'Rechercher par titre, contenu ou tags...',
+    no_articles: 'Aucun article',
+    no_matching_articles: 'Aucun article correspondant',
+    article_preview: 'Aper\u00e7u de l\'article',
+    published: 'Publi\u00e9',
+    draft: 'Brouillon',
+    publish: 'Publier',
+    unpublish: 'D\u00e9publier',
+    tags: 'Tags',
+    content: 'Contenu',
+
+    // Webhooks
+    webhooks: 'Webhooks',
+    webhooks_desc: 'Rappels HTTP pour les notifications en temps r\u00e9el',
+    new_webhook: 'Nouveau point de terminaison',
+    no_webhooks: 'Aucun webhook configur\u00e9',
+    signing_secret: 'Cl\u00e9 de signature',
+    signing_secret_warn: 'Copiez maintenant, elle ne sera plus affich\u00e9e',
+    wh_events: '\u00c9v\u00e9nements',
+    wh_paused: 'En pause',
+    wh_regenerate_secret: 'R\u00e9g\u00e9n\u00e9rer la cl\u00e9',
+    wh_recent_deliveries: 'Livraisons r\u00e9centes',
+    wh_no_deliveries: 'Aucune livraison',
+
+    // AI Copilot
+    ai_copilot: 'Copilote IA',
+    ai_sentiment: 'Sentiment',
+    ai_summary: 'R\u00e9sum\u00e9',
+    ai_analyzing: 'Analyse en cours...',
+    ai_unavailable: 'IA indisponible',
+    ai_no_summary: 'Pas encore de r\u00e9sum\u00e9',
+    ai_suggested_articles: 'Articles sugg\u00e9r\u00e9s',
+    ai_search_kb: 'Rechercher dans la base',
+    ai_quick_tips: 'Conseils rapides',
+    ai_tip_slash: 'Tapez / pour utiliser les r\u00e9ponses pr\u00e9d\u00e9finies',
+    ai_tip_sparkle: 'Le bouton \u00e9tincelle am\u00e9liore le ton avec l\'IA',
+    ai_tip_sentiment_drop: 'Sentiment en baisse \u2014 pensez \u00e0 reconna\u00eetre la frustration du client',
+
+    // Dashboard Export
+    export_pdf: 'PDF',
   },
 
   nl: {
@@ -1310,6 +1418,60 @@ const translations: Translations = {
     day_fri: 'Vrijdag',
     day_sat: 'Zaterdag',
     day_sun: 'Zondag',
+
+    // Canned Responses
+    canned_responses: 'Standaardantwoorden',
+    canned_responses_desc: 'Vooraf geschreven antwoorden voor snelle reacties',
+    create_new_response: 'Nieuw antwoord aanmaken',
+    no_canned_responses: 'Nog geen standaardantwoorden',
+    shortcut: 'Sneltoets',
+    body_preview: 'Voorbeeld',
+    variables_hint: 'Variabelen: {{agentName}} {{supportName}} {{ticketId}}',
+
+    // Knowledge Base
+    knowledge_base: 'Kennisbank',
+    knowledge_base_desc: 'FAQ-artikelen en handleidingen voor je team',
+    new_article: 'Nieuw artikel',
+    search_articles: 'Zoek op titel, inhoud of tags...',
+    no_articles: 'Nog geen artikelen',
+    no_matching_articles: 'Geen overeenkomende artikelen',
+    article_preview: 'Artikelvoorbeeld',
+    published: 'Gepubliceerd',
+    draft: 'Concept',
+    publish: 'Publiceren',
+    unpublish: 'Depubliceren',
+    tags: 'Tags',
+    content: 'Inhoud',
+
+    // Webhooks
+    webhooks: 'Webhooks',
+    webhooks_desc: 'HTTP-callbacks voor realtime meldingen',
+    new_webhook: 'Nieuw webhook-eindpunt',
+    no_webhooks: 'Geen webhooks geconfigureerd',
+    signing_secret: 'Ondertekeningssleutel',
+    signing_secret_warn: 'Kopieer nu, deze wordt niet meer getoond',
+    wh_events: 'Gebeurtenissen',
+    wh_paused: 'Gepauzeerd',
+    wh_regenerate_secret: 'Sleutel opnieuw genereren',
+    wh_recent_deliveries: 'Recente leveringen',
+    wh_no_deliveries: 'Nog geen leveringen',
+
+    // AI Copilot
+    ai_copilot: 'AI-copiloot',
+    ai_sentiment: 'Sentiment',
+    ai_summary: 'Samenvatting',
+    ai_analyzing: 'Analyseren...',
+    ai_unavailable: 'AI niet beschikbaar',
+    ai_no_summary: 'Nog geen samenvatting',
+    ai_suggested_articles: 'Voorgestelde artikelen',
+    ai_search_kb: 'Zoek in kennisbank',
+    ai_quick_tips: 'Snelle tips',
+    ai_tip_slash: 'Typ / in het berichtveld om standaardantwoorden te gebruiken',
+    ai_tip_sparkle: 'De sparkle-knop verbetert de toon met AI',
+    ai_tip_sentiment_drop: 'Sentiment daalt \u2014 overweeg de frustratie van de klant te erkennen',
+
+    // Dashboard Export
+    export_pdf: 'PDF',
   },
 };
 

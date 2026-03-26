@@ -6,6 +6,7 @@ import { trpc } from '../../utils/trpc';
 import { ARCHIVE_PAGE_SIZE } from '../../config';
 import { Ticket, Membership } from '../../types';
 import SlaIndicator from '../SlaIndicator';
+import SentimentDot from '../SentimentDot';
 
 interface QueueSidebarProps {
   activeMembership: Membership;
@@ -35,6 +36,11 @@ export default function QueueSidebar({
   const supportOpenTickets = useStore((s) => s.supportOpenTickets);
   const unreadTickets = useStore((s) => s.unreadTickets);
   const t = useT();
+
+  // Batch sentiment scores for open tickets
+  const { data: sentimentMap } = trpc.ai.getTicketSentiments.useQuery(undefined, {
+    refetchInterval: 60000,
+  });
 
   const [sidebarTab, setSidebarTab] = useState<'queue' | 'archive' | 'search'>('queue');
   const [filterDept, setFilterDept] = useState('all');
@@ -243,6 +249,9 @@ export default function QueueSidebar({
                       </span>
                       <span className="text-[9px] opacity-60 uppercase">{getTicketTime(ticket.createdAt)}</span>
                       {isUnread && <span className="w-2 h-2 bg-black dark:bg-white rounded-full shrink-0" />}
+                      {sentimentMap && sentimentMap[ticket.id] != null && (
+                        <SentimentDot score={sentimentMap[ticket.id]} compact />
+                      )}
                       {ticket.slaResponseDueAt && !ticket.supportJoinedAt && (
                         <SlaIndicator dueAt={ticket.slaResponseDueAt} breached={ticket.slaBreached} compact />
                       )}
