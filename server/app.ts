@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import helmet from 'helmet';
@@ -52,7 +53,8 @@ const io = new Server(httpServer, {
         callback(new Error('Not allowed by CORS'));
       }
     },
-    methods: ['GET', 'POST']
+    methods: ['GET', 'POST'],
+    credentials: true,
   },
 });
 
@@ -83,16 +85,18 @@ app.use(helmet({
     },
   },
 }));
-app.use(cors({ 
+app.use(cors({
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
-  }
+  },
+  credentials: true,
 }));
 app.use(express.json());
+app.use(cookieParser());
 
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
