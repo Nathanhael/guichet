@@ -87,6 +87,12 @@
   --color-whisper-bg: #1a1520;
 }
 
+/* ===== DYSLEXIC MODE ===== */
+
+:where(.dyslexic-mode, .dyslexic-mode *) {
+  --font-sans: 'Lexend', ui-sans-serif, system-ui, sans-serif;
+}
+
 /* ===== KEYFRAMES ===== */
 
 @keyframes fade-in {
@@ -257,12 +263,4 @@ html {
 body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-}
-
-/* Dyslexic mode override */
-.dyslexic-mode body,
-.dyslexic-mode input,
-.dyslexic-mode textarea,
-.dyslexic-mode button {
-  font-family: var(--font-lexend) !important;
 }
