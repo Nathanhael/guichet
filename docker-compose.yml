@@ -31,6 +31,10 @@ services:
       - REQUIRE_PLATFORM_STEP_UP=${REQUIRE_PLATFORM_STEP_UP:-false}
       - PLATFORM_ADMIN_EMAIL=${PLATFORM_ADMIN_EMAIL:-}
       - PLATFORM_ADMIN_PASSWORD=${PLATFORM_ADMIN_PASSWORD:-}
+      - AI_ENABLED=${AI_ENABLED:-false}
+      - AI_PROVIDER=${AI_PROVIDER:-ollama}
+      - AI_TIMEOUT_MS=${AI_TIMEOUT_MS:-60000}
+      - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
     volumes:
       - ./server:/app
       - server_node_modules:/app/node_modules

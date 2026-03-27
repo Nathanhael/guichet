@@ -28,6 +28,13 @@ services:
       - COOKIE_SECURE=true
       - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379
+      - AI_ENABLED=${AI_ENABLED:-false}
+      - AI_PROVIDER=${AI_PROVIDER:-ollama}
+      - AI_TIMEOUT_MS=${AI_TIMEOUT_MS:-60000}
+      - AI_BASE_URL=${AI_BASE_URL:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT:-}
+      - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
