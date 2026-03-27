@@ -9,14 +9,19 @@ This document lists the versioned REST and tRPC endpoints for the Tessera platfo
 All endpoints are prefixed with `/api/v1/`.
 
 ### 1. Authentication
+
+**Auth transport**: All authenticated endpoints use **HttpOnly `SameSite=Lax` cookies** (`tessera_token`). JWT is set automatically on login/SSO and sent by the browser — no `Authorization` header needed. A companion `session_expires` cookie (non-HttpOnly) carries the Unix timestamp for client-side expiry detection.
+
 `POST /api/v1/auth/login`
 - **Body**: `{ "id": "user_id", "password": "..." }`
-- **Response**: `{ "token": "...", "user": {...}, "memberships": [...], "activePartnerId": "..." }`
+- **Response**: `{ "user": {...}, "memberships": [...], "activePartnerId": "..." }`
+- **Cookie**: Sets `tessera_token` (HttpOnly) + `session_expires`
 - **Note**: Legacy/Demo login via internal User ID.
 
 `POST /api/v1/auth/login-local`
 - **Body**: `{ "email": "...", "password": "...", "rememberMe": boolean }`
 - **Response**: Same as `/login`.
+- **Cookie**: Sets `tessera_token` (HttpOnly) + `session_expires`
 - **Note**: Recommended login method for local users. Supports case-insensitive email.
 
 `POST /api/v1/auth/forgot-password`
@@ -30,9 +35,10 @@ All endpoints are prefixed with `/api/v1/`.
 - **Note**: Validates 1-hour token and updates password. Enforces password strength policy.
 
 `POST /api/v1/auth/switch-partner`
-- **Auth**: Required (Bearer Token)
+- **Auth**: Required (HttpOnly cookie)
 - **Body**: `{ "membershipId": "..." }`
-- **Response**: New JWT scoped to the selected partner.
+- **Response**: `{ "activePartnerId": "...", "manifest": {...} }`
+- **Cookie**: Sets new `tessera_token` scoped to the selected partner.
 
 ### 1b. SSO Authentication
 
@@ -50,15 +56,15 @@ All endpoints are prefixed with `/api/v1/`.
 
 ### 3. Uploads
 `POST /api/v1/uploads`
-- **Auth**: Required (Bearer Token)
+- **Auth**: Required (HttpOnly cookie)
 - **Body**: `multipart/form-data` (file)
 - **Response**: `{ "url": "/uploads/..." }`
 - **Validation**: Magic-byte check via `file-type`.
 
 ### 4. Ticket Export (CSV)
 `GET /api/v1/tickets/export`
-- **Auth**: Required (Token via query param or header)
-- **Query Params**: `dept`, `search`, `dateFrom`, `dateTo`, `token`
+- **Auth**: Required (HttpOnly cookie or token query param)
+- **Query Params**: `dept`, `search`, `dateFrom`, `dateTo`
 - **Response**: `text/csv` stream.
 
 ---
@@ -142,7 +148,7 @@ The majority of application logic is handled via tRPC procedures.
 ### 5. Kill Switches
 - `partner:deactivated`: Broadcast to all partner members when a company is disabled.
 - `user:deactivated`: Targeted broadcast to a specific User ID room, forcing immediate disconnection and session termination.
-- `auth:expired`: Emitted when a socket's JWT has expired — client should reconnect with a fresh token.
+- `auth:expired`: Emitted when a socket's JWT has expired — client auto-reconnects (cookies sent automatically).
 
 ---
 
