@@ -34,7 +34,20 @@ Production default:
 
 - internal users authenticate with Tessera-controlled identity
 - preferred path is Microsoft Entra / Azure SSO
-- local passwords are allowed only for development, testing, or break-glass accounts
+- local passwords are allowed for development, testing, break-glass accounts, or external agents without Azure AD access
+
+Auth method per partner:
+
+- `partners.authMethod` controls which login options are available: `'local'`, `'sso'`, or `'both'`
+- when `'both'`, the login page shows both email/password and SSO button simultaneously
+- default for new partners: `'both'`
+
+Per-user auth override:
+
+- `users.auth_method` column: `'local'` | `'sso'` | `NULL`
+- `NULL` means use the partner default
+- allows individual users to use a different auth method than their partner's setting (e.g., one local break-glass account in an SSO-only partner)
+- set during invite or by admin afterwards
 
 Local password policy:
 
@@ -88,6 +101,12 @@ Default policy:
 - `admin` cannot create tenants
 
 This is now enforced in the tenant admin UI and partner router APIs.
+
+SSO group mapping:
+
+- `partner_group_mappings` table maps SSO group names to tenant roles and departments
+- on SSO login, matched groups automatically provision or update memberships
+- allows Azure AD group membership to drive Tessera authorization without manual admin work
 
 ## Data Model
 
@@ -155,9 +174,17 @@ Current intended behavior:
 
 1. User authenticates through Microsoft Entra / Azure.
 2. Existing user is matched by external subject or email.
-3. Optional group mapping provisions tenant memberships for SSO-managed tenants.
+3. Optional group mapping provisions tenant memberships for SSO-managed tenants (via `partner_group_mappings`).
 4. Memberships are loaded using the same session builder as local auth.
 5. The same JWT/session shape is returned as local auth.
+
+### Mixed auth (`'both'` mode)
+
+1. Login page shows both email/password fields and SSO button.
+2. User chooses their preferred method.
+3. SSO users without a local password can only use SSO (password field is ignored).
+4. Local users with a password can always use local login as a fallback, even if partner prefers SSO.
+5. The invite flow lets admins choose `'local'` or `'sso'` per user, which sets `users.auth_method`.
 
 ## Current Implementation Rules
 

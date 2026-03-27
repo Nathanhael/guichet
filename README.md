@@ -6,7 +6,7 @@ Real-time, multi-tenant live chat platform for customer support teams. Built for
 
 - **Real-Time Chat** — Socket.io with Redis adapter for horizontal scaling, typing indicators, presence tracking, and collision detection
 - **Multi-Tenant Architecture** — Strict partner isolation, per-partner config, dynamic departments, and workspace switching
-- **Brutalist Design System** — Monochrome UI with CSS custom properties, JetBrains Mono typography, and zero unnecessary motion
+- **Brutalist Design System** — Raw token-based UI (Zinc + accent colors), JetBrains Mono typography, and minimal functional motion
 - **Role-Based Access** — Four roles (agent, support, admin, platform_operator) with granular permission gates
 - **Hybrid Authentication** — Local (Argon2id) + Azure Entra ID SSO per partner, with flexible per-user auth method override
 - **Platform Cockpit** — Global operator view for tenant management, user provisioning, audit log, and archive browser

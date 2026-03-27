@@ -18,6 +18,33 @@ import {
   Brain,
 } from 'lucide-react';
 
+interface ArticleCardProps {
+  article: { id: string; title: string; body: string };
+  copyId: string;
+  copiedId: string | null;
+  onCopy: (body: string, id: string) => void;
+}
+
+function ArticleCard({ article, copyId, copiedId, onCopy }: ArticleCardProps) {
+  return (
+    <div
+      className="border border-[var(--color-border)] p-2 hover:bg-[var(--color-accent-blue)] hover:text-white cursor-pointer group"
+      onClick={() => onCopy(article.body, copyId)}
+      title="Click to copy article body"
+    >
+      <div className="flex items-start justify-between gap-1">
+        <span className="text-[10px] font-bold leading-tight">{article.title}</span>
+        {copiedId === copyId ? (
+          <Check className="h-3 w-3 shrink-0" />
+        ) : (
+          <Copy className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
+        )}
+      </div>
+      <p className="text-[9px] opacity-50 mt-0.5 line-clamp-2">{article.body}</p>
+    </div>
+  );
+}
+
 interface Props {
   ticket: Ticket;
 }
@@ -29,13 +56,17 @@ export default function AiCopilotSidebar({ ticket }: Props) {
   const [kbQuery, setKbQuery] = useState('');
   const [kbSearchTrigger, setKbSearchTrigger] = useState('');
 
+  // AI config — check if features are enabled before calling
+  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, { staleTime: 60000 });
+  const aiConfig = aiConfigQuery.data;
+
   // AI Summary
   const summaryMutation = trpc.ai.summarizeChat.useMutation();
 
   // Sentiment
   const sentimentQuery = trpc.ai.getTicketSentiment.useQuery(
     { ticketId: ticket.id },
-    { refetchInterval: 60000 }
+    { refetchInterval: 60000, enabled: aiConfig?.sentimentDetection === true }
   );
 
   // KB search (triggered by user)
@@ -44,18 +75,20 @@ export default function AiCopilotSidebar({ ticket }: Props) {
     { enabled: !!kbSearchTrigger }
   );
 
-  // KB AI search (for auto-suggestions based on ticket context)
-  const autoQuery = ticket.dept ? `${ticket.dept} ${ticket.agentName}` : ticket.agentName;
+  // KB AI search (for auto-suggestions based on ticket department)
+  const autoQuery = ticket.dept || '';
   const kbAutoSuggest = trpc.kb.search.useQuery(
     { query: autoQuery },
-    { enabled: !!autoQuery }
+    { enabled: !!autoQuery && autoQuery.length > 2 }
   );
 
-  // Auto-summarize when ticket changes
+  // Auto-summarize when ticket changes — only if feature is enabled
   useEffect(() => {
-    summaryMutation.mutate({ ticketId: ticket.id });
+    if (aiConfig?.chatSummarization) {
+      summaryMutation.mutate({ ticketId: ticket.id });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticket.id]);
+  }, [ticket.id, aiConfig?.chatSummarization]);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text).catch(() => { /* clipboard access denied */ });
@@ -167,22 +200,13 @@ export default function AiCopilotSidebar({ ticket }: Props) {
             </h3>
             <div className="space-y-1.5">
               {kbAutoSuggest.data.slice(0, 3).map((article) => (
-                <div
+                <ArticleCard
                   key={article.id}
-                  className="border border-[var(--color-border)] p-2 hover:bg-[var(--color-accent-blue)] hover:text-white cursor-pointer group"
-                  onClick={() => copyToClipboard(article.body, article.id)}
-                  title="Click to copy article body"
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="text-[10px] font-bold leading-tight">{article.title}</span>
-                    {copiedId === article.id ? (
-                      <Check className="h-3 w-3 shrink-0" />
-                    ) : (
-                      <Copy className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
-                    )}
-                  </div>
-                  <p className="text-[9px] opacity-50 mt-0.5 line-clamp-2">{article.body}</p>
-                </div>
+                  article={article}
+                  copyId={article.id}
+                  copiedId={copiedId}
+                  onCopy={copyToClipboard}
+                />
               ))}
             </div>
           </section>
@@ -214,22 +238,13 @@ export default function AiCopilotSidebar({ ticket }: Props) {
           {kbResults.data && kbResults.data.length > 0 && (
             <div className="mt-2 space-y-1.5">
               {kbResults.data.slice(0, 5).map((article) => (
-                <div
+                <ArticleCard
                   key={article.id}
-                  className="border border-[var(--color-border)] p-2 hover:bg-[var(--color-accent-blue)] hover:text-white cursor-pointer group"
-                  onClick={() => copyToClipboard(article.body, `search-${article.id}`)}
-                  title="Click to copy article body"
-                >
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="text-[10px] font-bold leading-tight">{article.title}</span>
-                    {copiedId === `search-${article.id}` ? (
-                      <Check className="h-3 w-3 shrink-0" />
-                    ) : (
-                      <Copy className="h-3 w-3 opacity-0 group-hover:opacity-60 shrink-0" />
-                    )}
-                  </div>
-                  <p className="text-[9px] opacity-50 mt-0.5 line-clamp-2">{article.body}</p>
-                </div>
+                  article={article}
+                  copyId={`search-${article.id}`}
+                  copiedId={copiedId}
+                  onCopy={copyToClipboard}
+                />
               ))}
             </div>
           )}

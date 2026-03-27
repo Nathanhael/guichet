@@ -32,8 +32,7 @@ async function loginAsDemo(page: Page, userId: string) {
     return res;
   }
   const data = await res.json();
-  await page.evaluate(({ token, user, memberships }) => {
-    localStorage.setItem('token', token);
+  await page.evaluate(({ user, memberships }) => {
     localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('memberships', JSON.stringify(memberships));
     if (memberships?.length > 0) {
@@ -55,11 +54,10 @@ async function enableAiFeatures(page: Page) {
   });
   if (!res.ok()) return false;
 
-  const { token } = await res.json();
+  // Cookie is set automatically by login response — no Bearer token needed
 
   // Enable AI on the tessera-main partner via tRPC
   const updateRes = await page.request.post(`${BASE}/api/v1/trpc/platform.updatePartner`, {
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     data: {
       id: 'tessera-main',
       data: {
@@ -163,10 +161,9 @@ test.describe('Sprint 1: AI Provider Layer', () => {
     test.skip(!res.ok(), 'Login failed');
 
     // The partner.getAiConfig endpoint should respond (even if all-off)
-    const token = await page.evaluate(() => localStorage.getItem('token'));
     const configRes = await page.request.get(
       `${BASE}/api/v1/trpc/partner.getAiConfig`,
-      { headers: { Authorization: `Bearer ${token}` }, failOnStatusCode: false }
+      { failOnStatusCode: false }
     );
     // Should return 200 with some JSON structure
     expect(configRes.status()).toBe(200);
@@ -182,11 +179,8 @@ test.describe('Sprint 1: Per-Tenant AI Configuration', () => {
     const res = await loginAsDemo(page, 'platform_bart');
     test.skip(!res.ok(), 'Platform login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-
     // Enable AI on tessera-main
     const updateRes = await page.request.post(`${BASE}/api/v1/trpc/platform.updatePartner`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       data: {
         id: 'tessera-main',
         data: {
@@ -206,15 +200,15 @@ test.describe('Sprint 1: Per-Tenant AI Configuration', () => {
     if (updateRes.ok()) {
       // Verify the config was saved by fetching it back
       // Login as a regular user from that partner
+      // Re-login as agent to verify config (cookie set automatically)
       const agentRes = await page.request.post(`${BASE}/api/v1/auth/login`, {
         data: { id: 'agent_jan', password: DEMO_PASSWORD },
         failOnStatusCode: false,
       });
       if (agentRes.ok()) {
-        const agentData = await agentRes.json();
         const configRes = await page.request.get(
           `${BASE}/api/v1/trpc/partner.getAiConfig`,
-          { headers: { Authorization: `Bearer ${agentData.token}` }, failOnStatusCode: false }
+          { failOnStatusCode: false }
         );
         if (configRes.ok()) {
           const configBody = await configRes.json();
@@ -231,10 +225,9 @@ test.describe('Sprint 1: Per-Tenant AI Configuration', () => {
     const res = await loginAsDemo(page, 'agent_jan');
     test.skip(!res.ok(), 'Login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
     const configRes = await page.request.get(
       `${BASE}/api/v1/trpc/partner.getAiConfig`,
-      { headers: { Authorization: `Bearer ${token}` }, failOnStatusCode: false }
+      { failOnStatusCode: false }
     );
 
     expect(configRes.status()).toBe(200);
@@ -444,11 +437,8 @@ test.describe('Sprint 2: AI Translation', () => {
     const res = await loginAsDemo(page, 'expert_alex');
     test.skip(!res.ok(), 'Login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-
     // Call the translate endpoint directly
     const translateRes = await page.request.post(`${BASE}/api/v1/trpc/ai.translateMessage`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       data: { text: 'Hello, how are you?', targetLang: 'nl' },
       failOnStatusCode: false,
     });
@@ -536,12 +526,10 @@ test.describe('Sprint 2: AI Sentiment Detection', () => {
     const res = await loginAsDemo(page, 'expert_alex');
     test.skip(!res.ok(), 'Login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-
     // Test getTicketSentiments (bulk query)
     const bulkRes = await page.request.get(
       `${BASE}/api/v1/trpc/ai.getTicketSentiments`,
-      { headers: { Authorization: `Bearer ${token}` }, failOnStatusCode: false }
+      { failOnStatusCode: false }
     );
     expect([200, 403]).toContain(bulkRes.status());
     if (bulkRes.ok()) {
@@ -555,7 +543,7 @@ test.describe('Sprint 2: AI Sentiment Detection', () => {
     // Test getNegativeSentimentTickets
     const negRes = await page.request.get(
       `${BASE}/api/v1/trpc/ai.getNegativeSentimentTickets?input=${encodeURIComponent(JSON.stringify({ limit: 5 }))}`,
-      { headers: { Authorization: `Bearer ${token}` }, failOnStatusCode: false }
+      { failOnStatusCode: false }
     );
     expect([200, 400, 403]).toContain(negRes.status());
     if (negRes.ok()) {
@@ -573,10 +561,9 @@ test.describe('Sprint 2: AI Auto-Summarize on Close', () => {
     const res = await loginAsDemo(page, 'expert_alex');
     test.skip(!res.ok(), 'Login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
     const configRes = await page.request.get(
       `${BASE}/api/v1/trpc/partner.getAiConfig`,
-      { headers: { Authorization: `Bearer ${token}` }, failOnStatusCode: false }
+      { failOnStatusCode: false }
     );
     expect(configRes.status()).toBe(200);
     const body = await configRes.json();
@@ -739,11 +726,8 @@ test.describe('AI Feature Access Control', () => {
     const res = await loginAsDemo(page, 'agent_jan');
     test.skip(!res.ok(), 'Login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-
     // Agents should get FORBIDDEN when trying to summarize
     const summarizeRes = await page.request.post(`${BASE}/api/v1/trpc/ai.summarizeChat`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       data: { ticketId: 'nonexistent' },
       failOnStatusCode: false,
     });
@@ -756,11 +740,9 @@ test.describe('AI Feature Access Control', () => {
     const res = await loginAsDemo(page, 'agent_jan');
     test.skip(!res.ok(), 'Login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-
     const sentimentRes = await page.request.get(
       `${BASE}/api/v1/trpc/ai.getTicketSentiments`,
-      { headers: { Authorization: `Bearer ${token}` }, failOnStatusCode: false }
+      { failOnStatusCode: false }
     );
 
     // Agents should be forbidden from accessing sentiment
@@ -772,10 +754,7 @@ test.describe('AI Feature Access Control', () => {
     const res = await loginAsDemo(page, 'agent_jan');
     test.skip(!res.ok(), 'Login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-
     const improveRes = await page.request.post(`${BASE}/api/v1/trpc/ai.improveMessage`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       data: { text: 'This is a message that should be improved by the AI system', role: 'agent' },
       failOnStatusCode: false,
     });
@@ -791,10 +770,7 @@ test.describe('AI Feature Access Control', () => {
     const res = await loginAsDemo(page, 'expert_alex');
     test.skip(!res.ok(), 'Login failed');
 
-    const token = await page.evaluate(() => localStorage.getItem('token'));
-
     const translateRes = await page.request.post(`${BASE}/api/v1/trpc/ai.translateMessage`, {
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       data: { text: 'Hello world', targetLang: 'nl' },
       failOnStatusCode: false,
     });

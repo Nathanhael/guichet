@@ -96,7 +96,7 @@ export const webhookRouter = router({
       if (input.description !== undefined) updates.description = input.description;
       if (input.active !== undefined) updates.active = input.active;
 
-      await db.update(webhooks).set(updates).where(eq(webhooks.id, input.id));
+      await db.update(webhooks).set(updates).where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)));
       return { success: true };
     }),
 
@@ -109,7 +109,7 @@ export const webhookRouter = router({
       const newSecret = randomBytes(32).toString('hex');
       await db.update(webhooks)
         .set({ secret: newSecret, updatedAt: new Date().toISOString() })
-        .where(eq(webhooks.id, input.id));
+        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)));
 
       return { secret: newSecret };
     }),

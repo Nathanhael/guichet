@@ -1,109 +1,18 @@
 import { z } from 'zod';
 import { router, partnerScopedProcedure } from '../trpc.js';
-import { TRPCError } from '@trpc/server';
 import { notFound, forbidden } from '../../utils/trpcErrors.js';
 import {
-  getProvider,
-  isFeatureEnabled,
-  checkRateLimit,
-  logUsage,
-  getPromptTemplate,
-  interpolate,
   getCachedSummary,
   setCachedSummary,
   formatMessagesForAi,
+  runAiAction,
+  verifyTicketOwnership,
+  fetchTicketMessages,
 } from '../../services/ai/index.js';
-import type { AiAction } from '../../services/ai/types.js';
 import { db } from '../../db.js';
 import { messages as messagesTable, tickets } from '../../db/schema.js';
-import { eq, and, asc, isNull, isNotNull, ne, sql, avg } from 'drizzle-orm';
+import { eq, and, asc, isNull, isNotNull, ne, sql, avg, inArray } from 'drizzle-orm';
 import { canUseSupportWorkflows } from '../../services/roles.js';
-import logger from '../../utils/logger.js';
-
-/**
- * Helper: run an AI action with rate-limiting, logging, and feature gating.
- */
-async function runAiAction(opts: {
-  partnerId: string;
-  userId: string;
-  feature: 'messageImprovement' | 'chatSummarization' | 'translation' | 'sentimentDetection' | 'autoSummarizeOnClose';
-  action: AiAction;
-  vars: Record<string, string>;
-  temperature?: number;
-  maxTokens?: number;
-}): Promise<{ content: string; model: string }> {
-  // 1. Feature gate
-  const enabled = await isFeatureEnabled(opts.partnerId, opts.feature);
-  if (!enabled) {
-    throw new TRPCError({
-      code: 'FORBIDDEN',
-      message: `AI feature "${opts.feature}" is not enabled for this tenant`,
-    });
-  }
-
-  // 2. Rate limit
-  const limit = await checkRateLimit(opts.partnerId);
-  if (!limit.allowed) {
-    throw new TRPCError({
-      code: 'TOO_MANY_REQUESTS',
-      message: `Rate limit exceeded (${limit.limitHit}). Retry after ${limit.retryAfterSeconds}s`,
-    });
-  }
-
-  // 3. Build prompt
-  const template = await getPromptTemplate(opts.action, opts.partnerId);
-  const prompt = interpolate(template, opts.vars);
-
-  // 4. Call provider
-  const provider = await getProvider(opts.partnerId);
-  const start = Date.now();
-
-  try {
-    const result = await provider.chat({
-      model: 'default',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: opts.temperature,
-      maxTokens: opts.maxTokens,
-    });
-
-    // 5. Log usage (fire-and-forget)
-    logUsage({
-      partnerId: opts.partnerId,
-      userId: opts.userId,
-      action: opts.action,
-      provider: provider.name,
-      model: result.model,
-      inputTokens: result.inputTokens,
-      outputTokens: result.outputTokens,
-      latencyMs: Date.now() - start,
-      success: true,
-    });
-
-    return { content: result.content, model: result.model };
-  } catch (err) {
-    const latencyMs = Date.now() - start;
-    const errorMessage = err instanceof Error ? err.message : String(err);
-
-    logUsage({
-      partnerId: opts.partnerId,
-      userId: opts.userId,
-      action: opts.action,
-      provider: provider.name,
-      model: 'unknown',
-      inputTokens: 0,
-      outputTokens: 0,
-      latencyMs,
-      success: false,
-      errorMessage,
-    });
-
-    logger.error({ err: errorMessage, action: opts.action, partnerId: opts.partnerId }, 'AI action failed');
-    throw new TRPCError({
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'AI service unavailable. Please try again later.',
-    });
-  }
-}
 
 export const aiRouter = router({
   /**
@@ -181,16 +90,8 @@ export const aiRouter = router({
       }
 
       // Verify ticket exists and belongs to this partner
-      const [ticket] = await db
-        .select({ id: tickets.id, partnerId: tickets.partnerId })
-        .from(tickets)
-        .where(eq(tickets.id, input.ticketId))
-        .limit(1);
-
+      const ticket = await verifyTicketOwnership(input.ticketId, partnerId);
       if (!ticket) throw notFound('Ticket');
-      if (ticket.partnerId !== partnerId) {
-        throw forbidden('Ticket does not belong to your tenant');
-      }
 
       // Check cache (unless refresh is requested)
       if (!input.refresh) {
@@ -199,23 +100,7 @@ export const aiRouter = router({
       }
 
       // Fetch messages
-      const msgs = await db
-        .select({
-          senderName: messagesTable.senderName,
-          senderRole: messagesTable.senderRole,
-          text: messagesTable.text,
-        })
-        .from(messagesTable)
-        .where(
-          and(
-            eq(messagesTable.ticketId, input.ticketId),
-            isNull(messagesTable.deletedAt),
-          ),
-        )
-        .orderBy(asc(messagesTable.createdAt));
-
-      // Filter out system messages (system = 0 means not system, 1 means system)
-      const userMessages = msgs.filter((m) => m.text && m.text.trim());
+      const userMessages = await fetchTicketMessages(input.ticketId);
 
       if (userMessages.length === 0) {
         return { summary: 'No messages to summarize.', cached: false };
@@ -399,7 +284,7 @@ export const aiRouter = router({
           createdAt: tickets.createdAt,
         })
         .from(tickets)
-        .where(sql`${tickets.id} IN (${sql.join(ticketIds.map(id => sql`${id}`), sql`, `)})`);
+        .where(inArray(tickets.id, ticketIds));
 
       const ticketMap = new Map(ticketInfo.map(t => [t.id, t]));
 

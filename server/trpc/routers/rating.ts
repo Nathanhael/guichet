@@ -6,6 +6,10 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import logger from '../../utils/logger.js';
 
+function errMsg(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export const ratingRouter = router({
   list: roleProcedure(['admin', 'support']).query(async ({ ctx }) => {
     try {
@@ -34,7 +38,7 @@ export const ratingRouter = router({
 
       return data;
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errMsg(err);
       logger.error({ err: message }, 'tRPC: Error listing ratings');
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
     }
@@ -47,21 +51,19 @@ export const ratingRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // Tenant isolation
-        if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) {
+        // Tenant isolation: always scope to a partner
+        if (!ctx.user.partnerId) {
           return [];
         }
 
         // Build conditions for the ratings query
         const conditions = [];
 
-        // Scope to partner's tickets (tenant isolation)
-        if (ctx.user.partnerId) {
-          const partnerTicketIds = db.select({ id: tickets.id })
-            .from(tickets)
-            .where(eq(tickets.partnerId, ctx.user.partnerId));
-          conditions.push(inArray(ratings.ticketId, partnerTicketIds));
-        }
+        // Scope to partner's tickets (tenant isolation — mandatory)
+        const partnerTicketIds = db.select({ id: tickets.id })
+          .from(tickets)
+          .where(eq(tickets.partnerId, ctx.user.partnerId));
+        conditions.push(inArray(ratings.ticketId, partnerTicketIds));
 
         // Date range filters — use ISO strings for timestamp comparison (column is PgTimestampString)
         if (input.dateFrom) {
@@ -91,7 +93,7 @@ export const ratingRouter = router({
 
         return data;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errMsg(err);
         logger.error({ err: message }, 'tRPC: Error getting staff ratings');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }

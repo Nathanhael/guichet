@@ -1,34 +1,38 @@
-# Contributing Guidelines: Tessera (Clean Slate)
+# Contributing Guidelines: Tessera
 
-To maintain the strict B&W aesthetic and high-performance real-time core of this project, please follow these guidelines.
+To maintain the brutalist design system and high-performance real-time core of this project, please follow these guidelines.
 
 > [!TIP]
 > **AI Assistants**: Please refer to **[CLAUDE.md](./CLAUDE.md)** and **[GEMINI.md](./GEMINI.md)** for specific "Rules of Engagement" regarding Docker usage and design standards.
 
-## Strict B&W Minimalist Standard
+## Brutalist Design System
 
-The app follows a "scorched earth" visual overhaul. All new components must adhere to these rules:
+The app follows a Raw/Exposed Brutalist design. All new components must use CSS custom property design tokens defined in `client/src/index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for the full spec.
 
-### 1. No Color, No Gradients
-- Use **ONLY** pure black (#000000) and pure white (#FFFFFF).
-- No gray scales (except for specific UI elements like scrollbars or whisper messages, using Slate 300/800).
-- Never use brand colors or gradients.
+### Brutalist Design Standard
 
-### 2. Zero Motion
-- All animations and transitions are stripped.
-- Do **NOT** use CSS transitions or `transition-all` classes.
-- UI must be immediate and static.
+The app uses a token-based raw/exposed Brutalist design system. All new components must adhere to these rules:
+
+### 1. Colors and Tokens
+- Use **ONLY** CSS custom property tokens defined in `index.css`.
+- Use the Zinc-based scale for surfaces and distinct Blue, Purple, Red, Green for accents.
+- Never use brand colors, inline gradients, or hardcoded hex codes.
+
+### 2. Minimal Motion
+- All non-essential animations and transitions are stripped.
+- Only a 150ms `fade-in` animation is permitted for modals/panels.
+- UI must prioritize functional immediacy and respect `prefers-reduced-motion`.
 
 ### 3. Typography & Accessibility
-- **Fonts**: Use the `Inter` stack for primary UI and `Lexend` for dyslexic mode.
+- **Fonts**: Use the `Inter` stack for primary UI, `JetBrains Mono` for UI chrome, and `Lexend` for dyslexic mode.
 - **Fixed Widths**: Avoid jarring layout shifts; use `min-w` and `max-w` strictly.
 - **Bionic Reading**: Text-heavy components should utilize the `<BionicText />` wrapper if enabled.
-- **Modes**: Support Dark Mode (Black background, White text) and Light Mode (White background, Black text).
+- **Modes**: Support Dark Mode and Light Mode natively via CSS tokens.
 
 ### 4. Component Patterns
-- **surface-card**: Solid border (1px black/white).
-- **btn-primary**: Inverted colors, font-black, uppercase, tracked-widest.
-- **input-field**: Solid border, no shadows.
+- Use design token classes from `index.css` for surfaces, borders, and text colors.
+- Buttons: inverted colors, font-black, uppercase, tracked-widest.
+- Inputs: solid border, no shadows.
 
 ## Coding Standards
 
@@ -42,9 +46,9 @@ The app follows a "scorched earth" visual overhaul. All new components must adhe
 
 ### TypeScript & Types
 - 100% TypeScript. No `any`.
-- Maintain interfaces in `client/src/types/index.ts`.
+- Zod schemas on backend, TypeScript interfaces in `client/src/types/index.ts`.
 
-## 🛠️ Tooling
+## Tooling
 
 ### Database Management (Drizzle)
 - Use **Drizzle ORM** for all database interactions.

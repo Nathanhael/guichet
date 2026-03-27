@@ -51,7 +51,12 @@ export const kbRouter = router({
         );
       }
 
-      const rows = await db
+      // Push tag filter to Postgres using JSONB @> operator
+      if (input?.tag) {
+        conditions.push(sql`${kbArticles.tags} @> ${JSON.stringify([input.tag])}::jsonb`);
+      }
+
+      return db
         .select({
           ...articleListColumns,
           published: kbArticles.published,
@@ -61,16 +66,6 @@ export const kbRouter = router({
         .from(kbArticles)
         .where(and(...conditions))
         .orderBy(asc(kbArticles.title));
-
-      // Filter by tag in JS (jsonb array contains)
-      if (input?.tag) {
-        return rows.filter((r) => {
-          const tags = (r.tags as string[]) || [];
-          return tags.includes(input.tag!);
-        });
-      }
-
-      return rows;
     }),
 
   /**
@@ -118,6 +113,16 @@ export const kbRouter = router({
       try {
         const { getProvider } = await import('../../services/ai/factory.js');
         const { logUsage } = await import('../../services/ai/usage.js');
+        const { checkRateLimit } = await import('../../services/ai/rateLimit.js');
+        const { isFeatureEnabled } = await import('../../services/ai/config.js');
+
+        // Feature gate: require AI to be enabled for this partner
+        const enabled = await isFeatureEnabled(ctx.user.partnerId, 'chatSummarization');
+        if (!enabled) throw new Error('AI features disabled for this partner');
+
+        // Rate limit check
+        const limit = await checkRateLimit(ctx.user.partnerId);
+        if (!limit.allowed) throw new Error('AI rate limit exceeded');
 
         const provider = await getProvider(ctx.user.partnerId);
         if (!(await provider.isAvailable())) throw new Error('AI provider unavailable');
@@ -140,7 +145,7 @@ Only return valid JSON, nothing else.`,
             },
             {
               role: 'user',
-              content: `Question: ${input.question}\n\nArticles:\n${articleSummaries}`,
+              content: `Question: <user_content>${input.question.replace(/<\/?user_content>/g, '')}</user_content>\n\nArticles:\n${articleSummaries}`,
             },
           ],
           temperature: 0.1,
@@ -261,7 +266,7 @@ Only return valid JSON, nothing else.`,
       if (input.slug !== undefined) updates.slug = input.slug;
       if (input.published !== undefined) updates.published = input.published;
 
-      await db.update(kbArticles).set(updates).where(eq(kbArticles.id, input.id));
+      await db.update(kbArticles).set(updates).where(and(eq(kbArticles.id, input.id), eq(kbArticles.partnerId, ctx.user.partnerId)));
       return { success: true };
     }),
 
