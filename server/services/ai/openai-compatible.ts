@@ -1,5 +1,6 @@
 import type { AiProvider, ChatParams, ChatResult } from './types.js';
 import logger from '../../utils/logger.js';
+import config from '../../config.js';
 
 /**
  * Generic OpenAI-compatible provider.
@@ -30,53 +31,71 @@ export class OpenAiCompatibleProvider implements AiProvider {
     return h;
   }
 
+  private wrapTimeoutError(err: unknown): never {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error(`AI request timed out after ${config.AI_TIMEOUT_MS}ms (provider: openai-compatible)`);
+    }
+    throw err;
+  }
+
   async chat(params: ChatParams): Promise<ChatResult> {
     const model = params.model || this.defaultModel;
 
-    const res = await fetch(this.endpoint, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify({
-        model,
-        messages: params.messages,
-        temperature: params.temperature ?? 0.7,
-        max_tokens: params.maxTokens,
-      }),
-    });
+    try {
+      const res = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({
+          model,
+          messages: params.messages,
+          temperature: params.temperature ?? 0.7,
+          max_tokens: params.maxTokens,
+        }),
+        signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
+      });
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`OpenAI-compatible request failed (${res.status}): ${text}`);
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(`OpenAI-compatible request failed (${res.status}): ${text}`);
+      }
+
+      const data = await res.json() as {
+        choices: Array<{ message: { content: string } }>;
+        usage?: { prompt_tokens: number; completion_tokens: number };
+        model: string;
+      };
+
+      return {
+        content: data.choices[0]?.message.content ?? '',
+        inputTokens: data.usage?.prompt_tokens ?? 0,
+        outputTokens: data.usage?.completion_tokens ?? 0,
+        model: data.model || model,
+      };
+    } catch (err) {
+      this.wrapTimeoutError(err);
     }
-
-    const data = await res.json() as {
-      choices: Array<{ message: { content: string } }>;
-      usage?: { prompt_tokens: number; completion_tokens: number };
-      model: string;
-    };
-
-    return {
-      content: data.choices[0]?.message.content ?? '',
-      inputTokens: data.usage?.prompt_tokens ?? 0,
-      outputTokens: data.usage?.completion_tokens ?? 0,
-      model: data.model || model,
-    };
   }
 
   async *chatStream(params: ChatParams): AsyncIterable<string> {
     const model = params.model || this.defaultModel;
 
-    const res = await fetch(this.endpoint, {
-      method: 'POST',
-      headers: this.headers,
-      body: JSON.stringify({
-        model,
-        messages: params.messages,
-        temperature: params.temperature ?? 0.7,
-        max_tokens: params.maxTokens,
-        stream: true,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: this.headers,
+        body: JSON.stringify({
+          model,
+          messages: params.messages,
+          temperature: params.temperature ?? 0.7,
+          max_tokens: params.maxTokens,
+          stream: true,
+        }),
+        signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
+      });
+    } catch (err) {
+      this.wrapTimeoutError(err);
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
