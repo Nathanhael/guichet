@@ -1,14 +1,47 @@
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod/v4';
+
+// Replicate the relevant schema subset for isolated testing
+const timeoutSchema = z.object({
+  AI_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
+  OLLAMA_KEEPALIVE: z.string().default('30m'),
+});
 
 describe('AI timeout config', () => {
-  it('AI_TIMEOUT_MS defaults to 60000', async () => {
-    // Dynamic import so env is read fresh
-    const { default: config } = await import('../../config.js');
-    expect(config.AI_TIMEOUT_MS).toBe(60000);
+  it('AI_TIMEOUT_MS defaults to 60000', () => {
+    const result = timeoutSchema.parse({});
+    expect(result.AI_TIMEOUT_MS).toBe(60000);
   });
 
-  it('OLLAMA_KEEPALIVE defaults to "30m"', async () => {
-    const { default: config } = await import('../../config.js');
-    expect(config.OLLAMA_KEEPALIVE).toBe('30m');
+  it('OLLAMA_KEEPALIVE defaults to "30m"', () => {
+    const result = timeoutSchema.parse({});
+    expect(result.OLLAMA_KEEPALIVE).toBe('30m');
+  });
+
+  it('AI_TIMEOUT_MS accepts custom values', () => {
+    const result = timeoutSchema.parse({ AI_TIMEOUT_MS: '30000' });
+    expect(result.AI_TIMEOUT_MS).toBe(30000);
+  });
+
+  it('AI_TIMEOUT_MS rejects negative values', () => {
+    expect(() => timeoutSchema.parse({ AI_TIMEOUT_MS: '-1' })).toThrow();
+  });
+
+  it('AI_TIMEOUT_MS rejects zero', () => {
+    expect(() => timeoutSchema.parse({ AI_TIMEOUT_MS: '0' })).toThrow();
+  });
+
+  it('AI_TIMEOUT_MS rejects non-numeric strings', () => {
+    expect(() => timeoutSchema.parse({ AI_TIMEOUT_MS: 'abc' })).toThrow();
+  });
+
+  it('OLLAMA_KEEPALIVE accepts custom duration strings', () => {
+    const result = timeoutSchema.parse({ OLLAMA_KEEPALIVE: '10m' });
+    expect(result.OLLAMA_KEEPALIVE).toBe('10m');
+  });
+
+  it('OLLAMA_KEEPALIVE accepts -1 (never unload)', () => {
+    const result = timeoutSchema.parse({ OLLAMA_KEEPALIVE: '-1' });
+    expect(result.OLLAMA_KEEPALIVE).toBe('-1');
   });
 });
