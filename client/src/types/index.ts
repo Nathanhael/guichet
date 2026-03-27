@@ -72,6 +72,13 @@ export interface BusinessHoursStatus {
   message?: string;
 }
 
+export interface AccessibilityPrefs {
+  dyslexicMode?: boolean;
+  bionicReading?: boolean;
+  monochromeMode?: boolean;
+  focusMode?: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -81,6 +88,7 @@ export interface User {
   avatarUrl?: string;
   departments?: string[];
   dept?: string;
+  accessibilityPrefs?: AccessibilityPrefs;
 }
 
 export interface AppConfig {
