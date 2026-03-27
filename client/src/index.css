@@ -36,6 +36,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Lexend';
+  src: url('/fonts/Lexend-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ===== THEME TOKENS ===== */
 
 @theme {
