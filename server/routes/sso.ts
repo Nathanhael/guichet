@@ -302,6 +302,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         name: user.name,
         lang: user.lang,
         isPlatformOperator: user.isPlatformOperator,
+        accessibilityPrefs: user.accessibilityPrefs ?? {},
       },
       memberships: userMemberships,
     });
