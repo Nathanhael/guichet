@@ -53,6 +53,12 @@ export const users = pgTable('users', {
   mfaEnabledAt: timestamp('mfa_enabled_at', { mode: 'string' }),
   mfaRecoveryCodes: jsonb('mfa_recovery_codes').default([]),
   notificationPreferences: jsonb('notification_preferences').default({}),
+  accessibilityPrefs: jsonb('accessibility_prefs').default({}).$type<{
+    dyslexicMode?: boolean;
+    bionicReading?: boolean;
+    monochromeMode?: boolean;
+    focusMode?: boolean;
+  }>(),
   authMethod: text('auth_method'),  // Per-user auth method override (null = use partner default)
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
