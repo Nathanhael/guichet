@@ -48,28 +48,28 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
   return (
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-        <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black opacity-80" />
-        <div role="dialog" className="w-full max-w-2xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-          <div className="flex justify-between items-start mb-6 border-b-2 border-black dark:border-white pb-4">
+        <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black/80" />
+        <div role="dialog" className="w-full max-w-2xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+          <div className="flex justify-between items-start mb-6 border-b border-[var(--color-border)] pb-4">
             <div>
-              <h2 className="text-2xl font-black uppercase tracking-tighter">{t('manage_access')}</h2>
-              <p className="text-sm font-bold uppercase opacity-60 tracking-widest">{localUser.name}</p>
+              <h2 className="text-2xl font-bold uppercase tracking-wide font-mono">{t('manage_access')}</h2>
+              <p className="text-sm font-bold uppercase text-[var(--color-text-muted)] tracking-widest">{localUser.name}</p>
             </div>
-            <button onClick={onClose} aria-label="Close" className="text-xl font-black">{'\u2715'}</button>
+            <button onClick={onClose} aria-label="Close" className="text-xl font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">&#10005;</button>
           </div>
           <div className="space-y-8">
             {(localUser.partnerMemberships?.length ?? 0) > 0 ? localUser.partnerMemberships!.map((m: PartnerMembership) => (
-              <div key={m.id} className="border-2 border-black dark:border-white p-4">
+              <div key={m.id} className="border border-[var(--color-border)] p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-black uppercase tracking-widest text-xs">{m.partnerName}</h3>
+                  <h3 className="section-header">{m.partnerName}</h3>
                   <button onClick={() => setConfirmDialog({
                     title: t('revoke_access'),
                     message: t('confirm_revoke_access').replace('{name}', localUser.name),
                     confirmLabel: t('revoke_access'),
                     onConfirm: () => { removeMembership.mutate(m.id); setConfirmDialog(null); }
-                  })} className="text-[8px] font-black uppercase tracking-widest border border-black dark:border-white px-2 py-1 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black">{t('revoke_access')}</button>
+                  })} className="btn-danger text-[8px] uppercase tracking-widest px-2 py-1">{t('revoke_access')}</button>
                 </div>
-                <select className="w-full bg-black/5 dark:bg-white/5 border border-black dark:border-white px-2 py-1.5 text-xs font-bold outline-none" value={m.role} onChange={(e) => updateMembership.mutate({ id: m.id, data: { role: e.target.value as UserRole } })}>
+                <select className="input-field w-full text-xs" value={m.role} onChange={(e) => updateMembership.mutate({ id: m.id, data: { role: e.target.value as UserRole } })}>
                   <option value="agent">{getRoleDisplayName('agent')}</option>
                   <option value="support">{getRoleDisplayName('support')}</option>
                   <option value="admin">{getRoleDisplayName('admin')}</option>
@@ -77,13 +77,13 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
                 </select>
               </div>
             )) : (
-              <div className="p-12 text-center border-2 border-dashed border-black/20 dark:border-white/20">
-                <p className="text-sm font-black uppercase opacity-20 tracking-widest">{t('no_active_memberships')}</p>
+              <div className="p-12 text-center border border-dashed border-[var(--color-border)]">
+                <p className="text-sm font-bold uppercase text-[var(--color-text-faint)] tracking-widest">{t('no_active_memberships')}</p>
               </div>
             )}
           </div>
           <div className="flex justify-end mt-10">
-            <button onClick={onClose} className="px-8 py-3 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-[10px] tracking-widest border-2 border-black dark:border-white hover:invert">{t('done')}</button>
+            <button onClick={onClose} className="btn-primary px-8 py-3 uppercase text-[10px] tracking-widest">{t('done')}</button>
           </div>
         </div>
       </div>

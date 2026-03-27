@@ -7,7 +7,7 @@ export function Stars({ value }: { value: number }) {
         <svg
           key={n}
           xmlns="http://www.w3.org/2000/svg"
-          className={`h-3.5 w-3.5 ${n <= value ? 'text-black dark:text-white' : 'text-black/20 dark:text-white/20'}`}
+          className={`h-3.5 w-3.5 ${n <= value ? 'text-[var(--color-text-primary)]' : 'text-black/20 dark:text-white/20'}`}
           viewBox="0 0 24 24"
           fill="currentColor"
         >
@@ -20,11 +20,11 @@ export function Stars({ value }: { value: number }) {
 
 export function Panel({ title, badge, className = '', children }: { title: string; badge?: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className={`border-2 border-black dark:border-white p-6 ${className}`}>
+    <div className={`bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-6 ${className}`}>
       <div className="flex items-center justify-between mb-5">
-        <p className="text-xs font-bold text-black dark:text-white opacity-60 tracking-widest uppercase">{title}</p>
+        <p className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{title}</p>
         {badge && (
-          <span className="px-2.5 py-1 bg-black/5 dark:bg-white/5 text-black dark:text-white text-[10px] font-black uppercase tracking-tighter border border-black dark:border-white">
+          <span className="px-2.5 py-1 bg-bg-elevated text-[10px] font-bold uppercase tracking-tighter border border-[var(--color-border)]">
             {badge}
           </span>
         )}
@@ -54,7 +54,7 @@ export function StatCard({ label, value, prev, invertTrend }: StatCardProps) {
         const isUp = delta > 0;
         const isGood = invertTrend ? !isUp : isUp;
         trendEl = (
-          <span className={`inline-flex items-center gap-1 text-[10px] font-black mt-2 px-2 py-0.5 border ${isGood ? 'text-black dark:text-white border-black dark:border-white' : 'text-black dark:text-white opacity-60 border-black/40 dark:border-white/40'}`}>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold mt-2 px-2 py-0.5 border ${isGood ? 'border-[var(--color-border)]' : 'text-[var(--color-text-secondary)] border-[var(--color-border)]'}`}>
             {isUp ? '↑' : '↓'} {Math.abs(pct)}%
           </span>
         );
@@ -63,14 +63,14 @@ export function StatCard({ label, value, prev, invertTrend }: StatCardProps) {
   }
 
   return (
-    <div className="border-2 border-black dark:border-white p-5 bg-black/5 dark:bg-white/5">
-      <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 leading-none">{label}</p>
-      <p className="text-3xl font-black mt-2 tracking-tighter leading-none">{value}</p>
+    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-5">
+      <p className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide leading-none">{label}</p>
+      <p className="text-3xl font-bold mt-2 tracking-tighter leading-none">{value}</p>
       {trendEl}
     </div>
   );
 }
 
 export function Skeleton({ className = '' }: { className?: string }) {
-  return <div className={`bg-black/10 dark:bg-white/10 ${className}`} />;
+  return <div className={`bg-bg-elevated ${className}`} />;
 }

@@ -49,7 +49,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   if (message.system) {
     return (
       <div className="flex justify-center py-2">
-        <span className="text-[10px] uppercase tracking-widest px-4 py-1 font-black bg-white dark:bg-black text-slate-500 border border-black dark:border-white">
+        <span className="text-[10px] uppercase tracking-widest px-4 py-1 font-bold bg-bg-elevated text-text-muted border border-border">
           {message.text}
         </span>
       </div>
@@ -117,13 +117,13 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
       <div className={`relative max-w-[75%] min-w-[60px] px-4 py-2.5 ${bubbleClasses} ${isDeleted ? 'opacity-50 italic' : ''}`}>
 
         {!isMine && !isWhisper && isGroupStart && (
-          <div className="text-[11px] font-black mb-1 uppercase tracking-tight opacity-60">
+          <div className="text-[11px] font-bold mb-1 uppercase tracking-tight text-text-muted">
             {message.senderName}
           </div>
         )}
 
         {isWhisper && isGroupStart && (
-          <div className="flex items-center gap-1.5 mb-1 text-[10px] font-black uppercase tracking-widest">
+          <div className="flex items-center gap-1.5 mb-1 text-[10px] font-bold uppercase tracking-widest text-accent-purple">
             {t('internal_note') || 'Internal Note'}
           </div>
         )}
@@ -138,15 +138,15 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitEdit(); }
                   if (e.key === 'Escape') setEditing(false);
                 }}
-                className="w-full resize-none bg-white/50 dark:bg-black/50 border border-black dark:border-white rounded px-2 py-1 text-sm"
+                className="w-full resize-none bg-bg-surface border border-border px-2 py-1 text-sm"
                 rows={2}
                 autoFocus
               />
               <div className="flex gap-1 justify-end">
-                <button onClick={() => setEditing(false)} className="text-[9px] font-black uppercase px-2 py-0.5 opacity-60 hover:opacity-100">
+                <button onClick={() => setEditing(false)} className="text-[9px] font-bold uppercase px-2 py-0.5 text-text-muted hover:text-text-primary">
                   {t('cancel') || 'Cancel'}
                 </button>
-                <button onClick={submitEdit} className="text-[9px] font-black uppercase px-2 py-0.5 bg-black dark:bg-white text-white dark:text-black">
+                <button onClick={submitEdit} className="text-[9px] font-bold uppercase px-2 py-0.5 bg-accent-blue text-white">
                   {t('save') || 'Save'}
                 </button>
               </div>
@@ -162,11 +162,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           )}
 
           {message.mediaUrl && !isDeleted && (
-            <div className="mt-3 border-2 border-black dark:border-white">
+            <div className="mt-3 border border-border">
               <img
                 src={message.mediaUrl}
                 alt="attachment"
-                className="w-full h-auto object-cover max-h-96 grayscale"
+                className="w-full h-auto object-cover max-h-96"
               />
             </div>
           )}
@@ -186,7 +186,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             ) : translated ? (
               <button
                 onClick={() => setShowOriginal(!showOriginal)}
-                className="text-[9px] font-bold opacity-40 hover:opacity-70 transition-opacity underline underline-offset-2"
+                className="text-[9px] font-bold text-text-muted hover:text-text-secondary underline underline-offset-2"
               >
                 {showOriginal ? 'Show translation' : `Show original (${message.senderLang})`}
               </button>
@@ -198,22 +198,22 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           {isEdited && !isDeleted && (
             <span className="text-[9px] font-bold italic">{t('edited') || 'edited'}</span>
           )}
-          <span className="text-[10px] font-black tracking-tight uppercase">
+          <span className="mono-timestamp">
             {time}
           </span>
           {isMine && !isDeleted && (
-            <span className="text-[10px] font-black">{message.readAt ? 'R' : 'D'}</span>
+            <span className="text-[10px] font-bold">{message.readAt ? 'R' : 'D'}</span>
           )}
         </div>
 
         {/* Action buttons (hover) */}
         {showActions && !editing && (canEdit || canDelete) && (
-          <div className={`absolute top-0 ${isMine ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity`}>
+          <div className={`absolute top-0 ${isMine ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} flex gap-0.5 opacity-0 group-hover:opacity-100`}>
             {canEdit && (
               <button
                 onClick={startEdit}
                 title={t('edit') || 'Edit'}
-                className="w-6 h-6 flex items-center justify-center rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-600 text-[10px] shadow-sm"
+                className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               </button>
@@ -222,7 +222,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               <button
                 onClick={deleteMessage}
                 title={t('delete') || 'Delete'}
-                className="w-6 h-6 flex items-center justify-center rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-red-600 text-[10px] shadow-sm"
+                className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
               </button>

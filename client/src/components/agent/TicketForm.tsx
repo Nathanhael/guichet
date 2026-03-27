@@ -93,13 +93,13 @@ export default function TicketForm({ manifest }: TicketFormProps) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-black dark:border-white border-t-transparent animate-spin" />
-          <p className="text-sm opacity-60 mt-1 font-black uppercase tracking-widest">{t('waiting_for_support')}</p>
+          <div className="w-16 h-16 border border-[var(--color-border)] border-t-[var(--color-text-primary)] animate-spin" />
+          <p className="text-sm opacity-60 mt-1 mono-label">{t('waiting_for_support')}</p>
 
           {queuePosition && (
-            <div className="border-2 border-black dark:border-white px-6 py-4 text-center mt-4">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-60">{t('queue_position')}</p>
-              <p className="text-4xl font-black mt-1">{queuePosition.position}</p>
+            <div className="border border-[var(--color-border)] px-6 py-4 text-center mt-4">
+              <p className="mono-label opacity-60">{t('queue_position')}</p>
+              <p className="text-4xl font-bold mt-1">{queuePosition.position}</p>
               {queuePosition.etaMins > 0 && (
                 <p className="text-xs mt-2 opacity-60">
                   {t('estimated_wait')}: ~{queuePosition.etaMins} min
@@ -116,15 +116,15 @@ export default function TicketForm({ manifest }: TicketFormProps) {
   if (manifest.departments.length === 0) {
     return (
       <div className="flex-1 flex items-center justify-center p-6">
-        <p className="text-sm opacity-40 font-black uppercase tracking-widest">{t('no_departments')}</p>
+        <p className="text-sm opacity-40 mono-label">{t('no_departments')}</p>
       </div>
     );
   }
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-lg border-2 border-black dark:border-white p-8">
-        <h2 className="text-2xl font-black uppercase tracking-tight mb-2">
+      <div className="w-full max-w-lg border border-[var(--color-border)] p-8">
+        <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">
           {t('hello')}, {user.name}
         </h2>
         <p className="text-sm opacity-60 mb-8">{t('choose_dept_desc')}</p>
@@ -137,10 +137,10 @@ export default function TicketForm({ manifest }: TicketFormProps) {
                 key={d.id}
                 type="button"
                 onClick={() => setDept(d.id)}
-                className={`py-3 px-4 border-2 font-black text-sm uppercase tracking-widest ${
+                className={`py-3 px-4 border mono-label ${
                   dept === d.id
-                    ? 'border-black dark:border-white bg-black dark:bg-white text-white dark:text-black'
-                    : 'border-black/30 dark:border-white/30 hover:border-black dark:hover:border-white'
+                    ? 'border-[var(--color-border)] bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
+                    : 'border-[var(--color-border)] opacity-60 hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white hover:border-[var(--color-accent-blue)]'
                 }`}
               >
                 {d.name}
@@ -150,7 +150,7 @@ export default function TicketForm({ manifest }: TicketFormProps) {
 
           {/* Department welcome message */}
           {selectedDept?.welcomeMessage && (
-            <div className="border-l-4 border-black dark:border-white pl-4 py-2 text-sm opacity-80">
+            <div className="border-l-2 border-[var(--color-border)] pl-4 py-2 text-sm opacity-80">
               {selectedDept.welcomeMessage}
             </div>
           )}
@@ -161,7 +161,7 @@ export default function TicketForm({ manifest }: TicketFormProps) {
               <div className={`grid gap-4 ${refFields.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                 {refFields.map((field, idx) => (
                   <div key={`${field.label}-${idx}`} className="space-y-1.5">
-                    <label className="text-[10px] uppercase font-black tracking-widest opacity-60">
+                    <label className="mono-label opacity-60">
                       {field.label} *
                     </label>
                     <input
@@ -169,7 +169,7 @@ export default function TicketForm({ manifest }: TicketFormProps) {
                       value={references.find((r) => r.label === field.label)?.value || ''}
                       onChange={(e) => updateReference(field.label, e.target.value)}
                       required
-                      className="w-full border-2 border-black dark:border-white px-4 py-2.5 text-sm bg-transparent outline-none"
+                      className="input-field"
                     />
                   </div>
                 ))}
@@ -179,7 +179,7 @@ export default function TicketForm({ manifest }: TicketFormProps) {
 
           {/* Problem description */}
           <div className="space-y-1.5">
-            <label className="text-[10px] uppercase font-black tracking-widest opacity-60">
+            <label className="mono-label opacity-60">
               {t('question_problem')}
             </label>
             <textarea
@@ -188,14 +188,14 @@ export default function TicketForm({ manifest }: TicketFormProps) {
               onChange={(e) => setText(e.target.value)}
               placeholder={t('describe_problem')}
               required
-              className="w-full border-2 border-black dark:border-white px-4 py-3 text-sm bg-transparent outline-none resize-none"
+              className="input-field resize-none"
             />
           </div>
 
           <button
             type="submit"
             disabled={!text.trim() || !allRefsFilledIn || !canCreateTicket}
-            className="w-full border-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black py-4 font-black uppercase tracking-widest text-sm disabled:opacity-30"
+            className="btn-primary w-full py-4 disabled:opacity-30"
           >
             {t('connect_with_support')}
           </button>

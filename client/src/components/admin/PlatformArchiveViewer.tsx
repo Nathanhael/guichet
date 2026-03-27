@@ -10,8 +10,8 @@ export default function PlatformArchiveViewer() {
 
   return (
     <div>
-      <div className="flex items-center gap-4 mb-6 border-b-4 border-black dark:border-white pb-4">
-        <h2 className="text-4xl font-black uppercase tracking-tighter mr-auto">Archive</h2>
+      <div className="flex items-center gap-4 mb-6 border-b border-[var(--color-border)] pb-4">
+        <h2 className="text-2xl font-bold uppercase tracking-tight mr-auto">Archive</h2>
       </div>
 
       {/* Sub-tabs */}
@@ -20,10 +20,10 @@ export default function PlatformArchiveViewer() {
           <button
             key={tab}
             onClick={() => setSubTab(tab)}
-            className={`px-6 py-2 text-[10px] font-black uppercase tracking-widest border-2 ${
+            className={`px-6 py-2 font-mono text-[10px] font-bold uppercase tracking-wide border ${
               subTab === tab
-                ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-                : 'border-black/20 dark:border-white/20 hover:border-black dark:hover:border-white'
+                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
+                : 'border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
             }`}
           >
             {tab === 'audit' ? 'Audit Log Archive' : 'Ticket Archive'}
@@ -36,7 +36,7 @@ export default function PlatformArchiveViewer() {
   );
 }
 
-/* ─── Audit Archive Panel ─── */
+/* --- Audit Archive Panel --- */
 function AuditArchivePanel() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allItems, setAllItems] = useState<any[]>([]);
@@ -87,33 +87,33 @@ function AuditArchivePanel() {
           value={actionFilter}
           onChange={(e) => { setActionFilter(e.target.value); resetAndReload(); }}
           placeholder="Filter by action…"
-          className="border-2 border-black dark:border-white px-3 py-1.5 text-sm font-bold bg-transparent outline-none w-52"
+          className="input-field w-52"
         />
         <input
           type="date"
           value={dateFrom}
           onChange={(e) => { setDateFrom(e.target.value); resetAndReload(); }}
-          className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
+          className="input-field"
         />
-        <span className="text-xs font-black">→</span>
+        <span className="text-xs font-bold text-[var(--color-text-muted)]">→</span>
         <input
           type="date"
           value={dateTo}
           onChange={(e) => { setDateTo(e.target.value); resetAndReload(); }}
-          className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
+          className="input-field"
         />
         <div className="ml-auto flex gap-2">
           <button
             onClick={() => chainQuery.refetch()}
             disabled={chainQuery.isFetching}
-            className="px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+            className="btn-secondary disabled:opacity-30"
           >
             {chainQuery.isFetching ? 'Verifying…' : 'Verify Chain'}
           </button>
           <button
             onClick={() => archiveMutation.mutate()}
             disabled={archiveMutation.isPending}
-            className="px-3 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest disabled:opacity-30"
+            className="btn-secondary disabled:opacity-30"
           >
             {archiveMutation.isPending ? 'Running…' : 'Run Archive Now'}
           </button>
@@ -122,54 +122,54 @@ function AuditArchivePanel() {
 
       {/* Chain verification result */}
       {chainQuery.data && (
-        <div className={`mb-4 border-2 px-4 py-3 text-sm font-bold ${
+        <div className={`mb-4 border px-4 py-3 text-sm font-bold ${
           chainQuery.data.valid
             ? 'border-green-600 text-green-700 dark:text-green-400'
             : 'border-red-600 text-red-700 dark:text-red-400'
         }`}>
           {chainQuery.data.valid
-            ? `✓ Chain integrity verified — ${chainQuery.data.checked} entries checked`
-            : `✕ Chain broken at entry ${chainQuery.data.brokenAt} — ${chainQuery.data.checked} entries checked`}
+            ? `Chain integrity verified — ${chainQuery.data.checked} entries checked`
+            : `Chain broken at entry ${chainQuery.data.brokenAt} — ${chainQuery.data.checked} entries checked`}
         </div>
       )}
 
       {/* Archive run result */}
       {archiveMutation.data && (
-        <div className="mb-4 border-2 border-black dark:border-white px-4 py-3 text-sm font-bold">
+        <div className="mb-4 border border-[var(--color-border)] px-4 py-3 text-sm font-bold">
           Archive complete — {archiveMutation.data.auditCount} audit entries, {archiveMutation.data.ticketCount} tickets archived
         </div>
       )}
 
       {/* Table */}
-      <div className="border-2 border-black dark:border-white overflow-hidden">
+      <div className="surface-card overflow-hidden">
         <div className="overflow-x-auto">
           {items.length === 0 && !query.isFetching ? (
-            <p className="text-center text-[10px] font-black uppercase opacity-50 py-12">No archived audit entries.</p>
+            <p className="text-center font-mono text-[9px] font-bold uppercase text-[var(--color-text-muted)] py-12">No archived audit entries.</p>
           ) : (
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5 text-left text-[10px] font-black uppercase tracking-widest">
-                  <th className="px-4 py-3">Action</th>
-                  <th className="px-4 py-3">Actor</th>
-                  <th className="px-4 py-3">Target</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Archived</th>
-                  <th className="px-4 py-3">Chain Hash</th>
+                <tr className="border-b border-[var(--color-border)] bg-bg-elevated text-left">
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Action</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Actor</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Target</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Created</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Archived</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Chain Hash</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/20 dark:divide-white/20">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 {items.map((entry: any) => (
-                  <tr key={entry.id} className="hover:bg-black/5 dark:hover:bg-white/5">
+                  <tr key={entry.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                     <td className="px-4 py-2.5">
-                      <span className="text-[10px] font-black uppercase border border-black dark:border-white px-1.5 py-0.5">{entry.action}</span>
+                      <span className="text-[10px] font-bold uppercase border border-[var(--color-border)] px-1.5 py-0.5">{entry.action}</span>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60">{entry.actorId || '—'}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60">
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">{entry.actorId || '—'}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">
                       {entry.targetType ? `${entry.targetType}:${entry.targetId || ''}` : '—'}
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(entry.createdAt)}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(entry.archivedAt)}</td>
-                    <td className="px-4 py-2.5 font-mono text-[9px] opacity-40 max-w-[120px] truncate" title={entry.chainHash}>
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(entry.createdAt)}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(entry.archivedAt)}</td>
+                    <td className="px-4 py-2.5 font-mono text-[9px] text-[var(--color-text-muted)] max-w-[120px] truncate" title={entry.chainHash}>
                       {entry.chainHash?.slice(0, 16)}…
                     </td>
                   </tr>
@@ -179,13 +179,13 @@ function AuditArchivePanel() {
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-black/20 dark:border-white/20 flex items-center justify-between">
-          <span className="text-[10px] font-black uppercase opacity-60">{items.length} entries loaded</span>
+        <div className="px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between">
+          <span className="font-mono text-[9px] font-bold uppercase text-[var(--color-text-muted)]">{items.length} entries loaded</span>
           {nextCursor && (
             <button
               onClick={() => { setAllItems(items); setCursor(nextCursor); }}
               disabled={query.isFetching}
-              className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 disabled:opacity-30"
+              className="btn-secondary disabled:opacity-30"
             >
               {query.isFetching ? 'Loading…' : 'Load more'}
             </button>
@@ -196,7 +196,7 @@ function AuditArchivePanel() {
   );
 }
 
-/* ─── Ticket Archive Panel ─── */
+/* --- Ticket Archive Panel --- */
 function TicketArchivePanel() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allItems, setAllItems] = useState<any[]>([]);
@@ -237,57 +237,57 @@ function TicketArchivePanel() {
           type="date"
           value={dateFrom}
           onChange={(e) => { setDateFrom(e.target.value); resetAndReload(); }}
-          className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
+          className="input-field"
         />
-        <span className="text-xs font-black">→</span>
+        <span className="text-xs font-bold text-[var(--color-text-muted)]">→</span>
         <input
           type="date"
           value={dateTo}
           onChange={(e) => { setDateTo(e.target.value); resetAndReload(); }}
-          className="border-2 border-black dark:border-white px-2 py-1.5 text-sm bg-transparent outline-none"
+          className="input-field"
         />
         {(dateFrom || dateTo) && (
           <button
             onClick={() => { setDateFrom(''); setDateTo(''); resetAndReload(); }}
-            className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-2 py-1"
+            className="btn-secondary"
           >
-            ✕ Clear
+            Clear
           </button>
         )}
       </div>
 
       {/* Table */}
-      <div className="border-2 border-black dark:border-white overflow-hidden">
+      <div className="surface-card overflow-hidden">
         <div className="overflow-x-auto">
           {items.length === 0 && !query.isFetching ? (
-            <p className="text-center text-[10px] font-black uppercase opacity-50 py-12">No archived tickets.</p>
+            <p className="text-center font-mono text-[9px] font-bold uppercase text-[var(--color-text-muted)] py-12">No archived tickets.</p>
           ) : (
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5 text-left text-[10px] font-black uppercase tracking-widest">
-                  <th className="px-4 py-3">Dept</th>
-                  <th className="px-4 py-3">Agent</th>
-                  <th className="px-4 py-3">Support</th>
-                  <th className="px-4 py-3">Messages</th>
-                  <th className="px-4 py-3">Duration</th>
-                  <th className="px-4 py-3">Created</th>
-                  <th className="px-4 py-3">Closed</th>
-                  <th className="px-4 py-3">Archived</th>
+                <tr className="border-b border-[var(--color-border)] bg-bg-elevated text-left">
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Dept</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Agent</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Support</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Messages</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Duration</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Created</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Closed</th>
+                  <th className="px-4 py-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Archived</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/20 dark:divide-white/20">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 {items.map((ticket: any) => (
-                  <tr key={ticket.id} className="hover:bg-black/5 dark:hover:bg-white/5">
+                  <tr key={ticket.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                     <td className="px-4 py-2.5">
-                      <span className="text-[10px] font-black uppercase border border-black dark:border-white px-1.5 py-0.5">{ticket.dept}</span>
+                      <span className="text-[10px] font-bold uppercase border border-[var(--color-border)] px-1.5 py-0.5">{ticket.dept}</span>
                     </td>
                     <td className="px-4 py-2.5 font-bold">{ticket.agentName}</td>
-                    <td className="px-4 py-2.5 opacity-60">{ticket.supportName || <span className="italic">—</span>}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60">{ticket.messageCount ?? '—'}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60">{duration(ticket.createdAt, ticket.closedAt)}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(ticket.createdAt)}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(ticket.closedAt)}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs opacity-60 whitespace-nowrap">{fmt(ticket.archivedAt)}</td>
+                    <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">{ticket.supportName || <span className="italic">—</span>}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">{ticket.messageCount ?? '—'}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">{duration(ticket.createdAt, ticket.closedAt)}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(ticket.createdAt)}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(ticket.closedAt)}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(ticket.archivedAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -295,13 +295,13 @@ function TicketArchivePanel() {
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-black/20 dark:border-white/20 flex items-center justify-between">
-          <span className="text-[10px] font-black uppercase opacity-60">{items.length} tickets loaded</span>
+        <div className="px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between">
+          <span className="font-mono text-[9px] font-bold uppercase text-[var(--color-text-muted)]">{items.length} tickets loaded</span>
           {nextCursor && (
             <button
               onClick={() => { setAllItems(items); setCursor(nextCursor); }}
               disabled={query.isFetching}
-              className="text-[10px] font-black uppercase tracking-widest border border-black dark:border-white px-3 py-1.5 disabled:opacity-30"
+              className="btn-secondary disabled:opacity-30"
             >
               {query.isFetching ? 'Loading…' : 'Load more'}
             </button>

@@ -10,10 +10,10 @@ interface StarProps {
 
 function Star({ filled, onClick }: StarProps) {
   return (
-    <button type="button" onClick={onClick} className="transition-transform hover:scale-110">
+    <button type="button" onClick={onClick}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        className={`h-8 w-8 transition-colors ${filled ? 'text-ui-orange' : 'text-ui-base1 dark:text-gray-600'}`}
+        className={`h-8 w-8 ${filled ? 'text-accent-blue' : 'text-text-muted'}`}
         viewBox="0 0 24 24"
         fill="currentColor"
       >
@@ -55,20 +55,20 @@ export default function RatingModal() {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-ui-base3 dark:bg-brand-800 rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full border border-ui-base2 dark:border-brand-700">
+    <div className="fixed inset-0 bg-bg-base/80 flex items-center justify-center z-50">
+      <div className="bg-bg-surface border border-border-heavy p-6 mx-4 max-w-sm w-full">
         {submitted ? (
           <div className="text-center py-4">
-            <div className="text-3xl mb-2">&#10003;</div>
-            <p className="text-sm font-medium text-ui-base01 dark:text-gray-200">{t('rating_saved')}</p>
+            <div className="w-12 h-12 border border-border-heavy flex items-center justify-center mx-auto mb-3 text-xl font-bold">✓</div>
+            <p className="text-sm font-medium text-text-primary">{t('rating_saved')}</p>
           </div>
         ) : (
           <>
-            <h3 className="text-base font-semibold text-ui-base01 dark:text-white mb-1">
+            <h3 className="text-base font-bold uppercase text-text-primary mb-1">
               {t('rate_experience')}
             </h3>
-            <p className="text-sm text-ui-base1 dark:text-gray-400 mb-4">
-              {t('rate_support_desc')} <span className="font-medium text-ui-base01 dark:text-gray-200">{ratingPrompt.supportName}</span>
+            <p className="text-sm text-text-secondary mb-4">
+              {t('rate_support_desc')} <span className="font-medium text-text-primary">{ratingPrompt.supportName}</span>
             </p>
 
             <div className="flex justify-center gap-1 mb-4">
@@ -82,20 +82,20 @@ export default function RatingModal() {
               onChange={(e) => setComment(e.target.value)}
               placeholder={t('rating_comment_placeholder')}
               rows={2}
-              className="w-full border border-ui-base2 dark:border-brand-600 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-ui-base3 dark:bg-gray-700 text-ui-base00 dark:text-gray-100 placeholder-ui-base1 resize-none"
+              className="input-field mb-4 resize-none"
             />
 
             <div className="flex gap-3">
               <button
                 onClick={submit}
                 disabled={rating === 0}
-                className="flex-1 bg-brand-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-brand-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 btn-primary py-2 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {t('submit_rating')}
               </button>
               <button
                 onClick={skip}
-                className="flex-1 border border-ui-base2 dark:border-brand-600 text-ui-base01 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-ui-base2 dark:hover:bg-brand-700 transition-colors"
+                className="flex-1 btn-secondary py-2"
               >
                 {t('skip')}
               </button>

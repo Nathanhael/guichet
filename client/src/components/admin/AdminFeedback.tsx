@@ -91,14 +91,14 @@ export default function AdminFeedback() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <h2 className="text-xl font-bold text-black dark:text-white">Feedback & Ratings</h2>
+        <h2 className="text-xl font-bold">Feedback & Ratings</h2>
         <div className="flex gap-1">
           <button
             onClick={() => setTab('feedback')}
             className={`px-3 py-1.5 text-xs font-medium ${
               tab === 'feedback'
-                ? 'bg-black dark:bg-white text-white dark:text-black'
-                : 'bg-black/5 dark:bg-white/5 text-black dark:text-white opacity-60 hover:opacity-100'
+                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
+                : 'bg-bg-elevated text-[var(--color-text-secondary)] hover:opacity-100'
             }`}
           >
             Feedback ({feedback.length})
@@ -107,8 +107,8 @@ export default function AdminFeedback() {
             onClick={() => setTab('ratings')}
             className={`px-3 py-1.5 text-xs font-medium ${
               tab === 'ratings'
-                ? 'bg-black dark:bg-white text-white dark:text-black'
-                : 'bg-black/5 dark:bg-white/5 text-black dark:text-white opacity-60 hover:opacity-100'
+                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
+                : 'bg-bg-elevated text-[var(--color-text-secondary)] hover:opacity-100'
             }`}
           >
             Ratings ({ratings.length})
@@ -126,37 +126,37 @@ export default function AdminFeedback() {
                 ))}
               </div>
             ) : activeFeedback.length === 0 ? (
-              <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-8 text-center">
+              <div className="surface-card p-8 text-center">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className="h-12 w-12 mx-auto text-black dark:text-white opacity-20 mb-3"
+                  className="h-12 w-12 mx-auto opacity-20 mb-3"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <p className="text-black dark:text-white opacity-60 text-sm font-medium">All caught up! No active feedback.</p>
+                <p className="text-[var(--color-text-secondary)] text-sm font-medium">All caught up! No active feedback.</p>
               </div>
             ) : (
               activeFeedback.map((f) => (
                 <div
                   key={f.id}
-                  className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-5"
+                  className="surface-card p-5"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 border-2 border-black dark:border-white flex items-center justify-center text-sm font-bold text-black dark:text-white">
+                      <div className="w-10 h-10 border border-[var(--color-border)] flex items-center justify-center text-sm font-bold">
                         {(f.userName || '?').split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-black dark:text-white">{f.userName}</span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-black/5 dark:bg-white/5 text-black dark:text-white opacity-60 px-2 py-0.5">
+                          <span className="text-sm font-bold">{f.userName}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wide bg-bg-elevated text-[var(--color-text-secondary)] px-2 py-0.5">
                             {f.role}
                           </span>
                         </div>
-                        <span className="text-xs text-black dark:text-white opacity-60">
+                        <span className="text-xs text-[var(--color-text-secondary)]">
                           {new Date(f.createdAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                         </span>
                       </div>
@@ -164,7 +164,7 @@ export default function AdminFeedback() {
                     <button
                       onClick={() => markTreated(f.id)}
                       disabled={markTreatedMutation.isPending}
-                      className="flex items-center gap-1.5 text-xs font-medium text-black dark:text-white bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black dark:border-white px-3 py-1.5 disabled:opacity-50"
+                      className="btn-secondary disabled:opacity-50"
                       title="Mark as treated"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -177,27 +177,27 @@ export default function AdminFeedback() {
                       {markTreatedMutation.isPending ? 'Processing...' : 'Dismiss'}
                     </button>
                   </div>
-                  <p className="text-[15px] text-black dark:text-white leading-relaxed pl-13">{f.text}</p>
+                  <p className="text-[15px] leading-relaxed pl-13">{f.text}</p>
                 </div>
               ))
             )}
           </div>
 
           {dismissedFeedback.length > 0 && (
-            <div className="mt-8 border-t border-black/10 dark:border-white/10 pt-6">
+            <div className="mt-8 border-t border-[var(--color-border)] pt-6">
               <button
                 onClick={() => setShowDismissed(!showDismissed)}
-                className="w-full flex items-center justify-between text-left p-4 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border border-black dark:border-white"
+                className="w-full flex items-center justify-between text-left p-4 bg-bg-elevated hover:bg-bg-elevated border border-[var(--color-border)]"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-black dark:text-white">Dismissed Feedback</span>
-                  <span className="bg-black/10 dark:bg-white/10 text-black dark:text-white opacity-60 text-xs font-semibold px-2.5 py-1">
+                  <span className="text-sm font-bold">Dismissed Feedback</span>
+                  <span className="bg-bg-elevated text-[var(--color-text-secondary)] text-xs font-semibold px-2.5 py-1">
                     {dismissedFeedback.length}
                   </span>
                 </div>
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
-                  className={`h-5 w-5 text-black dark:text-white opacity-60 ${showDismissed ? 'rotate-180' : ''}`}
+                  className={`h-5 w-5 text-[var(--color-text-secondary)] ${showDismissed ? 'rotate-180' : ''}`}
                   viewBox="0 0 20 20"
                   fill="currentColor"
                 >
@@ -213,13 +213,13 @@ export default function AdminFeedback() {
                   {dismissedFeedback.map((f) => (
                     <div
                       key={f.id}
-                      className="bg-black/5 dark:bg-white/5 border border-black/20 dark:border-white/20 p-4 opacity-75"
+                      className="bg-bg-elevated border border-[var(--color-border)] p-4 opacity-75"
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-black dark:text-white opacity-60">{f.userName}</span>
-                          <span className="text-[10px] uppercase font-bold text-black dark:text-white opacity-40">{f.role}</span>
-                          <span className="text-xs bg-black/5 dark:bg-white/5 text-black dark:text-white px-2 py-0.5 flex items-center gap-1 font-medium border border-black dark:border-white">
+                          <span className="text-sm font-semibold text-[var(--color-text-secondary)]">{f.userName}</span>
+                          <span className="text-[10px] uppercase font-bold text-[var(--color-text-muted)]">{f.role}</span>
+                          <span className="text-xs bg-bg-elevated px-2 py-0.5 flex items-center gap-1 font-medium border border-[var(--color-border)]">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
                               <path
                                 fillRule="evenodd"
@@ -230,11 +230,11 @@ export default function AdminFeedback() {
                             Treated
                           </span>
                         </div>
-                        <span className="text-xs text-black dark:text-white opacity-60">
+                        <span className="text-xs text-[var(--color-text-secondary)]">
                           {new Date(f.createdAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}
                         </span>
                       </div>
-                      <p className="text-sm text-black dark:text-white opacity-60 whitespace-pre-wrap">{f.text}</p>
+                      <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap">{f.text}</p>
                     </div>
                   ))}
                 </div>
@@ -257,54 +257,54 @@ export default function AdminFeedback() {
               <Skeleton className="h-64 w-full" />
             </div>
           ) : ratings.length === 0 ? (
-            <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-8 text-center">
-              <p className="text-black dark:text-white opacity-60 text-sm">No ratings submitted yet.</p>
+            <div className="surface-card p-8 text-center">
+              <p className="text-[var(--color-text-secondary)] text-sm">No ratings submitted yet.</p>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-4 gap-3">
-                <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-4">
-                  <p className="text-xs text-black dark:text-white opacity-60">Total ratings</p>
-                  <p className="text-2xl font-bold text-black dark:text-white mt-1">{ratings.length}</p>
+                <div className="surface-card p-4">
+                  <p className="text-xs text-[var(--color-text-secondary)]">Total ratings</p>
+                  <p className="text-2xl font-bold mt-1">{ratings.length}</p>
                 </div>
-                <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-4">
-                  <p className="text-xs text-black dark:text-white opacity-60">Average</p>
+                <div className="surface-card p-4">
+                  <p className="text-xs text-[var(--color-text-secondary)]">Average</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-2xl font-bold text-black dark:text-white">{(ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1)}</p>
+                    <p className="text-2xl font-bold">{(ratings.reduce((s, r) => s + r.rating, 0) / ratings.length).toFixed(1)}</p>
                     <Stars value={Math.round(ratings.reduce((s, r) => s + r.rating, 0) / ratings.length)} />
                   </div>
                 </div>
-                <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-4">
-                  <p className="text-xs text-black dark:text-white opacity-60">5-star</p>
-                  <p className="text-2xl font-bold text-black dark:text-white mt-1">{ratings.filter((r) => r.rating === 5).length}</p>
+                <div className="surface-card p-4">
+                  <p className="text-xs text-[var(--color-text-secondary)]">5-star</p>
+                  <p className="text-2xl font-bold mt-1">{ratings.filter((r) => r.rating === 5).length}</p>
                 </div>
-                <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-4">
-                  <p className="text-xs text-black dark:text-white opacity-60">1-2 star</p>
-                  <p className="text-2xl font-bold text-black dark:text-white mt-1">{ratings.filter((r) => r.rating <= 2).length}</p>
+                <div className="surface-card p-4">
+                  <p className="text-xs text-[var(--color-text-secondary)]">1-2 star</p>
+                  <p className="text-2xl font-bold mt-1">{ratings.filter((r) => r.rating <= 2).length}</p>
                 </div>
               </div>
 
-              <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-4">
-                <p className="text-sm font-semibold text-black dark:text-white mb-3">Distribution</p>
+              <div className="surface-card p-4">
+                <p className="text-sm font-semibold mb-3">Distribution</p>
                 <div className="space-y-2">
                   {[5, 4, 3, 2, 1].map((star) => {
                     const count = ratings.filter((r) => r.rating === star).length;
                     const pct = ratings.length > 0 ? (count / ratings.length) * 100 : 0;
                     return (
                       <div key={star} className="flex items-center gap-2">
-                        <span className="text-xs text-black dark:text-white opacity-60 w-3 text-right">{star}</span>
+                        <span className="text-xs text-[var(--color-text-secondary)] w-3 text-right">{star}</span>
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
-                          className="h-3.5 w-3.5 text-black dark:text-white shrink-0"
+                          className="h-3.5 w-3.5 shrink-0"
                           viewBox="0 0 24 24"
                           fill="currentColor"
                         >
                           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                         </svg>
-                        <div className="flex-1 h-2 bg-black/10 dark:bg-white/10 overflow-hidden">
-                          <div className="h-full bg-black dark:bg-white" style={{ width: `${pct}%` }} />
+                        <div className="flex-1 h-2 bg-bg-elevated overflow-hidden">
+                          <div className="h-full bg-[var(--color-text-primary)]" style={{ width: `${pct}%` }} />
                         </div>
-                        <span className="text-xs text-black dark:text-white opacity-60 w-8">{count}</span>
+                        <span className="text-xs text-[var(--color-text-secondary)] w-8">{count}</span>
                       </div>
                     );
                   })}
@@ -314,13 +314,13 @@ export default function AdminFeedback() {
               {Object.keys(supportRatings).length > 0 && (
                 <div>
                   <div className="flex items-center justify-between gap-4 mt-8 mb-4">
-                    <p className="text-lg font-bold text-black dark:text-white">Ratings by Support</p>
+                    <p className="text-lg font-bold">Ratings by Support</p>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-black dark:text-white opacity-60">View:</span>
+                      <span className="text-xs font-medium text-[var(--color-text-secondary)]">View:</span>
                       <select
                         value={selectedSupport}
                         onChange={(e) => setSelectedSupport(e.target.value)}
-                        className="text-sm bg-white dark:bg-black border border-black dark:border-white px-3 py-1.5 outline-none text-black dark:text-white"
+                        className="input-field text-sm"
                       >
                         <option value="ALL">All Support (Overview)</option>
                         {Object.keys(supportRatings)
@@ -335,31 +335,31 @@ export default function AdminFeedback() {
                   </div>
 
                   {selectedSupport === 'ALL' ? (
-                    <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white overflow-hidden">
+                    <div className="surface-card overflow-hidden">
                       <div className="overflow-x-auto">
                         <table className="w-full min-w-[960px] text-left text-sm border-collapse">
                           <thead>
-                            <tr className="bg-black/5 dark:bg-white/5 border-b border-black dark:border-white">
-                              <th className="px-6 py-4 font-bold text-black dark:text-white">Support Name</th>
-                              <th className="px-6 py-4 font-bold text-black dark:text-white text-center">Avg Rating</th>
-                              <th className="px-6 py-4 font-bold text-black dark:text-white text-center">Trend</th>
-                              <th className="px-6 py-4 font-bold text-black dark:text-white text-center">Total</th>
-                              <th className="px-6 py-4 font-bold text-black dark:text-white text-right">Action</th>
+                            <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
+                              <th className="px-6 py-4 font-mono text-[9px] uppercase text-[var(--color-text-muted)]">Support Name</th>
+                              <th className="px-6 py-4 font-mono text-[9px] uppercase text-[var(--color-text-muted)] text-center">Avg Rating</th>
+                              <th className="px-6 py-4 font-mono text-[9px] uppercase text-[var(--color-text-muted)] text-center">Trend</th>
+                              <th className="px-6 py-4 font-mono text-[9px] uppercase text-[var(--color-text-muted)] text-center">Total</th>
+                              <th className="px-6 py-4 font-mono text-[9px] uppercase text-[var(--color-text-muted)] text-right">Action</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-black/10 dark:divide-white/10">
+                          <tbody className="divide-y divide-[var(--color-border)]">
                             {Object.entries(supportRatings)
                               .sort((a, b) => b[1].total - a[1].total)
                               .map(([name, e]) => {
                                 const avg = (e.sum / e.total).toFixed(1);
                                 return (
-                                  <tr key={name} className="hover:bg-black/5 dark:hover:bg-white/5">
+                                  <tr key={name} className="hover:bg-bg-elevated">
                                     <td className="px-6 py-4">
-                                      <span className="font-bold text-black dark:text-white">{name}</span>
+                                      <span className="font-bold">{name}</span>
                                     </td>
                                     <td className="px-6 py-4">
                                       <div className="flex items-center justify-center gap-2">
-                                        <span className="font-bold text-black dark:text-white">
+                                        <span className="font-bold">
                                           {avg}
                                         </span>
                                         <Stars value={Math.round(e.sum / e.total)} />
@@ -367,17 +367,17 @@ export default function AdminFeedback() {
                                     </td>
                                     <td className="px-6 py-4">
                                       <div className="flex items-center justify-center gap-4 text-xs font-semibold">
-                                        <span className="text-black dark:text-white">5★ ({e.ratings.filter((r) => r.rating === 5).length})</span>
-                                        <span className="text-black dark:text-white opacity-60">1-2★ ({e.ratings.filter((r) => r.rating <= 2).length})</span>
+                                        <span>5★ ({e.ratings.filter((r) => r.rating === 5).length})</span>
+                                        <span className="text-[var(--color-text-secondary)]">1-2★ ({e.ratings.filter((r) => r.rating <= 2).length})</span>
                                       </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                      <span className="bg-black/5 dark:bg-white/5 text-black dark:text-white opacity-60 px-2 py-1 text-xs font-bold">
+                                      <span className="bg-bg-elevated text-[var(--color-text-secondary)] px-2 py-1 text-xs font-bold">
                                         {e.total}
                                       </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
-                                      <button onClick={() => setSelectedSupport(name)} className="text-black dark:text-white font-bold text-xs underline">
+                                      <button onClick={() => setSelectedSupport(name)} className="font-bold text-xs underline">
                                         Details
                                       </button>
                                     </td>
@@ -395,95 +395,95 @@ export default function AdminFeedback() {
                         if (!e) return null;
                         const avg = (e.sum / e.total).toFixed(1);
                         return (
-                          <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white p-6">
-                            <div className="flex items-center justify-between mb-4 border-b border-black/10 dark:border-white/10 pb-4">
+                          <div className="surface-card p-6">
+                            <div className="flex items-center justify-between mb-4 border-b border-[var(--color-border)] pb-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 border-2 border-black dark:border-white text-black dark:text-white flex items-center justify-center text-xl font-bold">
+                                <div className="w-12 h-12 border border-[var(--color-border)] flex items-center justify-center text-xl font-bold">
                                   {selectedSupport[0]}
                                 </div>
-                                <h3 className="font-bold text-xl text-black dark:text-white">{selectedSupport}</h3>
+                                <h3 className="font-bold text-xl">{selectedSupport}</h3>
                               </div>
                               <div className="flex items-center gap-4">
                                 <div className="text-right">
-                                  <p className="text-2xl font-bold text-black dark:text-white leading-none">{avg}</p>
+                                  <p className="text-2xl font-bold leading-none">{avg}</p>
                                   <div className="mt-1">
                                     <Stars value={Math.round(e.sum / e.total)} />
                                   </div>
                                 </div>
-                                <div className="h-10 w-px bg-black/10 dark:bg-white/10 mx-1" />
-                                <div className="bg-black/5 dark:bg-white/5 text-black dark:text-white px-4 py-2 text-center">
-                                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-60">Total Ratings</p>
+                                <div className="h-10 w-px bg-[var(--color-border)] mx-1" />
+                                <div className="bg-bg-elevated px-4 py-2 text-center">
+                                  <p className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">Total Ratings</p>
                                   <p className="text-lg font-bold">{e.total}</p>
                                 </div>
                               </div>
                             </div>
                             <div className="grid grid-cols-2 gap-6 mt-6">
                               {/* DSC Breakdown */}
-                              <div className="bg-black/5 dark:bg-white/5 p-5 border border-black dark:border-white relative overflow-hidden">
+                              <div className="bg-bg-elevated p-5 border border-[var(--color-border)] relative overflow-hidden">
                                 <div className="flex justify-between items-center mb-4">
                                   <div>
-                                    <span className="text-sm font-bold text-black dark:text-white uppercase tracking-widest">DSC</span>
-                                    <p className="text-xs text-black dark:text-white opacity-60">Customer Support</p>
+                                    <span className="text-sm font-bold uppercase tracking-wide">DSC</span>
+                                    <p className="text-xs text-[var(--color-text-secondary)]">Customer Support</p>
                                   </div>
-                                  <span className="text-xs font-bold bg-black/10 dark:bg-white/10 text-black dark:text-white px-3 py-1">
+                                  <span className="text-xs font-bold bg-bg-elevated px-3 py-1">
                                     {e.depts.DSC.total} ratings
                                   </span>
                                 </div>
                                 {e.depts.DSC.total > 0 ? (
                                   <div className="space-y-3">
-                                    <div className="flex justify-between items-center bg-black/5 dark:bg-white/5 p-2">
-                                      <span className="text-xs font-medium text-black dark:text-white opacity-60">Average Score</span>
-                                      <span className="text-lg font-bold text-black dark:text-white">{(e.depts.DSC.sum / e.depts.DSC.total).toFixed(1)}</span>
+                                    <div className="flex justify-between items-center bg-bg-elevated p-2">
+                                      <span className="text-xs font-medium text-[var(--color-text-secondary)]">Average Score</span>
+                                      <span className="text-lg font-bold">{(e.depts.DSC.sum / e.depts.DSC.total).toFixed(1)}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                      <div className="bg-black/5 dark:bg-white/5 p-2 text-center border border-black dark:border-white">
-                                        <span className="block text-[10px] text-black dark:text-white font-bold uppercase">5 Stars</span>
-                                        <span className="text-lg font-bold text-black dark:text-white">{e.depts.DSC.count5}</span>
+                                      <div className="bg-bg-elevated p-2 text-center border border-[var(--color-border)]">
+                                        <span className="block text-[10px] font-bold uppercase">5 Stars</span>
+                                        <span className="text-lg font-bold">{e.depts.DSC.count5}</span>
                                       </div>
-                                      <div className="bg-black/5 dark:bg-white/5 p-2 text-center border border-black/40 dark:border-white/40">
-                                        <span className="block text-[10px] text-black dark:text-white opacity-60 font-bold uppercase">1-2 Stars</span>
-                                        <span className="text-lg font-bold text-black dark:text-white opacity-60">{e.depts.DSC.countLow}</span>
+                                      <div className="bg-bg-elevated p-2 text-center border border-[var(--color-border)]">
+                                        <span className="block text-[10px] text-[var(--color-text-secondary)] font-bold uppercase">1-2 Stars</span>
+                                        <span className="text-lg font-bold text-[var(--color-text-secondary)]">{e.depts.DSC.countLow}</span>
                                       </div>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="py-6 text-center border-2 border-dashed border-black/20 dark:border-white/20">
-                                    <p className="text-sm text-black dark:text-white opacity-60">No DSC ratings</p>
+                                  <div className="py-6 text-center border-2 border-dashed border-[var(--color-border)]">
+                                    <p className="text-sm text-[var(--color-text-secondary)]">No DSC ratings</p>
                                   </div>
                                 )}
                               </div>
 
                               {/* FOT Breakdown */}
-                              <div className="bg-black/5 dark:bg-white/5 p-5 border border-black dark:border-white">
+                              <div className="bg-bg-elevated p-5 border border-[var(--color-border)]">
                                 <div className="flex justify-between items-center mb-4">
                                   <div>
-                                    <span className="text-sm font-bold text-black dark:text-white uppercase tracking-widest">FOT</span>
-                                    <p className="text-xs text-black dark:text-white opacity-60">Front Office Team</p>
+                                    <span className="text-sm font-bold uppercase tracking-wide">FOT</span>
+                                    <p className="text-xs text-[var(--color-text-secondary)]">Front Office Team</p>
                                   </div>
-                                  <span className="text-xs font-bold bg-black/10 dark:bg-white/10 text-black dark:text-white px-3 py-1">
+                                  <span className="text-xs font-bold bg-bg-elevated px-3 py-1">
                                     {e.depts.FOT.total} ratings
                                   </span>
                                 </div>
                                 {e.depts.FOT.total > 0 ? (
                                   <div className="space-y-3">
-                                    <div className="flex justify-between items-center bg-black/5 dark:bg-white/5 p-2">
-                                      <span className="text-xs font-medium text-black dark:text-white opacity-60">Average Score</span>
-                                      <span className="text-lg font-bold text-black dark:text-white">{(e.depts.FOT.sum / e.depts.FOT.total).toFixed(1)}</span>
+                                    <div className="flex justify-between items-center bg-bg-elevated p-2">
+                                      <span className="text-xs font-medium text-[var(--color-text-secondary)]">Average Score</span>
+                                      <span className="text-lg font-bold">{(e.depts.FOT.sum / e.depts.FOT.total).toFixed(1)}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2">
-                                      <div className="bg-black/5 dark:bg-white/5 p-2 text-center border border-black dark:border-white">
-                                        <span className="block text-[10px] text-black dark:text-white font-bold uppercase">5 Stars</span>
-                                        <span className="text-lg font-bold text-black dark:text-white">{e.depts.FOT.count5}</span>
+                                      <div className="bg-bg-elevated p-2 text-center border border-[var(--color-border)]">
+                                        <span className="block text-[10px] font-bold uppercase">5 Stars</span>
+                                        <span className="text-lg font-bold">{e.depts.FOT.count5}</span>
                                       </div>
-                                      <div className="bg-black/5 dark:bg-white/5 p-2 text-center border border-black/40 dark:border-white/40">
-                                        <span className="block text-[10px] text-black dark:text-white opacity-60 font-bold uppercase">1-2 Stars</span>
-                                        <span className="text-lg font-bold text-black dark:text-white opacity-60">{e.depts.FOT.countLow}</span>
+                                      <div className="bg-bg-elevated p-2 text-center border border-[var(--color-border)]">
+                                        <span className="block text-[10px] text-[var(--color-text-secondary)] font-bold uppercase">1-2 Stars</span>
+                                        <span className="text-lg font-bold text-[var(--color-text-secondary)]">{e.depts.FOT.countLow}</span>
                                       </div>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="py-6 text-center border-2 border-dashed border-black/20 dark:border-white/20">
-                                    <p className="text-sm text-black dark:text-white opacity-60">No FOT ratings</p>
+                                  <div className="py-6 text-center border-2 border-dashed border-[var(--color-border)]">
+                                    <p className="text-sm text-[var(--color-text-secondary)]">No FOT ratings</p>
                                   </div>
                                 )}
                               </div>
@@ -496,35 +496,35 @@ export default function AdminFeedback() {
                 </div>
               )}
 
-              <div className="bg-black/5 dark:bg-white/5 border border-black dark:border-white overflow-hidden">
-                <p className="text-sm font-semibold text-black dark:text-white px-4 py-3 border-b border-black dark:border-white">
+              <div className="surface-card overflow-hidden">
+                <p className="text-sm font-semibold px-4 py-3 border-b border-[var(--color-border)]">
                   Recent ratings
                 </p>
-                <div className="divide-y divide-black/10 dark:divide-white/10">
+                <div className="divide-y divide-[var(--color-border)]">
                   {ratings.slice(0, 50).map((r) => (
                     <div key={r.id} className="px-4 py-3 flex items-start gap-3">
                       <Stars value={r.rating} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 overflow-x-auto">
-                          <span className="text-xs text-black dark:text-white opacity-60">
+                          <span className="text-xs text-[var(--color-text-secondary)]">
                             Agent:{' '}
-                            <span className="font-medium text-black dark:text-white">
+                            <span className="font-medium">
                               {supportNameMap[r.agentId] || r.agentId}
                             </span>
                           </span>
                           {r.supportId && (
-                            <span className="text-xs text-black dark:text-white opacity-60">
+                            <span className="text-xs text-[var(--color-text-secondary)]">
                               Support:{' '}
-                              <span className="font-medium text-black dark:text-white">
+                              <span className="font-medium">
                                 {supportNameMap[r.supportId] || r.supportId}
                               </span>
                             </span>
                           )}
-                          <span className="text-xs text-black dark:text-white opacity-60">
+                          <span className="text-xs text-[var(--color-text-secondary)]">
                             {new Date(r.createdAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}
                           </span>
                         </div>
-                        {r.comment && <p className="text-sm text-black dark:text-white mt-1">{r.comment}</p>}
+                        {r.comment && <p className="text-sm mt-1">{r.comment}</p>}
                       </div>
                     </div>
                   ))}
@@ -535,7 +535,7 @@ export default function AdminFeedback() {
                 <div className="mt-6 flex justify-center">
                   <button
                     onClick={() => setSelectedSupport('ALL')}
-                    className="text-xs font-bold text-black dark:text-white opacity-60 hover:opacity-100 flex items-center gap-2"
+                    className="text-xs font-bold text-[var(--color-text-secondary)] hover:opacity-100 flex items-center gap-2"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"

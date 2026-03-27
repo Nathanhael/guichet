@@ -24,20 +24,20 @@ export default function PartnerSwitcher() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 border-2 border-black dark:border-white transition-all group"
+        className="flex items-center gap-2 px-3 py-1.5 bg-bg-elevated hover:bg-bg-surface border border-border-heavy group"
       >
-        <span className="text-[10px] font-black uppercase tracking-widest truncate max-w-[120px]">
+        <span className="text-[10px] font-bold uppercase tracking-widest truncate max-w-[120px]">
           {partnerName || 'Select Partner'}
         </span>
-        <span className={`text-[8px] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}>▼</span>
+        <span className={`text-[8px] ${isOpen ? 'rotate-180' : ''}`}>▼</span>
       </button>
 
       {isOpen && (
         <div
-          className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-black border-4 border-black dark:border-white shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] dark:shadow-[8px_8px_0px_0px_rgba(255,255,255,1)] z-[100] overflow-hidden"
+          className="absolute top-full left-0 mt-2 w-64 bg-bg-surface border border-border-heavy z-[100] overflow-hidden"
         >
-          <div className="p-3 border-b-2 border-black dark:border-white bg-black dark:bg-white text-white dark:text-black">
-            <span className="text-[10px] font-black uppercase tracking-widest px-2">Switch Workspace</span>
+          <div className="p-3 border-b border-border-heavy bg-bg-elevated">
+            <span className="text-[10px] font-bold uppercase tracking-widest px-2 text-text-secondary">Switch Workspace</span>
           </div>
           <div className="p-1 max-h-80 overflow-y-auto custom-scrollbar">
             {isPlatformOperator && (
@@ -46,18 +46,18 @@ export default function PartnerSwitcher() {
                   setActiveMembershipId(null);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-4 py-3 border-2 mb-1 transition-all flex items-center gap-3 ${
-                  !activeMembershipId 
-                    ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' 
-                    : 'border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                className={`w-full text-left px-4 py-3 border mb-1 flex items-center gap-3 ${
+                  !activeMembershipId
+                    ? 'bg-accent-blue text-white border-accent-blue'
+                    : 'border-transparent hover:bg-bg-elevated'
                 }`}
               >
-                <div className="w-8 h-8 border-2 border-current flex items-center justify-center font-black">
+                <div className="w-8 h-8 border border-current flex items-center justify-center font-bold">
                   P
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-tight">Platform Cockpit</p>
-                  <p className="text-[8px] font-bold uppercase opacity-60">Global Management</p>
+                  <p className="text-[10px] font-bold uppercase tracking-tight">Platform Cockpit</p>
+                  <p className="text-[8px] font-medium uppercase opacity-60">Global Management</p>
                 </div>
               </button>
             )}
@@ -69,18 +69,18 @@ export default function PartnerSwitcher() {
                   setActiveMembershipId(m.id);
                   setIsOpen(false);
                 }}
-                className={`w-full text-left px-4 py-3 border-2 mb-1 transition-all flex items-center gap-3 ${
-                  activeMembershipId === m.id 
-                    ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white' 
-                    : 'border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                className={`w-full text-left px-4 py-3 border mb-1 flex items-center gap-3 ${
+                  activeMembershipId === m.id
+                    ? 'bg-accent-blue text-white border-accent-blue'
+                    : 'border-transparent hover:bg-bg-elevated'
                 }`}
               >
-                <div className="w-8 h-8 border-2 border-current flex items-center justify-center font-black text-xs">
+                <div className="w-8 h-8 border border-current flex items-center justify-center font-bold text-xs">
                   {m.partnerName.charAt(0)}
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-tight">{m.partnerName}</p>
-                  <p className="text-[8px] font-bold uppercase opacity-60">{m.role} · {m.manifest?.industry}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-tight">{m.partnerName}</p>
+                  <p className="text-[8px] font-medium uppercase opacity-60">{m.role} · {m.manifest?.industry}</p>
                 </div>
               </button>
             ))}

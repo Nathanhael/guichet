@@ -158,14 +158,14 @@ Client-supplied `agentId` written to `ratings` table. Logically constrained (cal
 
 ## Prioritized Action Plan
 
-| Priority | Action | Effort | Impact |
-|---|---|---|---|
-| P0 | Fix `ticket:new` agentId spoofing | 5 min | Prevents ticket attribution fraud |
-| P0 | Fix `ticket:transfer` membership check | 15 min | Closes cross-partner assignment vector |
-| P1 | Shrink audit tamper window (archive after 2 days) | 2 hours | Critical for compliance/forensics |
-| P1 | Wrap archival in transaction | 30 min | Prevents partial chain state |
-| P1 | Add scheduled chain verification | 30 min | Detects tampering automatically |
-| P2 | Add RLS/trigger on audit_log | 1 hour | Defense-in-depth for tamper resistance |
-| P2 | GDPR startup catch-up | 1 hour | Ensures compliance after downtime |
-| P2 | Fix `rating:submit` agentId | 5 min | Code quality hardening |
-| P3 | JWT → HttpOnly cookie migration | 2-3 days | Eliminates XSS token exfiltration |
+| Priority | Action | Effort | Impact | Status |
+|---|---|---|---|---|
+| P0 | Fix `ticket:new` agentId spoofing | 5 min | Prevents ticket attribution fraud | ✅ Done |
+| P0 | Fix `ticket:transfer` membership check | 15 min | Closes cross-partner assignment vector | ✅ Done |
+| P1 | Shrink audit tamper window (archive after 2 days) | 2 hours | Critical for compliance/forensics | ✅ Done |
+| P1 | Wrap archival in transaction | 30 min | Prevents partial chain state | ✅ Done |
+| P1 | Add scheduled chain verification | 30 min | Detects tampering automatically | ✅ Done |
+| P1 | GDPR startup catch-up | 1 hour | Ensures compliance after downtime | ✅ Done |
+| P2 | Add triggers on audit_log (block UPDATE/DELETE) | 1 hour | Defense-in-depth for tamper resistance | ✅ Done |
+| P2 | Fix `rating:submit` agentId | 5 min | Code quality hardening | ✅ Done |
+| P3 | JWT → HttpOnly cookie migration | 2-3 days | Eliminates XSS token exfiltration | Planned |

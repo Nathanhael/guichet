@@ -91,8 +91,8 @@ export default function CannedResponsePicker({ inputText, dept, onSelect, onClos
 
   if (filtered.length === 0 && query) {
     return (
-      <div className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-4 z-50">
-        <p className="text-xs text-slate-400 italic">{t('no_canned_responses') || 'No matching responses'}</p>
+      <div className="absolute bottom-full left-0 right-0 mb-1 bg-bg-surface border border-border-heavy p-4 z-50">
+        <p className="text-xs text-text-muted italic">{t('no_canned_responses') || 'No matching responses'}</p>
       </div>
     );
   }
@@ -102,10 +102,10 @@ export default function CannedResponsePicker({ inputText, dept, onSelect, onClos
   return (
     <div
       ref={listRef}
-      className="absolute bottom-full left-0 right-0 mb-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl max-h-64 overflow-y-auto z-50"
+      className="absolute bottom-full left-0 right-0 mb-1 bg-bg-surface border border-border-heavy max-h-64 overflow-y-auto z-50"
     >
-      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-        <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+      <div className="px-3 py-2 border-b border-border">
+        <span className="section-header">
           {t('canned_responses') || 'Quick replies'}
         </span>
       </div>
@@ -114,26 +114,26 @@ export default function CannedResponsePicker({ inputText, dept, onSelect, onClos
           key={r.id}
           onClick={() => onSelect(expandVariables(r.body))}
           onMouseEnter={() => setSelectedIndex(idx)}
-          className={`w-full text-left px-4 py-2.5 flex flex-col gap-0.5 transition-colors ${
+          className={`w-full text-left px-4 py-2.5 flex flex-col gap-0.5 ${
             idx === selectedIndex
-              ? 'bg-blue-50 dark:bg-blue-950/30'
-              : 'hover:bg-slate-50 dark:hover:bg-slate-800'
+              ? 'bg-bg-elevated'
+              : 'hover:bg-bg-elevated'
           }`}
         >
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-900 dark:text-white">{r.title}</span>
+            <span className="text-xs font-bold text-text-primary">{r.title}</span>
             {r.shortcut && (
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+              <span className="text-[9px] font-mono px-1.5 py-0.5 bg-bg-elevated text-text-muted">
                 /{r.shortcut}
               </span>
             )}
             {r.dept && (
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-400">
+              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 border border-border text-text-muted">
                 {r.dept}
               </span>
             )}
           </div>
-          <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{r.body}</span>
+          <span className="text-[11px] text-text-secondary truncate">{r.body}</span>
         </button>
       ))}
     </div>

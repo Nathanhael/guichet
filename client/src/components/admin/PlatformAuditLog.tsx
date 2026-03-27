@@ -179,39 +179,39 @@ export default function PlatformAuditLog() {
     <div className="max-w-6xl space-y-6 pb-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-2xl font-black uppercase tracking-tighter">{t('audit_log_title')}</h2>
-          <p className="text-xs uppercase font-bold opacity-60 mt-1 tracking-widest">{t('audit_log_desc')}</p>
+          <h2 className="text-2xl font-bold uppercase tracking-tight">{t('audit_log_title')}</h2>
+          <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)] mt-1 tracking-wide">{t('audit_log_desc')}</p>
         </div>
-        <button 
+        <button
           onClick={handleExport}
-          className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert"
+          className="btn-primary"
         >
           {t('export_csv')}
         </button>
       </div>
 
-      <div className="flex flex-col gap-3 bg-black/5 dark:bg-white/5 p-4 border-2 border-black dark:border-white">
+      <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => { setSecurityOnly(true); resetCursor(); }}
-            className={`px-4 py-2 border-2 font-black uppercase text-[10px] tracking-widest ${securityOnly ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white' : 'border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'}`}
+            className={`px-4 py-2 border font-bold uppercase text-[10px] tracking-wide ${securityOnly ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]' : 'border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white'}`}
           >
             {t('security_events')}
           </button>
           <button
             onClick={() => { setSecurityOnly(false); resetCursor(); }}
-            className={`px-4 py-2 border-2 font-black uppercase text-[10px] tracking-widest ${!securityOnly ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white' : 'border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black'}`}
+            className={`px-4 py-2 border font-bold uppercase text-[10px] tracking-wide ${!securityOnly ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]' : 'border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white'}`}
           >
             {t('all_events')}
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-1">
-            <label className="text-[8px] font-black uppercase opacity-60 ml-1">{t('action_type')}</label>
+            <label className="mono-label ml-1">{t('action_type')}</label>
             <select
               value={filterAction}
               onChange={e => { setFilterAction(e.target.value); resetCursor(); }}
-              className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-black uppercase tracking-widest outline-none"
+              className="input-field w-full"
             >
               <option value="">{t('all_actions')}</option>
               {ACTION_OPTIONS.map((action) => (
@@ -221,11 +221,11 @@ export default function PlatformAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[8px] font-black uppercase opacity-60 ml-1">{t('partner_context')}</label>
+            <label className="mono-label ml-1">{t('partner_context')}</label>
             <select
               value={filterPartnerId}
               onChange={e => { setFilterPartnerId(e.target.value); resetCursor(); }}
-              className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-black uppercase tracking-widest outline-none"
+              className="input-field w-full"
             >
               <option value="">{t('all_partners')}</option>
               {(partners || []).map(p => (
@@ -235,11 +235,11 @@ export default function PlatformAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[8px] font-black uppercase opacity-60 ml-1">{t('actor_who')}</label>
+            <label className="mono-label ml-1">{t('actor_who')}</label>
             <select
               value={filterActorId}
               onChange={e => { setFilterActorId(e.target.value); resetCursor(); }}
-              className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-black uppercase tracking-widest outline-none"
+              className="input-field w-full"
             >
               <option value="">{t('all_actors')}</option>
               {actors.map(([id, name]) => (
@@ -249,54 +249,54 @@ export default function PlatformAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[8px] font-black uppercase opacity-60 ml-1">{t('target_id_subject')}</label>
-            <input 
-              type="text" 
+            <label className="mono-label ml-1">{t('target_id_subject')}</label>
+            <input
+              type="text"
               placeholder={t('search_target_id')}
               value={filterTargetId}
               onChange={e => setFilterTargetId(e.target.value)}
-              className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-bold outline-none"
+              className="input-field w-full"
             />
           </div>
         </div>
-        
+
         {/* Date Filters Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-black/10 dark:border-white/10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-[var(--color-border)]">
           <div className="space-y-1">
-            <label className="text-[8px] font-black uppercase opacity-60 ml-1">From Date</label>
+            <label className="mono-label ml-1">From Date</label>
             <div className="flex gap-2">
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={dateFrom}
                 onChange={e => { setDateFrom(e.target.value); resetCursor(); }}
-                className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-bold outline-none"
+                className="input-field w-full"
               />
               {dateFrom && (
-                <button 
+                <button
                   onClick={() => { setDateFrom(''); resetCursor(); }}
-                  className="px-3 border-2 border-black dark:border-white bg-white dark:bg-black hover:invert text-[10px] font-black uppercase tracking-widest"
+                  className="btn-secondary"
                 >
-                  ✕
+                  Clear
                 </button>
               )}
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-[8px] font-black uppercase opacity-60 ml-1">To Date</label>
+            <label className="mono-label ml-1">To Date</label>
             <div className="flex gap-2">
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={dateTo}
                 min={dateFrom}
                 onChange={e => { setDateTo(e.target.value); resetCursor(); }}
-                className="w-full border-2 border-black dark:border-white bg-white dark:bg-black p-2 text-xs font-bold outline-none"
+                className="input-field w-full"
               />
               {dateTo && (
-                <button 
+                <button
                   onClick={() => { setDateTo(''); resetCursor(); }}
-                  className="px-3 border-2 border-black dark:border-white bg-white dark:bg-black hover:invert text-[10px] font-black uppercase tracking-widest"
+                  className="btn-secondary"
                 >
-                  ✕
+                  Clear
                 </button>
               )}
             </div>
@@ -306,31 +306,31 @@ export default function PlatformAuditLog() {
 
 
       {isLoading ? (
-        <div className="py-8 text-center uppercase font-black opacity-50">{t('loading_log')}</div>
+        <div className="py-8 text-center uppercase font-bold text-[var(--color-text-muted)]">{t('loading_log')}</div>
       ) : (
-        <div className="border-2 border-black dark:border-white overflow-x-auto custom-scrollbar flex-1 mb-[72px]">
+        <div className="surface-card overflow-x-auto flex-1 mb-[72px]">
           <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead className="bg-white dark:bg-black border-b-2 border-black dark:border-white">
-              <tr className="bg-black/5 dark:bg-white/5">
-                <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_time')}</th>
-                <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_action')}</th>
-                <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_actor')}</th>
-                <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_partner_id')}</th>
-                <th className="p-3 text-[10px] font-black uppercase tracking-widest">{t('col_details')}</th>
+            <thead>
+              <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
+                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_time')}</th>
+                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_action')}</th>
+                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_actor')}</th>
+                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_partner_id')}</th>
+                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_details')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-black/10 dark:divide-white/10">
+            <tbody className="divide-y divide-[var(--color-border)]">
               {visibleData?.map((log) => (
-                <tr key={log.id} className="hover:bg-black/5 dark:hover:bg-white/5">
+                <tr key={log.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                   <td className="p-3 text-[10px] font-mono whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
                   <td className="p-3 text-xs font-bold uppercase">{log.action}</td>
-                  <td className="p-3 text-xs uppercase">{log.actorName || <span className="opacity-50">{t('system')}</span>}</td>
-                  <td className="p-3 text-xs font-mono opacity-80">{log.partnerId || '-'}</td>
-                  <td className="p-3 text-[10px] opacity-80 max-w-xs" title={JSON.stringify(log.metadata)}>
+                  <td className="p-3 text-xs uppercase">{log.actorName || <span className="text-[var(--color-text-muted)]">{t('system')}</span>}</td>
+                  <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.partnerId || '-'}</td>
+                  <td className="p-3 text-[10px] text-[var(--color-text-secondary)] max-w-xs" title={JSON.stringify(log.metadata)}>
                     <div className="font-bold uppercase tracking-wide">{formatAuditDetails(log)}</div>
-                    <div className="font-mono opacity-50 truncate">{JSON.stringify(log.metadata)}</div>
+                    <div className="font-mono text-[var(--color-text-muted)] truncate">{JSON.stringify(log.metadata)}</div>
                   </td>
                 </tr>
               ))}
@@ -340,12 +340,12 @@ export default function PlatformAuditLog() {
       )}
 
       {/* Enterprise Sticky Footer Pagination */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-black border-t-4 border-black dark:border-white p-4 z-20 shadow-[0_-8px_0_0_rgba(0,0,0,1)] dark:shadow-[0_-8px_0_0_rgba(255,255,255,1)]">
+      <div className="fixed bottom-0 left-0 right-0 bg-[var(--color-bg-base)] border-t border-[var(--color-border)] p-4 z-20">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-widest opacity-60">
+          <div className="flex items-center gap-4 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
             <div className="flex items-center gap-2">
               <span>{t('records_per_page')}</span>
-              <span className="border-b-2 border-current pb-0.5">{LIMIT}</span>
+              <span className="border-b border-current pb-0.5">{LIMIT}</span>
             </div>
             <span>|</span>
             <span>{t('page_indicator')} {page + 1}</span>
@@ -360,9 +360,9 @@ export default function PlatformAuditLog() {
                 setCursorStack(stack);
                 setCursor(prev || undefined);
               }}
-              className="px-8 py-3 border-2 border-black dark:border-white disabled:opacity-30 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors font-black uppercase text-[10px] tracking-widest"
+              className="btn-secondary disabled:opacity-30"
             >
-              ← {t('newer')}
+              &larr; {t('newer')}
             </button>
             <button
               disabled={!data?.nextCursor}
@@ -372,9 +372,9 @@ export default function PlatformAuditLog() {
                   setCursor(data.nextCursor);
                 }
               }}
-              className="px-8 py-3 border-2 border-black dark:border-white disabled:opacity-30 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors font-black uppercase text-[10px] tracking-widest"
+              className="btn-secondary disabled:opacity-30"
             >
-              {t('older')} →
+              {t('older')} &rarr;
             </button>
           </div>
         </div>

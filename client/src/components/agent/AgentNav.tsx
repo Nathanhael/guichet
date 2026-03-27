@@ -32,12 +32,12 @@ export default function AgentNav({
   if (!user) return null;
 
   return (
-    <nav className="relative z-50 px-6 py-3 bg-brand-900/95 backdrop-blur-md border-b border-brand-800 text-white flex items-center justify-between shadow-lg">
+    <nav className="relative z-50 px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] text-[var(--color-text-primary)] flex items-center justify-between">
       <div className="flex items-center gap-3">
         {showSidebar && (
           <button
             onClick={onToggleSidebar}
-            className="p-1.5 hover:bg-white/10 transition-colors"
+            className="p-1.5 hover:bg-[var(--color-accent-blue)] hover:text-white"
             aria-label={t('my_tickets')}
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -48,22 +48,22 @@ export default function AgentNav({
         {logoUrl ? (
           <img src={logoUrl} alt={partnerName} className="h-8 object-contain" />
         ) : (
-          <span className="text-xl font-bold tracking-tight">{industry} Support</span>
+          <span className="font-mono text-[10px] uppercase tracking-wide">{industry} Support</span>
         )}
-        <span className="text-xs px-2.5 py-1 rounded-md bg-brand-800 border border-brand-700 font-semibold tracking-wide">
+        <span className="mono-label border border-[var(--color-border)] px-2 py-0.5">
           Agent
         </span>
       </div>
 
       <div className="flex items-center gap-4">
-        <span className="text-sm font-medium text-ui-base2">{user.name}</span>
+        <span className="text-sm font-medium text-[var(--color-text-secondary)]">{user.name}</span>
         <ConnectionStatus />
 
         <NavToolbar />
 
         <button
           onClick={onShowFeedback}
-          className="text-ui-base1 hover:text-white text-sm flex items-center gap-1.5 ml-2 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors"
+          className="text-[var(--color-text-secondary)] hover:text-white text-sm flex items-center gap-1.5 ml-2 px-3 py-2 hover:bg-[var(--color-accent-blue)]"
           title={t('feedback')}
           aria-label={t('feedback')}
         >
@@ -75,7 +75,7 @@ export default function AgentNav({
         <button
           onClick={logout}
           aria-label={t('sign_out')}
-          className="text-ui-base1 hover:text-rose-400 text-sm font-medium ml-2 transition-colors"
+          className="text-[var(--color-text-secondary)] hover:text-[var(--color-accent-red)] text-sm font-medium ml-2"
         >
           {t('sign_out')}
         </button>

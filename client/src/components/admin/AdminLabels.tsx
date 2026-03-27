@@ -54,12 +54,12 @@ export default function AdminLabels() {
     <div className="max-w-3xl">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-lg font-black uppercase tracking-widest">{t('labels') || 'Labels'}</h2>
-          <p className="text-xs uppercase opacity-60 mt-1">Categorize and tag conversations</p>
+          <h2 className="text-lg font-bold uppercase tracking-wide">{t('labels') || 'Labels'}</h2>
+          <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-1">Categorize and tag conversations</p>
         </div>
         <button
           onClick={() => refetch()}
-          className="p-2 hover:bg-black/5 dark:hover:bg-white/5"
+          className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white"
           title="Refresh"
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -69,28 +69,28 @@ export default function AdminLabels() {
       <ErrorBox error={error} />
 
       {/* Create new label */}
-      <div className="border-2 border-black dark:border-white p-5 mb-6">
-        <h3 className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-4">Create New Label</h3>
+      <div className="surface-card p-5 mb-6">
+        <h3 className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide mb-4">Create New Label</h3>
         <div className="flex items-end gap-4">
           <div className="flex-1">
-            <label className="block text-[9px] font-black uppercase tracking-widest opacity-60 mb-1.5">Name *</label>
+            <label className="mono-label mb-1.5 block">Name *</label>
             <input
               type="text"
               value={newText}
               onChange={(e) => setNewText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && addLabel()}
               placeholder="e.g. Bug Report"
-              className="w-full border-2 border-black dark:border-white bg-transparent p-2.5 text-sm font-bold placeholder:opacity-30 outline-none"
+              className="input-field w-full"
             />
           </div>
           <div>
-            <label className="block text-[9px] font-black uppercase tracking-widest opacity-60 mb-1.5">Color *</label>
-            <div className="flex gap-1.5 p-1.5 border-2 border-black dark:border-white">
+            <label className="mono-label mb-1.5 block">Color *</label>
+            <div className="flex gap-1.5 p-1.5 border border-[var(--color-border)]">
               {colors.map((c) => (
                 <button
                   key={c.key}
                   onClick={() => setNewColor(c.key)}
-                  className={`w-6 h-6 rounded-full transition-all ${c.bg} ${
+                  className={`w-6 h-6 rounded-full ${c.bg} ${
                     newColor === c.key
                       ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-black ' + c.ring + ' scale-110'
                       : 'opacity-50 hover:opacity-80 hover:scale-105'
@@ -102,7 +102,7 @@ export default function AdminLabels() {
           <button
             onClick={addLabel}
             disabled={!newText.trim() || createMutation.isPending}
-            className="flex items-center gap-2 px-6 py-2.5 bg-black dark:bg-white text-white dark:text-black font-black uppercase text-xs tracking-widest disabled:opacity-50 shrink-0"
+            className="btn-primary disabled:opacity-50 shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
             {createMutation.isPending ? 'Adding...' : 'Add'}
@@ -111,36 +111,36 @@ export default function AdminLabels() {
       </div>
 
       {/* Labels list */}
-      <div className="border-2 border-black dark:border-white">
-        <div className="grid grid-cols-[auto_1fr_60px] border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5">
-          <div className="px-4 py-3 text-[9px] font-black uppercase tracking-widest opacity-60 w-16 text-center">Color</div>
-          <div className="px-4 py-3 text-[9px] font-black uppercase tracking-widest opacity-60">Label</div>
-          <div className="px-4 py-3 text-[9px] font-black uppercase tracking-widest opacity-60"></div>
+      <div className="surface-card">
+        <div className="grid grid-cols-[auto_1fr_60px] border-b border-[var(--color-border)] bg-bg-elevated">
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide w-16 text-center">Color</div>
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Label</div>
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide"></div>
         </div>
 
         {isLoading ? (
-          <div className="px-4 py-8 text-center text-sm opacity-40 font-black uppercase tracking-widest">
+          <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)] font-bold uppercase tracking-wide">
             Loading...
           </div>
         ) : !labels || labels.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm opacity-40 font-black uppercase tracking-widest">
+          <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)] font-bold uppercase tracking-wide">
             No labels created yet
           </div>
         ) : (
           labels.map((l) => (
             <div
               key={l.id}
-              className="grid grid-cols-[auto_1fr_60px] border-b border-black/20 dark:border-white/20 group hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
+              className="grid grid-cols-[auto_1fr_60px] border-b border-[var(--color-border)] group hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
             >
               <div className="px-4 py-3 w-16 flex items-center justify-center">
-                <div className={`w-3.5 h-3.5 rounded-full bg-${l.color}-500 shadow-sm shadow-${l.color}-500/30`} />
+                <div className={`w-3.5 h-3.5 rounded-full bg-${l.color}-500`} />
               </div>
               <div className="px-4 py-3 font-bold text-sm flex items-center">{l.text}</div>
               <div className="px-4 py-3 flex items-center justify-center">
                 <button
                   onClick={() => deleteLabel(l.id)}
                   disabled={deleteMutation.isPending}
-                  className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-black/10 dark:hover:bg-white/10 transition-opacity disabled:opacity-50"
+                  className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
                   title="Delete"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -152,7 +152,7 @@ export default function AdminLabels() {
       </div>
 
       {labels && labels.length > 0 && (
-        <div className="mt-3 text-[9px] font-black uppercase tracking-widest opacity-30 text-right">
+        <div className="mt-3 font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] text-right">
           {labels.length} label{labels.length !== 1 ? 's' : ''}
         </div>
       )}

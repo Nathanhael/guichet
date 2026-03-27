@@ -16,10 +16,10 @@ export default function LanguageSwitcher() {
         <button
           key={lang.code}
           onClick={() => setSelectedLang(lang.code)}
-          className={`px-2 py-1 text-[9px] font-black border transition-all ${
+          className={`px-2 py-1 text-[9px] font-bold border ${
             currentLang === lang.code
-              ? 'bg-black dark:bg-white text-white dark:text-black border-black dark:border-white'
-              : 'bg-transparent text-black dark:text-white border-transparent opacity-40 hover:opacity-100'
+              ? 'bg-accent-blue text-white border-accent-blue'
+              : 'bg-transparent text-text-primary border-transparent opacity-40 hover:opacity-100'
           }`}
         >
           {lang.label}
