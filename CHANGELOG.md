@@ -5,6 +5,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Security
+- **HttpOnly cookie authentication** — JWT tokens now transported via `HttpOnly SameSite=Lax Secure` cookies instead of `Authorization: Bearer` headers. Eliminates XSS token theft vector. Client no longer stores tokens in localStorage.
+- `COOKIE_SECURE` defaults to `true` (set `false` for local dev without HTTPS)
+- `COOKIE_DOMAIN` config for subdomain cookie sharing
+- Companion `session_expires` cookie for client-side expiry detection without exposing JWT
+
 ### Added
 - MFA admin management: platform operators can see MFA status badges and force-disable MFA for any user
 - Account unlock: platform operators can unlock locked-out users from the user table

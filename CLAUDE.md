@@ -83,10 +83,10 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - Identity enforced server-side via `socket.data.userId` — never trust client-supplied identity fields.
 - Key events: `message:send`, `message:read`, `message:edit`, `message:delete`, `ticket:new`, `ticket:close`, `ticket:reopen`, `ticket:transfer`, `ticket:labels:update`, `support:join`, `support:leave`, `typing:*`, `presence:*`, `partner:deactivated`, `canned:list`, `canned:create`, `canned:update`, `canned:delete`
 - All mutation events verify partner-scope authorization before proceeding.
-- **Token expiry**: JWT `exp` is stored at handshake and checked on every event via `requireIdentified()`. Expired tokens trigger `auth:expired` → client auto-reconnects with fresh token from store.
+- **Token expiry**: JWT `exp` is stored at handshake and checked on every event via `requireIdentified()`. Expired tokens trigger `auth:expired` → client auto-reconnects (cookies sent automatically via `withCredentials: true`).
 
 **Middleware** (`server/middleware/`):
-- `auth.ts` — JWT verification and role-based access control
+- `auth.ts` — JWT verification (reads HttpOnly cookie with Bearer header fallback) and role-based access control
 - `validator.ts` — Express-validator wrapper
 
 ### Database
@@ -112,7 +112,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 
 **Stack**: React 19, Vite 8, Tailwind CSS 4, Zustand 5.
 
-**State**: Zustand store with slices (`auth`, `tickets`, `messages`, `ui`, `config`, `rating`) in `store/useStore.ts`. JWT expiry is checked on hydration — expired tokens are cleared automatically.
+**State**: Zustand store with slices (`auth`, `tickets`, `messages`, `ui`, `config`, `rating`) in `store/useStore.ts`. Session expiry is detected via the `session_expires` cookie (non-HttpOnly companion to the JWT HttpOnly cookie).
 
 **Real-Time**: `hooks/useSocket.ts` — single global Socket.io instance. Always clean up listeners in `useEffect` return.
 
@@ -128,7 +128,8 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 
 - **Roles**: `agent`, `support`, `admin`, `platform_operator`
 - **Multi-Tenancy**: Every query must include `partner_id` filter. No data leaks between partners.
-- **Multi-Partner Users**: Users belong to multiple partners via `memberships`. One active partner at a time — switching issues a new JWT via `/switch-partner`.
+- **Multi-Partner Users**: Users belong to multiple partners via `memberships`. One active partner at a time — switching issues a new JWT cookie via `/switch-partner`.
+- **HttpOnly Cookie Auth**: JWTs are transported via `HttpOnly SameSite=Lax` cookies (`tessera_token`). Client uses `credentials: 'include'` on all requests. A companion `session_expires` cookie (non-HttpOnly) carries the expiry timestamp for client-side detection. Config: `COOKIE_SECURE` (default `true`), `COOKIE_DOMAIN` (optional, for subdomains).
 - **Partner Status**: `active` | `inactive`. Inactive blocks logins, ticket creation, switching. Enforce at login, switch-partner, socket, and tRPC layers.
 - **Dynamic Departments**: Never hardcode department IDs. Always read from `partner.departments` JSONB. Schema: `{ id (auto-slug), name, description? }`. IDs are immutable.
 - **Department Assignment**: `memberships.departments` is a JSONB array of dept IDs. Empty/null = generalist (sees all).
