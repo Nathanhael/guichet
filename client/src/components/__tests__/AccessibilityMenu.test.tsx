@@ -76,6 +76,14 @@ describe('AccessibilityMenu', () => {
     expect(mockStore.toggleBionicReading).toHaveBeenCalledOnce();
   });
 
+  it('calls toggleMonochromeMode when Monochrome switch is clicked', () => {
+    render(<AccessibilityMenu />);
+    fireEvent.click(screen.getByTitle('Accessibility Options'));
+    const switches = screen.getAllByRole('switch');
+    fireEvent.click(switches[2]);
+    expect(mockStore.toggleMonochromeMode).toHaveBeenCalledOnce();
+  });
+
   it('calls toggleFocusMode when Focus Mode switch is clicked', () => {
     render(<AccessibilityMenu />);
     fireEvent.click(screen.getByTitle('Accessibility Options'));

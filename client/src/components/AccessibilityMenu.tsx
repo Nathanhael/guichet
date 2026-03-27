@@ -35,7 +35,7 @@ export default function AccessibilityMenu() {
     focusMode, toggleFocusMode,
   } = useStore();
 
-  const anyActive = dyslexicMode || bionicReading || monochromeMode || focusMode;
+  const anyActive = dyslexicMode || bionicReading || focusMode;
 
   useEffect(() => {
     if (!open) return;
