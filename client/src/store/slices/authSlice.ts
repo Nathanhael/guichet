@@ -69,8 +69,14 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     activePartnerId: expired ? null : localStorage.getItem('activePartnerId') || null,
 
     setUser: (user) => {
-      if (user) localStorage.setItem('user', JSON.stringify(user));
-      else localStorage.removeItem('user');
+      if (user) {
+        localStorage.setItem('user', JSON.stringify(user));
+        if (user.accessibilityPrefs) {
+          get().hydrateAccessibilityPrefs(user.accessibilityPrefs);
+        }
+      } else {
+        localStorage.removeItem('user');
+      }
       set({ user });
     },
     setMemberships: (memberships) => {
