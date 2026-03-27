@@ -1,5 +1,6 @@
 import type { AiProvider, ChatParams, ChatResult } from './types.js';
 import logger from '../../utils/logger.js';
+import config from '../../config.js';
 
 /**
  * Azure OpenAI provider.
@@ -24,19 +25,32 @@ export class AzureOpenAiProvider implements AiProvider {
     return `${this.baseUrl}/openai/deployments/${this.deployment}/chat/completions?api-version=${this.apiVersion}`;
   }
 
+  private wrapTimeoutError(err: unknown): never {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error(`AI request timed out after ${config.AI_TIMEOUT_MS}ms (provider: azure-openai)`);
+    }
+    throw err;
+  }
+
   async chat(params: ChatParams): Promise<ChatResult> {
-    const res = await fetch(this.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': this.apiKey,
-      },
-      body: JSON.stringify({
-        messages: params.messages,
-        temperature: params.temperature ?? 0.7,
-        max_tokens: params.maxTokens,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': this.apiKey,
+        },
+        body: JSON.stringify({
+          messages: params.messages,
+          temperature: params.temperature ?? 0.7,
+          max_tokens: params.maxTokens,
+        }),
+        signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
+      });
+    } catch (err) {
+      this.wrapTimeoutError(err);
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
@@ -58,19 +72,25 @@ export class AzureOpenAiProvider implements AiProvider {
   }
 
   async *chatStream(params: ChatParams): AsyncIterable<string> {
-    const res = await fetch(this.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'api-key': this.apiKey,
-      },
-      body: JSON.stringify({
-        messages: params.messages,
-        temperature: params.temperature ?? 0.7,
-        max_tokens: params.maxTokens,
-        stream: true,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'api-key': this.apiKey,
+        },
+        body: JSON.stringify({
+          messages: params.messages,
+          temperature: params.temperature ?? 0.7,
+          max_tokens: params.maxTokens,
+          stream: true,
+        }),
+        signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
+      });
+    } catch (err) {
+      this.wrapTimeoutError(err);
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
@@ -120,17 +140,11 @@ export class AzureOpenAiProvider implements AiProvider {
     }
     let result = false;
     try {
-      // Simple HEAD-style check — Azure returns 405 for GET but that means the endpoint is reachable
-      const res = await fetch(this.endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'api-key': this.apiKey,
-        },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: 1,
-        }),
+      // Non-billable check: list deployments endpoint (no inference cost)
+      const listUrl = `${this.baseUrl}/openai/deployments?api-version=${this.apiVersion}`;
+      const res = await fetch(listUrl, {
+        method: 'GET',
+        headers: { 'api-key': this.apiKey },
         signal: AbortSignal.timeout(5000),
       });
       result = res.ok;
