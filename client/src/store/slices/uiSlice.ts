@@ -1,5 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, ZenSettings } from '../../types';
+import { trpcVanilla } from '../../utils/trpc';
 
 export interface UISlice {
   dyslexicMode: boolean;
@@ -54,12 +55,14 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       localStorage.setItem('dyslexicMode', String(next));
       if (next) document.documentElement.classList.add('dyslexic-mode');
       else document.documentElement.classList.remove('dyslexic-mode');
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ dyslexicMode: next }).catch(() => {});
       return { dyslexicMode: next };
     }),
   toggleBionicReading: () =>
     set((state) => {
       const next = !state.bionicReading;
       localStorage.setItem('bionicReading', String(next));
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ bionicReading: next }).catch(() => {});
       return { bionicReading: next };
     }),
   toggleMonochromeMode: () =>
@@ -68,12 +71,14 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       localStorage.setItem('monochromeMode', String(next));
       if (next) document.documentElement.classList.add('monochrome-mode');
       else document.documentElement.classList.remove('monochrome-mode');
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ monochromeMode: next }).catch(() => {});
       return { monochromeMode: next };
     }),
   toggleFocusMode: () =>
     set((state) => {
       const next = !state.focusMode;
       localStorage.setItem('focusMode', String(next));
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ focusMode: next }).catch(() => {});
       return { focusMode: next };
     }),
 
