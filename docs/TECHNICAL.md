@@ -13,6 +13,8 @@ The database has been overhauled for type safety and performance:
 - **Audit Diffs**: The `audit_log` table captures granular state changes (`from -> to`) for configuration and identity updates.
 - **Azure Identity Prep**: Added `email` and `external_id` columns to support OIDC integration.
 - **System Configuration**: Added `system_settings` table to store global infrastructure parameters (like mail provider credentials) manageable via the Platform UI.
+- **AI & Analytics Tables**: `ai_prompt_templates` (per-partner prompt customization), `ai_usage_log` (provider usage tracking with token counts and latency), `ratings` (ticket CSAT), `app_feedback` (in-app user feedback).
+- **Integration Tables**: `kb_articles` (per-partner knowledge base), `webhooks` + `webhook_logs` (event dispatch with HMAC signing and delivery tracking), `topic_alerts` (SLA/alert rules with configurable thresholds), `partner_group_mappings` (SSO group→role/department mapping).
 
 ---
 
@@ -31,6 +33,8 @@ Tessera is 100% data-driven. Hardcoded constants for departments have been remov
 - **Horizontal Scaling**: Uses the Redis adapter to sync events across server instances.
 - **Distributed Presence**: Online status and user performance metrics tracked via Redis Hashes.
 - **Real-Time Revocation**: Integrated a "Kill Switch" that uses Redis/Socket.io to instantly disconnect active sessions when a user is deactivated or deleted.
+- **Collision Detection**: `ticket:viewing` / `ticket:left` socket events track which support staff are viewing a ticket simultaneously. Viewer state maintained server-side, cleaned up on disconnect. Prevents duplicate responses.
+- **Token Expiry**: JWT `exp` is stored at handshake and checked on every event via `requireIdentified()`. Expired tokens trigger `auth:expired` → client auto-reconnects.
 
 ---
 
@@ -50,6 +54,8 @@ Tessera is 100% data-driven. Hardcoded constants for departments have been remov
 - **Secure Recovery**: Implemented a token-based password reset flow for local users using SHA-256 hashed tokens and a 1-hour strict expiry.
 - **Platform Operator Bootstrap**: On first startup, the server checks for existing platform operators. If none exist and `PLATFORM_ADMIN_EMAIL` is set, it auto-creates (or promotes) the initial operator. Supports both local auth (with `PLATFORM_ADMIN_PASSWORD`) and SSO (password omitted). Race-safe for multi-replica deployments.
 - **Implicit Partner Access**: Platform operators can enter any active partner's admin view without an explicit membership, via a dedicated `/enter-partner` endpoint that issues a partner-scoped JWT with admin role.
+- **Flexible Auth**: Partners support `authMethod` of `'local'`, `'sso'`, or `'both'`. When `'both'`, the login page shows both email/password and SSO options. Per-user `auth_method` column allows overriding the partner default (e.g., SSO partner with one local break-glass account).
+- **SSO Group Mapping**: `partner_group_mappings` table automatically maps SSO group memberships to tenant roles and departments during login.
 - **Tenant Mapping**: The current platform treats `partners` as tenants and `memberships` as the authorization link from internal users to one or more tenants. See `docs/TENANT_IDENTITY_SPEC.md`.
 
 ---
@@ -65,6 +71,8 @@ Tessera is 100% data-driven. Hardcoded constants for departments have been remov
 - **CSP Headers**: Helmet configured with Content Security Policy for XSS mitigation.
 - **Rate Limiting**: Express rate limits on auth endpoints. Per-email forgot-password throttle (3 requests per 15 minutes).
 
+---
+
 ## 7. Communication & Activity
 
 - **Dynamic Mail Service**: A centralized `MailService` that retrieves provider settings (SMTP, Resend, SendGrid) from the database at runtime, allowing for hot-swapping email providers without redeploys.
@@ -75,11 +83,37 @@ Tessera is 100% data-driven. Hardcoded constants for departments have been remov
 
 ---
 
-## 7. Frontend Architecture (React)
+## 8. AI Service Layer
+
+- **Provider Abstraction**: `server/services/ai/` implements a factory pattern supporting Ollama (local/free), Azure OpenAI, and any OpenAI-compatible API (LM Studio, Groq, Together AI). Switch with one env var (`AI_PROVIDER`).
+- **Per-Tenant Configuration**: Each partner has `aiEnabled` flag and `aiFeatures` JSONB controlling which AI capabilities are active (message improvement, summarization, translation, sentiment, auto-summarize on close). Platform admins toggle features in the Edit Partner modal.
+- **Message Improvement**: Role-aware rewriting — agents get clarity-focused rewrites, support gets actionable step-by-step rewrites. Optional or forced modes with revert-to-original.
+- **Chat Summarization**: On-demand summaries via `ai.summarizeChat`, cached in Redis. AI Copilot Sidebar in SupportView for quick context.
+- **Translation**: Per-message translation between nl/en/fr via `ai.translateMessage`. Auto-detects source language.
+- **Sentiment Detection**: Fire-and-forget scoring (-1.0 to 1.0) on every message. Aggregated in QueueSidebar (colored dots) and AdminStats (sentiment trends).
+- **Auto-Summarize on Close**: When tickets close, AI generates a summary stored in closing notes. Feeds into the GDPR-safe archive.
+- **Rate Limiting**: Per-partner Redis counters (requests/min, requests/day). Configurable via partner AI config.
+- **Usage Logging**: Every AI call logged to `ai_usage_log` with provider, model, token counts, latency, and success/failure.
+
+---
+
+## 9. Knowledge Base, Webhooks & SLA
+
+- **Knowledge Base**: Per-partner `kb_articles` table with title, body, category. Full CRUD via `trpc.kb.*` router. Admin UI in `AdminKnowledgeBase` component.
+- **Webhooks**: Partners configure webhook endpoints (`webhooks` table) with event subscriptions and HMAC signing secrets. `webhookDispatch.ts` delivers events with retry logic. Delivery history in `webhook_logs`. Admin UI in `AdminWebhooks`.
+- **SLA System**: Per-department response and resolution time targets stored in partner config. `sla.ts` service calculates `slaResponseDueAt` / `slaResolutionDueAt` on ticket creation (respecting business hours). `SlaIndicator` component shows countdown (green/yellow/red). `topic_alerts` table defines breach alert rules. `AdminAlerts` UI for configuration.
+- **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with auto-prompt. Staff satisfaction dashboard with per-agent breakdown and date filtering. In-app feedback via `app_feedback` table and `FeedbackModal`.
+
+---
+
+## 10. Frontend Architecture (React)
 
 - **Enterprise UI Patterns**: Long lists, such as the `PlatformAuditLog`, implement robust UX paradigms including sticky pagination bars and debounced searching (e.g., waiting 500ms before triggering a backend query) to reduce server load and improve client-side performance.
-- **Self-Contained Feature Modules**: `PlatformView` is a thin shell (tabs + modal state). Each feature (PartnerList, UserTable, CreatePartnerModal, etc.) lives in `components/platform/` and owns its own tRPC hooks, mutations, and cache invalidation — no prop-drilling of refetch functions.
+- **Self-Contained Feature Modules**: `PlatformView` is a thin shell (tabs + modal state). Each feature lives in `components/platform/` and owns its own tRPC hooks, mutations, and cache invalidation — no prop-drilling of refetch functions.
+- **Component Organization**: `components/admin/` (19 components — stats, team, departments, tickets, business hours, labels, canned responses, knowledge base, webhooks, alerts, feedback, archive, platform ops), `components/agent/` (3 — nav, sidebar, ticket form), `components/support/` (5 — queue, chat tabs, customer info, AI copilot, nav). Shared components at root level (ChatWindow, MessageBubble, Toast, ConfirmDialog, etc.).
 - **Reusable UI Primitives**: Custom `ConfirmDialog` and `Toast` components replace all native `alert()`/`confirm()` calls for consistent UX.
+- **Data Visualization**: Recharts for dashboard charts (AdminStats, sentiment trends, SLA compliance).
 - **Full i18n**: All UI strings use `useT()` with translations in English, French, and Dutch (`i18n.ts`). Business hours, admin views, and platform views are fully translated.
 - **State Synchronization**: Strict single-page-app behaviors using Zustand for global state and tRPC for seamless query invalidation and refetching.
-- **Test Coverage**: Vitest + React Testing Library with 94 tests across 16 files covering platform components, auth middleware, socket handlers, account lockout, message mapping, and security utilities. Tests mock tRPC at the hook level using `vi.hoisted()` for clean isolation.
+- **PWA**: Progressive Web App with `manifest.json`, service worker (`sw.js` with build-hash cache busting), and icons. Installable on Android/iOS. Network-first strategy for API calls.
+- **Test Coverage**: Vitest + React Testing Library covering platform components, auth middleware, socket handlers, account lockout, message mapping, and security utilities. Tests mock tRPC at the hook level using `vi.hoisted()` for clean isolation.

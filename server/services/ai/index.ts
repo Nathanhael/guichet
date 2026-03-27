@@ -24,5 +24,7 @@ export { getPromptTemplate, interpolate } from './prompts.js';
 export { getPartnerAiConfig, isFeatureEnabled } from './config.js';
 export { getCachedSummary, setCachedSummary, invalidateSummary } from './summaryCache.js';
 export { formatMessagesForAi } from './messageFormatter.js';
+export { verifyTicketOwnership, fetchTicketMessages } from './ticketMessages.js';
+export { runAiAction } from './runAction.js';
 export { autoSummarizeOnClose } from './autoSummarize.js';
 export { scoreSentiment } from './sentiment.js';

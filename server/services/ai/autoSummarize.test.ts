@@ -2,50 +2,35 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-const mockIsFeatureEnabled = vi.fn();
-const mockGetProvider = vi.fn();
-const mockGetPromptTemplate = vi.fn();
-const mockInterpolate = vi.fn();
-const mockLogUsage = vi.fn();
-const mockFormatMessagesForAi = vi.fn();
-const mockCheckRateLimit = vi.fn();
-
-vi.mock('./index.js', () => ({
-  isFeatureEnabled: (...args: unknown[]) => mockIsFeatureEnabled(...args),
-  getProvider: (...args: unknown[]) => mockGetProvider(...args),
-  getPromptTemplate: (...args: unknown[]) => mockGetPromptTemplate(...args),
-  interpolate: (...args: unknown[]) => mockInterpolate(...args),
-  logUsage: (...args: unknown[]) => mockLogUsage(...args),
-  formatMessagesForAi: (...args: unknown[]) => mockFormatMessagesForAi(...args),
-  checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
+const mockRunAiAction = vi.fn();
+vi.mock('./runAction.js', () => ({
+  runAiAction: (...args: unknown[]) => mockRunAiAction(...args),
 }));
 
-const mockDbSelect = vi.fn();
-const mockDbUpdate = vi.fn();
-const mockFrom = vi.fn();
-const mockWhere = vi.fn();
-const mockOrderBy = vi.fn();
-const mockLimit = vi.fn();
-const mockSet = vi.fn();
+const mockVerifyTicketOwnership = vi.fn();
+const mockFetchTicketMessages = vi.fn();
+vi.mock('./ticketMessages.js', () => ({
+  verifyTicketOwnership: (...args: unknown[]) => mockVerifyTicketOwnership(...args),
+  fetchTicketMessages: (...args: unknown[]) => mockFetchTicketMessages(...args),
+}));
 
-vi.mock('../../db/postgres.js', () => ({
+const mockFormatMessagesForAi = vi.fn();
+vi.mock('./messageFormatter.js', () => ({
+  formatMessagesForAi: (...args: unknown[]) => mockFormatMessagesForAi(...args),
+}));
+
+const mockDbUpdate = vi.fn();
+
+vi.mock('../../db.js', () => ({
   db: {
-    select: (...args: unknown[]) => mockDbSelect(...args),
     update: (...args: unknown[]) => mockDbUpdate(...args),
   },
 }));
 
 vi.mock('../../db/schema.js', () => ({
-  messages: {
-    senderName: 'sender_name',
-    senderRole: 'sender_role',
-    text: 'text',
-    ticketId: 'ticket_id',
-    deletedAt: 'deleted_at',
-    createdAt: 'created_at',
-  },
   tickets: {
     id: 'id',
+    partnerId: 'partner_id',
     closingNotes: 'closing_notes',
   },
 }));
@@ -53,8 +38,6 @@ vi.mock('../../db/schema.js', () => ({
 vi.mock('drizzle-orm', () => ({
   eq: vi.fn((...args: unknown[]) => ({ type: 'eq', args })),
   and: vi.fn((...args: unknown[]) => ({ type: 'and', args })),
-  asc: vi.fn((col: unknown) => ({ type: 'asc', col })),
-  isNull: vi.fn((col: unknown) => ({ type: 'isNull', col })),
   sql: vi.fn((strings: TemplateStringsArray) => ({ type: 'sql', value: strings.join('') })),
 }));
 
@@ -77,20 +60,6 @@ function createMockIo() {
   } as any;
 }
 
-function setupSelectChain(result: unknown[]) {
-  mockLimit.mockResolvedValue(result);
-  mockOrderBy.mockReturnValue(result);
-  mockWhere.mockReturnValue({ orderBy: mockOrderBy, limit: mockLimit });
-  mockFrom.mockReturnValue({ where: mockWhere });
-  mockDbSelect.mockReturnValue({ from: mockFrom });
-}
-
-function setupUpdateChain() {
-  mockWhere.mockResolvedValue(undefined);
-  mockSet.mockReturnValue({ where: mockWhere });
-  mockDbUpdate.mockReturnValue({ set: mockSet });
-}
-
 const PARTNER_ID = 'partner-1';
 const USER_ID = 'user-1';
 const TICKET_ID = 'ticket-1';
@@ -102,91 +71,86 @@ describe('autoSummarizeOnClose', () => {
     vi.clearAllMocks();
   });
 
-  it('does nothing when feature is disabled', async () => {
-    mockIsFeatureEnabled.mockResolvedValue(false);
+  it('does nothing when ticket not found or wrong partner', async () => {
+    mockVerifyTicketOwnership.mockResolvedValue(null);
     const io = createMockIo();
 
     const { autoSummarizeOnClose } = await import('./autoSummarize.js');
     await autoSummarizeOnClose(PARTNER_ID, USER_ID, TICKET_ID, io);
 
-    expect(mockIsFeatureEnabled).toHaveBeenCalledWith(PARTNER_ID, 'autoSummarizeOnClose');
-    expect(mockGetProvider).not.toHaveBeenCalled();
+    expect(mockVerifyTicketOwnership).toHaveBeenCalledWith(TICKET_ID, PARTNER_ID);
+    expect(mockFetchTicketMessages).not.toHaveBeenCalled();
     expect(io.to).not.toHaveBeenCalled();
   });
 
-  it('does nothing when rate limited', async () => {
-    mockIsFeatureEnabled.mockResolvedValue(true);
-    mockCheckRateLimit.mockResolvedValue({ allowed: false, limitHit: 'perMinute', retryAfterSeconds: 30 });
+  it('does nothing when no messages to summarize', async () => {
+    mockVerifyTicketOwnership.mockResolvedValue({ id: TICKET_ID });
+    mockFetchTicketMessages.mockResolvedValue([]);
     const io = createMockIo();
 
     const { autoSummarizeOnClose } = await import('./autoSummarize.js');
     await autoSummarizeOnClose(PARTNER_ID, USER_ID, TICKET_ID, io);
 
-    expect(mockCheckRateLimit).toHaveBeenCalledWith(PARTNER_ID);
-    expect(mockGetProvider).not.toHaveBeenCalled();
+    expect(mockFetchTicketMessages).toHaveBeenCalledWith(TICKET_ID);
+    expect(mockRunAiAction).not.toHaveBeenCalled();
+    expect(io.to).not.toHaveBeenCalled();
   });
 
-  it('generates summary, updates ticket, and emits event when enabled', async () => {
-    mockIsFeatureEnabled.mockResolvedValue(true);
-    mockCheckRateLimit.mockResolvedValue({ allowed: true });
+  it('swallows errors when runAiAction throws (e.g. feature disabled or rate limited)', async () => {
+    mockVerifyTicketOwnership.mockResolvedValue({ id: TICKET_ID });
+    mockFetchTicketMessages.mockResolvedValue([
+      { senderName: 'Alice', senderRole: 'agent', text: 'Help' },
+    ]);
+    mockFormatMessagesForAi.mockReturnValue('formatted');
+    mockRunAiAction.mockRejectedValue(new Error('AI feature "autoSummarizeOnClose" is not enabled'));
+    const io = createMockIo();
+
+    const { autoSummarizeOnClose } = await import('./autoSummarize.js');
+
+    // Should not throw — fire-and-forget
+    await expect(
+      autoSummarizeOnClose(PARTNER_ID, USER_ID, TICKET_ID, io),
+    ).resolves.toBeUndefined();
+
+    expect(mockDbUpdate).not.toHaveBeenCalled();
+    expect(io.to).not.toHaveBeenCalled();
+  });
+
+  it('generates summary, updates ticket, and emits event', async () => {
+    mockVerifyTicketOwnership.mockResolvedValue({ id: TICKET_ID });
 
     const messages = [
       { senderName: 'Alice', senderRole: 'agent', text: 'Hi, I need help' },
       { senderName: 'Bob', senderRole: 'support', text: 'Sure, what is the issue?' },
     ];
-
-    // Select call: fetch messages (returns array directly from orderBy)
-    const messagesOrderBy = vi.fn().mockResolvedValue(messages);
-    const messagesWhere = vi.fn().mockReturnValue({ orderBy: messagesOrderBy });
-    const messagesFrom = vi.fn().mockReturnValue({ where: messagesWhere });
-
-    mockDbSelect.mockReturnValueOnce({ from: messagesFrom });
-
-    // Atomic update call (updates only if closing_notes is empty)
-    const updateWhere = vi.fn().mockResolvedValue(undefined);
-    const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
-    mockDbUpdate.mockReturnValue({ set: updateSet });
-
+    mockFetchTicketMessages.mockResolvedValue(messages);
     mockFormatMessagesForAi.mockReturnValue('formatted messages');
-    mockGetPromptTemplate.mockResolvedValue('Summarize: {{messages}}');
-    mockInterpolate.mockReturnValue('Summarize: formatted messages');
 
-    const mockChat = vi.fn().mockResolvedValue({
+    mockRunAiAction.mockResolvedValue({
       content: 'This is a summary.',
-      inputTokens: 100,
-      outputTokens: 20,
       model: 'gpt-4',
     });
 
-    mockGetProvider.mockResolvedValue({
-      name: 'openai',
-      chat: mockChat,
-    });
+    // Atomic update chain
+    const updateWhere = vi.fn().mockResolvedValue(undefined);
+    const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
+    mockDbUpdate.mockReturnValue({ set: updateSet });
 
     const io = createMockIo();
 
     const { autoSummarizeOnClose } = await import('./autoSummarize.js');
     await autoSummarizeOnClose(PARTNER_ID, USER_ID, TICKET_ID, io);
 
-    // Verify AI was called with correct params
-    expect(mockChat).toHaveBeenCalledWith({
-      model: 'default',
-      messages: [{ role: 'user', content: 'Summarize: formatted messages' }],
+    // Verify runAiAction called with correct params
+    expect(mockRunAiAction).toHaveBeenCalledWith({
+      partnerId: PARTNER_ID,
+      userId: USER_ID,
+      feature: 'autoSummarizeOnClose',
+      action: 'summarize',
+      vars: { messages: 'formatted messages' },
       temperature: 0.3,
       maxTokens: 512,
     });
-
-    // Verify usage was logged
-    expect(mockLogUsage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        partnerId: PARTNER_ID,
-        userId: USER_ID,
-        action: 'summarize',
-        provider: 'openai',
-        model: 'gpt-4',
-        success: true,
-      }),
-    );
 
     // Verify ticket was updated atomically
     expect(updateSet).toHaveBeenCalledWith({ closingNotes: 'This is a summary.' });
@@ -200,39 +164,19 @@ describe('autoSummarizeOnClose', () => {
   });
 
   it('uses atomic WHERE to protect existing closing notes', async () => {
-    // With the atomic update pattern, the DB WHERE clause
-    // (closing_notes IS NULL OR TRIM(closing_notes) = '') prevents overwrite.
-    // The function always calls db.update() — the DB itself guards against overwrite.
-    mockIsFeatureEnabled.mockResolvedValue(true);
-    mockCheckRateLimit.mockResolvedValue({ allowed: true });
-
-    const messages = [
+    mockVerifyTicketOwnership.mockResolvedValue({ id: TICKET_ID });
+    mockFetchTicketMessages.mockResolvedValue([
       { senderName: 'Alice', senderRole: 'agent', text: 'Help me' },
-    ];
-
-    const messagesOrderBy = vi.fn().mockResolvedValue(messages);
-    const messagesWhere = vi.fn().mockReturnValue({ orderBy: messagesOrderBy });
-    const messagesFrom = vi.fn().mockReturnValue({ where: messagesWhere });
-
-    mockDbSelect.mockReturnValueOnce({ from: messagesFrom });
+    ]);
+    mockFormatMessagesForAi.mockReturnValue('formatted');
+    mockRunAiAction.mockResolvedValue({
+      content: 'AI summary',
+      model: 'gpt-4',
+    });
 
     const updateWhere = vi.fn().mockResolvedValue(undefined);
     const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
     mockDbUpdate.mockReturnValue({ set: updateSet });
-
-    mockFormatMessagesForAi.mockReturnValue('formatted');
-    mockGetPromptTemplate.mockResolvedValue('Summarize: {{messages}}');
-    mockInterpolate.mockReturnValue('Summarize: formatted');
-
-    mockGetProvider.mockResolvedValue({
-      name: 'openai',
-      chat: vi.fn().mockResolvedValue({
-        content: 'AI summary',
-        inputTokens: 50,
-        outputTokens: 10,
-        model: 'gpt-4',
-      }),
-    });
 
     const io = createMockIo();
 
@@ -245,7 +189,7 @@ describe('autoSummarizeOnClose', () => {
   });
 
   it('never throws even when an error occurs', async () => {
-    mockIsFeatureEnabled.mockRejectedValue(new Error('DB connection failed'));
+    mockVerifyTicketOwnership.mockRejectedValue(new Error('DB connection failed'));
     const io = createMockIo();
 
     const { autoSummarizeOnClose } = await import('./autoSummarize.js');

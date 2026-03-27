@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tessera-v3';
+const CACHE_NAME = 'tessera-__BUILD_HASH__';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -38,13 +38,17 @@ self.addEventListener('fetch', (event) => {
   // Skip browser extensions
   if (url.protocol === 'chrome-extension:') return;
 
-  // tRPC/API calls: network-only for authenticated endpoints, cache only public ones
+  // API calls: never cache authenticated endpoints
   if (url.pathname.startsWith('/api/')) {
-    // Don't cache tRPC batch requests (contain authenticated data)
-    if (url.pathname.includes('/trpc/')) {
-      return; // Let the browser handle normally — no SW caching
+    // Only cache explicitly public, non-authenticated endpoints
+    const PUBLIC_API_PATHS = ['/api/v1/health'];
+    const isPublic = PUBLIC_API_PATHS.some((p) => url.pathname === p);
+
+    if (!isPublic) {
+      return; // Let the browser handle normally — no SW caching for authenticated APIs
     }
-    // Cache other API calls (public endpoints like health, manifest) with network-first
+
+    // Cache public endpoints with network-first
     event.respondWith(
       fetch(request)
         .then((response) => {

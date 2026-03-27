@@ -13,7 +13,7 @@ Tessera is a real-time, multi-tenant live chat platform with a brutalist design 
 > **NEVER** run `npm`, `node`, or `npx` directly on the host machine. All commands must go through Docker.
 
 ```bash
-docker compose up                                          # Start all services (development)
+docker compose up                                          # Start all services (db, server, client, redis, lb, prometheus, grafana)
 docker compose exec server npm test                        # Run server tests
 docker compose exec client npm test                        # Run client tests
 docker compose exec server npx drizzle-kit push            # Database push
@@ -60,8 +60,9 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 ### Server (`server/`)
 
 **API Layer**:
-- **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. Procedures in `server/trpc/routers/` organized by domain. Input validation via Zod.
-- **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`).
+- **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 17 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `stats`, `ticket`, `user`, `webhook`. Input validation via Zod.
+- **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`).
+- **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference` (68 procedures).
 
 **tRPC Middleware** (`server/trpc/trpc.ts`):
 - `publicProcedure` → `protectedProcedure` → `adminProcedure` / `platformProcedure`
@@ -74,14 +75,36 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - `guards.ts` — Content moderation pipeline (length, caps, repetition, injection, swearing, threats, discrimination)
 - `businessHours.ts` — Business hours enforcement and queue position broadcasting
 - `presence.ts` — User online/offline tracking via Redis
-- `stats.ts` — Live statistics computation for dashboard
+- `stats.ts` — Live statistics computation for dashboard (Recharts)
 - `accountLockout.ts` — 5-attempt lockout with 15-min window, email notification
 - `mail.ts` / `mailTemplates.ts` — Centralized email service + B&W templates (lockout, MFA, password reset)
+- `authSession.ts` — Auth session management and token lifecycle
+- `platformStepUp.ts` — Platform TOTP step-up authentication
+- `roles.ts` — Role hierarchy and permission checks
+- `sessionRevocation.ts` — Session revocation on password/security changes
+- `repetitionStore.ts` — Message repetition detection for guards
+- `sla.ts` — SLA enforcement with per-department config and alerting
+- `webhookDispatch.ts` — Webhook event dispatch to partner-configured endpoints
+
+**AI Service Layer** (`server/services/ai/`):
+- `factory.ts` — Provider factory (Ollama, Azure OpenAI, OpenAI-compatible)
+- `ollama.ts` / `azure-openai.ts` / `openai-compatible.ts` — Provider implementations with streaming
+- `config.ts` / `types.ts` — AI configuration and shared types
+- `prompts.ts` — Prompt templates for improvement, summarization, translation, sentiment
+- `sentiment.ts` — Fire-and-forget sentiment scoring for tickets
+- `autoSummarize.ts` — Auto-summarize on ticket close
+- `runAction.ts` — Unified action runner with error handling
+- `rateLimit.ts` — Per-partner AI rate limiting
+- `usage.ts` — AI usage tracking and logging
+- `summaryCache.ts` — Redis-backed summary caching
+- `messageFormatter.ts` — Message formatting for AI context
+- `ticketMessages.ts` — Ticket message retrieval for AI operations
+- `redis.ts` — AI-specific Redis utilities
 
 **Socket.io** (`server/socket/handlers.ts`):
 - All real-time event handlers. Uses Redis adapter for horizontal scaling.
 - Identity enforced server-side via `socket.data.userId` — never trust client-supplied identity fields.
-- Key events: `message:send`, `message:read`, `message:edit`, `message:delete`, `ticket:new`, `ticket:close`, `ticket:reopen`, `ticket:transfer`, `ticket:labels:update`, `support:join`, `support:leave`, `typing:*`, `presence:*`, `partner:deactivated`, `canned:list`, `canned:create`, `canned:update`, `canned:delete`
+- Key events: `socket:identify`, `message:send`, `message:read`, `message:edit`, `message:delete`, `message:delivered`, `ticket:new`, `ticket:close`, `ticket:transfer`, `ticket:labels:update`, `ticket:viewing`, `ticket:left`, `support:join`, `support:leave`, `typing:start`, `typing:stop`, `status:set`, `rating:submit`
 - All mutation events verify partner-scope authorization before proceeding.
 - **Token expiry**: JWT `exp` is stored at handshake and checked on every event via `requireIdentified()`. Expired tokens trigger `auth:expired` → client auto-reconnects (cookies sent automatically via `withCredentials: true`).
 
@@ -107,6 +130,16 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 | `labels` | Ticket labels | `partnerId`, `name`, `color` |
 | `ticket_labels` | Ticket↔Label junction | `ticketId`, `labelId` |
 | `canned_responses` | Per-partner response templates | `partnerId`, `title`, `body`, `shortcut`, `category`, `createdBy` |
+| `ratings` | Ticket CSAT ratings | `ticketId`, `rating`, `comment` |
+| `app_feedback` | In-app user feedback | `userId`, `partnerId`, `type`, `body` |
+| `system_settings` | Global system configuration | `key`, `value` (singleton KV store) |
+| `topic_alerts` | SLA/topic alert rules | `partnerId`, `type`, `threshold`, `recipients` |
+| `partner_group_mappings` | SSO group→role mappings | `partnerId`, `ssoGroup`, `role`, `departments` |
+| `kb_articles` | Knowledge base articles | `partnerId`, `title`, `body`, `category`, `createdBy` |
+| `webhooks` | Partner webhook configs | `partnerId`, `url`, `events`, `secret`, `active` |
+| `webhook_logs` | Webhook delivery logs | `webhookId`, `event`, `status`, `responseCode` |
+| `ai_prompt_templates` | Custom AI prompt templates | `partnerId`, `action`, `template` |
+| `ai_usage_log` | AI provider usage tracking | `partnerId`, `action`, `provider`, `tokens`, `cost` |
 
 ### Client (`client/src/`)
 
@@ -117,12 +150,20 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 **Real-Time**: `hooks/useSocket.ts` — single global Socket.io instance. Always clean up listeners in `useEffect` return.
 
 **Views**:
-- `PlatformView` — Thin shell (tabs + modal state). Feature modules in `components/platform/` (PartnerList, UserTable, CreatePartnerModal, EditPartnerModal, DeletePartnerModal, InviteUserModal, ManageAccessModal, EditUserProfileModal). Each component owns its own tRPC hooks and cache invalidation.
-- `AdminView` — Partner admin: team, departments, tickets, business hours, labels, canned responses
-- `SupportView` — Support staff: ticket queue by department, multi-tab chat
+- `PlatformView` — Thin shell (tabs + modal state). Feature modules in `components/platform/`. Each component owns its own tRPC hooks and cache invalidation.
+- `AdminView` — Partner admin: team, departments, tickets, business hours, labels, canned responses, knowledge base, webhooks, alerts, feedback, stats, archive
+- `SupportView` — Support staff: ticket queue by department, multi-tab chat, AI copilot sidebar
 - `AgentView` — End-user: ticket creation, chat, attachments
+- `LoginView` — Auth flow: login, password reset, MFA challenge, partner selection
 
-**Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). No gradients, no shadows, no border-radius. Design tokens defined as CSS custom properties in `index.css`. See `docs/superpowers/specs/2026-03-26-brutalist-redesign-design.md` for full spec.
+**Component Directories**:
+- `components/platform/` — PlatformView feature modules (PartnerList, UserTable, modals)
+- `components/admin/` — AdminView panels: AdminAlerts, AdminArchive, AdminBusinessHours, AdminCannedResponses, AdminDepartments, AdminFeedback, AdminKnowledgeBase, AdminLabels, AdminStats, AdminTeam, AdminTickets, AdminWebhooks, PlatformAuditLog, PlatformArchiveViewer, PlatformSecurityOps, PlatformSystemHealth, PlatformSystemSettings
+- `components/agent/` — AgentNav, AgentTicketSidebar, TicketForm
+- `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SupportNav
+- Shared: ChatWindow, MessageBubble, ConfirmDialog, Toast, TicketPreview, UserAvatar, CannedResponsePicker, BusinessHoursGuard, ConnectionStatus, ErrorBoundary, SlaIndicator, SentimentDot, StatusPicker, DarkModeToggle, LanguageSwitcher, PartnerSwitcher, FeedbackModal, NavToolbar, UserSecurityModal, NotificationToggle, RatingModal, LegalModal
+
+**Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). No gradients, no shadows, no border-radius. Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
 
 ## Key Conventions
 
@@ -135,7 +176,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - **Department Assignment**: `memberships.departments` is a JSONB array of dept IDs. Empty/null = generalist (sees all).
 - **TypeScript**: No `any` types. Zod schemas on backend, TypeScript interfaces in `client/src/types/index.ts`.
 - **Argon2id**: Password hashing uses `argon2` (native C bindings). No bcrypt anywhere in the codebase.
-- **Auth Method**: Per-partner setting (`local` | `sso`) via `authMethodEnum` pgEnum. Local partners generate temp passwords on invite; SSO partners skip password creation. Invite mutations return `tempPassword: ''` (not `null`) because tRPC without superjson strips null values.
+- **Auth Method**: Per-partner setting (`local` | `sso` | `both`) via `authMethodEnum` pgEnum. `both` enables mixed auth with per-user override. Local partners generate temp passwords on invite; SSO partners skip password creation. Invite mutations return `tempPassword: ''` (not `null`) because tRPC without superjson strips null values.
 - **Audit Logging**: All significant actions (partner lifecycle, user management, GDPR purges) recorded in `audit_log`.
 - **MFA (TOTP)**: Per-user MFA via `mfaSecret`, `mfaEnabledAt`, `mfaRecoveryCodes` (SHA-256 hashed). Setup/enable/disable via `trpc.mfa.*`. Login challenge returns `{ mfaRequired: true }` and waits for TOTP code re-submission.
 - **Account Lockout**: 5 failed login attempts → 15-minute lockout. State in `failedLoginAttempts` + `lockedUntil` columns. Email notification on lockout (fire-and-forget).
@@ -144,6 +185,14 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - **Cursor-Based Pagination**: Ticket list and audit archive use keyset pagination (`createdAt|id` composite cursor). Pattern: fetch `limit+1`, detect hasMore, return `{ items, nextCursor }`.
 - **Platform Operator Bootstrap**: On first startup with no platform operators, auto-creates one from `PLATFORM_ADMIN_EMAIL` (and optional `PLATFORM_ADMIN_PASSWORD`) env vars. Runs before server accepts traffic. Race-safe, non-fatal.
 - **Platform Operator Partner Access**: Platform operators can enter any active partner's admin view via `POST /enter-partner` without needing a membership. Socket auth bypasses membership check for operators.
+- **AI Provider Abstraction**: Multi-provider AI via factory pattern (`server/services/ai/`). Supports Ollama, Azure OpenAI, and OpenAI-compatible APIs. Per-partner AI config (`aiEnabled`, `aiFeatures` JSONB) controls feature availability. Features: message improvement (optional/forced modes with revert), chat summarization (Redis-cached), translation, sentiment detection (fire-and-forget), auto-summarize on close. Rate limiting and usage logging per partner.
+- **Knowledge Base**: Per-partner KB articles (`kb_articles` table). CRUD via `trpc.kb.*`. Admin UI in `AdminKnowledgeBase`.
+- **Webhooks**: Per-partner webhook endpoints (`webhooks` table) with event subscriptions, HMAC signing, delivery logs (`webhook_logs`). Dispatch via `webhookDispatch.ts`. Admin UI in `AdminWebhooks`.
+- **Alerts & SLA**: Topic alerts with configurable thresholds (`topic_alerts` table). Per-department SLA config with `SlaIndicator` component. Admin UI in `AdminAlerts`.
+- **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with staff-facing analytics and date filtering. Feedback system (`app_feedback` table) for in-app user feedback.
+- **Collision Detection**: `ticket:viewing` / `ticket:left` socket events track who's viewing a ticket. Viewer badges and typing indicators prevent duplicate responses.
+- **PWA**: Progressive Web App with `manifest.json`, `sw.js`, and icons for mobile installation.
+- **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users). Toggle UI in security modal.
 
 ## Critical Mandates
 
@@ -161,19 +210,42 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 tessera/
 ├── server/
 │   ├── db/
-│   │   ├── schema.ts              # Database schema (Drizzle ORM)
+│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 22 tables
 │   │   └── postgres.ts            # DB connection, raw query helpers
 │   ├── trpc/
-│   │   ├── router.ts              # Main tRPC router
+│   │   ├── router.ts              # Main tRPC router (17 domain routers)
 │   │   ├── trpc.ts                # Procedure middleware (auth, roles)
 │   │   ├── context.ts             # JWT → tRPC context
-│   │   └── routers/               # Domain routers (ticket, partner, platform, etc.)
+│   │   └── routers/               # ai, alerts, cannedResponse, feedback, kb, label, message,
+│   │                              # mfa, partner, platform, platformSecurity, presence,
+│   │                              # rating, stats, ticket, user, webhook
 │   ├── socket/
 │   │   └── handlers.ts            # Socket.io event handlers
 │   ├── routes/
 │   │   ├── auth.ts                # /api/auth/* (login, switch-partner, enter-partner)
-│   │   └── logos.ts               # /api/v1/logos
-│   ├── services/                  # Business logic (bootstrap, gdpr, archive, guards, presence, stats, mail)
+│   │   ├── sso.ts                 # /api/auth/sso/* (SAML/OIDC flows)
+│   │   ├── logos.ts               # /api/v1/logos
+│   │   ├── uploads.ts             # /api/v1/uploads (file attachments)
+│   │   └── tickets.ts             # /api/v1/tickets (REST ticket endpoints)
+│   ├── services/                  # Business logic
+│   │   ├── ai/                    # AI provider abstraction (factory, providers, prompts, sentiment)
+│   │   ├── bootstrap.ts           # First-run platform operator creation
+│   │   ├── gdpr.ts                # GDPR purge + aggregation
+│   │   ├── archive.ts             # WORM audit archive
+│   │   ├── guards.ts              # Content moderation pipeline
+│   │   ├── businessHours.ts       # Business hours + queue position
+│   │   ├── presence.ts            # Redis-backed online/offline tracking
+│   │   ├── stats.ts               # Dashboard statistics
+│   │   ├── sla.ts                 # SLA enforcement + per-dept config
+│   │   ├── accountLockout.ts      # 5-attempt lockout
+│   │   ├── mail.ts                # Email service
+│   │   ├── mailTemplates.ts       # B&W email templates
+│   │   ├── authSession.ts         # Auth session management
+│   │   ├── platformStepUp.ts      # Platform TOTP step-up
+│   │   ├── roles.ts               # Role hierarchy/permissions
+│   │   ├── sessionRevocation.ts   # Session revocation on security changes
+│   │   ├── repetitionStore.ts     # Message repetition detection
+│   │   └── webhookDispatch.ts     # Webhook event dispatch
 │   ├── middleware/                 # Express middleware (auth, validator)
 │   ├── utils/                     # Logger, Redis, metrics, security
 │   ├── app.ts                     # Server bootstrap
@@ -181,15 +253,15 @@ tessera/
 │   └── drizzle.config.ts          # Drizzle Kit config
 ├── client/
 │   ├── src/
-│   │   ├── components/            # React components
+│   │   ├── components/
 │   │   │   ├── platform/          # PlatformView feature modules (self-contained)
-│   │   │   │   ├── __tests__/     # Vitest tests for platform components
-│   │   │   │   └── types.ts       # Shared types (Partner, GlobalUser, etc.)
-│   │   │   ├── ConfirmDialog.tsx   # Reusable confirmation modal
-│   │   │   └── Toast.tsx           # Auto-dismissing notification
-│   │   ├── views/                 # Page views (Platform, Admin, Support, Agent, Login)
+│   │   │   ├── admin/             # AdminView panels (19 components)
+│   │   │   ├── agent/             # AgentView components (AgentNav, TicketForm, sidebar)
+│   │   │   ├── support/           # SupportView components (queue, chat tabs, AI copilot)
+│   │   │   └── *.tsx              # Shared: ChatWindow, MessageBubble, ConfirmDialog, Toast, etc.
+│   │   ├── views/                 # PlatformView, AdminView, SupportView, AgentView, LoginView
 │   │   │   └── __tests__/         # Vitest tests for views
-│   │   ├── hooks/                 # useSocket, useStore, etc.
+│   │   ├── hooks/                 # useSocket, useStore, useTranslation, etc.
 │   │   ├── store/
 │   │   │   ├── useStore.ts        # Zustand composed store
 │   │   │   └── slices/            # Auth, ticket, message, UI, config, rating slices
@@ -199,16 +271,24 @@ tessera/
 │   │   │   └── helpers.tsx        # Test factories and mock builders
 │   │   └── utils/trpc.ts          # tRPC client setup
 │   └── Dockerfile
+├── docs/
+│   ├── BREAK_GLASS_RUNBOOK.md     # Emergency operations runbook
+│   ├── BRUTALIST_DESIGN_SPEC.md   # Brutalist design system token reference
+│   ├── TECHNICAL.md               # Technical architecture deep-dive
+│   ├── TENANT_IDENTITY_SPEC.md    # Multi-tenant identity specification
+│   ├── USER_GUIDE.md              # End-user guide (roles, auth, features)
+│   └── SECURITY_AUDIT_2026-03-26.md # Security audit results (historical)
 ├── testing/
 │   ├── nginx.conf                 # Reverse proxy config for load testing
 │   ├── load/                      # k6 load test scripts (smoke.js, load.js, ws.js)
 │   └── e2e/                       # Playwright E2E specs
 ├── playwright.config.ts           # Playwright E2E config
-├── PLAN.md                        # Next sprint plan (MFA admin, notification prefs, API docs)
-├── .github/workflows/ci.yml      # CI: typecheck, tests, migrations, e2e, build
-├── docker-compose.yml             # Development environment
+├── PLAN.md                        # Sprint plan (completed + next sprint)
+├── CHANGELOG.md                   # Project changelog (v1.0.0, v2.0.0)
+├── SECURITY.md                    # Security policy and vulnerability reporting
+├── .github/workflows/ci.yml      # CI: typecheck, tests, migrations, e2e
+├── docker-compose.yml             # Dev: db, server, client, redis, lb, prometheus, grafana
 ├── docker-compose.prod.yml        # Production environment
-├── CHANGELOG.md                   # Project changelog
 └── CLAUDE.md                      # This file
 ```
 
@@ -247,6 +327,9 @@ MSYS_NO_PATHCONV=1 docker run --rm --network=host -v "$(pwd)/testing/load:/scrip
 - **Socket events**: Browser DevTools → Network → WS tab
 - **Database**: `docker compose exec server npx drizzle-kit studio`
 - **Zustand state**: Redux DevTools browser extension
+- **Prometheus**: Metrics at `http://localhost:9090`
+- **Grafana**: Dashboards at `http://localhost:3001`
+- **API docs**: Swagger at `/api/v1/docs/`, tRPC reference at `/api/v1/trpc-reference`
 
 # context-mode — MANDATORY routing rules
 

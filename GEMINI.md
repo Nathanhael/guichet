@@ -1,9 +1,9 @@
 # GEMINI.md - Project Context & Instructions (Clean Slate)
 
-This file serves as the primary instructional context for Gemini CLI. The project is currently in a "Clean Slate" phase, prioritizing core chat functionality and a strict monochrome aesthetic.
+This file serves as the primary instructional context for Gemini CLI. The project is currently in a "Clean Slate" phase, prioritizing core chat functionality and a raw/exposed Brutalist aesthetic.
 
 ## Project Overview
-**Tessera** is a high-performance, real-time, multi-tenant customer support platform. All complex features (AI Pipeline, Topic Heat, Solaris Design System) have been **deactivated** to focus on a lightweight, strictly monochrome chat core.
+**Tessera** is a high-performance, real-time, multi-tenant customer support platform. All complex features (AI Pipeline, Topic Heat, Solaris Design System) have been **deactivated** to focus on a lightweight, Brutalist chat core.
 
 ### Active Features
 - **Real-Time Communication**: Core chat functionality via Socket.io 4.8 with Redis 8 scaling and server-side identity enforcement.
@@ -15,7 +15,7 @@ This file serves as the primary instructional context for Gemini CLI. The projec
 - **Advanced Audit Trail**: Global `audit_log` with granular `from -> to` state diffs, target searching, and CSV export.
 - **User Lifecycle Management**: Real-time "Last Active" tracking and status monitoring (SSO Linked vs. Local Active).
 - **Workspace Switching**: Smart login flow with "Choose Workspace" screen for multi-tenant users.
-- **B&W Minimalist Standard**: Strictly monochrome, static UI designed for maximum readability and zero motion.
+- **Brutalist Design System**: Raw UI using CSS custom properties (Zinc + Blue/Purple/Green/Red tokens) for dark/light modes and minimal functional motion.
 - **Platform Operator Cockpit**: Global dashboard in `PlatformView.tsx` for Partners, Global Users, System Config, and Audit Logs.
 - **Partner Administration**: Local management in `AdminView.tsx` for departments, system rules, and team members.
 
@@ -29,8 +29,8 @@ This file serves as the primary instructional context for Gemini CLI. The projec
 
 ## 🚨 Critical Mandates
 
-1.  **STRICT B&W**: The theme is strictly black (#000) and white (#FFF). **NEVER** introduce colors, gradients, or shadows.
-2.  **ZERO MOTION**: All animations and transitions are stripped. UI must remain perfectly static.
+1.  **BRUTALIST TOKENS**: Use CSS custom property design tokens from `index.css`. **NEVER** introduce inline colors, gradients, shadows, or border-radius > 1px.
+2.  **MINIMAL MOTION**: Only use fade-in (150ms) for panels/modals. No slides, bounces, or transitions. Respect `prefers-reduced-motion`.
 3.  **DYNAMIC ONLY**: Never hardcode departments. Always read from `partner.departments` JSONB.
 4.  **DOCKER ONLY**: Never run npm/node commands on the host machine. All commands must go through Docker.
 5.  **TYPE SAFETY**: Maintain 100% tRPC and Drizzle type safety. No `any` types.

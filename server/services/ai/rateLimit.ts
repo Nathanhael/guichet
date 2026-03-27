@@ -36,26 +36,28 @@ export async function checkRateLimit(
     const minuteKey = `ai:rate:${partnerId}:minute`;
     const dayKey = `ai:rate:${partnerId}:day`;
 
-    // Atomic: increment both counters in one pipeline
-    // Only set TTL when the counter is newly created (count === 1)
-    // to maintain a fixed-window rate limiter (not sliding).
+    // Atomic increment-first: avoids TOCTOU race where two concurrent
+    // requests both read the same count and both pass the check.
     const multi = r.multi();
     multi.incr(minuteKey);
     multi.incr(dayKey);
     const results = await multi.exec();
 
-    const minuteCount = Number(results[0]);
-    const dayCount = Number(results[1]);
+    const newMinuteCount = Number(results[0]);
+    const newDayCount = Number(results[1]);
 
     // Set expiry only on first increment (fixed window)
-    if (minuteCount === 1) await r.expire(minuteKey, 60);
-    if (dayCount === 1) await r.expire(dayKey, 86400);
+    if (newMinuteCount === 1) await r.expire(minuteKey, 60);
+    if (newDayCount === 1) await r.expire(dayKey, 86400);
 
-    if (minuteCount > perMinute) {
+    // Check limits after incrementing — decrement if over-limit
+    if (newMinuteCount > perMinute) {
+      await r.decr(minuteKey);
       return { allowed: false, retryAfterSeconds: 60, limitHit: 'minute' };
     }
 
-    if (dayCount > perDay) {
+    if (newDayCount > perDay) {
+      await r.decr(dayKey);
       return { allowed: false, retryAfterSeconds: 86400, limitHit: 'day' };
     }
 
