@@ -182,4 +182,32 @@ export const userRouter = router({
 
       return merged;
     }),
+
+  updateAccessibilityPrefs: protectedProcedure
+    .input(
+      z.object({
+        dyslexicMode: z.boolean().optional(),
+        bionicReading: z.boolean().optional(),
+        monochromeMode: z.boolean().optional(),
+        focusMode: z.boolean().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const userId = ctx.user.id;
+
+      const [row] = await db
+        .select({ accessibilityPrefs: users.accessibilityPrefs })
+        .from(users)
+        .where(eq(users.id, userId));
+
+      const current = (row?.accessibilityPrefs as Record<string, boolean>) ?? {};
+      const merged = { ...current, ...input };
+
+      await db
+        .update(users)
+        .set({ accessibilityPrefs: merged, updatedAt: new Date().toISOString() })
+        .where(eq(users.id, userId));
+
+      return { success: true };
+    }),
 });
