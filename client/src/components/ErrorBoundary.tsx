@@ -28,17 +28,17 @@ class ErrorBoundary extends React.Component<Props, State> {
     render() {
         if (this.state.hasError) {
             return (
-                <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6">
-                    <h1 className="text-2xl font-black uppercase tracking-tighter mb-4 text-red-500">Component failed to load</h1>
+                <div className="h-screen flex flex-col items-center justify-center bg-[var(--color-bg-base)] text-[var(--color-text-primary)] p-6">
+                    <h1 className="text-2xl font-mono font-bold uppercase tracking-tight mb-4 text-[var(--color-accent-red)]">Component failed to load</h1>
                     {this.state.error && (
-                        <div className="w-full max-w-3xl bg-bg-elevated border-2 border-red-500 p-4 overflow-auto custom-scrollbar">
-                            <p className="font-bold text-sm mb-2">{this.state.error.toString()}</p>
-                            <pre className="text-[10px] opacity-60 whitespace-pre-wrap">{this.state.errorInfo?.componentStack || this.state.error.stack}</pre>
+                        <div className="w-full max-w-3xl bg-[var(--color-bg-elevated)] border-2 border-[var(--color-accent-red)] p-4 overflow-auto">
+                            <p className="font-mono font-bold text-sm mb-2">{this.state.error.toString()}</p>
+                            <pre className="font-mono text-[10px] text-[var(--color-text-muted)] whitespace-pre-wrap">{this.state.errorInfo?.componentStack || this.state.error.stack}</pre>
                         </div>
                     )}
-                    <button 
+                    <button
                         onClick={() => window.location.reload()}
-                        className="mt-6 px-6 py-3 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all"
+                        className="btn-primary mt-6"
                     >
                         Try again
                     </button>

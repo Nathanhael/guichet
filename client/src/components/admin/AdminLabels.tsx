@@ -92,7 +92,7 @@ export default function AdminLabels() {
                   onClick={() => setNewColor(c.key)}
                   className={`w-6 h-6 rounded-full ${c.bg} ${
                     newColor === c.key
-                      ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-black ' + c.ring + ' scale-110'
+                      ? 'ring-2 ring-offset-2 ring-offset-[var(--color-bg-surface)] ' + c.ring + ' scale-110'
                       : 'opacity-50 hover:opacity-80 hover:scale-105'
                   }`}
                 />

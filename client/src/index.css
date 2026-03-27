@@ -5,6 +5,14 @@
 /* ===== FONT FACES ===== */
 
 @font-face {
+  font-family: 'Inter';
+  src: url('/fonts/Inter-Variable.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
   font-family: 'JetBrains Mono';
   src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
   font-weight: 400;
@@ -91,6 +99,7 @@
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
   }
 }
 
@@ -107,6 +116,10 @@
   color: #ffffff;
   border: none;
   cursor: pointer;
+
+  &:hover { opacity: 0.85; }
+  &:focus-visible { outline: 2px solid var(--color-accent-blue); outline-offset: 2px; }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 @utility btn-secondary {
@@ -120,6 +133,10 @@
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   cursor: pointer;
+
+  &:hover { background-color: var(--color-bg-elevated); }
+  &:focus-visible { outline: 2px solid var(--color-accent-blue); outline-offset: 2px; }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 @utility btn-danger {
@@ -133,6 +150,10 @@
   color: var(--color-accent-red);
   border: 1px solid var(--color-accent-red);
   cursor: pointer;
+
+  &:hover { background-color: var(--color-accent-red); color: #ffffff; }
+  &:focus-visible { outline: 2px solid var(--color-accent-red); outline-offset: 2px; }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 @utility input-field {
