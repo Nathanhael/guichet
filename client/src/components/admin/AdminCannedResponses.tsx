@@ -3,6 +3,8 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { Plus, Trash2, RefreshCw, Pencil, X, Check, MessageSquareText } from 'lucide-react';
 import ErrorBox from './ErrorBox';
+import BionicText from '../BionicText';
+import useStore from '../../store/useStore';
 
 interface CannedResponse {
   id: string;
@@ -15,6 +17,7 @@ interface CannedResponse {
 
 export default function AdminCannedResponses() {
   const t = useT();
+  const { bionicReading } = useStore();
 
   // Create form state
   const [newTitle, setNewTitle] = useState('');
@@ -290,7 +293,7 @@ export default function AdminCannedResponses() {
                   {expandedId === r.id && (
                     <div className="px-4 py-3 border-b border-[var(--color-border)] bg-black/[0.02] dark:bg-white/[0.02]">
                       <p className="text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-1.5">Body Preview</p>
-                      <p className="text-sm whitespace-pre-wrap opacity-80">{r.body}</p>
+                      <p className="text-sm whitespace-pre-wrap opacity-80">{bionicReading ? <BionicText text={r.body} /> : r.body}</p>
                     </div>
                   )}
                 </>

@@ -3,6 +3,8 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { Plus, Trash2, RefreshCw, Pencil, X, Check, BookOpen, Eye, EyeOff, Search } from 'lucide-react';
 import ErrorBox from './ErrorBox';
+import BionicText from '../BionicText';
+import useStore from '../../store/useStore';
 
 interface KBArticle {
   id: string;
@@ -18,6 +20,7 @@ interface KBArticle {
 
 export default function AdminKnowledgeBase() {
   const t = useT();
+  const { bionicReading } = useStore();
   // Create form
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
@@ -356,7 +359,7 @@ export default function AdminKnowledgeBase() {
                     <div className="px-4 py-4 border-b border-[var(--color-border)] bg-black/[0.02] dark:bg-white/[0.02]">
                       <p className="font-mono text-[8px] uppercase tracking-wide text-[var(--color-text-muted)] mb-2">Article Preview</p>
                       <div className="text-sm whitespace-pre-wrap text-[var(--color-text-secondary)] max-h-96 overflow-y-auto font-mono leading-relaxed">
-                        {a.body}
+                        {bionicReading ? <BionicText text={a.body} /> : a.body}
                       </div>
                     </div>
                   )}

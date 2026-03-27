@@ -1,5 +1,6 @@
 import LanguageSwitcher from './LanguageSwitcher';
 import DarkModeToggle from './DarkModeToggle';
+import AccessibilityMenu from './AccessibilityMenu';
 import NotificationToggle from './NotificationToggle';
 
 interface NavToolbarProps {
@@ -16,6 +17,7 @@ export default function NavToolbar({ children }: NavToolbarProps) {
     <div className="flex items-center gap-2 bg-bg-elevated p-1 border border-border">
       <LanguageSwitcher />
       <DarkModeToggle />
+      <AccessibilityMenu />
       {children}
       <NotificationToggle />
     </div>
