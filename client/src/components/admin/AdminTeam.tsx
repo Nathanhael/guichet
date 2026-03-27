@@ -26,22 +26,22 @@ export default function AdminTeam() {
   const [showInviteModal, setShowInviteModal] = useState(false);
 
   return (
-    <div className="min-w-[1300px] max-w-7xl border-2 border-black dark:border-white p-6">
+    <div className="max-w-7xl surface-card p-6">
       <div className="flex justify-between items-start mb-6">
         <div>
-          <h2 className="text-lg font-black uppercase tracking-widest">Team Members</h2>
-          <p className="text-xs uppercase opacity-60 mt-1">Manage users and roles for this partner</p>
+          <h2 className="text-lg font-bold uppercase tracking-wide">Team Members</h2>
+          <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-1">Manage users and roles for this partner</p>
         </div>
         <div className="flex gap-2">
-          <button 
+          <button
             onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 border-2 border-black dark:border-white font-black uppercase text-xs tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-all"
+            className="btn-secondary"
           >
             Add Existing User
           </button>
-          <button 
+          <button
             onClick={() => setShowInviteModal(true)}
-            className="px-4 py-2 bg-black text-white dark:bg-white dark:text-black font-black uppercase text-xs tracking-widest hover:invert transition-all"
+            className="btn-primary"
           >
             Invite External User
           </button>
@@ -49,62 +49,62 @@ export default function AdminTeam() {
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center uppercase font-black opacity-50">Loading...</div>
+        <div className="py-8 text-center uppercase font-bold text-[var(--color-text-muted)]">Loading...</div>
       ) : (
         <>
-          <div className="border border-black dark:border-white mb-4 overflow-x-auto">
+          <div className="border border-[var(--color-border)] mb-4 overflow-x-auto">
             <table className="w-full min-w-[1200px] text-left border-collapse">
               <thead>
-                <tr className="border-b-2 border-black dark:border-white bg-black/5 dark:bg-white/5">
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">Name</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">Email</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">Role</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">Status</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest">Departments</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest text-right">Actions</th>
+                <tr className="border-b border-[var(--color-border)] bg-bg-elevated">
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Name</th>
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Email</th>
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Role</th>
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Status</th>
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Departments</th>
+                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/20 dark:divide-white/20">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 {data?.map((member) => (
-                  <tr key={member.membershipId} className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                  <tr key={member.membershipId} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                     <td className="p-3 text-sm font-bold uppercase">{member.name}</td>
-                    <td className="p-3 text-sm font-mono opacity-80">{member.email}</td>
+                    <td className="p-3 text-sm font-mono text-[var(--color-text-secondary)]">{member.email}</td>
                     <td className="p-3 text-sm">
-                      <span className="px-2 py-0.5 border border-current text-[10px] font-black uppercase">
+                      <span className="px-2 py-0.5 border border-[var(--color-border)] text-[10px] font-bold uppercase">
                         {member.role}
                       </span>
                     </td>
                     <td className="p-3">
                       {member.externalId || member.lastActiveAt ? (
                         <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 bg-black dark:bg-white" />
-                          <span className="text-[9px] font-black uppercase tracking-widest">
+                          <div className="w-1.5 h-1.5 bg-[var(--color-text-primary)]" />
+                          <span className="text-[9px] font-bold uppercase tracking-wide">
                             {member.externalId ? t('status_linked_sso') : t('status_active_local')}
                           </span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 opacity-40">
-                          <div className="w-1.5 h-1.5 border border-black dark:border-white" />
-                          <span className="text-[9px] font-black uppercase tracking-widest">{t('status_pending')}</span>
+                        <div className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
+                          <div className="w-1.5 h-1.5 border border-[var(--color-border)]" />
+                          <span className="text-[9px] font-bold uppercase tracking-wide">{t('status_pending')}</span>
                         </div>
                       )}
                     </td>
-                    <td className="p-3 text-xs uppercase opacity-80">
+                    <td className="p-3 text-xs uppercase text-[var(--color-text-secondary)]">
                       {member.departments && (member.departments as string[]).length > 0
                         ? (member.departments as string[]).map((dId: string) => {
                             const dInfo = departments.find(d => d.id === dId);
                             return dInfo ? dInfo.name : dId;
                           }).join(', ')
-                        : <span className="opacity-50 italic">All (Generalist)</span>}
+                        : <span className="text-[var(--color-text-muted)] italic">All (Generalist)</span>}
                     </td>
                     <td className="p-3 text-right">
-                      <button 
+                      <button
                         onClick={() => {
                           if (confirm('Remove user from this partner?')) {
                             removeMutation.mutate({ membershipId: member.membershipId });
                           }
                         }}
-                        className="text-[10px] font-black uppercase tracking-widest text-red-600 hover:line-through"
+                        className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)] hover:line-through"
                       >
                         Remove
                       </button>
@@ -114,19 +114,19 @@ export default function AdminTeam() {
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between items-center text-xs font-black uppercase">
-            <button 
+          <div className="flex justify-between items-center text-xs font-bold uppercase">
+            <button
               disabled={page === 0}
               onClick={() => setPage(p => p - 1)}
-              className="px-4 py-2 border border-black dark:border-white disabled:opacity-30"
+              className="btn-secondary disabled:opacity-30"
             >
               Previous
             </button>
             <span>Page {page + 1}</span>
-            <button 
+            <button
               disabled={(data?.length || 0) < LIMIT}
               onClick={() => setPage(p => p + 1)}
-              className="px-4 py-2 border border-black dark:border-white disabled:opacity-30"
+              className="btn-secondary disabled:opacity-30"
             >
               Next
             </button>
@@ -162,53 +162,53 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} aria-label="Close" />
-      <div role="dialog" className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 w-[480px] relative z-10">
-        <h3 className="text-xl font-black uppercase tracking-tighter mb-4">Add Existing User</h3>
+      <div role="dialog" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
+        <h3 className="text-xl font-bold uppercase tracking-tight mb-4">Add Existing User</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Email</label>
-            <input 
-              type="email" 
+            <label className="mono-label mb-1 block">Email</label>
+            <input
+              type="email"
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm"
+              className="input-field w-full"
             />
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Role</label>
-            <select 
+            <label className="mono-label mb-1 block">Role</label>
+            <select
               value={role}
               onChange={e => setRole(e.target.value as any)}
-              className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm uppercase font-bold"
+              className="input-field w-full uppercase font-bold"
             >
               <option value="agent">Agent (Creates Tickets)</option>
               <option value="support">Support (Handles Tickets)</option>
             </select>
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Departments (Optional)</label>
-            <div className="space-y-2 max-h-40 overflow-y-auto border border-black/20 dark:border-white/20 p-2">
+            <label className="mono-label mb-1 block">Departments (Optional)</label>
+            <div className="space-y-2 max-h-40 overflow-y-auto border border-[var(--color-border)] p-2">
               {departments.map(d => (
                 <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={selectedDepts.includes(d.id)}
                     onChange={(e) => {
                       if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
                       else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
                     }}
-                    className="accent-black dark:accent-white w-4 h-4"
+                    className="w-4 h-4"
                   />
                   {d.name}
                 </label>
               ))}
             </div>
-            <p className="text-[9px] uppercase opacity-50 mt-1">Leave empty to assign to all departments (Generalist).</p>
+            <p className="text-[9px] uppercase text-[var(--color-text-muted)] mt-1">Leave empty to assign to all departments (Generalist).</p>
           </div>
           <div className="flex gap-4 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 py-3 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:bg-black/5">Cancel</button>
-            <button type="submit" disabled={addMutation.isPending} className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={addMutation.isPending} className="btn-primary flex-1 disabled:opacity-50">
               {addMutation.isPending ? 'Adding...' : 'Add User'}
             </button>
           </div>
@@ -254,28 +254,28 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black opacity-80" onClick={() => { setTempPassword(null); onInvited(); }} aria-label="Close" />
-        <div role="dialog" className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 w-[480px] relative z-10">
-          <h3 className="text-xl font-black uppercase tracking-tighter mb-4">User Invited</h3>
+        <div role="dialog" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
+          <h3 className="text-xl font-bold uppercase tracking-tight mb-4">User Invited</h3>
           <div className="space-y-4">
-            <p className="text-xs font-bold uppercase tracking-widest">User created successfully.</p>
-            <div className="border-2 border-black dark:border-white p-4">
-              <p className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">Temporary Password</p>
+            <p className="text-xs font-bold uppercase tracking-wide">User created successfully.</p>
+            <div className="border border-[var(--color-border)] p-4">
+              <p className="font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] mb-2">Temporary Password</p>
               <div className="flex items-center justify-between gap-3">
                 <code className="font-mono text-sm font-bold break-all">{tempPassword}</code>
                 <button
                   onClick={() => navigator.clipboard.writeText(tempPassword)}
-                  className="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black shrink-0"
+                  className="btn-secondary shrink-0"
                 >
                   Copy
                 </button>
               </div>
             </div>
-            <p className="text-[9px] uppercase font-bold opacity-50">Share this securely. It won't be shown again.</p>
+            <p className="text-[9px] uppercase font-bold text-[var(--color-text-muted)]">Share this securely. It won't be shown again.</p>
           </div>
           <div className="flex justify-end mt-6">
             <button
               onClick={() => { setTempPassword(null); onInvited(); }}
-              className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white"
+              className="btn-primary"
             >
               Done
             </button>
@@ -288,35 +288,35 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} aria-label="Close" />
-      <div role="dialog" className="bg-white dark:bg-black border-2 border-black dark:border-white p-6 w-[480px] relative z-10">
-        <h3 className="text-xl font-black uppercase tracking-tighter mb-4">Invite External User</h3>
+      <div role="dialog" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
+        <h3 className="text-xl font-bold uppercase tracking-tight mb-4">Invite External User</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Name</label>
-            <input 
-              type="text" 
+            <label className="mono-label mb-1 block">Name</label>
+            <input
+              type="text"
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm uppercase font-bold"
+              className="input-field w-full uppercase font-bold"
             />
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Email</label>
-            <input 
-              type="email" 
+            <label className="mono-label mb-1 block">Email</label>
+            <input
+              type="email"
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm"
+              className="input-field w-full"
             />
           </div>
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Role</label>
-            <select 
+            <label className="mono-label mb-1 block">Role</label>
+            <select
               value={role}
               onChange={e => setRole(e.target.value as any)}
-              className="w-full border-2 border-black dark:border-white bg-transparent p-2 text-sm uppercase font-bold"
+              className="input-field w-full uppercase font-bold"
             >
               <option value="agent">Agent (Creates Tickets)</option>
               <option value="support">Support (Handles Tickets)</option>
@@ -324,26 +324,26 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
           </div>
           {partnerAuthMethod === 'both' && (
             <div>
-              <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Auth Method</label>
+              <label className="mono-label mb-1 block">Auth Method</label>
               <div className="flex gap-4">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" name="inviteAuthMethod" value="local" checked={authMethod === 'local'}
                     onChange={() => setAuthMethod('local')}
-                    className="accent-black dark:accent-white w-4 h-4" />
+                    className="w-4 h-4" />
                   <span className="text-xs font-bold uppercase">Local (Email + Password)</span>
                 </label>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="radio" name="inviteAuthMethod" value="sso" checked={authMethod === 'sso'}
                     onChange={() => setAuthMethod('sso')}
-                    className="accent-black dark:accent-white w-4 h-4" />
+                    className="w-4 h-4" />
                   <span className="text-xs font-bold uppercase">SSO (Sign in with Microsoft)</span>
                 </label>
               </div>
             </div>
           )}
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest mb-1">Departments (Optional)</label>
-            <div className="space-y-2 max-h-32 overflow-y-auto border border-black/20 dark:border-white/20 p-2">
+            <label className="mono-label mb-1 block">Departments (Optional)</label>
+            <div className="space-y-2 max-h-32 overflow-y-auto border border-[var(--color-border)] p-2">
               {departments.map(d => (
                 <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
                   <input
@@ -353,7 +353,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
                       if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
                       else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
                     }}
-                    className="accent-black dark:accent-white w-4 h-4"
+                    className="w-4 h-4"
                   />
                   {d.name}
                 </label>
@@ -361,8 +361,8 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
             </div>
           </div>
           <div className="flex gap-4 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 py-3 border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:bg-black/5">Cancel</button>
-            <button type="submit" disabled={inviteMutation.isPending} className="flex-1 py-3 bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white font-black uppercase text-[10px] tracking-widest hover:invert">
+            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={inviteMutation.isPending} className="btn-primary flex-1 disabled:opacity-50">
               {inviteMutation.isPending ? 'Sending...' : 'Generate Invite'}
             </button>
           </div>

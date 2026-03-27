@@ -69,7 +69,7 @@ export default function AgentView() {
 
   return (
     <BusinessHoursGuard mode={activeTicket ? 'notice' : 'block'}>
-      <div className={`h-full bg-transparent flex flex-col overflow-hidden relative transition-all duration-700 ${focusMode ? 'zen-mode' : ''}`}>
+      <div className={`h-full bg-transparent flex flex-col overflow-hidden relative ${focusMode ? 'zen-mode' : ''}`}>
         <SystemBackground />
 
         <AgentNav
@@ -93,16 +93,16 @@ export default function AgentView() {
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">
             {/* Queue position indicator */}
             {queuePosition && queuePosition.position > 0 && !activeTicket && agentTickets.some(tk => tk.status === 'open') && (
-              <div className="px-6 py-3 bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-900 flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-xs font-black">
+              <div className="px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 border border-[var(--color-border)] text-[var(--color-text-primary)] text-xs font-bold font-mono">
                   {queuePosition.position}
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-blue-900 dark:text-blue-200">
+                  <p className="text-sm font-bold text-[var(--color-text-primary)]">
                     {t('queue_position') || 'Queue position'}: #{queuePosition.position}
                   </p>
                   {queuePosition.etaMins > 0 && (
-                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                    <p className="text-xs text-[var(--color-text-secondary)]">
                       {t('estimated_wait') || 'Estimated wait'}: ~{queuePosition.etaMins} {t('minutes') || 'min'}
                     </p>
                   )}
@@ -110,8 +110,8 @@ export default function AgentView() {
               </div>
             )}
             {activeTicket ? (
-              <div className="flex-1 min-h-0 w-full animate-fade-in">
-                <div className="h-full flex flex-col overflow-hidden bg-white/50 backdrop-blur-md dark:bg-brand-900/40">
+              <div className="flex-1 min-h-0 w-full">
+                <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
                   <ChatWindow key={activeTicket.id} ticket={activeTicket} onClose={() => setActiveTicketId(null)} />
                 </div>
               </div>

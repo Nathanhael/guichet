@@ -5,8 +5,8 @@ import { trpc } from '../utils/trpc';
 import { Ticket, Message } from '../types';
 
 const DEPT_COLOR: Record<string, string> = {
-  DSC: 'bg-black text-white dark:bg-white dark:text-black',
-  FOT: 'bg-white text-black dark:bg-black dark:text-white',
+  DSC: 'bg-accent-blue text-white',
+  FOT: 'bg-bg-elevated text-text-primary border border-border',
 };
 
 interface TicketPreviewProps {
@@ -37,34 +37,34 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
   }, [messages.length]);
   return (
     <div className="h-full flex flex-col p-4">
-      <div className="bg-white dark:bg-black border-4 border-black dark:border-white flex flex-col h-full overflow-hidden">
+      <div className="bg-bg-surface border border-border-heavy flex flex-col h-full overflow-hidden">
         {/* Preview header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b-2 border-black dark:border-white bg-white dark:bg-black">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-bg-surface">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-             <span className={`text-[10px] font-black px-2 py-0.5 border border-current uppercase tracking-widest shrink-0 ${DEPT_COLOR[ticket.dept] || DEPT_COLOR[ticket.dept.toUpperCase()] || 'bg-white text-black'}`}>
+             <span className={`text-[10px] font-bold px-2 py-0.5 uppercase tracking-widest shrink-0 ${DEPT_COLOR[ticket.dept] || DEPT_COLOR[ticket.dept.toUpperCase()] || 'bg-bg-elevated text-text-primary'}`}>
               {ticket.dept}
             </span>
-            <span className="text-sm font-black uppercase tracking-tight text-black dark:text-white truncate">{ticket.agentName}</span>
-            <span className="text-[10px] text-white dark:text-black bg-black dark:bg-white px-2 py-0.5 font-black uppercase tracking-widest shrink-0">
+            <span className="text-sm font-bold uppercase tracking-tight text-text-primary truncate">{ticket.agentName}</span>
+            <span className="badge bg-accent-blue text-white shrink-0">
               {t('preview_mode')}
             </span>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border-2 border-black dark:border-white font-black hover:invert transition-all">×</button>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border border-border-heavy font-bold hover:bg-bg-elevated">×</button>
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-1 bg-white dark:bg-black">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-1 bg-bg-base">
           {messageQuery.isLoading ? (
             <div className="h-full flex flex-col items-center justify-center opacity-30">
               <svg className="animate-spin h-6 w-6 mb-3" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <p className="text-[10px] font-black uppercase tracking-widest">{t('loading') || 'Loading...'}</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest">{t('loading') || 'Loading...'}</p>
             </div>
           ) : !messages || messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center opacity-20">
-              <p className="text-sm font-black uppercase tracking-widest">{t('no_messages')}</p>
+              <p className="text-sm font-bold uppercase tracking-widest">{t('no_messages')}</p>
             </div>
           ) : (
             messages.map((msg, idx) => {
@@ -91,18 +91,18 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
         </div>
 
         {/* Join bar */}
-        <div className="px-6 py-4 border-t-2 border-black dark:border-white bg-white dark:bg-black flex items-center justify-between gap-4">
+        <div className="px-6 py-4 border-t border-border bg-bg-surface flex items-center justify-between gap-4">
           {ticket.status === 'closed' ? (
-            <p className="text-sm font-black uppercase opacity-40">{t('conversation_closed')}</p>
+            <p className="text-sm font-bold uppercase text-text-muted">{t('conversation_closed')}</p>
           ) : (
             <>
-              <p className="text-sm font-black uppercase tracking-widest text-black dark:text-white">{t('waiting_for_expert')}</p>
+              <p className="text-sm font-bold uppercase tracking-widest text-text-primary">{t('waiting_for_expert')}</p>
               <button
                 onClick={onJoin}
                 disabled={joinDisabled}
-                className={`px-6 py-2 border-2 border-black dark:border-white text-[10px] font-black uppercase tracking-widest transition-all ${joinDisabled
-                  ? 'opacity-20 cursor-not-allowed'
-                  : 'bg-black dark:bg-white text-white dark:text-black hover:invert'
+                className={`px-6 py-2 text-[10px] font-bold uppercase tracking-widest ${joinDisabled
+                  ? 'btn-secondary opacity-20 cursor-not-allowed'
+                  : 'btn-primary'
                   }`}
               >
                 {t('join')}

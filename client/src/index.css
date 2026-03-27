@@ -2,187 +2,246 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ===== FONT FACES ===== */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ===== THEME TOKENS ===== */
+
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-lexend: "Lexend", sans-serif;
+  /* Fonts */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-lexend: 'Lexend', sans-serif;
 
-  --color-brand-50: var(--brand-50);
-  --color-brand-100: var(--brand-100);
-  --color-brand-200: var(--brand-200);
-  --color-brand-300: var(--brand-300);
-  --color-brand-400: var(--brand-400);
-  --color-brand-500: var(--brand-500);
-  --color-brand-600: var(--brand-600);
-  --color-brand-700: var(--brand-700);
-  --color-brand-800: var(--brand-800);
-  --color-brand-900: var(--brand-900);
-  --color-brand-primary: var(--brand-primary);
+  /* Light mode colors (default) */
+  --color-bg-base: #fafaf9;
+  --color-bg-surface: #ffffff;
+  --color-bg-elevated: #f5f5f4;
+  --color-border: #d6d3d1;
+  --color-border-heavy: #1c1917;
+  --color-text-primary: #1c1917;
+  --color-text-secondary: #57534e;
+  --color-text-muted: #a8a29e;
+  --color-text-faint: #d6d3d1;
+  --color-accent-blue: #2563eb;
+  --color-accent-blue-light: #3b82f6;
+  --color-accent-purple: #7c3aed;
+  --color-accent-red: #ef4444;
+  --color-accent-green: #16a34a;
+  --color-own-msg-bg: #eff6ff;
+  --color-whisper-bg: #faf5ff;
 
-  --color-accent-400: #f07469;
-  --color-accent-500: #e65649;
-  --color-accent-600: #cc4135;
+  /* Animation */
+  --animate-fade-in: fade-in 150ms ease-out;
+}
 
-  --color-ui-base03: #002b36;
-  --color-ui-base02: #073642;
-  --color-ui-base01: #586e75;
-  --color-ui-base00: #657b83;
-  --color-ui-base0: #839496;
-  --color-ui-base1: #93a1a1;
-  --color-ui-base2: #eee8d5;
-  --color-ui-base3: #fdf6e3;
-  --color-ui-yellow: #b58900;
-  --color-ui-orange: #cb4b16;
-  --color-ui-red: #dc322f;
-  --color-ui-magenta: #d33682;
-  --color-ui-violet: #6c71c4;
-  --color-ui-blue: #268bd2;
-  --color-ui-cyan: #2aa198;
-  --color-ui-green: #859900;
+/* ===== DARK MODE OVERRIDES ===== */
 
-  --shadow-soft: 0 4px 40px rgba(0, 0, 0, 0.05);
-  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+.dark {
+  --color-bg-base: #09090b;
+  --color-bg-surface: #18181b;
+  --color-bg-elevated: #27272a;
+  --color-border: #27272a;
+  --color-border-heavy: #3f3f46;
+  --color-text-primary: #e4e4e7;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #52525b;
+  --color-text-faint: #3f3f46;
+  --color-accent-blue: #3b82f6;
+  --color-accent-blue-light: #60a5fa;
+  --color-accent-purple: #a855f7;
+  --color-accent-red: #ef4444;
+  --color-accent-green: #22c55e;
+  --color-own-msg-bg: #1e3a5f;
+  --color-whisper-bg: #1a1520;
+}
 
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
+/* ===== KEYFRAMES ===== */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ===== REDUCED MOTION ===== */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0ms !important;
   }
-  @keyframes slide-up {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes slide-in-right {
-    from { opacity: 0; transform: translateX(20px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-
-  --animate-fade-in: fade-in 0.3s ease-out;
-  --animate-slide-up: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  --animate-slide-in-right: slide-in-right 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@utility surface-card {
-  background-color: white;
-  @variant dark { background-color: black; }
-  border: 1px solid black;
-  @variant dark { border-color: white; }
-}
-
-@utility surface-panel {
-  background-color: white;
-  @variant dark { background-color: black; }
-  border-right: 1px solid black;
-  @variant dark { border-right-color: white; }
-}
-
-@utility bubble-received {
-  background-color: white;
-  @variant dark { background-color: black; }
-  color: black;
-  @variant dark { color: white; }
-  border: 1px solid black;
-  @variant dark { border-color: white; }
-}
-
-@utility bubble-sent {
-  background-color: black;
-  @variant dark { background-color: white; }
-  color: white;
-  @variant dark { color: black; }
-  border: 1px solid black;
-  @variant dark { border-color: white; }
-}
-
-@utility bubble-whisper {
-  background-color: var(--color-slate-50);
-  @variant dark { background-color: var(--color-slate-900); }
-  color: black;
-  @variant dark { color: white; }
-  border: 1px dashed black;
-  @variant dark { border-color: white; }
-}
+/* ===== UTILITY CLASSES ===== */
 
 @utility btn-primary {
-  background-color: black;
-  @variant dark { background-color: white; }
-  color: white;
-  @variant dark { color: black; }
-  font-weight: 900;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 0.625rem 1.25rem;
-  border: 1px solid black;
-  @variant dark { border-color: white; }
+  letter-spacing: 0.05em;
+  padding: 8px 20px;
+  background-color: var(--color-accent-blue);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
 }
 
 @utility btn-secondary {
-  background-color: white;
-  @variant dark { background-color: black; }
-  color: black;
-  @variant dark { color: white; }
-  font-weight: 900;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 0.625rem 1.25rem;
-  border: 1px solid black;
-  @variant dark { border-color: white; }
+  letter-spacing: 0.05em;
+  padding: 8px 20px;
+  background-color: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+}
+
+@utility btn-danger {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 8px 20px;
+  background-color: transparent;
+  color: var(--color-accent-red);
+  border: 1px solid var(--color-accent-red);
+  cursor: pointer;
 }
 
 @utility input-field {
   width: 100%;
-  border: 1px solid black;
-  @variant dark { border-color: white; }
-  background-color: white;
-  @variant dark { background-color: black; }
-  color: black;
-  @variant dark { color: white; }
-  padding: 0.75rem 1rem;
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
   outline: none;
+
+  &::placeholder {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+
+  &:focus {
+    border-color: var(--color-accent-blue);
+  }
 }
 
-:root {
-  --brand-primary: #000000;
-  --brand-secondary: #000000;
-  --accent-color: #000000;
-  --border-radius: 0px;
+@utility surface-card {
+  background-color: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
 }
 
-/* Force NO animations/transitions ONLY in monochrome mode */
-.monochrome-mode *, .monochrome-mode *::before, .monochrome-mode *::after {
-  animation: none !important;
-  transition: none !important;
+@utility surface-panel {
+  background-color: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+}
+
+@utility bubble-received {
+  background-color: var(--color-bg-elevated);
+  border-radius: 1px;
+  padding: 10px;
+}
+
+@utility bubble-sent {
+  background-color: var(--color-own-msg-bg);
+  border-left: 2px solid var(--color-accent-blue);
+  border-radius: 1px;
+  padding: 10px;
+}
+
+@utility bubble-whisper {
+  background-color: var(--color-whisper-bg);
+  border-left: 2px solid var(--color-accent-purple);
+  border-radius: 1px;
+  padding: 10px;
+}
+
+@utility section-header {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+@utility badge {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  display: inline-block;
+}
+
+@utility mono-label {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+@utility mono-id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+@utility mono-timestamp {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  color: var(--color-text-faint);
+}
+
+/* ===== BASE STYLES ===== */
+
+html {
+  background-color: var(--color-bg-base);
+  color: var(--color-text-primary);
 }
 
 body {
   font-family: var(--font-sans);
-  letter-spacing: -0.025em;
-  min-height: 100vh;
-  transition: background-color 0.5s, color 0.5s;
+  -webkit-font-smoothing: antialiased;
 }
 
-body:not(.dark) {
-  background-color: #ffffff;
-  color: #000000;
-}
-
-.dark body {
-  background-color: #000000;
-  color: #ffffff;
-}
-
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: var(--color-slate-300);
-  @variant dark { background-color: var(--color-slate-800); }
-  border-width: 2px;
-  border-color: white;
-  @variant dark { border-color: black; }
-}
-
-.dyslexic-mode, .dyslexic-mode body, .dyslexic-mode * {
-  font-family: 'Lexend', sans-serif !important;
-  line-height: 1.75 !important;
+/* Dyslexic mode override */
+.dyslexic-mode body,
+.dyslexic-mode input,
+.dyslexic-mode textarea,
+.dyslexic-mode button {
+  font-family: var(--font-lexend) !important;
 }

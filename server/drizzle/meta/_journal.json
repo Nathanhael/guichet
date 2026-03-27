@@ -155,6 +155,13 @@
       "when": 1775714400000,
       "tag": "0021_webhooks",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1775800800000,
+      "tag": "0022_audit_log_immutability",
+      "breakpoints": true
     }
   ]
 }

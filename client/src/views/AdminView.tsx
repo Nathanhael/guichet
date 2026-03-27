@@ -40,12 +40,12 @@ export default function AdminView() {
     <button
       onClick={() => setView(id)}
       title={!sidebarOpen ? label : undefined}
-      className={`flex items-center gap-2.5 w-full px-4 py-2.5 text-[10px] font-black uppercase tracking-widest ${
+      className={`flex items-center gap-2.5 w-full px-4 py-2.5 font-mono text-[10px] uppercase tracking-wide ${
         sidebarOpen ? 'justify-start' : 'justify-center'
       } ${
         view === id
-          ? 'bg-black dark:bg-white text-white dark:text-black'
-          : 'hover:bg-black/5 dark:hover:bg-white/5'
+          ? 'text-[var(--color-accent-blue)] border-l-2 border-[var(--color-accent-blue)]'
+          : 'text-[var(--color-text-muted)] hover:bg-[var(--color-accent-blue)] hover:text-white'
       }`}
     >
       {icon}
@@ -54,43 +54,43 @@ export default function AdminView() {
   );
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-white dark:bg-black text-black dark:text-white">
-      <nav className="bg-white dark:bg-black text-black dark:text-white px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-4 md:gap-8 sticky top-0 z-50 border-b-2 border-black dark:border-white">
+    <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
+      <nav className="bg-[var(--color-bg-surface)] px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-4 md:gap-8 sticky top-0 z-50 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen((v) => !v)}
-              className="p-1.5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+              className="p-1.5 hover:bg-[var(--color-accent-blue)] hover:text-white"
               aria-label={t('toggle_sidebar')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <span className="font-black text-2xl tracking-tighter uppercase">Tessera</span>
-            <span className="text-[10px] bg-black dark:bg-white text-white dark:text-black px-2.5 py-1 font-black uppercase tracking-widest">Admin</span>
+            <span className="font-bold text-2xl tracking-tighter uppercase">Tessera</span>
+            <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide">Admin</span>
             {manifest.logoUrl ? (
               <img src={manifest.logoUrl} alt={partnerName} className="h-6 object-contain" />
             ) : (
-              <span className="w-6 h-6 flex items-center justify-center bg-black/10 dark:bg-white/10 text-[10px] font-black uppercase">{partnerName.charAt(0)}</span>
+              <span className="w-6 h-6 flex items-center justify-center bg-bg-elevated text-[10px] font-bold uppercase">{partnerName.charAt(0)}</span>
             )}
-            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">{partnerName}</span>
+            <span className="mono-label text-[var(--color-text-muted)]">{partnerName}</span>
           </div>
         </div>
 
         <div className="flex items-center gap-4 shrink-0">
           <div className="flex flex-col items-end mr-2">
-            <span className="text-[10px] font-black uppercase tracking-tight">{user.name}</span>
-            <span className="text-[8px] opacity-60 font-black uppercase tracking-widest">{user.role}</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight">{user.name}</span>
+            <span className="text-[8px] text-[var(--color-text-secondary)] font-bold uppercase tracking-wide">{user.role}</span>
           </div>
 
           <PartnerSwitcher />
 
-          <div className="flex items-center gap-2 bg-black/5 dark:bg-white/5 p-1 border border-black dark:border-white">
+          <div className="flex items-center gap-2 bg-bg-elevated p-1 border border-[var(--color-border)]">
             <LanguageSwitcher />
             <NeuroToggle />
             <DarkModeToggle />
-            <button onClick={logout} className="p-2 text-black dark:text-white hover:invert" title={t('logout')}>
+            <button onClick={logout} className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white" title={t('logout')}>
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
             </button>
           </div>
@@ -99,8 +99,8 @@ export default function AdminView() {
 
       <div className="flex flex-row flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-52 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-2xl max-md:bg-white max-md:dark:bg-black max-md:top-[57px]' : 'w-14 max-md:w-0 max-md:hidden'} h-full border-r-2 border-black dark:border-white overflow-hidden flex-shrink-0 transition-all duration-200`}>
-          {sidebarOpen && <div className="text-[9px] font-black uppercase tracking-widest opacity-40 px-4 pt-6 pb-2 select-none">Overview</div>}
+        <aside className={`${sidebarOpen ? 'w-52 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:bg-[var(--color-bg-surface)] max-md:top-[57px]' : 'w-14 max-md:w-0 max-md:hidden'} h-full bg-[var(--color-bg-surface)] border-r border-[var(--color-border)] overflow-hidden flex-shrink-0`}>
+          {sidebarOpen && <div className="font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] px-4 pt-6 pb-2 select-none">Overview</div>}
           {!sidebarOpen && <div className="pt-4" />}
           <NavButton
             id="dashboard"
@@ -109,16 +109,16 @@ export default function AdminView() {
           />
           <NavButton id="alerts" label="Alerts" icon={<Flame className="h-4 w-4" />} />
 
-          {sidebarOpen ? <div className="text-[9px] font-black uppercase tracking-widest opacity-40 px-4 pt-6 pb-2 select-none">Operations</div> : <div className="pt-4 border-t border-black/10 dark:border-white/10 mt-2" />}
+          {sidebarOpen ? <div className="font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] px-4 pt-6 pb-2 select-none">Operations</div> : <div className="pt-4 border-t border-[var(--color-border)] mt-2" />}
           <NavButton id="tickets" label={t('active_tickets')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" /></svg>} />
           <NavButton id="archive" label={t('archive')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>} />
           <NavButton id="feedback" label={t('feedback')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.175 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.382-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>} />
 
-          {sidebarOpen ? <div className="text-[9px] font-black uppercase tracking-widest opacity-40 px-4 pt-6 pb-2 select-none">Team</div> : <div className="pt-4 border-t border-black/10 dark:border-white/10 mt-2" />}
+          {sidebarOpen ? <div className="font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] px-4 pt-6 pb-2 select-none">Team</div> : <div className="pt-4 border-t border-[var(--color-border)] mt-2" />}
           <NavButton id="team" label="Team" icon={<Users className="h-4 w-4" />} />
           <NavButton id="departments" label="Departments" icon={<Building2 className="h-4 w-4" />} />
 
-          {sidebarOpen ? <div className="text-[9px] font-black uppercase tracking-widest opacity-40 px-4 pt-6 pb-2 select-none">Configuration</div> : <div className="pt-4 border-t border-black/10 dark:border-white/10 mt-2" />}
+          {sidebarOpen ? <div className="font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] px-4 pt-6 pb-2 select-none">Configuration</div> : <div className="pt-4 border-t border-[var(--color-border)] mt-2" />}
           <NavButton id="business_hours" label="Business Hours" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
           <NavButton id="labels" label={t('labels')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>} />
           <NavButton id="canned_responses" label={t('canned_responses')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>} />
@@ -127,7 +127,7 @@ export default function AdminView() {
         </aside>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-white dark:bg-black p-8 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto bg-[var(--color-bg-base)] p-8 custom-scrollbar">
           {view === 'dashboard' && <AdminStats />}
           {view === 'team' && <AdminTeam />}
           {view === 'alerts' && <AdminAlerts />}

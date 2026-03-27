@@ -81,21 +81,21 @@ export default function AdminTickets() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden bg-ui-base3/30 dark:bg-transparent">
+    <div className="flex h-full overflow-hidden bg-[var(--color-bg-base)]">
       {/* Sidebar: Open Queue */}
-      <aside className="w-80 border-r border-ui-base2 dark:border-brand-800 flex flex-col bg-white/50 dark:bg-brand-900/20 backdrop-blur-md">
-        <div className="p-4 border-b border-ui-base2 dark:border-brand-800">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-ui-base1 dark:text-brand-400">
+      <aside className="w-80 border-r border-[var(--color-border)] flex flex-col bg-[var(--color-bg-surface)]">
+        <div className="p-4 border-b border-[var(--color-border)]">
+          <h2 className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">
             {t('live_queue')} ({tickets.length})
           </h2>
         </div>
-        <div className="flex-1 overflow-y-auto scrollbar-hide p-2">
+        <div className="flex-1 overflow-y-auto p-2">
           {tickets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 opacity-40">
+            <div className="flex flex-col items-center justify-center h-40 text-[var(--color-text-muted)]">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H4a2 2 0 00-2 2v7m18 0a2 2 0 01-2 2H4a2 2 0 01-2-2m18 0l-5 5m-7-5l-5 5" />
               </svg>
-              <p className="text-xs font-medium italic">{t('queue_empty')}</p>
+              <p className="text-xs font-bold uppercase">{t('queue_empty')}</p>
             </div>
           ) : (
             <div className="space-y-1">
@@ -103,33 +103,33 @@ export default function AdminTickets() {
                 <button
                   key={tk.id}
                   onClick={() => handlePreview(tk)}
-                  className={`w-full text-left p-3 rounded-xl transition-all relative group ${
+                  className={`w-full text-left p-3 relative group ${
                     previewTicketId === tk.id
-                      ? 'bg-brand-500 text-white shadow-lg shadow-brand-500/20'
-                      : 'hover:bg-white dark:hover:bg-brand-800/60 text-ui-base01 dark:text-gray-300'
+                      ? 'bg-[var(--color-accent-blue)] text-white'
+                      : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02] text-[var(--color-text-primary)]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${
-                      previewTicketId === tk.id ? 'bg-white/20' : 'bg-ui-base2 dark:bg-brand-900/40 text-brand-600'
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 uppercase ${
+                      previewTicketId === tk.id ? 'bg-white/20' : 'bg-bg-elevated'
                     }`}>
                       {tk.dept}
                     </span>
-                    <span className={`text-[10px] opacity-70 ${previewTicketId === tk.id ? 'text-white' : 'text-ui-base1'}`}>
+                    <span className={`text-[10px] ${previewTicketId === tk.id ? 'text-white/70' : 'text-[var(--color-text-muted)]'}`}>
                       {tk.createdAt ? new Date(tk.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                     </span>
                   </div>
                   <p className="text-xs font-bold truncate pr-4">{tk.agentName}</p>
                   {tk.supportName && (
-                    <div className="flex items-center gap-1 mt-1 opacity-80">
-                      <div className="w-1 h-1 rounded-full bg-current" />
+                    <div className="flex items-center gap-1 mt-1 text-[var(--color-text-secondary)]">
+                      <div className="w-1 h-1 bg-current" />
                       <p className="text-[10px] truncate">
                         {tk.supportName}
                       </p>
                     </div>
                   )}
                   {unreadTickets.has(tk.id) && (
-                    <span className="absolute top-3 right-3 w-2 h-2 bg-accent-500 rounded-full border-2 border-white dark:border-brand-900" />
+                    <span className="absolute top-3 right-3 w-2 h-2 bg-[var(--color-text-primary)]" />
                   )}
                 </button>
               ))}
@@ -141,8 +141,8 @@ export default function AdminTickets() {
       {/* Main Area: Preview or Tabs */}
       <main className="flex-1 flex flex-col relative">
         {previewTicketId ? (
-          <div className="h-full flex flex-col p-6 animate-fade-in bg-ui-base3/50 dark:bg-brand-900/10">
-            <div className="glass-panel flex-1 rounded-3xl overflow-hidden shadow-2xl border border-white/20 dark:border-brand-700/50 flex flex-col">
+          <div className="h-full flex flex-col p-6 bg-[var(--color-bg-base)]">
+            <div className="flex-1 border border-[var(--color-border)] overflow-hidden flex flex-col">
               <TicketPreview
                 ticket={tickets.find((t) => t.id === previewTicketId)!}
                 messages={previewMessages}
@@ -152,44 +152,44 @@ export default function AdminTickets() {
             </div>
           </div>
         ) : openTabTickets.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center opacity-30 text-ui-base01 dark:text-white">
-            <div className="w-24 h-24 rounded-full border-2 border-current flex items-center justify-center mb-4">
+          <div className="h-full flex flex-col items-center justify-center text-[var(--color-text-muted)]">
+            <div className="w-24 h-24 border border-[var(--color-border)] flex items-center justify-center mb-4">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
               </svg>
             </div>
             <h3 className="text-xl font-bold tracking-tight">Active Workspace</h3>
-            <p className="text-sm font-medium mt-1">Select a ticket from the queue to start supporting</p>
+            <p className="text-sm font-bold mt-1">Select a ticket from the queue to start supporting</p>
           </div>
         ) : (
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Tab Bar */}
-            <div className="flex bg-ui-base2/50 dark:bg-brand-900/40 px-4 pt-3 border-b border-ui-base2 dark:border-brand-800">
+            <div className="flex bg-[var(--color-bg-surface)] px-4 pt-3 border-b border-[var(--color-border)]">
               {openTabTickets.map((tk: Ticket) => (
                 <button
                   key={tk.id}
                   onClick={() => setActiveTab(tk.id)}
-                  className={`group flex items-center gap-3 px-4 py-2.5 rounded-t-xl text-xs font-bold transition-all duration-300 relative min-w-[140px] max-w-[200px] ${
+                  className={`group flex items-center gap-3 px-4 py-2.5 text-xs font-bold relative min-w-[140px] max-w-[200px] ${
                     activeTab === tk.id
-                      ? 'bg-ui-base3 dark:bg-brand-800 text-brand-600 dark:text-white shadow-[0_-4px_10px_rgba(0,0,0,0.05)]'
-                      : 'text-ui-base1 dark:text-gray-500 hover:text-ui-base01 dark:hover:text-gray-300'
+                      ? 'bg-[var(--color-bg-base)] text-[var(--color-text-primary)]'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${tk.dept === 'DSC' ? 'bg-amber-500' : 'bg-brand-500'}`} />
+                  <span className="w-1.5 h-1.5 bg-[var(--color-text-primary)]" />
                   <span className="truncate flex-1 text-left">{tk.agentName}</span>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       closeTab(tk.id);
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/10 hover:text-red-500 rounded-md transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-[var(--color-accent-blue)] hover:text-white"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                   {activeTab === tk.id && (
-                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-500" />
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--color-accent-blue)]" />
                   )}
                 </button>
               ))}
@@ -200,9 +200,9 @@ export default function AdminTickets() {
               {openTabTickets.map((tk: Ticket) => (
                 <div
                   key={tk.id}
-                  className={`absolute inset-0 transition-all duration-500 ${
-                    activeTab === tk.id ? 'opacity-100 translate-y-0 z-10' : 'opacity-0 translate-y-4 -z-10 pointer-events-none'
-                  } ${focusedTicketId && focusedTicketId !== tk.id ? 'opacity-30 grayscale-[0.5] scale-[0.98] blur-[1px]' : 'opacity-100'}`}
+                  className={`absolute inset-0 ${
+                    activeTab === tk.id ? 'opacity-100 z-10' : 'opacity-0 -z-10 pointer-events-none'
+                  } ${focusedTicketId && focusedTicketId !== tk.id ? 'opacity-30' : 'opacity-100'}`}
                 >
                   <ChatWindow ticket={tk} onClose={() => closeTab(tk.id)} onFocus={() => setFocusedTicketId(tk.id)} focused={focusedTicketId === tk.id} />
                 </div>

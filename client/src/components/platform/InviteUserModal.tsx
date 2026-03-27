@@ -51,52 +51,50 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
   if (result) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-        <div onClick={() => setResult(null)} aria-label="Close" className="absolute inset-0 bg-black opacity-80" />
-        <div role="dialog" className="w-full max-w-md bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
-          <h2 className="text-xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">
+        <div onClick={() => setResult(null)} aria-label="Close" className="absolute inset-0 bg-black/80" />
+        <div role="dialog" className="w-full max-w-md bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8">
+          <h2 className="text-xl font-bold uppercase tracking-wide font-mono mb-6 border-b border-[var(--color-border)] pb-2">
             {t('invite_resent_success')}
           </h2>
           {result.isExistingUser ? (
             <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest">
+              <p className="text-xs font-bold uppercase tracking-widest font-mono">
                 {t('manage_access')} — {result.partnerName}
               </p>
-              <p className="text-[10px] uppercase opacity-60">
+              <p className="text-[10px] uppercase text-[var(--color-text-muted)]">
                 {t('status_linked_sso')}
               </p>
             </div>
           ) : result.tempPassword ? (
             <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest">
+              <p className="text-xs font-bold uppercase tracking-widest font-mono">
                 {result.partnerName}
               </p>
-              <div className="border-2 border-black dark:border-white p-4">
-                <p className="text-[10px] font-black uppercase tracking-widest mb-2 opacity-60">{t('password_label')}</p>
+              <div className="border border-[var(--color-border)] p-4">
+                <p className="mono-label mb-2">{t('password_label')}</p>
                 <div className="flex items-center justify-between gap-3">
-                  <code className="font-mono text-sm font-bold break-all">{result.tempPassword}</code>
+                  <code className="font-mono text-sm font-bold break-all text-[var(--color-text-primary)]">{result.tempPassword}</code>
                   <button onClick={() => navigator.clipboard.writeText(result.tempPassword!)}
-                    className="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest border-2 border-black dark:border-white hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+                    className="btn-secondary px-3 py-1.5 text-[9px] uppercase tracking-widest"
                   >Copy</button>
                 </div>
               </div>
-              <p className="text-[9px] uppercase font-bold opacity-50">
+              <p className="text-[9px] uppercase font-bold text-[var(--color-text-muted)]">
                 {t('config_verify_note')}
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest">
+              <p className="text-xs font-bold uppercase tracking-widest font-mono">
                 {result.partnerName}
               </p>
-              <p className="text-[10px] uppercase opacity-60">
+              <p className="text-[10px] uppercase text-[var(--color-text-muted)]">
                 {t('sso_enterprise')}
               </p>
             </div>
           )}
           <div className="flex justify-end mt-8">
-            <button onClick={() => setResult(null)}
-              className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white"
-            >{t('done')}</button>
+            <button onClick={() => setResult(null)} className="btn-primary px-6 py-2 text-[10px] uppercase tracking-widest">{t('done')}</button>
           </div>
         </div>
       </div>
@@ -105,31 +103,31 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-      <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black opacity-80" />
-      <div role="dialog" className="w-full max-w-xl bg-white dark:bg-black border-4 border-black dark:border-white relative z-10 p-8">
-        <h2 className="text-2xl font-black uppercase tracking-tighter mb-6 border-b-2 border-black dark:border-white pb-2">{t('invite_new_user')}</h2>
+      <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black/80" />
+      <div role="dialog" className="w-full max-w-xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8">
+        <h2 className="text-2xl font-bold uppercase tracking-wide font-mono mb-6 border-b border-[var(--color-border)] pb-2">{t('invite_new_user')}</h2>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-black uppercase mb-1">{t('col_name')}</label>
-              <input type="text" className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
+              <label className="mono-label">{t('col_name')}</label>
+              <input type="text" className="input-field w-full"
                 value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase mb-1">{t('email_label')}</label>
-              <input type="email" className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
+              <label className="mono-label">{t('email_label')}</label>
+              <input type="email" className="input-field w-full"
                 value={form.email} onChange={e => { setForm({ ...form, email: e.target.value }); setError(''); }}
               />
               {form.email && !isValidEmail(form.email) && (
-                <p className="mt-1 text-[9px] font-black uppercase opacity-50">{t('placeholder_email')}</p>
+                <p className="mt-1 text-[9px] font-bold uppercase text-[var(--color-text-muted)]">{t('placeholder_email')}</p>
               )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-[10px] font-black uppercase mb-1">{t('assign_partner')}</label>
-              <select className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
+              <label className="mono-label">{t('assign_partner')}</label>
+              <select className="input-field w-full"
                 value={form.partnerId} onChange={e => setForm({ ...form, partnerId: e.target.value })}>
                 <option value="">—</option>
                 {partners?.filter(p => p.status === 'active').map(p => (
@@ -138,8 +136,8 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-black uppercase mb-1">{t('col_role')}</label>
-              <select className="w-full bg-black/5 dark:bg-white/5 border-2 border-black dark:border-white px-3 py-2 text-sm font-bold outline-none"
+              <label className="mono-label">{t('col_role')}</label>
+              <select className="input-field w-full"
                 value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })}>
                 <option value="agent">{getRoleDisplayName('agent')}</option>
                 <option value="support">{getRoleDisplayName('support')}</option>
@@ -153,18 +151,18 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             if (selectedPartner?.authMethod === 'both') {
               return (
                 <div>
-                  <label className="block text-[10px] font-black uppercase mb-1">Auth Method</label>
+                  <label className="mono-label">Auth Method</label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="radio" name="authMethod" value="local" checked={form.authMethod === 'local'}
                         onChange={() => setForm({ ...form, authMethod: 'local' })}
-                        className="accent-black dark:accent-white w-4 h-4" />
+                        className="accent-current w-4 h-4" />
                       <span className="text-xs font-bold uppercase">Local (Email + Password)</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="radio" name="authMethod" value="sso" checked={form.authMethod === 'sso'}
                         onChange={() => setForm({ ...form, authMethod: 'sso' })}
-                        className="accent-black dark:accent-white w-4 h-4" />
+                        className="accent-current w-4 h-4" />
                       <span className="text-xs font-bold uppercase">SSO (Sign in with Microsoft)</span>
                     </label>
                   </div>
@@ -173,11 +171,9 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
             }
             return null;
           })()}
-          {error && <p className="text-xs font-bold uppercase">{error}</p>}
-          <div className="flex justify-end gap-3 pt-4 border-t-2 border-black/10 dark:border-white/10">
-            <button onClick={() => { onClose(); setError(''); }}
-              className="px-6 py-2 text-[10px] font-black uppercase tracking-widest border-2 border-black dark:border-white"
-            >{t('cancel')}</button>
+          {error && <p className="text-xs font-bold uppercase text-[var(--color-accent-red)]">{error}</p>}
+          <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
+            <button onClick={() => { onClose(); setError(''); }} className="btn-secondary px-6 py-2 text-[10px] uppercase tracking-widest">{t('cancel')}</button>
             <button onClick={() => {
               const selectedPartner = partners?.find(p => p.id === form.partnerId);
               inviteUser.mutate({
@@ -187,7 +183,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
               });
             }}
               disabled={!form.email || !isValidEmail(form.email) || !form.name || (!form.partnerId && form.role !== 'platform_operator')}
-              className="px-6 py-2 text-[10px] font-black uppercase tracking-widest bg-black dark:bg-white text-white dark:text-black border-2 border-black dark:border-white disabled:opacity-20"
+              className="btn-primary px-6 py-2 text-[10px] uppercase tracking-widest disabled:opacity-20"
             >{t('invite_new_user')}</button>
           </div>
         </div>

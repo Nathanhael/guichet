@@ -32,9 +32,9 @@ function getSlaColor(remainingMs: number, breached?: boolean, slaTotalMs?: numbe
 }
 
 const COLOR_CLASSES = {
-  green: 'bg-emerald-100 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700',
-  yellow: 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700',
-  red: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700',
+  green: 'bg-bg-elevated text-accent-green border-accent-green',
+  yellow: 'bg-bg-elevated text-accent-blue border-accent-blue',
+  red: 'bg-bg-elevated text-accent-red border-accent-red',
 };
 
 const DOT_CLASSES = {
@@ -76,7 +76,7 @@ export default function SlaIndicator({ dueAt, breached, compact, totalMs: slaTot
     : `SLA: ${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s`;
 
   return (
-    <span className={`text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest border shadow-sm ${COLOR_CLASSES[color]} ${color === 'red' ? 'animate-pulse' : ''}`}>
+    <span className={`text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest border ${COLOR_CLASSES[color]} ${color === 'red' ? 'animate-pulse' : ''}`}>
       {label}
     </span>
   );

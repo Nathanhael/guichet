@@ -10,11 +10,11 @@ interface StatusOption {
 }
 
 const STATUSES: StatusOption[] = [
-  { key: 'available', label: 'status_available', dot: 'bg-black dark:bg-white' },
-  { key: 'break', label: 'status_break', dot: 'bg-slate-400' },
-  { key: 'lunch', label: 'status_lunch', dot: 'bg-slate-400' },
-  { key: 'meeting', label: 'status_meeting', dot: 'bg-slate-400' },
-  { key: 'training', label: 'status_training', dot: 'bg-slate-400' },
+  { key: 'available', label: 'status_available', dot: 'bg-accent-green' },
+  { key: 'break', label: 'status_break', dot: 'bg-text-muted' },
+  { key: 'lunch', label: 'status_lunch', dot: 'bg-text-muted' },
+  { key: 'meeting', label: 'status_meeting', dot: 'bg-text-muted' },
+  { key: 'training', label: 'status_training', dot: 'bg-text-muted' },
 ];
 
 /**
@@ -58,24 +58,24 @@ export default function StatusPicker() {
         onClick={() => setOpen((v) => !v)}
         aria-label={`Status: ${t(current.label)}`}
         aria-expanded={open}
-        className="flex items-center gap-2 bg-white dark:bg-black border border-black dark:border-white px-2.5 py-1.5 transition-colors group hover:bg-black dark:hover:bg-white"
+        className="flex items-center gap-2 bg-bg-surface border border-border px-2.5 py-1.5 group hover:bg-bg-elevated"
       >
-        <span className={`w-2 h-2 rounded-full shrink-0 ${current.dot} group-hover:invert`} />
-        <span className="text-[10px] font-black uppercase text-black dark:text-white group-hover:text-white dark:group-hover:text-black">
+        <span className={`w-2 h-2 rounded-full shrink-0 ${current.dot}`} />
+        <span className="text-[10px] font-bold uppercase text-text-primary">
           {t(current.label)}
         </span>
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-40 bg-white dark:bg-black border-2 border-black dark:border-white z-50">
+        <div className="absolute right-0 top-full mt-1 w-40 bg-bg-surface border border-border-heavy z-50">
           {STATUSES.map((s) => (
             <button
               key={s.key}
               onClick={() => handleChange(s.key)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-[10px] font-black uppercase ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-[10px] font-bold uppercase ${
                 s.key === value
-                  ? 'bg-black dark:bg-white text-white dark:text-black'
-                  : 'text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5'
+                  ? 'bg-accent-blue text-white'
+                  : 'text-text-primary hover:bg-bg-elevated'
               }`}
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />

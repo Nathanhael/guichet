@@ -122,7 +122,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - `SupportView` — Support staff: ticket queue by department, multi-tab chat
 - `AgentView` — End-user: ticket creation, chat, attachments
 
-**Aesthetics**: Strict B&W only. No colors, gradients, shadows, animations, or transitions. Use `dark:` Tailwind prefix for dark mode (light mode is default).
+**Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). No gradients, no shadows, no border-radius. Design tokens defined as CSS custom properties in `index.css`. See `docs/superpowers/specs/2026-03-26-brutalist-redesign-design.md` for full spec.
 
 ## Key Conventions
 
@@ -147,8 +147,8 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 
 ## Critical Mandates
 
-- **STRICT B&W**: Pure black (#000) and white (#FFF) only. No colors, gradients, or shadows.
-- **ZERO MOTION**: No animations, transitions, or effects. Static UI.
+- **BRUTALIST TOKENS**: Use CSS custom property design tokens from index.css. No inline colors, no gradients, no shadows, no border-radius.
+- **MINIMAL MOTION**: Only fade-in (150ms) for panels/modals. No slides, bounces, or transitions. Respect prefers-reduced-motion.
 - **DOCKER ONLY**: Never run `npm`/`node`/`npx` on the host.
 - **TYPE SAFETY**: No `any` types. Zod on backend, TypeScript on frontend.
 - **MULTI-TENANCY**: Every query must filter by `partner_id`.
