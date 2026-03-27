@@ -1,5 +1,6 @@
 import type { AiProvider, ChatParams, ChatResult } from './types.js';
 import logger from '../../utils/logger.js';
+import config from '../../config.js';
 
 /**
  * Ollama provider — local LLM inference.
@@ -17,23 +18,37 @@ export class OllamaProvider implements AiProvider {
     this.defaultModel = defaultModel;
   }
 
+  private wrapTimeoutError(err: unknown): never {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error(`AI request timed out after ${config.AI_TIMEOUT_MS}ms (provider: ollama)`);
+    }
+    throw err;
+  }
+
   async chat(params: ChatParams): Promise<ChatResult> {
     const model = params.model || this.defaultModel;
     const url = `${this.host}/api/chat`;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages: params.messages,
-        stream: false,
-        options: {
-          temperature: params.temperature ?? 0.7,
-          ...(params.maxTokens ? { num_predict: params.maxTokens } : {}),
-        },
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
+        body: JSON.stringify({
+          model,
+          messages: params.messages,
+          stream: false,
+          keep_alive: config.OLLAMA_KEEPALIVE,
+          options: {
+            temperature: params.temperature ?? 0.7,
+            ...(params.maxTokens ? { num_predict: params.maxTokens } : {}),
+          },
+        }),
+      });
+    } catch (err) {
+      this.wrapTimeoutError(err);
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');
@@ -59,19 +74,26 @@ export class OllamaProvider implements AiProvider {
     const model = params.model || this.defaultModel;
     const url = `${this.host}/api/chat`;
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        messages: params.messages,
-        stream: true,
-        options: {
-          temperature: params.temperature ?? 0.7,
-          ...(params.maxTokens ? { num_predict: params.maxTokens } : {}),
-        },
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
+        body: JSON.stringify({
+          model,
+          messages: params.messages,
+          stream: true,
+          keep_alive: config.OLLAMA_KEEPALIVE,
+          options: {
+            temperature: params.temperature ?? 0.7,
+            ...(params.maxTokens ? { num_predict: params.maxTokens } : {}),
+          },
+        }),
+      });
+    } catch (err) {
+      this.wrapTimeoutError(err);
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => '');

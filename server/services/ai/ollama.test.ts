@@ -95,6 +95,43 @@ describe('OllamaProvider', () => {
       expect(result.inputTokens).toBe(0);
       expect(result.outputTokens).toBe(0);
     });
+
+    it('includes keep_alive in request body', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: { content: 'ok' },
+          model: 'llama3',
+        }),
+      });
+
+      await provider.chat({
+        model: 'llama3',
+        messages: [{ role: 'user', content: 'Hi' }],
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.keep_alive).toBe('30m');
+    });
+
+    it('passes AbortSignal timeout to fetch', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: { content: 'ok' },
+          model: 'llama3',
+        }),
+      });
+
+      await provider.chat({
+        model: 'llama3',
+        messages: [{ role: 'user', content: 'Hi' }],
+      });
+
+      const fetchOptions = mockFetch.mock.calls[0][1];
+      expect(fetchOptions.signal).toBeDefined();
+      expect(fetchOptions.signal).toBeInstanceOf(AbortSignal);
+    });
   });
 
   describe('isAvailable', () => {
@@ -115,6 +152,29 @@ describe('OllamaProvider', () => {
   });
 
   describe('chatStream', () => {
+    it('includes keep_alive in stream request body', async () => {
+      const mockReader = {
+        read: vi.fn().mockResolvedValueOnce({ done: true, value: undefined }),
+        releaseLock: vi.fn(),
+      };
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        body: { getReader: () => mockReader },
+      });
+
+      const chunks: string[] = [];
+      for await (const chunk of provider.chatStream({
+        model: 'llama3',
+        messages: [{ role: 'user', content: 'Hi' }],
+      })) {
+        chunks.push(chunk);
+      }
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.keep_alive).toBe('30m');
+    });
+
     it('yields content chunks from NDJSON stream', async () => {
       const chunks = [
         JSON.stringify({ message: { content: 'Hello' }, done: false }) + '\n',
