@@ -21,13 +21,18 @@ export interface UISlice {
   setSelectedLang: (lang: string) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
   setConnectionStatus: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
+  hydrateAccessibilityPrefs: (prefs: { dyslexicMode?: boolean; bionicReading?: boolean; monochromeMode?: boolean; focusMode?: boolean }) => void;
 }
 
 export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) => ({
-  dyslexicMode: false,
-  bionicReading: false,
+  dyslexicMode: (() => {
+    const v = localStorage.getItem('dyslexicMode') === 'true';
+    if (v) document.documentElement.classList.add('dyslexic-mode');
+    return v;
+  })(),
+  bionicReading: localStorage.getItem('bionicReading') === 'true',
   monochromeMode: localStorage.getItem('monochromeMode') !== 'false', // Default to true for now to keep the current look
-  focusMode: false,
+  focusMode: localStorage.getItem('focusMode') === 'true',
   zenSettings: { autoBionic: false, notificationShield: false },
   darkMode: localStorage.getItem('darkMode') === 'true',
   selectedLang: localStorage.getItem('selectedLang') || null,
@@ -43,10 +48,20 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       return { darkMode: next };
     }),
 
-  // TODO: stub implementation — wire up dyslexic mode toggle (e.g. toggle class on <html>, persist to localStorage)
-  toggleDyslexicMode: () => {},
-  // TODO: stub implementation — wire up bionic reading toggle (persist to localStorage, update state)
-  toggleBionicReading: () => {},
+  toggleDyslexicMode: () =>
+    set((state) => {
+      const next = !state.dyslexicMode;
+      localStorage.setItem('dyslexicMode', String(next));
+      if (next) document.documentElement.classList.add('dyslexic-mode');
+      else document.documentElement.classList.remove('dyslexic-mode');
+      return { dyslexicMode: next };
+    }),
+  toggleBionicReading: () =>
+    set((state) => {
+      const next = !state.bionicReading;
+      localStorage.setItem('bionicReading', String(next));
+      return { bionicReading: next };
+    }),
   toggleMonochromeMode: () =>
     set((state) => {
       const next = !state.monochromeMode;
@@ -55,8 +70,12 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       else document.documentElement.classList.remove('monochrome-mode');
       return { monochromeMode: next };
     }),
-  // TODO: stub implementation — wire up focus mode toggle (hide non-essential UI, persist to localStorage)
-  toggleFocusMode: () => {},
+  toggleFocusMode: () =>
+    set((state) => {
+      const next = !state.focusMode;
+      localStorage.setItem('focusMode', String(next));
+      return { focusMode: next };
+    }),
 
   updateZenSettings: (updates) =>
     set((state) => {
@@ -76,4 +95,25 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
   },
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
+
+  hydrateAccessibilityPrefs: (prefs) =>
+    set(() => {
+      const dyslexicMode = prefs.dyslexicMode ?? false;
+      const bionicReading = prefs.bionicReading ?? false;
+      const monochromeMode = prefs.monochromeMode ?? true;
+      const focusMode = prefs.focusMode ?? false;
+
+      localStorage.setItem('dyslexicMode', String(dyslexicMode));
+      localStorage.setItem('bionicReading', String(bionicReading));
+      localStorage.setItem('monochromeMode', String(monochromeMode));
+      localStorage.setItem('focusMode', String(focusMode));
+
+      if (dyslexicMode) document.documentElement.classList.add('dyslexic-mode');
+      else document.documentElement.classList.remove('dyslexic-mode');
+
+      if (monochromeMode) document.documentElement.classList.add('monochrome-mode');
+      else document.documentElement.classList.remove('monochrome-mode');
+
+      return { dyslexicMode, bionicReading, monochromeMode, focusMode };
+    }),
 });
