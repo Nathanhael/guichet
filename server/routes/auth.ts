@@ -320,6 +320,7 @@ router.post('/login-local', [
                 name: user.name,
                 lang: user.lang,
                 isPlatformOperator: user.isPlatformOperator,
+                accessibilityPrefs: user.accessibilityPrefs ?? {},
             },
             memberships: userMemberships,
         }));
@@ -452,6 +453,7 @@ router.post('/login', [
                 name: user.name,
                 lang: user.lang,
                 isPlatformOperator: user.isPlatformOperator,
+                accessibilityPrefs: user.accessibilityPrefs ?? {},
             },
             memberships: userMemberships,
         }));
