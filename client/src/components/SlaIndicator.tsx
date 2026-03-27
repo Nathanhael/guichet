@@ -66,7 +66,7 @@ export default function SlaIndicator({ dueAt, breached, compact, totalMs: slaTot
     return (
       <span
         title={totalMs <= 0 ? `SLA breached (${minutes}m overdue)` : `SLA: ${minutes}m ${seconds}s remaining`}
-        className={`w-2 h-2 rounded-full shrink-0 inline-block ${DOT_CLASSES[color]} ${color === 'red' ? 'animate-pulse' : ''}`}
+        className={`w-2 h-2 rounded-full shrink-0 inline-block ${DOT_CLASSES[color]}`}
       />
     );
   }
@@ -76,7 +76,7 @@ export default function SlaIndicator({ dueAt, breached, compact, totalMs: slaTot
     : `SLA: ${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s`;
 
   return (
-    <span className={`text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest border ${COLOR_CLASSES[color]} ${color === 'red' ? 'animate-pulse' : ''}`}>
+    <span className={`text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest border ${COLOR_CLASSES[color]}`}>
       {label}
     </span>
   );

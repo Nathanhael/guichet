@@ -3,13 +3,22 @@
 All notable changes to Tessera are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [2.0.0] - 2026-03-27
+
+### Design System
+- **Brutalist redesign** — Complete UI overhaul with CSS custom property design tokens, self-hosted JetBrains Mono + Inter fonts, and light/dark mode via `.dark` class toggle
+- New utility classes: `btn-primary`, `btn-secondary`, `btn-danger`, `input-field`, `surface-card`, `surface-panel`, `bubble-sent`, `bubble-received`, `bubble-whisper`, `badge`, `mono-label`, `mono-id`, `mono-timestamp`, `section-header`
+- WCAG 2.1 AA compliant focus-visible states on all interactive elements
+- `prefers-reduced-motion` support for both animations and transitions
+- Self-hosted fonts (zero external CDN dependencies)
+- ErrorBoundary restyled with design tokens
 
 ### Security
 - **HttpOnly cookie authentication** — JWT tokens now transported via `HttpOnly SameSite=Lax Secure` cookies instead of `Authorization: Bearer` headers. Eliminates XSS token theft vector. Client no longer stores tokens in localStorage.
 - `COOKIE_SECURE` defaults to `true` (set `false` for local dev without HTTPS)
 - `COOKIE_DOMAIN` config for subdomain cookie sharing
 - Companion `session_expires` cookie for client-side expiry detection without exposing JWT
+- **PostgreSQL audit_log immutability triggers** — BEFORE UPDATE raises unconditionally, BEFORE DELETE requires prior archival
 
 ### Added
 - MFA admin management: platform operators can see MFA status badges and force-disable MFA for any user

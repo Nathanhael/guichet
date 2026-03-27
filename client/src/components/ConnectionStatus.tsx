@@ -26,7 +26,7 @@ export default function ConnectionStatus() {
     <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
       <span
         className={`w-2 h-2 rounded-full shrink-0 ${
-          connectionStatus === 'reconnecting' ? 'bg-accent-blue animate-pulse' : 'bg-accent-red'
+          connectionStatus === 'reconnecting' ? 'bg-[var(--color-accent-blue)]' : 'bg-[var(--color-accent-red)]'
         }`}
       />
       {t(`connection_${connectionStatus}`)}
