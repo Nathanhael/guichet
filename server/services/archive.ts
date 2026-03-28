@@ -121,7 +121,7 @@ export async function verifyAuditChain(): Promise<{ valid: boolean; checked: num
   try {
     let prevHash = '0'.repeat(64);
     let checked = 0;
-    let lastSequence = 0;
+    let lastSequence = -1;
 
     while (true) {
       const rows = await db.select()
