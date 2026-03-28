@@ -626,17 +626,10 @@ export function registerSocketHandlers(io: Server) {
         }
         const supportId = ticket.support_id;
 
-        // Prevent duplicate ratings per ticket
-        const existing = await get('SELECT id FROM ratings WHERE ticket_id = $1', [ticketId]) as { id: string } | undefined;
-        if (existing) {
-          logger.info({ ticketId }, '[rating:submit] Rating already exists, ignoring');
-          return;
-        }
-
         const id = uuidv4();
         const safeComment = comment ? comment.slice(0, 2000) : null;
         await run(
-          'INSERT INTO ratings (id, ticket_id, agent_id, support_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6)',
+          'INSERT INTO ratings (id, ticket_id, agent_id, support_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (ticket_id) DO NOTHING',
           [id, ticketId, agentId, supportId, intRating, safeComment]
         );
         io.to(`ticket:${ticketId}`).emit('rating:submitted', { ticketId, agentId, supportId, rating: intRating });
