@@ -22,9 +22,8 @@ export const feedbackRouter = router({
     try {
       let data: (typeof appFeedback.$inferSelect)[];
       if (ctx.user.isPlatformOperator && !ctx.user.partnerId) {
-        data = await db.select()
-          .from(appFeedback)
-          .orderBy(desc(appFeedback.createdAt));
+        // IM-07: Platform operators without partner context must not see cross-tenant feedback
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner context required to list feedback. Use enter-partner first.' });
       } else if (ctx.user.partnerId) {
         data = await db.select()
           .from(appFeedback)

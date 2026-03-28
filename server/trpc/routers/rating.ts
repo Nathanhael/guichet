@@ -11,11 +11,16 @@ function errMsg(err: unknown): string {
 }
 
 export const ratingRouter = router({
-  list: roleProcedure(['admin', 'support']).query(async ({ ctx }) => {
+  list: roleProcedure(['admin', 'support'])
+    .input(z.object({
+      limit: z.number().min(1).max(200).default(100),
+      cursor: z.string().optional(), // "createdAt|id" composite cursor
+    }))
+    .query(async ({ input, ctx }) => {
     try {
       // Tenant isolation: only return ratings for tickets belonging to the caller's partner
       if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) {
-        return [];
+        return { items: [], nextCursor: null };
       }
 
       if (ctx.user.isPlatformOperator && !ctx.user.partnerId) {
@@ -27,12 +32,33 @@ export const ratingRouter = router({
         .from(tickets)
         .where(eq(tickets.partnerId, ctx.user.partnerId!));
 
+      const conditions = [inArray(ratings.ticketId, partnerTicketIds)];
+
+      // IM-13: Cursor-based pagination to prevent unbounded result sets
+      if (input.cursor) {
+        const sepIdx = input.cursor.indexOf('|');
+        if (sepIdx !== -1) {
+          const cursorTime = input.cursor.slice(0, sepIdx);
+          const cursorId = input.cursor.slice(sepIdx + 1);
+          conditions.push(
+            sql`(${ratings.createdAt} < ${cursorTime} OR (${ratings.createdAt} = ${cursorTime} AND ${ratings.id} < ${cursorId}))`
+          );
+        }
+      }
+
+      const fetchLimit = input.limit + 1;
       const data = await db.select()
         .from(ratings)
-        .where(inArray(ratings.ticketId, partnerTicketIds))
-        .orderBy(desc(ratings.createdAt));
+        .where(and(...conditions))
+        .orderBy(desc(ratings.createdAt))
+        .limit(fetchLimit);
 
-      return data;
+      const hasMore = data.length > input.limit;
+      const items = hasMore ? data.slice(0, input.limit) : data;
+      const last = items[items.length - 1];
+      const nextCursor = hasMore && last ? `${last.createdAt}|${last.id}` : null;
+
+      return { items, nextCursor };
     } catch (err: unknown) {
       const message = errMsg(err);
       logger.error({ err: message }, 'tRPC: Error listing ratings');

@@ -514,8 +514,18 @@ export const platformRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const user = (await db.select().from(users).where(eq(users.id, input.userId)).limit(1))[0];
-        const partner = (await db.select().from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0];
+        // IM-08: Only select columns needed for invite — never fetch password/secrets into memory
+        const user = (await db.select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          externalId: users.externalId,
+        }).from(users).where(eq(users.id, input.userId)).limit(1))[0];
+        const partner = (await db.select({
+          id: partners.id,
+          name: partners.name,
+          authMethod: partners.authMethod,
+        }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0];
 
         if (!user || !partner) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'User or Partner not found' });
@@ -555,7 +565,8 @@ export const platformRouter = router({
         return { success: true };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: resendInvite error');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to resend invite' });
       }
     }),
 

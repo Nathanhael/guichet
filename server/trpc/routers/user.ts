@@ -23,10 +23,9 @@ export const userRouter = router({
         `);
         return users;
       } catch (err: unknown) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err instanceof Error ? err.message : String(err)
-        });
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
+        if (err instanceof TRPCError) throw err;
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
       }
     }),
 
@@ -47,10 +46,9 @@ export const userRouter = router({
         `);
         return users;
       } catch (err: unknown) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err instanceof Error ? err.message : String(err)
-        });
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
+        if (err instanceof TRPCError) throw err;
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
       }
     }),
 
@@ -71,10 +69,9 @@ export const userRouter = router({
 
         return { success: true, revokedAfter };
       } catch (err: unknown) {
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: err instanceof Error ? err.message : String(err)
-        });
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
+        if (err instanceof TRPCError) throw err;
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
       }
     }),
 
