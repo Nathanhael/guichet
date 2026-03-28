@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import useStore from '../store/useStore';
 
 function ToggleSwitch({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
@@ -36,6 +36,19 @@ export default function AccessibilityMenu() {
   } = useStore();
 
   const anyActive = dyslexicMode || bionicReading || focusMode;
+
+  // Ctrl+Shift+F toggles focus mode globally
+  const handleKeyboard = useCallback((e: KeyboardEvent) => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+      e.preventDefault();
+      toggleFocusMode();
+    }
+  }, [toggleFocusMode]);
+
+  useEffect(() => {
+    document.addEventListener('keydown', handleKeyboard);
+    return () => document.removeEventListener('keydown', handleKeyboard);
+  }, [handleKeyboard]);
 
   useEffect(() => {
     if (!open) return;
@@ -89,7 +102,10 @@ export default function AccessibilityMenu() {
               <ToggleSwitch enabled={monochromeMode} onToggle={toggleMonochromeMode} />
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[11px]">Focus Mode</span>
+              <div>
+                <span className="text-[11px]">Focus Mode</span>
+                <span className="text-[8px] opacity-40 ml-1.5">Ctrl+Shift+F</span>
+              </div>
               <ToggleSwitch enabled={focusMode} onToggle={toggleFocusMode} />
             </div>
           </div>

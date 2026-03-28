@@ -53,7 +53,7 @@ export const users = pgTable('users', {
   mfaEnabledAt: timestamp('mfa_enabled_at', { mode: 'string' }),
   mfaRecoveryCodes: jsonb('mfa_recovery_codes').default([]),
   notificationPreferences: jsonb('notification_preferences').default({}),
-  accessibilityPrefs: jsonb('accessibility_prefs').default({}).$type<{
+  accessibilityPrefs: jsonb('accessibility_prefs').default({}).notNull().$type<{
     dyslexicMode?: boolean;
     bionicReading?: boolean;
     monochromeMode?: boolean;
