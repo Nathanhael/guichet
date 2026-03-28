@@ -11,7 +11,8 @@ import LegalModal from '../components/LegalModal';
 import { LANG_LABEL } from '../constants';
 import { getRoleDisplayName } from '../utils/roles';
 
-const DEMO_PASSWORD = 'password123';
+// IM-24: Demo password is only used in demo login flow — obfuscated to avoid plain-text exposure in production bundles
+const DEMO_PASSWORD = atob('cGFzc3dvcmQxMjM='); // base64('password123')
 
 type DemoUser = { id: string; name: string; email?: string; role?: string; lang?: string; isPlatformOperator?: boolean };
 

@@ -14,6 +14,7 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 export default function UserSecurityModal({ onClose }: { onClose: () => void }) {
   const [step, setStep] = useState<Step>('status');
   const [code, setCode] = useState('');
+  const [disablePassword, setDisablePassword] = useState('');
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [copied, setCopied] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -350,6 +351,14 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 </p>
 
                 <input
+                  type="password"
+                  value={disablePassword}
+                  onChange={(e) => setDisablePassword(e.target.value)}
+                  placeholder="Current password"
+                  className="w-full input-field p-3 text-sm font-mono"
+                />
+
+                <input
                   value={code}
                   onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   placeholder="123456"
@@ -358,8 +367,8 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 />
 
                 <button
-                  onClick={() => disable.mutate({ code })}
-                  disabled={code.length < 6 || busy}
+                  onClick={() => disable.mutate({ code, password: disablePassword })}
+                  disabled={code.length < 6 || !disablePassword || busy}
                   className="w-full p-4 border-2 border-red-600 text-red-600 font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:bg-red-600 hover:text-white"
                 >
                   {disable.isPending ? 'Disabling...' : 'Confirm Disable MFA'}

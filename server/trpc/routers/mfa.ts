@@ -130,13 +130,14 @@ export const mfaRouter = router({
    * Disable MFA. Requires a valid TOTP code.
    */
   disable: protectedProcedure
-    .input(z.object({ code: z.string().min(6) }))
+    .input(z.object({ code: z.string().min(6), password: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const userRows = await db.select({
         mfaSecret: users.mfaSecret,
         mfaEnabledAt: users.mfaEnabledAt,
         mfaRecoveryCodes: users.mfaRecoveryCodes,
         lockedUntil: users.lockedUntil,
+        password: users.password,
       }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
 
       const user = userRows[0];
@@ -150,6 +151,17 @@ export const mfaRouter = router({
 
       if (!user?.mfaEnabledAt || !user.mfaSecret) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'MFA is not enabled' });
+      }
+
+      // IM-05: Require password re-authentication before disabling MFA
+      if (!user.password) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot verify password for SSO-only account' });
+      }
+      const { verifyPassword } = await import('../../utils/passwords.js');
+      const passwordValid = await verifyPassword(input.password, user.password);
+      if (!passwordValid) {
+        await recordFailedLogin(ctx.user.id);
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid password' });
       }
 
       if (!verifyTotpToken(user.mfaSecret, input.code)) {

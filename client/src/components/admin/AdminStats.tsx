@@ -301,12 +301,12 @@ export default function AdminStats() {
       >
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={stats.dailyTrend} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#93a1a1" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={Math.ceil(stats.dailyTrend.length / 10)} />
             <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
             <Tooltip />
             <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-            <Line type="monotone" dataKey="total" stroke="#000000" strokeWidth={2} dot={false} name="Total" />
+            <Line type="monotone" dataKey="total" stroke="var(--color-text-primary)" strokeWidth={2} dot={false} name="Total" />
           </LineChart>
         </ResponsiveContainer>
       </Panel>
@@ -319,13 +319,13 @@ export default function AdminStats() {
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.supportStats.length * 40)}>
               <BarChart data={stats.supportStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#93a1a1" horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
                 <Tooltip />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="total" fill="#000000" name="Total Tasks" />
-                <Bar dataKey="today" fill="#666666" name="Today" />
+                <Bar dataKey="total" fill="var(--color-text-primary)" name="Total Tasks" />
+                <Bar dataKey="today" fill="var(--color-text-secondary)" name="Today" />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -337,13 +337,13 @@ export default function AdminStats() {
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.agentStats.length * 40)}>
               <BarChart data={stats.agentStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#93a1a1" horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
                 <Tooltip />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="total" fill="#000000" name="Total Tickets" />
-                <Bar dataKey="today" fill="#666666" name="Today" />
+                <Bar dataKey="total" fill="var(--color-text-primary)" name="Total Tickets" />
+                <Bar dataKey="today" fill="var(--color-text-secondary)" name="Today" />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -419,11 +419,11 @@ function SentimentPanel({ stats }: { stats: DashboardData }) {
         ) : (
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={trendData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#93a1a1" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={Math.ceil(trendData.length / 6)} />
               <YAxis tick={{ fontSize: 9 }} domain={[-1, 1]} ticks={[-1, -0.5, 0, 0.5, 1]} />
               <Tooltip formatter={(v) => [Number(v).toFixed(2), 'Sentiment']} />
-              <Line type="monotone" dataKey="sentiment" stroke="#000000" strokeWidth={2} dot={false} name="Sentiment" />
+              <Line type="monotone" dataKey="sentiment" stroke="var(--color-text-primary)" strokeWidth={2} dot={false} name="Sentiment" />
             </LineChart>
           </ResponsiveContainer>
         )}

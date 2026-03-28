@@ -66,11 +66,14 @@ export const platformRouter = router({
   // --- Partner Management ---
   listPartners: platformProcedure.query(async () => {
     try {
-      return await db.select().from(partners)
+      // IM-10: Fetch all then strip sensitive AI config (API keys, provider details)
+      const allPartners = await db.select().from(partners)
         .where(isNull(partners.deletedAt))
         .orderBy(asc(partners.name));
+      return allPartners.map(({ aiConfig, aiProvider, aiModel, ...safe }) => safe);
     } catch (err: unknown) {
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: listPartners error');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to list partners' });
     }
   }),
 
