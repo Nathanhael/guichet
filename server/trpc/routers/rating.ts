@@ -60,9 +60,8 @@ export const ratingRouter = router({
 
       return { items, nextCursor };
     } catch (err: unknown) {
-      const message = errMsg(err);
-      logger.error({ err: message }, 'tRPC: Error listing ratings');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+      logger.error({ err: errMsg(err) }, 'tRPC: Error listing ratings');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
     }
   }),
 
@@ -115,9 +114,8 @@ export const ratingRouter = router({
 
         return data;
       } catch (err: unknown) {
-        const message = errMsg(err);
-        logger.error({ err: message }, 'tRPC: Error getting staff ratings');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        logger.error({ err: errMsg(err) }, 'tRPC: Error getting staff ratings');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
       }
     }),
 
@@ -258,9 +256,8 @@ export const ratingRouter = router({
           },
         };
       } catch (err: unknown) {
-        const message = errMsg(err);
-        logger.error({ err: message }, 'tRPC: Error getting rating analytics');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        logger.error({ err: errMsg(err) }, 'tRPC: Error getting rating analytics');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
       }
     }),
 });
