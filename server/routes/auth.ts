@@ -23,47 +23,56 @@ const router = express.Router();
 logger.info('[Auth] Routes file loaded');
 
 // ---------------------------------------------------------------------------
-// IP-based rate limiter for login endpoints
+// IP-based rate limiter for auth endpoints (Redis-backed, multi-instance safe)
 // ---------------------------------------------------------------------------
-const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const LOGIN_RATE_MAX = 20; // max attempts per IP per window
+const AUTH_RATE_WINDOW_SECS = 15 * 60; // 15 minutes
+const AUTH_RATE_MAX_LOGIN = 20; // max login attempts per IP per window
+const AUTH_RATE_MAX_RESET = 10; // max reset-password attempts per IP per window
 
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
+/**
+ * Generic Redis-backed IP rate limiter. Falls back to allowing requests if Redis is unavailable.
+ */
+async function redisRateLimit(
+  req: Request,
+  res: Response,
+  next: () => void,
+  prefix: string,
+  maxAttempts: number,
+): Promise<void> {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) {
+      // Redis unavailable — fail open to avoid blocking all logins
+      next();
+      return;
+    }
+    const key = `rate:${prefix}:${ip}`;
+    const count = await pubClient.incr(key);
+    if (count === 1) {
+      await pubClient.expire(key, AUTH_RATE_WINDOW_SECS);
+    }
+    if (count > maxAttempts) {
+      const ttl = await pubClient.ttl(key);
+      const retryAfterSecs = ttl > 0 ? ttl : AUTH_RATE_WINDOW_SECS;
+      logger.warn({ ip, prefix, count }, `[Auth] IP rate limit exceeded on ${prefix}`);
+      res.set('Retry-After', String(retryAfterSecs));
+      res.status(429).json({ error: 'Too many attempts. Please try again later.' });
+      return;
+    }
+  } catch (err) {
+    // Redis error — fail open
+    logger.warn({ err }, '[Auth] Redis rate limit check failed, proceeding');
+  }
+  next();
 }
 
-const loginRateLimitMap = new Map<string, RateLimitEntry>();
-
-// Cleanup expired entries every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [ip, entry] of loginRateLimitMap) {
-    if (now >= entry.resetAt) loginRateLimitMap.delete(ip);
-  }
-}, 5 * 60 * 1000).unref();
-
 function loginRateLimit(req: Request, res: Response, next: () => void): void {
-  const ip = req.ip || req.socket.remoteAddress || 'unknown';
-  const now = Date.now();
-  const entry = loginRateLimitMap.get(ip);
+  redisRateLimit(req, res, next, 'login', AUTH_RATE_MAX_LOGIN);
+}
 
-  if (!entry || now >= entry.resetAt) {
-    loginRateLimitMap.set(ip, { count: 1, resetAt: now + LOGIN_RATE_WINDOW_MS });
-    next();
-    return;
-  }
-
-  entry.count++;
-  if (entry.count > LOGIN_RATE_MAX) {
-    const retryAfterSecs = Math.ceil((entry.resetAt - now) / 1000);
-    logger.warn({ ip }, '[Auth] IP rate limit exceeded on login');
-    res.set('Retry-After', String(retryAfterSecs));
-    res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
-    return;
-  }
-
-  next();
+function resetPasswordRateLimit(req: Request, res: Response, next: () => void): void {
+  redisRateLimit(req, res, next, 'reset-pw', AUTH_RATE_MAX_RESET);
 }
 
 function maskEmail(email: string): string {
@@ -187,6 +196,7 @@ router.post('/forgot-password', [
  *         description: Invalid/expired token or password too weak
  */
 router.post('/reset-password', [
+    resetPasswordRateLimit,
     body('token').notEmpty().withMessage('Token is required'),
     body('password').isLength({ min: 10 }).withMessage('Password must be at least 10 characters'),
     validate([])
