@@ -58,6 +58,12 @@ client/test-results/
 # AI tooling
 .superpowers/
 .aider*
+.gemini/
+.cursorrules
+.mcp.json
+
+# Git hooks (solo project)
+.husky/
 
 # Video recordings
 docs/videos/
