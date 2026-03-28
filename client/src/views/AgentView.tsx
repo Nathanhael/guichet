@@ -45,7 +45,7 @@ export default function AgentView() {
     [tickets, user?.id],
   );
   const unreadCount = useMemo(
-    () => agentTickets.filter((tk) => unreadTickets.has(tk.id)).length,
+    () => agentTickets.filter((tk) => !!unreadTickets[tk.id]).length,
     [agentTickets, unreadTickets],
   );
   const showSidebar = agentTickets.length > 0;
