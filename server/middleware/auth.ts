@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import config from '../config.js';
 import { Request, Response, NextFunction } from 'express';
 import { User, UserRole } from '../types/index.js';
+import { jwtPayloadSchema } from '../trpc/context.js';
 import logger from '../utils/logger.js';
 import { canManageTenant, canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
@@ -35,7 +36,7 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
     return res.status(401).json({ error: 'No token provided' });
   }
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as { userId: string; role: UserRole; partnerId?: string; membershipId?: string; departments?: unknown[]; isPlatformOperator: boolean; platformStepUpAt?: number; jti?: string; exp?: number; iat?: number };
+    const decoded = jwtPayloadSchema.parse(jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }));
     const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
     if (revoked) {
       return res.status(401).json({ error: 'Session revoked' });
