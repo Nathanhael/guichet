@@ -12,7 +12,7 @@
 import crypto from 'crypto';
 import { db, transaction } from '../db.js';
 import { auditLog, auditArchive, tickets, archivedTickets, messages } from '../db/schema.js';
-import { lte, asc, desc, eq, and, inArray, sql, notExists } from 'drizzle-orm';
+import { lte, asc, desc, eq, and, inArray, sql, notExists, gt } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 import config from '../config.js';
 
@@ -115,36 +115,48 @@ export async function archiveAuditLog(archiveDelayDays?: number): Promise<number
  * Returns { valid: boolean; brokenAt?: string } where brokenAt is the id of the
  * first entry with a mismatched hash.
  */
+const VERIFY_BATCH_SIZE = 10_000;
+
 export async function verifyAuditChain(): Promise<{ valid: boolean; checked: number; brokenAt?: string }> {
   try {
-    const rows = await db.select()
-      .from(auditArchive)
-      .orderBy(asc(auditArchive.sequence));
-
     let prevHash = '0'.repeat(64);
     let checked = 0;
+    let lastSequence = 0;
 
-    for (const row of rows) {
-      const rowData = {
-        id: row.id,
-        action: row.action,
-        actorId: row.actorId,
-        partnerId: row.partnerId,
-        targetType: row.targetType,
-        targetId: row.targetId,
-        metadata: row.metadata,
-        createdAt: row.createdAt,
-      };
+    while (true) {
+      const rows = await db.select()
+        .from(auditArchive)
+        .where(gt(auditArchive.sequence, lastSequence))
+        .orderBy(asc(auditArchive.sequence))
+        .limit(VERIFY_BATCH_SIZE);
 
-      const expected = computeChainHash(prevHash, rowData);
-      checked++;
+      for (const row of rows) {
+        const rowData = {
+          id: row.id,
+          action: row.action,
+          actorId: row.actorId,
+          partnerId: row.partnerId,
+          targetType: row.targetType,
+          targetId: row.targetId,
+          metadata: row.metadata,
+          createdAt: row.createdAt,
+        };
 
-      if (expected !== row.chainHash) {
-        logger.warn({ id: row.id, expected, actual: row.chainHash }, '[archive] Hash chain integrity violation');
-        return { valid: false, checked, brokenAt: row.id };
+        const expected = computeChainHash(prevHash, rowData);
+        checked++;
+
+        if (expected !== row.chainHash) {
+          logger.warn({ id: row.id, expected, actual: row.chainHash }, '[archive] Hash chain integrity violation');
+          return { valid: false, checked, brokenAt: row.id };
+        }
+
+        prevHash = row.chainHash;
+        lastSequence = row.sequence;
       }
 
-      prevHash = row.chainHash;
+      if (rows.length < VERIFY_BATCH_SIZE) {
+        break;
+      }
     }
 
     logger.info({ checked }, '[archive] Hash chain verified OK');
