@@ -5,6 +5,7 @@ import { messageRouter } from './routers/message.js';
 import { presenceRouter } from './routers/presence.js';
 import { feedbackRouter } from './routers/feedback.js';
 import { ratingRouter } from './routers/rating.js';
+import { savedViewRouter } from './routers/savedView.js';
 import { statsRouter } from './routers/stats.js';
 import { userRouter } from './routers/user.js';
 import { platformRouter } from './routers/platform.js';
@@ -27,6 +28,7 @@ export const appRouter = router({
   presence: presenceRouter,
   feedback: feedbackRouter,
   rating: ratingRouter,
+  savedView: savedViewRouter,
   stats: statsRouter,
   user: userRouter,
   platform: platformRouter,
