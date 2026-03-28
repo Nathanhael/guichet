@@ -13,7 +13,7 @@ const configSchema = z.object({
     // Default to true (secure). Set COOKIE_SECURE=false only for local dev (no HTTPS).
     COOKIE_SECURE: z.preprocess(v => v === 'false' || v === '0' ? false : v === 'true' || v === '1' || v === true ? true : v, z.boolean()).default(true),
     PURGE_INTERVAL_MS: z.coerce.number().int().positive().default(24 * 60 * 60 * 1000),
-    JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters for security'),
+    JWT_SECRET: z.string().min(64, 'JWT_SECRET must be at least 64 characters for HS256 security'),
     JWT_EXPIRY: z.string().default('24h'),
     MAX_EXPERTS_SHOWN: z.coerce.number().int().positive().default(8),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
@@ -48,6 +48,8 @@ const configSchema = z.object({
     AZURE_AD_CLIENT_SECRET: z.string().optional(),
     AZURE_AD_REDIRECT_URI: z.string().url().optional(),
     FRONTEND_URL: z.string().url().default('http://localhost:3001'),
+    DISABLE_RATE_LIMIT: z.string().default('false').transform(v => v === 'true'),
+    NODE_ENV: z.string().default('development'),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -89,6 +91,8 @@ const parseResult = configSchema.safeParse({
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
     AZURE_AD_REDIRECT_URI: process.env.AZURE_AD_REDIRECT_URI,
     FRONTEND_URL: process.env.FRONTEND_URL,
+    DISABLE_RATE_LIMIT: process.env.DISABLE_RATE_LIMIT,
+    NODE_ENV: process.env.NODE_ENV,
 });
 
 if (!parseResult.success) {
@@ -100,5 +104,9 @@ if (!parseResult.success) {
 }
 
 const config: Config = parseResult.data;
+
+if (config.NODE_ENV === 'production' && config.DISABLE_RATE_LIMIT) {
+    console.error('FATAL: SECURITY WARNING: Rate limiting is disabled in production!');
+}
 
 export default config;

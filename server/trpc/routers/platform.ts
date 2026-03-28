@@ -11,6 +11,7 @@ import { broadcastPartnerDeactivation } from '../../socket/handlers.js';
 import { MailService } from '../../services/mail.js';
 import { renderInviteNew, renderInviteExisting, renderInviteReminder, renderTestEmail } from '../../services/mailTemplates.js';
 import { hashPassword } from '../../utils/passwords.js';
+import { validateWebhookUrl } from '../../services/webhookDispatch.js';
 
 export const platformRouter = router({
   // --- System Health ---
@@ -150,11 +151,31 @@ export const platformRouter = router({
           sentimentDetection: z.boolean().optional(),
           autoSummarizeOnClose: z.boolean().optional(),
         }).optional(),
+        // AI provider configuration (baseUrl, apiKey, deployment)
+        aiConfig: z.object({
+          baseUrl: z.string().url().optional(),
+          apiKey: z.string().optional(),
+          deployment: z.string().optional(),
+        }).optional(),
+        aiProvider: z.enum(['ollama', 'azure-openai', 'openai-compatible']).optional(),
+        aiModel: z.string().optional(),
       })
     }))
     .mutation(async ({ input, ctx }) => {
+      // H-4: SSRF validation — reject aiConfig.baseUrl pointing to private/reserved IPs
+      if (input.data.aiConfig?.baseUrl) {
+        try {
+          await validateWebhookUrl(input.data.aiConfig.baseUrl);
+        } catch (err) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `AI base URL rejected: ${err instanceof Error ? err.message : 'URL must not resolve to a private or reserved IP address'}`,
+          });
+        }
+      }
+
       const before = await db.select().from(partners).where(eq(partners.id, input.id)).limit(1);
-      
+
       // Explicitly pick only allowed fields — never spread unsanitized input
       const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (input.data.name !== undefined) updateData.name = input.data.name;
@@ -164,6 +185,9 @@ export const platformRouter = router({
       if (input.data.authMethod !== undefined) updateData.authMethod = input.data.authMethod;
       if (input.data.aiEnabled !== undefined) updateData.aiEnabled = input.data.aiEnabled;
       if (input.data.aiFeatures !== undefined) updateData.aiFeatures = input.data.aiFeatures;
+      if (input.data.aiConfig !== undefined) updateData.aiConfig = input.data.aiConfig;
+      if (input.data.aiProvider !== undefined) updateData.aiProvider = input.data.aiProvider;
+      if (input.data.aiModel !== undefined) updateData.aiModel = input.data.aiModel;
 
       await db.update(partners)
         .set(updateData)

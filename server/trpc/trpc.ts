@@ -21,7 +21,13 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
-// Middleware for Platform Operators (Developers)
+/**
+ * Platform operator check WITHOUT step-up TOTP verification.
+ * Intentionally for low-risk read-only operations and for the step-up
+ * authentication flow itself (getStatus, beginSetup, enable, verify)
+ * which must work before step-up is satisfied.
+ * For sensitive platform mutations, use `platformProcedure` instead.
+ */
 export const platformBaseProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (!isPlatformAdmin(ctx.user.isPlatformOperator)) {
     throw new TRPCError({ code: 'FORBIDDEN', message: 'Platform Operator role required' });
@@ -66,9 +72,30 @@ export const partnerAdminProcedure = partnerScopedProcedure.use(({ ctx, next }) 
   return next();
 });
 
-// Helper for dynamic role checks
+/**
+ * Dynamic role check on `protectedProcedure` (no partner guarantee).
+ * Use when the endpoint does NOT need a guaranteed `partnerId` (e.g. platform-level listings).
+ * For partner-scoped endpoints that also need a role gate, use `partnerRoleProcedure` instead.
+ */
 export const roleProcedure = (roles: UserRole[]) =>
   protectedProcedure.use(({ ctx, next }) => {
+    // Platform operators can bypass role checks to manage data across any partner
+    if (!roles.includes(ctx.user.role) && !isPlatformAdmin(ctx.user.isPlatformOperator)) {
+      throw new TRPCError({ code: 'FORBIDDEN' });
+    }
+    return next();
+  });
+
+/**
+ * Dynamic role check on `partnerScopedProcedure` (guarantees `partnerId` is set).
+ * Use for any partner-scoped endpoint that needs both a role gate AND a guaranteed
+ * non-null `partnerId`. This eliminates the need for manual `ctx.user.partnerId`
+ * guards in every consumer, preventing cross-tenant data leaks.
+ *
+ * Prefer this over `roleProcedure` for all tenant-scoped mutations and queries.
+ */
+export const partnerRoleProcedure = (roles: UserRole[]) =>
+  partnerScopedProcedure.use(({ ctx, next }) => {
     // Platform operators can bypass role checks to manage data across any partner
     if (!roles.includes(ctx.user.role) && !isPlatformAdmin(ctx.user.isPlatformOperator)) {
       throw new TRPCError({ code: 'FORBIDDEN' });

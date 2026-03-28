@@ -76,11 +76,10 @@ const SWEAR_WORDS = [
 
 const swearRegex = new RegExp(
   `\\b(${SWEAR_WORDS.map((w) => w.replace(/\s+/g, '\\s+')).join('|')})\\b`,
-  'gi'
+  'i'
 );
 
 export function guardSwearing(text: string): GuardResult {
-  swearRegex.lastIndex = 0;
   if (swearRegex.test(text)) {
     return block('guard_offensive');
   }
@@ -153,8 +152,44 @@ export function guardInjection(text: string): GuardResult {
 // ─── Master guard runner ──────────────────────────────────────────────────────
 
 /**
+ * Runs all synchronous (non-Redis) guards: length, caps, injection, swearing,
+ * threats, discrimination. These guards are deterministic and must always run
+ * (fail closed). Returns the guard result and the possibly-sanitized text.
+ */
+export function runSyncGuards(text: string): GuardResult & { text: string } {
+  let current = text;
+
+  // 1. Length
+  const lengthResult = guardLength(current);
+  if (!lengthResult.ok) return { ...lengthResult, text: current };
+
+  // 2. ALL CAPS (sanitizes but does not block)
+  const capsResult = guardCaps(current);
+  if (capsResult.sanitized) current = capsResult.sanitized;
+
+  // 3. Injection
+  const injectionResult = guardInjection(current);
+  if (!injectionResult.ok) return { ...injectionResult, text: current };
+
+  // 4. Swearing
+  const swearResult = guardSwearing(current);
+  if (!swearResult.ok) return { ...swearResult, text: current };
+
+  // 5. Threats
+  const threatResult = guardThreats(current);
+  if (!threatResult.ok) return { ...threatResult, text: current };
+
+  // 6. Discrimination
+  const discResult = guardDiscrimination(current);
+  if (!discResult.ok) return { ...discResult, text: current };
+
+  return { ok: true, code: 'PASS', text: current };
+}
+
+/**
  * Master guard runner. Executes all guards in a tiered pipeline.
- * Runs local regex/length/injection/content checks in sequence.
+ * Runs local regex/length/injection/content checks in sequence,
+ * then the Redis-dependent repetition guard.
  *
  * @param {ReturnType<typeof createClient> | null} redisClient - Redis client instance.
  * @param {string} text - The raw message text.
@@ -166,35 +201,13 @@ export async function runGuards(
   text: string,
   senderId: string
 ): Promise<GuardResult & { text: string }> {
-  let current = text;
+  // Synchronous guards (fail closed)
+  const syncResult = runSyncGuards(text);
+  if (!syncResult.ok) return syncResult;
 
-  // 1. Length
-  const lengthResult = guardLength(current);
-  if (!lengthResult.ok) return { ...lengthResult, text: current };
+  // Redis-dependent guard (repetition)
+  const repResult = await guardRepetition(redisClient, syncResult.text, senderId);
+  if (!repResult.ok) return { ...repResult, text: syncResult.text };
 
-  // 2. ALL CAPS
-  const capsResult = guardCaps(current);
-  if (capsResult.sanitized) current = capsResult.sanitized;
-
-  // 3. Repetition
-  const repResult = await guardRepetition(redisClient, current, senderId);
-  if (!repResult.ok) return { ...repResult, text: current };
-
-  // 4. Injection
-  const injectionResult = guardInjection(current);
-  if (!injectionResult.ok) return { ...injectionResult, text: current };
-
-  // 5. Swearing
-  const swearResult = guardSwearing(current);
-  if (!swearResult.ok) return { ...swearResult, text: current };
-
-  // 6. Threats
-  const threatResult = guardThreats(current);
-  if (!threatResult.ok) return { ...threatResult, text: current };
-
-  // 7. Discrimination
-  const discResult = guardDiscrimination(current);
-  if (!discResult.ok) return { ...discResult, text: current };
-
-  return { ok: true, code: 'PASS', text: current };
+  return { ok: true, code: 'PASS', text: syncResult.text };
 }

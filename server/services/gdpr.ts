@@ -20,6 +20,7 @@ export async function runDailyPurge() {
     const chainResult = await verifyAuditChain();
     if (!chainResult.valid) {
       logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked }, '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken');
+      throw new Error('GDPR purge aborted: audit chain integrity violation detected');
     } else if (chainResult.checked > 0) {
       logger.info({ checked: chainResult.checked }, '[purge] Audit chain integrity verified');
     }
@@ -122,6 +123,29 @@ export async function runDailyPurge() {
       // Purge app_feedback older than retention period (GDPR compliance)
       await tx.execute(sql`DELETE FROM app_feedback WHERE created_at < ${cutoffDate}`);
       await tx.execute(sql`DELETE FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'`);
+
+      // Anonymize audit_log: null out actorId for records tied to purged users
+      // We identify affected users as participants/agents of purged tickets
+      const auditResult = await tx.execute(sql`
+        UPDATE audit_log SET actor_id = NULL
+        WHERE actor_id IN (
+          SELECT DISTINCT unnest(array_agg(agent_id) || array_agg(support_id))
+          FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'
+        ) AND created_at < ${cutoffDate}
+      `);
+      const auditAnonymized = (auditResult as { rowCount?: number }).rowCount ?? 0;
+
+      // Anonymize audit_archive: same treatment for archived audit entries
+      const archiveResult = await tx.execute(sql`
+        UPDATE audit_archive SET actor_id = NULL
+        WHERE actor_id IN (
+          SELECT DISTINCT unnest(array_agg(agent_id) || array_agg(support_id))
+          FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'
+        ) AND created_at < ${cutoffDate}
+      `);
+      const archiveAnonymized = (archiveResult as { rowCount?: number }).rowCount ?? 0;
+
+      logger.info({ auditAnonymized, archiveAnonymized, cutoffDate }, '[purge] Audit records anonymized (actorId set to NULL)');
     });
 
     // Log the successful purge in audit_log

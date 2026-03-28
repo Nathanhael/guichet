@@ -5,7 +5,7 @@ const isRevokedMock = vi.fn();
 
 vi.mock('../config.js', () => ({
   default: {
-    JWT_SECRET: 'test-secret-key-only-for-unit-tests',
+    JWT_SECRET: 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
   },
 }));
 
@@ -27,7 +27,7 @@ vi.mock('../services/roles.js', () => ({
   canUseSupportWorkflows: (role: string, isPlatformOp: boolean) => role === 'support' || role === 'admin' || isPlatformOp,
 }));
 
-const SECRET = 'test-secret-key-only-for-unit-tests';
+const SECRET = 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!';
 
 function makeToken(payload: Record<string, unknown>) {
   return jwt.sign(payload, SECRET, { expiresIn: '1h' });

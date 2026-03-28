@@ -106,7 +106,7 @@ describe('runDailyPurge', () => {
     archiveTicketsMock.mockResolvedValue(0);
     verifyAuditChainMock.mockResolvedValue({ valid: true, checked: 0 });
     transactionMock.mockImplementation(async (cb: (tx: { execute: ReturnType<typeof vi.fn> }) => Promise<void>) => {
-      const tx = { execute: vi.fn().mockResolvedValue(undefined) };
+      const tx = { execute: vi.fn().mockResolvedValue({ rowCount: 0 }) };
       await cb(tx);
     });
     insertValuesMock.mockResolvedValue(undefined);
@@ -147,9 +147,9 @@ describe('runDailyPurge', () => {
 
     // Verify the transaction callback executes 4 DELETEs
     const txCallback = transactionMock.mock.calls[0][0];
-    const txMock = { execute: vi.fn().mockResolvedValue(undefined) };
+    const txMock = { execute: vi.fn().mockResolvedValue({ rowCount: 0 }) };
     await txCallback(txMock);
-    expect(txMock.execute).toHaveBeenCalledTimes(5); // messages, ratings, ticket_labels, app_feedback, tickets
+    expect(txMock.execute).toHaveBeenCalledTimes(7); // messages, ratings, ticket_labels, app_feedback, tickets + audit_log anonymize + audit_archive anonymize
   });
 
   it('does NOT delete tickets within the retention window', async () => {

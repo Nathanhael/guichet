@@ -361,7 +361,17 @@ router.post('/login-local', loginRateLimit, [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Successful password check — re-check lockout (may have been reached on a concurrent request)
+        // Re-check lockout after password verification.
+        // Note: `user` was fetched at request start and may be stale if a concurrent request
+        // locked the account between our initial check and now. However, this is safe because:
+        // 1. `recordFailedLogin()` uses an atomic SQL UPDATE that handles the actual lock.
+        // 2. If the concurrent request locked the account, `recordFailedLogin()` above already
+        //    returned `{ locked: true }` and we returned 423 before reaching this point.
+        // 3. This re-check is a belt-and-suspenders guard for the edge case where password
+        //    verification succeeded but a *different* concurrent request locked the account
+        //    between our initial lockout check and password verification.
+        // For higher assurance, a fresh DB fetch could replace this, but the atomic SQL in
+        // recordFailedLogin makes the current approach functionally correct.
         const lockoutAfterPw = checkLockout(user);
         if (lockoutAfterPw.locked) {
             const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
@@ -381,21 +391,8 @@ router.post('/login-local', loginRateLimit, [
         if (user.mfaEnabledAt) {
             const { totpCode } = req.body;
             if (!totpCode) {
-                // Return MFA challenge — client must re-submit with TOTP code
-                // Store challenge token in Redis instead of exposing userId
-                const challengeToken = crypto.randomUUID();
-                try {
-                    const { pubClient } = getRedisClients();
-                    if (!pubClient) {
-                        logger.error('[Auth] Redis unavailable for MFA challenge token storage');
-                        return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
-                    }
-                    await pubClient.set(`mfa-challenge:${challengeToken}`, user.id, { EX: 60 });
-                } catch (redisErr) {
-                    logger.error({ err: redisErr }, '[Auth] Failed to store MFA challenge token');
-                    return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
-                }
-                return res.status(200).json({ mfaRequired: true, challengeToken });
+                // Return MFA challenge — client must re-submit with email+password+totpCode
+                return res.status(200).json({ mfaRequired: true });
             }
             // Verify TOTP code (import inline to avoid circular deps)
             const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../services/platformStepUp.js');
@@ -526,7 +523,9 @@ router.post('/login', loginRateLimit, [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Successful password check — re-check lockout (may have been reached on a concurrent request)
+        // Re-check lockout after password verification (see login-local route for detailed explanation).
+        // The stale `user` object is safe here because recordFailedLogin() uses atomic SQL —
+        // this is a belt-and-suspenders guard for concurrent-request edge cases.
         const lockoutAfterPw = checkLockout(user);
         if (lockoutAfterPw.locked) {
             const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
@@ -546,20 +545,8 @@ router.post('/login', loginRateLimit, [
         if (user.mfaEnabledAt) {
             const { totpCode } = req.body;
             if (!totpCode) {
-                // Store challenge token in Redis instead of exposing userId
-                const challengeToken = crypto.randomUUID();
-                try {
-                    const { pubClient } = getRedisClients();
-                    if (!pubClient) {
-                        logger.error('[Auth] Redis unavailable for MFA challenge token storage');
-                        return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
-                    }
-                    await pubClient.set(`mfa-challenge:${challengeToken}`, user.id, { EX: 60 });
-                } catch (redisErr) {
-                    logger.error({ err: redisErr }, '[Auth] Failed to store MFA challenge token');
-                    return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
-                }
-                return res.status(200).json({ mfaRequired: true, challengeToken });
+                // Return MFA challenge — client must re-submit with id+password+totpCode
+                return res.status(200).json({ mfaRequired: true });
             }
             const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../services/platformStepUp.js');
             const totpAlreadyUsed = await isTotpTokenUsed(user.id, totpCode);
@@ -719,7 +706,10 @@ router.post('/logout', (await import('../middleware/auth.js')).auth, async (req:
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
         if (req.user.tokenJti) {
-            await revokeToken(req.user.tokenJti, req.user.tokenExp);
+            const revoked = await revokeToken(req.user.tokenJti, req.user.tokenExp);
+            if (!revoked) {
+                logger.error({ jti: req.user.tokenJti }, '[Auth] SECURITY: Token revocation failed at logout — token may remain valid until expiry');
+            }
         }
         clearAuthCookie(res);
         res.json({ success: true });

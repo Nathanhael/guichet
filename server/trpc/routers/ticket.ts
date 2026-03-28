@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { tickets, ticketLabels } from '../../db/schema.js';
+import { tickets, ticketLabels, memberships } from '../../db/schema.js';
 import { eq, and, or, ilike, sql, asc, desc, gte, lte, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
@@ -52,6 +52,19 @@ export const ticketRouter = router({
           conditions.push(eq(tickets.agentId, ctx.user.id));
         } else if (input.agentId) {
           conditions.push(eq(tickets.agentId, input.agentId));
+        }
+
+        // H-6: Department isolation for support users with assigned departments
+        // Empty/null departments = generalist (sees all). Admin and platform_operator are not restricted.
+        if (!ctx.user.isPlatformOperator && ctx.user.role === 'support' && ctx.user.membershipId) {
+          const membershipRow = await db.select({ departments: memberships.departments })
+            .from(memberships)
+            .where(eq(memberships.id, ctx.user.membershipId))
+            .limit(1);
+          const depts = membershipRow[0]?.departments as string[] | null | undefined;
+          if (Array.isArray(depts) && depts.length > 0) {
+            conditions.push(inArray(tickets.dept, depts));
+          }
         }
         if (input.status) conditions.push(eq(tickets.status, input.status));
         if (input.dept && input.dept !== 'all') conditions.push(eq(tickets.dept, input.dept));
@@ -142,7 +155,7 @@ export const ticketRouter = router({
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         logger.error({ err: message, input }, 'tRPC: Error listing tickets');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' });
       }
     }),
 
@@ -162,6 +175,12 @@ export const ticketRouter = router({
         }
 
         const t = result[0];
+
+        // M-6: Agents can only view their own tickets (mirrors ticket.list CR-04 filter)
+        if (!ctx.user.isPlatformOperator && ctx.user.role === 'agent' && t.agentId !== ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Ticket not found' });
+        }
+
         const labelsMap = await fetchLabelsForTickets([t.id]);
 
         return {
@@ -173,7 +192,7 @@ export const ticketRouter = router({
         if (err instanceof TRPCError) throw err;
         const message = err instanceof Error ? err.message : String(err);
         logger.error({ err: message, id }, 'tRPC: Error getting ticket');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' });
       }
     }),
 });

@@ -40,7 +40,7 @@ export default function AdminFeedback() {
   // tRPC: Users List
   const { data: usersData } = trpc.user.list.useQuery();
 
-  const users = (usersData || []) as Array<{ id: string; name: string; email: string; role: string; dept?: string }>;
+  const users = (usersData || []) as Array<{ id: string; name: string; email: string; roles: string[] | null; dept?: string }>;
   const feedback = feedbackQuery.data || [];
   const ratings = (ratingsQuery.data?.items || []) as Array<{ id: string; ticketId: string; agentId: string; supportId: string | null; rating: number; comment: string | null; createdAt: string }>;
   const loadingFeedback = feedbackQuery.isLoading;
@@ -53,8 +53,9 @@ export default function AdminFeedback() {
   const agentDeptMap: Record<string, string> = {};
   const supportNameMap: Record<string, string> = {};
   users.forEach((u) => {
-    if (u.role === 'agent') agentDeptMap[u.id] = u.dept || 'N/A';
-    if (u.role === 'support' || u.role === 'admin') supportNameMap[u.id] = u.name;
+    const userRoles = u.roles || [];
+    if (userRoles.includes('agent')) agentDeptMap[u.id] = u.dept || 'N/A';
+    if (userRoles.includes('support') || userRoles.includes('admin')) supportNameMap[u.id] = u.name;
   });
 
   const supportRatings: SupportRatings = {};

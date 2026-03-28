@@ -6,9 +6,11 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve with nginx
-FROM nginx:alpine
+# Stage 2: Serve with unprivileged nginx (non-root)
+FROM nginxinc/nginx-unprivileged:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html
+# NOTE: Production nginx.conf must listen on 8080 (unprivileged ports only).
+# The dev client/nginx.conf listens on 80 and is NOT used here.
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile.prod
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/tessera
-      - REDIS_URL=redis://redis:6379
+      - REDIS_URL=redis://:devpassword@redis:6379
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set in .env}
       - DISABLE_RATE_LIMIT=${DISABLE_RATE_LIMIT:-false}
       - NODE_ENV=development
@@ -66,8 +66,9 @@ services:
   redis:
     image: redis:8-alpine
     restart: always
+    command: ["redis-server", "--requirepass", "devpassword"]
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=devpassword redis-cli ping"]
       interval: 5s
       timeout: 5s
       retries: 5

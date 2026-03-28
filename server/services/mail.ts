@@ -38,6 +38,9 @@ export class MailService {
         host: config.smtpHost,
         port: config.smtpPort,
         secure: config.smtpSecure,
+        // When not using implicit TLS (secure: false, typically port 587), require STARTTLS
+        // to prevent MITM TLS stripping attacks
+        ...(!config.smtpSecure && { requireTLS: true }),
         auth: {
           user: config.smtpUser,
           pass: config.smtpPass,
@@ -61,6 +64,7 @@ export class MailService {
         host: 'smtp.sendgrid.net',
         port: 587,
         secure: false,
+        requireTLS: true, // Force STARTTLS to prevent MITM TLS stripping
         auth: {
           user: 'apikey',
           pass: config.apiKey,

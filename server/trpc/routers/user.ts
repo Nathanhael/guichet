@@ -16,7 +16,7 @@ export const userRouter = router({
       try {
         const users = await query(`
           SELECT id, name, lang, is_platform_operator,
-            (SELECT role FROM memberships WHERE user_id = users.id LIMIT 1) as role
+            (SELECT json_agg(DISTINCT role) FROM memberships WHERE user_id = users.id) as roles
           FROM users
           WHERE deleted_at IS NULL
           ORDER BY is_platform_operator DESC, name ASC

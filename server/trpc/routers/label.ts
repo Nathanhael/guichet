@@ -73,10 +73,8 @@ export const labelRouter = router({
     .input(z.string())
     .mutation(async ({ input: id, ctx }) => {
       try {
-        const conditions = [eq(labels.id, id)];
-        if (!ctx.user.isPlatformOperator) {
-          conditions.push(eq(labels.partnerId, ctx.user.partnerId!));
-        }
+        // Always scope to current partner — platform operators have partnerId set via enter-partner
+        const conditions = [eq(labels.id, id), eq(labels.partnerId, ctx.user.partnerId!)];
 
         await db.transaction(async (tx) => {
           const existing = await tx.select().from(labels).where(and(...conditions)).limit(1);
