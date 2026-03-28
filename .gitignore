@@ -61,6 +61,14 @@ client/test-results/
 .gemini/
 .cursorrules
 .mcp.json
+CLAUDE.md
+GEMINI.md
+
+# Internal planning/review
+PLAN.md
+CODE_REVIEW_*.md
+RELEASE-NOTES-*.md
+conductor/
 
 # Git hooks (solo project)
 .husky/
