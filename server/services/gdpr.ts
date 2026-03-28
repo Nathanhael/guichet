@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
-import { ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable } from '../db/schema.js';
+import { ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable, dailyAiUsage } from '../db/schema.js';
 
 export async function runDailyPurge() {
   try {
@@ -148,16 +148,79 @@ export async function runDailyPurge() {
       logger.info({ auditAnonymized, archiveAnonymized, cutoffDate }, '[purge] Audit records anonymized (actorId set to NULL)');
     });
 
+    // Step 3: Aggregate and purge old AI usage logs (separate retention window)
+    const aiPurged = await aggregateAndPurgeAiUsage();
+    if (aiPurged > 0) {
+      logger.info({ aiPurged }, '[purge] AI usage log aggregate + purge complete');
+    }
+
     // Log the successful purge in audit_log
     await db.insert(auditLogTable).values({
       action: 'system.gdpr_purge',
       actorId: null, // System action, no user associated
       targetType: 'system',
-      metadata: { cutoffDate, success: true }
+      metadata: { cutoffDate, aiUsagePurged: aiPurged, success: true }
     });
 
     logger.info(`[purge] GDPR purge complete for data older than ${cutoffDate}.`);
   } catch (err) {
     logger.error({ err }, '[purge] Error during daily purge');
   }
+}
+
+/**
+ * Aggregate ai_usage_log rows older than AI_USAGE_RETENTION_DAYS into
+ * daily_ai_usage summaries, then delete the source rows.
+ * Returns the number of rows purged.
+ */
+export async function aggregateAndPurgeAiUsage(): Promise<number> {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - config.AI_USAGE_RETENTION_DAYS);
+  const cutoffDate = cutoff.toISOString().slice(0, 10);
+
+  // Step 1: Aggregate into daily_ai_usage (upsert to be idempotent)
+  await run(`
+    INSERT INTO daily_ai_usage
+      (id, date, partner_id, action, provider, model,
+       total_input_tokens, total_output_tokens, total_requests,
+       success_count, error_count, avg_latency_ms)
+    SELECT
+      gen_random_uuid(),
+      created_at::date::text,
+      partner_id,
+      action,
+      provider,
+      model,
+      COALESCE(SUM(input_tokens), 0),
+      COALESCE(SUM(output_tokens), 0),
+      COUNT(*),
+      COUNT(*) FILTER (WHERE success = true),
+      COUNT(*) FILTER (WHERE success = false),
+      CASE WHEN COUNT(*) FILTER (WHERE latency_ms IS NOT NULL) > 0
+           THEN (SUM(latency_ms) / COUNT(*) FILTER (WHERE latency_ms IS NOT NULL))::int
+           ELSE NULL END
+    FROM ai_usage_log
+    WHERE created_at < $1
+    GROUP BY created_at::date::text, partner_id, action, provider, model
+    ON CONFLICT (date, partner_id, action, provider, model) DO UPDATE SET
+      total_input_tokens  = daily_ai_usage.total_input_tokens  + EXCLUDED.total_input_tokens,
+      total_output_tokens = daily_ai_usage.total_output_tokens + EXCLUDED.total_output_tokens,
+      total_requests      = daily_ai_usage.total_requests      + EXCLUDED.total_requests,
+      success_count       = daily_ai_usage.success_count       + EXCLUDED.success_count,
+      error_count         = daily_ai_usage.error_count         + EXCLUDED.error_count,
+      avg_latency_ms      = CASE
+        WHEN (daily_ai_usage.total_requests + EXCLUDED.total_requests) > 0
+        THEN ((COALESCE(daily_ai_usage.avg_latency_ms, 0) * daily_ai_usage.total_requests
+             + COALESCE(EXCLUDED.avg_latency_ms, 0) * EXCLUDED.total_requests)
+             / (daily_ai_usage.total_requests + EXCLUDED.total_requests))::int
+        ELSE NULL END
+  `, [cutoffDate]);
+
+  // Step 2: Delete the now-aggregated source rows
+  const result = await run(
+    `DELETE FROM ai_usage_log WHERE created_at < $1`,
+    [cutoffDate]
+  );
+
+  return result.changes ?? 0;
 }
