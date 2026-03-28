@@ -162,8 +162,8 @@ export default function AdminArchive() {
                       </td>
                       <td className="px-4 py-2.5 font-bold">{ticket.agentName}</td>
                       <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">
-                        {(ticket.references || []).length > 0
-                          ? (ticket.references || []).map((ref) => (
+                        {(ticket.references as Array<{label: string; value: string}> || []).length > 0
+                          ? (ticket.references as Array<{label: string; value: string}> || []).map((ref) => (
                               <span key={ref.label} className="mr-2">
                                 <span className="text-[var(--color-text-secondary)] uppercase text-[9px] font-bold tracking-wide">{ref.label}:</span>{' '}
                                 <span className="font-bold">{ref.value}</span>

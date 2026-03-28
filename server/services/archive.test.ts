@@ -5,7 +5,11 @@ import crypto from 'crypto';
 
 const selectQueue: unknown[] = [];
 const deleteMock = vi.fn();
-const insertValuesMock = vi.fn(() => ({ onConflictDoNothing: vi.fn() }));
+const insertValuesMock = vi.fn(() => ({
+  onConflictDoNothing: vi.fn(() => ({
+    returning: vi.fn(async () => [{ id: 'mock-id' }]),
+  })),
+}));
 
 const limitMock = vi.fn(async () => selectQueue.shift());
 const groupByMock = vi.fn(async () => selectQueue.shift());
@@ -134,7 +138,11 @@ describe('archiveAuditLog', () => {
     dbMock.insert.mockClear();
     dbMock.delete.mockClear();
     insertValuesMock.mockClear();
-    insertValuesMock.mockReturnValue({ onConflictDoNothing: vi.fn() });
+    insertValuesMock.mockReturnValue({
+      onConflictDoNothing: vi.fn(() => ({
+        returning: vi.fn(async () => [{ id: 'mock-id' }]),
+      })),
+    });
     deleteMock.mockReset();
     deleteMock.mockResolvedValue(undefined);
   });
@@ -303,7 +311,11 @@ describe('archiveTickets', () => {
     dbMock.select.mockClear();
     dbMock.insert.mockClear();
     insertValuesMock.mockClear();
-    insertValuesMock.mockReturnValue({ onConflictDoNothing: vi.fn() });
+    insertValuesMock.mockReturnValue({
+      onConflictDoNothing: vi.fn(() => ({
+        returning: vi.fn(async () => [{ id: 'mock-id' }]),
+      })),
+    });
   });
 
   it('archives tickets with message count summary', async () => {

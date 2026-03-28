@@ -10,6 +10,9 @@ export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: UserRole;
+    partnerId?: string;
+    membershipId?: string;
+    departments?: unknown[];
     isPlatformOperator: boolean;
     platformStepUpAt?: number;
     tokenJti?: string;
@@ -32,15 +35,18 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
     return res.status(401).json({ error: 'No token provided' });
   }
   try {
-    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as { userId: string; role: UserRole; isPlatformOperator: boolean; platformStepUpAt?: number; jti?: string; exp?: number; iat?: number };
+    const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as { userId: string; role: UserRole; partnerId?: string; membershipId?: string; departments?: unknown[]; isPlatformOperator: boolean; platformStepUpAt?: number; jti?: string; exp?: number; iat?: number };
     const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
     if (revoked) {
       return res.status(401).json({ error: 'Session revoked' });
     }
 
-    req.user = { 
-      id: decoded.userId, 
+    req.user = {
+      id: decoded.userId,
       role: decoded.role,
+      partnerId: decoded.partnerId,
+      membershipId: decoded.membershipId,
+      departments: decoded.departments,
       isPlatformOperator: isPlatformAdmin(!!decoded.isPlatformOperator),
       platformStepUpAt: decoded.platformStepUpAt,
       tokenJti: decoded.jti,

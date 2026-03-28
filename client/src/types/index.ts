@@ -113,9 +113,9 @@ export interface Label {
 }
 
 export interface Participant {
-  userId: string;
-  userName: string;
-  role: string;
+  id: string;
+  name: string;
+  role?: string;
   lang?: string;
 }
 
@@ -123,17 +123,18 @@ export interface Ticket {
   id: string;
   dept: string;
   agentId: string;
-  agentName: string;
-  agentLang: string;
-  references?: Array<{ label: string; value: string }>;
+  agentName: string | null;
+  agentLang: string | null;
+  references?: Array<{ label: string; value: string }> | unknown;
   cdbId?: string | null; // legacy
   dareRef?: string | null; // legacy
-  status: 'open' | 'active' | 'closed';
+  status: 'open' | 'pending' | 'closed' | 'resolved';
   supportId?: string | null;
   supportName?: string | null;
   supportLang?: string | null;
   supportJoinedAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
   closedAt?: string | null;
   closingNotes?: string | null;
   closedBy?: string | null;
@@ -143,6 +144,8 @@ export interface Ticket {
   slaResponseDueAt?: string | null;
   slaResolutionDueAt?: string | null;
   slaBreached?: boolean;
+  reopened?: boolean;
+  reopenCount?: number;
 }
 
 export interface Message {

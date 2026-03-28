@@ -149,7 +149,7 @@ describe('runDailyPurge', () => {
     const txCallback = transactionMock.mock.calls[0][0];
     const txMock = { execute: vi.fn().mockResolvedValue(undefined) };
     await txCallback(txMock);
-    expect(txMock.execute).toHaveBeenCalledTimes(4); // messages, ratings, ticket_labels, tickets
+    expect(txMock.execute).toHaveBeenCalledTimes(5); // messages, ratings, ticket_labels, app_feedback, tickets
   });
 
   it('does NOT delete tickets within the retention window', async () => {

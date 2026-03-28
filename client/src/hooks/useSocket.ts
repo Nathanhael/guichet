@@ -102,7 +102,7 @@ export function useSocket(): Socket {
     };
 
     const handleSupportJoined = ({ ticketId, supportName, participants }: { ticketId: string; supportName: string; participants: Participant[] }) => {
-      updateTicket(ticketId, { supportName, status: 'active', participants: participants || [] });
+      updateTicket(ticketId, { supportName, status: 'open', participants: participants || [] });
     };
 
     const handleTicketHistory = ({ ticketId, messages, labels }: { ticketId: string; messages: Message[]; labels: string[] }) => {
@@ -201,7 +201,7 @@ export function useSocket(): Socket {
     };
 
     const handleTicketUpdated = ({ ticketId, ...updates }: { ticketId: string; [key: string]: unknown }) => {
-      const allowed: (keyof Ticket)[] = ['status', 'agentId', 'department', 'closedAt', 'participants', 'slaBreached', 'priority', 'subject'];
+      const allowed: (keyof Ticket)[] = ['status', 'agentId', 'dept', 'closedAt', 'participants', 'slaBreached', 'supportId', 'supportName'];
       const safeUpdates: Partial<Ticket> = {};
       for (const key of allowed) {
         if (key in updates) {
