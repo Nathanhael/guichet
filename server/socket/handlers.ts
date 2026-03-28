@@ -580,12 +580,16 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Only support staff can close tickets' });
         }
 
-        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
+        const ticket = await get('SELECT partner_id, status FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string; status: string } | undefined;
         if (!ticket) return;
 
         // Tenant isolation: ticket must belong to caller's partner
         if (ticket.partner_id !== socket.data.partnerId) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
+        }
+
+        if (ticket.status === 'closed') {
+          return; // Already closed
         }
 
         // Limit closing notes length to prevent abuse
