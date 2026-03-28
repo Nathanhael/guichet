@@ -169,6 +169,13 @@
       "when": 1775887200000,
       "tag": "0023_app_feedback_partner_id",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1775973600000,
+      "tag": "0024_ratings_ticket_unique",
+      "breakpoints": true
     }
   ]
 }
