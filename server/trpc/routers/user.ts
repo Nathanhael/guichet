@@ -15,10 +15,10 @@ export const userRouter = router({
     .input(z.object({
       limit: z.number().int().min(1).max(500).default(100),
       offset: z.number().int().min(0).default(0),
-    }).default({}))
+    }).default({ limit: 100, offset: 0 }))
     .query(async ({ input }) => {
       try {
-        const { rows: userRows } = await query(`
+        const userRows = await query(`
           SELECT id, name, lang, is_platform_operator,
             (SELECT json_agg(DISTINCT role) FROM memberships WHERE user_id = users.id) as roles
           FROM users
@@ -27,11 +27,11 @@ export const userRouter = router({
           LIMIT $1 OFFSET $2
         `, [input.limit, input.offset]);
 
-        const { rows: countRows } = await query(
+        const countRows = await query(
           `SELECT COUNT(*)::int as total FROM users WHERE deleted_at IS NULL`
         );
 
-        return { users: userRows, total: countRows[0]?.total ?? 0 };
+        return { users: userRows, total: (countRows[0] as Record<string, unknown>)?.total ?? 0 };
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
         if (err instanceof TRPCError) throw err;
@@ -70,7 +70,7 @@ export const userRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
       }
       try {
-        const { rows } = await query(
+        const rows = await query(
           `SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1`,
           [input.email]
         );
