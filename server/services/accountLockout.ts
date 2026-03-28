@@ -43,7 +43,7 @@ export async function recordFailedLogin(userId: string): Promise<{ locked: boole
       failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1,
       locked_until = CASE
         WHEN COALESCE(failed_login_attempts, 0) + 1 >= ${MAX_ATTEMPTS}
-        THEN (NOW() + INTERVAL '${sql.raw(String(LOCKOUT_MINUTES))} minutes')::text
+        THEN (NOW() + INTERVAL '1 minute' * ${LOCKOUT_MINUTES})::text
         ELSE locked_until
       END
     WHERE id = ${userId}
