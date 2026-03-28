@@ -66,6 +66,10 @@ async function redisRateLimit(
   prefix: string,
   maxAttempts: number,
 ): Promise<void> {
+  if (config.DISABLE_RATE_LIMIT) {
+    next();
+    return;
+  }
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   try {
     const { pubClient } = getRedisClients();
