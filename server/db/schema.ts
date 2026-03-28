@@ -431,3 +431,18 @@ export const dailyAiUsage = pgTable('daily_ai_usage', {
   partnerDateIdx: index('idx_daily_ai_usage_partner_date').on(table.partnerId, table.date),
   uniqueDayKey: uniqueIndex('idx_daily_ai_usage_unique').on(table.date, table.partnerId, table.action, table.provider, table.model),
 }));
+
+// ─── Saved Views ─────────────────────────────────────────────────────────────
+
+export const savedViews = pgTable('saved_views', {
+  id: text('id').primaryKey(),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  filters: jsonb('filters').notNull().default({}),
+  isDefault: boolean('is_default').notNull().default(false),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => [
+  index('idx_saved_views_partner_user').on(table.partnerId, table.userId),
+]);
