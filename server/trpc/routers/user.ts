@@ -12,16 +12,26 @@ import logger from '../../utils/logger.js';
 
 export const userRouter = router({
   list: platformProcedure
-    .query(async () => {
+    .input(z.object({
+      limit: z.number().int().min(1).max(500).default(100),
+      offset: z.number().int().min(0).default(0),
+    }).default({}))
+    .query(async ({ input }) => {
       try {
-        const users = await query(`
+        const { rows: userRows } = await query(`
           SELECT id, name, lang, is_platform_operator,
             (SELECT json_agg(DISTINCT role) FROM memberships WHERE user_id = users.id) as roles
           FROM users
           WHERE deleted_at IS NULL
           ORDER BY is_platform_operator DESC, name ASC
-        `);
-        return users;
+          LIMIT $1 OFFSET $2
+        `, [input.limit, input.offset]);
+
+        const { rows: countRows } = await query(
+          `SELECT COUNT(*)::int as total FROM users WHERE deleted_at IS NULL`
+        );
+
+        return { users: userRows, total: countRows[0]?.total ?? 0 };
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
         if (err instanceof TRPCError) throw err;
