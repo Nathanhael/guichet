@@ -28,12 +28,21 @@ export async function runDailyPurge() {
     cutoff.setDate(cutoff.getDate() - config.GDPR_RETENTION_DAYS);
     const cutoffDate = cutoff.toISOString().slice(0, 10);
 
+    // Guard: if ticket archival returned 0 but there are closed tickets to purge, skip purge to prevent data loss
+    const closedTicketCount = await query(
+      `SELECT COUNT(*)::int as count FROM tickets WHERE created_at < $1 AND status = 'closed'`,
+      [cutoffDate]
+    ) as { count: number }[];
+    if (ticketsArchived === 0 && (closedTicketCount[0]?.count ?? 0) > 0) {
+      logger.warn({ cutoffDate, closedTickets: closedTicketCount[0]?.count }, '[purge] No tickets archived but closed tickets exist — skipping purge to prevent data loss');
+      return;
+    }
+
     const datesToAggregate = await query(
       `SELECT DISTINCT t.created_at::date::text as date
        FROM tickets t
-       LEFT JOIN daily_stats ds ON ds.date = t.created_at::date AND ds.partner_id = t.partner_id
        WHERE t.created_at < $1
-         AND ds.date IS NULL`,
+         AND t.status = 'closed'`,
       [cutoffDate]
     ) as { date: string }[];
 

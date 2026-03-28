@@ -123,6 +123,7 @@ export const tickets = pgTable('tickets', {
 export const messages = pgTable('messages', {
   id: text('id').primaryKey(),
   ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
+  // senderId intentionally has no FK — preserves messages after user deletion per GDPR
   senderId: text('sender_id').notNull(),
   senderName: text('sender_name'),
   senderRole: text('sender_role'),
@@ -141,6 +142,7 @@ export const messages = pgTable('messages', {
 }, (table) => ({
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
   senderIdIdx: index('idx_messages_sender_id').on(table.senderId),
+  ticketDeletedIdx: index('idx_messages_ticket_deleted').on(table.ticketId, table.deletedAt),
 }));
 
 export const ratings = pgTable('ratings', {
@@ -285,10 +287,12 @@ export const auditArchive = pgTable('audit_archive', {
   createdAt: timestamp('created_at', { mode: 'string' }).notNull(),
   archivedAt: timestamp('archived_at', { mode: 'string' }).notNull().defaultNow(),
   chainHash: text('chain_hash').notNull(),           // SHA-256(prev_hash + row_data)
+  sequence: integer('sequence').notNull().default(0), // Monotonic ordering for deterministic hash chain
 }, (table) => ({
   createdAtIdx: index('idx_audit_archive_created').on(table.createdAt),
   archivedAtIdx: index('idx_audit_archive_archived').on(table.archivedAt),
   partnerIdx: index('idx_audit_archive_partner').on(table.partnerId),
+  sequenceIdx: index('idx_audit_archive_sequence').on(table.sequence),
 }));
 
 /**

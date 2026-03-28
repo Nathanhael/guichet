@@ -19,11 +19,7 @@ export const ratingRouter = router({
       }
 
       if (ctx.user.isPlatformOperator && !ctx.user.partnerId) {
-        // Platform operators without an active partner context see all
-        const data = await db.select()
-          .from(ratings)
-          .orderBy(desc(ratings.createdAt));
-        return data;
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner context required to list ratings' });
       }
 
       // Scope ratings to this partner's tickets

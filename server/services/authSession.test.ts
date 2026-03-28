@@ -64,6 +64,7 @@ describe('auth session helpers', () => {
       name: 'Alice',
       lang: 'en',
       isPlatformOperator: false,
+      accessibilityPrefs: null,
     });
     expect(response.memberships).toHaveLength(1);
     expect(response.memberships[0]).toMatchObject({

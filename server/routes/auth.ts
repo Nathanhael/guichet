@@ -148,7 +148,7 @@ router.post('/reset-password', [
     validate([])
 ], async (req: Request, res: Response) => {
     try {
-        const { token, password } = req.body;
+        const { token, password, totpCode } = req.body;
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
         const userResults = await db.select().from(users).where(eq(users.resetPasswordToken, hashedToken)).limit(1);
@@ -156,6 +156,31 @@ router.post('/reset-password', [
 
         if (!user || !user.resetPasswordExpires || new Date(user.resetPasswordExpires) < new Date()) {
             return res.status(400).json({ error: 'Invalid or expired reset token' });
+        }
+
+        // MFA verification: if user has MFA enabled, require TOTP code for password reset
+        if (user.mfaEnabledAt) {
+            if (!totpCode) {
+                return res.status(403).json({ error: 'MFA verification required for password reset' });
+            }
+            const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../services/platformStepUp.js');
+            const totpAlreadyUsed = await isTotpTokenUsed(user.id, totpCode);
+            if (!user.mfaSecret || totpAlreadyUsed || !verifyTotpToken(user.mfaSecret, totpCode)) {
+                // Also check recovery codes
+                const recoveryCodes = (user.mfaRecoveryCodes as string[]) || [];
+                const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
+                const recoveryIdx = recoveryCodes.indexOf(codeHash);
+                if (recoveryIdx === -1) {
+                    await recordFailedLogin(user.id);
+                    return res.status(401).json({ error: 'Invalid MFA code' });
+                }
+                // Consume the recovery code
+                const updatedCodes = [...recoveryCodes];
+                updatedCodes.splice(recoveryIdx, 1);
+                await db.update(users).set({ mfaRecoveryCodes: updatedCodes }).where(eq(users.id, user.id));
+            } else {
+                await markTotpTokenUsed(user.id, totpCode);
+            }
         }
 
         // Password strength validation

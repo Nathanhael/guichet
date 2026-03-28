@@ -435,6 +435,8 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('status:set', async ({ status }: { status: string }) => {
       if (!requireIdentified(socket)) return;
+      const VALID_STATUSES = ['available', 'busy', 'away'] as const;
+      if (!VALID_STATUSES.includes(status as typeof VALID_STATUSES[number])) return;
       const userId = socket.data.userId;
       const partnerId = socket.data.partnerId;
       if (userId && partnerId) {
@@ -759,6 +761,10 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('ticket:labels:update', async ({ ticketId, labels }: { ticketId: string, labels: string[] }) => {
       if (!requireIdentified(socket)) return;
+      const role = socket.data.role;
+      if (role === 'agent') {
+        return socket.emit('error', { message: 'Not authorized to update labels' });
+      }
       try {
         if (!ticketId || !Array.isArray(labels)) return;
         const senderId = socket.data.userId;

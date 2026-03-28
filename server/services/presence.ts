@@ -217,7 +217,14 @@ export async function cleanupStalePresence() {
   if (!pubClient) return;
 
   try {
-    const partnerSetKeys = await pubClient.keys(`${SET_PREFIX}*`);
+    const partnerSetKeys: string[] = [];
+    let scanCursor = 0;
+    do {
+      const result = await pubClient.scan(scanCursor, { MATCH: `${SET_PREFIX}*`, COUNT: 100 });
+      scanCursor = result.cursor;
+      partnerSetKeys.push(...result.keys);
+    } while (scanCursor !== 0);
+
     let totalRemoved = 0;
     let totalChecked = 0;
 

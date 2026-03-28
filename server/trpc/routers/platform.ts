@@ -199,13 +199,19 @@ export const platformRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const before = await db.select().from(users).where(eq(users.id, input.id)).limit(1);
-      
+
+      // Explicit field picking — never spread unsanitized input into .set()
+      const allowedFields: Partial<typeof users.$inferInsert> = {};
+      if (input.data.name !== undefined) allowedFields.name = input.data.name;
+      if (input.data.email !== undefined) allowedFields.email = input.data.email;
+      allowedFields.updatedAt = new Date().toISOString();
+
       await db.update(users)
-        .set({ ...input.data, updatedAt: new Date().toISOString() })
+        .set(allowedFields)
         .where(eq(users.id, input.id));
 
       if (before[0]) {
-        const diff: any = {};
+        const diff: Record<string, { from: string | null; to: string }> = {};
         if (input.data.name && input.data.name !== before[0].name) diff.name = { from: before[0].name, to: input.data.name };
         if (input.data.email && input.data.email !== before[0].email) diff.email = { from: before[0].email, to: input.data.email };
 
@@ -309,12 +315,32 @@ export const platformRouter = router({
 
   // --- Global User & Membership Management ---
   listGlobalUsers: platformProcedure.query(async () => {
-    const allUsers = await db.select().from(users).orderBy(desc(users.createdAt));
+    // Select only non-sensitive columns — exclude password, mfaSecret, passwordHistory, etc.
+    const allUsers = await db.select({
+      id: users.id,
+      email: users.email,
+      externalId: users.externalId,
+      name: users.name,
+      lang: users.lang,
+      avatarUrl: users.avatarUrl,
+      isPlatformOperator: users.isPlatformOperator,
+      authMethod: users.authMethod,
+      lastActiveAt: users.lastActiveAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      deletedAt: users.deletedAt,
+      failedLoginAttempts: users.failedLoginAttempts,
+      lockedUntil: users.lockedUntil,
+      mfaEnabledAt: users.mfaEnabledAt,
+      platformTotpEnabledAt: users.platformTotpEnabledAt,
+      notificationPreferences: users.notificationPreferences,
+      accessibilityPrefs: users.accessibilityPrefs,
+    }).from(users).orderBy(desc(users.createdAt)).limit(200);
     const allMemberships = await db
-      .select({ 
+      .select({
         id: memberships.id,
-        userId: memberships.userId, 
-        partnerId: memberships.partnerId, 
+        userId: memberships.userId,
+        partnerId: memberships.partnerId,
         partnerName: partners.name,
         role: memberships.role,
         departments: memberships.departments

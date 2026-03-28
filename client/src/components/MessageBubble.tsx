@@ -71,7 +71,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   // Check if message is within edit window (15 min)
   const ageMs = Date.now() - new Date(message.timestamp || message.createdAt || '').getTime();
   const canEdit = isMine && !message.system && !isDeleted && ageMs < 15 * 60 * 1000;
-  const canDelete = (isMine || user?.role !== 'agent') && !message.system && !isDeleted;
+  const canDelete = (isMine || user?.role === 'admin' || user?.isPlatformOperator) && !message.system && !isDeleted;
 
   function startEdit() {
     setEditText(message.text || message.originalText || '');

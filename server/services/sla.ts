@@ -17,6 +17,8 @@ export interface SlaConfig {
 const DEFAULT_RESOLUTION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ONE_MINUTE_MS = 60_000;
 const MAX_LOOKAHEAD_DAYS = 30; // safety limit
+const MIN_SLA_MS = 60_000; // 1 minute
+const MAX_SLA_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 function validateDeptConfig(raw: unknown): Record<string, SlaDepartmentConfig> | undefined {
   if (!raw || typeof raw !== 'object') return undefined;
@@ -25,7 +27,8 @@ function validateDeptConfig(raw: unknown): Record<string, SlaDepartmentConfig> |
     if (val && typeof val === 'object') {
       const v = val as Record<string, unknown>;
       if (typeof v.responseMs === 'number' && typeof v.resolutionMs === 'number') {
-        result[key] = { responseMs: v.responseMs, resolutionMs: v.resolutionMs };
+        const clampSla = (n: number) => Math.min(Math.max(n, MIN_SLA_MS), MAX_SLA_MS);
+        result[key] = { responseMs: clampSla(v.responseMs), resolutionMs: clampSla(v.resolutionMs) };
       }
     }
   }
@@ -40,9 +43,12 @@ export function parseSlaConfig(raw: unknown): SlaConfig | null {
   const obj = raw as Record<string, unknown>;
   // If the object is empty (default `{}`), treat as unconfigured
   if (Object.keys(obj).length === 0) return null;
+  const clamp = (v: number) => Math.min(Math.max(v, MIN_SLA_MS), MAX_SLA_MS);
+  const defaultResponseMs = clamp(typeof obj.defaultResponseMs === 'number' ? obj.defaultResponseMs : config.SLA_THRESHOLD_MS);
+  const defaultResolutionMs = clamp(typeof obj.defaultResolutionMs === 'number' ? obj.defaultResolutionMs : DEFAULT_RESOLUTION_MS);
   return {
-    defaultResponseMs: typeof obj.defaultResponseMs === 'number' ? obj.defaultResponseMs : config.SLA_THRESHOLD_MS,
-    defaultResolutionMs: typeof obj.defaultResolutionMs === 'number' ? obj.defaultResolutionMs : DEFAULT_RESOLUTION_MS,
+    defaultResponseMs,
+    defaultResolutionMs,
     byDepartment: validateDeptConfig(obj.byDepartment),
     businessHoursOnly: typeof obj.businessHoursOnly === 'boolean' ? obj.businessHoursOnly : false,
   };

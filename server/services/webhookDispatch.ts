@@ -14,11 +14,59 @@
  */
 
 import { createHmac } from 'crypto';
+import dns from 'dns';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db.js';
 import { webhooks, webhookLogs } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import logger from '../utils/logger.js';
+
+/**
+ * Check whether a resolved IP address falls in private, reserved, or loopback ranges.
+ */
+export async function isPrivateOrReservedIP(hostname: string): Promise<boolean> {
+  const { address } = await dns.promises.lookup(hostname);
+
+  // IPv6 loopback
+  if (address === '::1') return true;
+
+  const parts = address.split('.').map(Number);
+  if (parts.length !== 4) return false;
+
+  // Loopback 127.0.0.0/8
+  if (parts[0] === 127) return true;
+  // RFC-1918: 10.0.0.0/8
+  if (parts[0] === 10) return true;
+  // RFC-1918: 172.16.0.0/12
+  if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+  // RFC-1918: 192.168.0.0/16
+  if (parts[0] === 192 && parts[1] === 168) return true;
+  // Link-local 169.254.0.0/16 (includes metadata endpoint 169.254.169.254)
+  if (parts[0] === 169 && parts[1] === 254) return true;
+  // 0.0.0.0
+  if (parts.every((p) => p === 0)) return true;
+
+  return false;
+}
+
+/**
+ * Validate a webhook URL: scheme check + SSRF private IP block.
+ */
+export async function validateWebhookUrl(url: string): Promise<void> {
+  const parsed = new URL(url);
+
+  // Reject non-https in production (allow http in development)
+  if (parsed.protocol !== 'https:') {
+    if (parsed.protocol !== 'http:' || process.env.NODE_ENV !== 'development') {
+      throw new Error('Webhook URL must use HTTPS');
+    }
+  }
+
+  const isPrivate = await isPrivateOrReservedIP(parsed.hostname);
+  if (isPrivate) {
+    throw new Error('Webhook URL must not resolve to a private or reserved IP address');
+  }
+}
 
 /** All supported webhook event types */
 export type WebhookEvent =
@@ -92,6 +140,9 @@ async function deliverOne(
   const start = Date.now();
 
   try {
+    // SSRF protection: validate URL before making the request
+    await validateWebhookUrl(hook.url);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
 

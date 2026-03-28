@@ -7,6 +7,7 @@ export default defineConfig({
       JWT_SECRET: 'test-secret-key-only-for-unit-tests',
       NODE_ENV: 'test',
       DATABASE_URL: 'postgres://user:password@localhost:5432/tessera',
+      PLATFORM_ADMIN_PASSWORD: '',
     },
     testTimeout: 15000,
     hookTimeout: 15000,

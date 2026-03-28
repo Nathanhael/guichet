@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '../db.js';
 import { users, auditLog } from '../db/schema.js';
 import logger from '../utils/logger.js';
@@ -34,21 +34,31 @@ export function checkLockout(user: { lockedUntil?: string | null }): LockoutStat
 
 /**
  * Records a failed login attempt. Locks the account if MAX_ATTEMPTS is reached.
+ * Uses a single atomic UPDATE to prevent race conditions from concurrent requests.
  */
 export async function recordFailedLogin(userId: string): Promise<{ locked: boolean; attemptsLeft: number }> {
-  const userRows = await db.select({ failedLoginAttempts: users.failedLoginAttempts })
-    .from(users).where(eq(users.id, userId)).limit(1);
-  const current = userRows[0]?.failedLoginAttempts ?? 0;
-  const newCount = current + 1;
+  // Atomic increment + conditional lock in a single UPDATE to prevent TOCTOU race
+  const result = await db.execute(sql`
+    UPDATE users SET
+      failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1,
+      locked_until = CASE
+        WHEN COALESCE(failed_login_attempts, 0) + 1 >= ${MAX_ATTEMPTS}
+        THEN (NOW() + INTERVAL '${sql.raw(String(LOCKOUT_MINUTES))} minutes')::text
+        ELSE locked_until
+      END
+    WHERE id = ${userId}
+    RETURNING failed_login_attempts, locked_until
+  `);
 
-  if (newCount >= MAX_ATTEMPTS) {
-    const lockedUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000).toISOString();
+  const row = (result.rows as Array<{ failed_login_attempts: number; locked_until: string | null }>)[0];
+  if (!row) {
+    return { locked: false, attemptsLeft: MAX_ATTEMPTS };
+  }
 
-    await db.update(users).set({
-      failedLoginAttempts: newCount,
-      lockedUntil,
-    }).where(eq(users.id, userId));
+  const newCount = row.failed_login_attempts;
+  const isLocked = newCount >= MAX_ATTEMPTS;
 
+  if (isLocked) {
     // Audit log
     await db.insert(auditLog).values({
       action: 'security.account_locked',
@@ -71,10 +81,6 @@ export async function recordFailedLogin(userId: string): Promise<{ locked: boole
 
     return { locked: true, attemptsLeft: 0 };
   }
-
-  await db.update(users).set({
-    failedLoginAttempts: newCount,
-  }).where(eq(users.id, userId));
 
   return { locked: false, attemptsLeft: MAX_ATTEMPTS - newCount };
 }

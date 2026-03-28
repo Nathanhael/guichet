@@ -109,7 +109,7 @@ export const ticketRouter = router({
           }));
 
           const lastItem = pageRows[pageRows.length - 1];
-          const cursorValue = isClosed ? lastItem.closedAt : lastItem.createdAt;
+          const cursorValue = isClosed ? (lastItem.closedAt ?? lastItem.createdAt) : lastItem.createdAt;
           const nextCursor = hasMore && lastItem ? `${cursorValue}|${lastItem.id}` : '';
 
           return { tickets: ticketsWithLabels, nextCursor };

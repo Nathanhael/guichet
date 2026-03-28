@@ -336,7 +336,9 @@ function sentimentLabel(score: number): string {
   return 'Negative';
 }
 
-function SentimentPanel({ stats }: { stats: any }) {
+type GlobalStats = NonNullable<ReturnType<typeof trpc.stats.getGlobalStats.useQuery>['data']>;
+
+function SentimentPanel({ stats }: { stats: GlobalStats }) {
   const { data: negativeTix } = trpc.ai.getNegativeSentimentTickets.useQuery(
     { limit: 10 },
     { refetchInterval: 30000 }
@@ -345,8 +347,8 @@ function SentimentPanel({ stats }: { stats: any }) {
   const score = stats.sentimentScore ?? 0;
   const sentimentByDept: Record<string, { avg: number | null; count: number }> = stats.sentimentByDept || {};
   const trendData = (stats.dailyTrend || [])
-    .filter((d: any) => d.sentiment != null)
-    .map((d: any) => ({
+    .filter((d: { date: string; sentiment?: number | null }) => d.sentiment != null)
+    .map((d: { date: string; sentiment?: number | null }) => ({
       date: d.date,
       sentiment: d.sentiment,
     }));

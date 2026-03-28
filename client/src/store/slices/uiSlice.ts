@@ -7,6 +7,7 @@ export interface UISlice {
   bionicReading: boolean;
   monochromeMode: boolean;
   focusMode: boolean;
+  prefsModifiedLocally: boolean;
   zenSettings: ZenSettings;
   darkMode: boolean;
   selectedLang: string | null;
@@ -25,7 +26,7 @@ export interface UISlice {
   hydrateAccessibilityPrefs: (prefs: { dyslexicMode?: boolean; bionicReading?: boolean; monochromeMode?: boolean; focusMode?: boolean }) => void;
 }
 
-export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) => ({
+export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, get) => ({
   dyslexicMode: (() => {
     const v = localStorage.getItem('dyslexicMode') === 'true';
     if (v) document.documentElement.classList.add('dyslexic-mode');
@@ -34,6 +35,7 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
   bionicReading: localStorage.getItem('bionicReading') === 'true',
   monochromeMode: localStorage.getItem('monochromeMode') === 'true',
   focusMode: localStorage.getItem('focusMode') === 'true',
+  prefsModifiedLocally: false,
   zenSettings: { autoBionic: false, notificationShield: false },
   darkMode: localStorage.getItem('darkMode') === 'true',
   selectedLang: localStorage.getItem('selectedLang') || null,
@@ -56,14 +58,14 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       if (next) document.documentElement.classList.add('dyslexic-mode');
       else document.documentElement.classList.remove('dyslexic-mode');
       trpcVanilla.user.updateAccessibilityPrefs.mutate({ dyslexicMode: next }).catch(() => {});
-      return { dyslexicMode: next };
+      return { dyslexicMode: next, prefsModifiedLocally: true };
     }),
   toggleBionicReading: () =>
     set((state) => {
       const next = !state.bionicReading;
       localStorage.setItem('bionicReading', String(next));
       trpcVanilla.user.updateAccessibilityPrefs.mutate({ bionicReading: next }).catch(() => {});
-      return { bionicReading: next };
+      return { bionicReading: next, prefsModifiedLocally: true };
     }),
   toggleMonochromeMode: () =>
     set((state) => {
@@ -72,14 +74,14 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       if (next) document.documentElement.classList.add('monochrome-mode');
       else document.documentElement.classList.remove('monochrome-mode');
       trpcVanilla.user.updateAccessibilityPrefs.mutate({ monochromeMode: next }).catch(() => {});
-      return { monochromeMode: next };
+      return { monochromeMode: next, prefsModifiedLocally: true };
     }),
   toggleFocusMode: () =>
     set((state) => {
       const next = !state.focusMode;
       localStorage.setItem('focusMode', String(next));
       trpcVanilla.user.updateAccessibilityPrefs.mutate({ focusMode: next }).catch(() => {});
-      return { focusMode: next };
+      return { focusMode: next, prefsModifiedLocally: true };
     }),
 
   updateZenSettings: (updates) =>
@@ -101,7 +103,8 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
 
-  hydrateAccessibilityPrefs: (prefs) =>
+  hydrateAccessibilityPrefs: (prefs) => {
+    if (get().prefsModifiedLocally) return; // don't overwrite local changes made this session
     set(() => {
       const dyslexicMode = prefs.dyslexicMode ?? false;
       const bionicReading = prefs.bionicReading ?? false;
@@ -120,5 +123,6 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
       else document.documentElement.classList.remove('monochrome-mode');
 
       return { dyslexicMode, bionicReading, monochromeMode, focusMode };
-    }),
+    });
+  },
 });

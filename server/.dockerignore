@@ -1,2 +1,13 @@
 node_modules
 uploads
+.env
+.env.*
+.git
+drizzle
+scripts
+backups
+**/*.test.ts
+**/*.spec.ts
+**/__tests__
+*.md
+.github

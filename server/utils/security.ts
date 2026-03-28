@@ -22,11 +22,11 @@ export function isValidMediaUrl(url: string | undefined | null): boolean {
     const safeProtocols = ['http:', 'https:'];
     if (!safeProtocols.includes(parsed.protocol)) return false;
     
-    // Check for common image extensions
+    // Check for common image extensions — reject if missing or not in allowlist
     const ext = parsed.pathname.split('.').pop()?.toLowerCase();
     // SVG excluded — can contain embedded <script> tags (XSS vector)
     const safeExts = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
-    if (ext && !safeExts.includes(ext)) return false;
+    if (!ext || !safeExts.includes(ext)) return false;
 
     return true;
   } catch {

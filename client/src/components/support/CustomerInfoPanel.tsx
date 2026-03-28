@@ -23,9 +23,10 @@ export default function CustomerInfoPanel({ ticket }: CustomerInfoPanelProps) {
     { enabled: !!ticket.agentId }
   );
 
+  type TicketListResult = { tickets: Ticket[]; nextCursor?: string | null };
   const pastList = Array.isArray(pastTickets)
-    ? pastTickets.filter((t: any) => t.id !== ticket.id)
-    : ((pastTickets as any)?.tickets || []).filter((t: any) => t.id !== ticket.id);
+    ? pastTickets.filter((t: Ticket) => t.id !== ticket.id)
+    : ((pastTickets as TicketListResult | undefined)?.tickets || []).filter((t: Ticket) => t.id !== ticket.id);
 
   const agentOnline = participantsOnline[ticket.id] ?? false;
   const references = ticket.references || [];
