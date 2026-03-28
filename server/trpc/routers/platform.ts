@@ -314,9 +314,17 @@ export const platformRouter = router({
     }),
 
   // --- Global User & Membership Management ---
-  listGlobalUsers: platformProcedure.query(async () => {
+  listGlobalUsers: platformProcedure
+    .input(z.object({
+      cursor: z.string().optional(),
+      limit: z.number().min(1).max(200).default(100),
+    }).optional())
+    .query(async ({ input }) => {
+    const limit = input?.limit ?? 100;
+    const cursor = input?.cursor;
+
     // Select only non-sensitive columns — exclude password, mfaSecret, passwordHistory, etc.
-    const allUsers = await db.select({
+    const userColumns = {
       id: users.id,
       email: users.email,
       externalId: users.externalId,
@@ -335,23 +343,52 @@ export const platformRouter = router({
       platformTotpEnabledAt: users.platformTotpEnabledAt,
       notificationPreferences: users.notificationPreferences,
       accessibilityPrefs: users.accessibilityPrefs,
-    }).from(users).orderBy(desc(users.createdAt)).limit(200);
-    const allMemberships = await db
-      .select({
-        id: memberships.id,
-        userId: memberships.userId,
-        partnerId: memberships.partnerId,
-        partnerName: partners.name,
-        role: memberships.role,
-        departments: memberships.departments
-      })
-      .from(memberships)
-      .innerJoin(partners, eq(memberships.partnerId, partners.id))
-      .where(isNull(partners.deletedAt));
-    return allUsers.map(u => ({
-      ...u,
-      partnerMemberships: allMemberships.filter(m => m.userId === u.id),
-    }));
+    };
+
+    let query = db.select(userColumns).from(users).orderBy(desc(users.createdAt), desc(users.id));
+
+    if (cursor) {
+      const sepIdx = cursor.indexOf('|');
+      if (sepIdx > 0) {
+        const cursorTime = cursor.slice(0, sepIdx);
+        const cursorId = cursor.slice(sepIdx + 1);
+        query = query.where(
+          sql`(${users.createdAt} < ${cursorTime} OR (${users.createdAt} = ${cursorTime} AND ${users.id} < ${cursorId}))`
+        ) as typeof query;
+      }
+    }
+
+    const allUsers = await query.limit(limit + 1);
+    const hasMore = allUsers.length > limit;
+    const pageUsers = hasMore ? allUsers.slice(0, limit) : allUsers;
+
+    // Fetch memberships for the page of users
+    const userIds = pageUsers.map(u => u.id);
+    const allMemberships = userIds.length > 0
+      ? await db
+          .select({
+            id: memberships.id,
+            userId: memberships.userId,
+            partnerId: memberships.partnerId,
+            partnerName: partners.name,
+            role: memberships.role,
+            departments: memberships.departments
+          })
+          .from(memberships)
+          .innerJoin(partners, eq(memberships.partnerId, partners.id))
+          .where(and(isNull(partners.deletedAt), inArray(memberships.userId, userIds)))
+      : [];
+
+    const lastItem = pageUsers[pageUsers.length - 1];
+    const nextCursor = hasMore && lastItem ? `${lastItem.createdAt}|${lastItem.id}` : '';
+
+    return {
+      users: pageUsers.map(u => ({
+        ...u,
+        partnerMemberships: allMemberships.filter(m => m.userId === u.id),
+      })),
+      nextCursor,
+    };
   }),
 
   inviteUser: platformProcedure

@@ -94,7 +94,7 @@ export const tickets = pgTable('tickets', {
   agentName: text('agent_name'),
   agentLang: text('agent_lang'),
   references: jsonb('references').default([]),
-  status: ticketStatusEnum('status').default('open'),
+  status: ticketStatusEnum('status').notNull().default('open'),
   supportId: text('support_id').references(() => users.id, { onDelete: 'set null' }),
   supportName: text('support_name'),
   supportLang: text('support_lang'),
@@ -388,7 +388,7 @@ export const aiPromptTemplates = pgTable('ai_prompt_templates', {
 export const aiUsageLog = pgTable('ai_usage_log', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
   action: text('action').notNull(),
   provider: text('provider').notNull(),
   model: text('model').notNull(),

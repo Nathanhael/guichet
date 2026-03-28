@@ -286,25 +286,28 @@ tessera/
 ├── PLAN.md                        # Sprint plan (completed + next sprint)
 ├── CHANGELOG.md                   # Project changelog (v1.0.0, v2.0.0)
 ├── SECURITY.md                    # Security policy and vulnerability reporting
-├── .github/workflows/ci.yml      # CI: typecheck, tests, migrations, e2e
+├── scripts/ci.ps1                 # Local CI: typecheck, tests, migrations, e2e
 ├── docker-compose.yml             # Dev: db, server, client, redis, lb, prometheus, grafana
 ├── docker-compose.prod.yml        # Production environment
 └── CLAUDE.md                      # This file
 ```
 
-## CI Pipeline
+## Local CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs 5 parallel jobs on push/PR to `main`:
+Run `scripts/ci.ps1` to check everything before pushing:
 
-| Job | What it checks |
-|-----|----------------|
-| `lint-and-typecheck` | `tsc --noEmit` on both server and client |
+```powershell
+powershell -File scripts/ci.ps1                # Run all 5 steps
+powershell -File scripts/ci.ps1 -Skip e2e      # Skip slow E2E tests
+```
+
+| Step | What it checks |
+|------|----------------|
+| `typecheck` | `tsc --noEmit` on both server and client |
 | `test-client` | Client unit tests (Vitest + jsdom) |
 | `test-server` | Server unit tests (Vitest + node) |
-| `migrate-check` | Runs `db:migrate` against a fresh Postgres 18 service container |
-| `e2e` | Playwright E2E tests against Postgres 18 + built client (Chromium) |
-
-Build only proceeds if all 5 pass.
+| `migrate` | Runs `db:migrate` against the Docker Postgres |
+| `e2e` | Playwright E2E tests (builds client first) |
 
 ## Load Testing
 

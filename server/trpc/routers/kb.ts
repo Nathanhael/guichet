@@ -5,6 +5,7 @@ import { db } from '../../db.js';
 import { kbArticles } from '../../db/schema.js';
 import { eq, and, asc, ilike, or, sql } from 'drizzle-orm';
 import { notFound } from '../../utils/trpcErrors.js';
+import logger from '../../utils/logger.js';
 
 
 function slugify(text: string): string {
@@ -164,14 +165,27 @@ Only return valid JSON, nothing else.`,
           success: true,
         });
 
-        const parsed = JSON.parse(result.content);
-        const rankedArticles = (parsed.indices as number[])
-          .filter((i) => i >= 0 && i < articles.length)
+        let parsed: unknown;
+        try {
+          parsed = JSON.parse(result.content);
+        } catch {
+          logger.warn('AI returned malformed JSON for KB suggest, falling back to keyword search');
+          throw new Error('malformed-ai-response');
+        }
+
+        const parsedObj = parsed as Record<string, unknown>;
+        if (!Array.isArray(parsedObj.indices)) {
+          logger.warn('AI response missing indices array for KB suggest, falling back to keyword search');
+          throw new Error('malformed-ai-response');
+        }
+
+        const rankedArticles = (parsedObj.indices as number[])
+          .filter((i) => typeof i === 'number' && i >= 0 && i < articles.length)
           .map((i) => articles[i]);
 
         return {
           articles: rankedArticles,
-          aiAnswer: parsed.answer || '',
+          aiAnswer: typeof parsedObj.answer === 'string' ? parsedObj.answer : '',
         };
       } catch {
         // Fallback to keyword search

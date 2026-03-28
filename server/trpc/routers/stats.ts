@@ -195,9 +195,9 @@ export const statsRouter = router({
           }
         }
 
-        const historicalStats = (await query('SELECT * FROM daily_stats WHERE date >= $1 AND date <= $2 AND partner_id = $3', [rangeStart, rangeEnd, partnerId])) as unknown as HistoricalStatRow[];
+        const historicalStats = (await query('SELECT date, total, closed, abandoned, avg_response_ms, avg_duration_ms, avg_rating, rating_count, sla_resolved, sla_compliant, p95_response_ms, reopened, sentiment_sum, sentiment_count, dept_counts, ratings_by_dept, hourly FROM daily_stats WHERE date >= $1 AND date <= $2 AND partner_id = $3', [rangeStart, rangeEnd, partnerId])) as unknown as HistoricalStatRow[];
         const historicalStatsMap = new Map<string, HistoricalStatRow>(historicalStats.map(s => [s.date, s]));
-        const ticketsSql = `SELECT * FROM tickets WHERE created_at::date >= $1 AND created_at::date <= $2 AND partner_id = $3`;
+        const ticketsSql = `SELECT id, created_at, status, closed_at, dept, agent_id, agent_name, support_id, support_name, support_joined_at, sla_breached, sla_response_due_at, sla_resolution_due_at, reopened_at, closing_notes, closed_by, partner_id FROM tickets WHERE created_at::date >= $1 AND created_at::date <= $2 AND partner_id = $3`;
         const allLiveTicketsRaw = (await query(ticketsSql, [rangeStart, rangeEnd, partnerId])) as unknown as Ticket[];
         const allLiveTickets = (excludeWeekends)
           ? allLiveTicketsRaw.filter(t => {
@@ -618,7 +618,7 @@ export const statsRouter = router({
         const message = err instanceof Error ? err.message : String(err);
         const stack = err instanceof Error ? err.stack : undefined;
         logger.error({ err: message, stack }, 'tRPC: FATAL ERROR in getGlobalStats');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' });
       }
     }),
 });

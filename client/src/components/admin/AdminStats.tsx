@@ -14,8 +14,39 @@ import {
 } from 'recharts';
 import { trpc } from '../../utils/trpc';
 import useStore from '../../store/useStore';
-import { exportDashboardCSV, exportDashboardPDF } from '../../utils/exportDashboard';
+import { exportDashboardCSV, exportDashboardPDF, DashboardStats } from '../../utils/exportDashboard';
 import { Download, FileText, AlertTriangle } from 'lucide-react';
+
+/** Typed shape of the getGlobalStats tRPC response for safe property access */
+interface DashboardData {
+  total: number;
+  todayTotal: number;
+  todayOpen: number;
+  todayClosed: number;
+  avgResponseMinutes: number;
+  p95ResponseMinutes: number | null;
+  avgRating: number | null;
+  totalRatings: number;
+  abandonedCount: number;
+  slaHealth: number;
+  oldestWaitMinutes: number;
+  waitingOver3: number;
+  resolutionRate: number;
+  deptCounts: Record<string, number>;
+  dailyTrend: { date: string; total: number; sentiment?: number | null }[];
+  trendGranularity: string;
+  supportStats: { name: string; total: number; today: number; avgRating: number | null }[];
+  agentStats: { name: string; total: number; today: number }[];
+  sentimentScore: number;
+  sentimentByDept: Record<string, { avg: number | null; count: number }>;
+  previousPeriod?: {
+    total?: number;
+    avgResponseMinutes?: number;
+    avgRating?: number;
+    abandonedCount?: number;
+    slaHealth?: number;
+  };
+}
 
 export default function AdminStats() {
   const { memberships, activeMembershipId } = useStore();
@@ -79,7 +110,7 @@ export default function AdminStats() {
     );
   }
 
-  const deptCounts: Record<string, number> = (stats as any).deptCounts || {};
+  const deptCounts: Record<string, number> = (stats as DashboardData).deptCounts || {};
   const totalTickets = stats.total || 1;
 
   return (
@@ -92,14 +123,14 @@ export default function AdminStats() {
 
         <div className="flex gap-1 shrink-0">
           <button
-            onClick={() => exportDashboardCSV(stats as any)}
+            onClick={() => exportDashboardCSV(stats as DashboardStats)}
             className="btn-secondary"
             title="Export as CSV"
           >
             <Download className="h-3.5 w-3.5" /> CSV
           </button>
           <button
-            onClick={() => exportDashboardPDF(stats as any)}
+            onClick={() => exportDashboardPDF(stats as DashboardStats)}
             className="btn-secondary"
             title="Export as PDF"
           >
@@ -260,7 +291,7 @@ export default function AdminStats() {
       </div>
 
       {/* Sentiment Analysis */}
-      <SentimentPanel stats={stats as any} />
+      <SentimentPanel stats={stats as DashboardData} />
 
       {/* Trend chart */}
       <Panel
@@ -336,9 +367,7 @@ function sentimentLabel(score: number): string {
   return 'Negative';
 }
 
-type GlobalStats = NonNullable<ReturnType<typeof trpc.stats.getGlobalStats.useQuery>['data']>;
-
-function SentimentPanel({ stats }: { stats: GlobalStats }) {
+function SentimentPanel({ stats }: { stats: DashboardData }) {
   const { data: negativeTix } = trpc.ai.getNegativeSentimentTickets.useQuery(
     { limit: 10 },
     { refetchInterval: 30000 }

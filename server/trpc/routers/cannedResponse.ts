@@ -110,7 +110,7 @@ export const cannedResponseRouter = router({
       if (input.dept !== undefined) updates.dept = input.dept;
       if (input.shortcut !== undefined) updates.shortcut = input.shortcut;
 
-      await db.update(cannedResponses).set(updates).where(eq(cannedResponses.id, input.id));
+      await db.update(cannedResponses).set(updates).where(and(eq(cannedResponses.id, input.id), eq(cannedResponses.partnerId, ctx.user.partnerId)));
       return { success: true };
     }),
 

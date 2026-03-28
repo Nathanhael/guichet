@@ -52,7 +52,7 @@ export const query = async (text: string, params?: unknown[]) => {
     logger.debug({ text, duration, rows: res.rowCount }, 'Executed query');
     return camelCaseRows(res.rows);
   } catch (err: unknown) {
-    logger.error({ err: err instanceof Error ? err.message : String(err), text, params }, 'Database query error');
+    logger.error({ err: err instanceof Error ? err.message : String(err), text, paramCount: params?.length }, 'Database query error');
     throw err;
   }
 };

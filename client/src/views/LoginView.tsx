@@ -206,6 +206,7 @@ export default function LoginView() {
       const res = await fetch('/api/v1/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ token: resetToken, password })
       });
       const data = await res.json();

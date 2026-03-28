@@ -20,10 +20,16 @@ const configSchema = z.object({
     UPLOAD_MAX_SIZE: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     UPLOAD_ALLOWED_TYPES: z.preprocess(
       (val) => (typeof val === 'string' ? val.split(',').map(s => s.trim()) : val),
-      z.array(z.string()).default(['image/png', 'image/jpeg', 'image/webp'])
+      z.array(z.string().regex(
+        /^(image\/[a-z0-9.+-]+|application\/pdf)$/,
+        'Only image/* and application/pdf MIME types are allowed'
+      )).default(['image/png', 'image/jpeg', 'image/webp'])
     ),
     OLLAMA_MODEL: z.string().default('translategemma:4b'),
-    METRICS_TOKEN: z.string().optional(),
+    METRICS_TOKEN: z.preprocess(
+      (v) => (v === '' ? undefined : v),
+      z.string().min(16).optional()
+    ),
     REDIS_URL: z.string().default('redis://localhost:6379'),
     AI_ENABLED: z.coerce.boolean().default(false),
     AI_PROVIDER: z.enum(['ollama', 'azure', 'openai-compatible', 'gemini', 'anthropic']).default('ollama'),
@@ -41,6 +47,7 @@ const configSchema = z.object({
     AZURE_AD_CLIENT_ID: z.string().optional(),
     AZURE_AD_CLIENT_SECRET: z.string().optional(),
     AZURE_AD_REDIRECT_URI: z.string().url().optional(),
+    FRONTEND_URL: z.string().url().default('http://localhost:3001'),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -62,6 +69,7 @@ const parseResult = configSchema.safeParse({
     MAX_EXPERTS_SHOWN: process.env.MAX_EXPERTS_SHOWN,
     LOG_LEVEL: process.env.LOG_LEVEL,
     UPLOAD_MAX_SIZE: process.env.UPLOAD_MAX_SIZE,
+    UPLOAD_ALLOWED_TYPES: process.env.UPLOAD_ALLOWED_TYPES,
     OLLAMA_MODEL: process.env.OLLAMA_MODEL,
     METRICS_TOKEN: process.env.METRICS_TOKEN,
     REDIS_URL: process.env.REDIS_URL,
@@ -80,6 +88,7 @@ const parseResult = configSchema.safeParse({
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
     AZURE_AD_REDIRECT_URI: process.env.AZURE_AD_REDIRECT_URI,
+    FRONTEND_URL: process.env.FRONTEND_URL,
 });
 
 if (!parseResult.success) {

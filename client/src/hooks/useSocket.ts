@@ -215,7 +215,7 @@ export function useSocket(): Socket {
       if (toId) {
         updateTicket(ticketId, { supportId: toId, supportName: toName || undefined });
       } else {
-        updateTicket(ticketId, { supportId: null as any, supportName: undefined, status: 'open' });
+        updateTicket(ticketId, { supportId: null, supportName: undefined, status: 'open' });
       }
     };
 
@@ -360,7 +360,7 @@ export function useSocket(): Socket {
       s.off('auth:expired', handleAuthExpired);
       listenersAttached.current = false;
     };
-  }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus]);
+  }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus, addTopicAlert, setActiveTicketId]);
 
   return getSocket();
 }

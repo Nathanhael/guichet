@@ -26,7 +26,8 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
   const showToast = useCallback((message: string) => setToast({ message, type: 'success' }), []);
   const showError = useCallback((message: string) => setToast({ message, type: 'error' }), []);
 
-  const { data: globalUsers } = trpc.platform.listGlobalUsers.useQuery();
+  const { data: globalUsersData } = trpc.platform.listGlobalUsers.useQuery();
+  const globalUsers = globalUsersData?.users;
   const { data: partners } = trpc.platform.listPartners.useQuery();
 
   const deleteUser = trpc.platform.deleteUser.useMutation({

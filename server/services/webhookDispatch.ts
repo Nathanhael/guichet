@@ -22,11 +22,9 @@ import { eq, and } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 
 /**
- * Check whether a resolved IP address falls in private, reserved, or loopback ranges.
+ * Check whether an IP address falls in private, reserved, or loopback ranges.
  */
-export async function isPrivateOrReservedIP(hostname: string): Promise<boolean> {
-  const { address } = await dns.promises.lookup(hostname);
-
+function isPrivateOrReservedAddress(address: string): boolean {
   // IPv6 loopback
   if (address === '::1') return true;
 
@@ -50,9 +48,26 @@ export async function isPrivateOrReservedIP(hostname: string): Promise<boolean> 
 }
 
 /**
- * Validate a webhook URL: scheme check + SSRF private IP block.
+ * Kept for backwards compatibility (used in webhook URL validation on save).
  */
-export async function validateWebhookUrl(url: string): Promise<void> {
+export async function isPrivateOrReservedIP(hostname: string): Promise<boolean> {
+  const { address } = await dns.promises.lookup(hostname);
+  return isPrivateOrReservedAddress(address);
+}
+
+interface ValidatedUrl {
+  /** The resolved IP address to use in the fetch call */
+  resolvedIp: string;
+  /** The original hostname for the Host header */
+  originalHostname: string;
+}
+
+/**
+ * Validate a webhook URL: scheme check + SSRF private IP block.
+ * Returns the resolved IP so the caller can fetch against it directly,
+ * preventing DNS rebinding TOCTOU attacks.
+ */
+export async function validateWebhookUrl(url: string): Promise<ValidatedUrl> {
   const parsed = new URL(url);
 
   // Reject non-https in production (allow http in development)
@@ -62,10 +77,12 @@ export async function validateWebhookUrl(url: string): Promise<void> {
     }
   }
 
-  const isPrivate = await isPrivateOrReservedIP(parsed.hostname);
-  if (isPrivate) {
+  const { address } = await dns.promises.lookup(parsed.hostname);
+  if (isPrivateOrReservedAddress(address)) {
     throw new Error('Webhook URL must not resolve to a private or reserved IP address');
   }
+
+  return { resolvedIp: address, originalHostname: parsed.hostname };
 }
 
 /** All supported webhook event types */
@@ -101,6 +118,10 @@ export function deliverWebhookTest(
 /**
  * Fire webhooks for a partner + event. Non-blocking (fire-and-forget).
  * Each matching webhook is dispatched in parallel; failures are logged but never throw.
+ *
+ * IMPORTANT: Delivery is at-most-once. Transient failures (5xx, network timeout)
+ * are logged but not retried. Partners should implement idempotent receivers
+ * and monitor webhook_logs for missed deliveries.
  */
 export function fireWebhooks(partnerId: string, event: WebhookEvent, data: Record<string, unknown>) {
   // Intentionally not awaited — caller should not block on webhook delivery
@@ -140,16 +161,22 @@ async function deliverOne(
   const start = Date.now();
 
   try {
-    // SSRF protection: validate URL before making the request
-    await validateWebhookUrl(hook.url);
+    // SSRF protection: validate URL and resolve DNS once, then fetch against the resolved IP
+    // to prevent DNS rebinding TOCTOU attacks.
+    const { resolvedIp, originalHostname } = await validateWebhookUrl(hook.url);
+
+    // Replace hostname with resolved IP to prevent DNS rebinding
+    const resolvedUrl = new URL(hook.url);
+    resolvedUrl.hostname = resolvedIp;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-    const res = await fetch(hook.url, {
+    const res = await fetch(resolvedUrl.toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Host': originalHostname,
         'X-Tessera-Signature': signature,
         'X-Tessera-Event': event,
         'User-Agent': 'Tessera-Webhook/1.0',

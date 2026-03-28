@@ -22,6 +22,50 @@ import { db } from '../db.js';
 const router = express.Router();
 logger.info('[Auth] Routes file loaded');
 
+// ---------------------------------------------------------------------------
+// IP-based rate limiter for login endpoints
+// ---------------------------------------------------------------------------
+const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const LOGIN_RATE_MAX = 20; // max attempts per IP per window
+
+interface RateLimitEntry {
+  count: number;
+  resetAt: number;
+}
+
+const loginRateLimitMap = new Map<string, RateLimitEntry>();
+
+// Cleanup expired entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of loginRateLimitMap) {
+    if (now >= entry.resetAt) loginRateLimitMap.delete(ip);
+  }
+}, 5 * 60 * 1000).unref();
+
+function loginRateLimit(req: Request, res: Response, next: () => void): void {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = loginRateLimitMap.get(ip);
+
+  if (!entry || now >= entry.resetAt) {
+    loginRateLimitMap.set(ip, { count: 1, resetAt: now + LOGIN_RATE_WINDOW_MS });
+    next();
+    return;
+  }
+
+  entry.count++;
+  if (entry.count > LOGIN_RATE_MAX) {
+    const retryAfterSecs = Math.ceil((entry.resetAt - now) / 1000);
+    logger.warn({ ip }, '[Auth] IP rate limit exceeded on login');
+    res.set('Retry-After', String(retryAfterSecs));
+    res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+    return;
+  }
+
+  next();
+}
+
 function maskEmail(email: string): string {
   const [local, domain] = email.split('@');
   if (!domain) return '***';
@@ -254,7 +298,7 @@ router.post('/reset-password', [
  *       423:
  *         description: Account locked due to failed attempts
  */
-router.post('/login-local', [
+router.post('/login-local', loginRateLimit, [
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').notEmpty().withMessage('Password is required'),
     validate([])
@@ -296,9 +340,6 @@ router.post('/login-local', [
             return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
         }
 
-        // Successful login — reset lockout counter
-        await resetFailedLogins(user.id);
-
         const userMemberships = await listUserMemberships(user.id);
 
         logger.info({ email: maskEmail(email), membershipCount: userMemberships.length }, '[Auth] Local login membership lookup complete');
@@ -313,7 +354,17 @@ router.post('/login-local', [
             const { totpCode } = req.body;
             if (!totpCode) {
                 // Return MFA challenge — client must re-submit with TOTP code
-                return res.status(200).json({ mfaRequired: true, userId: user.id });
+                // Store challenge token in Redis instead of exposing userId
+                const challengeToken = crypto.randomUUID();
+                try {
+                    const { pubClient } = getRedisClients();
+                    if (pubClient) {
+                        await pubClient.set(`mfa-challenge:${challengeToken}`, user.id, { EX: 60 });
+                    }
+                } catch (redisErr) {
+                    logger.error({ err: redisErr }, '[Auth] Failed to store MFA challenge token');
+                }
+                return res.status(200).json({ mfaRequired: true, challengeToken });
             }
             // Verify TOTP code (import inline to avoid circular deps)
             const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../services/platformStepUp.js');
@@ -340,6 +391,9 @@ router.post('/login-local', [
                 await markTotpTokenUsed(user.id, totpCode);
             }
         }
+
+        // Fully authenticated — reset lockout counter (after MFA if applicable)
+        await resetFailedLogins(user.id);
 
         const activeMemberships = userMemberships.filter(m => m.status === 'active');
         const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
@@ -407,7 +461,7 @@ router.post('/login-local', [
  *       423:
  *         description: Account locked
  */
-router.post('/login', [
+router.post('/login', loginRateLimit, [
     body('id').notEmpty().withMessage('User ID is required'),
     body('password').notEmpty().withMessage('Password is required'),
     validate([])
@@ -448,9 +502,6 @@ router.post('/login', [
             return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
         }
 
-        // Successful login — reset lockout counter
-        await resetFailedLogins(user.id);
-
         const userMemberships = await listUserMemberships(user.id);
 
         logger.debug({ id, membershipCount: userMemberships.length }, '[Auth] Membership lookup complete');
@@ -464,7 +515,17 @@ router.post('/login', [
         if (user.mfaEnabledAt) {
             const { totpCode } = req.body;
             if (!totpCode) {
-                return res.status(200).json({ mfaRequired: true, userId: user.id });
+                // Store challenge token in Redis instead of exposing userId
+                const challengeToken = crypto.randomUUID();
+                try {
+                    const { pubClient } = getRedisClients();
+                    if (pubClient) {
+                        await pubClient.set(`mfa-challenge:${challengeToken}`, user.id, { EX: 60 });
+                    }
+                } catch (redisErr) {
+                    logger.error({ err: redisErr }, '[Auth] Failed to store MFA challenge token');
+                }
+                return res.status(200).json({ mfaRequired: true, challengeToken });
             }
             const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../services/platformStepUp.js');
             const totpAlreadyUsed = await isTotpTokenUsed(user.id, totpCode);
@@ -488,6 +549,9 @@ router.post('/login', [
                 await markTotpTokenUsed(user.id, totpCode);
             }
         }
+
+        // Fully authenticated — reset lockout counter (after MFA if applicable)
+        await resetFailedLogins(user.id);
 
         const activeMemberships = userMemberships.filter(m => m.status === 'active');
         const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;

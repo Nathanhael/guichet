@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
-import { ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable } from '../db/schema.js';
+import { ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable } from '../db/schema.js';
 
 export async function runDailyPurge() {
   try {
@@ -48,14 +48,24 @@ export async function runDailyPurge() {
 
     if (Array.isArray(datesToAggregate)) {
       for (const { date } of datesToAggregate) {
+        // Use date range filtering instead of ::date cast to allow index use
+        const nextDate = new Date(date);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const nextDateStr = nextDate.toISOString().slice(0, 10);
+
         // Find all partners that had activity on this date
         // Note: query() auto-converts snake_case to camelCase, so partner_id → partnerId
-        const partnerIds = (await query('SELECT DISTINCT partner_id FROM tickets WHERE created_at::date = $1', [date])) as { partnerId: string }[];
+        const partnerIds = (await query('SELECT DISTINCT partner_id FROM tickets WHERE created_at >= $1 AND created_at < $2', [date, nextDateStr])) as { partnerId: string }[];
 
         for (const { partnerId } of partnerIds) {
-          const dayTickets = (await query('SELECT * FROM tickets WHERE created_at::date = $1 AND partner_id = $2', [date, partnerId])) as unknown as Ticket[];
+          // Project only needed columns instead of SELECT *
+          const dayTickets = (await query(
+            `SELECT id, partner_id, dept, agent_id, support_id, status, created_at, updated_at, closed_at, closing_notes, closed_by, participants, reopened, reopen_count, sla_response_due_at, sla_resolution_due_at, sla_breached, agent_name, agent_lang, support_name, support_lang, support_joined_at, "references"
+             FROM tickets WHERE created_at >= $1 AND created_at < $2 AND partner_id = $3`,
+            [date, nextDateStr, partnerId]
+          )) as unknown as Ticket[];
           const ticketIds = dayTickets.map(t => t.id);
-          
+
           let dayRatings: Rating[] = [];
           if (ticketIds.length > 0) {
             dayRatings = (await db.select().from(ratingsTable).where(inArray(ratingsTable.ticketId, ticketIds))) as unknown as Rating[];
@@ -109,6 +119,8 @@ export async function runDailyPurge() {
       await tx.execute(sql`DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
       await tx.execute(sql`DELETE FROM ratings WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
       await tx.execute(sql`DELETE FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
+      // Purge app_feedback older than retention period (GDPR compliance)
+      await tx.execute(sql`DELETE FROM app_feedback WHERE created_at < ${cutoffDate}`);
       await tx.execute(sql`DELETE FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'`);
     });
 

@@ -50,6 +50,8 @@ export default function SupportView() {
 
   useEffect(() => {
     if (ticketsQuery.data && Array.isArray(ticketsQuery.data)) {
+      // tRPC infers Drizzle row types which differ slightly from client Ticket interface
+      // (e.g. participants as JSONB object vs typed array). Runtime data is compatible.
       setTickets(ticketsQuery.data as unknown as Ticket[]);
     }
   }, [ticketsQuery.data, setTickets]);

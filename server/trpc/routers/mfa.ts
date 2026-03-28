@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';

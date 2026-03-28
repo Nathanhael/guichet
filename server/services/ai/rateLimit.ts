@@ -7,6 +7,23 @@ import logger from '../../utils/logger.js';
 const DEFAULT_PER_MINUTE = 30;
 const DEFAULT_PER_DAY = 1000;
 
+/**
+ * Lua script that atomically increments a key and sets its TTL on first creation.
+ * This eliminates the race condition where a process could die between INCR and EXPIRE,
+ * leaving a key without a TTL that never gets cleaned up.
+ *
+ * KEYS[1] = the rate limit key
+ * ARGV[1] = TTL in seconds
+ * Returns: the new count after increment
+ */
+const RATE_LIMIT_SCRIPT = `
+  local count = redis.call('INCR', KEYS[1])
+  if count == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+  end
+  return count
+`;
+
 interface RateLimitConfig {
   perMinute?: number;
   perDay?: number;
@@ -21,7 +38,7 @@ interface RateLimitResult {
 
 /**
  * Check and increment the rate limit for a partner's AI usage.
- * Uses atomic MULTI/EXEC to avoid TOCTOU race conditions.
+ * Uses a Lua script for atomic INCR + EXPIRE to prevent TTL race conditions.
  * Returns { allowed: true } if the request can proceed.
  */
 export async function checkRateLimit(
@@ -36,26 +53,11 @@ export async function checkRateLimit(
     const minuteKey = `ai:rate:${partnerId}:minute`;
     const dayKey = `ai:rate:${partnerId}:day`;
 
-    // Atomic increment-first: avoids TOCTOU race where two concurrent
-    // requests both read the same count and both pass the check.
-    const multi = r.multi();
-    multi.incr(minuteKey);
-    multi.incr(dayKey);
-    const results = await multi.exec();
-
-    const newMinuteCount = Number(results[0]);
-    const newDayCount = Number(results[1]);
-
-    // Set expiry only on first increment (fixed window)
-    if (newMinuteCount === 1) await r.expire(minuteKey, 60);
-    if (newDayCount === 1) await r.expire(dayKey, 86400);
+    // Atomic INCR + EXPIRE via Lua script — no TTL gap on process death
+    const newMinuteCount = Number(await r.eval(RATE_LIMIT_SCRIPT, { keys: [minuteKey], arguments: ['60'] }));
+    const newDayCount = Number(await r.eval(RATE_LIMIT_SCRIPT, { keys: [dayKey], arguments: ['86400'] }));
 
     // Check limits after incrementing — decrement if over-limit.
-    // KNOWN TRADEOFF (Issue 18): The increment-then-decrement pattern allows a momentary +1
-    // overshoot under high concurrency (two requests can both pass the pre-increment threshold
-    // and both increment before either checks the limit). This is acceptable for AI rate limiting
-    // where occasional single-request overshoot has negligible impact. A Lua script could
-    // eliminate the overshoot entirely but would add complexity for minimal gain here.
     if (newMinuteCount > perMinute) {
       await r.decr(minuteKey);
       return { allowed: false, retryAfterSeconds: 60, limitHit: 'minute' };

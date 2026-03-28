@@ -161,6 +161,9 @@ function isTokenExpired(socket: Socket): boolean {
   return Math.floor(Date.now() / 1000) >= exp;
 }
 
+/** Interval (ms) between periodic revocation checks on active sockets */
+const REVOCATION_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 /** Guard: require socket to be identified before processing events */
 function requireIdentified(socket: Socket): boolean {
   if (isTokenExpired(socket)) {
@@ -173,6 +176,31 @@ function requireIdentified(socket: Socket): boolean {
     socket.emit('error', { message: 'Not authenticated — call socket:identify first' });
     return false;
   }
+
+  // Periodic revocation check — runs at most once every 5 minutes per socket.
+  // Between checks, a revoked session can still operate, but this limits the window.
+  const now = Date.now();
+  const lastCheck = (socket.data.lastRevocationCheck as number) || 0;
+  if (now - lastCheck > REVOCATION_CHECK_INTERVAL_MS) {
+    socket.data.lastRevocationCheck = now;
+    // Fire-and-forget: check revocation asynchronously. If revoked, disconnect.
+    isRevoked({
+      userId: socket.data.userId as string,
+      jti: socket.data.jti as string | undefined,
+      iat: socket.data.iat as number | undefined,
+    }).then((revoked) => {
+      if (revoked) {
+        logger.info({ socketId: socket.id, userId: socket.data.userId }, '[socket] Session revoked, disconnecting');
+        socket.emit('auth:expired', { message: 'Session revoked — please re-authenticate' });
+        socket.disconnect(true);
+      }
+    }).catch(() => {
+      // If Redis is down, isRevoked fails closed — disconnect to be safe
+      socket.emit('auth:expired', { message: 'Session verification failed — please re-authenticate' });
+      socket.disconnect(true);
+    });
+  }
+
   return true;
 }
 
@@ -205,6 +233,8 @@ export function registerSocketHandlers(io: Server) {
       socket.data.authedUserId = decoded.userId;
       socket.data.authedIsPlatformOperator = !!decoded.isPlatformOperator;
       socket.data.tokenExp = decoded.exp; // seconds since epoch
+      socket.data.jti = decoded.jti;
+      socket.data.iat = decoded.iat;
       next();
     } catch (err) {
       logger.warn({ err: err instanceof Error ? err.message : String(err) }, '[socket] JWT auth failed');
@@ -426,7 +456,7 @@ export function registerSocketHandlers(io: Server) {
         const updated = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as { participants: string } | undefined;
         const participants = JSON.parse(updated?.participants || '[]');
         socket.join(`ticket:${ticketId}`);
-        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Record<string, unknown>[]).map(mapMessageRow);
+        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Parameters<typeof mapMessageRow>[0][]).map(mapMessageRow);
         socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
         io.to(`ticket:${ticketId}`).emit('support:joined', { ticketId, supportName, participants });
         await broadcastQueuePositions(callerPartnerId);

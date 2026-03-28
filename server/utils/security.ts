@@ -11,8 +11,14 @@ export function isValidMediaUrl(url: string | undefined | null): boolean {
   
   // Whitelist relative uploads
   if (url.startsWith('/uploads/')) {
-    // Basic path traversal prevention check
-    if (url.includes('..')) return false;
+    // Decode URL-encoded sequences before checking for path traversal
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(url);
+    } catch {
+      return false; // Malformed encoding — reject
+    }
+    if (decoded.includes('..')) return false;
     return true;
   }
 
