@@ -11,23 +11,7 @@ import LegalModal from '../components/LegalModal';
 import { LANG_LABEL } from '../constants';
 import { getRoleDisplayName } from '../utils/roles';
 
-// IM-24: Demo password is only used in demo login flow — obfuscated to avoid plain-text exposure in production bundles
-const DEMO_PASSWORD = atob('cGFzc3dvcmQxMjM='); // base64('password123')
-
 type DemoUser = { id: string; name: string; email?: string; role?: string; lang?: string; isPlatformOperator?: boolean };
-
-const HARDCODED_DEMO_USERS: DemoUser[] = [
-  { id: 'platform_bart', name: 'Bart Operator',   email: 'bart@tessera.demo',    role: 'admin',   lang: 'nl', isPlatformOperator: true },
-  { id: 'admin_dirk',    name: 'Dirk De Smedt',   email: 'dirk@tessera.demo',    role: 'admin',   lang: 'nl' },
-  { id: 'expert_alex',   name: 'Alex Johnson',     email: 'alex@tessera.demo',    role: 'support', lang: 'en' },
-  { id: 'expert_piet',   name: 'Piet Van Damme',   email: 'piet@tessera.demo',    role: 'support', lang: 'nl' },
-  { id: 'expert_sophie', name: 'Sophie Laurent',   email: 'sophie@tessera.demo',  role: 'support', lang: 'fr' },
-  { id: 'agent_jan',     name: 'Jan Peeters',      email: 'jan@tessera.demo',     role: 'agent',   lang: 'nl' },
-  { id: 'agent_karim',   name: 'Karim Benali',     email: 'karim@tessera.demo',   role: 'agent',   lang: 'fr' },
-  { id: 'agent_lisa',    name: 'Lisa Janssens',    email: 'lisa@tessera.demo',    role: 'agent',   lang: 'nl' },
-  { id: 'agent_marie',   name: 'Marie Dubois',     email: 'marie@tessera.demo',   role: 'agent',   lang: 'fr' },
-  { id: 'agent_tom',     name: 'Tom Williams',     email: 'tom@tessera.demo',     role: 'agent',   lang: 'en' },
-];
 
 type PartnerSelection = {
   user: User;
@@ -66,9 +50,8 @@ export default function LoginView() {
   const { data: usersData } = trpc.user.demoList.useQuery(undefined, {
     enabled: viewMode === 'demo'
   });
-  const users: DemoUser[] = (usersData && (usersData as DemoUser[]).length > 0)
-    ? (usersData as DemoUser[])
-    : HARDCODED_DEMO_USERS;
+  const demoLoginMutation = trpc.user.demoLogin.useMutation();
+  const users: DemoUser[] = usersData ? (usersData as DemoUser[]) : [];
 
   const filtered = filter === 'all' ? users :
     filter === 'platform' ? users.filter((u: DemoUser) => u.isPlatformOperator) :
@@ -271,16 +254,17 @@ export default function LoginView() {
     setError('');
     setIsDemoLoading(true);
     try {
+      const { password: demoPassword } = await demoLoginMutation.mutateAsync({ email: u.email! });
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ id: u.id, password: DEMO_PASSWORD })
+        body: JSON.stringify({ id: u.id, password: demoPassword })
       });
       if (res.ok) {
         const data = await res.json();
         if (data.mfaRequired) {
-          mfaPasswordRef.current = DEMO_PASSWORD;
+          mfaPasswordRef.current = demoPassword;
           setMfaPending({ endpoint: '/api/v1/auth/login', body: { id: u.id } });
           setViewMode('mfa');
           setTotpCode('');
