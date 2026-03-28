@@ -26,6 +26,7 @@ async function getPlatformSecurityUser(userId: string) {
       isPlatformOperator: users.isPlatformOperator,
       platformTotpSecret: users.platformTotpSecret,
       platformTotpEnabledAt: users.platformTotpEnabledAt,
+      lockedUntil: users.lockedUntil,
     })
     .from(users)
     .where(eq(users.id, userId))
