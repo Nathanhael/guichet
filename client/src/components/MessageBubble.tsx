@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import UserAvatar from './UserAvatar';
 import BionicText from './BionicText';
 import { getSocket } from '../hooks/useSocket';
@@ -16,7 +16,11 @@ interface MessageBubbleProps {
 }
 
 export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true }: MessageBubbleProps) {
-  const { user, participantsOnline, bionicReading } = useStore();
+  const { user, participantsOnline, bionicReading } = useStoreShallow(s => ({
+    user: s.user,
+    participantsOnline: s.participantsOnline,
+    bionicReading: s.bionicReading,
+  }));
   const t = useT();
 
   // AI config for translation

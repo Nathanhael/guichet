@@ -673,14 +673,16 @@ export const partnerRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove yourself' });
         }
 
-        const userMemberships = await db.select().from(memberships)
-          .where(eq(memberships.userId, membership[0].userId));
+        await db.transaction(async (tx) => {
+          const userMemberships = await tx.select().from(memberships)
+            .where(eq(memberships.userId, membership[0].userId));
 
-        if (userMemberships.length <= 1) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove user\'s last membership. Platform Operator must handle this.' });
-        }
+          if (userMemberships.length <= 1) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove user\'s last membership. Platform Operator must handle this.' });
+          }
 
-        await db.delete(memberships).where(eq(memberships.id, input.membershipId));
+          await tx.delete(memberships).where(eq(memberships.id, input.membershipId));
+        });
 
         await db.insert(auditLog).values({
           action: 'member.removed',

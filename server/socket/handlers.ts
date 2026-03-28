@@ -580,12 +580,16 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Only support staff can close tickets' });
         }
 
-        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
+        const ticket = await get('SELECT partner_id, status FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string; status: string } | undefined;
         if (!ticket) return;
 
         // Tenant isolation: ticket must belong to caller's partner
         if (ticket.partner_id !== socket.data.partnerId) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
+        }
+
+        if (ticket.status === 'closed') {
+          return; // Already closed
         }
 
         // Limit closing notes length to prevent abuse
@@ -629,8 +633,8 @@ export function registerSocketHandlers(io: Server) {
         const id = uuidv4();
         const safeComment = comment ? comment.slice(0, 2000) : null;
         await run(
-          'INSERT INTO ratings (id, ticket_id, agent_id, support_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (ticket_id) DO NOTHING',
-          [id, ticketId, agentId, supportId, intRating, safeComment]
+          'INSERT INTO ratings (id, ticket_id, agent_id, support_id, partner_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (ticket_id) DO NOTHING',
+          [id, ticketId, agentId, supportId, socket.data.partnerId, intRating, safeComment]
         );
         io.to(`ticket:${ticketId}`).emit('rating:submitted', { ticketId, agentId, supportId, rating: intRating });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[rating:submit] error'); }

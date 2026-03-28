@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import useStore from '../store/useStore';
+import useStore, { useStoreShallow } from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
@@ -19,7 +19,20 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, onlineSupportUsers, setRatingPrompt } = useStore();
+  const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, onlineSupportUsers, setRatingPrompt } = useStoreShallow(s => ({
+    user: s.user,
+    messages: s.messages,
+    participantsOnline: s.participantsOnline,
+    setParticipantOnline: s.setParticipantOnline,
+    tickets: s.tickets,
+    allLabels: s.allLabels,
+    setMessages: s.setMessages,
+    activePartnerId: s.activePartnerId,
+    focusMode: s.focusMode,
+    typingUsers: s.typingUsers,
+    onlineSupportUsers: s.onlineSupportUsers,
+    setRatingPrompt: s.setRatingPrompt,
+  }));
   const t = useT();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
