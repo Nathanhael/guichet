@@ -12,16 +12,26 @@ import logger from '../../utils/logger.js';
 
 export const userRouter = router({
   list: platformProcedure
-    .query(async () => {
+    .input(z.object({
+      limit: z.number().int().min(1).max(500).default(100),
+      offset: z.number().int().min(0).default(0),
+    }).default({ limit: 100, offset: 0 }))
+    .query(async ({ input }) => {
       try {
-        const users = await query(`
+        const userRows = await query(`
           SELECT id, name, lang, is_platform_operator,
             (SELECT json_agg(DISTINCT role) FROM memberships WHERE user_id = users.id) as roles
           FROM users
           WHERE deleted_at IS NULL
           ORDER BY is_platform_operator DESC, name ASC
-        `);
-        return users;
+          LIMIT $1 OFFSET $2
+        `, [input.limit, input.offset]);
+
+        const countRows = await query(
+          `SELECT COUNT(*)::int as total FROM users WHERE deleted_at IS NULL`
+        );
+
+        return { users: userRows, total: (countRows[0] as Record<string, unknown>)?.total ?? 0 };
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
         if (err instanceof TRPCError) throw err;
@@ -48,6 +58,29 @@ export const userRouter = router({
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
         if (err instanceof TRPCError) throw err;
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+      }
+    }),
+
+  /** Public demo login — returns password only when DEMO_MODE=true */
+  demoLogin: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input }) => {
+      if (process.env.DEMO_MODE !== 'true') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
+      }
+      try {
+        const rows = await query(
+          `SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1`,
+          [input.email]
+        );
+        if (!rows || rows.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Demo user not found' });
+        }
+        return { password: 'password123' };
+      } catch (err: unknown) {
+        if (err instanceof TRPCError) throw err;
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: demoLogin error');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
       }
     }),

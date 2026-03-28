@@ -1,4 +1,4 @@
-import crypto, { timingSafeEqual } from 'crypto';
+import crypto, { createHash, timingSafeEqual } from 'crypto';
 import config from '../config.js';
 import { getRedisClients } from '../utils/redis.js';
 
@@ -118,7 +118,8 @@ export async function isTotpTokenUsed(userId: string, token: string): Promise<bo
   try {
     const { pubClient } = getRedisClients();
     if (!pubClient) return false;
-    const key = `totp:used:${userId}:${token}`;
+    const hashedToken = createHash('sha256').update(token).digest('hex');
+    const key = `totp:used:${userId}:${hashedToken}`;
     const existing = await pubClient.get(key);
     return existing !== null;
   } catch {
@@ -136,7 +137,8 @@ export async function markTotpTokenUsed(userId: string, token: string): Promise<
   try {
     const { pubClient } = getRedisClients();
     if (!pubClient) return;
-    const key = `totp:used:${userId}:${token}`;
+    const hashedToken = createHash('sha256').update(token).digest('hex');
+    const key = `totp:used:${userId}:${hashedToken}`;
     await pubClient.set(key, '1', { EX: TOTP_USED_TTL });
   } catch {
     // fire-and-forget — log nothing to avoid noise
