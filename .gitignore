@@ -65,5 +65,9 @@ client/test-results/
 # Git hooks (solo project)
 .husky/
 
+# E2E testing (local only)
+playwright.config.ts
+testing/e2e/
+
 # Video recordings
 docs/videos/
