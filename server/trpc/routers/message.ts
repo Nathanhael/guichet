@@ -49,7 +49,7 @@ export const messageRouter = router({
           );
         }
 
-        const rows = await query.orderBy(asc(messages.createdAt));
+        const rows = await query.orderBy(asc(messages.createdAt)).limit(2000);
 
         return rows.map(mapMessageRow);
       } catch (err: unknown) {
