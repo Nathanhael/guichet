@@ -30,7 +30,7 @@ export default function LegalModal({ type, onClose }: LegalModalProps) {
       onClick={onClose}
     >
       <div
-        className="relative flex flex-col w-full max-w-2xl max-h-[85vh] bg-bg-surface border border-border-heavy overflow-hidden"
+        role="dialog" aria-modal="true" className="relative flex flex-col w-full max-w-2xl max-h-[85vh] bg-bg-surface border border-border-heavy overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky header */}

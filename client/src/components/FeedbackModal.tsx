@@ -33,7 +33,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
 
   return (
     <div className="fixed inset-0 bg-bg-base/80 flex items-center justify-center z-50">
-      <div className="bg-bg-surface border border-border-heavy p-6 mx-4 max-w-sm w-full">
+      <div role="dialog" aria-modal="true" className="bg-bg-surface border border-border-heavy p-6 mx-4 max-w-sm w-full">
         {sent ? (
           <div className="text-center py-4">
             <div className="w-12 h-12 border border-border-heavy flex items-center justify-center mx-auto mb-3 text-xl font-bold">✓</div>

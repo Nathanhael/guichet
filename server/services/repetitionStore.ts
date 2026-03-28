@@ -1,7 +1,7 @@
 import { createClient } from 'redis';
 import logger from '../utils/logger.js';
 
-const REPETITION_TTL = 300; // 5 minutes
+const REPETITION_TTL = parseInt(process.env.REPETITION_TTL_SECS || '300', 10); // default 5 minutes
 
 export async function getRepetitionCount(redisClient: ReturnType<typeof createClient> | null, senderId: string, text: string): Promise<number> {
   if (!redisClient) {

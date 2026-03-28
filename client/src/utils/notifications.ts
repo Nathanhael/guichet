@@ -35,7 +35,7 @@ export function initTitleBadgeListener(): void {
 // Synthesize a clean, professional 'chime' using Web Audio API
 export function playChime(): void {
     try {
-        const AudioContextClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+        const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!AudioContextClass) return;
         const ctx: AudioContext = new AudioContextClass();
 

@@ -49,7 +49,7 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
     <>
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
         <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black/80" />
-        <div role="dialog" className="w-full max-w-2xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div role="dialog" aria-modal="true" className="w-full max-w-2xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
           <div className="flex justify-between items-start mb-6 border-b border-[var(--color-border)] pb-4">
             <div>
               <h2 className="text-2xl font-bold uppercase tracking-wide font-mono">{t('manage_access')}</h2>

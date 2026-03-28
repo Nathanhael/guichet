@@ -32,9 +32,9 @@ export default function AdminArchive() {
 
   useEffect(() => {
     if (ticketsQuery.data) {
-      const data = ticketsQuery.data as any;
+      const data = ticketsQuery.data as { tickets?: Ticket[]; nextCursor?: string };
       if (data.tickets) {
-        setTickets((prev) => !cursor ? data.tickets : [...prev, ...data.tickets]);
+        setTickets((prev) => !cursor ? data.tickets! : [...prev, ...data.tickets!]);
         setHasMore(!!data.nextCursor);
       }
     }
@@ -46,7 +46,7 @@ export default function AdminArchive() {
   );
 
   useEffect(() => {
-    if (messagesQuery.data) setPreviewMessages(messagesQuery.data as any);
+    if (messagesQuery.data) setPreviewMessages(messagesQuery.data as unknown as Message[]);
   }, [messagesQuery.data]);
 
   useEffect(() => { setCursor(undefined); setTickets([]); setHasMore(false); }, [search, dept, dateFrom, dateTo]);
@@ -200,7 +200,7 @@ export default function AdminArchive() {
             {hasMore && (
               <button
                 onClick={() => {
-                  const data = ticketsQuery.data as any;
+                  const data = ticketsQuery.data as { nextCursor?: string } | undefined;
                   if (data?.nextCursor) setCursor(data.nextCursor);
                 }}
                 disabled={loading}
@@ -217,7 +217,7 @@ export default function AdminArchive() {
       {preview && (
         <div className="fixed inset-0 z-50 flex justify-end">
           <div className="absolute inset-0 bg-black/60" onClick={() => setPreview(null)} aria-label="Close" />
-          <div role="dialog" className="relative w-[550px] bg-[var(--color-bg-surface)] border-l border-[var(--color-border)] h-full flex flex-col">
+          <div role="dialog" aria-modal="true" className="relative w-[550px] bg-[var(--color-bg-surface)] border-l border-[var(--color-border)] h-full flex flex-col">
             {/* Preview Header */}
             <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-start justify-between gap-3 shrink-0">
               <div>

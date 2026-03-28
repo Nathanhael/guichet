@@ -108,7 +108,7 @@ router.get('/azure', async (req: Request, res: Response) => {
 
 // ---- Step 2: Callback – exchange code, upsert user, auto-membership ----
 router.get('/azure/callback', async (req: Request, res: Response) => {
-  const clientOrigin = config.CORS_ORIGIN.split(',')[0];
+  const clientOrigin = config.FRONTEND_URL;
 
   try {
     if (!ensureConfigured()) {
@@ -372,7 +372,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     res.redirect(`${clientOrigin}/#sso_token=${opaqueToken}`);
   } catch (err: unknown) {
     logger.error({ err: err instanceof Error ? err.message : String(err) }, '[SSO] Callback FATAL error');
-    const fallbackOrigin = config.CORS_ORIGIN.split(',')[0];
+    const fallbackOrigin = config.FRONTEND_URL;
     res.redirect(`${fallbackOrigin}/?sso_error=internal_error`);
   }
 });
