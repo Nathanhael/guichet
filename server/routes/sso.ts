@@ -253,8 +253,16 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     const azureGroups: string[] = claims.groups || [];
 
     if (azureGroups.length === 0 && claims._claim_names?.groups) {
-      // Group overage — Azure omitted groups claim (user has 200+ groups)
-      logger.warn({ userId: user.id, oid }, '[SSO] Group overage detected — groups claim missing, _claim_names present. User may need manual membership.');
+      // HI-05 fix: Group overage — Azure omitted groups claim (user has 200+ groups).
+      // Without the full group list, role/department mappings cannot be applied correctly.
+      // Log an actionable error and continue login without group-based assignments.
+      // To fully resolve: call Microsoft Graph API /me/memberOf with the access_token.
+      logger.error(
+        { userId: user.id, oid, claimNames: Object.keys(claims._claim_names || {}) },
+        '[SSO] Group overage detected — Azure truncated groups claim (>200 groups). ' +
+        'Group-based partner mappings will NOT be applied for this user. ' +
+        'Configure fewer groups or implement Graph API fallback.'
+      );
     }
 
     if (azureGroups.length > 0) {

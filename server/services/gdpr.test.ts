@@ -144,10 +144,10 @@ describe('runDailyPurge', () => {
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
 
-    // Transaction should have been called to delete old data
-    expect(transactionMock).toHaveBeenCalledOnce();
+    // Transaction called twice: main GDPR purge + AI usage aggregate+purge
+    expect(transactionMock).toHaveBeenCalledTimes(2);
 
-    // Verify the transaction callback executes 4 DELETEs
+    // Verify the first transaction callback (GDPR purge) executes DELETEs
     const txCallback = transactionMock.mock.calls[0][0];
     const txMock = { execute: vi.fn().mockResolvedValue({ rowCount: 0 }) };
     await txCallback(txMock);
@@ -166,8 +166,8 @@ describe('runDailyPurge', () => {
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
 
-    // The transaction receives a cutoffDate that is 30 days ago
-    expect(transactionMock).toHaveBeenCalledOnce();
+    // The transaction is called twice: once for main GDPR purge, once for AI usage aggregate+purge
+    expect(transactionMock).toHaveBeenCalledTimes(2);
     // The cutoff is embedded in the SQL template literal via drizzle's sql`...`
     // We trust drizzle builds the correct query; the key is that config.GDPR_RETENTION_DAYS = 30
     // and the cutoff is computed as today - 30 days.
@@ -269,8 +269,8 @@ describe('runDailyPurge', () => {
     // No ticket aggregation or daily_stats run calls
     expect(computeLiveDayStatsMock).not.toHaveBeenCalled();
 
-    // Transaction still runs (DELETEs happen regardless, they just delete 0 rows)
-    expect(transactionMock).toHaveBeenCalledOnce();
+    // Transaction runs twice: main GDPR purge + AI usage aggregate+purge
+    expect(transactionMock).toHaveBeenCalledTimes(2);
 
     // run() called twice by AI usage purge (aggregate INSERT + DELETE), but not for daily_stats
     const dailyStatsRuns = runMock.mock.calls.filter((c: unknown[]) => (c[0] as string).includes('daily_stats'));

@@ -361,21 +361,19 @@ router.post('/login-local', loginRateLimit, [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Re-check lockout after password verification.
-        // Note: `user` was fetched at request start and may be stale if a concurrent request
-        // locked the account between our initial check and now. However, this is safe because:
-        // 1. `recordFailedLogin()` uses an atomic SQL UPDATE that handles the actual lock.
-        // 2. If the concurrent request locked the account, `recordFailedLogin()` above already
-        //    returned `{ locked: true }` and we returned 423 before reaching this point.
-        // 3. This re-check is a belt-and-suspenders guard for the edge case where password
-        //    verification succeeded but a *different* concurrent request locked the account
-        //    between our initial lockout check and password verification.
-        // For higher assurance, a fresh DB fetch could replace this, but the atomic SQL in
-        // recordFailedLogin makes the current approach functionally correct.
-        const lockoutAfterPw = checkLockout(user);
-        if (lockoutAfterPw.locked) {
-            const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
-            return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
+        // ME-02 fix: Re-check lockout with a FRESH database fetch instead of stale in-memory object.
+        // The original code used `checkLockout(user)` on the stale request-start snapshot, which
+        // could never detect a concurrent lock. Now we re-fetch the user row to catch the edge case
+        // where a different concurrent request locked the account between our initial check and
+        // password verification. The atomic SQL in recordFailedLogin is the primary protection;
+        // this is a genuine belt-and-suspenders guard.
+        const freshUser = await get('SELECT locked_until FROM users WHERE id = $1', [user.id]) as { locked_until: string | null } | undefined;
+        if (freshUser) {
+            const lockoutAfterPw = checkLockout({ lockedUntil: freshUser.locked_until });
+            if (lockoutAfterPw.locked) {
+                const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
+                return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
+            }
         }
 
         const userMemberships = await listUserMemberships(user.id);
@@ -523,13 +521,14 @@ router.post('/login', loginRateLimit, [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Re-check lockout after password verification (see login-local route for detailed explanation).
-        // The stale `user` object is safe here because recordFailedLogin() uses atomic SQL —
-        // this is a belt-and-suspenders guard for concurrent-request edge cases.
-        const lockoutAfterPw = checkLockout(user);
-        if (lockoutAfterPw.locked) {
-            const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
-            return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
+        // ME-02 fix: Re-check lockout with fresh DB fetch (see login-local route for detailed explanation).
+        const freshUser = await get('SELECT locked_until FROM users WHERE id = $1', [user.id]) as { locked_until: string | null } | undefined;
+        if (freshUser) {
+            const lockoutAfterPw = checkLockout({ lockedUntil: freshUser.locked_until });
+            if (lockoutAfterPw.locked) {
+                const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
+                return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
+            }
         }
 
         const userMemberships = await listUserMemberships(user.id);

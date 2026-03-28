@@ -1,7 +1,7 @@
 import { useT } from '../../i18n';
 import { LANG_FLAG } from '../../constants';
 import { trpc } from '../../utils/trpc';
-import { Ticket } from '../../types';
+import { Ticket, Label } from '../../types';
 import useStore from '../../store/useStore';
 
 interface CustomerInfoPanelProps {
@@ -30,7 +30,7 @@ export default function CustomerInfoPanel({ ticket }: CustomerInfoPanelProps) {
 
   const agentOnline = participantsOnline[ticket.id] ?? false;
   const references = (ticket.references || []) as Array<{label: string; value: string}>;
-  const labels = (ticket.labels || []).map(id => (allLabels || []).find(l => l.id === id)).filter(Boolean);
+  const labels = (ticket.labels || []).map(id => (allLabels || []).find(l => l.id === id)).filter((l): l is Label => Boolean(l));
 
   return (
     <aside className="w-72 bg-[var(--color-bg-surface)] border-l border-[var(--color-border)] flex flex-col overflow-hidden">
@@ -87,7 +87,7 @@ export default function CustomerInfoPanel({ ticket }: CustomerInfoPanelProps) {
             {t('labels') || 'Labels'}
           </h3>
           <div className="flex flex-wrap gap-1.5">
-            {labels.map((label: any) => (
+            {labels.map((label) => (
               <span
                 key={label.id}
                 className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase"
@@ -108,7 +108,7 @@ export default function CustomerInfoPanel({ ticket }: CustomerInfoPanelProps) {
           <p className="text-[12px] text-[var(--color-text-primary)] opacity-40 italic">{t('no_history') || 'First contact'}</p>
         ) : (
           <div className="space-y-2">
-            {pastList.slice(0, 8).map((t: any) => (
+            {pastList.slice(0, 8).map((t) => (
               <div key={t.id} className="surface-card">
                 <div className="flex items-center gap-2 mb-0.5">
                   <span className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase">{t.dept}</span>

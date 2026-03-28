@@ -5,8 +5,19 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
 import { fileTypeFromFile } from 'file-type';
+import rateLimit from 'express-rate-limit';
 import config from '../config.js';
 import { auth } from '../middleware/auth.js';
+
+// HI-06 fix: Rate limit uploads to prevent disk exhaustion by authenticated users
+const uploadRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // 20 uploads per 15-minute window per user
+  keyGenerator: (req: Request) => (req as Request & { user?: { id: string } }).user?.id || req.ip || 'unknown',
+  message: { error: 'Too many uploads — try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadDir = path.join(__dirname, '..', 'uploads');
@@ -61,7 +72,7 @@ const router = Router();
  *       400:
  *         description: Invalid file type or size exceeded
  */
-router.post('/', auth, (req: Request, res: Response) => {
+router.post('/', auth, uploadRateLimit, (req: Request, res: Response) => {
   upload.single('file')(req, res, async (err: unknown) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
