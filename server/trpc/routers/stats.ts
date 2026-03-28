@@ -1,12 +1,13 @@
 import { z } from 'zod';
-import { router, roleProcedure } from '../trpc.js';
+import { router, partnerScopedProcedure } from '../trpc.js';
 import { query, db } from '../../db.js';
 import { ratings as ratingsTable, messages as messagesTable } from '../../db/schema.js';
 import { inArray } from 'drizzle-orm';
 import { computeLiveDayStats, calculatePercentile } from '../../services/stats.js';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
-import { Ticket } from '../../types/index.js';
+import { Ticket, UserRole } from '../../types/index.js';
+import { isPlatformAdmin } from '../../services/roles.js';
 
 /**
  * Raw row shape from `SELECT * FROM messages` via pg driver (snake_case).
@@ -148,9 +149,18 @@ interface LabelCountRow {
   count: number;
 }
 
+// Partner-scoped + role check for admin/support (platform operators bypass role gate)
+const allowedStatsRoles: UserRole[] = ['admin', 'support'];
+const partnerStatsProcedure = partnerScopedProcedure.use(({ ctx, next }) => {
+  if (!allowedStatsRoles.includes(ctx.user.role) && !isPlatformAdmin(ctx.user.isPlatformOperator)) {
+    throw new TRPCError({ code: 'FORBIDDEN' });
+  }
+  return next();
+});
+
 export const statsRouter = router({
   // NOTE: This is a heavy endpoint. Client refetch interval should be 60s+ (not 30s).
-  getGlobalStats: roleProcedure(['admin', 'support'])
+  getGlobalStats: partnerStatsProcedure
     .input(z.object({
       dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format').optional(),
       dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format').optional(),
@@ -160,8 +170,7 @@ export const statsRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const { dateFrom, dateTo, dept, excludeWeekends } = input;
-        if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-        if (ctx.user.isPlatformOperator && !ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Platform operators must provide a partnerId via partner context' });
+        // partnerId is guaranteed non-null by partnerScopedProcedure middleware
 
         // Enforce max date range of 365 days to prevent excessive queries
         if (dateFrom && dateTo) {
@@ -172,7 +181,7 @@ export const statsRouter = router({
             throw new TRPCError({ code: 'BAD_REQUEST', message: 'Date range cannot exceed 365 days' });
           }
         }
-        const partnerId = ctx.user.partnerId as string;
+        const partnerId = ctx.user.partnerId;
 
         const now = new Date();
         const today = now.toISOString().slice(0, 10);

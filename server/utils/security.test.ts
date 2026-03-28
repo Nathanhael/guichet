@@ -8,9 +8,18 @@ describe('isValidMediaUrl', () => {
     expect(isValidMediaUrl('')).toBe(true);
   });
 
-  it('allows relative /uploads/ paths', () => {
+  it('allows relative /uploads/ paths with safe extensions', () => {
     expect(isValidMediaUrl('/uploads/abc123.png')).toBe(true);
     expect(isValidMediaUrl('/uploads/file.jpg')).toBe(true);
+    expect(isValidMediaUrl('/uploads/photo.jpeg')).toBe(true);
+    expect(isValidMediaUrl('/uploads/image.webp')).toBe(true);
+    expect(isValidMediaUrl('/uploads/anim.gif')).toBe(true);
+  });
+
+  it('blocks /uploads/ paths with non-image extensions', () => {
+    expect(isValidMediaUrl('/uploads/script.js')).toBe(false);
+    expect(isValidMediaUrl('/uploads/page.html')).toBe(false);
+    expect(isValidMediaUrl('/uploads/evil.svg')).toBe(false);
   });
 
   it('blocks path traversal in /uploads/ paths', () => {
@@ -18,26 +27,15 @@ describe('isValidMediaUrl', () => {
     expect(isValidMediaUrl('/uploads/../../secret.txt')).toBe(false);
   });
 
-  it('allows https image URLs with safe extensions', () => {
-    expect(isValidMediaUrl('https://example.com/photo.png')).toBe(true);
-    expect(isValidMediaUrl('https://cdn.test.com/img.jpg')).toBe(true);
-    expect(isValidMediaUrl('https://example.com/pic.jpeg')).toBe(true);
-    expect(isValidMediaUrl('https://example.com/file.webp')).toBe(true);
-    expect(isValidMediaUrl('https://example.com/anim.gif')).toBe(true);
+  it('blocks all external http/https URLs (H-5: tracking pixel prevention)', () => {
+    expect(isValidMediaUrl('https://example.com/photo.png')).toBe(false);
+    expect(isValidMediaUrl('https://cdn.test.com/img.jpg')).toBe(false);
+    expect(isValidMediaUrl('http://example.com/photo.png')).toBe(false);
+    expect(isValidMediaUrl('https://evil.com/track.png')).toBe(false);
   });
 
-  it('allows http image URLs', () => {
-    expect(isValidMediaUrl('http://example.com/photo.png')).toBe(true);
-  });
-
-  it('blocks SVG files (XSS risk)', () => {
-    expect(isValidMediaUrl('https://example.com/evil.svg')).toBe(false);
-  });
-
-  it('blocks non-image extensions', () => {
-    expect(isValidMediaUrl('https://example.com/script.js')).toBe(false);
-    expect(isValidMediaUrl('https://example.com/page.html')).toBe(false);
-    expect(isValidMediaUrl('https://example.com/doc.pdf')).toBe(false);
+  it('blocks protocol-relative URLs', () => {
+    expect(isValidMediaUrl('//example.com/photo.png')).toBe(false);
   });
 
   it('blocks non-http protocols', () => {
@@ -47,9 +45,10 @@ describe('isValidMediaUrl', () => {
     expect(isValidMediaUrl('file:///etc/passwd')).toBe(false);
   });
 
-  it('blocks malformed URLs', () => {
+  it('blocks malformed URLs and non-upload relative paths', () => {
     expect(isValidMediaUrl('not-a-url')).toBe(false);
     expect(isValidMediaUrl('://missing-protocol')).toBe(false);
+    expect(isValidMediaUrl('/other/path.png')).toBe(false);
   });
 });
 

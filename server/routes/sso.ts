@@ -214,18 +214,15 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         // identity to them would allow account takeover — an attacker who controls an SSO
         // identity with the same email could hijack the local account.
         if (user.password) {
-          logger.warn({ userId: user.id, oid, email }, '[SSO] Refused to link SSO identity to local-auth account (password set)');
-          // Create a new separate SSO-only account instead of hijacking the local one
-          const newId = uuid();
-          await db.insert(users).values({
-            id: newId,
-            email: `sso_${oid}_${email}`,  // Disambiguate email to avoid unique constraint
-            name,
-            externalId: oid,
-            password: null,
+          logger.warn({ userId: user.id, oid, email }, '[SSO] Email conflict: SSO identity matches existing local-auth account — rejecting login');
+          await db.insert(auditLog).values({
+            action: 'sso.email_conflict',
+            actorId: user.id,
+            targetType: 'user',
+            targetId: user.id,
+            metadata: { email, oid },
           });
-          user = (await db.select().from(users).where(eq(users.id, newId)).limit(1))[0];
-          logger.info({ userId: newId, oid }, '[SSO] Created separate SSO user (local account exists with same email)');
+          return res.redirect(`${clientOrigin}/login?sso_error=email_conflict`);
         } else {
           // Safe to link: account has no password (SSO-only or uninitialised invite)
           await db.update(users).set({ externalId: oid, name }).where(eq(users.id, user.id));

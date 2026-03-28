@@ -5,7 +5,7 @@ import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { users, auditLog } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import { generateTotpSecret, buildTotpUri, verifyTotpToken } from '../../services/platformStepUp.js';
+import { generateTotpSecret, buildTotpUri, verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } from '../../services/platformStepUp.js';
 import { revokeUserSessions } from '../../services/sessionRevocation.js';
 import { checkLockout, recordFailedLogin } from '../../services/accountLockout.js';
 import { MailService } from '../../services/mail.js';
@@ -17,7 +17,7 @@ function generateRecoveryCodes(): { plain: string[]; hashed: string[] } {
   const plain: string[] = [];
   const hashed: string[] = [];
   for (let i = 0; i < RECOVERY_CODE_COUNT; i++) {
-    const code = crypto.randomBytes(4).toString('hex'); // 8-char hex codes
+    const code = crypto.randomBytes(10).toString('hex'); // 20-char hex codes (80 bits entropy)
     plain.push(code);
     hashed.push(crypto.createHash('sha256').update(code).digest('hex'));
   }
@@ -96,10 +96,12 @@ export const mfaRouter = router({
         }
       }
 
-      if (!verifyTotpToken(user.mfaSecret, input.code)) {
+      const alreadyUsed = await isTotpTokenUsed(ctx.user.id, input.code);
+      if (alreadyUsed || !verifyTotpToken(user.mfaSecret, input.code)) {
         await recordFailedLogin(ctx.user.id);
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid code. Try again.' });
       }
+      await markTotpTokenUsed(ctx.user.id, input.code);
 
       const { plain, hashed } = generateRecoveryCodes();
 
@@ -164,10 +166,12 @@ export const mfaRouter = router({
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid password' });
       }
 
-      if (!verifyTotpToken(user.mfaSecret, input.code)) {
+      const alreadyUsed = await isTotpTokenUsed(ctx.user.id, input.code);
+      if (alreadyUsed || !verifyTotpToken(user.mfaSecret, input.code)) {
         await recordFailedLogin(ctx.user.id);
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid code' });
       }
+      await markTotpTokenUsed(ctx.user.id, input.code);
 
       await db.update(users).set({
         mfaSecret: null,
@@ -216,10 +220,12 @@ export const mfaRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'MFA is not enabled' });
       }
 
-      if (!verifyTotpToken(user.mfaSecret, input.code)) {
+      const alreadyUsed = await isTotpTokenUsed(ctx.user.id, input.code);
+      if (alreadyUsed || !verifyTotpToken(user.mfaSecret, input.code)) {
         await recordFailedLogin(ctx.user.id);
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid code' });
       }
+      await markTotpTokenUsed(ctx.user.id, input.code);
 
       const { plain, hashed } = generateRecoveryCodes();
 

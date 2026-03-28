@@ -80,14 +80,15 @@ export const feedbackRouter = router({
     .input(z.string())
     .mutation(async ({ input: id, ctx }) => {
       try {
+        // H-7: Platform operators without partner context must not modify cross-tenant feedback
+        if (ctx.user.isPlatformOperator && !ctx.user.partnerId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner context required to mark feedback. Use enter-partner first.' });
+        }
+
         if (ctx.user.partnerId) {
           await db.update(appFeedback)
             .set({ treated: 1 })
             .where(and(eq(appFeedback.id, id), inArray(appFeedback.userId, partnerMemberIds(ctx.user.partnerId))));
-        } else if (ctx.user.isPlatformOperator) {
-          await db.update(appFeedback)
-            .set({ treated: 1 })
-            .where(eq(appFeedback.id, id));
         }
 
         return { success: true };

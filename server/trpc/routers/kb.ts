@@ -229,7 +229,7 @@ Only return valid JSON, nothing else.`,
       body: z.string().min(1).max(50000),
       dept: z.string().optional(),
       tags: z.array(z.string()).optional(),
-      slug: z.string().max(80).optional(),
+      slug: z.string().regex(/^[a-z0-9][a-z0-9-]*$/).max(80).optional(),
       published: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -262,7 +262,7 @@ Only return valid JSON, nothing else.`,
       body: z.string().min(1).max(50000).optional(),
       dept: z.string().nullable().optional(),
       tags: z.array(z.string()).optional(),
-      slug: z.string().max(80).nullable().optional(),
+      slug: z.string().regex(/^[a-z0-9][a-z0-9-]*$/).max(80).nullable().optional(),
       published: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {

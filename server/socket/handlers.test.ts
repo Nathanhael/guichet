@@ -16,7 +16,7 @@ vi.mock('../db.js', () => ({
 
 vi.mock('../config.js', () => ({
   default: {
-    JWT_SECRET: 'test-secret-key-only-for-unit-tests',
+    JWT_SECRET: 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
     BUSINESS_HOURS_START: '00:00',
     BUSINESS_HOURS_END: '23:59',
   },
@@ -179,7 +179,7 @@ describe('registerSocketHandlers', () => {
     const jwt = await import('jsonwebtoken');
     const token = jwt.default.sign(
       { userId: 'u1', role: 'support', isPlatformOperator: false },
-      'test-secret-key-only-for-unit-tests',
+      'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
       { expiresIn: '1h' }
     );
 

@@ -47,7 +47,11 @@ const io = new Server(httpServer, {
   pingInterval: 10000,
   cors: {
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // !origin (undefined) is allowed for non-browser clients (curl, server-to-server).
+      // origin === "null" (literal string) comes from sandboxed iframes / file:// pages — reject in production.
+      if (origin === 'null' && process.env.NODE_ENV === 'production') {
+        callback(new Error('Not allowed by CORS'));
+      } else if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -87,7 +91,11 @@ app.use(helmet({
 }));
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // !origin (undefined) is allowed for non-browser clients (curl, server-to-server).
+    // origin === "null" (literal string) comes from sandboxed iframes / file:// pages — reject in production.
+    if (origin === 'null' && process.env.NODE_ENV === 'production') {
+      callback(new Error('Not allowed by CORS'));
+    } else if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -100,32 +108,32 @@ app.use(cookieParser());
 
 const globalLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') ? 999999 : 100,
+  max: (process.env.NODE_ENV === 'test' || config.DISABLE_RATE_LIMIT) ? 999999 : 100,
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use('/api', globalLimiter);
 
 export const authLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') ? 999999 : 5,
+  max: (process.env.NODE_ENV === 'test' || config.DISABLE_RATE_LIMIT) ? 999999 : 5,
   message: { error: 'Too many authentication attempts, please try again later.' }
 });
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') ? 999999 : 10,
+  max: (process.env.NODE_ENV === 'test' || config.DISABLE_RATE_LIMIT) ? 999999 : 10,
   message: { error: 'Too many upload requests, please try again later.' }
 });
 
 const trpcLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: (process.env.NODE_ENV === 'test' || process.env.DISABLE_RATE_LIMIT === 'true') ? 999999 : 200,
+  max: (process.env.NODE_ENV === 'test' || config.DISABLE_RATE_LIMIT) ? 999999 : 200,
   message: { error: 'Too many requests, please try again later.' }
 });
 
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  logger.info({ method: req.method, url: req.url }, `Incoming ${req.method} request`);
+  logger.info({ method: req.method, path: req.path }, `Incoming ${req.method} request`);
   next();
 });
 
@@ -260,8 +268,14 @@ app.get('/metrics', async (req: Request, res: Response) => {
   const isLocal = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
   const tokenHeader = req.headers['x-metrics-token'];
   
-  if (config.METRICS_TOKEN && tokenHeader !== config.METRICS_TOKEN && !isLocal) {
-    return res.status(403).json({ error: 'Forbidden' });
+  if (config.METRICS_TOKEN) {
+    // Token is configured: require it (localhost bypass stays)
+    if (tokenHeader !== config.METRICS_TOKEN && !isLocal) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+  } else if (!isLocal) {
+    // No token configured and not localhost: fail closed
+    return res.status(403).json({ error: 'Forbidden: METRICS_TOKEN not configured' });
   }
 
   res.set('Content-Type', register.contentType);

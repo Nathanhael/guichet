@@ -13,7 +13,7 @@ import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
-import { runGuards } from '../services/guards.js';
+import { runSyncGuards, guardRepetition } from '../services/guards.js';
 import { getRedisClients } from '../utils/redis.js';
 import { invalidateSummary } from '../services/ai/summaryCache.js';
 import { autoSummarizeOnClose } from '../services/ai/autoSummarize.js';
@@ -188,7 +188,15 @@ function requireIdentified(socket: Socket): boolean {
   }
 
   // Periodic revocation check — runs at most once every 5 minutes per socket.
-  // Between checks, a revoked session can still operate, but this limits the window.
+  // SECURITY TRADE-OFF: Between checks, a revoked session can still send socket
+  // messages for up to REVOCATION_CHECK_INTERVAL_MS (currently 5 minutes). This is
+  // an accepted trade-off for performance: synchronous Redis checks on every socket
+  // event would eliminate the window but significantly increase Redis load (especially
+  // under high message throughput). For high-security deployments requiring near-instant
+  // revocation, consider: (a) reducing REVOCATION_CHECK_INTERVAL_MS (increases Redis
+  // calls linearly), or (b) switching to synchronous per-event revocation checks
+  // with Redis connection pooling, or (c) using Redis Pub/Sub to push revocation
+  // events to socket servers for immediate disconnect.
   const now = Date.now();
   const lastCheck = (socket.data.lastRevocationCheck as number) || 0;
   if (now - lastCheck > REVOCATION_CHECK_INTERVAL_MS) {
@@ -230,7 +238,7 @@ export function registerSocketHandlers(io: Server) {
       }
 
       const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as {
-        userId: string; role: string; jti?: string; iat?: number; exp?: number;
+        userId: string; role: string; partnerId?: string; jti?: string; iat?: number; exp?: number;
         isPlatformOperator?: boolean;
       };
 
@@ -241,6 +249,7 @@ export function registerSocketHandlers(io: Server) {
 
       // Attach verified identity to socket data
       socket.data.authedUserId = decoded.userId;
+      socket.data.authedPartnerId = decoded.partnerId; // H-8: store JWT partnerId for validation
       socket.data.authedIsPlatformOperator = !!decoded.isPlatformOperator;
       socket.data.tokenExp = decoded.exp; // seconds since epoch
       socket.data.jti = decoded.jti;
@@ -261,6 +270,17 @@ export function registerSocketHandlers(io: Server) {
       const userId = socket.data.authedUserId as string;
       if (!userId) {
         socket.emit('error', { message: 'Not authenticated' });
+        socket.disconnect();
+        return;
+      }
+
+      // H-8: Validate client-supplied partnerId against JWT's partnerId
+      // Platform operators may enter any partner (their JWT partnerId changes on enter-partner),
+      // but regular users must match exactly.
+      const jwtPartnerId = socket.data.authedPartnerId as string | undefined;
+      if (jwtPartnerId && partnerId !== jwtPartnerId) {
+        logger.warn({ socketId: socket.id, userId, clientPartnerId: partnerId, jwtPartnerId }, '[socket] partnerId mismatch — client supplied different partnerId than JWT');
+        socket.emit('error', { message: 'Partner context mismatch — please re-authenticate' });
         socket.disconnect();
         return;
       }
@@ -500,8 +520,14 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
-        let participants = JSON.parse(ticket.participants || '[]');
-        participants = participants.filter((p: Participant) => p.id !== supportId);
+        // Verify caller is actually a participant in this ticket
+        const currentParticipants: Participant[] = JSON.parse(ticket.participants || '[]');
+        const isParticipant = currentParticipants.some((p: Participant) => p.id === supportId);
+        if (!isParticipant) {
+          return socket.emit('error', { message: 'You are not a participant of this ticket' });
+        }
+
+        let participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
         await run('UPDATE tickets SET participants = $1 WHERE id = $2', [JSON.stringify(participants), ticketId]);
         socket.leave(`ticket:${ticketId}`);
         io.to(`ticket:${ticketId}`).emit('support:left', { ticketId, supportId, supportName, participants });
@@ -617,18 +643,25 @@ export function registerSocketHandlers(io: Server) {
         // CR-02: Run content moderation guards (skip for whispers — internal staff notes)
         let guardedText = text;
         if (!isWhisper) {
+          // Synchronous guards always run (fail closed — no try/catch bypass)
+          const syncResult = runSyncGuards(text);
+          if (!syncResult.ok) {
+            logger.warn({ senderId, code: syncResult.code }, '[message:send] Blocked by content guard');
+            return socket.emit('error', { message: `Message blocked: ${syncResult.code}` });
+          }
+          guardedText = syncResult.text;
+
+          // Redis-dependent repetition guard (fail open if Redis unavailable)
           try {
             const { pubClient } = getRedisClients();
-            // Cast: getRedisClients() returns the same runtime client but TypeScript sees duplicate @redis/client types
-            const guardResult = await runGuards(pubClient as Parameters<typeof runGuards>[0], text, senderId);
-            if (!guardResult.ok) {
-              logger.warn({ senderId, code: guardResult.code }, '[message:send] Blocked by content guard');
-              return socket.emit('error', { message: `Message blocked: ${guardResult.code}` });
+            const repResult = await guardRepetition(pubClient as Parameters<typeof guardRepetition>[0], guardedText, senderId);
+            if (!repResult.ok) {
+              logger.warn({ senderId, code: repResult.code }, '[message:send] Blocked by content guard');
+              return socket.emit('error', { message: `Message blocked: ${repResult.code}` });
             }
-            guardedText = guardResult.text;
           } catch (guardErr) {
-            // Fail open — log error but allow message through
-            logger.error({ err: guardErr instanceof Error ? guardErr.message : String(guardErr) }, '[message:send] Guard pipeline error');
+            // Fail open for Redis-dependent guard only — sync guards already passed
+            logger.error({ err: guardErr instanceof Error ? guardErr.message : String(guardErr) }, '[message:send] Repetition guard error (Redis)');
           }
         }
 

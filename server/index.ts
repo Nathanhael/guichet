@@ -3,7 +3,7 @@ import config from './config.js';
 import logger from './utils/logger.js';
 import { bootstrapPlatformOperator } from './services/bootstrap.js';
 
-if (process.env.NODE_ENV === 'production' && config.JWT_SECRET === 'super-secret-key-replace-in-prod') {
+if (process.env.NODE_ENV === 'production' && config.JWT_SECRET.startsWith('super-secret-key-replace-in-prod')) {
   logger.fatal('Cannot start server in production with default JWT_SECRET. Please set JWT_SECRET in environment.');
   process.exit(1);
 }
