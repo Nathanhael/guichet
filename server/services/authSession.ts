@@ -35,7 +35,10 @@ export async function listUserMemberships(userId: string): Promise<SessionMember
     })
     .from(memberships)
     .innerJoin(partners, eq(memberships.partnerId, partners.id))
-    .where(eq(memberships.userId, userId));
+    .where(and(
+      eq(memberships.userId, userId),
+      eq(partners.status, 'active')
+    ));
 }
 
 export function buildAuthToken(input: {
