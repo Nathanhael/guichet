@@ -707,6 +707,11 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
             return res.status(403).json({ error: 'Partner is currently inactive' });
         }
 
+        // Re-check platform step-up freshness — don't carry stale step-up across partner switch
+        const stepUpStillValid = req.user.isPlatformOperator
+            ? isPlatformStepUpSatisfied(req.user.platformStepUpAt)
+            : false;
+
         const token = buildAuthToken({
             userId,
             role: membership.role,
@@ -714,7 +719,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
             partnerId: membership.partnerId,
             membershipId: membership.id,
             isPlatformOperator: req.user.isPlatformOperator,
-            platformStepUpAt: req.user.platformStepUpAt,
+            platformStepUpAt: stepUpStillValid ? req.user.platformStepUpAt : undefined,
         });
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
