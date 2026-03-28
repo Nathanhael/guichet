@@ -231,6 +231,14 @@ export const mfaRouter = router({
 
       await db.update(users).set({ mfaRecoveryCodes: hashed }).where(eq(users.id, ctx.user.id));
 
+      await db.insert(auditLog).values({
+        action: 'security.mfa_recovery_codes_regenerated',
+        actorId: ctx.user.id,
+        targetType: 'user',
+        targetId: ctx.user.id,
+        metadata: {},
+      });
+
       logger.info({ userId: ctx.user.id }, '[MFA] Recovery codes regenerated');
 
       return { recoveryCodes: plain };
