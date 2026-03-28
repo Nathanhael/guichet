@@ -2,35 +2,25 @@ import { z } from 'zod';
 import { router, partnerScopedProcedure } from '../trpc.js';
 import { query, db } from '../../db.js';
 import { ratings as ratingsTable, messages as messagesTable } from '../../db/schema.js';
-import { inArray } from 'drizzle-orm';
+import { and, inArray, isNotNull, sql } from 'drizzle-orm';
 import { computeLiveDayStats, calculatePercentile } from '../../services/stats.js';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { Ticket, UserRole } from '../../types/index.js';
 import { isPlatformAdmin } from '../../services/roles.js';
 
-/**
- * Raw row shape from `SELECT * FROM messages` via pg driver (snake_case).
- * Includes camelCase aliases used by computeLiveDayStats and other consumers.
- */
-interface RawMessageRow {
-  id: string;
-  ticket_id: string;
-  sender_id: string | null;
-  sender_name: string | null;
-  sender_role: string | null;
-  sender_lang: string | null;
-  text: string | null;
-  media_url: string | null;
-  whisper: number | null;
-  system: number | null;
-  sentiment: number | null;
-  created_at: string;
-  delivered_at: string | null;
-  read_at: string | null;
-  edited_at: string | null;
-  deleted_at: string | null;
-  reactions: string | null;
+/** Sentiment aggregate per ticket from SQL AVG query */
+interface TicketSentimentAvg {
+  ticketId: string;
+  sentimentAvg: number | null;
+  sentimentCount: number;
+}
+
+/** Sentiment aggregate per dept from SQL AVG+JOIN query */
+interface DeptSentimentAvg {
+  dept: string;
+  sentimentAvg: number | null;
+  sentimentCount: number;
 }
 
 interface HistoricalStatRow {
@@ -235,9 +225,30 @@ export const statsRouter = router({
           liveRatings = (await db.select().from(ratingsTable).where(inArray(ratingsTable.ticketId, liveTicketIds))) as unknown as RatingRow[];
         }
 
-        let liveMessages: RawMessageRow[] = [];
+        // SQL AVG aggregates — avoids loading all message rows into memory (#13)
+        let ticketSentimentAvgs: TicketSentimentAvg[] = [];
+        let deptSentimentAvgs: DeptSentimentAvg[] = [];
         if (liveTicketIds.length > 0) {
-          liveMessages = (await db.select().from(messagesTable).where(inArray(messagesTable.ticketId, liveTicketIds))) as unknown as RawMessageRow[];
+          const ticketRows = await db
+            .select({
+              ticketId: messagesTable.ticketId,
+              sentimentAvg: sql<number | null>`AVG(${messagesTable.sentiment})`,
+              sentimentCount: sql<number>`COUNT(${messagesTable.sentiment})`,
+            })
+            .from(messagesTable)
+            .where(and(inArray(messagesTable.ticketId, liveTicketIds), isNotNull(messagesTable.sentiment)))
+            .groupBy(messagesTable.ticketId);
+          ticketSentimentAvgs = ticketRows as TicketSentimentAvg[];
+
+          const deptRows = (await query(
+            `SELECT t.dept, AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
+             FROM messages m
+             JOIN tickets t ON m.ticket_id = t.id
+             WHERE m.ticket_id = ANY($1) AND m.sentiment IS NOT NULL
+             GROUP BY t.dept`,
+            [liveTicketIds]
+          )) as unknown as DeptSentimentAvg[];
+          deptSentimentAvgs = deptRows;
         }
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0, totalReopened = 0;
@@ -327,10 +338,16 @@ export const statsRouter = router({
             const dayTickets = liveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
             const dayTicketIdSet = new Set<string>(dayTickets.map(t => t.id));
             const dayRatings = liveRatings.filter(r => dayTicketIdSet.has(r.ticketId));
-            const dayMessages = liveMessages.filter(m => dayTicketIdSet.has(m.ticket_id));
-            // Raw pg rows are snake_case; computeLiveDayStats expects camelCase Message shape.
-            // The function only reads .sentiment which exists on both; the mismatch is accepted.
-            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, dayMessages as never) as unknown as DayData;
+            // Build synthetic per-message sentiment rows from ticket-level AVG aggregates.
+            // computeLiveDayStats only uses .sentiment and .ticketId, so expanding AVG back
+            // to a single synthetic row per ticket preserves the sum/count contract exactly.
+            const daySentimentMessages = ticketSentimentAvgs
+              .filter(row => dayTicketIdSet.has(row.ticketId) && row.sentimentAvg != null)
+              .map(row => ({
+                ticketId: row.ticketId,
+                sentiment: row.sentimentAvg as number,
+              }));
+            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, daySentimentMessages) as unknown as DayData;
           }
 
           perDayData.push({
@@ -470,19 +487,13 @@ export const statsRouter = router({
           ratingsByDeptOut[d] = { avg: stats.count > 0 ? Math.round((stats.sum / stats.count) * 10) / 10 : null, count: stats.count };
         });
 
-        // Sentiment by dept
-        const sentimentByDept: Record<string, { sum: number; count: number }> = {};
-        liveMessages.forEach(m => {
-          const ticket = ticketMap.get(m.ticket_id);
-          if (ticket && m.sentiment != null) {
-            if (!sentimentByDept[ticket.dept]) sentimentByDept[ticket.dept] = { sum: 0, count: 0 };
-            sentimentByDept[ticket.dept].sum += m.sentiment;
-            sentimentByDept[ticket.dept].count++;
-          }
-        });
+        // Sentiment by dept — built from SQL AVG aggregates (no message rows in memory)
         const sentimentByDeptOut: Record<string, { avg: number | null; count: number }> = {};
-        Object.entries(sentimentByDept).forEach(([d, s]) => {
-          sentimentByDeptOut[d] = { avg: s.count > 0 ? Math.round((s.sum / s.count) * 100) / 100 : null, count: s.count };
+        deptSentimentAvgs.forEach(row => {
+          sentimentByDeptOut[row.dept] = {
+            avg: row.sentimentAvg != null ? Math.round(Number(row.sentimentAvg) * 100) / 100 : null,
+            count: Number(row.sentimentCount),
+          };
         });
 
         const supportMap: Record<string, SupportMapEntry> = {};
