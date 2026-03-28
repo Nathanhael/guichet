@@ -90,64 +90,89 @@ interface TicketParticipantsRow {
 
 let ioInstance: Server | null = null;
 
-// ── Collision Detection: ticket viewer tracking ─────────────────────────────
-// NOTE: In-memory only — collision detection works per-instance. For multi-instance, migrate to Redis.
-// Map<ticketId, Map<socketId, { userId: string; userName: string }>>
-const ticketViewers = new Map<string, Map<string, { userId: string; userName: string }>>();
+// ── HI-07 fix: Collision Detection via Redis ────────────────────────────────
+// Viewer tracking now uses Redis Hashes so it works across multiple server instances.
+// Key: `ticket:viewers:{ticketId}` → Hash { socketId: JSON({ userId, userName }) }
+// Each entry has a 5-minute TTL refreshed on activity; stale viewers auto-expire.
 
-// M-07: Cap to prevent unbounded memory growth (10k tickets × viewers should be more than enough)
-const MAX_TRACKED_TICKETS = 10_000;
+const VIEWER_TTL_SECONDS = 300; // 5 minutes
+const VIEWER_KEY_PREFIX = 'ticket:viewers:';
 
-function addViewer(ticketId: string, socketId: string, userId: string, userName: string) {
-  if (!ticketViewers.has(ticketId)) {
-    if (ticketViewers.size >= MAX_TRACKED_TICKETS) {
-      // Evict oldest entry (first key in insertion order)
-      const firstKey = ticketViewers.keys().next().value;
-      if (firstKey) ticketViewers.delete(firstKey);
-    }
-    ticketViewers.set(ticketId, new Map());
-  }
-  ticketViewers.get(ticketId)!.set(socketId, { userId, userName });
-}
+// Local index: socketId → Set<ticketId> — for efficient cleanup on disconnect
+const socketTickets = new Map<string, Set<string>>();
 
-function removeViewer(ticketId: string, socketId: string) {
-  const viewers = ticketViewers.get(ticketId);
-  if (!viewers) return;
-  viewers.delete(socketId);
-  if (viewers.size === 0) {
-    ticketViewers.delete(ticketId);
+async function addViewer(ticketId: string, socketId: string, userId: string, userName: string) {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return;
+    const key = `${VIEWER_KEY_PREFIX}${ticketId}`;
+    await pubClient.hSet(key, socketId, JSON.stringify({ userId, userName }));
+    await pubClient.expire(key, VIEWER_TTL_SECONDS);
+    // Track locally for disconnect cleanup
+    if (!socketTickets.has(socketId)) socketTickets.set(socketId, new Set());
+    socketTickets.get(socketId)!.add(ticketId);
+  } catch (err) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[collision] Redis addViewer error');
   }
 }
 
-function removeViewerFromAll(socketId: string) {
-  const affectedTickets: string[] = [];
-  for (const [ticketId, viewers] of ticketViewers) {
-    if (viewers.has(socketId)) {
-      viewers.delete(socketId);
-      affectedTickets.push(ticketId);
-      if (viewers.size === 0) {
-        ticketViewers.delete(ticketId);
-      }
-    }
+async function removeViewer(ticketId: string, socketId: string) {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return;
+    await pubClient.hDel(`${VIEWER_KEY_PREFIX}${ticketId}`, socketId);
+    socketTickets.get(socketId)?.delete(ticketId);
+  } catch (err) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[collision] Redis removeViewer error');
   }
+}
+
+async function removeViewerFromAll(socketId: string): Promise<string[]> {
+  const tickets = socketTickets.get(socketId);
+  if (!tickets || tickets.size === 0) {
+    socketTickets.delete(socketId);
+    return [];
+  }
+  const affectedTickets = Array.from(tickets);
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return affectedTickets;
+    const pipeline = pubClient.multi();
+    for (const ticketId of affectedTickets) {
+      pipeline.hDel(`${VIEWER_KEY_PREFIX}${ticketId}`, socketId);
+    }
+    await pipeline.exec();
+  } catch (err) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[collision] Redis removeViewerFromAll error');
+  }
+  socketTickets.delete(socketId);
   return affectedTickets;
 }
 
-function getViewers(ticketId: string): Array<{ userId: string; userName: string }> {
-  const viewers = ticketViewers.get(ticketId);
-  if (!viewers) return [];
-  // Deduplicate by userId (same user may have multiple sockets)
-  const seen = new Map<string, { userId: string; userName: string }>();
-  for (const entry of viewers.values()) {
-    if (!seen.has(entry.userId)) {
-      seen.set(entry.userId, entry);
+async function getViewers(ticketId: string): Promise<Array<{ userId: string; userName: string }>> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return [];
+    const entries = await pubClient.hGetAll(`${VIEWER_KEY_PREFIX}${ticketId}`);
+    // Deduplicate by userId (same user may have multiple sockets)
+    const seen = new Map<string, { userId: string; userName: string }>();
+    for (const val of Object.values(entries)) {
+      try {
+        const entry = JSON.parse(val) as { userId: string; userName: string };
+        if (!seen.has(entry.userId)) {
+          seen.set(entry.userId, entry);
+        }
+      } catch { /* skip malformed entries */ }
     }
+    return Array.from(seen.values());
+  } catch (err) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[collision] Redis getViewers error');
+    return [];
   }
-  return Array.from(seen.values());
 }
 
-function broadcastViewers(io: Server, ticketId: string) {
-  const viewers = getViewers(ticketId);
+async function broadcastViewers(io: Server, ticketId: string) {
+  const viewers = await getViewers(ticketId);
   io.to(`ticket:${ticketId}`).emit('ticket:viewers', { ticketId, viewers });
 }
 
@@ -192,11 +217,13 @@ function requireIdentified(socket: Socket): boolean {
   // messages for up to REVOCATION_CHECK_INTERVAL_MS (currently 5 minutes). This is
   // an accepted trade-off for performance: synchronous Redis checks on every socket
   // event would eliminate the window but significantly increase Redis load (especially
-  // under high message throughput). For high-security deployments requiring near-instant
-  // revocation, consider: (a) reducing REVOCATION_CHECK_INTERVAL_MS (increases Redis
-  // calls linearly), or (b) switching to synchronous per-event revocation checks
-  // with Redis connection pooling, or (c) using Redis Pub/Sub to push revocation
-  // events to socket servers for immediate disconnect.
+  // under high message throughput). NOTE: The check is fire-and-forget — the event
+  // that triggers it still completes even if revocation is detected. The revoked
+  // socket is disconnected asynchronously, so one additional event may execute.
+  // For high-security deployments requiring near-instant revocation, consider:
+  // (a) reducing REVOCATION_CHECK_INTERVAL_MS (increases Redis calls linearly),
+  // (b) switching to synchronous per-event revocation checks with Redis connection
+  // pooling, or (c) using Redis Pub/Sub to push revocation events to socket servers.
   const now = Date.now();
   const lastCheck = (socket.data.lastRevocationCheck as number) || 0;
   if (now - lastCheck > REVOCATION_CHECK_INTERVAL_MS) {
@@ -467,6 +494,11 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
+        // HI-01 fix: Prevent joining closed tickets — this would silently re-open them
+        if (ticket.status === 'closed') {
+          return socket.emit('error', { message: 'Cannot join a closed ticket' });
+        }
+
         // Atomic participant update using JSONB to avoid race conditions
         const participantJson = JSON.stringify({ id: supportId, name: supportName });
         await run(`UPDATE tickets SET
@@ -629,7 +661,17 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
-        const sender = (await get('SELECT u.name, m.role, u.lang FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [senderId, ticket.partner_id])) as unknown as SenderInfo;
+        let sender = (await get('SELECT u.name, m.role, u.lang FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [senderId, ticket.partner_id])) as unknown as SenderInfo;
+
+        // CR-03 fix: Platform operators have no membership row — fall back to socket.data
+        if (!sender && socket.data.authedIsPlatformOperator) {
+          sender = {
+            name: socket.data.name as string || senderId,
+            role: 'platform_operator',
+            lang: (socket.data.lang as string) || 'en',
+          };
+          logger.info({ senderId }, '[message:send] Platform operator fallback — no membership row');
+        }
 
         logger.info({ senderFound: !!sender, role: sender?.role }, '[message:send] Sender lookup');
         if (!sender) return logger.error({ senderId }, '[message:send] sender not found or no membership for ticket partner');
@@ -685,8 +727,9 @@ export function registerSocketHandlers(io: Server) {
         // Invalidate cached AI summary for this ticket (fire-and-forget)
         invalidateSummary(ticketId).catch(() => {});
         // Fire-and-forget sentiment scoring (skip whispers — internal notes shouldn't affect sentiment)
+        // ME-01 fix: Score on guardedText (what's stored/displayed), not raw pre-guard text
         if (!isWhisper) {
-          scoreSentiment(ticket.partner_id, senderId, messageId, text).catch(() => {});
+          scoreSentiment(ticket.partner_id, senderId, messageId, guardedText).catch(() => {});
         }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
     });
@@ -769,10 +812,31 @@ export function registerSocketHandlers(io: Server) {
         const MAX_EDIT_WINDOW = 15 * 60 * 1000; // 15 minutes
         if (ageMs > MAX_EDIT_WINDOW) return socket.emit('error', { message: 'Edit window has expired (15 min)' });
 
-        const now = new Date().toISOString();
-        await run('UPDATE messages SET text = $1, edited_at = $2 WHERE id = $3', [newText.trim(), now, messageId]);
+        // CR-01 fix: Run content moderation guards on edited text (mirrors message:send)
+        let guardedText = newText.trim();
+        const syncResult = runSyncGuards(guardedText);
+        if (!syncResult.ok) {
+          logger.warn({ senderId, code: syncResult.code }, '[message:edit] Blocked by content guard');
+          return socket.emit('error', { message: `Edit blocked: ${syncResult.code}` });
+        }
+        guardedText = syncResult.text;
 
-        io.to(`ticket:${ticketId}`).emit('message:edited', { ticketId, messageId, text: newText.trim(), editedAt: now });
+        // Redis-dependent repetition guard (fail open if Redis unavailable)
+        try {
+          const { pubClient } = getRedisClients();
+          const repResult = await guardRepetition(pubClient as Parameters<typeof guardRepetition>[0], guardedText, senderId);
+          if (!repResult.ok) {
+            logger.warn({ senderId, code: repResult.code }, '[message:edit] Blocked by content guard');
+            return socket.emit('error', { message: `Edit blocked: ${repResult.code}` });
+          }
+        } catch (guardErr) {
+          logger.error({ err: guardErr instanceof Error ? guardErr.message : String(guardErr) }, '[message:edit] Repetition guard error (Redis)');
+        }
+
+        const now = new Date().toISOString();
+        await run('UPDATE messages SET text = $1, edited_at = $2 WHERE id = $3', [guardedText, now, messageId]);
+
+        io.to(`ticket:${ticketId}`).emit('message:edited', { ticketId, messageId, text: guardedText, editedAt: now });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:edit] error'); }
     });
 
@@ -830,8 +894,17 @@ export function registerSocketHandlers(io: Server) {
           const targetUser = await get('SELECT u.name FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [targetSupportId, callerPartnerId]) as { name: string } | undefined;
           if (!targetUser) return socket.emit('error', { message: 'Target user not found or not a member of this partner' });
 
-          // Update ticket assignment
-          await run('UPDATE tickets SET support_id = $1, support_name = $2 WHERE id = $3', [targetSupportId, targetUser.name, ticketId]);
+          // HI-02 fix: Update ticket assignment AND participants JSONB atomically
+          const newParticipantJson = JSON.stringify({ id: targetSupportId, name: targetUser.name });
+          await run(`UPDATE tickets SET
+            support_id = $1,
+            support_name = $2,
+            participants = (
+              SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb) || $4::jsonb
+              FROM jsonb_array_elements(COALESCE(participants, '[]')::jsonb) AS elem
+              WHERE elem->>'id' != $3 AND elem->>'id' != $1
+            )::text
+          WHERE id = $5`, [targetSupportId, targetUser.name, senderId, newParticipantJson, ticketId]);
 
           // Add system message
           const sysId = uuidv4();
@@ -872,6 +945,12 @@ export function registerSocketHandlers(io: Server) {
         if (!ticketId || !Array.isArray(labels)) return;
         const senderId = socket.data.userId;
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
+
+        // ME-07 fix: Cap label array size to prevent oversized IN clause
+        const MAX_LABELS = 50;
+        if (labels.length > MAX_LABELS) {
+          return socket.emit('error', { message: `Too many labels (max ${MAX_LABELS})` });
+        }
 
         const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
         if (!ticket) return;
@@ -925,15 +1004,15 @@ export function registerSocketHandlers(io: Server) {
         socket.join(`ticket:${ticketId}`);
       }
 
-      addViewer(ticketId, socket.id, userId, userName);
-      broadcastViewers(io, ticketId);
+      await addViewer(ticketId, socket.id, userId, userName);
+      await broadcastViewers(io, ticketId);
     });
 
-    socket.on('ticket:left', ({ ticketId }: { ticketId: string }) => {
+    socket.on('ticket:left', async ({ ticketId }: { ticketId: string }) => {
       if (!requireIdentified(socket)) return;
       if (!ticketId) return;
-      removeViewer(ticketId, socket.id);
-      broadcastViewers(io, ticketId);
+      await removeViewer(ticketId, socket.id);
+      await broadcastViewers(io, ticketId);
     });
 
     socket.on('disconnect', async () => {
@@ -953,9 +1032,9 @@ export function registerSocketHandlers(io: Server) {
       }
 
       // Clear viewer tracking for this socket and broadcast updates
-      const affectedTickets = removeViewerFromAll(socket.id);
+      const affectedTickets = await removeViewerFromAll(socket.id);
       for (const ticketId of affectedTickets) {
-        broadcastViewers(io, ticketId);
+        await broadcastViewers(io, ticketId);
       }
 
       if (userId && partnerId) {
@@ -972,16 +1051,14 @@ export function registerSocketHandlers(io: Server) {
     });
   });
 
-  // Periodic cleanup of stale viewer entries (every 5 minutes)
+  // Periodic cleanup of stale local socketTickets index (every 5 minutes)
+  // Redis entries auto-expire via TTL; this cleans the local socketId→ticketId mapping.
   // .unref() prevents this timer from keeping the process alive on shutdown
   setInterval(() => {
-    for (const [ticketId, viewers] of ticketViewers) {
-      for (const [socketId] of viewers) {
-        if (!io.sockets.sockets.has(socketId)) {
-          viewers.delete(socketId);
-        }
+    for (const [socketId] of socketTickets) {
+      if (!io.sockets.sockets.has(socketId)) {
+        socketTickets.delete(socketId);
       }
-      if (viewers.size === 0) ticketViewers.delete(ticketId);
     }
   }, 5 * 60 * 1000).unref();
 }

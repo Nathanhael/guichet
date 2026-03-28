@@ -190,12 +190,28 @@ function nextBoundary(schedule: BusinessHoursSchedule, now: Date, kind: 'open' |
   const zonedNow = toZonedTime(now, schedule.timezone);
   const currentMinutes = startOfToday(zonedNow);
 
+  // HI-04 fix: Use calendar-day arithmetic instead of raw milliseconds to avoid
+  // DST transitions causing +/-1 hour shifts (23h or 25h days).
   for (let offset = 0; offset < 8; offset++) {
-    const candidate = new Date(now.getTime() + offset * 24 * 60 * 60 * 1000);
-    const zonedCandidate = toZonedTime(candidate, schedule.timezone);
-    const dayKey = weekdayKey(zonedCandidate);
-    const localDate = formatInTimeZone(candidate, schedule.timezone, 'yyyy-MM-dd');
-    const exception = schedule.exceptions.find((item) => item.date === localDate);
+    // Add offset days in the target timezone to avoid DST arithmetic errors
+    const zonedBase = toZonedTime(now, schedule.timezone);
+    const candidateLocal = new Date(zonedBase);
+    candidateLocal.setDate(candidateLocal.getDate() + offset);
+    // Convert back through formatInTimeZone to get a stable local date
+    const localDate = formatInTimeZone(now, schedule.timezone, 'yyyy-MM-dd');
+    const candidateLocalDate = offset === 0
+      ? localDate
+      : (() => {
+          const d = new Date(localDate);
+          d.setDate(d.getDate() + offset);
+          return d.toISOString().slice(0, 10);
+        })();
+
+    const dayOfWeek = new Date(candidateLocalDate + 'T12:00:00').getDay();
+    const dayKeys: BusinessHoursDayKey[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const dayKey = dayKeys[dayOfWeek];
+
+    const exception = schedule.exceptions.find((item) => item.date === candidateLocalDate);
     const windows = exception
       ? (exception.closed ? [] : (exception.windows ?? []))
       : (schedule.weekly[dayKey]?.closed ? [] : (schedule.weekly[dayKey]?.windows ?? []));
@@ -205,15 +221,18 @@ function nextBoundary(schedule: BusinessHoursSchedule, now: Date, kind: 'open' |
       const endMinutes = parseMinutes(window.end);
       const overnight = endMinutes <= startMinutes;
       const boundaryMinutes = kind === 'open' ? startMinutes : endMinutes;
-      const dayOffset = offset + (kind === 'close' && overnight ? 1 : 0);
 
       if (offset === 0 && boundaryMinutes <= currentMinutes && !(kind === 'close' && overnight)) {
         continue;
       }
 
-      const boundaryDate = new Date(now.getTime() + dayOffset * 24 * 60 * 60 * 1000);
-      const boundaryIso = formatInTimeZone(boundaryDate, schedule.timezone, 'yyyy-MM-dd');
-      return `${boundaryIso}T${minutesToTime(boundaryMinutes)}:00`;
+      const dayOffset = offset + (kind === 'close' && overnight ? 1 : 0);
+      const boundaryLocalDate = (() => {
+        const d = new Date(candidateLocalDate + 'T12:00:00');
+        if (dayOffset !== offset) d.setDate(d.getDate() + 1);
+        return d.toISOString().slice(0, 10);
+      })();
+      return `${boundaryLocalDate}T${minutesToTime(boundaryMinutes)}:00`;
     }
   }
 

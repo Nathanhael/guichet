@@ -5,6 +5,30 @@ const LIMIT = 50;
 
 type SubTab = 'audit' | 'tickets';
 
+interface AuditArchiveEntry {
+  id: string;
+  action: string;
+  actorId: string | null;
+  targetType: string | null;
+  targetId: string | null;
+  createdAt: string;
+  archivedAt: string;
+  chainHash: string;
+  metadata?: Record<string, unknown>;
+}
+
+interface ArchivedTicket {
+  id: string;
+  partnerId: string;
+  dept: string;
+  agentName: string;
+  supportName: string | null;
+  messageCount: number | null;
+  createdAt: string;
+  closedAt: string | null;
+  archivedAt: string;
+}
+
 export default function PlatformArchiveViewer() {
   const [subTab, setSubTab] = useState<SubTab>('audit');
 
@@ -39,7 +63,7 @@ export default function PlatformArchiveViewer() {
 /* --- Audit Archive Panel --- */
 function AuditArchivePanel() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [allItems, setAllItems] = useState<any[]>([]);
+  const [allItems, setAllItems] = useState<AuditArchiveEntry[]>([]);
   const [actionFilter, setActionFilter] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -56,7 +80,7 @@ function AuditArchivePanel() {
   const archiveMutation = trpc.platform.runArchive.useMutation();
 
   // Accumulate results
-  const data = query.data as { items?: any[]; nextCursor?: string } | undefined;
+  const data = query.data as { items?: AuditArchiveEntry[]; nextCursor?: string } | undefined;
   if (data?.items && data.items.length > 0) {
     const lastId = allItems[allItems.length - 1]?.id;
     const newLastId = data.items[data.items.length - 1]?.id;
@@ -66,7 +90,7 @@ function AuditArchivePanel() {
   }
 
   // We'll use a simpler approach with useEffect-like state sync
-  const items = !cursor ? (data?.items || []) : [...allItems.filter(i => !data?.items?.find((d: any) => d.id === i.id)), ...(data?.items || [])];
+  const items = !cursor ? (data?.items || []) : [...allItems.filter(i => !data?.items?.find((d: AuditArchiveEntry) => d.id === i.id)), ...(data?.items || [])];
   const nextCursor = data?.nextCursor || '';
 
   function resetAndReload() {
@@ -74,7 +98,7 @@ function AuditArchivePanel() {
     setAllItems([]);
   }
 
-  function fmt(iso?: string) {
+  function fmt(iso?: string | null) {
     return iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
   }
 
@@ -158,7 +182,7 @@ function AuditArchivePanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                {items.map((entry: any) => (
+                {items.map((entry: AuditArchiveEntry) => (
                   <tr key={entry.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                     <td className="px-4 py-2.5">
                       <span className="text-[10px] font-bold uppercase border border-[var(--color-border)] px-1.5 py-0.5">{entry.action}</span>
@@ -199,7 +223,7 @@ function AuditArchivePanel() {
 /* --- Ticket Archive Panel --- */
 function TicketArchivePanel() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [allItems, setAllItems] = useState<any[]>([]);
+  const [allItems, setAllItems] = useState<ArchivedTicket[]>([]);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -210,8 +234,8 @@ function TicketArchivePanel() {
     dateTo: dateTo || undefined,
   });
 
-  const data = query.data as { items?: any[]; nextCursor?: string } | undefined;
-  const items = !cursor ? (data?.items || []) : [...allItems.filter(i => !data?.items?.find((d: any) => d.id === i.id)), ...(data?.items || [])];
+  const data = query.data as { items?: ArchivedTicket[]; nextCursor?: string } | undefined;
+  const items = !cursor ? (data?.items || []) : [...allItems.filter(i => !data?.items?.find((d: ArchivedTicket) => d.id === i.id)), ...(data?.items || [])];
   const nextCursor = data?.nextCursor || '';
 
   function resetAndReload() {
@@ -219,11 +243,11 @@ function TicketArchivePanel() {
     setAllItems([]);
   }
 
-  function fmt(iso?: string) {
+  function fmt(iso?: string | null) {
     return iso ? new Date(iso).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' }) : '—';
   }
 
-  function duration(createdAt?: string, closedAt?: string) {
+  function duration(createdAt?: string | null, closedAt?: string | null) {
     if (!closedAt || !createdAt) return '—';
     const m = Math.round((new Date(closedAt).getTime() - new Date(createdAt).getTime()) / 60000);
     return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`;
@@ -276,7 +300,7 @@ function TicketArchivePanel() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
-                {items.map((ticket: any) => (
+                {items.map((ticket: ArchivedTicket) => (
                   <tr key={ticket.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                     <td className="px-4 py-2.5">
                       <span className="text-[10px] font-bold uppercase border border-[var(--color-border)] px-1.5 py-0.5">{ticket.dept}</span>

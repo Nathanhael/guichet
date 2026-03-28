@@ -16,7 +16,7 @@ interface Department {
   referenceFields: RefField[];
 }
 
-function mapDepts(raw: any[] | undefined | null): Department[] {
+function mapDepts(raw: Array<{ id?: string; name?: string; description?: string; referenceFields?: RefField[] }> | undefined | null): Department[] {
   return (raw || []).map(d => ({
     id: d.id || '',
     name: d.name || '',

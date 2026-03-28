@@ -124,22 +124,28 @@ export async function runDailyPurge() {
       await tx.execute(sql`DELETE FROM app_feedback WHERE created_at < ${cutoffDate}`);
       await tx.execute(sql`DELETE FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'`);
 
-      // Anonymize audit_log: null out actorId for records tied to purged users
-      // We identify affected users as participants/agents of purged tickets
+      // CR-02 fix: Anonymize audit_log — filter NULLs from array_agg to prevent
+      // the IN predicate from silently matching nothing when support_id is NULL
       const auditResult = await tx.execute(sql`
         UPDATE audit_log SET actor_id = NULL
         WHERE actor_id IN (
-          SELECT DISTINCT unnest(array_agg(agent_id) || array_agg(support_id))
+          SELECT DISTINCT unnest(
+            array_agg(agent_id) FILTER (WHERE agent_id IS NOT NULL)
+            || array_agg(support_id) FILTER (WHERE support_id IS NOT NULL)
+          )
           FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'
         ) AND created_at < ${cutoffDate}
       `);
       const auditAnonymized = (auditResult as { rowCount?: number }).rowCount ?? 0;
 
-      // Anonymize audit_archive: same treatment for archived audit entries
+      // Anonymize audit_archive: same NULL-safe treatment
       const archiveResult = await tx.execute(sql`
         UPDATE audit_archive SET actor_id = NULL
         WHERE actor_id IN (
-          SELECT DISTINCT unnest(array_agg(agent_id) || array_agg(support_id))
+          SELECT DISTINCT unnest(
+            array_agg(agent_id) FILTER (WHERE agent_id IS NOT NULL)
+            || array_agg(support_id) FILTER (WHERE support_id IS NOT NULL)
+          )
           FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'
         ) AND created_at < ${cutoffDate}
       `);
@@ -178,49 +184,54 @@ export async function aggregateAndPurgeAiUsage(): Promise<number> {
   cutoff.setDate(cutoff.getDate() - config.AI_USAGE_RETENTION_DAYS);
   const cutoffDate = cutoff.toISOString().slice(0, 10);
 
-  // Step 1: Aggregate into daily_ai_usage (upsert to be idempotent)
-  await run(`
-    INSERT INTO daily_ai_usage
-      (id, date, partner_id, action, provider, model,
-       total_input_tokens, total_output_tokens, total_requests,
-       success_count, error_count, avg_latency_ms)
-    SELECT
-      gen_random_uuid(),
-      created_at::date::text,
-      partner_id,
-      action,
-      provider,
-      model,
-      COALESCE(SUM(input_tokens), 0),
-      COALESCE(SUM(output_tokens), 0),
-      COUNT(*),
-      COUNT(*) FILTER (WHERE success = true),
-      COUNT(*) FILTER (WHERE success = false),
-      CASE WHEN COUNT(*) FILTER (WHERE latency_ms IS NOT NULL) > 0
-           THEN (SUM(latency_ms) / COUNT(*) FILTER (WHERE latency_ms IS NOT NULL))::int
-           ELSE NULL END
-    FROM ai_usage_log
-    WHERE created_at < $1
-    GROUP BY created_at::date::text, partner_id, action, provider, model
-    ON CONFLICT (date, partner_id, action, provider, model) DO UPDATE SET
-      total_input_tokens  = daily_ai_usage.total_input_tokens  + EXCLUDED.total_input_tokens,
-      total_output_tokens = daily_ai_usage.total_output_tokens + EXCLUDED.total_output_tokens,
-      total_requests      = daily_ai_usage.total_requests      + EXCLUDED.total_requests,
-      success_count       = daily_ai_usage.success_count       + EXCLUDED.success_count,
-      error_count         = daily_ai_usage.error_count         + EXCLUDED.error_count,
-      avg_latency_ms      = CASE
-        WHEN (daily_ai_usage.total_requests + EXCLUDED.total_requests) > 0
-        THEN ((COALESCE(daily_ai_usage.avg_latency_ms, 0) * daily_ai_usage.total_requests
-             + COALESCE(EXCLUDED.avg_latency_ms, 0) * EXCLUDED.total_requests)
-             / (daily_ai_usage.total_requests + EXCLUDED.total_requests))::int
-        ELSE NULL END
-  `, [cutoffDate]);
+  // ME-04 fix: Wrap aggregate + delete in a transaction to prevent data loss on crash
+  let purgedCount = 0;
+  await transaction(async () => {
+    // Step 1: Aggregate into daily_ai_usage (upsert to be idempotent)
+    await run(`
+      INSERT INTO daily_ai_usage
+        (id, date, partner_id, action, provider, model,
+         total_input_tokens, total_output_tokens, total_requests,
+         success_count, error_count, avg_latency_ms)
+      SELECT
+        gen_random_uuid(),
+        created_at::date::text,
+        partner_id,
+        action,
+        provider,
+        model,
+        COALESCE(SUM(input_tokens), 0),
+        COALESCE(SUM(output_tokens), 0),
+        COUNT(*),
+        COUNT(*) FILTER (WHERE success = true),
+        COUNT(*) FILTER (WHERE success = false),
+        CASE WHEN COUNT(*) FILTER (WHERE latency_ms IS NOT NULL) > 0
+             THEN (SUM(latency_ms) / COUNT(*) FILTER (WHERE latency_ms IS NOT NULL))::int
+             ELSE NULL END
+      FROM ai_usage_log
+      WHERE created_at < $1
+      GROUP BY created_at::date::text, partner_id, action, provider, model
+      ON CONFLICT (date, partner_id, action, provider, model) DO UPDATE SET
+        total_input_tokens  = daily_ai_usage.total_input_tokens  + EXCLUDED.total_input_tokens,
+        total_output_tokens = daily_ai_usage.total_output_tokens + EXCLUDED.total_output_tokens,
+        total_requests      = daily_ai_usage.total_requests      + EXCLUDED.total_requests,
+        success_count       = daily_ai_usage.success_count       + EXCLUDED.success_count,
+        error_count         = daily_ai_usage.error_count         + EXCLUDED.error_count,
+        avg_latency_ms      = CASE
+          WHEN (daily_ai_usage.total_requests + EXCLUDED.total_requests) > 0
+          THEN ((COALESCE(daily_ai_usage.avg_latency_ms, 0) * daily_ai_usage.total_requests
+               + COALESCE(EXCLUDED.avg_latency_ms, 0) * EXCLUDED.total_requests)
+               / (daily_ai_usage.total_requests + EXCLUDED.total_requests))::int
+          ELSE NULL END
+    `, [cutoffDate]);
 
-  // Step 2: Delete the now-aggregated source rows
-  const result = await run(
-    `DELETE FROM ai_usage_log WHERE created_at < $1`,
-    [cutoffDate]
-  );
+    // Step 2: Delete the now-aggregated source rows (same transaction)
+    const result = await run(
+      `DELETE FROM ai_usage_log WHERE created_at < $1`,
+      [cutoffDate]
+    );
+    purgedCount = result.changes ?? 0;
+  });
 
-  return result.changes ?? 0;
+  return purgedCount;
 }

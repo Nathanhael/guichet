@@ -8,20 +8,32 @@ const DEFAULT_PER_MINUTE = 30;
 const DEFAULT_PER_DAY = 1000;
 
 /**
- * Lua script that atomically increments a key and sets its TTL on first creation.
- * This eliminates the race condition where a process could die between INCR and EXPIRE,
- * leaving a key without a TTL that never gets cleaned up.
+ * HI-03 fix: Dual-key rate limit script that checks minute limit BEFORE incrementing day.
+ * Prevents counter inflation where minute passes but day fails (minute already incremented).
  *
- * KEYS[1] = the rate limit key
- * ARGV[1] = TTL in seconds
- * Returns: the new count after increment
+ * KEYS[1] = minute key, KEYS[2] = day key
+ * ARGV[1] = minute TTL, ARGV[2] = day TTL, ARGV[3] = per-minute limit, ARGV[4] = per-day limit
+ * Returns: { minuteCount, dayCount, blocked, limitHit }
  */
-const RATE_LIMIT_SCRIPT = `
-  local count = redis.call('INCR', KEYS[1])
-  if count == 1 then
+const DUAL_RATE_LIMIT_SCRIPT = `
+  local minuteCount = redis.call('INCR', KEYS[1])
+  if minuteCount == 1 then
     redis.call('EXPIRE', KEYS[1], ARGV[1])
   end
-  return count
+  if minuteCount > tonumber(ARGV[3]) then
+    redis.call('DECR', KEYS[1])
+    return { 0, 0, 1, 1 }
+  end
+  local dayCount = redis.call('INCR', KEYS[2])
+  if dayCount == 1 then
+    redis.call('EXPIRE', KEYS[2], ARGV[2])
+  end
+  if dayCount > tonumber(ARGV[4]) then
+    redis.call('DECR', KEYS[1])
+    redis.call('DECR', KEYS[2])
+    return { 0, 0, 1, 2 }
+  end
+  return { minuteCount, dayCount, 0, 0 }
 `;
 
 interface RateLimitConfig {
@@ -53,18 +65,20 @@ export async function checkRateLimit(
     const minuteKey = `ai:rate:${partnerId}:minute`;
     const dayKey = `ai:rate:${partnerId}:day`;
 
-    // Atomic INCR + EXPIRE via Lua script — no TTL gap on process death
-    const newMinuteCount = Number(await r.eval(RATE_LIMIT_SCRIPT, { keys: [minuteKey], arguments: ['60'] }));
-    const newDayCount = Number(await r.eval(RATE_LIMIT_SCRIPT, { keys: [dayKey], arguments: ['86400'] }));
+    // HI-03 fix: Single atomic Lua script checks minute before incrementing day,
+    // preventing counter inflation under concurrent load.
+    const result = await r.eval(DUAL_RATE_LIMIT_SCRIPT, {
+      keys: [minuteKey, dayKey],
+      arguments: ['60', '86400', String(perMinute), String(perDay)],
+    }) as number[];
 
-    // Check limits after incrementing — decrement if over-limit.
-    if (newMinuteCount > perMinute) {
-      await r.decr(minuteKey);
-      return { allowed: false, retryAfterSeconds: 60, limitHit: 'minute' };
-    }
+    const blocked = Number(result[2]);
+    const limitHit = Number(result[3]);
 
-    if (newDayCount > perDay) {
-      await r.decr(dayKey);
+    if (blocked) {
+      if (limitHit === 1) {
+        return { allowed: false, retryAfterSeconds: 60, limitHit: 'minute' };
+      }
       return { allowed: false, retryAfterSeconds: 86400, limitHit: 'day' };
     }
 

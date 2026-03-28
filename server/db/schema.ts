@@ -168,7 +168,11 @@ export const appFeedback = pgTable('app_feedback', {
   text: text('text').notNull(),
   treated: integer('treated').default(0),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-});
+}, (table) => ({
+  // ME-05 fix: Add missing indexes for common query patterns (filter by partner, sort by date)
+  partnerIdIdx: index('idx_app_feedback_partner_id').on(table.partnerId),
+  createdAtIdx: index('idx_app_feedback_created_at').on(table.createdAt),
+}));
 
 export const labels = pgTable('labels', {
   id: text('id').primaryKey(),

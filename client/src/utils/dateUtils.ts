@@ -1,10 +1,10 @@
-export const safeDate = (date: any): Date | null => {
+export const safeDate = (date: string | number | Date | null | undefined): Date | null => {
   if (!date) return null;
   const d = new Date(date);
   return isNaN(d.getTime()) ? null : d;
 };
 
-export const formatDate = (date: any, options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }, locale = 'en-GB'): string => {
+export const formatDate = (date: string | number | Date | null | undefined, options: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }, locale = 'en-GB'): string => {
   const d = safeDate(date);
   if (!d) return '—';
   return d.toLocaleTimeString(locale, options);

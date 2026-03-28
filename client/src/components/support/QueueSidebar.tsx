@@ -199,7 +199,7 @@ export default function QueueSidebar({
               <li className="p-8 text-center">
                 <p className="mono-label opacity-20">{t('no_results') || 'No results'}</p>
               </li>
-            ) : (searchResults.data || []).map((result: any) => (
+            ) : (searchResults.data || []).map((result: { messageId: string; ticketId: string; text: string | null; createdAt: string; ticketDept: string; ticketStatus: string; agentName: string | null; senderName: string | null }) => (
               <li
                 key={result.messageId}
                 onClick={() => {
