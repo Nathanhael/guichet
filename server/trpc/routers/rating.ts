@@ -1,5 +1,5 @@
 import { router, roleProcedure, adminProcedure } from '../trpc.js';
-import { db } from '../../db.js';
+import { db, query } from '../../db.js';
 import { ratings, tickets, users } from '../../db/schema.js';
 import { desc, eq, inArray, sql, and, gte, lt } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
@@ -117,6 +117,149 @@ export const ratingRouter = router({
       } catch (err: unknown) {
         const message = errMsg(err);
         logger.error({ err: message }, 'tRPC: Error getting staff ratings');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+      }
+    }),
+
+  getAnalytics: adminProcedure
+    .input(z.object({
+      dateFrom: z.string().refine(s => !isNaN(Date.parse(s)), { message: 'Invalid date' }).optional(),
+      dateTo: z.string().refine(s => !isNaN(Date.parse(s)), { message: 'Invalid date' }).optional(),
+      dept: z.string().optional(),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        if (!ctx.user.partnerId) {
+          return {
+            trend: [],
+            distribution: [],
+            byDept: [],
+            byStaff: [],
+            summary: { avg: 0, total: 0, withComment: 0 },
+          };
+        }
+
+        const partnerId = ctx.user.partnerId;
+
+        // Build dynamic WHERE clause fragments and params
+        // $1 is always partnerId
+        const params: unknown[] = [partnerId];
+        const extraWhere: string[] = [];
+
+        if (input.dateFrom) {
+          params.push(new Date(input.dateFrom).toISOString());
+          extraWhere.push(`r.created_at >= $${params.length}`);
+        }
+        if (input.dateTo) {
+          const endDate = new Date(input.dateTo);
+          endDate.setDate(endDate.getDate() + 1);
+          params.push(endDate.toISOString());
+          extraWhere.push(`r.created_at < $${params.length}`);
+        }
+        if (input.dept) {
+          params.push(input.dept);
+          extraWhere.push(`t.dept = $${params.length}`);
+        }
+
+        const extraSQL = extraWhere.length > 0 ? ' AND ' + extraWhere.join(' AND ') : '';
+        const baseWhere = `t.partner_id = $1${extraSQL}`;
+
+        // 1) Daily trend
+        const trendRows = (await query(
+          `SELECT DATE(r.created_at) AS date,
+                  ROUND(AVG(r.rating)::numeric, 2) AS avg,
+                  COUNT(*)::int AS count
+           FROM ratings r
+           JOIN tickets t ON r.ticket_id = t.id
+           WHERE ${baseWhere}
+           GROUP BY DATE(r.created_at)
+           ORDER BY date ASC`,
+          params,
+        )) as Record<string, unknown>[];
+
+        // 2) Distribution
+        const distRows = (await query(
+          `SELECT r.rating,
+                  COUNT(*)::int AS count
+           FROM ratings r
+           JOIN tickets t ON r.ticket_id = t.id
+           WHERE ${baseWhere}
+           GROUP BY r.rating
+           ORDER BY r.rating ASC`,
+          params,
+        )) as Record<string, unknown>[];
+
+        // 3) By department
+        const deptRows = (await query(
+          `SELECT t.dept,
+                  ROUND(AVG(r.rating)::numeric, 2) AS avg,
+                  COUNT(*)::int AS count
+           FROM ratings r
+           JOIN tickets t ON r.ticket_id = t.id
+           WHERE ${baseWhere}
+           GROUP BY t.dept
+           ORDER BY avg DESC`,
+          params,
+        )) as Record<string, unknown>[];
+
+        // 4) By staff
+        const staffRows = (await query(
+          `SELECT r.support_id,
+                  COALESCE(u.name, 'Unknown') AS name,
+                  ROUND(AVG(r.rating)::numeric, 2) AS avg,
+                  COUNT(*)::int AS count
+           FROM ratings r
+           JOIN tickets t ON r.ticket_id = t.id
+           LEFT JOIN users u ON r.support_id = u.id
+           WHERE ${baseWhere}
+           GROUP BY r.support_id, u.name
+           ORDER BY avg DESC`,
+          params,
+        )) as Record<string, unknown>[];
+
+        // 5) Summary
+        const summaryRows = (await query(
+          `SELECT ROUND(AVG(r.rating)::numeric, 2) AS avg,
+                  COUNT(*)::int AS total,
+                  COUNT(r.comment) FILTER (WHERE r.comment IS NOT NULL AND r.comment != '')::int AS with_comment
+           FROM ratings r
+           JOIN tickets t ON r.ticket_id = t.id
+           WHERE ${baseWhere}`,
+          params,
+        )) as Record<string, unknown>[];
+
+        const summaryRow = summaryRows[0] ?? {};
+
+        return {
+          trend: trendRows.map((row) => ({
+            date: String(row['date']),
+            avg: Number(row['avg']),
+            count: Number(row['count']),
+          })),
+          distribution: distRows.map((row) => ({
+            rating: Number(row['rating']),
+            count: Number(row['count']),
+          })),
+          byDept: deptRows.map((row) => ({
+            dept: String(row['dept'] ?? ''),
+            avg: Number(row['avg']),
+            count: Number(row['count']),
+          })),
+          byStaff: staffRows.map((row) => ({
+            supportId: row['support_id'] != null ? String(row['support_id']) : null,
+            name: String(row['name'] ?? 'Unknown'),
+            avg: Number(row['avg']),
+            count: Number(row['count']),
+          })),
+          summary: {
+            avg: Number(summaryRow['avg'] ?? 0),
+            total: Number(summaryRow['total'] ?? 0),
+            withComment: Number(summaryRow['with_comment'] ?? 0),
+          },
+        };
+      } catch (err: unknown) {
+        const message = errMsg(err);
+        logger.error({ err: message }, 'tRPC: Error getting rating analytics');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
       }
     }),
