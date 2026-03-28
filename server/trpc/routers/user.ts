@@ -62,6 +62,29 @@ export const userRouter = router({
       }
     }),
 
+  /** Public demo login — returns password only when DEMO_MODE=true */
+  demoLogin: publicProcedure
+    .input(z.object({ email: z.string().email() }))
+    .mutation(async ({ input }) => {
+      if (process.env.DEMO_MODE !== 'true') {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
+      }
+      try {
+        const { rows } = await query(
+          `SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1`,
+          [input.email]
+        );
+        if (!rows || rows.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Demo user not found' });
+        }
+        return { password: 'password123' };
+      } catch (err: unknown) {
+        if (err instanceof TRPCError) throw err;
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: demoLogin error');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+      }
+    }),
+
   revokeSessions: platformProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ input, ctx }) => {
