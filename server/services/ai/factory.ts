@@ -5,6 +5,7 @@ import { partners } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from '../../utils/logger.js';
 import type { AiProvider } from './types.js';
+import { validateAiBaseUrl } from './validateUrl.js';
 import { OllamaProvider } from './ollama.js';
 import { AzureOpenAiProvider } from './azure-openai.js';
 import { OpenAiCompatibleProvider } from './openai-compatible.js';
@@ -104,6 +105,8 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
           if (firstKey) providerCache.delete(firstKey);
         }
         logger.info({ partnerId, provider: partner.aiProvider }, 'Creating per-partner AI provider');
+        const isDev = config.NODE_ENV === 'development';
+        validateAiBaseUrl(aiConfig.baseUrl as string | undefined, isDev);
         providerCache.set(
           key,
           buildProvider(partner.aiProvider, {
