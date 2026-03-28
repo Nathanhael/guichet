@@ -402,3 +402,28 @@ export const aiUsageLog = pgTable('ai_usage_log', {
   partnerCreatedIdx: index('idx_ai_usage_partner_created').on(table.partnerId, table.createdAt),
   userCreatedIdx: index('idx_ai_usage_user_created').on(table.userId, table.createdAt),
 }));
+
+/**
+ * Daily AI usage aggregates — rolled up from ai_usage_log before purge.
+ * Keeps historical usage trends without row-level detail.
+ * One row per partner × action × provider × model × day.
+ */
+export const dailyAiUsage = pgTable('daily_ai_usage', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  date: text('date').notNull(),                    // YYYY-MM-DD
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  action: text('action').notNull(),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  totalInputTokens: integer('total_input_tokens').notNull().default(0),
+  totalOutputTokens: integer('total_output_tokens').notNull().default(0),
+  totalRequests: integer('total_requests').notNull().default(0),
+  successCount: integer('success_count').notNull().default(0),
+  errorCount: integer('error_count').notNull().default(0),
+  avgLatencyMs: integer('avg_latency_ms'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  datePartnerIdx: index('idx_daily_ai_usage_date_partner').on(table.date, table.partnerId),
+  partnerDateIdx: index('idx_daily_ai_usage_partner_date').on(table.partnerId, table.date),
+  uniqueDayKey: uniqueIndex('idx_daily_ai_usage_unique').on(table.date, table.partnerId, table.action, table.provider, table.model),
+}));

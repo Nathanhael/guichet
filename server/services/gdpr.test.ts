@@ -30,6 +30,7 @@ vi.mock('../config.js', () => ({
   default: {
     GDPR_RETENTION_DAYS: 30,
     AUDIT_ARCHIVE_DELAY_DAYS: 2,
+    AI_USAGE_RETENTION_DAYS: 90,
   },
 }));
 
@@ -61,6 +62,7 @@ vi.mock('../db/schema.js', () => ({
   auditLog: 'audit_log_table',
   ratings: { ticketId: 'ticket_id' },
   messages: { ticketId: 'ticket_id' },
+  dailyAiUsage: 'daily_ai_usage_table',
 }));
 
 // --- Helpers ---
@@ -110,7 +112,7 @@ describe('runDailyPurge', () => {
       await cb(tx);
     });
     insertValuesMock.mockResolvedValue(undefined);
-    runMock.mockResolvedValue(undefined);
+    runMock.mockResolvedValue({ changes: 0 });
   });
 
   it('archives audit log and tickets before deleting', async () => {
@@ -199,8 +201,9 @@ describe('runDailyPurge', () => {
     );
 
     // Verify INSERT INTO daily_stats was called via run()
-    expect(runMock).toHaveBeenCalledOnce();
-    const runArgs = runMock.mock.calls[0];
+    const dailyStatsRuns = runMock.mock.calls.filter((c: unknown[]) => (c[0] as string).includes('daily_stats'));
+    expect(dailyStatsRuns).toHaveLength(1);
+    const runArgs = dailyStatsRuns[0];
     expect(runArgs[0]).toContain('INSERT INTO daily_stats');
     // Check the values array includes date and partnerId
     expect(runArgs[1][0]).toBe('2026-02-01');
@@ -245,12 +248,13 @@ describe('runDailyPurge', () => {
       { id: 't3', partnerId: 'partner-B' },
     ]);
 
-    // run() called once per partner for INSERT INTO daily_stats
-    expect(runMock).toHaveBeenCalledTimes(2);
-    expect(runMock.mock.calls[0][1][1]).toBe('partner-A');
-    expect(runMock.mock.calls[0][1][2]).toBe(3); // statsA.total
-    expect(runMock.mock.calls[1][1][1]).toBe('partner-B');
-    expect(runMock.mock.calls[1][1][2]).toBe(7); // statsB.total
+    // run() called once per partner for INSERT INTO daily_stats (plus 2 for AI usage purge)
+    const dailyStatsRuns = runMock.mock.calls.filter((c: unknown[]) => (c[0] as string).includes('daily_stats'));
+    expect(dailyStatsRuns).toHaveLength(2);
+    expect(dailyStatsRuns[0][1][1]).toBe('partner-A');
+    expect(dailyStatsRuns[0][1][2]).toBe(3); // statsA.total
+    expect(dailyStatsRuns[1][1][1]).toBe('partner-B');
+    expect(dailyStatsRuns[1][1][2]).toBe(7); // statsB.total
   });
 
   it('handles empty result set (no tickets to purge)', async () => {
@@ -262,12 +266,15 @@ describe('runDailyPurge', () => {
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
 
-    // No aggregation or run calls
+    // No ticket aggregation or daily_stats run calls
     expect(computeLiveDayStatsMock).not.toHaveBeenCalled();
-    expect(runMock).not.toHaveBeenCalled();
 
     // Transaction still runs (DELETEs happen regardless, they just delete 0 rows)
     expect(transactionMock).toHaveBeenCalledOnce();
+
+    // run() called twice by AI usage purge (aggregate INSERT + DELETE), but not for daily_stats
+    const dailyStatsRuns = runMock.mock.calls.filter((c: unknown[]) => (c[0] as string).includes('daily_stats'));
+    expect(dailyStatsRuns).toHaveLength(0);
 
     // Audit log entry still written
     expect(dbMock.insert).toHaveBeenCalledOnce();
@@ -293,7 +300,7 @@ describe('runDailyPurge', () => {
 
     // Logs purge completion
     expect(logger.info).toHaveBeenCalledWith(
-      expect.stringContaining('[purge] GDPR purge complete for data older than')
+      expect.stringContaining('[purge] GDPR purge complete for data older than'),
     );
   });
 
@@ -326,7 +333,7 @@ describe('runDailyPurge', () => {
         action: 'system.gdpr_purge',
         actorId: null,
         targetType: 'system',
-        metadata: expect.objectContaining({ success: true }),
+        metadata: expect.objectContaining({ success: true, aiUsagePurged: 0 }),
       })
     );
   });

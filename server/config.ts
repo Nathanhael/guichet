@@ -8,6 +8,7 @@ const configSchema = z.object({
     BUSINESS_HOURS_END: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('22:30'),
     SLA_THRESHOLD_MS: z.coerce.number().int().positive().default(180000),
     GDPR_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+    AI_USAGE_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
     AUDIT_ARCHIVE_DELAY_DAYS: z.coerce.number().int().positive().default(2),
     COOKIE_DOMAIN: z.string().optional(),
     // Default to true (secure). Set COOKIE_SECURE=false only for local dev (no HTTPS).
@@ -62,6 +63,7 @@ const parseResult = configSchema.safeParse({
     BUSINESS_HOURS_END: process.env.BUSINESS_HOURS_END,
     SLA_THRESHOLD_MS: process.env.SLA_THRESHOLD_MS,
     GDPR_RETENTION_DAYS: process.env.GDPR_RETENTION_DAYS,
+    AI_USAGE_RETENTION_DAYS: process.env.AI_USAGE_RETENTION_DAYS,
     AUDIT_ARCHIVE_DELAY_DAYS: process.env.AUDIT_ARCHIVE_DELAY_DAYS,
     COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
     COOKIE_SECURE: process.env.COOKIE_SECURE,
