@@ -5,6 +5,7 @@ import { db } from '../../db.js';
 import { auditLog, users } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { router, platformBaseProcedure } from '../trpc.js';
+import { checkLockout, recordFailedLogin, resetFailedLogins } from '../../services/accountLockout.js';
 import { buildAuthToken, setAuthCookie, parseExpiryToSeconds } from '../../services/authSession.js';
 import config from '../../config.js';
 import {
@@ -114,9 +115,17 @@ export const platformSecurityRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Platform MFA setup has not started' });
       }
 
+      const lockout = checkLockout(user);
+      if (lockout.locked) {
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Account temporarily locked' });
+      }
+
       if (!verifyTotpToken(user.platformTotpSecret, input.code)) {
+        await recordFailedLogin(ctx.user.id);
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid verification code' });
       }
+
+      await resetFailedLogins(ctx.user.id);
 
       const enabledAt = new Date().toISOString();
       const platformStepUpAt = getCurrentUnixTime();
