@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { notify, updateTitleBadge } from '../utils/notifications';
 import { io, Socket } from 'socket.io-client';
 import useStore from '../store/useStore';
@@ -7,6 +7,7 @@ import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, TopicAlert,
 import { isTenantAdmin } from '../utils/roles';
 
 let socket: Socket | null = null;
+let listenersAttached = false;
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -37,8 +38,6 @@ export function useSocket(): Socket {
     setActiveTicketId,
   } = useStore();
   
-  const listenersAttached = useRef(false);
-
   // Re-identify whenever user or partner changes (e.g. after login or switch)
   useEffect(() => {
     if (!user || !activePartnerId) return;
@@ -54,8 +53,8 @@ export function useSocket(): Socket {
   useEffect(() => {
     const s = getSocket();
 
-    if (listenersAttached.current) return;
-    listenersAttached.current = true;
+    if (listenersAttached) return;
+    listenersAttached = true;
 
     // Named handlers — passed to both s.on() and s.off() so cleanup only removes our listeners
     const handleConnect = () => {
@@ -358,7 +357,7 @@ export function useSocket(): Socket {
       s.off('partner:deactivated', handlePartnerDeactivated);
       s.off('user:deactivated', handleUserDeactivated);
       s.off('auth:expired', handleAuthExpired);
-      listenersAttached.current = false;
+      listenersAttached = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus, addTopicAlert, setActiveTicketId]);
 

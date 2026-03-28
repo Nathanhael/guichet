@@ -73,11 +73,14 @@ export default function LoginView() {
     // Handle SSO error from URL query
     const ssoError = params.get('sso_error');
     if (ssoError) {
-      if (ssoError === 'no_matching_groups') {
-        setError(t('sso_no_groups_message'));
-      } else {
-        setError(decodeURIComponent(ssoError));
-      }
+      const ssoErrorMessages: Record<string, string> = {
+        'no_matching_groups': t('sso_no_groups_message'),
+        'invalid_token': t('login_failed'),
+        'expired': t('login_failed'),
+        'unauthorized': t('login_failed'),
+        'server_error': t('login_failed'),
+      };
+      setError(ssoErrorMessages[ssoError] || t('login_failed'));
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
