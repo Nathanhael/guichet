@@ -29,14 +29,21 @@ export async function runDailyPurge() {
     cutoff.setDate(cutoff.getDate() - config.GDPR_RETENTION_DAYS);
     const cutoffDate = cutoff.toISOString().slice(0, 10);
 
-    // Guard: if ticket archival returned 0 but there are closed tickets to purge, skip purge to prevent data loss
-    const closedTicketCount = await query(
-      `SELECT COUNT(*)::int as count FROM tickets WHERE created_at < $1 AND status = 'closed'`,
-      [cutoffDate]
+    // Guard: check if there are closed tickets that haven't been archived yet.
+    // The old guard relied on the archiveTickets return value being non-zero, which
+    // is false on day 2+ when tickets were already archived in a prior run — causing
+    // all subsequent purge runs to be silently skipped and GDPR data retained indefinitely.
+    const unarchivedRows = await query(
+      `SELECT COUNT(*)::int as count FROM tickets t
+       WHERE t.created_at < $1 AND t.status = 'closed'
+       AND NOT EXISTS (SELECT 1 FROM archived_tickets a WHERE a.id = t.id)`,
+      [cutoff.toISOString()]
     ) as { count: number }[];
-    if (ticketsArchived === 0 && (closedTicketCount[0]?.count ?? 0) > 0) {
-      logger.warn({ cutoffDate, closedTickets: closedTicketCount[0]?.count }, '[purge] No tickets archived but closed tickets exist — skipping purge to prevent data loss');
-      return;
+    const unarchivedCount = unarchivedRows[0]?.count ?? 0;
+
+    if (unarchivedCount > 0) {
+      logger.warn({ unarchivedCount }, '[purge] Unarchived closed tickets exist — archiving first');
+      await archiveTickets();
     }
 
     const datesToAggregate = await query(
