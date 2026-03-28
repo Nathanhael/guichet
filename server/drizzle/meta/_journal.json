@@ -162,6 +162,13 @@
       "when": 1775800800000,
       "tag": "0022_audit_log_immutability",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1775887200000,
+      "tag": "0023_app_feedback_partner_id",
+      "breakpoints": true
     }
   ]
 }

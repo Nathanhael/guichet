@@ -50,7 +50,12 @@ export async function checkRateLimit(
     if (newMinuteCount === 1) await r.expire(minuteKey, 60);
     if (newDayCount === 1) await r.expire(dayKey, 86400);
 
-    // Check limits after incrementing — decrement if over-limit
+    // Check limits after incrementing — decrement if over-limit.
+    // KNOWN TRADEOFF (Issue 18): The increment-then-decrement pattern allows a momentary +1
+    // overshoot under high concurrency (two requests can both pass the pre-increment threshold
+    // and both increment before either checks the limit). This is acceptable for AI rate limiting
+    // where occasional single-request overshoot has negligible impact. A Lua script could
+    // eliminate the overshoot entirely but would add complexity for minimal gain here.
     if (newMinuteCount > perMinute) {
       await r.decr(minuteKey);
       return { allowed: false, retryAfterSeconds: 60, limitHit: 'minute' };

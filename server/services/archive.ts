@@ -12,7 +12,7 @@
 import crypto from 'crypto';
 import { db, transaction } from '../db.js';
 import { auditLog, auditArchive, tickets, archivedTickets, messages } from '../db/schema.js';
-import { lte, desc, eq, and, inArray, sql } from 'drizzle-orm';
+import { lte, asc, desc, eq, and, inArray, sql } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 import config from '../config.js';
 
@@ -41,19 +41,19 @@ export async function archiveAuditLog(archiveDelayDays?: number): Promise<number
   const cutoffStr = cutoff.toISOString();
 
   try {
-    // Fetch rows to archive (oldest first for correct chain ordering)
+    // Fetch rows to archive (oldest first for correct chain ordering; id as tiebreaker)
     const rows = await db.select()
       .from(auditLog)
       .where(lte(auditLog.createdAt, cutoffStr))
-      .orderBy(auditLog.createdAt)
+      .orderBy(asc(auditLog.createdAt), asc(auditLog.id))
       .limit(1000); // batch size
 
     if (rows.length === 0) return 0;
 
-    // Get the last chain hash from the archive
+    // Get the last chain hash from the archive (same order as write path)
     const lastArchived = await db.select({ chainHash: auditArchive.chainHash })
       .from(auditArchive)
-      .orderBy(desc(auditArchive.archivedAt))
+      .orderBy(desc(auditArchive.archivedAt), desc(auditArchive.id))
       .limit(1);
     let prevHash = lastArchived[0]?.chainHash || '0'.repeat(64); // genesis hash
 
@@ -112,7 +112,7 @@ export async function verifyAuditChain(): Promise<{ valid: boolean; checked: num
   try {
     const rows = await db.select()
       .from(auditArchive)
-      .orderBy(auditArchive.archivedAt, auditArchive.createdAt);
+      .orderBy(asc(auditArchive.archivedAt), asc(auditArchive.id));
 
     let prevHash = '0'.repeat(64);
     let checked = 0;
@@ -187,23 +187,25 @@ export async function archiveTickets(retentionDays?: number): Promise<number> {
     const msgCountMap = new Map(msgCounts.map(m => [m.ticketId, Number(m.count)]));
     const now = new Date().toISOString();
 
-    for (const ticket of rows) {
-      await db.insert(archivedTickets).values({
-        id: ticket.id,
-        partnerId: ticket.partnerId,
-        dept: ticket.dept,
-        agentId: ticket.agentId ?? undefined,
-        supportId: ticket.supportId ?? undefined,
-        status: ticket.status ?? 'closed',
-        createdAt: ticket.createdAt,
-        closedAt: ticket.closedAt ?? undefined,
-        closedBy: ticket.closedBy ?? undefined,
-        closingNotes: ticket.closingNotes ?? undefined,
-        reopenCount: ticket.reopenCount ?? 0,
-        messageCount: msgCountMap.get(ticket.id) ?? 0,
-        archivedAt: now,
-      }).onConflictDoNothing();
-    }
+    await transaction(async (tx) => {
+      for (const ticket of rows) {
+        await tx.insert(archivedTickets).values({
+          id: ticket.id,
+          partnerId: ticket.partnerId,
+          dept: ticket.dept,
+          agentId: ticket.agentId ?? undefined,
+          supportId: ticket.supportId ?? undefined,
+          status: ticket.status ?? 'closed',
+          createdAt: ticket.createdAt,
+          closedAt: ticket.closedAt ?? undefined,
+          closedBy: ticket.closedBy ?? undefined,
+          closingNotes: ticket.closingNotes ?? undefined,
+          reopenCount: ticket.reopenCount ?? 0,
+          messageCount: msgCountMap.get(ticket.id) ?? 0,
+          archivedAt: now,
+        }).onConflictDoNothing();
+      }
+    });
 
     logger.info({ count: rows.length, cutoff: cutoffStr }, '[archive] Tickets archived');
     return rows.length;

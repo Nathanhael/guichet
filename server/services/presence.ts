@@ -95,9 +95,22 @@ export async function identifyUser(userId: string, role: string, name: string, p
       });
       await pubClient.expire(key, TTL_SECONDS);
     } else {
-      // Existing connection: just increment count and refresh TTL
-      await pubClient.hIncrBy(key, 'count', 1);
-      await pubClient.expire(key, TTL_SECONDS);
+      // Existing connection: re-set all identity fields, increment count, and refresh TTL
+      // atomically via pipeline. This handles the TOCTOU window where the TTL may have
+      // expired between hSetNX returning false and this branch executing — without the
+      // hSet here the hash would be incomplete (only userId field set by hSetNX).
+      const pipeline = pubClient.multi();
+      pipeline.hSet(key, {
+        userId,
+        name,
+        role,
+        partnerId,
+        isPlatformOperator: isPlatformOperator ? '1' : '0',
+        status: 'available',
+      });
+      pipeline.hIncrBy(key, 'count', 1);
+      pipeline.expire(key, TTL_SECONDS);
+      await pipeline.exec();
     }
 
     // Add userId to partner set and refresh TTL

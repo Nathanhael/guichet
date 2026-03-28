@@ -6,6 +6,7 @@ import { db } from '../../db.js';
 import { users, auditLog } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { generateTotpSecret, buildTotpUri, verifyTotpToken } from '../../services/platformStepUp.js';
+import { revokeUserSessions } from '../../services/sessionRevocation.js';
 import { MailService } from '../../services/mail.js';
 import logger from '../../utils/logger.js';
 
@@ -140,6 +141,9 @@ export const mfaRouter = router({
         mfaRecoveryCodes: [],
       }).where(eq(users.id, ctx.user.id));
 
+      // Revoke all sessions — disabling MFA is a security-level change
+      await revokeUserSessions(ctx.user.id);
+
       await db.insert(auditLog).values({
         action: 'security.mfa_disabled',
         actorId: ctx.user.id,
@@ -148,7 +152,7 @@ export const mfaRouter = router({
         metadata: {},
       });
 
-      logger.info({ userId: ctx.user.id }, '[MFA] Disabled for user');
+      logger.info({ userId: ctx.user.id }, '[MFA] Disabled for user, all sessions revoked');
 
       return { success: true };
     }),

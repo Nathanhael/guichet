@@ -6,7 +6,6 @@ export interface ThemeConfig {
   brandPrimary?: string;
   brandSecondary?: string;
   accentColor?: string;
-  borderRadius?: string;
 }
 
 export interface PartnerManifest {
@@ -113,6 +112,13 @@ export interface Label {
   color: string;
 }
 
+export interface Participant {
+  userId: string;
+  userName: string;
+  role: string;
+  lang?: string;
+}
+
 export interface Ticket {
   id: string;
   dept: string;
@@ -131,7 +137,7 @@ export interface Ticket {
   closedAt?: string | null;
   closingNotes?: string | null;
   closedBy?: string | null;
-  participants: any[];
+  participants: Participant[];
   labels: string[];
   summary?: string | null;
   slaResponseDueAt?: string | null;
@@ -158,7 +164,9 @@ export interface Message {
   timestamp: string;
   createdAt?: string; // alias/legacy
   readAt?: string | null;
-  reactions: any;
+  editedAt?: string | null;
+  deletedAt?: string | null;
+  reactions: Record<string, string[]>;
   pending?: boolean;
 }
 

@@ -97,25 +97,30 @@ export default function LoginView() {
     }
 
     // Handle SSO callback from URL hash fragment
+    // Instead of trusting the hash payload directly, we verify by fetching from the server
     const hash = window.location.hash;
     if (hash.startsWith('#sso_callback=')) {
-      try {
-        const payload = JSON.parse(decodeURIComponent(hash.slice('#sso_callback='.length)));
-        const ssoMemberships = payload.memberships || [];
-        if (ssoMemberships.length > 1 && !payload.user.isPlatformOperator) {
-          setSelectingPartner({ user: payload.user, memberships: ssoMemberships });
-        } else {
-          setUser(payload.user);
-          setMemberships(ssoMemberships);
-          if (ssoMemberships.length > 0 && !payload.user.isPlatformOperator) {
-            setActiveMembershipId(ssoMemberships[0].id);
-          }
-        }
-      } catch (err) {
-        console.error('[SSO] Failed to parse callback payload', err);
-        setError('SSO login failed');
-      }
       window.history.replaceState({}, document.title, window.location.pathname);
+      fetch('/api/v1/auth/me', { credentials: 'include' })
+        .then(async (res) => {
+          if (!res.ok) throw new Error('SSO session verification failed');
+          const data = await res.json();
+          const verifiedUser: User = data.user;
+          const verifiedMemberships: Membership[] = data.memberships || [];
+          if (verifiedMemberships.length > 1 && !verifiedUser.isPlatformOperator) {
+            setSelectingPartner({ user: verifiedUser, memberships: verifiedMemberships });
+          } else {
+            setUser(verifiedUser);
+            setMemberships(verifiedMemberships);
+            if (verifiedMemberships.length > 0 && !verifiedUser.isPlatformOperator) {
+              setActiveMembershipId(verifiedMemberships[0].id);
+            }
+          }
+        })
+        .catch((err) => {
+          console.error('[SSO] Failed to verify session with server', err);
+          setError('SSO login failed');
+        });
     }
   }, []);
 
@@ -173,6 +178,7 @@ export default function LoginView() {
       const res = await fetch('/api/v1/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ email })
       });
       const data = await res.json();

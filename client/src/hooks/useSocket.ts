@@ -3,7 +3,7 @@ import { notify, updateTitleBadge } from '../utils/notifications';
 import { io, Socket } from 'socket.io-client';
 import useStore from '../store/useStore';
 import { SOCKET_URL } from '../config';
-import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, TopicAlert } from '../types';
+import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, TopicAlert, Participant } from '../types';
 import { isTenantAdmin } from '../utils/roles';
 
 let socket: Socket | null = null;
@@ -104,7 +104,7 @@ export function useSocket(): Socket {
     });
 
     // Support joined a ticket
-    s.on('support:joined', ({ ticketId, supportName, participants }: { ticketId: string; supportName: string; participants: any[] }) => {
+    s.on('support:joined', ({ ticketId, supportName, participants }: { ticketId: string; supportName: string; participants: Participant[] }) => {
       updateTicket(ticketId, { supportName, status: 'active', participants: participants || [] });
     });
 
@@ -179,12 +179,12 @@ export function useSocket(): Socket {
 
     // Message edited
     s.on('message:edited', ({ ticketId, messageId, text, editedAt }: { ticketId: string; messageId: string; text: string; editedAt: string }) => {
-      useStore.getState().updateMessageState(ticketId, messageId, { text, originalText: text, editedAt } as any);
+      useStore.getState().updateMessageState(ticketId, messageId, { text, originalText: text, editedAt });
     });
 
     // Message deleted
     s.on('message:deleted', ({ ticketId, messageId, deletedAt }: { ticketId: string; messageId: string; deletedAt: string }) => {
-      useStore.getState().updateMessageState(ticketId, messageId, { text: '', deletedAt } as any);
+      useStore.getState().updateMessageState(ticketId, messageId, { text: '', deletedAt });
     });
 
     // Reaction updated
@@ -326,6 +326,7 @@ export function useSocket(): Socket {
       s.off('connect');
       s.off('disconnect');
       s.off('connect_error');
+      s.off('error');
       s.off('ticket:created');
       s.off('ticket:created:self');
       s.off('support:joined');

@@ -29,8 +29,6 @@ interface TicketNewPayload {
 
 interface SupportJoinPayload {
   ticketId: string;
-  supportId: string;
-  supportName: string;
   supportLang: string;
 }
 
@@ -286,6 +284,7 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('ticket:new', async (data: TicketNewPayload) => {
       if (!requireIdentified(socket)) return;
+      if (socket.data.role !== 'agent') return socket.emit('error', { message: 'Only agents can create tickets' });
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       const partnerId = socket.data.partnerId;
@@ -648,6 +647,7 @@ export function registerSocketHandlers(io: Server) {
       try {
         const senderId = socket.data.userId;
         if (!senderId || !ticketId || !messageId || !newText?.trim()) return;
+        if (newText.trim().length > 10000) return socket.emit('error', { message: 'Message too long' });
 
         // Verify ticket belongs to caller's partner
         const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;

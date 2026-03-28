@@ -37,6 +37,20 @@ function signPayload(body: string, secret: string): string {
 }
 
 /**
+ * Fire a test event to a single specific webhook. Non-blocking (fire-and-forget).
+ * Used by the webhook test procedure to avoid dispatching to all partner webhooks.
+ */
+export function deliverWebhookTest(
+  hook: typeof webhooks.$inferSelect,
+  event: WebhookEvent,
+  data: Record<string, unknown>,
+) {
+  deliverOne(hook, event, data).catch((err) => {
+    logger.error({ err, webhookId: hook.id, event }, 'Webhook test delivery error');
+  });
+}
+
+/**
  * Fire webhooks for a partner + event. Non-blocking (fire-and-forget).
  * Each matching webhook is dispatched in parallel; failures are logged but never throw.
  */

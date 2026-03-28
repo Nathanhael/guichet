@@ -160,11 +160,20 @@ export const webhookRouter = router({
   test: partnerAdminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await verifyWebhookOwnership(input.id, ctx.user.partnerId);
+      // Fetch the specific webhook (verifies ownership and gets secret/url)
+      const rows = await db
+        .select()
+        .from(webhooks)
+        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)))
+        .limit(1);
 
-      // Fire a test event
-      const { fireWebhooks } = await import('../../services/webhookDispatch.js');
-      fireWebhooks(ctx.user.partnerId, 'ticket.created', {
+      if (rows.length === 0) throw notFound('Webhook');
+
+      const hook = rows[0];
+
+      // Deliver only to this specific webhook, not all partner webhooks
+      const { deliverWebhookTest } = await import('../../services/webhookDispatch.js');
+      deliverWebhookTest(hook, 'ticket.created', {
         _test: true,
         ticketId: 'test-000',
         agentName: 'Test Agent',

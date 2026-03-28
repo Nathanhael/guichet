@@ -78,11 +78,14 @@ export const messageRouter = router({
       if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
       }
+      if (ctx.user.isPlatformOperator && !ctx.user.partnerId) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Platform operators must have an active partner context to search messages' });
+      }
 
       try {
         const conditions = [];
 
-        // Tenant isolation
+        // Tenant isolation — always enforce partner scope
         if (ctx.user.partnerId) {
           conditions.push(eq(tickets.partnerId, ctx.user.partnerId));
         }

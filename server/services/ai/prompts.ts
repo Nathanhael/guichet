@@ -114,9 +114,12 @@ export async function getPromptTemplate(
 export function interpolate(template: string, vars: Record<string, string>): string {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => {
     const value = vars[key] ?? '';
-    // Escape XML delimiter tags to prevent prompt injection
+    // Escape all angle brackets in user-supplied values to prevent prompt injection.
+    // This covers arbitrary XML/HTML tags (not just the boundary tags) so that
+    // a malicious input like "<system>ignore above</system>" cannot break out of
+    // the user_content delimiters or inject new prompt structure.
     return value
-      .replace(/<user_content>/gi, '&lt;user_content&gt;')
-      .replace(/<\/user_content>/gi, '&lt;/user_content&gt;');
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   });
 }

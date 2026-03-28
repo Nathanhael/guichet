@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { router, roleProcedure } from '../trpc.js';
-import { query } from '../../db.js';
+import { query, db } from '../../db.js';
+import { ratings as ratingsTable, messages as messagesTable } from '../../db/schema.js';
+import { inArray } from 'drizzle-orm';
 import { computeLiveDayStats, calculatePercentile } from '../../services/stats.js';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
@@ -151,7 +153,8 @@ export const statsRouter = router({
       try {
         const { dateFrom, dateTo, dept, excludeWeekends } = input;
         if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-        const partnerId = ctx.user.partnerId!;
+        if (ctx.user.isPlatformOperator && !ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Platform operators must provide a partnerId via partner context' });
+        const partnerId = ctx.user.partnerId as string;
 
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
@@ -202,12 +205,12 @@ export const statsRouter = router({
 
         let liveRatings: RatingRow[] = [];
         if (liveTicketIds.length > 0) {
-          liveRatings = (await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds)) as unknown as RatingRow[];
+          liveRatings = (await db.select().from(ratingsTable).where(inArray(ratingsTable.ticketId, liveTicketIds))) as unknown as RatingRow[];
         }
 
         let liveMessages: RawMessageRow[] = [];
         if (liveTicketIds.length > 0) {
-          liveMessages = (await query(`SELECT * FROM messages WHERE "ticket_id" IN (${liveTicketIds.map((_, i) => `$${i + 1}`).join(',')})`, liveTicketIds)) as unknown as RawMessageRow[];
+          liveMessages = (await db.select().from(messagesTable).where(inArray(messagesTable.ticketId, liveTicketIds))) as unknown as RawMessageRow[];
         }
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0, totalReopened = 0;
@@ -476,9 +479,11 @@ export const statsRouter = router({
         const missingSupportIds = [...new Set(liveRatings.map(r => r.supportId).filter(id => id && !supportMap[id]))];
         const supportUserMap = new Map<string, string>();
         if (missingSupportIds.length > 0) {
-          const placeholders = missingSupportIds.map((_, i) => `$${i + 1}`).join(',');
-          const users = (await query(`SELECT id, name FROM users WHERE id IN (${placeholders})`, missingSupportIds)) as unknown as { id: string; name: string }[];
-          users.forEach(u => supportUserMap.set(u.id, u.name));
+          const { users: usersTable } = await import('../../db/schema.js');
+          const userRows = await db.select({ id: usersTable.id, name: usersTable.name })
+            .from(usersTable)
+            .where(inArray(usersTable.id, missingSupportIds));
+          userRows.forEach(u => supportUserMap.set(u.id, u.name));
         }
 
         for (const r of liveRatings) {

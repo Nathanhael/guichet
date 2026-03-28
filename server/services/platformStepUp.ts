@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import config from '../config.js';
+import { getRedisClients } from '../utils/redis.js';
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const TOTP_DIGITS = 6;
@@ -102,6 +103,38 @@ export function verifyTotpToken(secret: string, token: string, now = Date.now())
   }
 
   return false;
+}
+
+const TOTP_USED_TTL = 90; // seconds — covers the ±1 window (3 × 30s periods)
+
+/**
+ * Check whether a TOTP token has already been used (replay attack prevention).
+ * Returns true if the token was already consumed, false otherwise.
+ */
+export async function isTotpTokenUsed(userId: string, token: string): Promise<boolean> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return false;
+    const key = `totp:used:${userId}:${token}`;
+    const existing = await pubClient.get(key);
+    return existing !== null;
+  } catch {
+    return false; // fail open — token reuse protection degrades gracefully
+  }
+}
+
+/**
+ * Mark a TOTP token as used. Call after successful verification.
+ */
+export async function markTotpTokenUsed(userId: string, token: string): Promise<void> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return;
+    const key = `totp:used:${userId}:${token}`;
+    await pubClient.set(key, '1', { EX: TOTP_USED_TTL });
+  } catch {
+    // fire-and-forget — log nothing to avoid noise
+  }
 }
 
 export function getPlatformStepUpWindowSeconds(): number {

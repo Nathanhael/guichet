@@ -31,13 +31,18 @@ export const ticketRouter = router({
       cursor: z.string().optional(), // "createdAt|id" or "closedAt|id"
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
+      partnerId: z.string().optional(), // required for platform operators
     }))
     .query(async ({ input, ctx }) => {
       try {
         const conditions = [];
 
         // Scope by partner
-        if (!ctx.user.isPlatformOperator) {
+        if (ctx.user.isPlatformOperator) {
+          const opPartnerId = input.partnerId;
+          if (!opPartnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Platform operators must provide partnerId' });
+          conditions.push(eq(tickets.partnerId, opPartnerId));
+        } else {
           if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
           conditions.push(eq(tickets.partnerId, ctx.user.partnerId));
         }
@@ -114,7 +119,8 @@ export const ticketRouter = router({
         const where = conditions.length > 0 ? and(...conditions) : undefined;
 
         const rows = await db.select().from(tickets).where(where)
-          .orderBy(isClosed ? desc(orderCol) : asc(orderCol));
+          .orderBy(isClosed ? desc(orderCol) : asc(orderCol))
+          .limit(500);
 
         if (rows.length === 0) return [];
 
