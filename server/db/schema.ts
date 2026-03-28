@@ -147,6 +147,7 @@ export const messages = pgTable('messages', {
 
 export const ratings = pgTable('ratings', {
   id: text('id').primaryKey(),
+  partnerId: text('partner_id'),
   ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
   agentId: text('agent_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   supportId: text('support_id').references(() => users.id, { onDelete: 'cascade' }),
@@ -157,6 +158,7 @@ export const ratings = pgTable('ratings', {
   ticketIdIdx: uniqueIndex('idx_ratings_ticket_unique').on(table.ticketId),
   supportIdIdx: index('idx_ratings_support_id').on(table.supportId),
   createdAtIdx: index('idx_ratings_created_at').on(table.createdAt),
+  partnerCreatedIdx: index('idx_ratings_partner_created').on(table.partnerId, table.createdAt),
 }));
 
 export const appFeedback = pgTable('app_feedback', {

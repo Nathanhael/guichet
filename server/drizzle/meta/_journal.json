@@ -176,6 +176,13 @@
       "when": 1775973600000,
       "tag": "0024_ratings_ticket_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1776060000000,
+      "tag": "0025_ratings_partner_id",
+      "breakpoints": true
     }
   ]
 }
