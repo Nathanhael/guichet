@@ -1,0 +1,59 @@
+# Local CI — runs the same checks as the old GitHub Actions pipeline
+# Usage: powershell -File scripts/ci.ps1
+#        powershell -File scripts/ci.ps1 -Skip e2e    (skip slow E2E tests)
+
+param(
+    [ValidateSet("typecheck", "test-server", "test-client", "migrate", "e2e")]
+    [string[]]$Skip = @()
+)
+
+$ErrorActionPreference = "Stop"
+$failed = @()
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
+function Run-Step {
+    param([string]$Name, [string[]]$Commands)
+    if ($Skip -contains $Name) {
+        Write-Host "`n  SKIP  $Name" -ForegroundColor Yellow
+        return
+    }
+    Write-Host "`n  RUN   $Name" -ForegroundColor Cyan
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $stepFailed = $false
+    foreach ($cmd in $Commands) {
+        Invoke-Expression $cmd
+        if ($LASTEXITCODE -ne 0) {
+            $stepFailed = $true
+            break
+        }
+    }
+    $sw.Stop()
+    if ($stepFailed) {
+        Write-Host "  FAIL  $Name ($($sw.Elapsed.TotalSeconds.ToString('0.0'))s)" -ForegroundColor Red
+        $script:failed += $Name
+    } else {
+        Write-Host "  PASS  $Name ($($sw.Elapsed.TotalSeconds.ToString('0.0'))s)" -ForegroundColor Green
+    }
+}
+
+Write-Host "`n========================================" -ForegroundColor White
+Write-Host "  Tessera Local CI" -ForegroundColor White
+Write-Host "========================================" -ForegroundColor White
+
+Run-Step "typecheck" @("docker compose exec server npx tsc --noEmit", "docker compose exec client npx tsc --noEmit")
+Run-Step "test-server" @("docker compose exec server npm test")
+Run-Step "test-client" @("docker compose exec client npm test")
+Run-Step "migrate" @("docker compose exec server npm run db:migrate")
+Run-Step "e2e" @("docker compose exec client npm run build", "npx playwright test")
+
+$stopwatch.Stop()
+Write-Host "`n========================================" -ForegroundColor White
+
+if ($failed.Count -gt 0) {
+    Write-Host "  FAILED ($($stopwatch.Elapsed.TotalSeconds.ToString('0'))s): $($failed -join ', ')" -ForegroundColor Red
+    exit 1
+} else {
+    $ran = 5 - $Skip.Count
+    Write-Host "  ALL $ran STEPS PASSED ($($stopwatch.Elapsed.TotalSeconds.ToString('0'))s)" -ForegroundColor Green
+    exit 0
+}
