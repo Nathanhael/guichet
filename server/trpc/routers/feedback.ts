@@ -38,9 +38,8 @@ export const feedbackRouter = router({
         treated: !!f.treated,
       }));
     } catch (err: unknown) {
-      const message = errMsg(err);
-      logger.error({ err: message }, 'tRPC: Error listing feedback');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+      logger.error({ err: errMsg(err) }, 'tRPC: Error listing feedback');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
     }
   }),
 
@@ -70,9 +69,8 @@ export const feedbackRouter = router({
         await db.insert(appFeedback).values(entry);
         return entry;
       } catch (err: unknown) {
-        const message = errMsg(err);
-        logger.error({ err: message }, 'tRPC: Error creating feedback');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        logger.error({ err: errMsg(err) }, 'tRPC: Error creating feedback');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
       }
     }),
 
@@ -93,9 +91,8 @@ export const feedbackRouter = router({
 
         return { success: true };
       } catch (err: unknown) {
-        const message = errMsg(err);
-        logger.error({ err: message, id }, 'tRPC: Error treating feedback');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        logger.error({ err: errMsg(err), id }, 'tRPC: Error treating feedback');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
       }
     }),
 });
