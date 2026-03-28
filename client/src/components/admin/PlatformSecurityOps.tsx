@@ -52,9 +52,10 @@ export default function PlatformSecurityOps() {
   const utils = trpc.useUtils();
 
   const { data: status, isLoading: statusLoading } = trpc.platformSecurity.getStatus.useQuery();
-  const { data: users } = trpc.platform.listGlobalUsers.useQuery(undefined, {
+  const { data: usersData } = trpc.platform.listGlobalUsers.useQuery(undefined, {
     enabled: !!status?.stepUpSatisfied,
   });
+  const users = usersData?.users;
   const { data: auditData, isLoading } = trpc.platform.getAuditLog.useQuery({ limit: 20 }, {
     enabled: !!status?.stepUpSatisfied,
   });

@@ -314,7 +314,8 @@ describe('runDailyPurge', () => {
   });
 
   it('writes audit log entry after successful purge', async () => {
-    queryMock.mockResolvedValueOnce([]);
+    queryMock.mockResolvedValueOnce([{ count: 0 }]); // guard count query
+    queryMock.mockResolvedValueOnce([]);              // dates query
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();

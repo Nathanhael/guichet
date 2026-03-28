@@ -152,7 +152,7 @@ describe('auth enter-partner route', () => {
     const tokenCookie = (Array.isArray(cookies) ? cookies : [cookies]).find((c: string) => c.startsWith('tessera_token='));
     expect(tokenCookie).toBeDefined();
     const cookieToken = tokenCookie!.split(';')[0].split('=').slice(1).join('=');
-    const decoded = jwt.verify(cookieToken, process.env.JWT_SECRET!) as Record<string, unknown>;
+    const decoded = jwt.verify(cookieToken, 'test-secret-key-only-for-unit-tests') as Record<string, unknown>;
     expect(decoded.userId).toBe('platform-1');
     expect(decoded.role).toBe('admin');
     expect(decoded.partnerId).toBe('tenant-a');

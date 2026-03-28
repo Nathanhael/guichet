@@ -72,6 +72,24 @@ vi.mock('../services/roles.js', () => ({
   isPlatformAdmin: (v: boolean) => v,
 }));
 
+vi.mock('../services/ai/summaryCache.js', () => ({
+  invalidateSummary: vi.fn(async () => {}),
+}));
+
+vi.mock('../services/ai/autoSummarize.js', () => ({
+  autoSummarizeOnClose: vi.fn(async () => {}),
+}));
+
+vi.mock('../services/ai/sentiment.js', () => ({
+  scoreSentiment: vi.fn(async () => {}),
+}));
+
+vi.mock('../services/sla.js', () => ({
+  parseSlaConfig: vi.fn(() => null),
+  getEffectiveSla: vi.fn(() => ({ responseMs: 180000, resolutionMs: 3600000 })),
+  calculateSlaDueDate: vi.fn(() => new Date()),
+}));
+
 // ---- Socket & IO mocks ----
 
 function createMockSocket(data: Record<string, any> = {}) {
@@ -334,5 +352,120 @@ describe('broadcastUserDeactivation', () => {
 
     expect(io.to).toHaveBeenCalledWith('user:user-1');
     expect(emitMock).toHaveBeenCalledWith('user:deactivated', { userId: 'user-1' });
+  });
+});
+
+describe('message:send', () => {
+  beforeEach(() => {
+    queryMock.mockReset();
+    getMock.mockReset();
+    runMock.mockReset();
+    transactionMock.mockReset();
+    identifyUserMock.mockReset();
+    decrementUserCountMock.mockReset();
+    broadcastOnlineSupportMock.mockReset();
+    getBusinessHoursStatusMock.mockReset();
+    getBusinessHoursStatusMock.mockReturnValue({ isOpen: true, message: 'Open' });
+    broadcastQueuePositionsMock.mockReset();
+    broadcastAgentStatusMock.mockReset();
+  });
+
+  async function setupMessageSend(socketData: Record<string, unknown> = {}) {
+    const { registerSocketHandlers } = await import('./handlers.js');
+    const io = createMockIo();
+    const toEmitMock = vi.fn();
+    io.to.mockReturnValue({ emit: toEmitMock });
+
+    registerSocketHandlers(io);
+
+    const socket = createMockSocket({
+      authedUserId: 'u1',
+      authedIsPlatformOperator: false,
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+      ...socketData,
+    });
+
+    io._connectionHandlers[0](socket);
+
+    const messageSendCall = socket.on.mock.calls.find(
+      (c: [string, (...args: unknown[]) => void]) => c[0] === 'message:send',
+    );
+    return { socket, io, toEmitMock, messageSendHandler: messageSendCall?.[1] };
+  }
+
+  it('rejects unidentified socket (no userId/partnerId set)', async () => {
+    // Socket has authedUserId from JWT middleware but has NOT called socket:identify,
+    // so socket.data.userId and socket.data.partnerId are not set.
+    const { socket, messageSendHandler } = await setupMessageSend();
+
+    await messageSendHandler({ ticketId: 'ticket-1', text: 'hello' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', {
+      message: 'Not authenticated — call socket:identify first',
+    });
+    // Should NOT have called the DB at all
+    expect(getMock).not.toHaveBeenCalled();
+    expect(runMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects message to ticket belonging to a different partner', async () => {
+    // Socket is fully identified for partner-A
+    const { socket, messageSendHandler } = await setupMessageSend({
+      userId: 'u1',
+      partnerId: 'partner-A',
+      role: 'agent',
+      name: 'Test User',
+    });
+
+    // Ticket belongs to partner-B
+    getMock.mockResolvedValueOnce({ status: 'open', partner_id: 'partner-B' });
+
+    await messageSendHandler({ ticketId: 'ticket-99', text: 'cross-tenant message' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', {
+      message: 'Not authorized for this ticket',
+    });
+    // Should NOT have inserted a message
+    expect(runMock).not.toHaveBeenCalled();
+  });
+
+  it('allows message to ticket belonging to the same partner', async () => {
+    const { socket, messageSendHandler, io, toEmitMock } = await setupMessageSend({
+      userId: 'u1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support Agent',
+    });
+
+    // Ticket belongs to the same partner
+    getMock.mockResolvedValueOnce({ status: 'open', partner_id: 'partner-A' });
+    // Sender lookup returns user with membership
+    getMock.mockResolvedValueOnce({ name: 'Support Agent', role: 'support', lang: 'en' });
+    // Message insert succeeds
+    runMock.mockResolvedValueOnce(undefined);
+
+    await messageSendHandler({ ticketId: 'ticket-1', text: 'hello from same partner' });
+
+    // Should NOT have emitted an error
+    const errorCalls = socket.emit.mock.calls.filter(
+      (c: [string, ...unknown[]]) => c[0] === 'error',
+    );
+    expect(errorCalls).toHaveLength(0);
+
+    // Should have inserted a message into the database
+    expect(runMock).toHaveBeenCalledTimes(1);
+    const insertCall = runMock.mock.calls[0] as [string, unknown[]];
+    expect(insertCall[0]).toContain('INSERT INTO messages');
+
+    // Should have broadcast message:new to the ticket room
+    expect(io.to).toHaveBeenCalledWith('ticket:ticket-1');
+    expect(toEmitMock).toHaveBeenCalledWith(
+      'message:new',
+      expect.objectContaining({
+        ticketId: 'ticket-1',
+        senderId: 'u1',
+        text: 'hello from same partner',
+      }),
+    );
   });
 });

@@ -33,7 +33,7 @@ function downloadBlob(content: string, filename: string, mime: string) {
   URL.revokeObjectURL(url);
 }
 
-interface DashboardStats {
+export interface DashboardStats {
   total: number;
   todayTotal: number;
   todayOpen: number;

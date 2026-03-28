@@ -12,7 +12,7 @@
 import crypto from 'crypto';
 import { db, transaction } from '../db.js';
 import { auditLog, auditArchive, tickets, archivedTickets, messages } from '../db/schema.js';
-import { lte, asc, desc, eq, and, inArray, sql } from 'drizzle-orm';
+import { lte, asc, desc, eq, and, inArray, sql, notExists } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 import config from '../config.js';
 
@@ -78,15 +78,19 @@ export async function archiveAuditLog(archiveDelayDays?: number): Promise<number
 
         const chainHash = computeChainHash(prevHash, rowData);
 
-        await tx.insert(auditArchive).values({
+        const inserted = await tx.insert(auditArchive).values({
           ...rowData,
           archivedAt: now,
           chainHash,
           sequence: nextSequence,
-        }).onConflictDoNothing(); // idempotent — skip if already archived
+        }).onConflictDoNothing().returning({ id: auditArchive.id });
 
-        prevHash = chainHash;
-        nextSequence++;
+        // Only advance the hash chain when the row was actually inserted.
+        // If onConflictDoNothing skipped a duplicate, returned array is empty.
+        if (inserted.length > 0) {
+          prevHash = chainHash;
+          nextSequence++;
+        }
         archivedIds.push(row.id);
       }
 
@@ -171,6 +175,11 @@ export async function archiveTickets(retentionDays?: number): Promise<number> {
       .where(and(
         lte(tickets.createdAt, cutoffStr),
         eq(tickets.status, 'closed'),
+        notExists(
+          db.select({ id: archivedTickets.id })
+            .from(archivedTickets)
+            .where(eq(archivedTickets.id, tickets.id))
+        ),
       ))
       .limit(1000);
 

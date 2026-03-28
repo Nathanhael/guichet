@@ -19,17 +19,13 @@ function emitToPartner(ctx: { req: unknown; user: { partnerId?: string | null } 
   }
 }
 
-// NOTE: label router intentionally uses protectedProcedure/adminProcedure instead of
-// partnerScopedProcedure because platform operators can list labels across ALL partners
-// (no partnerId filter). The other CRUD ops still require partner context manually.
+// NOTE: label router uses protectedProcedure/adminProcedure instead of
+// partnerScopedProcedure. All operations require partner context (partnerId).
 export const labelRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
     try {
-      if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) return [];
-
-      const conditions = [];
-      if (!ctx.user.isPlatformOperator) {
-        conditions.push(eq(labels.partnerId, ctx.user.partnerId!));
+      if (!ctx.user.partnerId) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner context required' });
       }
 
       return await db.select({
@@ -38,7 +34,7 @@ export const labelRouter = router({
         color: labels.color,
       })
       .from(labels)
-      .where(conditions.length > 0 ? conditions[0] : undefined)
+      .where(eq(labels.partnerId, ctx.user.partnerId))
       .orderBy(asc(labels.name));
     } catch (err: unknown) {
       wrapError(err, 'Error fetching labels');

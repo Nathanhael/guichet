@@ -23,7 +23,7 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
   async function refreshUser() {
     const freshData = await utils.platform.listGlobalUsers.fetch();
     if (localUser && freshData) {
-      const updatedUser = freshData.find(u => u.id === localUser.id);
+      const updatedUser = freshData.users.find(u => u.id === localUser.id);
       if (updatedUser) setLocalUser(updatedUser);
       else onClose();
     }

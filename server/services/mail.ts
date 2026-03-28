@@ -4,6 +4,7 @@ import { db } from '../db.js';
 import { systemSettings, users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from '../utils/logger.js';
+import config from '../config.js';
 
 export type NotificationType = 'accountLocked' | 'mfaEnabled' | 'mfaDisabled' | 'passwordChanged';
 
@@ -97,7 +98,7 @@ export class MailService {
 
   static async sendPasswordReset(email: string, name: string, token: string, brand?: { partnerName?: string; logoUrl?: string }) {
     const { renderPasswordReset } = await import('./mailTemplates.js');
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3001'}/reset-password?token=${token}`;
+    const resetLink = `${config.FRONTEND_URL}/reset-password?token=${token}`;
     const html = renderPasswordReset({ name, resetLink, brand });
     return this.sendMail(email, 'Reset your Tessera Password', html);
   }

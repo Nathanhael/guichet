@@ -63,7 +63,9 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
   useEffect(() => {
     if (messageQuery.data && ticketId) {
-      setMessages(ticketId, messageQuery.data as any);
+      // tRPC infers server mapMessageRow return type which differs slightly from client Message interface
+      // (e.g. optional text field presence). Runtime data is compatible.
+      setMessages(ticketId, messageQuery.data as unknown as Message[]);
     }
   }, [messageQuery.data, ticketId, setMessages]);
 

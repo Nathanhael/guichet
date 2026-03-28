@@ -57,7 +57,9 @@ export default function AgentView() {
   );
 
   useEffect(() => {
-    if (ticketList) {
+    if (ticketList && Array.isArray(ticketList)) {
+      // tRPC infers Drizzle row types which differ slightly from client Ticket interface
+      // (e.g. participants as JSONB object vs typed array). Runtime data is compatible.
       setTickets(ticketList as unknown as Ticket[]);
     }
   }, [ticketList, setTickets]);

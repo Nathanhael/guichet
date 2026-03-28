@@ -49,7 +49,7 @@ vi.mock('../../../utils/trpc', () => ({
     }),
     platform: {
       listGlobalUsers: {
-        useQuery: () => ({ data: [activeUser, pendingUser, deletedUser], isLoading: false }),
+        useQuery: () => ({ data: { users: [activeUser, pendingUser, deletedUser], nextCursor: '' }, isLoading: false }),
       },
       listPartners: {
         useQuery: () => ({ data: [partner], isLoading: false }),

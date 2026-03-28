@@ -47,6 +47,8 @@ services:
       - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -72,7 +74,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=${REDIS_PASSWORD} redis-cli ping"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -97,3 +99,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:

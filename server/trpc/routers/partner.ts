@@ -626,7 +626,7 @@ export const partnerRouter = router({
 
         await db.update(memberships)
           .set({ departments: input.departments || [] })
-          .where(eq(memberships.id, input.membershipId));
+          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, partnerId)));
 
         await db.insert(auditLog).values({
           action: 'member.updated',

@@ -48,13 +48,15 @@ function getJwks() {
 const SSO_STATE_PREFIX = 'sso:state:';
 const SSO_STATE_TTL = 600; // 10 minutes
 
-async function setSsoState(state: string, nonce: string): Promise<void> {
+async function setSsoState(state: string, nonce: string): Promise<boolean> {
   try {
     const { pubClient } = getRedisClients();
     if (!pubClient) throw new Error('Redis not available');
     await pubClient.set(`${SSO_STATE_PREFIX}${state}`, JSON.stringify({ nonce, createdAt: Date.now() }), { EX: SSO_STATE_TTL });
+    return true;
   } catch (err) {
     logger.error({ err }, '[SSO] Failed to store state in Redis');
+    return false;
   }
 }
 
@@ -81,7 +83,12 @@ router.get('/azure', async (req: Request, res: Response) => {
 
   const state = crypto.randomBytes(32).toString('hex');
   const nonce = crypto.randomBytes(32).toString('hex');
-  await setSsoState(state, nonce);
+  const stateStored = await setSsoState(state, nonce);
+
+  if (!stateStored) {
+    logger.error('[SSO] Cannot initiate SSO flow — Redis unavailable for state storage');
+    return res.status(503).json({ error: 'SSO service temporarily unavailable. Please try again later.' });
+  }
 
   const params = new URLSearchParams({
     client_id: CLIENT_ID()!,

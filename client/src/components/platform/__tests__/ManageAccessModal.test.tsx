@@ -32,7 +32,7 @@ vi.mock('../../../utils/trpc', () => ({
   trpc: {
     useUtils: () => ({
       platform: {
-        listGlobalUsers: { invalidate: vi.fn(), fetch: vi.fn().mockResolvedValue([]) },
+        listGlobalUsers: { invalidate: vi.fn(), fetch: vi.fn().mockResolvedValue({ users: [], nextCursor: '' }) },
       },
     }),
     platform: {
