@@ -80,13 +80,13 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
                     <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[ticket.status] || STATUS_DOT.open}`} />
                     <span className="text-[10px] uppercase opacity-50">{ticket.status}</span>
                   </div>
-                  {(ticket.references || []).length > 0 && (
+                  {(ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
                     <p className="text-[11px] opacity-60 truncate">
-                      {(ticket.references || []).map((r) => r.value).join(' · ')}
+                      {(ticket.references as Array<{label: string; value: string}> || []).map((r) => r.value).join(' · ')}
                     </p>
                   )}
                   <div className="flex items-center gap-2 mt-1 text-[10px] opacity-50">
-                    <span>{LANG_FLAG[ticket.agentLang] || ''}</span>
+                    <span>{LANG_FLAG[ticket.agentLang ?? ''] || ''}</span>
                     <span>{time}</span>
                   </div>
                 </div>

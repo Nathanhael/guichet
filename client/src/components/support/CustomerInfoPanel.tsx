@@ -25,11 +25,11 @@ export default function CustomerInfoPanel({ ticket }: CustomerInfoPanelProps) {
 
   type TicketListResult = { tickets: Ticket[]; nextCursor?: string | null };
   const pastList = Array.isArray(pastTickets)
-    ? pastTickets.filter((t: Ticket) => t.id !== ticket.id)
-    : ((pastTickets as TicketListResult | undefined)?.tickets || []).filter((t: Ticket) => t.id !== ticket.id);
+    ? pastTickets.filter((t) => t.id !== ticket.id)
+    : ((pastTickets as TicketListResult | undefined)?.tickets || []).filter((t) => t.id !== ticket.id);
 
   const agentOnline = participantsOnline[ticket.id] ?? false;
-  const references = ticket.references || [];
+  const references = (ticket.references || []) as Array<{label: string; value: string}>;
   const labels = (ticket.labels || []).map(id => (allLabels || []).find(l => l.id === id)).filter(Boolean);
 
   return (

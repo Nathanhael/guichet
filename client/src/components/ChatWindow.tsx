@@ -483,9 +483,9 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   />
                 )}
               </span>
-              {!focusMode && (ticket.references || []).length > 0 && (
+              {!focusMode && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
                 <span className="text-[10px] font-bold text-text-primary opacity-40 uppercase tracking-tighter">
-                  {(ticket.references || []).map((ref) => `${ref.label}: ${ref.value}`).join(' · ')}
+                  {(ticket.references as Array<{label: string; value: string}> || []).map((ref) => `${ref.label}: ${ref.value}`).join(' · ')}
                 </span>
               )}
             </div>

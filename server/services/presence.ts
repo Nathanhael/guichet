@@ -218,12 +218,12 @@ export async function cleanupStalePresence() {
 
   try {
     const partnerSetKeys: string[] = [];
-    let scanCursor = 0;
+    let scanCursor: string | number = 0;
     do {
-      const result = await pubClient.scan(scanCursor, { MATCH: `${SET_PREFIX}*`, COUNT: 100 });
+      const result = await pubClient.scan(String(scanCursor), { MATCH: `${SET_PREFIX}*`, COUNT: 100 });
       scanCursor = result.cursor;
       partnerSetKeys.push(...result.keys);
-    } while (scanCursor !== 0);
+    } while (Number(scanCursor) !== 0);
 
     let totalRemoved = 0;
     let totalChecked = 0;

@@ -44,7 +44,7 @@ export default function ChatTabBar({ tabs, activeTab, onSelectTab, onCloseTab }:
             <button
               onClick={() => onSelectTab(ticket.id)}
               className="px-6 py-3 text-[10px] font-bold uppercase tracking-wide flex items-center gap-2"
-              title={ticket.agentName}
+              title={ticket.agentName ?? undefined}
             >
               {ticket.agentName || t('unknown')}
               {hasUnread && (

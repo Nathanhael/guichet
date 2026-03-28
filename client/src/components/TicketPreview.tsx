@@ -27,7 +27,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
     { enabled: !!ticket.id && (!propMessages || propMessages.length === 0) }
   );
 
-  const messages = (propMessages && propMessages.length > 0) ? propMessages : (messageQuery.data as Message[] || []);
+  const messages = (propMessages && propMessages.length > 0) ? propMessages : ((messageQuery.data as unknown as Message[]) || []);
 
   // Scroll to bottom when messages load
   useEffect(() => {
