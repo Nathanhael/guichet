@@ -307,7 +307,7 @@ export const auditArchive = pgTable('audit_archive', {
  */
 export const archivedTickets = pgTable('archived_tickets', {
   id: text('id').primaryKey(),                       // same as original ticket id
-  partnerId: text('partner_id').notNull(),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'restrict' }),
   dept: text('dept').notNull(),
   agentId: text('agent_id'),
   supportId: text('support_id'),
