@@ -287,9 +287,9 @@ export async function broadcastQueuePositions(partnerId?: string) {
       openTickets = await query('SELECT id FROM tickets WHERE status = $1 AND support_id IS NULL AND partner_id = $2 ORDER BY created_at ASC', ['open', partnerId]) as { id: string }[];
     } else {
       // Fallback: broadcast per-partner to avoid cross-tenant leakage
-      const partnerIds = await query('SELECT DISTINCT partner_id FROM tickets WHERE status = $1 AND support_id IS NULL', ['open']) as { partnerId: string }[];
+      const partnerIds = await query('SELECT DISTINCT partner_id FROM tickets WHERE status = $1 AND support_id IS NULL', ['open']) as { partner_id: string }[];
       for (const p of partnerIds) {
-        await broadcastQueuePositions(p.partnerId);
+        await broadcastQueuePositions(p.partner_id);
       }
       return;
     }

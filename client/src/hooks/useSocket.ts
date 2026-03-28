@@ -57,34 +57,33 @@ export function useSocket(): Socket {
     if (listenersAttached.current) return;
     listenersAttached.current = true;
 
-    // Connection management
-    s.on('connect', () => {
+    // Named handlers — passed to both s.on() and s.off() so cleanup only removes our listeners
+    const handleConnect = () => {
       useStore.getState().setConnectionStatus('connected');
       const state = useStore.getState();
       if (state.user && state.activePartnerId) {
-        s.emit('socket:identify', { 
-          userId: state.user.id, 
-          role: state.user.role, 
+        s.emit('socket:identify', {
+          userId: state.user.id,
+          role: state.user.role,
           name: state.user.name,
           partnerId: state.activePartnerId
         });
       }
-    });
+    };
 
-    s.on('disconnect', () => {
+    const handleDisconnect = () => {
       useStore.getState().setConnectionStatus('disconnected');
-    });
+    };
 
-    s.on('connect_error', () => {
+    const handleConnectError = () => {
       useStore.getState().setConnectionStatus('reconnecting');
-    });
+    };
 
-    s.on('error', (err: { message?: string }) => {
+    const handleError = (err: { message?: string }) => {
       console.error('[socket] Server error:', err?.message || err);
-    });
+    };
 
-    // New ticket created (broadcast to support/admins)
-    s.on('ticket:created', ({ ticket }: { ticket: Ticket }) => {
+    const handleTicketCreated = ({ ticket }: { ticket: Ticket }) => {
       addTicket(ticket);
       const state = useStore.getState();
       if (state.notificationsEnabled && state.user?.role !== 'agent') {
@@ -94,66 +93,55 @@ export function useSocket(): Socket {
         });
       }
       updateTitleBadge();
-    });
+    };
 
-    // Agent: own ticket confirmed
-    s.on('ticket:created:self', ({ ticket, message }: { ticket: Ticket; message: Message }) => {
+    const handleTicketCreatedSelf = ({ ticket, message }: { ticket: Ticket; message: Message }) => {
       addTicket(ticket);
       if (message) addMessage(ticket.id, message);
       setActiveTicketId(ticket.id);
-    });
+    };
 
-    // Support joined a ticket
-    s.on('support:joined', ({ ticketId, supportName, participants }: { ticketId: string; supportName: string; participants: Participant[] }) => {
+    const handleSupportJoined = ({ ticketId, supportName, participants }: { ticketId: string; supportName: string; participants: Participant[] }) => {
       updateTicket(ticketId, { supportName, status: 'active', participants: participants || [] });
-    });
+    };
 
-    // History when support joins
-    s.on('ticket:history', ({ ticketId, messages, labels }: { ticketId: string; messages: Message[]; labels: string[] }) => {
+    const handleTicketHistory = ({ ticketId, messages, labels }: { ticketId: string; messages: Message[]; labels: string[] }) => {
       setMessages(ticketId, messages);
       if (labels) updateTicket(ticketId, { labels });
-    });
+    };
 
-    // New message in any open ticket
-    s.on('message:new', (message: Message) => {
+    const handleMessageNew = (message: Message) => {
       addMessage(message.ticketId, message);
-      // Mark unread, notify, and play sound if not the sender's own message
       const state = useStore.getState();
       if (message.senderId !== state.user?.id) {
         state.markUnread(message.ticketId);
         if (state.notificationsEnabled) {
           notify(message.senderName || 'New message', {
             body: message.text || message.originalText || '',
-            tag: `msg-${message.ticketId}`, // Collapse multiple from same ticket
+            tag: `msg-${message.ticketId}`,
           });
         }
         updateTitleBadge();
-        // Automatically mark as delivered since client received it
         s.emit('message:delivered', { ticketId: message.ticketId, messageId: message.id });
       }
-    });
+    };
 
-    // Message status update (delivered / read)
-    s.on('message:status', ({ ticketId, messageId, status, timestamp }: { ticketId: string; messageId: string; status: string; timestamp: string }) => {
+    const handleMessageStatus = ({ ticketId, messageId, status, timestamp }: { ticketId: string; messageId: string; status: string; timestamp: string }) => {
       const field = status === 'read' ? 'readAt' : 'deliveredAt';
       useStore.getState().updateMessageState(ticketId, messageId, { [field]: timestamp });
-    });
+    };
 
-    // Typing indicators
-    s.on('typing:update', ({ ticketId, senderName, typing }: { ticketId: string; senderName: string; typing: boolean }) => {
+    const handleTypingUpdate = ({ ticketId, senderName, typing }: { ticketId: string; senderName: string; typing: boolean }) => {
       setTyping(ticketId, senderName, typing);
-    });
+    };
 
-    // Online support/admins
-    s.on('support:online', (list: OnlineSupport[]) => {
+    const handleSupportOnline = (list: OnlineSupport[]) => {
       setOnlineSupportUsers(list);
-    });
+    };
 
-    // Agent online/offline status
-    s.on('agent:status', ({ ticketId, agentId: _agentId, online }: { ticketId: string; agentId: string; online: boolean }) => {
+    const handleAgentStatus = ({ ticketId, agentId: _agentId, online }: { ticketId: string; agentId: string; online: boolean }) => {
       const state = useStore.getState();
       state.setParticipantOnline(ticketId, online);
-      // Add a system message to the chat
       if (!online) {
         state.addMessage(ticketId, {
           id: `system-offline-${Date.now()}`,
@@ -175,72 +163,63 @@ export function useSocket(): Socket {
           reactions: {},
         });
       }
-    });
+    };
 
-    // Message edited
-    s.on('message:edited', ({ ticketId, messageId, text, editedAt }: { ticketId: string; messageId: string; text: string; editedAt: string }) => {
+    const handleMessageEdited = ({ ticketId, messageId, text, editedAt }: { ticketId: string; messageId: string; text: string; editedAt: string }) => {
       useStore.getState().updateMessageState(ticketId, messageId, { text, originalText: text, editedAt });
-    });
+    };
 
-    // Message deleted
-    s.on('message:deleted', ({ ticketId, messageId, deletedAt }: { ticketId: string; messageId: string; deletedAt: string }) => {
+    const handleMessageDeleted = ({ ticketId, messageId, deletedAt }: { ticketId: string; messageId: string; deletedAt: string }) => {
       useStore.getState().updateMessageState(ticketId, messageId, { text: '', deletedAt });
-    });
+    };
 
-    // Reaction updated
-    s.on('reaction:updated', ({ ticketId, messageId, reactions }: { ticketId: string; messageId: string; reactions: any }) => {
+    const handleReactionUpdated = ({ ticketId, messageId, reactions }: { ticketId: string; messageId: string; reactions: Record<string, string[]> }) => {
       useStore.getState().updateMessageReaction(ticketId, messageId, reactions);
-    });
+    };
 
-    // Rating saved confirmation
-    s.on('rating:saved', () => {
+    const handleRatingSaved = () => {
       useStore.getState().clearRatingPrompt();
-    });
+    };
 
-    // Queue Position updates
-    s.on('queue:position', ({ position, etaMins }: { position: number; etaMins: number }) => {
+    const handleQueuePosition = ({ position, etaMins }: { position: number; etaMins: number }) => {
       useStore.getState().setQueuePosition({ position, etaMins });
-    });
+    };
 
-    // Ticket closed
-    s.on('ticket:closed', ({ ticketId, supportId: eventSupportId, supportName: eventSupportName }: { ticketId: string; supportId?: string; supportName?: string }) => {
+    const handleTicketClosed = ({ ticketId, supportId: eventSupportId, supportName: eventSupportName }: { ticketId: string; supportId?: string; supportName?: string }) => {
       updateTicket(ticketId, { status: 'closed' });
-      // Trigger rating prompt for agent
       const state = useStore.getState();
       if (state.user?.role === 'agent') {
         const ticket = state.tickets.find((t) => t.id === ticketId);
         if (ticket && ticket.agentId === state.user.id) {
-          // Use data from event, fall back to ticket in store
           const supportId = eventSupportId || ticket.supportId;
           const supportName = eventSupportName || ticket.supportName;
-
           if (supportId && supportName) {
-            state.setRatingPrompt({
-              ticketId,
-              supportId,
-              supportName,
-            });
+            state.setRatingPrompt({ ticketId, supportId, supportName });
           }
         }
       }
-    });
+    };
 
-    // Ticket updated (status change broadcast)
-    s.on('ticket:updated', ({ ticketId, ...updates }: { ticketId: string; [key: string]: any }) => {
-      updateTicket(ticketId, updates);
-    });
+    const handleTicketUpdated = ({ ticketId, ...updates }: { ticketId: string; [key: string]: unknown }) => {
+      const allowed: (keyof Ticket)[] = ['status', 'agentId', 'department', 'closedAt', 'participants', 'slaBreached', 'priority', 'subject'];
+      const safeUpdates: Partial<Ticket> = {};
+      for (const key of allowed) {
+        if (key in updates) {
+          (safeUpdates as Record<string, unknown>)[key] = updates[key];
+        }
+      }
+      updateTicket(ticketId, safeUpdates);
+    };
 
-    // Ticket transferred
-    s.on('ticket:transferred', ({ ticketId, toId, toName }: { ticketId: string; fromId: string; fromName: string; toId: string | null; toName: string | null }) => {
+    const handleTicketTransferred = ({ ticketId, toId, toName }: { ticketId: string; fromId: string; fromName: string; toId: string | null; toName: string | null }) => {
       if (toId) {
         updateTicket(ticketId, { supportId: toId, supportName: toName || undefined });
       } else {
         updateTicket(ticketId, { supportId: null as any, supportName: undefined, status: 'open' });
       }
-    });
+    };
 
-    // Ticket assigned to a support agent (used for transfer notifications)
-    s.on('ticket:assigned', ({ ticketId, supportId, supportName }: { ticketId: string; supportId: string; supportName: string }) => {
+    const handleTicketAssigned = ({ ticketId, supportId, supportName }: { ticketId: string; supportId: string; supportName: string }) => {
       const state = useStore.getState();
       if (supportId === state.user?.id && state.notificationsEnabled) {
         notify(`Ticket assigned to you`, {
@@ -248,23 +227,21 @@ export function useSocket(): Socket {
           tag: `assign-${ticketId}`,
         });
       }
-    });
+    };
 
-    // Room-specific label update
-    s.on('ticket:labels:updated', ({ ticketId, labels }: { ticketId: string; labels: string[] }) => {
+    const handleTicketLabelsUpdated = ({ ticketId, labels }: { ticketId: string; labels: string[] }) => {
       updateTicket(ticketId, { labels });
-    });
+    };
 
-    s.on('label:deleted', ({ id }: { id: string }) => {
+    const handleLabelDeleted = ({ id }: { id: string }) => {
       useStore.getState().removeLabelGlobally(id);
-    });
+    };
 
-    s.on('label:created', (label: Label) => {
+    const handleLabelCreated = (label: Label) => {
       useStore.getState().addLabelGlobally(label);
-    });
+    };
 
-    // Outside business hours
-    s.on('hours:closed', (payload?: { status?: BusinessHoursStatus }) => {
+    const handleHoursClosed = (payload?: { status?: BusinessHoursStatus }) => {
       if (payload?.status) {
         setBusinessHoursStatus(payload.status);
       } else {
@@ -276,10 +253,9 @@ export function useSocket(): Socket {
           message: 'Support is currently closed.',
         });
       }
-    });
+    };
 
-    // Topic Heat Alert
-    s.on('topic:alert', (alert: TopicAlert) => {
+    const handleTopicAlert = (alert: TopicAlert) => {
       const state = useStore.getState();
       if (isTenantAdmin(state.user?.role)) {
         addTopicAlert(alert);
@@ -290,71 +266,98 @@ export function useSocket(): Socket {
           });
         }
       }
-    });
+    };
 
-    s.on('partner:deactivated', ({ partnerId }: { partnerId: string }) => {
+    const handlePartnerDeactivated = ({ partnerId }: { partnerId: string }) => {
       const state = useStore.getState();
-      const updatedMemberships = state.memberships.map(m => 
+      const updatedMemberships = state.memberships.map(m =>
         m.partnerId === partnerId ? { ...m, status: 'inactive' as const } : m
       );
       state.setMemberships(updatedMemberships);
-    });
+    };
 
-    s.on('user:deactivated', ({ userId }: { userId: string }) => {
+    const handleUserDeactivated = ({ userId }: { userId: string }) => {
       const state = useStore.getState();
       if (state.user?.id === userId) {
         state.logout();
-        window.location.href = '/'; // Force reload to clear all state
+        window.location.href = '/';
       }
-    });
+    };
 
-    // Token expired — reconnect to trigger a fresh handshake with current cookie
-    s.on('auth:expired', () => {
+    const handleAuthExpired = () => {
       const state = useStore.getState();
       if (state.user) {
-        // User still logged in — reconnect with cookie
         s.disconnect();
         s.connect();
       } else {
-        // No session — truly gone
         state.logout();
       }
-    });
+    };
+
+    // Attach all listeners
+    s.on('connect', handleConnect);
+    s.on('disconnect', handleDisconnect);
+    s.on('connect_error', handleConnectError);
+    s.on('error', handleError);
+    s.on('ticket:created', handleTicketCreated);
+    s.on('ticket:created:self', handleTicketCreatedSelf);
+    s.on('support:joined', handleSupportJoined);
+    s.on('ticket:history', handleTicketHistory);
+    s.on('message:new', handleMessageNew);
+    s.on('message:status', handleMessageStatus);
+    s.on('typing:update', handleTypingUpdate);
+    s.on('support:online', handleSupportOnline);
+    s.on('agent:status', handleAgentStatus);
+    s.on('message:edited', handleMessageEdited);
+    s.on('message:deleted', handleMessageDeleted);
+    s.on('reaction:updated', handleReactionUpdated);
+    s.on('rating:saved', handleRatingSaved);
+    s.on('queue:position', handleQueuePosition);
+    s.on('ticket:closed', handleTicketClosed);
+    s.on('ticket:updated', handleTicketUpdated);
+    s.on('ticket:transferred', handleTicketTransferred);
+    s.on('ticket:assigned', handleTicketAssigned);
+    s.on('ticket:labels:updated', handleTicketLabelsUpdated);
+    s.on('label:deleted', handleLabelDeleted);
+    s.on('label:created', handleLabelCreated);
+    s.on('hours:closed', handleHoursClosed);
+    s.on('topic:alert', handleTopicAlert);
+    s.on('partner:deactivated', handlePartnerDeactivated);
+    s.on('user:deactivated', handleUserDeactivated);
+    s.on('auth:expired', handleAuthExpired);
 
     return () => {
-      // Do NOT disconnect — socket is shared. Only remove listeners on strict-mode double-effect.
-      s.off('connect');
-      s.off('disconnect');
-      s.off('connect_error');
-      s.off('error');
-      s.off('ticket:created');
-      s.off('ticket:created:self');
-      s.off('support:joined');
-      s.off('ticket:history');
-      s.off('message:new');
-      s.off('ticket:closed');
-      s.off('ticket:updated');
-      s.off('ticket:labels:updated');
-      s.off('hours:closed');
-      s.off('typing:update');
-      s.off('support:online');
-      s.off('agent:status');
-      s.off('reaction:updated');
-      s.off('rating:saved');
-      s.off('label:deleted');
-      s.off('label:created');
-      s.off('topic:alert');
-      s.off('support:left');
-      s.off('message:status');
-      s.off('queue:position');
-      s.off('partner:deactivated');
-      s.off('user:deactivated');
-      s.off('auth:expired');
-      s.off('queue:update');
-      s.off('ticket:transferred');
-      s.off('ticket:assigned');
-      s.off('message:edited');
-      s.off('message:deleted');
+      // Do NOT disconnect — socket is shared. Only remove our specific listeners.
+      s.off('connect', handleConnect);
+      s.off('disconnect', handleDisconnect);
+      s.off('connect_error', handleConnectError);
+      s.off('error', handleError);
+      s.off('ticket:created', handleTicketCreated);
+      s.off('ticket:created:self', handleTicketCreatedSelf);
+      s.off('support:joined', handleSupportJoined);
+      s.off('ticket:history', handleTicketHistory);
+      s.off('message:new', handleMessageNew);
+      s.off('message:status', handleMessageStatus);
+      s.off('typing:update', handleTypingUpdate);
+      s.off('support:online', handleSupportOnline);
+      s.off('agent:status', handleAgentStatus);
+      s.off('message:edited', handleMessageEdited);
+      s.off('message:deleted', handleMessageDeleted);
+      s.off('reaction:updated', handleReactionUpdated);
+      s.off('rating:saved', handleRatingSaved);
+      s.off('queue:position', handleQueuePosition);
+      s.off('ticket:closed', handleTicketClosed);
+      s.off('ticket:updated', handleTicketUpdated);
+      s.off('ticket:transferred', handleTicketTransferred);
+      s.off('ticket:assigned', handleTicketAssigned);
+      s.off('ticket:labels:updated', handleTicketLabelsUpdated);
+      s.off('label:deleted', handleLabelDeleted);
+      s.off('label:created', handleLabelCreated);
+      s.off('hours:closed', handleHoursClosed);
+      s.off('topic:alert', handleTopicAlert);
+      s.off('partner:deactivated', handlePartnerDeactivated);
+      s.off('user:deactivated', handleUserDeactivated);
+      s.off('auth:expired', handleAuthExpired);
       listenersAttached.current = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus]);

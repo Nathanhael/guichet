@@ -144,8 +144,8 @@ export const statsRouter = router({
   // NOTE: This is a heavy endpoint. Client refetch interval should be 60s+ (not 30s).
   getGlobalStats: roleProcedure(['admin', 'support'])
     .input(z.object({
-      dateFrom: z.string().optional(),
-      dateTo: z.string().optional(),
+      dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format').optional(),
+      dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format').optional(),
       dept: z.string().optional(),
       excludeWeekends: z.boolean().optional(),
     }))
@@ -154,6 +154,16 @@ export const statsRouter = router({
         const { dateFrom, dateTo, dept, excludeWeekends } = input;
         if (!ctx.user.partnerId && !ctx.user.isPlatformOperator) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
         if (ctx.user.isPlatformOperator && !ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Platform operators must provide a partnerId via partner context' });
+
+        // Enforce max date range of 365 days to prevent excessive queries
+        if (dateFrom && dateTo) {
+          const from = new Date(dateFrom);
+          const to = new Date(dateTo);
+          const diffDays = (to.getTime() - from.getTime()) / (1000 * 60 * 60 * 24);
+          if (diffDays > 365) {
+            throw new TRPCError({ code: 'BAD_REQUEST', message: 'Date range cannot exceed 365 days' });
+          }
+        }
         const partnerId = ctx.user.partnerId as string;
 
         const now = new Date();

@@ -1,4 +1,4 @@
-import crypto from 'crypto';
+import crypto, { timingSafeEqual } from 'crypto';
 import config from '../config.js';
 import { getRedisClients } from '../utils/redis.js';
 
@@ -96,8 +96,11 @@ export function verifyTotpToken(secret: string, token: string, now = Date.now())
   }
 
   const currentCounter = Math.floor(now / 1000 / TOTP_PERIOD_SECONDS);
+  const tokenBuf = Buffer.from(normalizedToken);
   for (let offset = -TOTP_WINDOW; offset <= TOTP_WINDOW; offset += 1) {
-    if (hotp(secret, currentCounter + offset) === normalizedToken) {
+    const candidateBuf = Buffer.from(hotp(secret, currentCounter + offset));
+    // Use constant-time comparison to prevent timing side-channel attacks
+    if (candidateBuf.length === tokenBuf.length && timingSafeEqual(candidateBuf, tokenBuf)) {
       return true;
     }
   }
@@ -119,7 +122,10 @@ export async function isTotpTokenUsed(userId: string, token: string): Promise<bo
     const existing = await pubClient.get(key);
     return existing !== null;
   } catch {
-    return false; // fail open — token reuse protection degrades gracefully
+    // Fail closed: if Redis is unavailable, assume token was already used.
+    // This prevents TOTP replay attacks when Redis is down, matching the
+    // fail-closed pattern used in sessionRevocation.ts's isRevoked().
+    return true;
   }
 }
 

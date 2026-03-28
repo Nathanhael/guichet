@@ -379,7 +379,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     const display = finalText || '📎';
 
     const optimisticMsg: Message = {
-      id: `pending-${Object.keys(messages).length}-${Date.now()}`,
+      id: `pending-${ticket!.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       ticketId: ticket!.id,
       senderId: user?.id || '',
       senderName: user?.name || '',

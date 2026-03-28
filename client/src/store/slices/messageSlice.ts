@@ -76,7 +76,7 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       return {
         messages: {
           ...state.messages,
-          [ticketId]: msgs.map((m) => (m.id === messageId ? { ...m, reactions: JSON.stringify(reactions) } : m)),
+          [ticketId]: msgs.map((m) => (m.id === messageId ? { ...m, reactions } : m)),
         },
       };
     }),

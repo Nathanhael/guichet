@@ -55,7 +55,8 @@ export default function LoginView() {
   const [resetToken, setResetToken] = useState('');
   const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | null>(null);
   const [totpCode, setTotpCode] = useState('');
-  // Pending MFA login credentials (stored while waiting for TOTP code)
+  // Pending MFA login context (password kept in ref to avoid React state/DevTools exposure)
+  const mfaPasswordRef = useRef<string>('');
   const [mfaPending, setMfaPending] = useState<{
     endpoint: string;
     body: Record<string, unknown>;
@@ -141,7 +142,8 @@ export default function LoginView() {
       if (res.ok) {
         if (data.mfaRequired) {
           // MFA challenge — store credentials and switch to MFA view
-          setMfaPending({ endpoint: '/api/v1/auth/login-local', body: { email, password, rememberMe } });
+          mfaPasswordRef.current = password;
+          setMfaPending({ endpoint: '/api/v1/auth/login-local', body: { email, rememberMe } });
           setViewMode('mfa');
           setTotpCode('');
           setError('');
@@ -232,13 +234,14 @@ export default function LoginView() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ ...mfaPending.body, totpCode })
+        body: JSON.stringify({ ...mfaPending.body, password: mfaPasswordRef.current, totpCode })
       });
       const data = await res.json();
       if (res.ok) {
         setPassword('');
         setTotpCode('');
         setMfaPending(null);
+        mfaPasswordRef.current = '';
         const memberships = data.memberships || [];
         if (memberships.length > 1 && !data.user.isPlatformOperator) {
           setSelectingPartner({ user: data.user, memberships });
@@ -275,7 +278,8 @@ export default function LoginView() {
       if (res.ok) {
         const data = await res.json();
         if (data.mfaRequired) {
-          setMfaPending({ endpoint: '/api/v1/auth/login', body: { id: u.id, password: DEMO_PASSWORD } });
+          mfaPasswordRef.current = DEMO_PASSWORD;
+          setMfaPending({ endpoint: '/api/v1/auth/login', body: { id: u.id } });
           setViewMode('mfa');
           setTotpCode('');
           setError('');
@@ -511,7 +515,7 @@ export default function LoginView() {
               <button type="submit" disabled={isLoginLoading || totpCode.trim().length < 6} className="btn-primary w-full flex items-center justify-center gap-3">
                 {isLoginLoading ? <span>{t('authenticating')}</span> : <><span>Verify</span><span>➔</span></>}
               </button>
-              <button type="button" onClick={() => { setViewMode('standard'); setMfaPending(null); setTotpCode(''); setError(''); }} className="w-full mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">
+              <button type="button" onClick={() => { setViewMode('standard'); setMfaPending(null); mfaPasswordRef.current = ''; setTotpCode(''); setError(''); }} className="w-full mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">
                 {t('cancel')}
               </button>
             </form>

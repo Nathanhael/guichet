@@ -50,12 +50,13 @@ export async function archiveAuditLog(archiveDelayDays?: number): Promise<number
 
     if (rows.length === 0) return 0;
 
-    // Get the last chain hash from the archive (same order as write path)
-    const lastArchived = await db.select({ chainHash: auditArchive.chainHash })
+    // Get the last chain hash and sequence from the archive (deterministic ordering via sequence)
+    const lastArchived = await db.select({ chainHash: auditArchive.chainHash, sequence: auditArchive.sequence })
       .from(auditArchive)
-      .orderBy(desc(auditArchive.archivedAt), desc(auditArchive.id))
+      .orderBy(desc(auditArchive.sequence))
       .limit(1);
     let prevHash = lastArchived[0]?.chainHash || '0'.repeat(64); // genesis hash
+    let nextSequence = (lastArchived[0]?.sequence ?? -1) + 1;
 
     const now = new Date().toISOString();
 
@@ -81,9 +82,11 @@ export async function archiveAuditLog(archiveDelayDays?: number): Promise<number
           ...rowData,
           archivedAt: now,
           chainHash,
+          sequence: nextSequence,
         }).onConflictDoNothing(); // idempotent — skip if already archived
 
         prevHash = chainHash;
+        nextSequence++;
         archivedIds.push(row.id);
       }
 
@@ -112,7 +115,7 @@ export async function verifyAuditChain(): Promise<{ valid: boolean; checked: num
   try {
     const rows = await db.select()
       .from(auditArchive)
-      .orderBy(asc(auditArchive.archivedAt), asc(auditArchive.id));
+      .orderBy(asc(auditArchive.sequence));
 
     let prevHash = '0'.repeat(64);
     let checked = 0;

@@ -16,12 +16,15 @@ vi.mock('../utils/logger.js', () => ({
   },
 }));
 
+let mockPartnerId: string | undefined;
+
 vi.mock('../middleware/auth.js', () => ({
   auth: (req: any, _res: any, next: any) => {
     req.user = {
       id: 'user-1',
       role: 'support',
       isPlatformOperator: false,
+      partnerId: mockPartnerId,
     };
     next();
   },
@@ -34,6 +37,7 @@ describe('tickets export route', () => {
   });
 
   it('rejects export without tenant context for non-platform users', async () => {
+    mockPartnerId = undefined;
     const { default: ticketRoutes } = await import('./tickets.js');
     const app = express();
     app.use(ticketRoutes);
@@ -46,6 +50,7 @@ describe('tickets export route', () => {
   });
 
   it('scopes export queries by partner id', async () => {
+    mockPartnerId = 'tenant-a';
     queryMock.mockResolvedValue([
       {
         id: 'ticket-1',

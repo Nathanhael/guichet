@@ -7,9 +7,15 @@ const runMock = vi.fn();
 const transactionMock = vi.fn();
 const insertValuesMock = vi.fn();
 
+const selectWhereMock = vi.fn(async () => []);
 const dbMock = {
   insert: vi.fn(() => ({
     values: insertValuesMock,
+  })),
+  select: vi.fn(() => ({
+    from: vi.fn(() => ({
+      where: selectWhereMock,
+    })),
   })),
 };
 
@@ -53,6 +59,8 @@ vi.mock('./stats.js', () => ({
 
 vi.mock('../db/schema.js', () => ({
   auditLog: 'audit_log_table',
+  ratings: { ticketId: 'ticket_id' },
+  messages: { ticketId: 'ticket_id' },
 }));
 
 // --- Helpers ---
@@ -108,6 +116,8 @@ describe('runDailyPurge', () => {
   it('archives audit log and tickets before deleting', async () => {
     archiveAuditLogMock.mockResolvedValue(10);
     archiveTicketsMock.mockResolvedValue(5);
+    // Count query for guard check (no closed tickets to worry about)
+    queryMock.mockResolvedValueOnce([{ count: 0 }]);
     // No dates to aggregate
     queryMock.mockResolvedValueOnce([]);
 
@@ -124,6 +134,8 @@ describe('runDailyPurge', () => {
   });
 
   it('deletes tickets and messages older than retention window', async () => {
+    // Count query for guard check (no closed tickets)
+    queryMock.mockResolvedValueOnce([{ count: 0 }]);
     // No dates to aggregate
     queryMock.mockResolvedValueOnce([]);
 
@@ -145,6 +157,8 @@ describe('runDailyPurge', () => {
     // The function deletes WHERE created_at < cutoffDate.
     // Tickets created today (within 30 days) should NOT match.
     // We verify the cutoff date is ~30 days ago.
+    // Count query for guard check (no closed tickets)
+    queryMock.mockResolvedValueOnce([{ count: 0 }]);
     queryMock.mockResolvedValueOnce([]);
 
     const { runDailyPurge } = await import('./gdpr.js');
@@ -160,17 +174,18 @@ describe('runDailyPurge', () => {
   it('per-partner aggregation produces correct daily_stats rows', async () => {
     const stats = makeFakeStats();
     computeLiveDayStatsMock.mockReturnValue(stats);
+    // Archival succeeded
+    archiveTicketsMock.mockResolvedValue(1);
 
+    // Count query for guard check
+    queryMock.mockResolvedValueOnce([{ count: 0 }]);
     // Step 1: dates to aggregate
     queryMock.mockResolvedValueOnce([{ date: '2026-02-01' }]);
     // Step 2: partner IDs for that date
     queryMock.mockResolvedValueOnce([{ partnerId: 'partner-A' }]);
     // Step 3: tickets for partner-A on 2026-02-01
     queryMock.mockResolvedValueOnce([{ id: 't1', partnerId: 'partner-A' }]);
-    // Step 4: ratings for those tickets
-    queryMock.mockResolvedValueOnce([]);
-    // Step 5: messages for those tickets
-    queryMock.mockResolvedValueOnce([]);
+    // Ratings and messages are fetched via db.select() (mocked via selectWhereMock → [])
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
@@ -200,21 +215,21 @@ describe('runDailyPurge', () => {
     computeLiveDayStatsMock
       .mockReturnValueOnce(statsA)
       .mockReturnValueOnce(statsB);
+    // Archival succeeded
+    archiveTicketsMock.mockResolvedValue(2);
 
+    // Count query for guard check
+    queryMock.mockResolvedValueOnce([{ count: 0 }]);
     // Step 1: dates to aggregate
     queryMock.mockResolvedValueOnce([{ date: '2026-02-01' }]);
     // Step 2: partner IDs for that date — two partners
     queryMock.mockResolvedValueOnce([{ partnerId: 'partner-A' }, { partnerId: 'partner-B' }]);
 
-    // Partner A queries
-    queryMock.mockResolvedValueOnce([{ id: 't1', partnerId: 'partner-A' }]); // tickets
-    queryMock.mockResolvedValueOnce([]); // ratings
-    queryMock.mockResolvedValueOnce([]); // messages
-
-    // Partner B queries
-    queryMock.mockResolvedValueOnce([{ id: 't2', partnerId: 'partner-B' }, { id: 't3', partnerId: 'partner-B' }]); // tickets
-    queryMock.mockResolvedValueOnce([]); // ratings
-    queryMock.mockResolvedValueOnce([]); // messages
+    // Partner A tickets
+    queryMock.mockResolvedValueOnce([{ id: 't1', partnerId: 'partner-A' }]);
+    // Partner B tickets
+    queryMock.mockResolvedValueOnce([{ id: 't2', partnerId: 'partner-B' }, { id: 't3', partnerId: 'partner-B' }]);
+    // Ratings and messages are fetched via db.select() (mocked via selectWhereMock → [])
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
@@ -239,6 +254,8 @@ describe('runDailyPurge', () => {
   });
 
   it('handles empty result set (no tickets to purge)', async () => {
+    // Count query for guard check (no closed tickets)
+    queryMock.mockResolvedValueOnce([{ count: 0 }]);
     // No dates to aggregate at all
     queryMock.mockResolvedValueOnce([]);
 
@@ -261,6 +278,8 @@ describe('runDailyPurge', () => {
 
     archiveAuditLogMock.mockResolvedValue(3);
     archiveTicketsMock.mockResolvedValue(2);
+    // Count query for guard check
+    queryMock.mockResolvedValueOnce([{ count: 0 }]);
     queryMock.mockResolvedValueOnce([]);
 
     const { runDailyPurge } = await import('./gdpr.js');

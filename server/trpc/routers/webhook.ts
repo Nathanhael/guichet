@@ -6,6 +6,7 @@ import { db } from '../../db.js';
 import { webhooks, webhookLogs } from '../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
 import { notFound } from '../../utils/trpcErrors.js';
+import { validateWebhookUrl } from '../../services/webhookDispatch.js';
 
 const WEBHOOK_EVENTS = [
   'ticket.created',
@@ -58,6 +59,9 @@ export const webhookRouter = router({
       description: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      // SSRF protection: validate URL before registering
+      await validateWebhookUrl(input.url);
+
       const id = uuidv4();
       const secret = randomBytes(32).toString('hex');
       const now = new Date().toISOString();
@@ -89,6 +93,11 @@ export const webhookRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       await verifyWebhookOwnership(input.id, ctx.user.partnerId);
+
+      // SSRF protection: validate URL if being updated
+      if (input.url !== undefined) {
+        await validateWebhookUrl(input.url);
+      }
 
       const updates: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (input.url !== undefined) updates.url = input.url;

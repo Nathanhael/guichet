@@ -51,11 +51,16 @@ export const feedbackRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
+        if (!ctx.user.partnerId) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner context required to submit feedback' });
+        }
+
         const id = uuidv4();
         // Use server-side identity — never trust client-supplied userId/userName
         const entry = {
           id,
           userId: ctx.user.id,
+          partnerId: ctx.user.partnerId,
           userName: '', // feedback is anonymous by design
           role: ctx.user.role,
           text: input.text.trim(),

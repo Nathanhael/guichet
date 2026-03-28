@@ -1,3 +1,6 @@
+# DEV ONLY — Do NOT use this Dockerfile for production.
+# Production uses server/Dockerfile.prod
+
 # --- Build Stage ---
 FROM node:24-alpine AS builder
 

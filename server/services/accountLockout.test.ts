@@ -4,6 +4,8 @@ const selectQueue: unknown[] = [];
 const insertValuesMock = vi.fn();
 const updateWhereMock = vi.fn();
 
+const executeMock = vi.fn();
+
 const dbMock = {
   select: vi.fn(() => ({
     from: vi.fn(() => ({
@@ -20,6 +22,7 @@ const dbMock = {
       where: updateWhereMock,
     })),
   })),
+  execute: executeMock,
 };
 
 vi.mock('../db.js', () => ({
@@ -77,6 +80,7 @@ describe('recordFailedLogin', () => {
     dbMock.select.mockClear();
     dbMock.insert.mockClear();
     dbMock.update.mockClear();
+    executeMock.mockReset();
     insertValuesMock.mockReset();
     insertValuesMock.mockResolvedValue(undefined);
     updateWhereMock.mockReset();
@@ -84,20 +88,21 @@ describe('recordFailedLogin', () => {
   });
 
   it('increments counter without locking when under threshold', async () => {
-    // Return current attempt count = 2
-    selectQueue.push([{ failedLoginAttempts: 2 }]);
+    // Atomic UPDATE returns new count = 3 (was 2, incremented)
+    executeMock.mockResolvedValue({ rows: [{ failed_login_attempts: 3, locked_until: null }] });
 
     const { recordFailedLogin } = await import('./accountLockout.js');
     const result = await recordFailedLogin('user-1');
 
     expect(result).toEqual({ locked: false, attemptsLeft: 2 }); // 5 - 3 = 2
-    expect(updateWhereMock).toHaveBeenCalled();
+    expect(executeMock).toHaveBeenCalled();
     expect(insertValuesMock).not.toHaveBeenCalled(); // No audit log when not locked
   });
 
   it('locks account at 5th failed attempt', async () => {
-    // Return current attempt count = 4 (this will be the 5th)
-    selectQueue.push([{ failedLoginAttempts: 4 }]);
+    // Atomic UPDATE returns count = 5 (locked)
+    const lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    executeMock.mockResolvedValue({ rows: [{ failed_login_attempts: 5, locked_until: lockedUntil }] });
     // For the email lookup after locking
     selectQueue.push([{ email: 'user@test.com', name: 'Test User' }]);
 
@@ -114,7 +119,8 @@ describe('recordFailedLogin', () => {
   });
 
   it('handles first failed attempt (null counter)', async () => {
-    selectQueue.push([{ failedLoginAttempts: null }]);
+    // Atomic UPDATE returns count = 1 (was null/0, incremented)
+    executeMock.mockResolvedValue({ rows: [{ failed_login_attempts: 1, locked_until: null }] });
 
     const { recordFailedLogin } = await import('./accountLockout.js');
     const result = await recordFailedLogin('user-1');
@@ -123,12 +129,13 @@ describe('recordFailedLogin', () => {
   });
 
   it('handles missing user row gracefully', async () => {
-    selectQueue.push([]); // empty result
+    // Atomic UPDATE returns no rows (user not found)
+    executeMock.mockResolvedValue({ rows: [] });
 
     const { recordFailedLogin } = await import('./accountLockout.js');
     const result = await recordFailedLogin('user-nonexistent');
 
-    expect(result).toEqual({ locked: false, attemptsLeft: 4 }); // 0 + 1 = 1, 5-1=4
+    expect(result).toEqual({ locked: false, attemptsLeft: 5 }); // no row found
   });
 });
 

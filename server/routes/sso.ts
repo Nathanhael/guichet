@@ -201,9 +201,28 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       user = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
 
       if (user) {
-        // Link existing user to this Azure OID
-        await db.update(users).set({ externalId: oid, name }).where(eq(users.id, user.id));
-        logger.info({ userId: user.id, oid }, '[SSO] Linked existing user to Azure OID');
+        // Security: Only link SSO identity to accounts that don't have a local password set.
+        // If the user has a password, they are a local-auth account and linking a new SSO
+        // identity to them would allow account takeover — an attacker who controls an SSO
+        // identity with the same email could hijack the local account.
+        if (user.password) {
+          logger.warn({ userId: user.id, oid, email }, '[SSO] Refused to link SSO identity to local-auth account (password set)');
+          // Create a new separate SSO-only account instead of hijacking the local one
+          const newId = uuid();
+          await db.insert(users).values({
+            id: newId,
+            email: `sso_${oid}_${email}`,  // Disambiguate email to avoid unique constraint
+            name,
+            externalId: oid,
+            password: null,
+          });
+          user = (await db.select().from(users).where(eq(users.id, newId)).limit(1))[0];
+          logger.info({ userId: newId, oid }, '[SSO] Created separate SSO user (local account exists with same email)');
+        } else {
+          // Safe to link: account has no password (SSO-only or uninitialised invite)
+          await db.update(users).set({ externalId: oid, name }).where(eq(users.id, user.id));
+          logger.info({ userId: user.id, oid }, '[SSO] Linked existing user to Azure OID');
+        }
       } else {
         // Brand new SSO user
         const newId = uuid();
@@ -309,7 +328,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       isPlatformOperator: !!user.isPlatformOperator,
     });
 
-    // Redirect back to client with user data as URL fragment (token travels via HttpOnly cookie only)
+    // Build the SSO payload but store it server-side to avoid exposing user data in URL
     const ssoPayload = buildAuthResponse({
       user: {
         id: user.id,
@@ -321,16 +340,63 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       memberships: userMemberships,
     });
 
-    const encodedPayload = encodeURIComponent(JSON.stringify(ssoPayload));
+    // Generate an opaque token and store the payload in Redis with a 60-second TTL.
+    // The client will exchange this token via /api/auth/sso/exchange instead of
+    // parsing sensitive user data directly from the URL hash fragment.
+    const opaqueToken = crypto.randomUUID();
+    try {
+      const { pubClient } = getRedisClients();
+      if (pubClient) {
+        await pubClient.set(`sso:exchange:${opaqueToken}`, JSON.stringify(ssoPayload), { EX: 60 });
+      } else {
+        logger.error('[SSO] Redis not available for SSO exchange token storage');
+        return res.redirect(`${clientOrigin}/?sso_error=internal_error`);
+      }
+    } catch (redisErr) {
+      logger.error({ err: redisErr }, '[SSO] Failed to store SSO exchange token in Redis');
+      return res.redirect(`${clientOrigin}/?sso_error=internal_error`);
+    }
+
     logger.info({ userId: user.id, memberships: activeMemberships.length }, '[SSO] Login complete, redirecting');
 
     setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
-    // Redirect to client origin with SSO data in the hash fragment
-    res.redirect(`${clientOrigin}/#sso_callback=${encodedPayload}`);
+    // Redirect with only the opaque token — no user data in the URL
+    res.redirect(`${clientOrigin}/#sso_token=${opaqueToken}`);
   } catch (err: unknown) {
     logger.error({ err: err instanceof Error ? err.message : String(err) }, '[SSO] Callback FATAL error');
     const fallbackOrigin = config.CORS_ORIGIN.split(',')[0];
     res.redirect(`${fallbackOrigin}/?sso_error=internal_error`);
+  }
+});
+
+// ---- SSO Exchange: redeem opaque token for user payload ----
+router.get('/exchange', async (req: Request, res: Response) => {
+  try {
+    const token = req.query.token as string;
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    const { pubClient } = getRedisClients();
+    if (!pubClient) {
+      return res.status(503).json({ error: 'Service unavailable' });
+    }
+
+    const key = `sso:exchange:${token}`;
+    const raw = await pubClient.get(key);
+
+    if (!raw) {
+      return res.status(404).json({ error: 'Token expired or invalid' });
+    }
+
+    // Delete immediately — single use only
+    await pubClient.del(key);
+
+    const payload = JSON.parse(raw);
+    res.json(payload);
+  } catch (err: unknown) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[SSO] Exchange FATAL error');
+    res.status(500).json({ error: 'Server error during SSO exchange' });
   }
 });
 

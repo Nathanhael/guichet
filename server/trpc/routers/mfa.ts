@@ -7,6 +7,7 @@ import { users, auditLog } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { generateTotpSecret, buildTotpUri, verifyTotpToken } from '../../services/platformStepUp.js';
 import { revokeUserSessions } from '../../services/sessionRevocation.js';
+import { checkLockout, recordFailedLogin } from '../../services/accountLockout.js';
 import { MailService } from '../../services/mail.js';
 import logger from '../../utils/logger.js';
 
@@ -124,14 +125,24 @@ export const mfaRouter = router({
         mfaSecret: users.mfaSecret,
         mfaEnabledAt: users.mfaEnabledAt,
         mfaRecoveryCodes: users.mfaRecoveryCodes,
+        lockedUntil: users.lockedUntil,
       }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
 
       const user = userRows[0];
+
+      // Check account lockout before attempting TOTP verification
+      const lockout = checkLockout({ lockedUntil: user?.lockedUntil });
+      if (lockout.locked) {
+        const retryMins = Math.ceil((lockout.retryAfterMs || 0) / 60000);
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: `Account locked. Try again in ${retryMins} minute(s).` });
+      }
+
       if (!user?.mfaEnabledAt || !user.mfaSecret) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'MFA is not enabled' });
       }
 
       if (!verifyTotpToken(user.mfaSecret, input.code)) {
+        await recordFailedLogin(ctx.user.id);
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid code' });
       }
 
@@ -166,14 +177,24 @@ export const mfaRouter = router({
       const userRows = await db.select({
         mfaSecret: users.mfaSecret,
         mfaEnabledAt: users.mfaEnabledAt,
+        lockedUntil: users.lockedUntil,
       }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
 
       const user = userRows[0];
+
+      // Check account lockout before attempting TOTP verification
+      const lockout = checkLockout({ lockedUntil: user?.lockedUntil });
+      if (lockout.locked) {
+        const retryMins = Math.ceil((lockout.retryAfterMs || 0) / 60000);
+        throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: `Account locked. Try again in ${retryMins} minute(s).` });
+      }
+
       if (!user?.mfaEnabledAt || !user.mfaSecret) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'MFA is not enabled' });
       }
 
       if (!verifyTotpToken(user.mfaSecret, input.code)) {
+        await recordFailedLogin(ctx.user.id);
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid code' });
       }
 
