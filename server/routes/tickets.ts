@@ -5,7 +5,7 @@ import { query as queryVal } from 'express-validator';
 import { validate } from '../middleware/validator.js';
 import { Ticket } from '../types/index.js';
 import { auth, authorize, AuthRequest } from '../middleware/auth.js';
-import { canAccessPartnerContext, canExportTickets } from '../services/roles.js';
+import { canExportTickets } from '../services/roles.js';
 
 const router = express.Router();
 
@@ -32,12 +32,19 @@ router.get('/export', [
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const partnerId = req.query.partnerId as string | undefined;
+    // Platform operators may specify any partnerId; all others use their own
+    const requestedPartnerId = req.query.partnerId as string | undefined;
+    const partnerId = req.user.isPlatformOperator
+      ? (requestedPartnerId || req.user.partnerId)
+      : req.user.partnerId;
+
     if (!partnerId) {
       return res.status(400).json({ error: 'partnerId is required' });
     }
-    if (!canAccessPartnerContext(req.user.isPlatformOperator, partnerId)) {
-      return res.status(400).json({ error: 'No partner context provided' });
+
+    // Non-platform users cannot export from other tenants
+    if (!req.user.isPlatformOperator && requestedPartnerId && requestedPartnerId !== req.user.partnerId) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
 
     const { dept, search, dateFrom, dateTo } = req.query as { dept?: string; search?: string; dateFrom?: string; dateTo?: string };
@@ -100,7 +107,12 @@ router.get('/export', [
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell || '').replace(/"/g, '""')}"`).join(','))
+      ...rows.map(row => row.map(cell => {
+        let val = String(cell || '').replace(/"/g, '""');
+        // Prevent CSV formula injection in spreadsheet applications
+        if (/^[=+\-@\t\r]/.test(val)) val = "'" + val;
+        return `"${val}"`;
+      }).join(','))
     ].join('\n');
 
     res.setHeader('Content-Type', 'text/csv');
