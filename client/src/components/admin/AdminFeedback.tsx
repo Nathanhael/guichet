@@ -40,7 +40,7 @@ export default function AdminFeedback() {
   // tRPC: Users List
   const { data: usersData } = trpc.user.list.useQuery();
 
-  const users = (usersData || []) as any[];
+  const users = (usersData || []) as Array<{ id: string; name: string; email: string; role: string; dept?: string }>;
   const feedback = feedbackQuery.data || [];
   const ratings = (ratingsQuery.data?.items || []) as Array<{ id: string; ticketId: string; agentId: string; supportId: string | null; rating: number; comment: string | null; createdAt: string }>;
   const loadingFeedback = feedbackQuery.isLoading;

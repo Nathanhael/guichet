@@ -86,7 +86,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-bg-base/80">
-      <div className="bg-bg-surface border border-border-heavy w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <div role="dialog" aria-modal="true" className="bg-bg-surface border border-border-heavy w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border">
           <div className="flex items-center gap-3">

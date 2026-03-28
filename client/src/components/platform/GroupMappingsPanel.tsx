@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { getRoleDisplayName } from '../../utils/roles';
+import Toast from '../Toast';
 
 export default function GroupMappingsPanel() {
   const t = useT();
   const [showAddModal, setShowAddModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editingMapping, setEditingMapping] = useState<{
     id: string;
     azureGroupName: string | null;
@@ -18,7 +20,7 @@ export default function GroupMappingsPanel() {
   const { data: partnersList } = trpc.platform.listPartners.useQuery();
   const removeMutation = trpc.platform.removeGroupMapping.useMutation({
     onSuccess: () => refetch(),
-    onError: (err) => alert(err.message),
+    onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
 
   const ssoPartners = partnersList?.filter(p => (p.authMethod === 'sso' || p.authMethod === 'both') && !p.deletedAt) || [];
@@ -120,6 +122,7 @@ export default function GroupMappingsPanel() {
           onUpdated={() => { setEditingMapping(null); refetch(); }}
         />
       )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
@@ -134,10 +137,11 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
   const [azureGroupId, setAzureGroupId] = useState('');
   const [azureGroupName, setAzureGroupName] = useState('');
   const [defaultRole, setDefaultRole] = useState<'agent' | 'support' | 'admin'>('agent');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const addMutation = trpc.platform.addGroupMapping.useMutation({
     onSuccess: onAdded,
-    onError: (err) => alert(err.message),
+    onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -153,7 +157,7 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80" onClick={onClose} aria-label="Close" />
-      <div role="dialog" className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-6 w-[520px] relative z-10">
+      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-6 w-[520px] relative z-10">
         <h3 className="text-xl font-bold uppercase tracking-wide font-mono mb-4">{t('add_mapping')}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -214,6 +218,7 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
             </button>
           </div>
         </form>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
     </div>
   );
@@ -227,10 +232,11 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
   const t = useT();
   const [azureGroupName, setAzureGroupName] = useState(mapping.azureGroupName || '');
   const [defaultRole, setDefaultRole] = useState<'agent' | 'support' | 'admin'>(mapping.defaultRole as 'agent' | 'support' | 'admin');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const updateMutation = trpc.platform.updateGroupMapping.useMutation({
     onSuccess: onUpdated,
-    onError: (err) => alert(err.message),
+    onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -245,7 +251,7 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80" onClick={onClose} aria-label="Close" />
-      <div role="dialog" className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-6 w-[520px] relative z-10">
+      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-6 w-[520px] relative z-10">
         <h3 className="text-xl font-bold uppercase tracking-wide font-mono mb-4">{t('edit_mapping')}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -281,6 +287,7 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
             </button>
           </div>
         </form>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
     </div>
   );

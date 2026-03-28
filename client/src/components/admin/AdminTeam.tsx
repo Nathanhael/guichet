@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import useStore from '../../store/useStore';
 import { useT } from '../../i18n';
+import Toast from '../Toast';
 
 export default function AdminTeam() {
   const t = useT();
@@ -19,11 +20,12 @@ export default function AdminTeam() {
 
   const removeMutation = trpc.partner.removeMember.useMutation({
     onSuccess: () => refetch(),
-    onError: (err) => alert(err.message)
+    onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   return (
     <div className="max-w-7xl surface-card p-6">
@@ -136,6 +138,7 @@ export default function AdminTeam() {
 
       {showAddModal && <AddExistingUserModal onClose={() => setShowAddModal(false)} onAdded={() => { setShowAddModal(false); refetch(); }} />}
       {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); refetch(); }} />}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
@@ -144,6 +147,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'agent'|'support'>('agent');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const { activeMembershipId, memberships } = useStore();
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
@@ -151,7 +155,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
 
   const addMutation = trpc.partner.addMemberByEmail.useMutation({
     onSuccess: onAdded,
-    onError: (err) => alert(err.message)
+    onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -162,7 +166,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} aria-label="Close" />
-      <div role="dialog" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
+      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
         <h3 className="text-xl font-bold uppercase tracking-tight mb-4">Add Existing User</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -179,7 +183,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
             <label className="mono-label mb-1 block">Role</label>
             <select
               value={role}
-              onChange={e => setRole(e.target.value as any)}
+              onChange={e => setRole(e.target.value as 'agent' | 'support')}
               className="input-field w-full uppercase font-bold"
             >
               <option value="agent">Agent (Creates Tickets)</option>
@@ -213,6 +217,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
             </button>
           </div>
         </form>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
     </div>
   );
@@ -223,6 +228,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   const [name, setName] = useState('');
   const [role, setRole] = useState<'agent'|'support'>('agent');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [authMethod, setAuthMethod] = useState<'local' | 'sso'>('local');
 
@@ -239,7 +245,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
         onInvited();
       }
     },
-    onError: (err) => alert(err.message)
+    onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -254,7 +260,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-black opacity-80" onClick={() => { setTempPassword(null); onInvited(); }} aria-label="Close" />
-        <div role="dialog" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
+        <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
           <h3 className="text-xl font-bold uppercase tracking-tight mb-4">User Invited</h3>
           <div className="space-y-4">
             <p className="text-xs font-bold uppercase tracking-wide">User created successfully.</p>
@@ -288,7 +294,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} aria-label="Close" />
-      <div role="dialog" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
+      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
         <h3 className="text-xl font-bold uppercase tracking-tight mb-4">Invite External User</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -315,7 +321,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
             <label className="mono-label mb-1 block">Role</label>
             <select
               value={role}
-              onChange={e => setRole(e.target.value as any)}
+              onChange={e => setRole(e.target.value as 'agent' | 'support')}
               className="input-field w-full uppercase font-bold"
             >
               <option value="agent">Agent (Creates Tickets)</option>
@@ -367,6 +373,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
             </button>
           </div>
         </form>
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import { Mail, ShieldCheck, Save, Send } from 'lucide-react';
 import { useT } from '../../i18n';
+import Toast from '../Toast';
 
 export default function PlatformSystemSettings() {
   const t = useT();
@@ -16,15 +17,16 @@ export default function PlatformSystemSettings() {
     smtpSecure: true,
     apiKey: '',
   });
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const { data: remoteConfig, isLoading } = trpc.platform.getMailConfig.useQuery();
   const updateConfig = trpc.platform.updateMailConfig.useMutation({
-    onSuccess: () => alert(t('config_save_success'))
+    onSuccess: () => setToast({ message: t('config_save_success'), type: 'success' })
   });
 
   const sendTest = trpc.platform.sendTestEmail.useMutation({
-    onSuccess: () => alert(t('test_email_success')),
-    onError: (err) => alert(`${t('test_email_error')}: ${err.message}`)
+    onSuccess: () => setToast({ message: t('test_email_success'), type: 'success' }),
+    onError: (err) => setToast({ message: `${t('test_email_error')}: ${err.message}`, type: 'error' })
   });
 
   // IM-22: Use functional setState to avoid stale closure over mailConfig
@@ -212,6 +214,7 @@ export default function PlatformSystemSettings() {
           </div>
         </div>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

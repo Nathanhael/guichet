@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
+import Toast from '../Toast';
 
 const ACTION_OPTIONS = [
   'partner.created',
@@ -85,6 +86,7 @@ export default function PlatformAuditLog() {
   // Date filtering state
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const LIMIT = 50;
 
@@ -139,7 +141,7 @@ export default function PlatformAuditLog() {
 
       const fullLog = await utils.platform.exportAuditLog.fetch(currentParams);
 
-      if (!fullLog || fullLog.length === 0) return alert(t('no_data_export'));
+      if (!fullLog || fullLog.length === 0) { setToast({ message: t('no_data_export'), type: 'error' }); return; }
 
       const headers = [t('col_time'), t('col_action'), t('col_actor'), t('col_partner_id'), t('col_target_type'), t('col_target_id'), t('col_metadata')];
       const rows = fullLog.map(l => [
@@ -166,7 +168,7 @@ export default function PlatformAuditLog() {
       document.body.removeChild(link);
     } catch (err) {
       console.error(err);
-      alert(t('export_failed'));
+      setToast({ message: t('export_failed'), type: 'error' });
     }
   }
 
@@ -379,6 +381,7 @@ export default function PlatformAuditLog() {
           </div>
         </div>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

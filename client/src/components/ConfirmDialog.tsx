@@ -16,7 +16,7 @@ export default function ConfirmDialog({ title, message, confirmLabel, cancelLabe
     <div className="fixed inset-0 z-[200]">
       <div className="absolute inset-0 bg-black/80" onClick={onCancel} aria-label="Close" />
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        <div role="dialog" className="w-full max-w-md bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-8 animate-fade-in relative">
+        <div role="dialog" aria-modal="true" className="w-full max-w-md bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-8 animate-fade-in relative">
           {/* Icon */}
           <div className="w-14 h-14 border border-[var(--color-border)] flex items-center justify-center mx-auto mb-6">
             <span className="text-[var(--color-accent-red)] text-xl">!</span>

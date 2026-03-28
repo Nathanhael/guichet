@@ -3,6 +3,7 @@ import { trpc } from '../../utils/trpc';
 import useStore from '../../store/useStore';
 import { useT } from '../../i18n';
 import { Pencil, Trash2, Check, X, Plus } from 'lucide-react';
+import Toast from '../Toast';
 
 interface RefField {
   label: string;
@@ -36,6 +37,7 @@ export default function AdminDepartments() {
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<Department | null>(null);
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // Sync server data → local state (only when not actively editing)
@@ -43,7 +45,7 @@ export default function AdminDepartments() {
   const prevDepsRef = useRef<string>('');
   useEffect(() => {
     if (isEditing || isSaving) return;
-    const serverDepts = mapDepts(manifest?.departments as any[]);
+    const serverDepts = mapDepts((manifest?.departments ?? []) as Array<{ id: string; name: string; description?: string }>);
     const key = JSON.stringify(serverDepts);
     if (key !== prevDepsRef.current) {
       prevDepsRef.current = key;
@@ -93,7 +95,7 @@ export default function AdminDepartments() {
     },
     onError: (err) => {
       setIsSaving(false);
-      alert('Failed to update departments: ' + err.message);
+      setToast({ message: 'Failed to update departments: ' + err.message, type: 'error' });
     }
   });
 
@@ -117,13 +119,13 @@ export default function AdminDepartments() {
   function saveEdit() {
     if (!editDraft || editingIdx === null) return;
     if (!editDraft.name.trim()) {
-      alert('Department name is required.');
+      setToast({ message: 'Department name is required.', type: 'error' });
       return;
     }
     // Check unique labels
     const labels = editDraft.referenceFields.map(f => f.label.trim()).filter(Boolean);
     if (new Set(labels).size !== labels.length) {
-      alert('Reference field labels must be unique.');
+      setToast({ message: 'Reference field labels must be unique.', type: 'error' });
       return;
     }
 
@@ -369,6 +371,7 @@ export default function AdminDepartments() {
           </div>
         )}
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

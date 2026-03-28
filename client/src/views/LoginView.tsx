@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import useStore from '../store/useStore';
 import { useT } from '../i18n';
-import type { User, Membership } from '../types';
+import type { User, Membership, UserRole } from '../types';
 import DarkModeToggle from '../components/DarkModeToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import SystemBackground from '../components/SystemBackground';
@@ -328,7 +328,7 @@ export default function LoginView() {
               >
                 <div>
                   <p className="font-mono font-bold uppercase tracking-tight text-[var(--color-text-primary)]">{m.partnerName}</p>
-                  <p className="mono-label text-[var(--color-text-secondary)] mt-0.5">{getRoleDisplayName(m.role as any, false)} · {m.manifest?.industry}</p>
+                  <p className="mono-label text-[var(--color-text-secondary)] mt-0.5">{getRoleDisplayName(m.role as UserRole, false)} · {m.manifest?.industry}</p>
                 </div>
                 <span className="text-xl font-bold text-[var(--color-text-secondary)]">➔</span>
               </button>
@@ -528,7 +528,7 @@ export default function LoginView() {
           <>
             <div className="flex border-b border-[var(--color-border-heavy)] px-4 pt-4 bg-[var(--color-bg-surface)] overflow-x-auto no-scrollbar">
               {(['all', 'platform', 'support', 'admin', 'agent'] as const).map((tab) => (
-                <button key={tab} onClick={() => setFilter(tab)} className={`px-4 py-3 mono-label border-b-2 mr-1 shrink-0 ${filter === tab ? 'border-[var(--color-text-primary)] text-[var(--color-text-primary)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}>{tab === 'all' ? t('all') : tab === 'platform' ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(tab as any)}</button>
+                <button key={tab} onClick={() => setFilter(tab)} className={`px-4 py-3 mono-label border-b-2 mr-1 shrink-0 ${filter === tab ? 'border-[var(--color-text-primary)] text-[var(--color-text-primary)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'}`}>{tab === 'all' ? t('all') : tab === 'platform' ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(tab as UserRole)}</button>
               ))}
             </div>
             <div className="p-4 max-h-[30rem] overflow-y-auto bg-[var(--color-bg-surface)]">
@@ -551,7 +551,7 @@ export default function LoginView() {
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-1.5">
-                        <span className="badge">{u.isPlatformOperator ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(u.role as any)}</span>
+                        <span className="badge">{u.isPlatformOperator ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(u.role as UserRole)}</span>
                         <span className="mono-label text-[var(--color-text-muted)]">{(u.lang && LANG_LABEL[u.lang]) || u.lang}</span>
                       </div>
                     </button>

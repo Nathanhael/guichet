@@ -24,7 +24,7 @@ export default function AdminTickets() {
 
   useEffect(() => {
     if (ticketsQuery.data && Array.isArray(ticketsQuery.data)) {
-      setTickets(ticketsQuery.data as any);
+      setTickets(ticketsQuery.data as Ticket[]);
     }
   }, [ticketsQuery.data, setTickets]);
 
@@ -38,7 +38,7 @@ export default function AdminTickets() {
 
   useEffect(() => {
     if (messagesQuery.data) {
-      setPreviewMessages(messagesQuery.data as any);
+      setPreviewMessages(messagesQuery.data as unknown as Message[]);
     }
   }, [messagesQuery.data]);
 
