@@ -1,10 +1,11 @@
-import { query, run, transaction } from '../db.js';
-import { sql } from 'drizzle-orm';
+import { query, run, transaction, db } from '../db.js';
+import { sql, inArray } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
+import { ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable } from '../db/schema.js';
 
 export async function runDailyPurge() {
   try {
@@ -48,12 +49,12 @@ export async function runDailyPurge() {
           
           let dayRatings: Rating[] = [];
           if (ticketIds.length > 0) {
-            dayRatings = (await query(`SELECT * FROM ratings WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds)) as unknown as Rating[];
+            dayRatings = (await db.select().from(ratingsTable).where(inArray(ratingsTable.ticketId, ticketIds))) as unknown as Rating[];
           }
-          
+
           let dayMessages: Message[] = [];
           if (ticketIds.length > 0) {
-            dayMessages = (await query(`SELECT * FROM messages WHERE "ticket_id" IN (${ticketIds.map((_, i) => `$${i + 1}`).join(',')})`, ticketIds)) as unknown as Message[];
+            dayMessages = (await db.select().from(messagesTable).where(inArray(messagesTable.ticketId, ticketIds))) as unknown as Message[];
           }
 
           const stats = computeLiveDayStats(dayTickets, dayRatings, 'all', dayMessages);
@@ -94,16 +95,16 @@ export async function runDailyPurge() {
     }
 
     await transaction(async (tx) => {
-      await tx.execute(sql`DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate})`);
-      await tx.execute(sql`DELETE FROM ratings WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate})`);
-      await tx.execute(sql`DELETE FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate})`);
-      await tx.execute(sql`DELETE FROM tickets WHERE created_at < ${cutoffDate}`);
+      // Only delete tickets that are closed (and thus have been archived above).
+      // Open/pending tickets are never purged to prevent data loss.
+      await tx.execute(sql`DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
+      await tx.execute(sql`DELETE FROM ratings WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
+      await tx.execute(sql`DELETE FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
+      await tx.execute(sql`DELETE FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'`);
     });
 
     // Log the successful purge in audit_log
-    const { auditLog: auditLogTable } = await import('../db/schema.js');
-    const { db: drizzleDb } = await import('../db.js');
-    await drizzleDb.insert(auditLogTable).values({
+    await db.insert(auditLogTable).values({
       action: 'system.gdpr_purge',
       actorId: null, // System action, no user associated
       targetType: 'system',

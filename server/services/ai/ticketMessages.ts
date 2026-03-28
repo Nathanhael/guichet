@@ -8,7 +8,7 @@
 
 import { db } from '../../db.js';
 import { messages as messagesTable, tickets } from '../../db/schema.js';
-import { eq, and, asc, isNull } from 'drizzle-orm';
+import { eq, and, asc, isNull, ne } from 'drizzle-orm';
 
 interface TicketMessage {
   senderName: string | null;
@@ -49,6 +49,7 @@ export async function fetchTicketMessages(ticketId: string): Promise<TicketMessa
       and(
         eq(messagesTable.ticketId, ticketId),
         isNull(messagesTable.deletedAt),
+        ne(messagesTable.whisper, 1),
       ),
     )
     .orderBy(asc(messagesTable.createdAt));

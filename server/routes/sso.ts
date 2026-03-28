@@ -111,7 +111,21 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 
     if (azError) {
       logger.warn({ azError, error_description }, '[SSO] Azure returned error');
-      return res.redirect(`${clientOrigin}/?sso_error=${encodeURIComponent(error_description || azError)}`);
+      // Map Azure error codes to generic user-facing messages (never expose raw error_description)
+      const AZURE_ERROR_MAP: Record<string, string> = {
+        access_denied: 'access_denied',
+        consent_required: 'consent_required',
+        interaction_required: 'interaction_required',
+        login_required: 'login_required',
+        invalid_client: 'configuration_error',
+        unauthorized_client: 'configuration_error',
+        unsupported_response_type: 'configuration_error',
+        server_error: 'provider_error',
+        temporarily_unavailable: 'provider_unavailable',
+        invalid_request: 'invalid_request',
+      };
+      const safeError = AZURE_ERROR_MAP[azError] ?? 'sso_failed';
+      return res.redirect(`${clientOrigin}/?sso_error=${encodeURIComponent(safeError)}`);
     }
 
     const pendingState = state ? await getSsoState(state) : null;

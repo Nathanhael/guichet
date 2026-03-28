@@ -30,9 +30,9 @@ function maskEmail(email: string): string {
 
 // ... (register route remains unchanged)
 
-// Per-email throttle for forgot-password: max 3 requests per email per 15 minutes
-const forgotPasswordThrottle = new Map<string, number[]>();
-const FORGOT_PW_WINDOW_MS = 15 * 60 * 1000;
+import { getRedisClients } from '../utils/redis.js';
+
+const FORGOT_PW_WINDOW_SECS = 60;
 const FORGOT_PW_MAX_PER_EMAIL = 3;
 
 /**
@@ -69,17 +69,23 @@ router.post('/forgot-password', [
         const { email } = req.body;
         logger.info({ email: maskEmail(email) }, '[Auth] Password reset requested');
 
-        // Per-email rate limiting
-        const key = email.toLowerCase();
-        const now = Date.now();
-        const timestamps = (forgotPasswordThrottle.get(key) || []).filter(t => t > now - FORGOT_PW_WINDOW_MS);
-        if (timestamps.length >= FORGOT_PW_MAX_PER_EMAIL) {
-            logger.warn({ email: maskEmail(email) }, '[Auth] Forgot password per-email rate limit hit');
-            // Return success to prevent enumeration, but don't actually send
-            return res.json({ success: true, message: 'If an account exists, you will receive a reset link.' });
+        // Per-email rate limiting via Redis (multi-instance safe)
+        const redisKey = `forgot-pwd:${email.toLowerCase()}`;
+        try {
+            const { pubClient } = getRedisClients();
+            if (pubClient) {
+                const count = await pubClient.incr(redisKey);
+                if (count === 1) {
+                    await pubClient.expire(redisKey, FORGOT_PW_WINDOW_SECS);
+                }
+                if (count > FORGOT_PW_MAX_PER_EMAIL) {
+                    logger.warn({ email: maskEmail(email) }, '[Auth] Forgot password per-email rate limit hit');
+                    return res.json({ success: true, message: 'If an account exists, you will receive a reset link.' });
+                }
+            }
+        } catch (redisErr) {
+            logger.warn({ err: redisErr }, '[Auth] Redis throttle check failed, proceeding without throttle');
         }
-        timestamps.push(now);
-        forgotPasswordThrottle.set(key, timestamps);
 
         const user = await findUserByEmail(email);
 
@@ -258,6 +264,13 @@ router.post('/login-local', [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Successful password check — re-check lockout (may have been reached on a concurrent request)
+        const lockoutAfterPw = checkLockout(user);
+        if (lockoutAfterPw.locked) {
+            const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
+            return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
+        }
+
         // Successful login — reset lockout counter
         await resetFailedLogins(user.id);
 
@@ -278,13 +291,19 @@ router.post('/login-local', [
                 return res.status(200).json({ mfaRequired: true, userId: user.id });
             }
             // Verify TOTP code (import inline to avoid circular deps)
-            const { verifyTotpToken } = await import('../services/platformStepUp.js');
-            if (!user.mfaSecret || !verifyTotpToken(user.mfaSecret, totpCode)) {
+            const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../services/platformStepUp.js');
+            const totpAlreadyUsed = await isTotpTokenUsed(user.id, totpCode);
+            if (!user.mfaSecret || totpAlreadyUsed || !verifyTotpToken(user.mfaSecret, totpCode)) {
                 // Check recovery codes
                 const recoveryCodes = (user.mfaRecoveryCodes as string[]) || [];
                 const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
                 const recoveryIdx = recoveryCodes.indexOf(codeHash);
                 if (recoveryIdx === -1) {
+                    const mfaFailResult = await recordFailedLogin(user.id);
+                    logger.warn({ email: maskEmail(email), attemptsLeft: mfaFailResult.attemptsLeft }, '[Auth] Local login failed: Invalid MFA code');
+                    if (mfaFailResult.locked) {
+                        return res.status(423).json({ error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' });
+                    }
                     return res.status(401).json({ error: 'Invalid MFA code' });
                 }
                 // Consume the recovery code
@@ -292,6 +311,8 @@ router.post('/login-local', [
                 updatedCodes.splice(recoveryIdx, 1);
                 await db.update(users).set({ mfaRecoveryCodes: updatedCodes }).where(eq(users.id, user.id));
                 logger.info({ userId: user.id }, '[Auth] MFA passed via recovery code');
+            } else {
+                await markTotpTokenUsed(user.id, totpCode);
             }
         }
 
@@ -395,6 +416,13 @@ router.post('/login', [
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        // Successful password check — re-check lockout (may have been reached on a concurrent request)
+        const lockoutAfterPw = checkLockout(user);
+        if (lockoutAfterPw.locked) {
+            const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
+            return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
+        }
+
         // Successful login — reset lockout counter
         await resetFailedLogins(user.id);
 
@@ -413,18 +441,26 @@ router.post('/login', [
             if (!totpCode) {
                 return res.status(200).json({ mfaRequired: true, userId: user.id });
             }
-            const { verifyTotpToken } = await import('../services/platformStepUp.js');
-            if (!user.mfaSecret || !verifyTotpToken(user.mfaSecret, totpCode)) {
+            const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../services/platformStepUp.js');
+            const totpAlreadyUsed = await isTotpTokenUsed(user.id, totpCode);
+            if (!user.mfaSecret || totpAlreadyUsed || !verifyTotpToken(user.mfaSecret, totpCode)) {
                 const recoveryCodes = (user.mfaRecoveryCodes as string[]) || [];
                 const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
                 const recoveryIdx = recoveryCodes.indexOf(codeHash);
                 if (recoveryIdx === -1) {
+                    const mfaFailResult = await recordFailedLogin(user.id);
+                    logger.warn({ id, attemptsLeft: mfaFailResult.attemptsLeft }, '[Auth] Login failed: Invalid MFA code');
+                    if (mfaFailResult.locked) {
+                        return res.status(423).json({ error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' });
+                    }
                     return res.status(401).json({ error: 'Invalid MFA code' });
                 }
                 const updatedCodes = [...recoveryCodes];
                 updatedCodes.splice(recoveryIdx, 1);
                 await db.update(users).set({ mfaRecoveryCodes: updatedCodes }).where(eq(users.id, user.id));
                 logger.info({ userId: user.id }, '[Auth] MFA passed via recovery code');
+            } else {
+                await markTotpTokenUsed(user.id, totpCode);
             }
         }
 

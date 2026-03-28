@@ -32,7 +32,7 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
     return v;
   })(),
   bionicReading: localStorage.getItem('bionicReading') === 'true',
-  monochromeMode: localStorage.getItem('monochromeMode') !== 'false', // Default to true for now to keep the current look
+  monochromeMode: localStorage.getItem('monochromeMode') === 'true',
   focusMode: localStorage.getItem('focusMode') === 'true',
   zenSettings: { autoBionic: false, notificationShield: false },
   darkMode: localStorage.getItem('darkMode') === 'true',
@@ -105,7 +105,7 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set) =>
     set(() => {
       const dyslexicMode = prefs.dyslexicMode ?? false;
       const bionicReading = prefs.bionicReading ?? false;
-      const monochromeMode = prefs.monochromeMode ?? true;
+      const monochromeMode = prefs.monochromeMode ?? false;
       const focusMode = prefs.focusMode ?? false;
 
       localStorage.setItem('dyslexicMode', String(dyslexicMode));

@@ -160,6 +160,7 @@ export const ratings = pgTable('ratings', {
 export const appFeedback = pgTable('app_feedback', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   userName: text('user_name'),
   role: text('role'),
   text: text('text').notNull(),

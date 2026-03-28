@@ -40,7 +40,16 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
     set((state) => {
       const existing = state.messages[ticketId] || [];
       if (!message.pending) {
-        const optimisticIndex = existing.findIndex(m => m.pending && m.senderId === message.senderId && (m.originalText === message.originalText || m.text === message.originalText));
+        const serverTime = new Date(message.createdAt || message.timestamp || '').getTime();
+        const optimisticIndex = existing.findIndex(m => {
+          if (!m.pending || m.senderId !== message.senderId) return false;
+          const textMatch = m.originalText === message.originalText || m.text === message.originalText;
+          if (!textMatch) return false;
+          // Guard against stale optimistic matches: require server timestamp within 5 seconds
+          const pendingTime = new Date(m.createdAt || m.timestamp || '').getTime();
+          if (serverTime && pendingTime && Math.abs(serverTime - pendingTime) > 5000) return false;
+          return true;
+        });
         if (optimisticIndex !== -1) {
           const next = [...existing];
           next[optimisticIndex] = message;

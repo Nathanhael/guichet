@@ -70,6 +70,7 @@ export function buildAuthResponse(input: {
     name: string;
     lang: string | null;
     isPlatformOperator: boolean | null;
+    accessibilityPrefs?: Record<string, unknown> | null;
   };
   memberships: SessionMembership[];
 }) {
@@ -82,6 +83,7 @@ export function buildAuthResponse(input: {
       name: input.user.name,
       lang: input.user.lang,
       isPlatformOperator: !!input.user.isPlatformOperator,
+      accessibilityPrefs: input.user.accessibilityPrefs ?? null,
     },
     memberships: activeMemberships.map((m) => ({
       id: m.id,
