@@ -7,6 +7,7 @@ import { ARCHIVE_PAGE_SIZE } from '../../config';
 import { Ticket, Membership } from '../../types';
 import SlaIndicator from '../SlaIndicator';
 import SentimentDot from '../SentimentDot';
+import SavedViewPicker, { ViewFilters } from './SavedViewPicker';
 
 interface QueueSidebarProps {
   activeMembership: Membership;
@@ -48,6 +49,24 @@ export default function QueueSidebar({
   const [archiveCursor, setArchiveCursor] = useState<string | undefined>(undefined);
   const [hasMoreArchive, setHasMoreArchive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { data: savedViews } = trpc.savedView.list.useQuery();
+
+  function applyView(filters: ViewFilters) {
+    if (filters.dept) setFilterDept(filters.dept);
+    if (filters.tab) setSidebarTab(filters.tab);
+  }
+
+  useEffect(() => {
+    if (savedViews) {
+      const defaultView = savedViews.find(v => v.isDefault);
+      if (defaultView) {
+        const filters = defaultView.filters as Record<string, unknown>;
+        if (filters.dept && typeof filters.dept === 'string') setFilterDept(filters.dept);
+        if (filters.tab && typeof filters.tab === 'string') setSidebarTab(filters.tab as 'queue' | 'archive' | 'search');
+      }
+    }
+  }, [savedViews]);
 
   const departments = (activeMembership.manifest?.departments || []) as { id: string; name: string }[];
   const assignedDepartmentIds = activeMembership.departments || [];
@@ -112,9 +131,15 @@ export default function QueueSidebar({
     } shrink-0 overflow-hidden bg-[var(--color-bg-surface)] flex flex-col`}>
       {/* Header: tabs + dept chips */}
       <div className="px-4 py-3 border-b border-[var(--color-border)]">
-        <h2 className="mono-label mb-2">
-          {sidebarTab === 'queue' ? t('queue') : t('archive')}
-        </h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="mono-label">
+            {sidebarTab === 'queue' ? t('queue') : sidebarTab === 'archive' ? t('archive') : (t('search') || 'Search')}
+          </h2>
+          <SavedViewPicker
+            currentFilters={{ dept: filterDept, tab: sidebarTab }}
+            onApply={applyView}
+          />
+        </div>
 
         <div className="flex gap-1 mb-2">
           {(['queue', 'archive', 'search'] as const).map((tab) => (
