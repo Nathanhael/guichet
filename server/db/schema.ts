@@ -429,7 +429,6 @@ export const dailyAiUsage = pgTable('daily_ai_usage', {
   avgLatencyMs: integer('avg_latency_ms'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({
-  datePartnerIdx: index('idx_daily_ai_usage_date_partner').on(table.date, table.partnerId),
   partnerDateIdx: index('idx_daily_ai_usage_partner_date').on(table.partnerId, table.date),
   uniqueDayKey: uniqueIndex('idx_daily_ai_usage_unique').on(table.date, table.partnerId, table.action, table.provider, table.model),
 }));
