@@ -96,7 +96,8 @@ export const kbRouter = router({
   aiSearch: partnerScopedProcedure
     .input(z.object({ question: z.string().min(1).max(500) }))
     .query(async ({ ctx, input }) => {
-      // Fetch all published articles for this partner
+      // IM-14: Limit articles loaded for AI search to prevent unbounded memory usage
+      const MAX_AI_SEARCH_ARTICLES = 50;
       const articles = await db
         .select(articleListColumns)
         .from(kbArticles)
@@ -104,7 +105,8 @@ export const kbRouter = router({
           eq(kbArticles.partnerId, ctx.user.partnerId),
           eq(kbArticles.published, true)
         ))
-        .orderBy(asc(kbArticles.title));
+        .orderBy(asc(kbArticles.title))
+        .limit(MAX_AI_SEARCH_ARTICLES);
 
       if (articles.length === 0) {
         return { articles: [], aiAnswer: 'No knowledge base articles found.' };

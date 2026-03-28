@@ -36,13 +36,13 @@ export const userRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
       }
       try {
-        // Only return minimum fields needed for demo login UI — no email exposure
+        // IM-04: Only return minimum fields for demo login UI — no privilege exposure
         const users = await query(`
-          SELECT id, name, lang, is_platform_operator,
+          SELECT id, name,
             (SELECT role FROM memberships WHERE user_id = users.id LIMIT 1) as role
           FROM users
           WHERE deleted_at IS NULL
-          ORDER BY is_platform_operator DESC, name ASC
+          ORDER BY name ASC
         `);
         return users;
       } catch (err: unknown) {

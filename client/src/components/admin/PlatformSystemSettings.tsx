@@ -27,9 +27,10 @@ export default function PlatformSystemSettings() {
     onError: (err) => alert(`${t('test_email_error')}: ${err.message}`)
   });
 
+  // IM-22: Use functional setState to avoid stale closure over mailConfig
   useEffect(() => {
     if (remoteConfig) {
-      setMailConfig({ ...mailConfig, ...remoteConfig });
+      setMailConfig((prev: Record<string, unknown>) => ({ ...prev, ...remoteConfig }));
     }
   }, [remoteConfig]);
 

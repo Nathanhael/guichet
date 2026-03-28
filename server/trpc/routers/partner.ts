@@ -221,7 +221,10 @@ export const partnerRouter = router({
       const { aiConfig, aiProvider, aiModel, ...safePartner } = result[0];
       return safePartner;
     } catch (err: unknown) {
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      // IM-11: Re-throw TRPCErrors (e.g. NOT_FOUND) instead of swallowing into INTERNAL_SERVER_ERROR
+      if (err instanceof TRPCError) throw err;
+      logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: getManifest error');
+      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to fetch partner manifest' });
     }
   }),
 
@@ -554,48 +557,54 @@ export const partnerRouter = router({
         const userAuthMethod = input.authMethod ?? (partner[0].authMethod === 'both' ? 'local' : partner[0].authMethod);
         const isLocal = userAuthMethod === 'local';
 
-        // 2. Check for existing user
-        const existingUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
-        if (existingUser.length > 0) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'Email already in use' });
-        }
-
-        // 3. Create user — with or without password based on auth method
+        // IM-09: Wrap check-then-insert in a transaction to prevent race conditions
         let tempPassword: string | null = null;
-        const newUserId = uuidv4();
+        let newUserId: string = '';
+        let newMembershipId: string = '';
 
-        let hashedPassword: string | undefined;
-        if (isLocal) {
-          tempPassword = randomBytes(12).toString('base64url');
-          hashedPassword = await hashPassword(tempPassword);
-        }
+        await db.transaction(async (tx) => {
+          // 2. Check for existing user (inside transaction for atomicity)
+          const existingUser = await tx.select().from(users).where(eq(users.email, input.email)).limit(1);
+          if (existingUser.length > 0) {
+            throw new TRPCError({ code: 'CONFLICT', message: 'Email already in use' });
+          }
 
-        await db.insert(users).values({
-          id: newUserId,
-          email: input.email,
-          name: input.name,
-          password: hashedPassword,
-          authMethod: partner[0].authMethod === 'both' ? userAuthMethod : undefined,
-        });
+          // 3. Create user — with or without password based on auth method
+          newUserId = uuidv4();
 
-        // 4. Create membership
-        const newMembershipId = uuidv4();
-        await db.insert(memberships).values({
-          id: newMembershipId,
-          userId: newUserId,
-          partnerId: partnerId,
-          role: input.role,
-          departments: input.departments || []
-        });
+          let hashedPassword: string | undefined;
+          if (isLocal) {
+            tempPassword = randomBytes(12).toString('base64url');
+            hashedPassword = await hashPassword(tempPassword);
+          }
 
-        // 5. Audit log
-        await db.insert(auditLog).values({
-          action: 'member.invited',
-          actorId: ctx.user.id,
-          partnerId: partnerId,
-          targetType: 'user',
-          targetId: newUserId,
-          metadata: { role: input.role, departments: input.departments, email: input.email, authMethod: userAuthMethod }
+          await tx.insert(users).values({
+            id: newUserId,
+            email: input.email,
+            name: input.name,
+            password: hashedPassword,
+            authMethod: partner[0].authMethod === 'both' ? userAuthMethod : undefined,
+          });
+
+          // 4. Create membership
+          newMembershipId = uuidv4();
+          await tx.insert(memberships).values({
+            id: newMembershipId,
+            userId: newUserId,
+            partnerId: partnerId,
+            role: input.role,
+            departments: input.departments || []
+          });
+
+          // 5. Audit log
+          await tx.insert(auditLog).values({
+            action: 'member.invited',
+            actorId: ctx.user.id,
+            partnerId: partnerId,
+            targetType: 'user',
+            targetId: newUserId,
+            metadata: { role: input.role, departments: input.departments, email: input.email, authMethod: userAuthMethod }
+          });
         });
 
         // Never log plaintext passwords
