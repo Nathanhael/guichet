@@ -145,7 +145,7 @@ Only return valid JSON, nothing else.`,
             },
             {
               role: 'user',
-              content: `Question: <user_content>${input.question.replace(/<\/?user_content>/g, '')}</user_content>\n\nArticles:\n${articleSummaries}`,
+              content: `Question: <user_content>${input.question.replace(/<\/?user_content\s*>/gi, '')}</user_content>\n\nArticles:\n${articleSummaries}`,
             },
           ],
           temperature: 0.1,
