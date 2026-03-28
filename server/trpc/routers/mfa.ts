@@ -132,7 +132,7 @@ export const mfaRouter = router({
    * Disable MFA. Requires a valid TOTP code.
    */
   disable: protectedProcedure
-    .input(z.object({ code: z.string().min(6), password: z.string().min(1) }))
+    .input(z.object({ code: z.string().length(6), password: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       const userRows = await db.select({
         mfaSecret: users.mfaSecret,
