@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import crypto from 'crypto';
 import { fileTypeFromFile } from 'file-type';
+import rateLimit from 'express-rate-limit';
 import config from '../config.js';
 import { auth, authorize, AuthRequest } from '../middleware/auth.js';
 
@@ -32,6 +33,14 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFil
 };
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: config.UPLOAD_MAX_SIZE } });
+
+const logoRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: 'Too many logo uploads. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 const router = Router();
 
@@ -66,7 +75,7 @@ const router = Router();
  *       403:
  *         description: Not a platform operator
  */
-router.post('/', auth, (req: AuthRequest, res: Response) => {
+router.post('/', auth, logoRateLimit, (req: AuthRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
   if (!req.user.isPlatformOperator) {
     return res.status(403).json({ error: 'Only platform operators can upload logos' });
