@@ -81,6 +81,24 @@ function maskEmail(email: string): string {
   return `${local[0]}***@${domain}`;
 }
 
+/**
+ * M-02: Timing-safe recovery code lookup.
+ * Compares codeHash against all stored hashes using timingSafeEqual
+ * to avoid leaking which index matched via timing side-channel.
+ */
+function findRecoveryCodeIndex(recoveryCodes: string[], codeHash: string): number {
+  const codeBuffer = Buffer.from(codeHash, 'hex');
+  let foundIdx = -1;
+  for (let i = 0; i < recoveryCodes.length; i++) {
+    const storedBuffer = Buffer.from(recoveryCodes[i], 'hex');
+    if (codeBuffer.length === storedBuffer.length && crypto.timingSafeEqual(codeBuffer, storedBuffer)) {
+      foundIdx = i;
+      // Don't break — continue checking all codes to maintain constant time
+    }
+  }
+  return foundIdx;
+}
+
 // ... (register route remains unchanged)
 
 import { getRedisClients } from '../utils/redis.js';
@@ -223,7 +241,7 @@ router.post('/reset-password', [
                 // Also check recovery codes
                 const recoveryCodes = (user.mfaRecoveryCodes as string[]) || [];
                 const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
-                const recoveryIdx = recoveryCodes.indexOf(codeHash);
+                const recoveryIdx = findRecoveryCodeIndex(recoveryCodes, codeHash);
                 if (recoveryIdx === -1) {
                     await recordFailedLogin(user.id);
                     return res.status(401).json({ error: 'Invalid MFA code' });
@@ -386,7 +404,7 @@ router.post('/login-local', loginRateLimit, [
                 // Check recovery codes
                 const recoveryCodes = (user.mfaRecoveryCodes as string[]) || [];
                 const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
-                const recoveryIdx = recoveryCodes.indexOf(codeHash);
+                const recoveryIdx = findRecoveryCodeIndex(recoveryCodes, codeHash);
                 if (recoveryIdx === -1) {
                     const mfaFailResult = await recordFailedLogin(user.id);
                     logger.warn({ email: maskEmail(email), attemptsLeft: mfaFailResult.attemptsLeft }, '[Auth] Local login failed: Invalid MFA code');
@@ -548,7 +566,7 @@ router.post('/login', loginRateLimit, [
             if (!user.mfaSecret || totpAlreadyUsed || !verifyTotpToken(user.mfaSecret, totpCode)) {
                 const recoveryCodes = (user.mfaRecoveryCodes as string[]) || [];
                 const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
-                const recoveryIdx = recoveryCodes.indexOf(codeHash);
+                const recoveryIdx = findRecoveryCodeIndex(recoveryCodes, codeHash);
                 if (recoveryIdx === -1) {
                     const mfaFailResult = await recordFailedLogin(user.id);
                     logger.warn({ id, attemptsLeft: mfaFailResult.attemptsLeft }, '[Auth] Login failed: Invalid MFA code');

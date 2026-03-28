@@ -15,7 +15,7 @@ export const cannedResponseRouter = router({
   list: partnerScopedProcedure
     .input(z.object({ dept: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
-      if (!canUseSupportWorkflows(ctx.user.role) && !ctx.user.isPlatformOperator) return [];
+      if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) return [];
 
       const conditions = [eq(cannedResponses.partnerId, ctx.user.partnerId)];
 

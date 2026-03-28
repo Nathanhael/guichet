@@ -95,8 +95,16 @@ let ioInstance: Server | null = null;
 // Map<ticketId, Map<socketId, { userId: string; userName: string }>>
 const ticketViewers = new Map<string, Map<string, { userId: string; userName: string }>>();
 
+// M-07: Cap to prevent unbounded memory growth (10k tickets × viewers should be more than enough)
+const MAX_TRACKED_TICKETS = 10_000;
+
 function addViewer(ticketId: string, socketId: string, userId: string, userName: string) {
   if (!ticketViewers.has(ticketId)) {
+    if (ticketViewers.size >= MAX_TRACKED_TICKETS) {
+      // Evict oldest entry (first key in insertion order)
+      const firstKey = ticketViewers.keys().next().value;
+      if (firstKey) ticketViewers.delete(firstKey);
+    }
     ticketViewers.set(ticketId, new Map());
   }
   ticketViewers.get(ticketId)!.set(socketId, { userId, userName });
@@ -918,9 +926,14 @@ export function registerSocketHandlers(io: Server) {
       }
 
       if (userId && partnerId) {
-        const result = await presenceService.decrementUserCount(userId, partnerId);
-        if (result && result.removed && result.role === 'agent') {
-          broadcastAgentStatus(userId, false);
+        try {
+          const result = await presenceService.decrementUserCount(userId, partnerId);
+          if (result && result.removed && result.role === 'agent') {
+            broadcastAgentStatus(userId, false);
+          }
+        } catch (err) {
+          // M-06: Don't let presence errors crash the disconnect handler
+          logger.error({ err: err instanceof Error ? err.message : String(err), userId }, '[socket] Presence decrement error on disconnect');
         }
       }
     });
