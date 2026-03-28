@@ -65,7 +65,7 @@ export default function App() {
   }, [user, activeMembershipId, memberships, setActiveMembershipId]);
 
   const renderView = () => {
-    if (!user) return <Suspense fallback={<LoadingFallback />}><LoginView /></Suspense>;
+    if (!user) return <ErrorBoundary><Suspense fallback={<LoadingFallback />}><LoginView /></Suspense></ErrorBoundary>;
 
     // If user is Platform Operator, show Platform View by default
     if (isPlatformAdmin(user) && !activeMembershipId) {

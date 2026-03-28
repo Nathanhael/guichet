@@ -86,7 +86,18 @@ export const mfaRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Call beginSetup first' });
       }
 
+      // M-01: Check lockout before verifying code to prevent brute-force during MFA setup
+      const [lockRow] = await db.select({ lockedUntil: users.lockedUntil })
+        .from(users).where(eq(users.id, ctx.user.id)).limit(1);
+      if (lockRow) {
+        const lockout = checkLockout(lockRow);
+        if (lockout.locked) {
+          throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Account temporarily locked. Try again later.' });
+        }
+      }
+
       if (!verifyTotpToken(user.mfaSecret, input.code)) {
+        await recordFailedLogin(ctx.user.id);
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid code. Try again.' });
       }
 

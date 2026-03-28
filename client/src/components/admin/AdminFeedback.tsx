@@ -28,7 +28,7 @@ export default function AdminFeedback() {
   const feedbackQuery = trpc.feedback.list.useQuery();
 
   // tRPC: Ratings List
-  const ratingsQuery = trpc.rating.list.useQuery();
+  const ratingsQuery = trpc.rating.list.useQuery({ limit: 200 });
 
   // tRPC: Mark Treated
   const markTreatedMutation = trpc.feedback.markTreated.useMutation({
@@ -42,7 +42,7 @@ export default function AdminFeedback() {
 
   const users = (usersData || []) as any[];
   const feedback = feedbackQuery.data || [];
-  const ratings = (ratingsQuery.data || []) as any[];
+  const ratings = (ratingsQuery.data?.items || []) as Array<{ id: string; ticketId: string; agentId: string; supportId: string | null; rating: number; comment: string | null; createdAt: string }>;
   const loadingFeedback = feedbackQuery.isLoading;
   const loadingRatings = ratingsQuery.isLoading;
 
