@@ -167,7 +167,7 @@ Monospace = UI structure (nav, labels, badges, buttons, IDs, timestamps). Sans-s
 - JetBrains Mono, 8-9px, weight 700, uppercase
 - Status badges: filled background (OPEN = blue, URGENT = red)
 - Category badges: bordered only (no fill), square shape
-- 0 border-radius (no pills)
+- 0 border-radius (no pills), except avatar circles (`rounded-full` on user monogram elements)
 
 ### Chat Bubbles
 
@@ -192,9 +192,10 @@ Monospace = UI structure (nav, labels, badges, buttons, IDs, timestamps). Sans-s
 Minimal functional motion only:
 
 - `fade-in`: 150ms, opacity 0→1, for panels/modals appearing
-- No slide animations, no bounces, no easing curves
+- Functional layout transitions (sidebar collapse, tab switch) permitted at ≤150ms
+- No decorative slides, bounces, or spring animations
 - Instant state changes for hover, active, focus states
-- `prefers-reduced-motion` media query disables fade-in
+- `prefers-reduced-motion` media query disables all motion
 
 This replaces the previous "ZERO MOTION" mandate.
 
