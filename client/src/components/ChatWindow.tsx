@@ -25,9 +25,15 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const [closing, setClosing] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-  // TODO: _mediaPreview value is never read — only setMediaPreview is used. Wire up preview UI or remove.
-  const [_mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // CR-10: Revoke Object URL to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+    };
+  }, [mediaPreview]);
   // TODO: _unreadCount value is never read — only setUnreadCount is used. Wire up unread badge UI or remove.
   const [_unreadCount, setUnreadCount] = useState(0);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
@@ -371,6 +377,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   }
 
   function clearMedia() {
+    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
     setMediaUrl(null);
     setMediaPreview(null);
     if (fileRef.current) fileRef.current.value = '';

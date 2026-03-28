@@ -10,6 +10,7 @@ import logger from '../utils/logger.js';
 import { buildAuthResponse, buildAuthToken, listUserMemberships, setAuthCookie, parseExpiryToSeconds } from '../services/authSession.js';
 import { isPlatformAdmin } from '../services/roles.js';
 import { getRedisClients } from '../utils/redis.js';
+import { auth } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -377,7 +378,8 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 });
 
 // ---- SSO Exchange: redeem opaque token for user payload ----
-router.get('/exchange', async (req: Request, res: Response) => {
+// CR-06: Require auth cookie to prevent unauthenticated token redemption
+router.get('/exchange', auth as express.RequestHandler, async (req: Request, res: Response) => {
   try {
     const token = req.query.token as string;
     if (!token) {
