@@ -132,7 +132,7 @@ const FORGOT_PW_MAX_PER_EMAIL = 3;
  *                 success: { type: boolean }
  *                 message: { type: string }
  */
-router.post('/forgot-password', [
+router.post('/forgot-password', resetPasswordRateLimit, [
     body('email').isEmail().withMessage('Valid email is required'),
     validate([])
 ], async (req: Request, res: Response) => {
