@@ -47,7 +47,12 @@ export const ticketRouter = router({
           conditions.push(eq(tickets.partnerId, ctx.user.partnerId));
         }
 
-        if (input.agentId) conditions.push(eq(tickets.agentId, input.agentId));
+        // CR-04: Agents (non-support, non-admin) can only see their own tickets
+        if (!ctx.user.isPlatformOperator && ctx.user.role === 'agent') {
+          conditions.push(eq(tickets.agentId, ctx.user.id));
+        } else if (input.agentId) {
+          conditions.push(eq(tickets.agentId, input.agentId));
+        }
         if (input.status) conditions.push(eq(tickets.status, input.status));
         if (input.dept && input.dept !== 'all') conditions.push(eq(tickets.dept, input.dept));
 

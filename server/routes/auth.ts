@@ -358,11 +358,14 @@ router.post('/login-local', loginRateLimit, [
                 const challengeToken = crypto.randomUUID();
                 try {
                     const { pubClient } = getRedisClients();
-                    if (pubClient) {
-                        await pubClient.set(`mfa-challenge:${challengeToken}`, user.id, { EX: 60 });
+                    if (!pubClient) {
+                        logger.error('[Auth] Redis unavailable for MFA challenge token storage');
+                        return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
                     }
+                    await pubClient.set(`mfa-challenge:${challengeToken}`, user.id, { EX: 60 });
                 } catch (redisErr) {
                     logger.error({ err: redisErr }, '[Auth] Failed to store MFA challenge token');
+                    return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
                 }
                 return res.status(200).json({ mfaRequired: true, challengeToken });
             }
@@ -519,11 +522,14 @@ router.post('/login', loginRateLimit, [
                 const challengeToken = crypto.randomUUID();
                 try {
                     const { pubClient } = getRedisClients();
-                    if (pubClient) {
-                        await pubClient.set(`mfa-challenge:${challengeToken}`, user.id, { EX: 60 });
+                    if (!pubClient) {
+                        logger.error('[Auth] Redis unavailable for MFA challenge token storage');
+                        return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
                     }
+                    await pubClient.set(`mfa-challenge:${challengeToken}`, user.id, { EX: 60 });
                 } catch (redisErr) {
                     logger.error({ err: redisErr }, '[Auth] Failed to store MFA challenge token');
+                    return res.status(503).json({ error: 'Service temporarily unavailable. Please try again.' });
                 }
                 return res.status(200).json({ mfaRequired: true, challengeToken });
             }

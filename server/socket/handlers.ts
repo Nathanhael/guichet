@@ -13,6 +13,8 @@ import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
+import { runGuards } from '../services/guards.js';
+import { getRedisClients } from '../utils/redis.js';
 import { invalidateSummary } from '../services/ai/summaryCache.js';
 import { autoSummarizeOnClose } from '../services/ai/autoSummarize.js';
 import { scoreSentiment } from '../services/ai/sentiment.js';
@@ -604,11 +606,41 @@ export function registerSocketHandlers(io: Server) {
           logger.warn({ senderId, role: sender.role }, '[message:send] Non-support user attempted whisper');
         }
 
+        // CR-02: Run content moderation guards (skip for whispers — internal staff notes)
+        let guardedText = text;
+        if (!isWhisper) {
+          try {
+            const { pubClient } = getRedisClients();
+            // Cast: getRedisClients() returns the same runtime client but TypeScript sees duplicate @redis/client types
+            const guardResult = await runGuards(pubClient as Parameters<typeof runGuards>[0], text, senderId);
+            if (!guardResult.ok) {
+              logger.warn({ senderId, code: guardResult.code }, '[message:send] Blocked by content guard');
+              return socket.emit('error', { message: `Message blocked: ${guardResult.code}` });
+            }
+            guardedText = guardResult.text;
+          } catch (guardErr) {
+            // Fail open — log error but allow message through
+            logger.error({ err: guardErr instanceof Error ? guardErr.message : String(guardErr) }, '[message:send] Guard pipeline error');
+          }
+        }
+
         const messageId = uuidv4();
         const now = new Date().toISOString();
-        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, text, mediaUrl || null, isWhisper ? 1 : 0, 0, now, '{}']);
-        io.to(`ticket:${ticketId}`).emit('message:new', { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, senderLang: sender.lang, text: text, originalText: text, mediaUrl, whisper: !!isWhisper, system: false, timestamp: now, createdAt: now, reactions: {} });
-        logger.info({ messageId }, '[message:send] Emitted message:new');
+        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, guardedText, mediaUrl || null, isWhisper ? 1 : 0, 0, now, '{}']);
+        const msgPayload = { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, senderLang: sender.lang, text: guardedText, originalText: guardedText, mediaUrl, whisper: !!isWhisper, system: false, timestamp: now, createdAt: now, reactions: {} };
+
+        if (isWhisper) {
+          // CR-01: Whisper messages must only be sent to support/admin sockets, never to end-users
+          const roomSockets = await io.in(`ticket:${ticketId}`).fetchSockets();
+          for (const s of roomSockets) {
+            if (canUseSupportWorkflows(s.data.role as UserRole, !!s.data.authedIsPlatformOperator)) {
+              s.emit('message:new', msgPayload);
+            }
+          }
+        } else {
+          io.to(`ticket:${ticketId}`).emit('message:new', msgPayload);
+        }
+        logger.info({ messageId, whisper: !!isWhisper }, '[message:send] Emitted message:new');
         // Invalidate cached AI summary for this ticket (fire-and-forget)
         invalidateSummary(ticketId).catch(() => {});
         // Fire-and-forget sentiment scoring (skip whispers — internal notes shouldn't affect sentiment)

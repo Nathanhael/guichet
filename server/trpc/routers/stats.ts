@@ -18,10 +18,18 @@ interface RawMessageRow {
   sender_id: string | null;
   sender_name: string | null;
   sender_role: string | null;
+  sender_lang: string | null;
   text: string | null;
+  media_url: string | null;
+  whisper: number | null;
+  system: number | null;
   sentiment: number | null;
   created_at: string;
-  [key: string]: unknown;
+  delivered_at: string | null;
+  read_at: string | null;
+  edited_at: string | null;
+  deleted_at: string | null;
+  reactions: string | null;
 }
 
 interface HistoricalStatRow {
