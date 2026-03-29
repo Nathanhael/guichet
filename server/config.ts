@@ -4,8 +4,8 @@ const configSchema = z.object({
     PORT: z.coerce.number().int().min(1).max(65535).default(3001),
     CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:3001,http://client:5173'),
     OLLAMA_HOST: z.string().url().default('http://host.docker.internal:11434'),
-    BUSINESS_HOURS_START: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('07:30'),
-    BUSINESS_HOURS_END: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('22:30'),
+    BUSINESS_HOURS_START: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('00:00'),
+    BUSINESS_HOURS_END: z.string().regex(/^\d{2}:\d{2}$/, 'Must be HH:MM format').default('23:59'),
     SLA_THRESHOLD_MS: z.coerce.number().int().positive().default(180000),
     GDPR_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
     AI_USAGE_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
@@ -109,8 +109,29 @@ if (!parseResult.success) {
 
 const config: Config = parseResult.data;
 
-if (config.NODE_ENV === 'production' && config.DISABLE_RATE_LIMIT) {
-    console.error('FATAL: SECURITY WARNING: Rate limiting is disabled in production!');
+// ── Production hardening checks ──────────────────────────────────────────────
+if (config.NODE_ENV === 'production') {
+    const fatal: string[] = [];
+    const warn: string[] = [];
+
+    if (config.DISABLE_RATE_LIMIT)
+        fatal.push('DISABLE_RATE_LIMIT is enabled — rate limiting is off');
+    if (config.CORS_ORIGIN.includes('localhost'))
+        fatal.push('CORS_ORIGIN contains localhost — set to your production domain(s)');
+    if (config.FRONTEND_URL.includes('localhost'))
+        fatal.push('FRONTEND_URL contains localhost — set to your production URL');
+    if (!config.REDIS_URL.includes('@'))
+        warn.push('REDIS_URL has no authentication — set a password for production');
+    if (!config.REQUIRE_PLATFORM_STEP_UP)
+        warn.push('REQUIRE_PLATFORM_STEP_UP is false — platform admin has no MFA step-up');
+    if (!config.COOKIE_SECURE)
+        fatal.push('COOKIE_SECURE is false — cookies will not be sent over HTTPS');
+
+    for (const w of warn) console.warn(`⚠ PRODUCTION WARNING: ${w}`);
+    if (fatal.length) {
+        for (const f of fatal) console.error(`✖ FATAL: ${f}`);
+        process.exit(1);
+    }
 }
 
 export default config;
