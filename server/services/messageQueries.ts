@@ -1,5 +1,5 @@
 // server/services/messageQueries.ts
-import { eq, and, asc, isNull, inArray } from 'drizzle-orm';
+import { eq, and, asc, isNull, inArray, lt, or } from 'drizzle-orm';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/postgres.js';
 import { messages, ticketLabels } from '../db/schema.js';
@@ -71,6 +71,56 @@ export async function findTicketMessages(ticketId: string) {
     .from(messages)
     .where(eq(messages.ticketId, ticketId))
     .orderBy(asc(messages.createdAt));
+}
+
+export interface PaginatedMessages {
+  messages: Array<typeof messages.$inferSelect>;
+  hasMore: boolean;
+  nextCursor?: string; // ISO timestamp|id composite cursor
+}
+
+/**
+ * Fetches messages for a ticket with cursor-based pagination.
+ * Cursor format: "createdAt|id" (composite keyset).
+ * Orders oldest-first (ASC) so clients can append.
+ *
+ * Used by: support:join (initial load + "load more")
+ */
+export async function findTicketMessagesPaginated(
+  ticketId: string,
+  opts: { limit?: number; beforeCursor?: string } = {},
+): Promise<PaginatedMessages> {
+  const limit = Math.min(opts.limit ?? 50, 200);
+
+  const whereClause = opts.beforeCursor
+    ? (() => {
+        const [cursorTs, cursorId] = opts.beforeCursor.split('|');
+        if (!cursorTs || !cursorId) {
+          throw new Error('Invalid cursor format — expected "createdAt|id"');
+        }
+        return and(
+          eq(messages.ticketId, ticketId),
+          or(
+            lt(messages.createdAt, cursorTs),
+            and(eq(messages.createdAt, cursorTs), lt(messages.id, cursorId)),
+          ),
+        );
+      })()
+    : eq(messages.ticketId, ticketId);
+
+  const rows = await db
+    .select()
+    .from(messages)
+    .where(whereClause)
+    .orderBy(asc(messages.createdAt), asc(messages.id))
+    .limit(limit + 1);
+
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const lastRow = page[page.length - 1];
+  const nextCursor = hasMore && lastRow ? `${lastRow.createdAt}|${lastRow.id}` : undefined;
+
+  return { messages: page, hasMore, nextCursor };
 }
 
 /**
