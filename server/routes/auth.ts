@@ -128,7 +128,7 @@ function setRefreshCookie(res: Response, token: string, maxAgeSecs: number): voi
     httpOnly: true,
     secure: config.COOKIE_SECURE,
     sameSite: 'lax',
-    path: '/api/auth/refresh',
+    path: '/api/v1/auth/refresh',
     maxAge: maxAgeSecs * 1000,
     ...(config.COOKIE_DOMAIN ? { domain: config.COOKIE_DOMAIN } : {}),
   });
@@ -139,7 +139,7 @@ function clearRefreshCookie(res: Response): void {
     httpOnly: true,
     secure: config.COOKIE_SECURE,
     sameSite: 'lax',
-    path: '/api/auth/refresh',
+    path: '/api/v1/auth/refresh',
     ...(config.COOKIE_DOMAIN ? { domain: config.COOKIE_DOMAIN } : {}),
   });
 }

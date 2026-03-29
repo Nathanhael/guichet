@@ -20,35 +20,35 @@ export default function () {
     'health: DB connected': (r) => r.json('status') === 'ok',
   });
 
-  // 2. Login (local auth) — uses seeded Acme Corp admin
+  // 2. Login (local auth) — uses seeded Acme Corp admin (cookie-based auth)
   const login = http.post(
     `${BASE}/api/v1/auth/login-local`,
-    JSON.stringify({ email: 'alice@acme.com', password: 'password123' }),
+    JSON.stringify({ email: 'dirk@tessera.demo', password: 'password123' }),
     { headers: { 'Content-Type': 'application/json' } }
   );
   check(login, {
     'login: status 200': (r) => r.status === 200,
-    'login: has token': (r) => !!r.json('token'),
+    'login: has user': (r) => !!r.json('user'),
   });
 
   if (login.status === 200) {
-    const token = login.json('token');
-    const authHeaders = {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    };
+    // Cookies are automatically sent by k6 cookie jar
 
     // 3. tRPC: fetch ticket list (requires partnerId input)
-    const input = encodeURIComponent(JSON.stringify({ partnerId: 'acme-corp' }));
-    const tickets = http.get(`${BASE}/api/v1/trpc/ticket.list?input=${input}`, authHeaders);
+    const input = encodeURIComponent(JSON.stringify({ partnerId: 'tessera-main' }));
+    const tickets = http.get(`${BASE}/api/v1/trpc/ticket.list?input=${input}`);
     check(tickets, {
       'tickets: status 200': (r) => r.status === 200,
     });
 
-    // 4. Authenticated health — confirms token is valid
-    const authedHealth = http.get(`${BASE}/api/v1/health`, authHeaders);
+    // 4. Refresh token rotation
+    const refresh = http.post(`${BASE}/api/v1/auth/refresh`, null);
+    check(refresh, {
+      'refresh: status 200': (r) => r.status === 200,
+    });
+
+    // 5. Authenticated health — confirms cookie auth works
+    const authedHealth = http.get(`${BASE}/api/v1/health`);
     check(authedHealth, {
       'authed health: status 200': (r) => r.status === 200,
     });
