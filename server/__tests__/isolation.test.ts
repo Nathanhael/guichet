@@ -49,6 +49,27 @@ vi.mock('../db.js', () => ({
   transaction: transactionMock,
 }));
 
+// ---- userQueries mocks ----
+const findUserByIdMock = vi.fn();
+const findMembershipMock = vi.fn();
+const findSenderInfoMock = vi.fn();
+const findUserNameMock = vi.fn();
+const findTargetSupportMock = vi.fn();
+
+vi.mock('../services/userQueries.js', () => ({
+  findUserById: findUserByIdMock,
+  findMembership: findMembershipMock,
+  findSenderInfo: findSenderInfoMock,
+  findUserName: findUserNameMock,
+  findTargetSupport: findTargetSupportMock,
+}));
+
+const findPartnerConfigMock = vi.fn();
+
+vi.mock('../services/partnerQueries.js', () => ({
+  findPartnerConfig: findPartnerConfigMock,
+}));
+
 vi.mock('../config.js', () => ({
   default: {
     JWT_SECRET: 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
@@ -141,6 +162,12 @@ describe('multi-tenant isolation — socket handlers', () => {
     queryMock.mockReset();
     getMock.mockReset();
     runMock.mockReset();
+    findUserByIdMock.mockReset();
+    findMembershipMock.mockReset();
+    findSenderInfoMock.mockReset();
+    findUserNameMock.mockReset();
+    findTargetSupportMock.mockReset();
+    findPartnerConfigMock.mockReset();
     selectQueue.length = 0;
     insertValuesMock.mockReset();
     insertValuesMock.mockResolvedValue(undefined);
@@ -282,9 +309,8 @@ describe('multi-tenant isolation — socket handlers', () => {
     const identifyHandler = getHandler(socket, 'socket:identify');
 
     // User exists but has no membership for this partner
-    getMock
-      .mockResolvedValueOnce({ name: 'User 1', isPlatformOperator: false }) // user lookup
-      .mockResolvedValueOnce(undefined); // no membership
+    findUserByIdMock.mockResolvedValueOnce({ name: 'User 1', isPlatformOperator: false }); // user lookup
+    findMembershipMock.mockResolvedValueOnce(undefined); // no membership
 
     await identifyHandler({ partnerId: 'partner-X' });
 

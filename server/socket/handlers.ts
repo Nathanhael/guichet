@@ -12,6 +12,8 @@ import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics
 import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
+import { findPartnerConfig } from '../services/partnerQueries.js';
+import { findUserById, findMembership, findSenderInfo, findUserName, findTargetSupport } from '../services/userQueries.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 import { runSyncGuards, guardRepetition } from '../services/guards.js';
 import { getRedisClients } from '../utils/redis.js';
@@ -324,7 +326,7 @@ export function registerSocketHandlers(io: Server) {
 
       try {
         // Look up the user's name from the DB (don't trust client-supplied name)
-        const userRow = await get('SELECT name, is_platform_operator FROM users WHERE id = $1', [userId]) as { name: string; isPlatformOperator: boolean } | undefined;
+        const userRow = await findUserById(userId);
         if (!userRow) {
           socket.emit('error', { message: 'User not found' });
           socket.disconnect();
@@ -333,7 +335,7 @@ export function registerSocketHandlers(io: Server) {
         const name = userRow.name || userId;
 
         // Validate that user has a membership for the requested partner
-        const membership = await get('SELECT role FROM memberships WHERE user_id = $1 AND partner_id = $2', [userId, partnerId]) as { role: string } | undefined;
+        const membership = await findMembership(userId, partnerId);
         let effectiveRole: UserRole;
         if (!membership) {
           // No membership — check if user is a platform operator
@@ -395,17 +397,17 @@ export function registerSocketHandlers(io: Server) {
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       const partnerId = socket.data.partnerId;
-      const partnerRow = partnerId ? await get('SELECT status, business_hours_schedule, business_hours_start, business_hours_end, business_hours_timezone, sla_config FROM partners WHERE id = $1', [partnerId]) as { status: string; business_hours_schedule: unknown; business_hours_start: string | null; business_hours_end: string | null; business_hours_timezone: string | null; sla_config: unknown } | undefined : null;
+      const partnerRow = partnerId ? await findPartnerConfig(partnerId) : null;
       
       if (partnerRow && partnerRow.status !== 'active') {
         return socket.emit('error', { message: 'Partner is currently inactive.' });
       }
 
       const partnerHours = partnerRow ? {
-        businessHoursSchedule: partnerRow.business_hours_schedule as BusinessHoursSchedule | null,
-        businessHoursStart: partnerRow.business_hours_start,
-        businessHoursEnd: partnerRow.business_hours_end,
-        businessHoursTimezone: partnerRow.business_hours_timezone,
+        businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null,
+        businessHoursStart: partnerRow.businessHoursStart,
+        businessHoursEnd: partnerRow.businessHoursEnd,
+        businessHoursTimezone: partnerRow.businessHoursTimezone,
       } : undefined;
 
       const businessHoursStatus = getBusinessHoursStatus(partnerHours);
@@ -442,7 +444,7 @@ export function registerSocketHandlers(io: Server) {
           }
         }
 
-        const agentUser = (await get('SELECT name FROM users WHERE id = $1', [agentId])) as unknown as User;
+        const agentUser = await findUserName(agentId);
         const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
         await run('INSERT INTO tickets (id, partner_id, dept, agent_id, agent_name, agent_lang, "references", status, created_at, participants, reopened, reopen_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)', [ticket.id, partnerId, ticket.dept, ticket.agentId, ticket.agentName, ticket.agentLang, JSON.stringify(references), ticket.status, ticket.createdAt, ticket.participants, reopened, reopenCount]);
 
@@ -679,7 +681,7 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
-        let sender = (await get('SELECT u.name, m.role, u.lang FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [senderId, ticket.partner_id])) as unknown as SenderInfo;
+        let sender = await findSenderInfo(senderId, ticket.partner_id) as SenderInfo | undefined;
 
         // CR-03 fix: Platform operators have no membership row — fall back to socket.data
         if (!sender && socket.data.authedIsPlatformOperator) {
@@ -905,7 +907,7 @@ export function registerSocketHandlers(io: Server) {
 
         if (targetSupportId) {
           // Transfer to a specific support agent
-          const targetUser = await get('SELECT u.name FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [targetSupportId, callerPartnerId]) as { name: string } | undefined;
+          const targetUser = await findTargetSupport(targetSupportId, callerPartnerId);
           if (!targetUser) return socket.emit('error', { message: 'Target user not found or not a member of this partner' });
 
           // HI-02 fix: Update ticket assignment AND participants JSONB atomically

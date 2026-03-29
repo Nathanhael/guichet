@@ -43,6 +43,28 @@ vi.mock('../utils/messageMapper.js', () => ({
   mapMessageRow: (row: any) => row,
 }));
 
+// ---- userQueries mocks ----
+const findUserByIdMock = vi.fn();
+const findMembershipMock = vi.fn();
+const findSenderInfoMock = vi.fn();
+const findUserNameMock = vi.fn();
+const findTargetSupportMock = vi.fn();
+
+vi.mock('../services/userQueries.js', () => ({
+  findUserById: findUserByIdMock,
+  findMembership: findMembershipMock,
+  findSenderInfo: findSenderInfoMock,
+  findUserName: findUserNameMock,
+  findTargetSupport: findTargetSupportMock,
+}));
+
+// ---- partnerQueries mocks ----
+const findPartnerConfigMock = vi.fn();
+
+vi.mock('../services/partnerQueries.js', () => ({
+  findPartnerConfig: findPartnerConfigMock,
+}));
+
 const identifyUserMock = vi.fn();
 const decrementUserCountMock = vi.fn();
 const broadcastOnlineSupportMock = vi.fn();
@@ -140,6 +162,12 @@ describe('registerSocketHandlers', () => {
     getMock.mockReset();
     runMock.mockReset();
     transactionMock.mockReset();
+    findUserByIdMock.mockReset();
+    findMembershipMock.mockReset();
+    findSenderInfoMock.mockReset();
+    findUserNameMock.mockReset();
+    findTargetSupportMock.mockReset();
+    findPartnerConfigMock.mockReset();
     identifyUserMock.mockReset();
     decrementUserCountMock.mockReset();
     broadcastOnlineSupportMock.mockReset();
@@ -219,7 +247,7 @@ describe('socket:identify', () => {
   }
 
   it('emits error and disconnects when user not found in DB', async () => {
-    getMock.mockResolvedValueOnce(undefined); // user lookup returns nothing
+    findUserByIdMock.mockResolvedValueOnce(undefined); // user lookup returns nothing
 
     const { socket, identifyHandler } = await setupIdentify();
     await identifyHandler({ partnerId: 'partner-1' });
@@ -229,9 +257,8 @@ describe('socket:identify', () => {
   });
 
   it('emits error when non-platform user lacks membership', async () => {
-    getMock
-      .mockResolvedValueOnce({ name: 'Test User', isPlatformOperator: false }) // user lookup
-      .mockResolvedValueOnce(undefined); // membership lookup
+    findUserByIdMock.mockResolvedValueOnce({ name: 'Test User', isPlatformOperator: false }); // user lookup
+    findMembershipMock.mockResolvedValueOnce(undefined); // membership lookup
 
     const { socket, identifyHandler } = await setupIdentify();
     await identifyHandler({ partnerId: 'partner-1' });
@@ -241,9 +268,8 @@ describe('socket:identify', () => {
   });
 
   it('identifies successfully with valid membership', async () => {
-    getMock
-      .mockResolvedValueOnce({ name: 'Test User', isPlatformOperator: false }) // user lookup
-      .mockResolvedValueOnce({ role: 'support' }); // membership lookup
+    findUserByIdMock.mockResolvedValueOnce({ name: 'Test User', isPlatformOperator: false }); // user lookup
+    findMembershipMock.mockResolvedValueOnce({ role: 'support' }); // membership lookup
     queryMock.mockResolvedValueOnce([]); // active tickets
 
     const { socket, identifyHandler } = await setupIdentify();
@@ -271,9 +297,8 @@ describe('socket:identify', () => {
     io._connectionHandlers[0](socket);
     const identifyHandler = socket.on.mock.calls.find((c: any[]) => c[0] === 'socket:identify')?.[1];
 
-    getMock
-      .mockResolvedValueOnce({ name: 'Platform Admin', isPlatformOperator: true }) // user lookup
-      .mockResolvedValueOnce(undefined); // no membership
+    findUserByIdMock.mockResolvedValueOnce({ name: 'Platform Admin', isPlatformOperator: true }); // user lookup
+    findMembershipMock.mockResolvedValueOnce(undefined); // no membership
     queryMock.mockResolvedValueOnce([]); // active tickets
 
     await identifyHandler({ partnerId: 'partner-1' });
@@ -361,6 +386,12 @@ describe('message:send', () => {
     getMock.mockReset();
     runMock.mockReset();
     transactionMock.mockReset();
+    findUserByIdMock.mockReset();
+    findMembershipMock.mockReset();
+    findSenderInfoMock.mockReset();
+    findUserNameMock.mockReset();
+    findTargetSupportMock.mockReset();
+    findPartnerConfigMock.mockReset();
     identifyUserMock.mockReset();
     decrementUserCountMock.mockReset();
     broadcastOnlineSupportMock.mockReset();
@@ -440,7 +471,7 @@ describe('message:send', () => {
     // Ticket belongs to the same partner
     getMock.mockResolvedValueOnce({ status: 'open', partner_id: 'partner-A' });
     // Sender lookup returns user with membership
-    getMock.mockResolvedValueOnce({ name: 'Support Agent', role: 'support', lang: 'en' });
+    findSenderInfoMock.mockResolvedValueOnce({ name: 'Support Agent', role: 'support', lang: 'en' });
     // Message insert succeeds
     runMock.mockResolvedValueOnce(undefined);
 
