@@ -107,8 +107,8 @@ export const tickets = pgTable('tickets', {
   participants: jsonb('participants').$type<Array<{ id: string; name: string; role?: string; lang?: string }>>().default([]),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
-  slaResponseDueAt: text('sla_response_due_at'),
-  slaResolutionDueAt: text('sla_resolution_due_at'),
+  slaResponseDueAt: timestamp('sla_response_due_at', { mode: 'string' }),
+  slaResolutionDueAt: timestamp('sla_resolution_due_at', { mode: 'string' }),
   slaBreached: boolean('sla_breached').default(false),
 }, (table) => ({
   partnerIdIdx: index('idx_tickets_partner_id').on(table.partnerId),

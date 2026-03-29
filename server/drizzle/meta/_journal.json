@@ -183,6 +183,13 @@
       "when": 1776060000000,
       "tag": "0025_ratings_partner_id",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776146400000,
+      "tag": "0026_sla_timestamp_migration",
+      "breakpoints": true
     }
   ]
 }
