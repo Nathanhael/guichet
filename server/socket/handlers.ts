@@ -19,6 +19,7 @@ import { invalidateSummary } from '../services/ai/summaryCache.js';
 import { autoSummarizeOnClose } from '../services/ai/autoSummarize.js';
 import { scoreSentiment } from '../services/ai/sentiment.js';
 import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../services/sla.js';
+import { Rooms } from '../utils/rooms.js';
 
 interface TicketNewPayload {
   agentId?: string; // Deprecated — server uses socket.data.userId instead
@@ -173,19 +174,19 @@ async function getViewers(ticketId: string): Promise<Array<{ userId: string; use
 
 async function broadcastViewers(io: Server, ticketId: string) {
   const viewers = await getViewers(ticketId);
-  io.to(`ticket:${ticketId}`).emit('ticket:viewers', { ticketId, viewers });
+  io.to(Rooms.ticket(ticketId)).emit('ticket:viewers', { ticketId, viewers });
 }
 
 export function broadcastPartnerDeactivation(partnerId: string) {
   if (ioInstance) {
-    ioInstance.to(`partner:${partnerId}`).emit('partner:deactivated', { partnerId });
+    ioInstance.to(Rooms.partner(partnerId)).emit('partner:deactivated', { partnerId });
   }
 }
 
 export function broadcastUserDeactivation(userId: string) {
   if (ioInstance) {
     logger.info({ userId }, '[socket] Broadcasting user deactivation kill switch');
-    ioInstance.to(`user:${userId}`).emit('user:deactivated', { userId });
+    ioInstance.to(Rooms.user(userId)).emit('user:deactivated', { userId });
   }
 }
 
@@ -346,17 +347,17 @@ export function registerSocketHandlers(io: Server) {
         await presenceService.identifyUser(userId, effectiveRole, name, partnerId, !!socket.data.authedIsPlatformOperator);
 
         // Join partner-wide room (for events all users need: partner:deactivated, hours:closed, etc.)
-        socket.join(`partner:${partnerId}`);
+        socket.join(Rooms.partner(partnerId));
 
         // Staff (support/admin/platform) get a separate room for ticket-level broadcasts.
         // Agents must NOT receive other users' ticket data — they only see their own via ticket:created:self.
         if (socket.data.isSupport) {
-          socket.join(`partner:${partnerId}:staff`);
+          socket.join(Rooms.staff(partnerId));
           await presenceService.broadcastOnlineSupport(partnerId);
         }
 
         // Join private user room for individual kill switches
-        socket.join(`user:${userId}`);
+        socket.join(Rooms.user(userId));
 
         if (effectiveRole === 'agent') {
           broadcastAgentStatus(userId, true);
@@ -370,7 +371,7 @@ export function registerSocketHandlers(io: Server) {
           } else if (socket.data.isSupport) {
             activeTickets = await query("SELECT id FROM tickets WHERE (support_id = $1 OR participants::jsonb @> $3::jsonb) AND partner_id = $2 AND status != 'closed'", [userId, partnerId, JSON.stringify([{ id: userId }])]) as { id: string }[];
           }
-          for (const t of activeTickets) socket.join(`ticket:${t.id}`);
+          for (const t of activeTickets) socket.join(Rooms.ticket(t.id));
         } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[socket:identify] failed to rejoin ticket rooms'); }
       } catch (err) {
         logger.error({ err: err instanceof Error ? err.message : String(err), socketId: socket.id }, '[socket] identify failed');
@@ -474,10 +475,10 @@ export function registerSocketHandlers(io: Server) {
         await run('UPDATE tickets SET sla_response_due_at = $1, sla_resolution_due_at = $2 WHERE id = $3', [slaResponseDueAt, slaResolutionDueAt, ticket.id]);
         const ticketWithSla = { ...ticket, slaResponseDueAt, slaResolutionDueAt, slaBreached: false };
 
-        socket.join(`ticket:${ticket.id}`);
+        socket.join(Rooms.ticket(ticket.id));
         socket.emit('ticket:created:self', { ticket: { ...ticketWithSla, participants: [], labels: [] }, message });
         // Broadcast to staff only — agents must not see other users' tickets (CR-04 socket-layer fix)
-        io.to(`partner:${partnerId}:staff`).emit('ticket:created', { ticket: { ...ticketWithSla, participants: [], labels: [] }, firstMessage: message });
+        io.to(Rooms.staff(partnerId)).emit('ticket:created', { ticket: { ...ticketWithSla, participants: [], labels: [] }, firstMessage: message });
         await broadcastQueuePositions(partnerId);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:new] error'); }
     });
@@ -528,10 +529,10 @@ export function registerSocketHandlers(io: Server) {
         // Read back updated participants for broadcast
         const updated = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as { participants: string } | undefined;
         const participants = JSON.parse(updated?.participants || '[]');
-        socket.join(`ticket:${ticketId}`);
+        socket.join(Rooms.ticket(ticketId));
         const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Parameters<typeof mapMessageRow>[0][]).map(mapMessageRow);
         socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
-        io.to(`ticket:${ticketId}`).emit('support:joined', { ticketId, supportName, participants });
+        io.to(Rooms.ticket(ticketId)).emit('support:joined', { ticketId, supportName, participants });
         await broadcastQueuePositions(callerPartnerId);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
     });
@@ -572,8 +573,8 @@ export function registerSocketHandlers(io: Server) {
 
         let participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
         await run('UPDATE tickets SET participants = $1 WHERE id = $2', [JSON.stringify(participants), ticketId]);
-        socket.leave(`ticket:${ticketId}`);
-        io.to(`ticket:${ticketId}`).emit('support:left', { ticketId, supportId, supportName, participants });
+        socket.leave(Rooms.ticket(ticketId));
+        io.to(Rooms.ticket(ticketId)).emit('support:left', { ticketId, supportId, supportName, participants });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:leave] error'); }
     });
 
@@ -607,7 +608,7 @@ export function registerSocketHandlers(io: Server) {
         const sanitizedNotes = closingNotes ? closingNotes.slice(0, 2000) : '';
         const now = new Date().toISOString();
         await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, senderName || 'System', sanitizedNotes, ticketId]);
-        io.to(`ticket:${ticketId}`).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System' });
+        io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System' });
         await broadcastQueuePositions(ticket.partner_id);
 
         // Fire-and-forget AI auto-summarize
@@ -647,7 +648,7 @@ export function registerSocketHandlers(io: Server) {
           'INSERT INTO ratings (id, ticket_id, agent_id, support_id, partner_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (ticket_id) DO NOTHING',
           [id, ticketId, agentId, supportId, socket.data.partnerId, intRating, safeComment]
         );
-        io.to(`ticket:${ticketId}`).emit('rating:submitted', { ticketId, agentId, supportId, rating: intRating });
+        io.to(Rooms.ticket(ticketId)).emit('rating:submitted', { ticketId, agentId, supportId, rating: intRating });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[rating:submit] error'); }
     });
 
@@ -722,14 +723,14 @@ export function registerSocketHandlers(io: Server) {
 
         if (isWhisper) {
           // CR-01: Whisper messages must only be sent to support/admin sockets, never to end-users
-          const roomSockets = await io.in(`ticket:${ticketId}`).fetchSockets();
+          const roomSockets = await io.in(Rooms.ticket(ticketId)).fetchSockets();
           for (const s of roomSockets) {
             if (s.data.isSupport) {
               s.emit('message:new', msgPayload);
             }
           }
         } else {
-          io.to(`ticket:${ticketId}`).emit('message:new', msgPayload);
+          io.to(Rooms.ticket(ticketId)).emit('message:new', msgPayload);
         }
         logger.info({ messageId, whisper: !!isWhisper }, '[message:send] Emitted message:new');
         // Invalidate cached AI summary for this ticket (fire-and-forget)
@@ -745,14 +746,14 @@ export function registerSocketHandlers(io: Server) {
     socket.on('typing:start', ({ ticketId }: { ticketId: string, senderName?: string }) => {
       if (!requireIdentified(socket)) return;
       // Only emit if socket is actually in the ticket room (i.e., is a participant)
-      if (!ticketId || !socket.rooms.has(`ticket:${ticketId}`)) return;
-      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName: socket.data.name, typing: true });
+      if (!ticketId || !socket.rooms.has(Rooms.ticket(ticketId))) return;
+      socket.to(Rooms.ticket(ticketId)).emit('typing:update', { ticketId, senderName: socket.data.name, typing: true });
     });
 
     socket.on('typing:stop', ({ ticketId }: { ticketId: string, senderName?: string }) => {
       if (!requireIdentified(socket)) return;
-      if (!ticketId || !socket.rooms.has(`ticket:${ticketId}`)) return;
-      socket.to(`ticket:${ticketId}`).emit('typing:update', { ticketId, senderName: socket.data.name, typing: false });
+      if (!ticketId || !socket.rooms.has(Rooms.ticket(ticketId))) return;
+      socket.to(Rooms.ticket(ticketId)).emit('typing:update', { ticketId, senderName: socket.data.name, typing: false });
     });
 
     socket.on('message:delivered', async ({ ticketId, messageId }: { ticketId: string, messageId: string }) => {
@@ -766,7 +767,7 @@ export function registerSocketHandlers(io: Server) {
         // Only update messages that belong to this ticket
         const now = new Date().toISOString();
         await run('UPDATE messages SET delivered_at = $1 WHERE id = $2 AND ticket_id = $3 AND delivered_at IS NULL', [now, messageId, ticketId]);
-        io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'delivered', timestamp: now });
+        io.to(Rooms.ticket(ticketId)).emit('message:status', { messageId, ticketId, status: 'delivered', timestamp: now });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delivered] error'); }
     });
 
@@ -791,7 +792,7 @@ export function registerSocketHandlers(io: Server) {
 
         // Broadcast status for each message
         for (const messageId of limitedIds) {
-          io.to(`ticket:${ticketId}`).emit('message:status', { messageId, ticketId, status: 'read', timestamp: now });
+          io.to(Rooms.ticket(ticketId)).emit('message:status', { messageId, ticketId, status: 'read', timestamp: now });
         }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:read] error'); }
     });
@@ -844,7 +845,7 @@ export function registerSocketHandlers(io: Server) {
         const now = new Date().toISOString();
         await run('UPDATE messages SET text = $1, edited_at = $2 WHERE id = $3', [guardedText, now, messageId]);
 
-        io.to(`ticket:${ticketId}`).emit('message:edited', { ticketId, messageId, text: guardedText, editedAt: now });
+        io.to(Rooms.ticket(ticketId)).emit('message:edited', { ticketId, messageId, text: guardedText, editedAt: now });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:edit] error'); }
     });
 
@@ -873,7 +874,7 @@ export function registerSocketHandlers(io: Server) {
         const now = new Date().toISOString();
         await run('UPDATE messages SET deleted_at = $1, text = $2 WHERE id = $3', [now, '', messageId]);
 
-        io.to(`ticket:${ticketId}`).emit('message:deleted', { ticketId, messageId, deletedAt: now });
+        io.to(Rooms.ticket(ticketId)).emit('message:deleted', { ticketId, messageId, deletedAt: now });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delete] error'); }
     });
 
@@ -919,12 +920,12 @@ export function registerSocketHandlers(io: Server) {
           const sysText = `Ticket transferred from ${senderName} to ${targetUser.name}`;
           await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [sysId, ticketId, '__system__', 'System', 'admin', 'en', sysText, 0, 1, now, '{}']);
 
-          io.to(`ticket:${ticketId}`).emit('message:new', { id: sysId, ticketId, senderId: '__system__', senderName: 'System', senderRole: 'admin', senderLang: 'en', text: sysText, originalText: sysText, whisper: false, system: true, timestamp: now, createdAt: now, reactions: {} });
-          io.to(`ticket:${ticketId}`).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: targetSupportId, toName: targetUser.name });
+          io.to(Rooms.ticket(ticketId)).emit('message:new', { id: sysId, ticketId, senderId: '__system__', senderName: 'System', senderRole: 'admin', senderLang: 'en', text: sysText, originalText: sysText, whisper: false, system: true, timestamp: now, createdAt: now, reactions: {} });
+          io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: targetSupportId, toName: targetUser.name });
 
           // Notify the target support agent via partner room
           // Notify staff only — agents should not receive assignment broadcasts
-          io.to(`partner:${callerPartnerId}:staff`).emit('ticket:assigned', { ticketId, supportId: targetSupportId, supportName: targetUser.name });
+          io.to(Rooms.staff(callerPartnerId)).emit('ticket:assigned', { ticketId, supportId: targetSupportId, supportName: targetUser.name });
         } else {
           // Return to queue — unassign support
           await run('UPDATE tickets SET support_id = NULL, support_name = NULL, status = $1 WHERE id = $2', ['open', ticketId]);
@@ -933,14 +934,14 @@ export function registerSocketHandlers(io: Server) {
           const sysText = `${senderName} returned ticket to queue`;
           await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [sysId, ticketId, '__system__', 'System', 'admin', 'en', sysText, 0, 1, now, '{}']);
 
-          io.to(`ticket:${ticketId}`).emit('message:new', { id: sysId, ticketId, senderId: '__system__', senderName: 'System', senderRole: 'admin', senderLang: 'en', text: sysText, originalText: sysText, whisper: false, system: true, timestamp: now, createdAt: now, reactions: {} });
-          io.to(`ticket:${ticketId}`).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: null, toName: null });
+          io.to(Rooms.ticket(ticketId)).emit('message:new', { id: sysId, ticketId, senderId: '__system__', senderName: 'System', senderRole: 'admin', senderLang: 'en', text: sysText, originalText: sysText, whisper: false, system: true, timestamp: now, createdAt: now, reactions: {} });
+          io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: null, toName: null });
 
           await broadcastQueuePositions(callerPartnerId);
         }
 
         // Remove sender from the ticket room
-        socket.leave(`ticket:${ticketId}`);
+        socket.leave(Rooms.ticket(ticketId));
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:transfer] error'); }
     });
 
@@ -988,7 +989,7 @@ export function registerSocketHandlers(io: Server) {
             await run('INSERT INTO ticket_labels (ticket_id, label_id) VALUES ($1, $2)', [ticketId, labelId]);
           }
         });
-        io.to(`ticket:${ticketId}`).emit('ticket:labels:updated', { ticketId, labels });
+        io.to(Rooms.ticket(ticketId)).emit('ticket:labels:updated', { ticketId, labels });
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err), ticketId }, '[ticket:labels:update] error');
       }
@@ -1009,8 +1010,8 @@ export function registerSocketHandlers(io: Server) {
       const userName = socket.data.name as string;
 
       // Join the socket room if not already in it
-      if (!socket.rooms.has(`ticket:${ticketId}`)) {
-        socket.join(`ticket:${ticketId}`);
+      if (!socket.rooms.has(Rooms.ticket(ticketId))) {
+        socket.join(Rooms.ticket(ticketId));
       }
 
       await addViewer(ticketId, socket.id, userId, userName);
