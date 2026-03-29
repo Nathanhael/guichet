@@ -133,7 +133,7 @@ describe('ticketQueries', () => {
       await createTicket({
         id: 't1', partnerId: 'p1', dept: 'sales', agentId: 'a1',
         agentName: 'Alice', agentLang: 'en', references: [],
-        status: 'open', createdAt: '2026-01-01', participants: '[]',
+        status: 'open', createdAt: '2026-01-01', participants: [],
         reopened: false, reopenCount: 0,
       });
       expect(db.insert).toHaveBeenCalled();
