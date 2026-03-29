@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date, jsonb, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core';
 
 // Enums
@@ -107,8 +108,8 @@ export const tickets = pgTable('tickets', {
   participants: jsonb('participants').$type<Array<{ id: string; name: string; role?: string; lang?: string }>>().default([]),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
-  slaResponseDueAt: text('sla_response_due_at'),
-  slaResolutionDueAt: text('sla_resolution_due_at'),
+  slaResponseDueAt: timestamp('sla_response_due_at', { mode: 'string' }),
+  slaResolutionDueAt: timestamp('sla_resolution_due_at', { mode: 'string' }),
   slaBreached: boolean('sla_breached').default(false),
 }, (table) => ({
   partnerIdIdx: index('idx_tickets_partner_id').on(table.partnerId),
@@ -446,4 +447,20 @@ export const savedViews = pgTable('saved_views', {
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => [
   index('idx_saved_views_partner_user').on(table.partnerId, table.userId),
+]);
+
+// ─── Refresh Tokens ─────────────────────────────────────────────────────────
+
+export const refreshTokens = pgTable('refresh_tokens', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  tokenHash: text('token_hash').notNull(),
+  family: text('family').notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
+  revokedAt: timestamp('revoked_at', { mode: 'string' }),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => [
+  index('idx_refresh_tokens_user').on(table.userId),
+  index('idx_refresh_tokens_family').on(table.family),
+  uniqueIndex('idx_refresh_tokens_hash').on(table.tokenHash),
 ]);
