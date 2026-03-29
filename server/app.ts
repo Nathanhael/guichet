@@ -330,6 +330,25 @@ setTimeout(() => {
 }, purgeJitterMs);
 logger.info({ purgeJitterMin: Math.round(purgeJitterMs / 60000) }, '[GDPR] Purge scheduled with jitter');
 
+// Refresh token cleanup — runs every 6 hours to prevent unbounded table growth (SEC-7)
+const TOKEN_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
+setTimeout(async () => {
+  try {
+    const cleaned = await cleanupExpiredTokens();
+    if (cleaned > 0) logger.info({ cleaned }, '[auth] Expired refresh tokens cleaned up');
+  } catch (err) {
+    logger.warn({ err }, '[auth] Refresh token cleanup failed (non-fatal)');
+  }
+  setInterval(async () => {
+    try {
+      const cleaned = await cleanupExpiredTokens();
+      if (cleaned > 0) logger.info({ cleaned }, '[auth] Expired refresh tokens cleaned up');
+    } catch (err) {
+      logger.warn({ err }, '[auth] Refresh token cleanup failed (non-fatal)');
+    }
+  }, TOKEN_CLEANUP_INTERVAL_MS);
+}, Math.floor(Math.random() * 30 * 60 * 1000)); // 0-30min startup jitter
+
 // Socket.IO handlers
 registerSocketHandlers(io);
 

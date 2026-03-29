@@ -97,8 +97,16 @@ export async function revokeAllUserRefreshTokens(userId: string): Promise<void> 
     ));
 }
 
-export async function cleanupExpiredTokens(): Promise<void> {
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  await db.delete(refreshTokens)
+export async function cleanupExpiredTokens(): Promise<number> {
+  // Grace period: keep expired tokens for 7 days after their expiry
+  // to allow reuse detection to function. Then delete.
+  const graceDays = 7;
+  const expirySeconds = parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY);
+  const cutoffMs = (expirySeconds * 1000) + (graceDays * 24 * 60 * 60 * 1000);
+  const cutoff = new Date(Date.now() - cutoffMs).toISOString();
+
+  const result = await db.delete(refreshTokens)
     .where(lt(refreshTokens.expiresAt, cutoff));
+
+  return Array.isArray(result) ? result.length : 0;
 }
