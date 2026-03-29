@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { eq, and, isNull, lt } from 'drizzle-orm';
-import { db } from '../db.js';
+import { db, transaction } from '../db.js';
 import { refreshTokens } from '../db/schema.js';
 import config from '../config.js';
 import { parseExpiryToSeconds } from './authSession.js';
@@ -58,20 +58,22 @@ export async function rotateRefreshToken(oldToken: string): Promise<{ token: str
     return null;
   }
 
-  // Revoke old token
-  await db.update(refreshTokens)
-    .set({ revokedAt: new Date().toISOString() })
-    .where(eq(refreshTokens.id, existing.id));
-
-  // Issue new token in same family
+  // Generate new token values before entering the transaction (no DB access needed)
   const newToken = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY) * 1000).toISOString();
 
-  await db.insert(refreshTokens).values({
-    userId: existing.userId,
-    tokenHash: hashToken(newToken),
-    family: existing.family,
-    expiresAt,
+  // Atomically revoke old token and issue new one — prevents crash-between-ops lockout
+  await transaction(async (tx) => {
+    await tx.update(refreshTokens)
+      .set({ revokedAt: new Date().toISOString() })
+      .where(eq(refreshTokens.id, existing.id));
+
+    await tx.insert(refreshTokens).values({
+      userId: existing.userId,
+      tokenHash: hashToken(newToken),
+      family: existing.family,
+      expiresAt,
+    });
   });
 
   return { token: newToken, userId: existing.userId, family: existing.family, expiresAt };
