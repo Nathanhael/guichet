@@ -299,6 +299,15 @@ router.post('/reset-password', [
             return res.status(400).json({ error: 'Invalid or expired reset token' });
         }
 
+        // Lockout check — prevents TOTP brute-force via reset token
+        const lockout = checkLockout(user);
+        if (lockout.locked) {
+            const retryMins = Math.ceil((lockout.retryAfterMs || 0) / 60000);
+            return res.status(423).json({
+                error: `Account locked. Try again in ${retryMins} minute(s).`,
+            });
+        }
+
         // MFA verification: if user has MFA enabled, require TOTP code for password reset
         if (user.mfaEnabledAt) {
             if (!totpCode) {
