@@ -32,7 +32,7 @@ import { Ticket, UserRole } from '../types/index.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
-import { requirePartnerScope } from './partnerScope.js';
+import { requirePartnerScope, requirePartnerScopeWith } from './partnerScope.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { findPartnerConfig } from '../services/partnerQueries.js';
 import { findUserById, findMembership, findSenderInfo, findUserName, findTargetSupport } from '../services/userQueries.js';
@@ -542,13 +542,8 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Not authorized to join tickets' });
         }
 
-        const ticket = await findTicketForJoin(ticketId);
+        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForJoin);
         if (!ticket) return;
-
-        // Tenant isolation: ticket must belong to caller's partner
-        if (ticket.partnerId !== callerPartnerId) {
-          return socket.emit('error', { message: 'Not authorized for this ticket' });
-        }
 
         // HI-01 fix: Prevent joining closed tickets — this would silently re-open them
         if (ticket.status === 'closed') {
@@ -612,13 +607,8 @@ export function registerSocketHandlers(io: Server) {
         const supportId = socket.data.userId;
         const supportName = socket.data.name;
 
-        const ticket = await findTicketParticipants(ticketId);
+        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketParticipants);
         if (!ticket) return;
-
-        // Tenant isolation
-        if (ticket.partnerId !== socket.data.partnerId) {
-          return socket.emit('error', { message: 'Not authorized for this ticket' });
-        }
 
         // Verify caller is actually a participant in this ticket
         const currentParticipants: Participant[] = (ticket.participants as unknown as Participant[]) || [];
@@ -647,13 +637,8 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Only support staff can close tickets' });
         }
 
-        const ticket = await findTicketForClose(ticketId);
+        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForClose);
         if (!ticket) return;
-
-        // Tenant isolation: ticket must belong to caller's partner
-        if (ticket.partnerId !== socket.data.partnerId) {
-          return socket.emit('error', { message: 'Not authorized for this ticket' });
-        }
 
         if (ticket.status === 'closed') {
           return; // Already closed
@@ -712,14 +697,9 @@ export function registerSocketHandlers(io: Server) {
         logger.info({ ticketId, senderId }, '[message:send] Received');
         if (!ticketId || !text) return;
         if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
-        const ticket = await findTicketForMessage(ticketId);
+        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForMessage);
         logger.info({ ticketFound: !!ticket, status: ticket?.status }, '[message:send] Ticket lookup');
         if (!ticket || ticket.status === 'closed') return;
-
-        // Tenant isolation: ticket must belong to caller's partner
-        if (ticket.partnerId !== socket.data.partnerId) {
-          return socket.emit('error', { message: 'Not authorized for this ticket' });
-        }
 
         let sender = await findSenderInfo(senderId, ticket.partnerId) as SenderInfo | undefined;
 
@@ -939,9 +919,8 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Only support staff can transfer tickets' });
         }
 
-        const ticket = await findTicketForTransfer(ticketId);
-        if (!ticket) return socket.emit('error', { message: 'Ticket not found' });
-        if (ticket.partnerId !== callerPartnerId) return socket.emit('error', { message: 'Not authorized' });
+        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForTransfer);
+        if (!ticket) return;
 
         if (targetSupportId) {
           // Transfer to a specific support agent

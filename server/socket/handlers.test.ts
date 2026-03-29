@@ -526,7 +526,7 @@ describe('message:send', () => {
     await messageSendHandler({ ticketId: 'ticket-99', text: 'cross-tenant message' });
 
     expect(socket.emit).toHaveBeenCalledWith('error', {
-      message: 'Not authorized for this ticket',
+      message: 'Not authorized',
     });
   });
 
