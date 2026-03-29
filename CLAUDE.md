@@ -200,6 +200,19 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - **PWA**: Progressive Web App with `manifest.json`, `sw.js`, and icons for mobile installation.
 - **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users). Toggle UI in security modal.
 
+## Production Hardening
+
+`config.ts` enforces safety checks when `NODE_ENV=production`. Dev is unaffected.
+
+| Check | Level | Behavior |
+|---|---|---|
+| `CORS_ORIGIN` contains `localhost` | FATAL | Server exits |
+| `FRONTEND_URL` contains `localhost` | FATAL | Server exits |
+| `COOKIE_SECURE=false` | FATAL | Server exits |
+| `DISABLE_RATE_LIMIT=true` | FATAL | Server exits |
+| `REDIS_URL` without auth | WARN | Logs warning |
+| `REQUIRE_PLATFORM_STEP_UP=false` | WARN | Logs warning |
+
 ## Critical Mandates
 
 - **BRUTALIST TOKENS**: Use CSS custom property design tokens from index.css. No inline colors, no gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements).
