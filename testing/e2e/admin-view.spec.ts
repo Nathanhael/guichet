@@ -15,32 +15,38 @@ const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const DEMO_PASSWORD = 'password123';
 
 async function loginAsDemo(page: Page, userId: string) {
-  // Must navigate first so localStorage is accessible (same-origin)
   await page.goto(BASE);
   await page.waitForLoadState('load');
-  const res = await page.request.post(`${BASE}/api/v1/auth/login`, {
-    data: { id: userId, password: DEMO_PASSWORD },
-    failOnStatusCode: false,
-  });
-  if (!res.ok()) {
-    console.error(`[loginAsDemo] Login API failed for ${userId}: ${res.status()} ${res.statusText()}`);
-    return res;
+
+  const data = await page.evaluate(async ({ uid, pw }) => {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: uid, password: pw }),
+    });
+    if (!res.ok) return { ok: false, status: res.status };
+    const json = await res.json();
+    return { ok: true, ...json };
+  }, { uid: userId, pw: DEMO_PASSWORD });
+
+  if (!data.ok) {
+    console.error(`[loginAsDemo] Login API failed for ${userId}: ${data.status}`);
+    return data;
   }
-  const data = await res.json();
-  // Set auth state using the same keys the Zustand store reads
-  await page.evaluate(({ token, user, memberships }) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('memberships', JSON.stringify(memberships));
+
+  await page.evaluate(({ user, memberships }) => {
+    sessionStorage.setItem('user', JSON.stringify(user));
+    sessionStorage.setItem('memberships', JSON.stringify(memberships));
     if (memberships?.length > 0) {
-      localStorage.setItem('activeMembershipId', memberships[0].id);
-      localStorage.setItem('activePartnerId', memberships[0].partnerId);
+      sessionStorage.setItem('activeMembershipId', memberships[0].id);
+      sessionStorage.setItem('activePartnerId', memberships[0].partnerId);
     }
   }, data);
-  // Reload so the Zustand store reads the new auth state from localStorage
+
   await page.reload();
   await page.waitForLoadState('load');
-  return res;
+  return data;
 }
 
 test.describe('Admin Dashboard', () => {

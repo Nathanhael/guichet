@@ -5,71 +5,86 @@ import * as fs from 'fs';
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const DEMO_PASSWORD = 'password123';
 
-/** Login helper with workspace bypass, language override and session fix */
+/** Login helper using browser fetch so cookies land in the browser's cookie jar */
 async function loginAsDemo(page: Page, userId: string) {
   await page.goto(BASE);
   await page.waitForLoadState('load');
-  const res = await page.request.post(`${BASE}/api/v1/auth/login`, {
-    data: { id: userId, password: DEMO_PASSWORD },
-    failOnStatusCode: false,
-  });
-  if (!res.ok()) return res;
-  const data = await res.json();
 
-  // Set session cookie to bypass the 'isSessionExpired' check in authSlice.ts
-  const expiry = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
-  await page.context().addCookies([{
-    name: 'session_expires',
-    value: expiry.toString(),
-    path: '/',
-    domain: new URL(BASE).hostname
-  }]);
+  const data = await page.evaluate(async ({ uid, pw }) => {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: uid, password: pw }),
+    });
+    if (!res.ok) return { ok: false, status: res.status };
+    const json = await res.json();
+    return { ok: true, ...json };
+  }, { uid: userId, pw: DEMO_PASSWORD });
+
+  if (!data.ok) return data;
 
   await page.evaluate(({ user, memberships, uid }) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('memberships', JSON.stringify(memberships));
+    sessionStorage.setItem('user', JSON.stringify(user));
+    sessionStorage.setItem('memberships', JSON.stringify(memberships));
     if (memberships?.length > 0) {
-      localStorage.setItem('activeMembershipId', memberships[0].id);
-      localStorage.setItem('activePartnerId', memberships[0].partnerId);
+      sessionStorage.setItem('activeMembershipId', memberships[0].id);
+      sessionStorage.setItem('activePartnerId', memberships[0].partnerId);
     }
-    // Language override
-    const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    // Language override for demo
+    const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}');
     if (uid === 'agent_jan') storedUser.lang = 'nl';
     if (uid === 'expert_alex') storedUser.lang = 'fr';
-    localStorage.setItem('user', JSON.stringify(storedUser));
+    sessionStorage.setItem('user', JSON.stringify(storedUser));
   }, { ...data, uid: userId });
 
   await page.reload();
   await page.waitForLoadState('networkidle');
-  return res;
+  return data;
 }
 
 /** Enable AI features via platform API */
 async function enableAiFeatures(page: Page) {
-  const res = await page.request.post(`${BASE}/api/v1/auth/login`, {
-    data: { id: 'platform_bart', password: DEMO_PASSWORD },
-    failOnStatusCode: false,
-  });
-  if (!res.ok()) return false;
+  // Navigate first so relative fetch URLs work (page may be about:blank)
+  await page.goto(BASE);
+  await page.waitForLoadState('load');
 
-  const updateRes = await page.request.post(`${BASE}/api/v1/trpc/platform.updatePartner`, {
-    data: {
-      id: 'tessera-main',
-      data: {
-        aiEnabled: true,
-        aiFeatures: {
-          messageImprovement: 'optional',
-          chatSummarization: true,
-          translation: true,
-          sentimentDetection: true,
-          autoSummarizeOnClose: true,
+  // Login as platform operator first
+  const loginData = await page.evaluate(async ({ pw }) => {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: 'platform_bart', password: pw }),
+    });
+    return { ok: res.ok };
+  }, { pw: DEMO_PASSWORD });
+
+  if (!loginData.ok) return false;
+
+  const updateData = await page.evaluate(async () => {
+    const res = await fetch('/api/v1/trpc/platform.updatePartner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        id: 'tessera-main',
+        data: {
+          aiEnabled: true,
+          aiFeatures: {
+            messageImprovement: 'optional',
+            chatSummarization: true,
+            translation: true,
+            sentimentDetection: true,
+            autoSummarizeOnClose: true,
+          },
         },
-      },
-    },
-    failOnStatusCode: false,
+      }),
+    });
+    return { ok: res.ok };
   });
 
-  return updateRes.ok();
+  return updateData.ok;
 }
 
 /** Intercept tRPC AI calls for the seamless demo */
@@ -86,7 +101,7 @@ async function mockAiResponses(page: Page) {
           result: { data: { improved: 'Hallo Alex, ik heb geen signaal meer op de televisie. De decoder reageert niet en er branden geen lampjes. Kun je controleren of er een algemene storing is in mijn regio?' } },
         }),
       });
-    } 
+    }
     // 2. Message Improvement (Support - French to Step-by-Step)
     else if (url.includes('ai.improveMessage') && (url.includes('role=support') || url.includes('%22role%22%3A%22support%22'))) {
       await route.fulfill({
@@ -124,6 +139,9 @@ async function mockAiResponses(page: Page) {
 }
 
 test('record seamless language-agnostic chat demo', async ({ browser }) => {
+  // This demo records a video of the chat flow — requires business hours open, AI enabled,
+  // and seeded data. Run manually with: E2E_CHAT_DEMO=1 npx playwright test chat-demo
+  test.skip(!process.env.E2E_CHAT_DEMO, 'Set E2E_CHAT_DEMO=1 to run this recording demo');
   test.setTimeout(120000);
   const videoDir = path.resolve('docs', 'videos');
   if (!fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
@@ -169,12 +187,12 @@ test('record seamless language-agnostic chat demo', async ({ browser }) => {
   }
 
   const agentTextArea = agentPage.locator('textarea').first();
-  await agentTextArea.type('hey alex de tv is dood geen lampjes op de box en m’n match begint zo kun je checken of het stuk is?', { delay: 50 });
+  await agentTextArea.type('hey alex de tv is dood geen lampjes op de box en m\'n match begint zo kun je checken of het stuk is?', { delay: 50 });
   await agentPage.waitForTimeout(1500);
 
   const agentImproveBtn = agentPage.locator('button[aria-label="Improve message"]');
   await agentImproveBtn.click();
-  await agentPage.waitForTimeout(3000); 
+  await agentPage.waitForTimeout(3000);
   await agentPage.keyboard.press('Enter');
   await agentPage.waitForTimeout(1000);
 
@@ -184,7 +202,7 @@ test('record seamless language-agnostic chat demo', async ({ browser }) => {
   await supportPage.waitForTimeout(4000); // Wait for translation to load
 
   const supportTextArea = supportPage.locator('textarea').first();
-  await supportTextArea.type('Je m’en occupe. Je vais vous donner des étapes pour relancer le boîtier.', { delay: 50 });
+  await supportTextArea.type('Je m\'en occupe. Je vais vous donner des étapes pour relancer le boîtier.', { delay: 50 });
   await supportPage.waitForTimeout(1500);
 
   const supportImproveBtn = supportPage.locator('button[aria-label="Improve message"]');
@@ -195,7 +213,7 @@ test('record seamless language-agnostic chat demo', async ({ browser }) => {
 
   // --- ACT 3: Agent Sees Dutch Step-by-Step ---
 
-  await agentPage.waitForTimeout(4000); 
+  await agentPage.waitForTimeout(4000);
   // Wait for the specific Dutch translation to appear
   await expect(agentPage.getByText("Ik begrijp de urgentie").first()).toBeVisible({ timeout: 10000 });
   await agentPage.waitForTimeout(3000);

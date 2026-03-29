@@ -23,58 +23,80 @@ const DEMO_PASSWORD = 'password123';
 async function loginAsDemo(page: Page, userId: string) {
   await page.goto(BASE);
   await page.waitForLoadState('load');
-  const res = await page.request.post(`${BASE}/api/v1/auth/login`, {
-    data: { id: userId, password: DEMO_PASSWORD },
-    failOnStatusCode: false,
-  });
-  if (!res.ok()) {
-    console.error(`[loginAsDemo] Login API failed for ${userId}: ${res.status()}`);
-    return res;
+
+  const data = await page.evaluate(async ({ uid, pw }) => {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: uid, password: pw }),
+    });
+    if (!res.ok) return { ok: false, status: res.status };
+    const json = await res.json();
+    return { ok: true, ...json };
+  }, { uid: userId, pw: DEMO_PASSWORD });
+
+  if (!data.ok) {
+    console.error(`[loginAsDemo] Login API failed for ${userId}: ${data.status}`);
+    return data;
   }
-  const data = await res.json();
+
   await page.evaluate(({ user, memberships }) => {
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('memberships', JSON.stringify(memberships));
+    sessionStorage.setItem('user', JSON.stringify(user));
+    sessionStorage.setItem('memberships', JSON.stringify(memberships));
     if (memberships?.length > 0) {
-      localStorage.setItem('activeMembershipId', memberships[0].id);
-      localStorage.setItem('activePartnerId', memberships[0].partnerId);
+      sessionStorage.setItem('activeMembershipId', memberships[0].id);
+      sessionStorage.setItem('activePartnerId', memberships[0].partnerId);
     }
   }, data);
+
   await page.reload();
   await page.waitForLoadState('load');
-  return res;
+  return data;
 }
 
 /** Enable AI features on the default partner via platform API */
 async function enableAiFeatures(page: Page) {
-  // Login as platform operator
-  const res = await page.request.post(`${BASE}/api/v1/auth/login`, {
-    data: { id: 'platform_bart', password: DEMO_PASSWORD },
-    failOnStatusCode: false,
-  });
-  if (!res.ok()) return false;
+  await page.goto(BASE);
+  await page.waitForLoadState('load');
 
-  // Cookie is set automatically by login response — no Bearer token needed
+  // Login as platform operator
+  const loginData = await page.evaluate(async ({ pw }) => {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: 'platform_bart', password: pw }),
+    });
+    return { ok: res.ok };
+  }, { pw: DEMO_PASSWORD });
+
+  if (!loginData.ok) return false;
 
   // Enable AI on the tessera-main partner via tRPC
-  const updateRes = await page.request.post(`${BASE}/api/v1/trpc/platform.updatePartner`, {
-    data: {
-      id: 'tessera-main',
-      data: {
-        aiEnabled: true,
-        aiFeatures: {
-          messageImprovement: 'optional',
-          chatSummarization: true,
-          translation: true,
-          sentimentDetection: true,
-          autoSummarizeOnClose: true,
+  const updateData = await page.evaluate(async () => {
+    const res = await fetch('/api/v1/trpc/platform.updatePartner', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        id: 'tessera-main',
+        data: {
+          aiEnabled: true,
+          aiFeatures: {
+            messageImprovement: 'optional',
+            chatSummarization: true,
+            translation: true,
+            sentimentDetection: true,
+            autoSummarizeOnClose: true,
+          },
         },
-      },
-    },
-    failOnStatusCode: false,
+      }),
+    });
+    return { ok: res.ok };
   });
 
-  return updateRes.ok();
+  return updateData.ok;
 }
 
 /** Open the first ticket in the queue/sidebar */
@@ -158,7 +180,7 @@ function mockAiResponses(page: Page) {
 test.describe('Sprint 1: AI Provider Layer', () => {
   test('AI config endpoint responds', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     // The partner.getAiConfig endpoint should respond (even if all-off)
     const configRes = await page.request.get(
@@ -177,7 +199,7 @@ test.describe('Sprint 1: AI Provider Layer', () => {
 test.describe('Sprint 1: Per-Tenant AI Configuration', () => {
   test('platform operator can toggle AI features on a partner', async ({ page }) => {
     const res = await loginAsDemo(page, 'platform_bart');
-    test.skip(!res.ok(), 'Platform login failed');
+    test.skip(!res.ok, 'Platform login failed');
 
     // Enable AI on tessera-main
     const updateRes = await page.request.post(`${BASE}/api/v1/trpc/platform.updatePartner`, {
@@ -223,7 +245,7 @@ test.describe('Sprint 1: Per-Tenant AI Configuration', () => {
 
   test('AI features default to off for new partners', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     const configRes = await page.request.get(
       `${BASE}/api/v1/trpc/partner.getAiConfig`,
@@ -248,7 +270,7 @@ test.describe('Sprint 1: AI Message Improvement', () => {
 
   test('improve button appears when typing long text (agent)', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     const opened = await openFirstTicket(page);
@@ -273,7 +295,7 @@ test.describe('Sprint 1: AI Message Improvement', () => {
 
   test('improve button hidden with short text', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     const opened = await openFirstTicket(page);
@@ -294,7 +316,7 @@ test.describe('Sprint 1: AI Message Improvement', () => {
   test('improve button calls AI and shows revert bar (mocked)', async ({ page }) => {
     await mockAiResponses(page);
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     const opened = await openFirstTicket(page);
@@ -339,7 +361,7 @@ test.describe('Sprint 1: AI Chat Summarization', () => {
 
   test('summarize button visible for support users', async ({ page }) => {
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     const opened = await openFirstTicket(page);
@@ -357,7 +379,7 @@ test.describe('Sprint 1: AI Chat Summarization', () => {
 
   test('summarize button NOT visible for agents', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     const opened = await openFirstTicket(page);
@@ -371,7 +393,7 @@ test.describe('Sprint 1: AI Chat Summarization', () => {
   test('clicking summarize shows summary card (mocked)', async ({ page }) => {
     await mockAiResponses(page);
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     const opened = await openFirstTicket(page);
@@ -413,7 +435,7 @@ test.describe('Sprint 2: AI Translation', () => {
   test('translation UI appears on messages from different language', async ({ page }) => {
     // Login as English-speaking support (expert_alex, lang='en')
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     const opened = await openFirstTicket(page);
@@ -435,7 +457,7 @@ test.describe('Sprint 2: AI Translation', () => {
 
   test('translate API endpoint works', async ({ page }) => {
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     // Call the translate endpoint directly
     const translateRes = await page.request.post(`${BASE}/api/v1/trpc/ai.translateMessage`, {
@@ -465,7 +487,7 @@ test.describe('Sprint 2: AI Sentiment Detection', () => {
 
   test('admin dashboard shows sentiment panel', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_dirk');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(3000);
 
     // Look for sentiment panel elements
@@ -487,7 +509,7 @@ test.describe('Sprint 2: AI Sentiment Detection', () => {
   test('sentiment panels render with mocked data', async ({ page }) => {
     await mockAiResponses(page);
     const res = await loginAsDemo(page, 'admin_dirk');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(3000);
 
     // Navigate to dashboard if not already there
@@ -508,7 +530,7 @@ test.describe('Sprint 2: AI Sentiment Detection', () => {
 
   test('support queue shows sentiment dots on tickets', async ({ page }) => {
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     // Sentiment dots are small colored circles with title attributes
@@ -524,7 +546,7 @@ test.describe('Sprint 2: AI Sentiment Detection', () => {
 
   test('sentiment API endpoints respond correctly', async ({ page }) => {
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     // Test getTicketSentiments (bulk query)
     const bulkRes = await page.request.get(
@@ -559,7 +581,7 @@ test.describe('Sprint 2: AI Sentiment Detection', () => {
 test.describe('Sprint 2: AI Auto-Summarize on Close', () => {
   test('auto-summarize config is part of AI features', async ({ page }) => {
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     const configRes = await page.request.get(
       `${BASE}/api/v1/trpc/partner.getAiConfig`,
@@ -576,7 +598,7 @@ test.describe('Sprint 2: AI Auto-Summarize on Close', () => {
 
   test('closed tickets show closing notes area', async ({ page }) => {
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     // Navigate to archive tab
@@ -603,7 +625,7 @@ test.describe('Sprint 2: AI Auto-Summarize on Close', () => {
 test.describe('Sprint 2: Collision Detection', () => {
   test('single user views ticket without collision banner', async ({ page }) => {
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);
 
     const opened = await openFirstTicket(page);
@@ -626,7 +648,7 @@ test.describe('Sprint 2: Collision Detection', () => {
       // Login as two different support users
       const res1 = await loginAsDemo(page1, 'expert_alex');
       const res2 = await loginAsDemo(page2, 'expert_piet');
-      test.skip(!res1.ok() || !res2.ok(), 'Login failed for one or both users');
+      test.skip(!res1.ok || !res2.ok, 'Login failed for one or both users');
 
       await page1.waitForTimeout(2000);
       await page2.waitForTimeout(2000);
@@ -680,7 +702,7 @@ test.describe('Sprint 2: Collision Detection', () => {
     try {
       const res1 = await loginAsDemo(page1, 'expert_alex');
       const res2 = await loginAsDemo(page2, 'expert_piet');
-      test.skip(!res1.ok() || !res2.ok(), 'Login failed');
+      test.skip(!res1.ok || !res2.ok, 'Login failed');
 
       await page1.waitForTimeout(2000);
       await page2.waitForTimeout(2000);
@@ -724,7 +746,7 @@ test.describe('Sprint 2: Collision Detection', () => {
 test.describe('AI Feature Access Control', () => {
   test('agent cannot access summarize endpoint', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     // Agents should get FORBIDDEN when trying to summarize
     const summarizeRes = await page.request.post(`${BASE}/api/v1/trpc/ai.summarizeChat`, {
@@ -738,7 +760,7 @@ test.describe('AI Feature Access Control', () => {
 
   test('agent cannot access sentiment endpoints', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     const sentimentRes = await page.request.get(
       `${BASE}/api/v1/trpc/ai.getTicketSentiments`,
@@ -752,7 +774,7 @@ test.describe('AI Feature Access Control', () => {
   test('agent CAN access improve endpoint', async ({ page }) => {
     await enableAiFeatures(page);
     const res = await loginAsDemo(page, 'agent_jan');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     const improveRes = await page.request.post(`${BASE}/api/v1/trpc/ai.improveMessage`, {
       data: { text: 'This is a message that should be improved by the AI system', role: 'agent' },
@@ -768,7 +790,7 @@ test.describe('AI Feature Access Control', () => {
   test('support CAN access translate endpoint', async ({ page }) => {
     await enableAiFeatures(page);
     const res = await loginAsDemo(page, 'expert_alex');
-    test.skip(!res.ok(), 'Login failed');
+    test.skip(!res.ok, 'Login failed');
 
     const translateRes = await page.request.post(`${BASE}/api/v1/trpc/ai.translateMessage`, {
       data: { text: 'Hello world', targetLang: 'nl' },

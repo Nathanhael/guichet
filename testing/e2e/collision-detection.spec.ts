@@ -18,24 +18,33 @@ const DEMO_PASSWORD = 'password123';
 async function loginAsDemo(page: Page, userId: string) {
   await page.goto(BASE);
   await page.waitForLoadState('load');
-  const res = await page.request.post(`${BASE}/api/v1/auth/login`, {
-    data: { id: userId, password: DEMO_PASSWORD },
-    failOnStatusCode: false,
-  });
-  if (!res.ok()) return res;
-  const data = await res.json();
-  await page.evaluate(({ token, user, memberships }) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('memberships', JSON.stringify(memberships));
+
+  const data = await page.evaluate(async ({ uid, pw }) => {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id: uid, password: pw }),
+    });
+    if (!res.ok) return { ok: false, status: res.status };
+    const json = await res.json();
+    return { ok: true, ...json };
+  }, { uid: userId, pw: DEMO_PASSWORD });
+
+  if (!data.ok) return data;
+
+  await page.evaluate(({ user, memberships }) => {
+    sessionStorage.setItem('user', JSON.stringify(user));
+    sessionStorage.setItem('memberships', JSON.stringify(memberships));
     if (memberships?.length > 0) {
-      localStorage.setItem('activeMembershipId', memberships[0].id);
-      localStorage.setItem('activePartnerId', memberships[0].partnerId);
+      sessionStorage.setItem('activeMembershipId', memberships[0].id);
+      sessionStorage.setItem('activePartnerId', memberships[0].partnerId);
     }
   }, data);
+
   await page.reload();
   await page.waitForLoadState('load');
-  return res;
+  return data;
 }
 
 /** Click the first ticket in the support queue sidebar */
@@ -66,7 +75,7 @@ test.describe('Collision Detection — Real-Time', () => {
     try {
       const res1 = await loginAsDemo(page1, 'expert_alex');
       const res2 = await loginAsDemo(page2, 'expert_piet');
-      test.skip(!res1.ok() || !res2.ok(), 'Login failed for one or both users');
+      test.skip(!res1.ok || !res2.ok, 'Login failed for one or both users');
 
       await page1.waitForTimeout(2000);
       await page2.waitForTimeout(2000);
@@ -117,7 +126,7 @@ test.describe('Collision Detection — Real-Time', () => {
     try {
       const res1 = await loginAsDemo(page1, 'expert_alex');
       const res2 = await loginAsDemo(page2, 'expert_piet');
-      test.skip(!res1.ok() || !res2.ok(), 'Login failed');
+      test.skip(!res1.ok || !res2.ok, 'Login failed');
 
       await page1.waitForTimeout(2000);
       await page2.waitForTimeout(2000);
@@ -162,7 +171,7 @@ test.describe('Collision Detection — Real-Time', () => {
       // Login agent and support
       const res1 = await loginAsDemo(page1, 'agent_jan');
       const res2 = await loginAsDemo(page2, 'expert_alex');
-      test.skip(!res1.ok() || !res2.ok(), 'Login failed');
+      test.skip(!res1.ok || !res2.ok, 'Login failed');
 
       await page1.waitForTimeout(2000);
       await page2.waitForTimeout(2000);
@@ -201,7 +210,7 @@ test.describe('Collision Detection — Real-Time', () => {
     try {
       const res1 = await loginAsDemo(page1, 'expert_alex');
       const res2 = await loginAsDemo(page2, 'expert_piet');
-      test.skip(!res1.ok() || !res2.ok(), 'Login failed');
+      test.skip(!res1.ok || !res2.ok, 'Login failed');
 
       await page1.waitForTimeout(2000);
       await page2.waitForTimeout(2000);
