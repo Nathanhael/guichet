@@ -161,7 +161,6 @@ vi.mock('../services/ticketQueries.js', () => ({
 
 // ---- messageQueries mocks ----
 const insertMessageMock = vi.fn();
-const findTicketMessagesMock = vi.fn();
 const findTicketLabelIdsMock = vi.fn();
 const findMessageForEditMock = vi.fn();
 const findMessageForDeleteMock = vi.fn();
@@ -172,7 +171,6 @@ const markReadMock = vi.fn();
 
 vi.mock('../services/messageQueries.js', () => ({
   insertMessage: insertMessageMock,
-  findTicketMessages: findTicketMessagesMock,
   findTicketLabelIds: findTicketLabelIdsMock,
   findMessageForEdit: findMessageForEditMock,
   findMessageForDelete: findMessageForDeleteMock,
