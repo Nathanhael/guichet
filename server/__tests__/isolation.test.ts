@@ -226,6 +226,7 @@ describe('multi-tenant isolation — socket handlers', () => {
       name: 'Support A',
       authedUserId: 'support-1',
       tokenExp: Math.floor(Date.now() / 1000) + 3600,
+      isSupport: true,
     });
 
     io._connectionHandlers[0](socket);
