@@ -14,6 +14,17 @@ import { mapMessageRow } from '../utils/messageMapper.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { findPartnerConfig } from '../services/partnerQueries.js';
 import { findUserById, findMembership, findSenderInfo, findUserName, findTargetSupport } from '../services/userQueries.js';
+import {
+  insertMessage,
+  findTicketMessages,
+  findTicketLabelIds,
+  findMessageForEdit,
+  findMessageForDelete,
+  updateMessageText,
+  softDeleteMessage,
+  markDelivered,
+  markRead,
+} from '../services/messageQueries.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 import { runSyncGuards, guardRepetition } from '../services/guards.js';
 import { getRedisClients } from '../utils/redis.js';
@@ -72,9 +83,6 @@ interface Participant {
   name: string;
 }
 
-interface TicketLabelRow {
-  labelId: string;
-}
 
 interface SenderInfo {
   name: string;
@@ -450,28 +458,16 @@ export function registerSocketHandlers(io: Server) {
 
         let message: Message | null = null;
         if (text?.trim()) {
-          const messageId = uuidv4();
-          const now = new Date().toISOString();
-          message = { 
-            id: messageId, 
-            ticketId: ticket.id, 
-            senderId: agentId, 
-            senderName: agentUser?.name || agentId, 
-            senderRole: 'agent', 
-            senderLang: agentLang, 
-            originalText: text, 
-            improvedText: text,
-            processedText: text,
-            whisper: 0, 
-            system: 0, 
-            translationSkipped: 1,
-            fallback: 0,
-            timestamp: now, 
-            reactions: '{}' 
-          };
-          if (message) {
-            await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [message.id, message.ticketId, message.senderId, message.senderName, message.senderRole, message.senderLang, message.originalText, mediaUrl || null, 0, 0, message.timestamp, '{}']);
-          }
+          const msg = await insertMessage({
+            ticketId: ticket.id,
+            senderId: agentId,
+            senderName: agentUser?.name || agentId,
+            senderRole: 'agent',
+            senderLang: agentLang,
+            text: text,
+            mediaUrl: mediaUrl,
+          });
+          message = msg as unknown as Message;
         }
         // Calculate SLA due dates based on partner config (respects business hours if enabled)
         const slaConfig = parseSlaConfig(partnerRow?.sla_config);
@@ -541,8 +537,9 @@ export function registerSocketHandlers(io: Server) {
         const updated = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as { participants: string } | undefined;
         const participants = JSON.parse(updated?.participants || '[]');
         socket.join(Rooms.ticket(ticketId));
-        const messages = (await query('SELECT * FROM messages WHERE ticket_id = $1 ORDER BY created_at ASC', [ticketId]) as unknown as Parameters<typeof mapMessageRow>[0][]).map(mapMessageRow);
-        socket.emit('ticket:history', { ticketId, messages, labels: (await query('SELECT label_id FROM ticket_labels WHERE ticket_id = $1', [ticketId]) as unknown as TicketLabelRow[]).map((l) => l.labelId) });
+        const msgs = (await findTicketMessages(ticketId)).map(mapMessageRow);
+        const labelIds = await findTicketLabelIds(ticketId);
+        socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds });
         io.to(Rooms.ticket(ticketId)).emit('support:joined', { ticketId, supportName, participants });
         await broadcastQueuePositions(callerPartnerId);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
@@ -727,10 +724,16 @@ export function registerSocketHandlers(io: Server) {
           }
         }
 
-        const messageId = uuidv4();
-        const now = new Date().toISOString();
-        await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, media_url, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`, [messageId, ticketId, senderId, sender.name, sender.role, sender.lang, guardedText, mediaUrl || null, isWhisper ? 1 : 0, 0, now, '{}']);
-        const msgPayload = { id: messageId, ticketId, senderId, senderName: sender.name, senderRole: sender.role, senderLang: sender.lang, text: guardedText, originalText: guardedText, mediaUrl, whisper: !!isWhisper, system: false, timestamp: now, createdAt: now, reactions: {} };
+        const msgPayload = await insertMessage({
+          ticketId,
+          senderId,
+          senderName: sender.name,
+          senderRole: sender.role,
+          senderLang: sender.lang,
+          text: guardedText,
+          mediaUrl,
+          whisper: isWhisper,
+        });
 
         if (isWhisper) {
           // CR-01: Whisper messages must only be sent to support/admin sockets, never to end-users
@@ -776,8 +779,7 @@ export function registerSocketHandlers(io: Server) {
         if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
 
         // Only update messages that belong to this ticket
-        const now = new Date().toISOString();
-        await run('UPDATE messages SET delivered_at = $1 WHERE id = $2 AND ticket_id = $3 AND delivered_at IS NULL', [now, messageId, ticketId]);
+        const now = await markDelivered(messageId, ticketId);
         io.to(Rooms.ticket(ticketId)).emit('message:status', { messageId, ticketId, status: 'delivered', timestamp: now });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delivered] error'); }
     });
@@ -792,13 +794,9 @@ export function registerSocketHandlers(io: Server) {
 
         // Limit array length to prevent DoS
         const limitedIds = messageIds.slice(0, MAX_BATCH_DELETE);
-        const now = new Date().toISOString();
 
         // Batch update: scope to ticket_id for safety
-        if (limitedIds.length > 0) {
-          const placeholders = limitedIds.map((_, i) => `$${i + 3}`).join(',');
-          await run(`UPDATE messages SET read_at = $1 WHERE ticket_id = $2 AND id IN (${placeholders}) AND read_at IS NULL`, [now, ticketId, ...limitedIds]);
-        }
+        const now = await markRead(limitedIds, ticketId);
 
         // Broadcast status for each message
         for (const messageId of limitedIds) {
@@ -821,13 +819,13 @@ export function registerSocketHandlers(io: Server) {
         if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
 
         // Only allow editing own messages within 15 minutes
-        const msg = await get('SELECT sender_id, created_at, system, deleted_at FROM messages WHERE id = $1 AND ticket_id = $2', [messageId, ticketId]) as { sender_id: string; created_at: string; system: number; deleted_at: string | null } | undefined;
+        const msg = await findMessageForEdit(messageId, ticketId);
         if (!msg) return;
-        if (msg.sender_id !== senderId) return socket.emit('error', { message: 'Can only edit your own messages' });
+        if (msg.senderId !== senderId) return socket.emit('error', { message: 'Can only edit your own messages' });
         if (msg.system) return socket.emit('error', { message: 'Cannot edit system messages' });
-        if (msg.deleted_at) return socket.emit('error', { message: 'Cannot edit deleted messages' });
+        if (msg.deletedAt) return socket.emit('error', { message: 'Cannot edit deleted messages' });
 
-        const ageMs = Date.now() - new Date(msg.created_at).getTime();
+        const ageMs = Date.now() - new Date(msg.createdAt).getTime();
         if (ageMs > MAX_EDIT_WINDOW_MS) return socket.emit('error', { message: 'Edit window has expired (15 min)' });
 
         // CR-01 fix: Run content moderation guards on edited text (mirrors message:send)
@@ -851,8 +849,7 @@ export function registerSocketHandlers(io: Server) {
           logger.error({ err: guardErr instanceof Error ? guardErr.message : String(guardErr) }, '[message:edit] Repetition guard error (Redis)');
         }
 
-        const now = new Date().toISOString();
-        await run('UPDATE messages SET text = $1, edited_at = $2 WHERE id = $3', [guardedText, now, messageId]);
+        const now = await updateMessageText(messageId, guardedText);
 
         io.to(Rooms.ticket(ticketId)).emit('message:edited', { ticketId, messageId, text: guardedText, editedAt: now });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:edit] error'); }
@@ -869,19 +866,18 @@ export function registerSocketHandlers(io: Server) {
         const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
         if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
 
-        const msg = await get('SELECT sender_id, system, deleted_at FROM messages WHERE id = $1 AND ticket_id = $2', [messageId, ticketId]) as { sender_id: string; system: number; deleted_at: string | null } | undefined;
+        const msg = await findMessageForDelete(messageId, ticketId);
         if (!msg) return;
 
         // Support/admin can delete any non-system message; others only their own
         const callerRole = socket.data.role;
-        if (!socket.data.isSupport && msg.sender_id !== senderId) {
+        if (!socket.data.isSupport && msg.senderId !== senderId) {
           return socket.emit('error', { message: 'Can only delete your own messages' });
         }
         if (msg.system) return socket.emit('error', { message: 'Cannot delete system messages' });
-        if (msg.deleted_at) return; // Already deleted
+        if (msg.deletedAt) return; // Already deleted
 
-        const now = new Date().toISOString();
-        await run('UPDATE messages SET deleted_at = $1, text = $2 WHERE id = $3', [now, '', messageId]);
+        const now = await softDeleteMessage(messageId);
 
         io.to(Rooms.ticket(ticketId)).emit('message:deleted', { ticketId, messageId, deletedAt: now });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delete] error'); }
