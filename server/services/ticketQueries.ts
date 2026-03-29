@@ -196,7 +196,9 @@ export async function createTicket(data: CreateTicketData) {
 
 /**
  * Assigns support to a ticket using COALESCE for idempotency + JSONB participant update.
- * Uses raw SQL for the complex JSONB conditional append.
+ * Uses Drizzle `sql` tag for the complex JSONB conditional append.
+ * NOTE: The `::text` cast after JSONB manipulation is required because the `participants`
+ * column stores JSONB as text — PostgreSQL's text representation of JSONB is valid JSON.
  * Used by: support:join
  */
 export async function assignSupport(

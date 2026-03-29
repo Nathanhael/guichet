@@ -52,8 +52,9 @@ export async function findUserName(userId: string) {
 }
 
 /**
- * Fetches target support user name for ticket transfer validation.
- * Verifies user exists and has membership in the partner.
+ * Fetches target user name for ticket transfer validation.
+ * Verifies user exists and has a membership in the partner (any role).
+ * Role-based authorization is handled by the caller.
  * Used by: ticket:transfer
  */
 export async function findTargetSupport(userId: string, partnerId: string) {
