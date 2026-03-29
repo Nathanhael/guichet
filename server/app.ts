@@ -116,7 +116,8 @@ app.use('/api', globalLimiter);
 export const authLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: (process.env.NODE_ENV === 'test' || config.DISABLE_RATE_LIMIT) ? 999999 : 5,
-  message: { error: 'Too many authentication attempts, please try again later.' }
+  message: { error: 'Too many authentication attempts, please try again later.' },
+  skip: (req) => req.path === '/refresh',
 });
 
 const uploadLimiter = rateLimit({
