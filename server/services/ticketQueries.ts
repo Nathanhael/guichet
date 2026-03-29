@@ -168,7 +168,7 @@ export interface CreateTicketData {
   references: Array<{ label: string; value: string }>;
   status: string;
   createdAt: string;
-  participants: string;
+  participants: Array<{ id: string; name: string }>;
   reopened: boolean;
   reopenCount: number;
 }
@@ -188,7 +188,7 @@ export async function createTicket(data: CreateTicketData) {
     references: data.references,
     status: data.status as 'open',
     createdAt: data.createdAt,
-    participants: JSON.parse(data.participants),
+    participants: data.participants,
     reopened: data.reopened,
     reopenCount: data.reopenCount,
   });
