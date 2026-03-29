@@ -14,6 +14,7 @@ import { buildAuthResponse, buildAuthToken, findUserByEmail, getEnterPartnerCont
 import { canAccessPartnerContext, isPlatformAdmin } from '../services/roles.js';
 import { revokeToken, revokeUserSessions } from '../services/sessionRevocation.js';
 import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
+import { createRefreshToken, rotateRefreshToken, revokeAllUserRefreshTokens } from '../services/refreshToken.js';
 
 import { auditLog, partners, memberships, users } from '../db/schema.js';
 import { eq, and, isNull } from 'drizzle-orm';
@@ -120,6 +121,27 @@ function loginRateLimit(req: Request, res: Response, next: () => void): void {
 
 function resetPasswordRateLimit(req: Request, res: Response, next: () => void): void {
   redisRateLimit(req, res, next, 'reset-pw', AUTH_RATE_MAX_RESET);
+}
+
+function setRefreshCookie(res: Response, token: string, maxAgeSecs: number): void {
+  res.cookie('tessera_refresh', token, {
+    httpOnly: true,
+    secure: config.COOKIE_SECURE,
+    sameSite: 'lax',
+    path: '/api/auth/refresh',
+    maxAge: maxAgeSecs * 1000,
+    ...(config.COOKIE_DOMAIN ? { domain: config.COOKIE_DOMAIN } : {}),
+  });
+}
+
+function clearRefreshCookie(res: Response): void {
+  res.clearCookie('tessera_refresh', {
+    httpOnly: true,
+    secure: config.COOKIE_SECURE,
+    sameSite: 'lax',
+    path: '/api/auth/refresh',
+    ...(config.COOKIE_DOMAIN ? { domain: config.COOKIE_DOMAIN } : {}),
+  });
 }
 
 function maskEmail(email: string): string {
@@ -487,6 +509,8 @@ router.post('/login-local', loginRateLimit, [
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+        const refreshResult = await createRefreshToken(user.id);
+        setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json(buildAuthResponse({
             user: {
                 id: user.id,
@@ -639,6 +663,8 @@ router.post('/login', loginRateLimit, [
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+        const refreshResult = await createRefreshToken(user.id);
+        setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json(buildAuthResponse({
             user: {
                 id: user.id,
@@ -727,6 +753,8 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
         });
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+        const refreshResult = await createRefreshToken(req.user!.id);
+        setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
             activePartnerId: membership.partnerId,
             manifest: {
@@ -753,6 +781,65 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
  *       200:
  *         description: Token revoked successfully
  */
+/**
+ * @openapi
+ * /auth/refresh:
+ *   post:
+ *     summary: Rotate refresh token and issue new access token
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: New access and refresh tokens issued
+ *       401:
+ *         description: Invalid or expired refresh token
+ */
+router.post('/refresh', async (req: Request, res: Response) => {
+    try {
+        const refreshTokenCookie = req.cookies?.tessera_refresh;
+        if (!refreshTokenCookie) {
+            return res.status(401).json({ error: 'No refresh token' });
+        }
+
+        const result = await rotateRefreshToken(refreshTokenCookie);
+        if (!result) {
+            clearAuthCookie(res);
+            clearRefreshCookie(res);
+            return res.status(401).json({ error: 'Invalid or expired refresh token' });
+        }
+
+        // Get user and build fresh access token
+        const userRows = await db.select().from(users).where(eq(users.id, result.userId)).limit(1);
+        const refreshUser = userRows[0];
+        if (!refreshUser) {
+            clearAuthCookie(res);
+            clearRefreshCookie(res);
+            return res.status(401).json({ error: 'User not found' });
+        }
+
+        const userMemberships = await listUserMemberships(result.userId);
+        const activeMemberships = userMemberships.filter(m => m.status === 'active');
+        const defaultMembership = activeMemberships[0];
+
+        const token = buildAuthToken({
+            userId: refreshUser.id,
+            role: defaultMembership?.role || 'agent',
+            departments: (defaultMembership?.departments as unknown[]) || [],
+            partnerId: defaultMembership?.partnerId,
+            membershipId: defaultMembership?.id,
+            isPlatformOperator: !!refreshUser.isPlatformOperator,
+        });
+
+        const accessExpiry = parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY);
+        setAuthCookie(res, token, accessExpiry);
+        setRefreshCookie(res, result.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
+
+        res.json({ expiresIn: accessExpiry });
+    } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Refresh token error');
+        res.status(500).json({ error: 'Server error during token refresh' });
+    }
+});
+
 router.post('/logout', (await import('../middleware/auth.js')).auth, async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -762,7 +849,9 @@ router.post('/logout', (await import('../middleware/auth.js')).auth, async (req:
                 logger.error({ jti: req.user.tokenJti }, '[Auth] SECURITY: Token revocation failed at logout — token may remain valid until expiry');
             }
         }
+        await revokeAllUserRefreshTokens(req.user.id);
         clearAuthCookie(res);
+        clearRefreshCookie(res);
         res.json({ success: true });
     } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Logout FATAL error');
@@ -852,6 +941,8 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
         });
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+        const refreshResult = await createRefreshToken(userId);
+        setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
             activePartnerId: partner.id,
             manifest: {

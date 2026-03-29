@@ -1,5 +1,6 @@
 import { getRedisClients } from '../utils/redis.js';
 import logger from '../utils/logger.js';
+import { revokeAllUserRefreshTokens } from './refreshToken.js';
 
 const REVOKED_TOKEN_PREFIX = 'auth:revoked:jti:';
 const USER_REVOKED_AFTER_PREFIX = 'auth:user:revoked_after:';
@@ -36,6 +37,14 @@ export async function revokeToken(jti: string, exp?: number): Promise<boolean> {
 export async function revokeUserSessions(userId: string, revokedAfter?: number): Promise<number> {
   const { pubClient } = getRedisClients();
   const cutoff = revokedAfter ?? Math.floor(Date.now() / 1000);
+
+  // Also revoke all refresh tokens for this user
+  try {
+    await revokeAllUserRefreshTokens(userId);
+  } catch (err) {
+    logger.error({ err, userId }, 'Failed to revoke user refresh tokens during session revocation');
+  }
+
   if (!pubClient) return cutoff;
 
   try {
