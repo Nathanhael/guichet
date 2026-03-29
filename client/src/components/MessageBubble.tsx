@@ -6,16 +6,20 @@ import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import { Message } from '../types';
 import { useAutoTranslation } from '../hooks/useTranslation';
-import { trpc } from '../utils/trpc';
+import type { inferRouterOutputs } from '@trpc/server';
+import type { AppRouter } from '../../../server/trpc/router';
+
+type AiConfig = inferRouterOutputs<AppRouter>['partner']['getAiConfig'];
 
 interface MessageBubbleProps {
   message: Message;
   ticketId: string;
   isGroupStart?: boolean;
   isGroupEnd?: boolean;
+  aiConfig?: AiConfig;
 }
 
-export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true }: MessageBubbleProps) {
+export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig }: MessageBubbleProps) {
   const { user, participantsOnline, bionicReading } = useStoreShallow(s => ({
     user: s.user,
     participantsOnline: s.participantsOnline,
@@ -23,12 +27,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   }));
   const t = useT();
 
-  // AI config for translation
-  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
-    enabled: !!user,
-    staleTime: 60_000, // cache for 1 min to avoid re-fetching per bubble
-  });
-  const translationEnabled = aiConfigQuery.data?.translation === true;
+  const translationEnabled = aiConfig?.translation === true;
 
   // Auto-translate if senderLang !== viewerLang (lazy — queued via concurrency limiter)
   const { translated, loading: translating, translate, showOriginal, setShowOriginal, needsTranslation } = useAutoTranslation({
