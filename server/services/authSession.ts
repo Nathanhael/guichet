@@ -63,7 +63,7 @@ export function buildAuthToken(input: {
       platformStepUpAt: input.platformStepUpAt,
     },
     config.JWT_SECRET,
-    { expiresIn: config.JWT_EXPIRY } as jwt.SignOptions
+    { expiresIn: config.ACCESS_TOKEN_EXPIRY } as jwt.SignOptions
   );
 }
 

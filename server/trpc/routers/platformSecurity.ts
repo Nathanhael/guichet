@@ -157,7 +157,7 @@ export const platformSecurityRouter = router({
         platformStepUpAt,
       });
 
-      setAuthCookie(ctx.res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+      setAuthCookie(ctx.res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
 
       return {
         stepUpExpiresAt: getPlatformStepUpExpiry(platformStepUpAt),
@@ -186,7 +186,7 @@ export const platformSecurityRouter = router({
         platformStepUpAt,
       });
 
-      setAuthCookie(ctx.res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+      setAuthCookie(ctx.res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
 
       await db.insert(auditLog).values({
         id: randomUUID(),

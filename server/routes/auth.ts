@@ -508,7 +508,7 @@ router.post('/login-local', loginRateLimit, [
         // Update lastActiveAt
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
-        setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+        setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
         const refreshResult = await createRefreshToken(user.id);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json(buildAuthResponse({
@@ -662,7 +662,7 @@ router.post('/login', loginRateLimit, [
         // Update lastActiveAt
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
-        setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+        setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
         const refreshResult = await createRefreshToken(user.id);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json(buildAuthResponse({
@@ -752,7 +752,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
             platformStepUpAt: stepUpStillValid ? req.user.platformStepUpAt : undefined,
         });
 
-        setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+        setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
         const refreshResult = await createRefreshToken(req.user!.id);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
@@ -940,7 +940,7 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
             }
         });
 
-        setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+        setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
         const refreshResult = await createRefreshToken(userId);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
