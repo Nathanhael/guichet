@@ -25,11 +25,13 @@ import { auth, authorize } from './middleware/auth.js';
 import * as presenceService from './services/presence.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
+import { cleanupExpiredTokens } from './services/refreshToken.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { register } from './utils/metrics.js';
 
 import { initRedis, getRedisClients } from './utils/redis.js';
+import jwt from 'jsonwebtoken';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -141,7 +143,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(metricsMiddleware);
 
 const rootUploadDir = path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(rootUploadDir));
+// Uploads require authentication — prevents public access to uploaded files (SEC-6).
+app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
+  const token = req.cookies?.tessera_token;
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  try {
+    jwt.verify(token, config.JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+}, express.static(rootUploadDir));
 
 // API v1 Routing
 import swaggerUi from 'swagger-ui-express';
