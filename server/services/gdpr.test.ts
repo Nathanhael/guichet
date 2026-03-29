@@ -120,7 +120,7 @@ describe('runDailyPurge', () => {
     archiveTicketsMock.mockResolvedValue(5);
     // Count query for guard check (no closed tickets to worry about)
     queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // No dates to aggregate
+    // Bulk ticket query returns empty (nothing to aggregate)
     queryMock.mockResolvedValueOnce([]);
 
     const { runDailyPurge } = await import('./gdpr.js');
@@ -181,12 +181,8 @@ describe('runDailyPurge', () => {
 
     // Count query for guard check
     queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // Step 1: dates to aggregate
-    queryMock.mockResolvedValueOnce([{ date: '2026-02-01' }]);
-    // Step 2: partner IDs for that date
-    queryMock.mockResolvedValueOnce([{ partnerId: 'partner-A' }]);
-    // Step 3: tickets for partner-A on 2026-02-01
-    queryMock.mockResolvedValueOnce([{ id: 't1', partnerId: 'partner-A' }]);
+    // Single bulk query: all tickets in window grouped by (date, partner_id)
+    queryMock.mockResolvedValueOnce([{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }]);
     // Ratings and messages are fetched via db.select() (mocked via selectWhereMock → [])
 
     const { runDailyPurge } = await import('./gdpr.js');
@@ -194,7 +190,7 @@ describe('runDailyPurge', () => {
 
     expect(computeLiveDayStatsMock).toHaveBeenCalledOnce();
     expect(computeLiveDayStatsMock).toHaveBeenCalledWith(
-      [{ id: 't1', partnerId: 'partner-A' }],
+      [{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }],
       [],
       'all',
       []
@@ -223,15 +219,12 @@ describe('runDailyPurge', () => {
 
     // Count query for guard check
     queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // Step 1: dates to aggregate
-    queryMock.mockResolvedValueOnce([{ date: '2026-02-01' }]);
-    // Step 2: partner IDs for that date — two partners
-    queryMock.mockResolvedValueOnce([{ partnerId: 'partner-A' }, { partnerId: 'partner-B' }]);
-
-    // Partner A tickets
-    queryMock.mockResolvedValueOnce([{ id: 't1', partnerId: 'partner-A' }]);
-    // Partner B tickets
-    queryMock.mockResolvedValueOnce([{ id: 't2', partnerId: 'partner-B' }, { id: 't3', partnerId: 'partner-B' }]);
+    // Single bulk query: all tickets for both partners in window
+    queryMock.mockResolvedValueOnce([
+      { id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' },
+      { id: 't2', partnerId: 'partner-B', createdAt: '2026-02-01T11:00:00.000Z', status: 'closed' },
+      { id: 't3', partnerId: 'partner-B', createdAt: '2026-02-01T12:00:00.000Z', status: 'closed' },
+    ]);
     // Ratings and messages are fetched via db.select() (mocked via selectWhereMock → [])
 
     const { runDailyPurge } = await import('./gdpr.js');
@@ -241,11 +234,13 @@ describe('runDailyPurge', () => {
     expect(computeLiveDayStatsMock).toHaveBeenCalledTimes(2);
 
     // First call: partner A tickets only
-    expect(computeLiveDayStatsMock.mock.calls[0][0]).toEqual([{ id: 't1', partnerId: 'partner-A' }]);
+    expect(computeLiveDayStatsMock.mock.calls[0][0]).toEqual([
+      { id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' },
+    ]);
     // Second call: partner B tickets only
     expect(computeLiveDayStatsMock.mock.calls[1][0]).toEqual([
-      { id: 't2', partnerId: 'partner-B' },
-      { id: 't3', partnerId: 'partner-B' },
+      { id: 't2', partnerId: 'partner-B', createdAt: '2026-02-01T11:00:00.000Z', status: 'closed' },
+      { id: 't3', partnerId: 'partner-B', createdAt: '2026-02-01T12:00:00.000Z', status: 'closed' },
     ]);
 
     // run() called once per partner for INSERT INTO daily_stats (plus 2 for AI usage purge)

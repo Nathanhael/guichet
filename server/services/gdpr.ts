@@ -46,78 +46,97 @@ export async function runDailyPurge() {
       await archiveTickets();
     }
 
-    const datesToAggregate = await query(
-      `SELECT DISTINCT t.created_at::date::text as date
-       FROM tickets t
-       WHERE t.created_at < $1
-         AND t.status = 'closed'`,
-      [cutoffDate]
-    ) as { date: string }[];
+    // Optimized: single query fetches all tickets in the retention window grouped by
+    // (date, partner_id), replacing the previous O(dates × partners) nested loop.
+    // We fetch all tickets + ratings + messages in 3 bulk queries, then group in-memory.
+    const windowEnd = cutoffDate;
+    const windowStart = '1970-01-01'; // aggregate everything older than cutoff
 
-    if (Array.isArray(datesToAggregate)) {
-      for (const { date } of datesToAggregate) {
-        // Use date range filtering instead of ::date cast to allow index use
-        const nextDate = new Date(date);
-        nextDate.setDate(nextDate.getDate() + 1);
-        const nextDateStr = nextDate.toISOString().slice(0, 10);
+    const allTickets = (await query(
+      `SELECT id, partner_id, dept, agent_id, support_id, status, created_at, updated_at,
+              closed_at, closing_notes, closed_by, participants, reopened, reopen_count,
+              sla_response_due_at, sla_resolution_due_at, sla_breached,
+              agent_name, agent_lang, support_name, support_lang, support_joined_at, "references"
+       FROM tickets
+       WHERE created_at >= $1 AND created_at < $2
+         AND status = 'closed'
+       ORDER BY partner_id, created_at`,
+      [windowStart, windowEnd]
+    )) as unknown as Ticket[];
 
-        // Find all partners that had activity on this date
-        // Note: query() auto-converts snake_case to camelCase, so partner_id → partnerId
-        const partnerIds = (await query('SELECT DISTINCT partner_id FROM tickets WHERE created_at >= $1 AND created_at < $2', [date, nextDateStr])) as { partnerId: string }[];
+    if (allTickets.length > 0) {
+      const allTicketIds = allTickets.map(t => t.id);
 
-        for (const { partnerId } of partnerIds) {
-          // Project only needed columns instead of SELECT *
-          const dayTickets = (await query(
-            `SELECT id, partner_id, dept, agent_id, support_id, status, created_at, updated_at, closed_at, closing_notes, closed_by, participants, reopened, reopen_count, sla_response_due_at, sla_resolution_due_at, sla_breached, agent_name, agent_lang, support_name, support_lang, support_joined_at, "references"
-             FROM tickets WHERE created_at >= $1 AND created_at < $2 AND partner_id = $3`,
-            [date, nextDateStr, partnerId]
-          )) as unknown as Ticket[];
-          const ticketIds = dayTickets.map(t => t.id);
+      // Single bulk fetch for ratings and messages, keyed by ticket_id
+      const allRatings = (await db.select().from(ratingsTable).where(inArray(ratingsTable.ticketId, allTicketIds))) as unknown as Rating[];
+      const allMessages = (await db.select().from(messagesTable).where(inArray(messagesTable.ticketId, allTicketIds))) as unknown as Message[];
 
-          let dayRatings: Rating[] = [];
-          if (ticketIds.length > 0) {
-            dayRatings = (await db.select().from(ratingsTable).where(inArray(ratingsTable.ticketId, ticketIds))) as unknown as Rating[];
-          }
+      // Group ratings and messages by ticketId for O(1) lookup
+      const ratingsByTicket = new Map<string, Rating[]>();
+      for (const r of allRatings) {
+        const list = ratingsByTicket.get(r.ticketId) ?? [];
+        list.push(r);
+        ratingsByTicket.set(r.ticketId, list);
+      }
+      const messagesByTicket = new Map<string, Message[]>();
+      for (const m of allMessages) {
+        const list = messagesByTicket.get(m.ticketId) ?? [];
+        list.push(m);
+        messagesByTicket.set(m.ticketId, list);
+      }
 
-          let dayMessages: Message[] = [];
-          if (ticketIds.length > 0) {
-            dayMessages = (await db.select().from(messagesTable).where(inArray(messagesTable.ticketId, ticketIds))) as unknown as Message[];
-          }
+      // Group tickets by (date, partner_id) — single in-memory pass
+      // query() auto-converts snake_case → camelCase, so partner_id becomes partnerId at runtime
+      type TicketWithPartner = Ticket & { partnerId: string };
+      type DayPartnerKey = string; // "YYYY-MM-DD|partnerId"
+      const grouped = new Map<DayPartnerKey, { date: string; partnerId: string; tickets: TicketWithPartner[] }>();
+      for (const ticket of allTickets as TicketWithPartner[]) {
+        const date = new Date(ticket.createdAt).toISOString().slice(0, 10);
+        const key: DayPartnerKey = `${date}|${ticket.partnerId}`;
+        const entry = grouped.get(key) ?? { date, partnerId: ticket.partnerId, tickets: [] };
+        entry.tickets.push(ticket);
+        grouped.set(key, entry);
+      }
 
-          const stats = computeLiveDayStats(dayTickets, dayRatings, 'all', dayMessages);
+      // Compute stats and upsert daily_stats — one INSERT per (date, partner_id) group
+      for (const { date, partnerId, tickets: dayTickets } of grouped.values()) {
+        const ticketIds = dayTickets.map(t => t.id);
+        const dayRatings = ticketIds.flatMap(id => ratingsByTicket.get(id) ?? []);
+        const dayMessages = ticketIds.flatMap(id => messagesByTicket.get(id) ?? []);
 
-          await run(
-            `INSERT INTO daily_stats
-            (date, partner_id, total, closed, abandoned, reopened, "avg_response_ms", "avg_duration_ms", "avg_rating", "rating_count", "sla_resolved", "sla_compliant", "p95_response_ms", "sentiment_sum", "sentiment_count", "dept_counts", "ratings_by_dept", hourly)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-            ON CONFLICT (date, partner_id) DO UPDATE SET
-              total = EXCLUDED.total,
-              closed = EXCLUDED.closed,
-              abandoned = EXCLUDED.abandoned,
-              reopened = EXCLUDED.reopened,
-              "avg_response_ms" = EXCLUDED."avg_response_ms",
-              "avg_duration_ms" = EXCLUDED."avg_duration_ms",
-              "avg_rating" = EXCLUDED."avg_rating",
-              "rating_count" = EXCLUDED."rating_count",
-              "sla_resolved" = EXCLUDED."sla_resolved",
-              "sla_compliant" = EXCLUDED."sla_compliant",
-              "p95_response_ms" = EXCLUDED."p95_response_ms",
-              "sentiment_sum" = EXCLUDED."sentiment_sum",
-              "sentiment_count" = EXCLUDED."sentiment_count",
-              "dept_counts" = EXCLUDED."dept_counts",
-              "ratings_by_dept" = EXCLUDED."ratings_by_dept",
-              hourly = EXCLUDED.hourly`,
-            [
-              date, partnerId, stats.total, stats.closed, stats.abandoned, stats.reopened,
-              stats.responseCount > 0 ? Math.round(stats.responseSum / stats.responseCount) : 0,
-              stats.durationCount > 0 ? Math.round(stats.durationSum / stats.durationCount) : 0,
-              stats.ratingCount > 0 ? Math.round((stats.ratingSum / stats.ratingCount) * 10) / 10 : null,
-              stats.ratingCount, stats.slaResolved, stats.slaCompliant,
-              stats.p95ResponseMs, stats.sentimentSum, stats.sentimentCount,
-              JSON.stringify(stats.deptCounts), JSON.stringify(stats.ratingsByDept), JSON.stringify(stats.hourly)
-            ]
-          );
-        }
+        const stats = computeLiveDayStats(dayTickets, dayRatings, 'all', dayMessages);
+
+        await run(
+          `INSERT INTO daily_stats
+          (date, partner_id, total, closed, abandoned, reopened, "avg_response_ms", "avg_duration_ms", "avg_rating", "rating_count", "sla_resolved", "sla_compliant", "p95_response_ms", "sentiment_sum", "sentiment_count", "dept_counts", "ratings_by_dept", hourly)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+          ON CONFLICT (date, partner_id) DO UPDATE SET
+            total = EXCLUDED.total,
+            closed = EXCLUDED.closed,
+            abandoned = EXCLUDED.abandoned,
+            reopened = EXCLUDED.reopened,
+            "avg_response_ms" = EXCLUDED."avg_response_ms",
+            "avg_duration_ms" = EXCLUDED."avg_duration_ms",
+            "avg_rating" = EXCLUDED."avg_rating",
+            "rating_count" = EXCLUDED."rating_count",
+            "sla_resolved" = EXCLUDED."sla_resolved",
+            "sla_compliant" = EXCLUDED."sla_compliant",
+            "p95_response_ms" = EXCLUDED."p95_response_ms",
+            "sentiment_sum" = EXCLUDED."sentiment_sum",
+            "sentiment_count" = EXCLUDED."sentiment_count",
+            "dept_counts" = EXCLUDED."dept_counts",
+            "ratings_by_dept" = EXCLUDED."ratings_by_dept",
+            hourly = EXCLUDED.hourly`,
+          [
+            date, partnerId, stats.total, stats.closed, stats.abandoned, stats.reopened,
+            stats.responseCount > 0 ? Math.round(stats.responseSum / stats.responseCount) : 0,
+            stats.durationCount > 0 ? Math.round(stats.durationSum / stats.durationCount) : 0,
+            stats.ratingCount > 0 ? Math.round((stats.ratingSum / stats.ratingCount) * 10) / 10 : null,
+            stats.ratingCount, stats.slaResolved, stats.slaCompliant,
+            stats.p95ResponseMs, stats.sentimentSum, stats.sentimentCount,
+            JSON.stringify(stats.deptCounts), JSON.stringify(stats.ratingsByDept), JSON.stringify(stats.hourly)
+          ]
+        );
       }
     }
 
