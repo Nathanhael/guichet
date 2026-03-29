@@ -35,78 +35,88 @@ function computeChainHash(previousHash: string, rowData: Record<string, unknown>
  * Returns the count of archived rows.
  */
 export async function archiveAuditLog(archiveDelayDays?: number): Promise<number> {
+  const BATCH_SIZE = 1000;
   const days = archiveDelayDays ?? config.AUDIT_ARCHIVE_DELAY_DAYS;
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffStr = cutoff.toISOString();
 
+  let totalArchived = 0;
+
   try {
-    // Fetch rows to archive (oldest first for correct chain ordering; id as tiebreaker)
-    const rows = await db.select()
-      .from(auditLog)
-      .where(lte(auditLog.createdAt, cutoffStr))
-      .orderBy(asc(auditLog.createdAt), asc(auditLog.id))
-      .limit(1000); // batch size
+    while (true) {
+      // Fetch rows to archive (oldest first for correct chain ordering; id as tiebreaker)
+      const rows = await db.select()
+        .from(auditLog)
+        .where(lte(auditLog.createdAt, cutoffStr))
+        .orderBy(asc(auditLog.createdAt), asc(auditLog.id))
+        .limit(BATCH_SIZE);
 
-    if (rows.length === 0) return 0;
+      if (rows.length === 0) break;
 
-    // Get the last chain hash and sequence from the archive (deterministic ordering via sequence)
-    const lastArchived = await db.select({ chainHash: auditArchive.chainHash, sequence: auditArchive.sequence })
-      .from(auditArchive)
-      .orderBy(desc(auditArchive.sequence))
-      .limit(1);
-    let prevHash = lastArchived[0]?.chainHash || '0'.repeat(64); // genesis hash
-    let nextSequence = (lastArchived[0]?.sequence ?? -1) + 1;
+      // Get the last chain hash and sequence from the archive (must be re-read each batch
+      // since the previous batch updated it)
+      const lastArchived = await db.select({ chainHash: auditArchive.chainHash, sequence: auditArchive.sequence })
+        .from(auditArchive)
+        .orderBy(desc(auditArchive.sequence))
+        .limit(1);
+      let prevHash = lastArchived[0]?.chainHash || '0'.repeat(64); // genesis hash
+      let nextSequence = (lastArchived[0]?.sequence ?? -1) + 1;
 
-    const now = new Date().toISOString();
+      const now = new Date().toISOString();
 
-    // Wrap insert + delete in a single transaction to prevent partial chain states
-    const archivedCount = await transaction(async (tx) => {
-      const archivedIds: string[] = [];
+      // Wrap insert + delete in a single transaction to prevent partial chain states
+      const archivedCount = await transaction(async (tx) => {
+        const archivedIds: string[] = [];
 
-      for (const row of rows) {
-        const rowData = {
-          id: row.id,
-          action: row.action,
-          actorId: row.actorId,
-          partnerId: row.partnerId,
-          targetType: row.targetType,
-          targetId: row.targetId,
-          metadata: row.metadata,
-          createdAt: row.createdAt,
-        };
+        for (const row of rows) {
+          const rowData = {
+            id: row.id,
+            action: row.action,
+            actorId: row.actorId,
+            partnerId: row.partnerId,
+            targetType: row.targetType,
+            targetId: row.targetId,
+            metadata: row.metadata,
+            createdAt: row.createdAt,
+          };
 
-        const chainHash = computeChainHash(prevHash, rowData);
+          const chainHash = computeChainHash(prevHash, rowData);
 
-        const inserted = await tx.insert(auditArchive).values({
-          ...rowData,
-          archivedAt: now,
-          chainHash,
-          sequence: nextSequence,
-        }).onConflictDoNothing().returning({ id: auditArchive.id });
+          const inserted = await tx.insert(auditArchive).values({
+            ...rowData,
+            archivedAt: now,
+            chainHash,
+            sequence: nextSequence,
+          }).onConflictDoNothing().returning({ id: auditArchive.id });
 
-        // Only advance the hash chain when the row was actually inserted.
-        // If onConflictDoNothing skipped a duplicate, returned array is empty.
-        if (inserted.length > 0) {
-          prevHash = chainHash;
-          nextSequence++;
+          // Only advance the hash chain when the row was actually inserted.
+          // If onConflictDoNothing skipped a duplicate, returned array is empty.
+          if (inserted.length > 0) {
+            prevHash = chainHash;
+            nextSequence++;
+          }
+          archivedIds.push(row.id);
         }
-        archivedIds.push(row.id);
-      }
 
-      // Delete archived entries from the live table (same transaction)
-      if (archivedIds.length > 0) {
-        await tx.delete(auditLog).where(inArray(auditLog.id, archivedIds));
-      }
+        // Delete archived entries from the live table (same transaction)
+        if (archivedIds.length > 0) {
+          await tx.delete(auditLog).where(inArray(auditLog.id, archivedIds));
+        }
 
-      return archivedIds.length;
-    });
+        return archivedIds.length;
+      });
 
-    logger.info({ count: archivedCount, cutoff: cutoffStr, delayDays: days }, '[archive] Audit log entries archived');
-    return archivedCount;
+      totalArchived += archivedCount;
+
+      if (rows.length < BATCH_SIZE) break;
+    }
+
+    logger.info({ count: totalArchived, cutoff: cutoffStr, delayDays: days }, '[archive] Audit log entries archived');
+    return totalArchived;
   } catch (err) {
     logger.error({ err }, '[archive] Failed to archive audit log');
-    return 0;
+    return totalArchived;
   }
 }
 
