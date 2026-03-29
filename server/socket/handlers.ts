@@ -105,7 +105,6 @@ interface Participant {
   name: string;
 }
 
-
 interface SenderInfo {
   name: string;
   role: string;
@@ -458,7 +457,7 @@ export function registerSocketHandlers(io: Server) {
 
         const agentUser = await findUserName(agentId);
         const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
-        await createTicket({ id: ticket.id, partnerId, dept: ticket.dept, agentId: ticket.agentId, agentName: ticket.agentName, agentLang: ticket.agentLang, references, status: ticket.status, createdAt: ticket.createdAt, participants: ticket.participants, reopened, reopenCount });
+        await createTicket({ id: ticket.id, partnerId, dept: ticket.dept, agentId: ticket.agentId, agentName: ticket.agentName, agentLang: ticket.agentLang, references, status: ticket.status, createdAt: ticket.createdAt, participants: [], reopened, reopenCount });
 
         let message: Message | null = null;
         if (text?.trim()) {
@@ -501,7 +500,6 @@ export function registerSocketHandlers(io: Server) {
         // Use verified identity from socket.data — never trust client-supplied supportId/supportName
         const supportId = socket.data.userId;
         const supportName = socket.data.name;
-        const callerRole = socket.data.role;
         const callerPartnerId = socket.data.partnerId;
 
         // Authorization: only support/admin roles can join
@@ -582,7 +580,6 @@ export function registerSocketHandlers(io: Server) {
       try {
         const senderId = socket.data.userId;
         const senderName = socket.data.name;
-        const callerRole = socket.data.role;
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
 
         // Authorization: only support/admin roles can close tickets
@@ -857,7 +854,6 @@ export function registerSocketHandlers(io: Server) {
         if (!msg) return;
 
         // Support/admin can delete any non-system message; others only their own
-        const callerRole = socket.data.role;
         if (!socket.data.isSupport && msg.senderId !== senderId) {
           return socket.emit('error', { message: 'Can only delete your own messages' });
         }
@@ -877,7 +873,6 @@ export function registerSocketHandlers(io: Server) {
       try {
         const senderId = socket.data.userId;
         const senderName = socket.data.name;
-        const callerRole = socket.data.role;
         const callerPartnerId = socket.data.partnerId;
 
         if (!socket.data.isSupport) {
@@ -965,7 +960,6 @@ export function registerSocketHandlers(io: Server) {
     // ── Collision Detection: ticket viewing ───────────────────────────────────
     socket.on('ticket:viewing', async ({ ticketId }: { ticketId: string }) => {
       if (!requireIdentified(socket)) return;
-      const callerRole = socket.data.role;
       if (!socket.data.isSupport) return;
       if (!ticketId) return;
 
