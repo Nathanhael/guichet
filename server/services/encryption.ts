@@ -1,22 +1,23 @@
 import crypto from 'crypto';
+import config from '../config.js';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12; // 96-bit IV recommended for GCM
 const TAG_LENGTH = 16; // 128-bit auth tag
 
 /**
- * Get the encryption key from env var, validated as 32-byte hex.
- * Cached after first call — env var does not change at runtime.
+ * Get the encryption key from Zod-validated config.
+ * Cached after first call — config does not change at runtime.
  * Throws if not set or malformed.
  */
 let _cachedKey: Buffer | null = null;
 
 function getKey(): Buffer {
   if (_cachedKey) return _cachedKey;
-  const hex = process.env.AI_KEY_ENCRYPTION_SECRET;
-  if (!hex || hex.length !== 64 || !/^[0-9a-f]+$/i.test(hex)) {
+  const hex = config.AI_KEY_ENCRYPTION_SECRET;
+  if (!hex) {
     throw new Error(
-      'AI_KEY_ENCRYPTION_SECRET must be a 64-character hex string (32 bytes). ' +
+      'AI_KEY_ENCRYPTION_SECRET is not set. ' +
       'Generate one with: openssl rand -hex 32'
     );
   }
