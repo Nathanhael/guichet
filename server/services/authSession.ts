@@ -127,7 +127,7 @@ function cookieOptions(httpOnly: boolean) {
   };
 }
 
-/** Parse JWT_EXPIRY string (e.g. '24h', '7d', '3600') into seconds */
+/** Parse expiry string (e.g. '15m', '7d', '3600') into seconds */
 export function parseExpiryToSeconds(expiry: string): number {
   const match = expiry.match(/^(\d+)(s|m|h|d)?$/);
   if (!match) return 86400;
