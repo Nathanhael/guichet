@@ -66,6 +66,8 @@ services:
   redis:
     image: redis:8-alpine
     restart: always
+    ports:
+      - "6379:6379"
     command: ["redis-server", "--requirepass", "devpassword"]
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=devpassword redis-cli ping"]
