@@ -20,6 +20,7 @@ import { autoSummarizeOnClose } from '../services/ai/autoSummarize.js';
 import { scoreSentiment } from '../services/ai/sentiment.js';
 import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../services/sla.js';
 import { Rooms } from '../utils/rooms.js';
+import { insertSystemMessage } from '../services/systemMessage.js';
 import {
   VIEWER_TTL_SECONDS,
   MAX_BATCH_DELETE,
@@ -902,8 +903,6 @@ export function registerSocketHandlers(io: Server) {
         if (!ticket) return socket.emit('error', { message: 'Ticket not found' });
         if (ticket.partner_id !== callerPartnerId) return socket.emit('error', { message: 'Not authorized' });
 
-        const now = new Date().toISOString();
-
         if (targetSupportId) {
           // Transfer to a specific support agent
           const targetUser = await get('SELECT u.name FROM users u JOIN memberships m ON u.id = m.user_id WHERE u.id = $1 AND m.partner_id = $2', [targetSupportId, callerPartnerId]) as { name: string } | undefined;
@@ -922,11 +921,9 @@ export function registerSocketHandlers(io: Server) {
           WHERE id = $5`, [targetSupportId, targetUser.name, senderId, newParticipantJson, ticketId]);
 
           // Add system message
-          const sysId = uuidv4();
           const sysText = `Ticket transferred from ${senderName} to ${targetUser.name}`;
-          await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [sysId, ticketId, '__system__', 'System', 'admin', 'en', sysText, 0, 1, now, '{}']);
-
-          io.to(Rooms.ticket(ticketId)).emit('message:new', { id: sysId, ticketId, senderId: '__system__', senderName: 'System', senderRole: 'admin', senderLang: 'en', text: sysText, originalText: sysText, whisper: false, system: true, timestamp: now, createdAt: now, reactions: {} });
+          const sysMsg = await insertSystemMessage(ticketId, sysText);
+          io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
           io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: targetSupportId, toName: targetUser.name });
 
           // Notify the target support agent via partner room
@@ -936,11 +933,9 @@ export function registerSocketHandlers(io: Server) {
           // Return to queue — unassign support
           await run('UPDATE tickets SET support_id = NULL, support_name = NULL, status = $1 WHERE id = $2', ['open', ticketId]);
 
-          const sysId = uuidv4();
           const sysText = `${senderName} returned ticket to queue`;
-          await run(`INSERT INTO messages (id, ticket_id, sender_id, sender_name, sender_role, sender_lang, text, whisper, system, created_at, reactions) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`, [sysId, ticketId, '__system__', 'System', 'admin', 'en', sysText, 0, 1, now, '{}']);
-
-          io.to(Rooms.ticket(ticketId)).emit('message:new', { id: sysId, ticketId, senderId: '__system__', senderName: 'System', senderRole: 'admin', senderLang: 'en', text: sysText, originalText: sysText, whisper: false, system: true, timestamp: now, createdAt: now, reactions: {} });
+          const sysMsg = await insertSystemMessage(ticketId, sysText);
+          io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
           io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: null, toName: null });
 
           await broadcastQueuePositions(callerPartnerId);
