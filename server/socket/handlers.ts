@@ -312,61 +312,67 @@ export function registerSocketHandlers(io: Server) {
         return;
       }
 
-      // Look up the user's name from the DB (don't trust client-supplied name)
-      const userRow = await get('SELECT name, is_platform_operator FROM users WHERE id = $1', [userId]) as { name: string; isPlatformOperator: boolean } | undefined;
-      if (!userRow) {
-        socket.emit('error', { message: 'User not found' });
-        socket.disconnect();
-        return;
-      }
-      const name = userRow.name || userId;
-
-      // Validate that user has a membership for the requested partner
-      const membership = await get('SELECT role FROM memberships WHERE user_id = $1 AND partner_id = $2', [userId, partnerId]) as { role: string } | undefined;
-      let effectiveRole: UserRole;
-      if (!membership) {
-        // No membership — check if user is a platform operator
-        if (!isPlatformAdmin(!!socket.data.authedIsPlatformOperator)) {
-          socket.emit('error', { message: 'Not authorized for this partner' });
+      try {
+        // Look up the user's name from the DB (don't trust client-supplied name)
+        const userRow = await get('SELECT name, is_platform_operator FROM users WHERE id = $1', [userId]) as { name: string; isPlatformOperator: boolean } | undefined;
+        if (!userRow) {
+          socket.emit('error', { message: 'User not found' });
           socket.disconnect();
           return;
         }
-        effectiveRole = 'admin';
-      } else {
-        effectiveRole = membership.role as UserRole;
-      }
+        const name = userRow.name || userId;
 
-      socket.data.userId = userId;
-      socket.data.role = effectiveRole;
-      socket.data.name = name;
-      socket.data.partnerId = partnerId;
-
-      await presenceService.identifyUser(userId, effectiveRole, name, partnerId, !!socket.data.authedIsPlatformOperator);
-      
-      // Join partner-specific room for broadcasts
-      socket.join(`partner:${partnerId}`);
-      
-      // Join private user room for individual kill switches
-      socket.join(`user:${userId}`);
-
-      if (canUseSupportWorkflows(effectiveRole, !!socket.data.authedIsPlatformOperator)) {
-        await presenceService.broadcastOnlineSupport(partnerId);
-      }
-      
-      if (effectiveRole === 'agent') {
-        broadcastAgentStatus(userId, true);
-      }
-
-      // Re-join active ticket rooms
-      try {
-        let activeTickets: { id: string }[] = [];
-        if (effectiveRole === 'agent') {
-          activeTickets = await query("SELECT id FROM tickets WHERE agent_id = $1 AND partner_id = $2 AND status != 'closed'", [userId, partnerId]) as { id: string }[];
-        } else if (canUseSupportWorkflows(effectiveRole, !!socket.data.authedIsPlatformOperator)) {
-          activeTickets = await query("SELECT id FROM tickets WHERE (support_id = $1 OR participants::jsonb @> $3::jsonb) AND partner_id = $2 AND status != 'closed'", [userId, partnerId, JSON.stringify([{ id: userId }])]) as { id: string }[];
+        // Validate that user has a membership for the requested partner
+        const membership = await get('SELECT role FROM memberships WHERE user_id = $1 AND partner_id = $2', [userId, partnerId]) as { role: string } | undefined;
+        let effectiveRole: UserRole;
+        if (!membership) {
+          // No membership — check if user is a platform operator
+          if (!isPlatformAdmin(!!socket.data.authedIsPlatformOperator)) {
+            socket.emit('error', { message: 'Not authorized for this partner' });
+            socket.disconnect();
+            return;
+          }
+          effectiveRole = 'admin';
+        } else {
+          effectiveRole = membership.role as UserRole;
         }
-        for (const t of activeTickets) socket.join(`ticket:${t.id}`);
-      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[socket:identify] failed to rejoin ticket rooms'); }
+
+        socket.data.userId = userId;
+        socket.data.role = effectiveRole;
+        socket.data.name = name;
+        socket.data.partnerId = partnerId;
+
+        await presenceService.identifyUser(userId, effectiveRole, name, partnerId, !!socket.data.authedIsPlatformOperator);
+
+        // Join partner-specific room for broadcasts
+        socket.join(`partner:${partnerId}`);
+
+        // Join private user room for individual kill switches
+        socket.join(`user:${userId}`);
+
+        if (canUseSupportWorkflows(effectiveRole, !!socket.data.authedIsPlatformOperator)) {
+          await presenceService.broadcastOnlineSupport(partnerId);
+        }
+
+        if (effectiveRole === 'agent') {
+          broadcastAgentStatus(userId, true);
+        }
+
+        // Re-join active ticket rooms
+        try {
+          let activeTickets: { id: string }[] = [];
+          if (effectiveRole === 'agent') {
+            activeTickets = await query("SELECT id FROM tickets WHERE agent_id = $1 AND partner_id = $2 AND status != 'closed'", [userId, partnerId]) as { id: string }[];
+          } else if (canUseSupportWorkflows(effectiveRole, !!socket.data.authedIsPlatformOperator)) {
+            activeTickets = await query("SELECT id FROM tickets WHERE (support_id = $1 OR participants::jsonb @> $3::jsonb) AND partner_id = $2 AND status != 'closed'", [userId, partnerId, JSON.stringify([{ id: userId }])]) as { id: string }[];
+          }
+          for (const t of activeTickets) socket.join(`ticket:${t.id}`);
+        } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[socket:identify] failed to rejoin ticket rooms'); }
+      } catch (err) {
+        logger.error({ err: err instanceof Error ? err.message : String(err), socketId: socket.id }, '[socket] identify failed');
+        socket.emit('error', { message: 'Identification failed' });
+        socket.disconnect();
+      }
     });
 
     socket.on('ticket:new', async (data: TicketNewPayload) => {

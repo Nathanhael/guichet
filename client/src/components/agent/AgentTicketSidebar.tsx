@@ -60,7 +60,7 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
       <div className="flex-1 overflow-y-auto">
         {tickets.map((ticket) => {
           const isActive = activeTicketId === ticket.id;
-          const isUnread = unreadTickets.has(ticket.id);
+          const isUnread = !!unreadTickets[ticket.id];
           const time = getTicketTime(ticket.createdAt);
 
           return (

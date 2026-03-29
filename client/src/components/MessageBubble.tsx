@@ -165,12 +165,13 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             </div>
           )}
 
-          {message.mediaUrl && !isDeleted && (
+          {message.mediaUrl && !isDeleted && message.mediaUrl.startsWith('/api/v1/uploads/') && (
             <div className="mt-3 border border-border">
               <img
                 src={message.mediaUrl}
                 alt="attachment"
                 className="w-full h-auto object-cover max-h-96"
+                referrerPolicy="no-referrer"
               />
             </div>
           )}

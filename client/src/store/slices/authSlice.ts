@@ -14,10 +14,10 @@ export interface AuthSlice {
 }
 
 function clearAuthState(set: (partial: Partial<StoreState>) => void) {
-  localStorage.removeItem('user');
-  localStorage.removeItem('memberships');
-  localStorage.removeItem('activeMembershipId');
-  localStorage.removeItem('activePartnerId');
+  sessionStorage.removeItem('user');
+  sessionStorage.removeItem('memberships');
+  sessionStorage.removeItem('activeMembershipId');
+  sessionStorage.removeItem('activePartnerId');
   set({
     user: null,
     memberships: [],
@@ -31,10 +31,10 @@ function clearAuthState(set: (partial: Partial<StoreState>) => void) {
 
 function safeJsonParse<T>(key: string, fallback: T): T {
   try {
-    const item = localStorage.getItem(key);
+    const item = sessionStorage.getItem(key);
     return item ? (JSON.parse(item) as T) : fallback;
   } catch (e) {
-    console.error(`Error parsing localStorage key "${key}":`, e);
+    console.error(`Error parsing sessionStorage key "${key}":`, e);
     return fallback;
   }
 }
@@ -56,50 +56,50 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
 
   // If session cookie is expired, clear everything
   if (expired) {
-    localStorage.removeItem('user');
-    localStorage.removeItem('memberships');
-    localStorage.removeItem('activeMembershipId');
-    localStorage.removeItem('activePartnerId');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('memberships');
+    sessionStorage.removeItem('activeMembershipId');
+    sessionStorage.removeItem('activePartnerId');
   }
 
   return {
     user: expired ? null : safeJsonParse('user', null),
     memberships: expired ? [] : safeJsonParse('memberships', []),
-    activeMembershipId: expired ? null : localStorage.getItem('activeMembershipId') || null,
-    activePartnerId: expired ? null : localStorage.getItem('activePartnerId') || null,
+    activeMembershipId: expired ? null : sessionStorage.getItem('activeMembershipId') || null,
+    activePartnerId: expired ? null : sessionStorage.getItem('activePartnerId') || null,
 
     setUser: (user) => {
       if (user) {
-        localStorage.setItem('user', JSON.stringify(user));
+        sessionStorage.setItem('user', JSON.stringify(user));
         if (user.accessibilityPrefs) {
           get().hydrateAccessibilityPrefs(user.accessibilityPrefs);
         }
       } else {
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
       }
       set({ user });
     },
     setMemberships: (memberships) => {
-      if (memberships) localStorage.setItem('memberships', JSON.stringify(memberships));
-      else localStorage.removeItem('memberships');
+      if (memberships) sessionStorage.setItem('memberships', JSON.stringify(memberships));
+      else sessionStorage.removeItem('memberships');
       set({ memberships });
     },
     setActiveMembershipId: (id) => {
-      if (id) localStorage.setItem('activeMembershipId', id);
+      if (id) sessionStorage.setItem('activeMembershipId', id);
       else {
-        localStorage.removeItem('activeMembershipId');
-        localStorage.removeItem('activePartnerId');
+        sessionStorage.removeItem('activeMembershipId');
+        sessionStorage.removeItem('activePartnerId');
         set({ activeMembershipId: null, activePartnerId: null });
         return;
       }
 
       const membership = get().memberships.find(m => m.id === id);
       if (membership) {
-        localStorage.setItem('activePartnerId', membership.partnerId);
+        sessionStorage.setItem('activePartnerId', membership.partnerId);
         set({ activeMembershipId: id, activePartnerId: membership.partnerId });
       } else {
         // If no membership found, assume the ID itself is the partnerId (Platform Operator scenario)
-        localStorage.setItem('activePartnerId', id);
+        sessionStorage.setItem('activePartnerId', id);
         set({ activeMembershipId: id, activePartnerId: id });
       }
     },
@@ -117,8 +117,8 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       await res.json();
       const userId = get().user?.id;
       const syntheticMembershipId = `platform_${userId}_${partnerId}`;
-      localStorage.setItem('activeMembershipId', syntheticMembershipId);
-      localStorage.setItem('activePartnerId', partnerId);
+      sessionStorage.setItem('activeMembershipId', syntheticMembershipId);
+      sessionStorage.setItem('activePartnerId', partnerId);
       set({ activeMembershipId: syntheticMembershipId, activePartnerId: partnerId });
     },
     logout: async () => {

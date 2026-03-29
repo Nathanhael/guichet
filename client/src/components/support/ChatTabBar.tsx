@@ -32,7 +32,7 @@ export default function ChatTabBar({ tabs, activeTab, onSelectTab, onCloseTab }:
     <div className="flex items-center border-b border-[var(--color-border)] overflow-x-auto">
       {tabs.map((ticket) => {
         const isActive = activeTab === ticket.id;
-        const hasUnread = !isActive && unreadTickets.has(ticket.id);
+        const hasUnread = !isActive && !!unreadTickets[ticket.id];
 
         return (
           <div

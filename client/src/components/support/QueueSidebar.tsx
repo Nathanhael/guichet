@@ -256,7 +256,7 @@ export default function QueueSidebar({
                 </li>
               ) : queueFiltered.map((ticket) => {
                 const isOpen = supportOpenTickets.includes(ticket.id);
-                const isUnread = unreadTickets.has(ticket.id);
+                const isUnread = !!unreadTickets[ticket.id];
 
                 return (
                   <li
