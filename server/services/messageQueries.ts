@@ -16,6 +16,9 @@ export interface InsertMessageData {
   system?: boolean;
 }
 
+/** Socket-ready message shape returned by insertMessage. */
+export type SocketMessage = Awaited<ReturnType<typeof insertMessage>>;
+
 /**
  * Inserts a chat message and returns a socket-ready message object.
  * Used by: message:send, ticket:new
@@ -47,6 +50,7 @@ export async function insertMessage(data: InsertMessageData) {
     senderRole: data.senderRole,
     senderLang: data.senderLang,
     text: data.text,
+    // Client uses originalText for "revert AI improvement" — set to input text at creation time
     originalText: data.text,
     mediaUrl: data.mediaUrl || undefined,
     whisper: !!data.whisper,

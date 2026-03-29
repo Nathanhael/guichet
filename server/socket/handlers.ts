@@ -29,7 +29,7 @@ import {
 import { getBusinessHoursStatus, broadcastQueuePositions, broadcastAgentStatus, BusinessHoursSchedule } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
 import config from '../config.js';
-import { Ticket, Message, User, UserRole } from '../types/index.js';
+import { Ticket, UserRole } from '../types/index.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
@@ -46,6 +46,7 @@ import {
   softDeleteMessage,
   markDelivered,
   markRead,
+  type SocketMessage,
 } from '../services/messageQueries.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 import { runSyncGuards, guardRepetition } from '../services/guards.js';
@@ -459,9 +460,9 @@ export function registerSocketHandlers(io: Server) {
         const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
         await createTicket({ id: ticket.id, partnerId, dept: ticket.dept, agentId: ticket.agentId, agentName: ticket.agentName, agentLang: ticket.agentLang, references, status: ticket.status, createdAt: ticket.createdAt, participants: [], reopened, reopenCount });
 
-        let message: Message | null = null;
+        let message: SocketMessage | null = null;
         if (text?.trim()) {
-          const msg = await insertMessage({
+          message = await insertMessage({
             ticketId: ticket.id,
             senderId: agentId,
             senderName: agentUser?.name || agentId,
@@ -470,7 +471,6 @@ export function registerSocketHandlers(io: Server) {
             text: text,
             mediaUrl: mediaUrl,
           });
-          message = msg as unknown as Message;
         }
         // Calculate SLA due dates based on partner config (respects business hours if enabled)
         const slaConfig = parseSlaConfig(partnerRow?.slaConfig);

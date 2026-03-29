@@ -1,47 +1,54 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-// Mock the db module before importing the service
-vi.mock('../db/postgres.js', () => ({
-  db: {
-    insert: vi.fn().mockReturnThis(),
-    values: vi.fn().mockResolvedValue(undefined),
-  },
-}));
-
-// Mock uuid
-vi.mock('uuid', () => ({
-  v4: vi.fn(() => 'test-uuid-1234'),
+vi.mock('./messageQueries.js', () => ({
+  insertMessage: vi.fn().mockResolvedValue({
+    id: 'test-uuid-1234',
+    ticketId: 't1',
+    senderId: '__system__',
+    senderName: 'System',
+    senderRole: 'admin',
+    senderLang: 'en',
+    text: 'Agent joined the chat',
+    originalText: 'Agent joined the chat',
+    whisper: false,
+    system: true,
+    timestamp: '2026-01-01T00:00:00.000Z',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    reactions: {},
+  }),
 }));
 
 import { insertSystemMessage } from './systemMessage.js';
+import { insertMessage } from './messageQueries.js';
 
 describe('insertSystemMessage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
-  it('returns a well-formed system message object', async () => {
-    const result = await insertSystemMessage('ticket-1', 'Agent joined the chat');
+  it('delegates to insertMessage with system flags', async () => {
+    await insertSystemMessage('ticket-1', 'Agent joined the chat');
 
-    expect(result).toMatchObject({
-      id: 'test-uuid-1234',
+    expect(insertMessage).toHaveBeenCalledWith({
       ticketId: 'ticket-1',
       senderId: '__system__',
       senderName: 'System',
       senderRole: 'admin',
       senderLang: 'en',
       text: 'Agent joined the chat',
-      originalText: 'Agent joined the chat',
-      whisper: false,
       system: true,
+    });
+  });
+
+  it('returns the socket-ready message from insertMessage', async () => {
+    const result = await insertSystemMessage('ticket-1', 'Agent joined the chat');
+
+    expect(result).toMatchObject({
+      senderId: '__system__',
+      senderName: 'System',
+      system: true,
+      whisper: false,
     });
     expect(result.timestamp).toBeDefined();
     expect(result.createdAt).toBeDefined();
     expect(result.reactions).toEqual({});
-  });
-
-  it('returns consistent timestamp and createdAt', async () => {
-    const result = await insertSystemMessage('ticket-2', 'Ticket transferred');
-    expect(result.timestamp).toBe(result.createdAt);
   });
 });
