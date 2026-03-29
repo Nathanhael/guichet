@@ -33,3 +33,36 @@ export async function requirePartnerScope(
   }
   return ticket;
 }
+
+/**
+ * Generic variant of requirePartnerScope that accepts a custom query function.
+ *
+ * Useful when handlers need more than just partnerId (e.g. status, supportId).
+ * The query function must return an object with at least `partnerId`.
+ *
+ * Usage:
+ *   const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForClose);
+ *   if (!ticket) return;
+ */
+export async function requirePartnerScopeWith<T extends { partnerId: string }>(
+  socket: Socket,
+  ticketId: string,
+  queryFn: (ticketId: string) => Promise<T | undefined>,
+): Promise<T | null> {
+  const ticket = await queryFn(ticketId);
+  if (!ticket || ticket.partnerId !== socket.data.partnerId) {
+    logger.warn(
+      {
+        socketId: socket.id,
+        userId: socket.data.userId,
+        ticketId,
+        expected: socket.data.partnerId,
+        actual: ticket?.partnerId,
+      },
+      '[socket] Tenant isolation: partner mismatch',
+    );
+    socket.emit('error', { message: 'Not authorized' });
+    return null;
+  }
+  return ticket;
+}
