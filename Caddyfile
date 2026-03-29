@@ -1,0 +1,26 @@
+{$DOMAIN:localhost} {
+	# API traffic → server container
+	handle /api/* {
+		reverse_proxy server:3001
+	}
+
+	# WebSocket traffic → server container
+	handle /socket.io/* {
+		reverse_proxy server:3001
+	}
+
+	# Uploaded files → server container
+	handle /uploads/* {
+		reverse_proxy server:3001
+	}
+
+	# Prometheus metrics → server container (internal only)
+	handle /metrics {
+		reverse_proxy server:3001
+	}
+
+	# Everything else → client container (SPA)
+	handle {
+		reverse_proxy client:8080
+	}
+}
