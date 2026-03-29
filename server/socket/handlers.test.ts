@@ -112,6 +112,29 @@ vi.mock('../services/sla.js', () => ({
   calculateSlaDueDate: vi.fn(() => new Date()),
 }));
 
+// ---- messageQueries mocks ----
+const insertMessageMock = vi.fn();
+const findTicketMessagesMock = vi.fn();
+const findTicketLabelIdsMock = vi.fn();
+const findMessageForEditMock = vi.fn();
+const findMessageForDeleteMock = vi.fn();
+const updateMessageTextMock = vi.fn();
+const softDeleteMessageMock = vi.fn();
+const markDeliveredMock = vi.fn();
+const markReadMock = vi.fn();
+
+vi.mock('../services/messageQueries.js', () => ({
+  insertMessage: insertMessageMock,
+  findTicketMessages: findTicketMessagesMock,
+  findTicketLabelIds: findTicketLabelIdsMock,
+  findMessageForEdit: findMessageForEditMock,
+  findMessageForDelete: findMessageForDeleteMock,
+  updateMessageText: updateMessageTextMock,
+  softDeleteMessage: softDeleteMessageMock,
+  markDelivered: markDeliveredMock,
+  markRead: markReadMock,
+}));
+
 // ---- Socket & IO mocks ----
 
 function createMockSocket(data: Record<string, any> = {}) {
@@ -399,6 +422,7 @@ describe('message:send', () => {
     getBusinessHoursStatusMock.mockReturnValue({ isOpen: true, message: 'Open' });
     broadcastQueuePositionsMock.mockReset();
     broadcastAgentStatusMock.mockReset();
+    insertMessageMock.mockReset();
   });
 
   async function setupMessageSend(socketData: Record<string, unknown> = {}) {
@@ -473,7 +497,8 @@ describe('message:send', () => {
     // Sender lookup returns user with membership
     findSenderInfoMock.mockResolvedValueOnce({ name: 'Support Agent', role: 'support', lang: 'en' });
     // Message insert succeeds
-    runMock.mockResolvedValueOnce(undefined);
+    const fakeMsg = { id: 'msg-1', ticketId: 'ticket-1', senderId: 'u1', senderName: 'Support Agent', senderRole: 'support', senderLang: 'en', text: 'hello from same partner', originalText: 'hello from same partner', whisper: false, system: false, timestamp: new Date().toISOString(), createdAt: new Date().toISOString(), reactions: {} };
+    insertMessageMock.mockResolvedValueOnce(fakeMsg);
 
     await messageSendHandler({ ticketId: 'ticket-1', text: 'hello from same partner' });
 
@@ -483,10 +508,9 @@ describe('message:send', () => {
     );
     expect(errorCalls).toHaveLength(0);
 
-    // Should have inserted a message into the database
-    expect(runMock).toHaveBeenCalledTimes(1);
-    const insertCall = runMock.mock.calls[0] as [string, unknown[]];
-    expect(insertCall[0]).toContain('INSERT INTO messages');
+    // Should have inserted a message into the database via insertMessage
+    expect(insertMessageMock).toHaveBeenCalledTimes(1);
+    expect(insertMessageMock).toHaveBeenCalledWith(expect.objectContaining({ ticketId: 'ticket-1', text: 'hello from same partner' }));
 
     // Should have broadcast message:new to the ticket room
     expect(io.to).toHaveBeenCalledWith('ticket:ticket-1');
