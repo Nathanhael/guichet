@@ -289,7 +289,7 @@ app.get('/metrics', async (req: Request, res: Response) => {
 (async () => {
   try {
     const { query: rawQuery } = await import('./db.js');
-    const result = await rawQuery('SELECT MAX(created_at) as oldest FROM audit_log') as { oldest: string | null }[];
+    const result = await rawQuery('SELECT MIN(created_at) as oldest FROM audit_log') as { oldest: string | null }[];
     const oldest = result?.[0]?.oldest;
     if (oldest) {
       const ageMs = Date.now() - new Date(oldest).getTime();
