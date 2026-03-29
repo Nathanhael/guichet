@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isValidMediaUrl, sanitizeForPrompt } from './security.js';
+import { isValidMediaUrl, sanitizeForPrompt, escapeLikePattern } from './security.js';
 
 describe('isValidMediaUrl', () => {
   it('allows null/undefined/empty string', () => {
@@ -78,5 +78,28 @@ describe('sanitizeForPrompt', () => {
   it('preserves newlines and tabs', () => {
     expect(sanitizeForPrompt('line1\nline2')).toBe('line1\nline2');
     expect(sanitizeForPrompt('col1\tcol2')).toBe('col1\tcol2');
+  });
+});
+
+describe('escapeLikePattern', () => {
+  it('escapes percent wildcard', () => {
+    expect(escapeLikePattern('100%')).toBe('100\\%');
+  });
+
+  it('escapes underscore wildcard', () => {
+    expect(escapeLikePattern('user_name')).toBe('user\\_name');
+  });
+
+  it('escapes backslash', () => {
+    expect(escapeLikePattern('path\\to')).toBe('path\\\\to');
+  });
+
+  it('escapes all wildcards in combination', () => {
+    expect(escapeLikePattern('%_test\\val%')).toBe('\\%\\_test\\\\val\\%');
+  });
+
+  it('returns normal text unchanged', () => {
+    expect(escapeLikePattern('hello world')).toBe('hello world');
+    expect(escapeLikePattern('')).toBe('');
   });
 });
