@@ -6,12 +6,9 @@ import { validate } from '../middleware/validator.js';
 import { Ticket } from '../types/index.js';
 import { auth, authorize, AuthRequest } from '../middleware/auth.js';
 import { canExportTickets } from '../services/roles.js';
+import { escapeLikePattern } from '../utils/security.js';
 
 const router = express.Router();
-
-function escapeLikePattern(s: string): string {
-  return s.replace(/[%_\\]/g, '\\$&');
-}
 
 /**
  * LEGACY EXPORT ROUTE

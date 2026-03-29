@@ -6,6 +6,7 @@ import { kbArticles } from '../../db/schema.js';
 import { eq, and, asc, ilike, or, sql } from 'drizzle-orm';
 import { notFound } from '../../utils/trpcErrors.js';
 import logger from '../../utils/logger.js';
+import { escapeLikePattern } from '../../utils/security.js';
 
 
 function slugify(text: string): string {
@@ -75,7 +76,7 @@ export const kbRouter = router({
   search: partnerScopedProcedure
     .input(z.object({ query: z.string().min(1).max(200) }))
     .query(async ({ ctx, input }) => {
-      const q = `%${input.query}%`;
+      const q = `%${escapeLikePattern(input.query)}%`;
 
       return db
         .select(articleListColumns)
@@ -191,7 +192,7 @@ Only return valid JSON, nothing else.`,
         };
       } catch {
         // Fallback to keyword search
-        const q = `%${input.question}%`;
+        const q = `%${escapeLikePattern(input.question)}%`;
         const fallback = await db
           .select(articleListColumns)
           .from(kbArticles)

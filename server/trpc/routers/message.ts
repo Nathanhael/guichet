@@ -7,6 +7,7 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
+import { escapeLikePattern } from '../../utils/security.js';
 
 export const messageRouter = router({
   list: protectedProcedure
@@ -101,7 +102,7 @@ export const messageRouter = router({
         }
 
         // Text search (ILIKE for simplicity — works well for moderate data)
-        const searchPattern = `%${input.query}%`;
+        const searchPattern = `%${escapeLikePattern(input.query)}%`;
         conditions.push(ilike(messages.text, searchPattern));
 
         // Exclude whispers from search results

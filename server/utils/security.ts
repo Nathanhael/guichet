@@ -37,6 +37,17 @@ export function isValidMediaUrl(url: string | undefined | null): boolean {
 }
 
 /**
+ * Escapes SQL LIKE/ILIKE wildcard characters in user input.
+ * Without this, attackers can inject `%` or `_` to craft expensive
+ * wildcard queries that bypass indexes and cause DB-level DoS.
+ *
+ * Usage: `const q = \`%${escapeLikePattern(input)}%\`;`
+ */
+export function escapeLikePattern(s: string): string {
+  return s.replace(/[%_\\]/g, '\\$&');
+}
+
+/**
  * Sanitizes untrusted text for inclusion in an LLM prompt.
  * Escapes characters that could be used for tag-based injection.
  */
