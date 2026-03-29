@@ -4,6 +4,7 @@ import { db } from '../../db/postgres.js';
 import { partners } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from '../../utils/logger.js';
+import { decrypt } from '../encryption.js';
 import type { AiProvider } from './types.js';
 import { validateAiBaseUrl } from './validateUrl.js';
 import { OllamaProvider } from './ollama.js';
@@ -91,12 +92,24 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
 
     if (partner?.aiProvider) {
       const aiConfig = (partner.aiConfig ?? {}) as Record<string, unknown>;
+
+      // Decrypt API key if encrypted (SEC-5)
+      let apiKey = aiConfig.apiKey as string | undefined;
+      if (!apiKey && aiConfig.encryptedApiKey) {
+        try {
+          apiKey = decrypt(aiConfig.encryptedApiKey as string);
+        } catch (err) {
+          logger.error({ partnerId, err: err instanceof Error ? err.message : String(err) }, '[ai] Failed to decrypt API key — AI disabled for this partner');
+          apiKey = undefined;
+        }
+      }
+
       const key = cacheKey(
         partner.aiProvider,
         partnerId,
         partner.aiModel ?? undefined,
         aiConfig.baseUrl as string | undefined,
-        hashKey(aiConfig.apiKey as string | undefined),
+        hashKey(apiKey),
       );
 
       if (!providerCache.has(key)) {
@@ -111,7 +124,7 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
           key,
           buildProvider(partner.aiProvider, {
             baseUrl: aiConfig.baseUrl as string | undefined,
-            apiKey: aiConfig.apiKey as string | undefined,
+            apiKey,
             model: partner.aiModel ?? undefined,
             deployment: aiConfig.deployment as string | undefined,
           }),
