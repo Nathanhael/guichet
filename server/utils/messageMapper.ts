@@ -1,4 +1,4 @@
-import { Message, UserRole } from '../types';
+import { Message, UserRole } from '../types/index.js';
 
 /** Accepts both camelCase (Drizzle ORM) and snake_case (raw SQL) row formats */
 interface MessageRow {
