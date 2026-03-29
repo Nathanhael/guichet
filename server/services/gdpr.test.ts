@@ -302,11 +302,17 @@ describe('runDailyPurge', () => {
   it('logs error and does not throw when purge fails', async () => {
     const logger = (await import('../utils/logger.js')).default;
 
-    archiveAuditLogMock.mockRejectedValue(new Error('DB down'));
+    // Archiving and chain verification succeed (defaults).
+    // Count query for guard check
+    queryMock.mockResolvedValueOnce([{ count: 0 }]);
+    // Dates query returns empty
+    queryMock.mockResolvedValueOnce([]);
+    // Transaction fails — this is INSIDE the try/catch
+    transactionMock.mockRejectedValueOnce(new Error('DB down'));
 
     const { runDailyPurge } = await import('./gdpr.js');
 
-    // Should not throw
+    // Should not throw — error is caught and logged
     await expect(runDailyPurge()).resolves.toBeUndefined();
 
     expect(logger.error).toHaveBeenCalledWith(
