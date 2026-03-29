@@ -1,5 +1,5 @@
-import config from '../config.js';
 import { Ticket, Rating, Message } from '../types/index.js';
+import { getEffectiveSla, SlaConfig } from './sla.js';
 
 /** Extended ticket with DB columns not on the base Ticket interface */
 interface TicketWithReopened extends Ticket {
@@ -18,7 +18,7 @@ export function calculatePercentile(values: number[], percentile: number): numbe
   return sorted[index];
 }
 
-export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings: Rating[], deptFilter?: string, dayMessages: MessageWithSentiment[] = []) {
+export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings: Rating[], deptFilter?: string, dayMessages: MessageWithSentiment[] = [], slaConfig: SlaConfig | null = null) {
   let tickets = dayTickets;
   let ratings = dayRatings;
   let messages = dayMessages;
@@ -68,7 +68,7 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
       responseTimes.push(responseTime);
       deptResolved[t.dept] = (deptResolved[t.dept] || 0) + 1;
 
-      const isCompliant = responseTime <= config.SLA_THRESHOLD_MS;
+      const isCompliant = responseTime <= getEffectiveSla(slaConfig, t.dept).responseMs;
       if (isCompliant) deptCompliant[t.dept] = (deptCompliant[t.dept] || 0) + 1;
 
       hourlySla[hour].resolved++;
@@ -93,7 +93,7 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
   const sentimentCount = messages.filter(m => m.sentiment !== undefined && m.sentiment !== null).length;
 
   const resolved = tickets.filter(t => t.supportJoinedAt);
-  const compliant = resolved.filter(t => (new Date(t.supportJoinedAt!).getTime() - new Date(t.createdAt).getTime()) <= config.SLA_THRESHOLD_MS).length;
+  const compliant = resolved.filter(t => (new Date(t.supportJoinedAt!).getTime() - new Date(t.createdAt).getTime()) <= getEffectiveSla(slaConfig, t.dept).responseMs).length;
 
   return {
     total: tickets.length,

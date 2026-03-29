@@ -2,8 +2,9 @@ import { z } from 'zod';
 import { router, partnerScopedProcedure } from '../trpc.js';
 import { query, db } from '../../db.js';
 import { ratings as ratingsTable, messages as messagesTable } from '../../db/schema.js';
-import { and, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
 import { computeLiveDayStats, calculatePercentile } from '../../services/stats.js';
+import { parseSlaConfig } from '../../services/sla.js';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { Ticket, UserRole } from '../../types/index.js';
@@ -172,6 +173,13 @@ export const statsRouter = router({
           }
         }
         const partnerId = ctx.user.partnerId;
+
+        // Fetch partner SLA config for per-partner compliance thresholds (#29)
+        const { partners: partnersTable } = await import('../../db/schema.js');
+        const partnerRows = await db.select({ slaConfig: partnersTable.slaConfig }).from(partnersTable).where(
+          eq(partnersTable.id, partnerId!)
+        );
+        const partnerSlaConfig = parseSlaConfig(partnerRows[0]?.slaConfig ?? null);
 
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
@@ -347,7 +355,7 @@ export const statsRouter = router({
                 ticketId: row.ticketId,
                 sentiment: row.sentimentAvg as number,
               }));
-            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, daySentimentMessages as unknown[] as Parameters<typeof computeLiveDayStats>[3]) as unknown as DayData;
+            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, daySentimentMessages as unknown[] as Parameters<typeof computeLiveDayStats>[3], partnerSlaConfig) as unknown as DayData;
           }
 
           perDayData.push({
