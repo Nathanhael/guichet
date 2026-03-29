@@ -19,9 +19,11 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, messages, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, onlineSupportUsers, setRatingPrompt } = useStoreShallow(s => ({
+  const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, onlineSupportUsers, setRatingPrompt } = useStoreShallow(s => ({
     user: s.user,
     messages: s.messages,
+    messageCursors: s.messageCursors,
+    setMessageLoading: s.setMessageLoading,
     participantsOnline: s.participantsOnline,
     setParticipantOnline: s.setParticipantOnline,
     tickets: s.tickets,
@@ -318,12 +320,29 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
 
   const getLabelInfo = (id: string) => (allLabels || []).find((l) => l.id === id);
 
+  // Pagination cursor for the current ticket
+  const cursorInfo = ticket ? messageCursors[ticket.id] : undefined;
+
+  function loadOlderMessages() {
+    if (!ticket || !cursorInfo?.hasMore || cursorInfo?.loading || !cursorInfo?.nextCursor) return;
+    setMessageLoading(ticket.id, true);
+    getSocket().emit('message:loadMore', {
+      ticketId: ticket.id,
+      cursor: cursorInfo.nextCursor,
+    });
+  }
+
   // Track scroll position
   function handleScroll() {
     const el = scrollContainerRef.current;
     if (!el) return;
     isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
     if (isNearBottomRef.current) setUnreadCount(0);
+
+    // Load older messages when scrolled to top
+    if (el.scrollTop < 50) {
+      loadOlderMessages();
+    }
   }
 
   function emitTyping() {
@@ -726,6 +745,20 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
         className={`flex-1 overflow-y-auto p-6 scrollbar-thin relative bg-bg-surface`}
       >
         <div className="space-y-1 mb-8">
+          {cursorInfo?.hasMore && (
+            <div className="flex justify-center py-2">
+              {cursorInfo.loading ? (
+                <span className="text-xs font-mono text-text-secondary">Loading...</span>
+              ) : (
+                <button
+                  onClick={loadOlderMessages}
+                  className="text-xs font-mono text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  Load older messages
+                </button>
+              )}
+            </div>
+          )}
           {ticketMessages.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 opacity-40">
               <svg className="w-12 h-12 text-text-primary opacity-40 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

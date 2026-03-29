@@ -104,9 +104,23 @@ export function useSocket(): Socket {
       updateTicket(ticketId, { supportName, status: 'open', participants: participants || [] });
     };
 
-    const handleTicketHistory = ({ ticketId, messages, labels }: { ticketId: string; messages: Message[]; labels: string[] }) => {
+    const handleTicketHistory = ({ ticketId, messages, labels, hasMore, nextCursor }: {
+      ticketId: string; messages: Message[]; labels: string[]; hasMore?: boolean; nextCursor?: string;
+    }) => {
       setMessages(ticketId, messages);
       if (labels) updateTicket(ticketId, { labels });
+      // Store pagination cursor
+      if (hasMore !== undefined) {
+        useStore.getState().setMessageCursor(ticketId, hasMore, nextCursor);
+      }
+    };
+
+    const handleMorePage = ({ ticketId, messages, hasMore, nextCursor }: {
+      ticketId: string; messages: Message[]; hasMore: boolean; nextCursor?: string;
+    }) => {
+      const { prependMessages, setMessageCursor } = useStore.getState();
+      prependMessages(ticketId, messages);
+      setMessageCursor(ticketId, hasMore, nextCursor);
     };
 
     const handleMessageNew = (message: Message) => {
@@ -300,6 +314,7 @@ export function useSocket(): Socket {
     s.on('ticket:created:self', handleTicketCreatedSelf);
     s.on('support:joined', handleSupportJoined);
     s.on('ticket:history', handleTicketHistory);
+    s.on('message:morePage', handleMorePage);
     s.on('message:new', handleMessageNew);
     s.on('message:status', handleMessageStatus);
     s.on('typing:update', handleTypingUpdate);
@@ -333,6 +348,7 @@ export function useSocket(): Socket {
       s.off('ticket:created:self', handleTicketCreatedSelf);
       s.off('support:joined', handleSupportJoined);
       s.off('ticket:history', handleTicketHistory);
+      s.off('message:morePage', handleMorePage);
       s.off('message:new', handleMessageNew);
       s.off('message:status', handleMessageStatus);
       s.off('typing:update', handleTypingUpdate);
