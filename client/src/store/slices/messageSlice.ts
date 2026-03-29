@@ -3,11 +3,15 @@ import { StoreState, Message, OnlineSupport } from '../../types';
 
 export interface MessageSlice {
   messages: Record<string, Message[]>;
+  messageCursors: Record<string, { hasMore: boolean; nextCursor?: string; loading: boolean }>;
   onlineSupportUsers: OnlineSupport[];
   typingUsers: Record<string, Record<string, boolean>>;
-  
+
   setMessages: (ticketId: string, messages: Message[]) => void;
   addMessage: (ticketId: string, message: Message) => void;
+  prependMessages: (ticketId: string, messages: Message[]) => void;
+  setMessageCursor: (ticketId: string, hasMore: boolean, nextCursor?: string) => void;
+  setMessageLoading: (ticketId: string, loading: boolean) => void;
   updateMessageState: (ticketId: string, messageId: string, updates: Partial<Message>) => void;
   updateMessageReaction: (ticketId: string, messageId: string, reactions: Record<string, string[]>) => void;
   setOnlineSupportUsers: (list: OnlineSupport[]) => void;
@@ -16,6 +20,7 @@ export interface MessageSlice {
 
 export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> = (set) => ({
   messages: {},
+  messageCursors: {},
   onlineSupportUsers: [],
   typingUsers: {},
 
@@ -59,6 +64,34 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       if (existing.some((m) => m.id === message.id)) return state;
       return { messages: { ...state.messages, [ticketId]: [...existing, message] } };
     }),
+  prependMessages: (ticketId, newMessages) =>
+    set((state) => {
+      const existing = state.messages[ticketId] || [];
+      const msgMap = new Map();
+      newMessages.forEach(m => msgMap.set(m.id, m));
+      existing.forEach(m => msgMap.set(m.id, m)); // existing wins on conflict
+      const merged = Array.from(msgMap.values()).sort((a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      return { messages: { ...state.messages, [ticketId]: merged } };
+    }),
+
+  setMessageCursor: (ticketId, hasMore, nextCursor) =>
+    set((state) => ({
+      messageCursors: {
+        ...state.messageCursors,
+        [ticketId]: { ...state.messageCursors[ticketId], hasMore, nextCursor, loading: false },
+      },
+    })),
+
+  setMessageLoading: (ticketId, loading) =>
+    set((state) => ({
+      messageCursors: {
+        ...state.messageCursors,
+        [ticketId]: { ...state.messageCursors[ticketId], hasMore: state.messageCursors[ticketId]?.hasMore ?? false, loading },
+      },
+    })),
+
   updateMessageState: (ticketId, messageId, updates) => set((s) => {
     const msgs = s.messages[ticketId];
     if (!msgs) return s;
