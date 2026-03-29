@@ -11,11 +11,11 @@ describe('rating:submit race condition fix', () => {
     expect(source).toMatch(/uniqueIndex.*ticket/i);
   });
 
-  it('handler uses ON CONFLICT instead of SELECT-then-INSERT', () => {
+  it('handler uses insertRating from ticketQueries (which uses ON CONFLICT)', () => {
     const source = readFileSync(
       join(__dirname, '../../socket/handlers.ts'),
       'utf-8'
     );
-    expect(source).toMatch(/ON CONFLICT.*ticket_id.*DO NOTHING/i);
+    expect(source).toMatch(/insertRating\(/);
   });
 });

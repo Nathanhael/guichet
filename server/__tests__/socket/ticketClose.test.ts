@@ -5,7 +5,7 @@ import { join } from 'path';
 describe('ticket:close handler', () => {
   it('fetches ticket status before closing', () => {
     const source = readFileSync(join(__dirname, '../../socket/handlers.ts'), 'utf-8');
-    expect(source).toMatch(/SELECT.*status.*FROM tickets.*WHERE.*id/is);
+    expect(source).toMatch(/findTicketForClose\(ticketId\)/);
   });
 
   it('returns early if ticket is already closed', () => {
