@@ -20,6 +20,15 @@ import { autoSummarizeOnClose } from '../services/ai/autoSummarize.js';
 import { scoreSentiment } from '../services/ai/sentiment.js';
 import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../services/sla.js';
 import { Rooms } from '../utils/rooms.js';
+import {
+  VIEWER_TTL_SECONDS,
+  MAX_BATCH_DELETE,
+  MAX_MESSAGE_LENGTH,
+  MAX_EDIT_WINDOW_MS,
+  MAX_LABELS_PER_TICKET,
+  MAX_NOTE_LENGTH,
+  RECENT_CLOSED_TICKETS_LIMIT,
+} from '../constants.js';
 
 interface TicketNewPayload {
   agentId?: string; // Deprecated — server uses socket.data.userId instead
@@ -96,7 +105,6 @@ let ioInstance: Server | null = null;
 // Key: `ticket:viewers:{ticketId}` → Hash { socketId: JSON({ userId, userName }) }
 // Each entry has a 5-minute TTL refreshed on activity; stale viewers auto-expire.
 
-const VIEWER_TTL_SECONDS = 300; // 5 minutes
 const VIEWER_KEY_PREFIX = 'ticket:viewers:';
 
 // Local index: socketId → Set<ticketId> — for efficient cleanup on disconnect
@@ -419,7 +427,7 @@ export function registerSocketHandlers(io: Server) {
         let reopenCount = 0;
         const incomingValues = (references || []).map(r => r.value).filter(Boolean);
         if (incomingValues.length > 0) {
-          const recentClosed = await query('SELECT id, reopen_count, "references" FROM tickets WHERE partner_id = $1 AND status = \'closed\' ORDER BY created_at DESC LIMIT 100', [partnerId]) as unknown as Array<{ id: string; reopen_count: number; references: string | Array<{ label: string; value: string }> | null }>;
+          const recentClosed = await query('SELECT id, reopen_count, "references" FROM tickets WHERE partner_id = $1 AND status = \'closed\' ORDER BY created_at DESC LIMIT $2', [partnerId, RECENT_CLOSED_TICKETS_LIMIT]) as unknown as Array<{ id: string; reopen_count: number; references: string | Array<{ label: string; value: string }> | null }>;
           const match = recentClosed.find(t => {
             try {
               const raw = typeof t.references === 'string' ? JSON.parse(t.references) : t.references;
@@ -605,7 +613,7 @@ export function registerSocketHandlers(io: Server) {
         }
 
         // Limit closing notes length to prevent abuse
-        const sanitizedNotes = closingNotes ? closingNotes.slice(0, 2000) : '';
+        const sanitizedNotes = closingNotes ? closingNotes.slice(0, MAX_NOTE_LENGTH) : '';
         const now = new Date().toISOString();
         await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, senderName || 'System', sanitizedNotes, ticketId]);
         io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System' });
@@ -643,7 +651,7 @@ export function registerSocketHandlers(io: Server) {
         const supportId = ticket.support_id;
 
         const id = uuidv4();
-        const safeComment = comment ? comment.slice(0, 2000) : null;
+        const safeComment = comment ? comment.slice(0, MAX_NOTE_LENGTH) : null;
         await run(
           'INSERT INTO ratings (id, ticket_id, agent_id, support_id, partner_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (ticket_id) DO NOTHING',
           [id, ticketId, agentId, supportId, socket.data.partnerId, intRating, safeComment]
@@ -780,8 +788,7 @@ export function registerSocketHandlers(io: Server) {
         if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
 
         // Limit array length to prevent DoS
-        const MAX_BATCH = 100;
-        const limitedIds = messageIds.slice(0, MAX_BATCH);
+        const limitedIds = messageIds.slice(0, MAX_BATCH_DELETE);
         const now = new Date().toISOString();
 
         // Batch update: scope to ticket_id for safety
@@ -804,7 +811,7 @@ export function registerSocketHandlers(io: Server) {
       try {
         const senderId = socket.data.userId;
         if (!senderId || !ticketId || !messageId || !newText?.trim()) return;
-        if (newText.trim().length > 10000) return socket.emit('error', { message: 'Message too long' });
+        if (newText.trim().length > MAX_MESSAGE_LENGTH) return socket.emit('error', { message: 'Message too long' });
 
         // Verify ticket belongs to caller's partner
         const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
@@ -818,8 +825,7 @@ export function registerSocketHandlers(io: Server) {
         if (msg.deleted_at) return socket.emit('error', { message: 'Cannot edit deleted messages' });
 
         const ageMs = Date.now() - new Date(msg.created_at).getTime();
-        const MAX_EDIT_WINDOW = 15 * 60 * 1000; // 15 minutes
-        if (ageMs > MAX_EDIT_WINDOW) return socket.emit('error', { message: 'Edit window has expired (15 min)' });
+        if (ageMs > MAX_EDIT_WINDOW_MS) return socket.emit('error', { message: 'Edit window has expired (15 min)' });
 
         // CR-01 fix: Run content moderation guards on edited text (mirrors message:send)
         let guardedText = newText.trim();
@@ -957,9 +963,8 @@ export function registerSocketHandlers(io: Server) {
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
 
         // ME-07 fix: Cap label array size to prevent oversized IN clause
-        const MAX_LABELS = 50;
-        if (labels.length > MAX_LABELS) {
-          return socket.emit('error', { message: `Too many labels (max ${MAX_LABELS})` });
+        if (labels.length > MAX_LABELS_PER_TICKET) {
+          return socket.emit('error', { message: `Too many labels (max ${MAX_LABELS_PER_TICKET})` });
         }
 
         const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
