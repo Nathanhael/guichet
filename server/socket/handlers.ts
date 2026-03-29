@@ -669,10 +669,8 @@ export function registerSocketHandlers(io: Server) {
 
         // Tenant isolation: verify ticket belongs to caller's partner and caller is the agent
         // Read support_id from the ticket instead of trusting client-provided value
-        const ticket = await findTicketOwner(ticketId);
-        if (!ticket || ticket.partnerId !== socket.data.partnerId) {
-          return socket.emit('error', { message: 'Not authorized' });
-        }
+        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketOwner);
+        if (!ticket) return;
         if (ticket.agentId !== socket.data.userId) {
           return socket.emit('error', { message: 'Only the ticket agent can submit a rating' });
         }
