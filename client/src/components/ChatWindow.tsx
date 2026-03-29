@@ -88,9 +88,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     }
   }, [messageQuery.data, ticketId, setMessages]);
 
-  // tRPC: AI Config (to show/hide Improve button)
+  // tRPC: AI Config (to show/hide Improve button and pass to MessageBubble)
   const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
-    enabled: !!user && ticket?.status !== 'closed',
+    enabled: !!user,
+    staleTime: 60_000,
   });
   const aiConfig = aiConfigQuery.data;
 
@@ -748,12 +749,13 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             const isGroupEnd = !isSameSenderAsNext || timeDiffNext > 120000;
 
             return (
-              <MessageBubble 
-                key={msg.id} 
-                message={msg} 
-                ticketId={ticket.id} 
+              <MessageBubble
+                key={msg.id}
+                message={msg}
+                ticketId={ticket.id}
                 isGroupStart={isGroupStart}
                 isGroupEnd={isGroupEnd}
+                aiConfig={aiConfigQuery.data}
               />
             );
           })}
