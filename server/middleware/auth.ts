@@ -44,7 +44,7 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
 
     req.user = {
       id: decoded.userId,
-      role: decoded.role,
+      role: decoded.role as UserRole,
       partnerId: decoded.partnerId,
       membershipId: decoded.membershipId,
       departments: decoded.departments,

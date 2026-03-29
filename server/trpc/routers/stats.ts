@@ -347,7 +347,7 @@ export const statsRouter = router({
                 ticketId: row.ticketId,
                 sentiment: row.sentimentAvg as number,
               }));
-            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, daySentimentMessages) as unknown as DayData;
+            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, daySentimentMessages as unknown[] as Parameters<typeof computeLiveDayStats>[3]) as unknown as DayData;
           }
 
           perDayData.push({
