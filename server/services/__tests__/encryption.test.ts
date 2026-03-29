@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-// We test the actual crypto functions, not mocks.
-describe('encryption service', () => {
-  // Set the env var before importing
-  const TEST_KEY = 'a'.repeat(64); // 32 bytes in hex
+const TEST_KEY = 'a'.repeat(64); // 32 bytes in hex
 
+// Mock the config module to provide the encryption secret
+vi.mock('../../config.js', () => ({
+  default: { AI_KEY_ENCRYPTION_SECRET: TEST_KEY },
+}));
+
+describe('encryption service', () => {
   beforeEach(() => {
     // Reset module cache so cached key doesn't leak between tests
     vi.resetModules();
-    vi.stubEnv('AI_KEY_ENCRYPTION_SECRET', TEST_KEY);
   });
 
   it('should encrypt and decrypt a string back to the original', async () => {

@@ -13,6 +13,7 @@ import { renderInviteNew, renderInviteExisting, renderInviteReminder, renderTest
 import { hashPassword } from '../../utils/passwords.js';
 import { validateWebhookUrl } from '../../services/webhookDispatch.js';
 import { encrypt } from '../../services/encryption.js';
+import config from '../../config.js';
 
 export const platformRouter = router({
   // --- System Health ---
@@ -193,8 +194,11 @@ export const platformRouter = router({
           try {
             configToStore.encryptedApiKey = encrypt(configToStore.apiKey);
             delete configToStore.apiKey; // Never store plaintext
-          } catch {
-            // AI_KEY_ENCRYPTION_SECRET not set — store as-is with warning
+          } catch (err) {
+            if (config.NODE_ENV === 'production') {
+              throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Cannot store API key: AI_KEY_ENCRYPTION_SECRET is not configured' });
+            }
+            // Dev only: store as-is with warning
             logger.warn('[platform] AI_KEY_ENCRYPTION_SECRET not set — API key stored unencrypted');
           }
         }

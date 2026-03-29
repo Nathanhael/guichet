@@ -128,6 +128,8 @@ if (config.NODE_ENV === 'production') {
         warn.push('REQUIRE_PLATFORM_STEP_UP is false — platform admin has no MFA step-up');
     if (!config.COOKIE_DOMAIN)
         warn.push('COOKIE_DOMAIN is not set — cookies will be scoped to the exact hostname, which may cause issues with subdomains. Set to your root domain (e.g., "example.com")');
+    if (!config.AI_KEY_ENCRYPTION_SECRET)
+        warn.push('AI_KEY_ENCRYPTION_SECRET is not set — partner AI API keys will not be encrypted at rest');
     if (!config.COOKIE_SECURE)
         fatal.push('COOKIE_SECURE is false — cookies will not be sent over HTTPS');
 
