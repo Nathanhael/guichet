@@ -44,6 +44,7 @@ services:
       - AI_BASE_URL=${AI_BASE_URL:-}
       - AI_API_KEY=${AI_API_KEY:-}
       - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT:-}
+      - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:-}
       - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
     extra_hosts:
       - "host.docker.internal:host-gateway"
