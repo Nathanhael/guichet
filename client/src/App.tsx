@@ -2,6 +2,7 @@ import { Suspense, useEffect, useState, lazy } from 'react';
 import useStore from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import { useTheme } from './hooks/useTheme';
+import { useTokenRefresh } from './hooks/useTokenRefresh';
 import { initTitleBadgeListener } from './utils/notifications';
 import DarkModeToggle from './components/DarkModeToggle';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -53,6 +54,7 @@ export default function App() {
 
   useTheme();
   useSocket();
+  useTokenRefresh();
 
   // Initialize tab title badge listener (clears badge on window focus)
   useEffect(() => { initTitleBadgeListener(); }, []);
