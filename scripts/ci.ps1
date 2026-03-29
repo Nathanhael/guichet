@@ -3,7 +3,7 @@
 #        powershell -File scripts/ci.ps1 -Skip e2e    (skip slow E2E tests)
 
 param(
-    [ValidateSet("typecheck", "test-server", "test-client", "migrate", "e2e")]
+    [ValidateSet("typecheck", "audit", "test-server", "test-client", "migrate", "e2e")]
     [string[]]$Skip = @()
 )
 
@@ -41,10 +41,11 @@ Write-Host "  Tessera Local CI" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor White
 
 Run-Step "typecheck" @("docker compose exec server npx tsc --noEmit", "docker compose exec client npx tsc --noEmit")
+Run-Step "audit" @("docker compose exec server npm audit --audit-level=high", "docker compose exec client npm audit --audit-level=high")
 Run-Step "test-server" @("docker compose exec server npm test")
 Run-Step "test-client" @("docker compose exec client npm test")
 Run-Step "migrate" @("docker compose exec server npm run db:migrate")
-Run-Step "e2e" @("docker compose exec client npm run build", "npx playwright test")
+Run-Step "e2e" @("docker compose exec client npm run build", "docker compose exec client npx playwright test")
 
 $stopwatch.Stop()
 Write-Host "`n========================================" -ForegroundColor White
@@ -53,7 +54,7 @@ if ($failed.Count -gt 0) {
     Write-Host "  FAILED ($($stopwatch.Elapsed.TotalSeconds.ToString('0'))s): $($failed -join ', ')" -ForegroundColor Red
     exit 1
 } else {
-    $ran = 5 - $Skip.Count
+    $ran = 6 - $Skip.Count
     Write-Host "  ALL $ran STEPS PASSED ($($stopwatch.Elapsed.TotalSeconds.ToString('0'))s)" -ForegroundColor Green
     exit 0
 }
