@@ -8,23 +8,26 @@ import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js'
 import { ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable, dailyAiUsage } from '../db/schema.js';
 
 export async function runDailyPurge() {
+  // Step 0: Archive before purging (uses AUDIT_ARCHIVE_DELAY_DAYS, default 2 days)
+  // This MUST run outside the try/catch so chain integrity violations propagate to the caller.
+  const auditArchived = await archiveAuditLog();
+  const ticketsArchived = await archiveTickets();
+  if (auditArchived > 0 || ticketsArchived > 0) {
+    logger.info({ auditArchived, ticketsArchived }, '[purge] Pre-purge archival complete');
+  }
+
+  // Step 0.5: Verify audit chain integrity after archival.
+  // Must remain OUTSIDE the try/catch — a broken chain must abort the entire purge,
+  // not be silently swallowed by the general error handler.
+  const chainResult = await verifyAuditChain();
+  if (!chainResult.valid) {
+    logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked }, '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken');
+    throw new Error('GDPR purge aborted: audit chain integrity violation detected');
+  } else if (chainResult.checked > 0) {
+    logger.info({ checked: chainResult.checked }, '[purge] Audit chain integrity verified');
+  }
+
   try {
-    // Step 0: Archive before purging (uses AUDIT_ARCHIVE_DELAY_DAYS, default 2 days)
-    const auditArchived = await archiveAuditLog();
-    const ticketsArchived = await archiveTickets();
-    if (auditArchived > 0 || ticketsArchived > 0) {
-      logger.info({ auditArchived, ticketsArchived }, '[purge] Pre-purge archival complete');
-    }
-
-    // Step 0.5: Verify audit chain integrity after archival
-    const chainResult = await verifyAuditChain();
-    if (!chainResult.valid) {
-      logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked }, '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken');
-      throw new Error('GDPR purge aborted: audit chain integrity violation detected');
-    } else if (chainResult.checked > 0) {
-      logger.info({ checked: chainResult.checked }, '[purge] Audit chain integrity verified');
-    }
-
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - config.GDPR_RETENTION_DAYS);
     const cutoffDate = cutoff.toISOString().slice(0, 10);
