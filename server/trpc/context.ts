@@ -3,6 +3,7 @@ import { CreateExpressContextOptions } from '@trpc/server/adapters/express';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import config from '../config.js';
+import { UserRole } from '../types/index.js';
 import { isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 
@@ -48,7 +49,7 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
       }
       user = {
         id: decoded.userId,
-        role: decoded.role,
+        role: decoded.role as UserRole,
         partnerId: decoded.partnerId,
         membershipId: decoded.membershipId,
         isPlatformOperator: isPlatformAdmin(!!decoded.isPlatformOperator),
