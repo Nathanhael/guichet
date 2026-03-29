@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
@@ -25,7 +25,12 @@ import { Flame, Building2, Users } from 'lucide-react';
 type AdminTab = 'dashboard' | 'satisfaction' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned_responses' | 'knowledge_base' | 'webhooks';
 
 export default function AdminView() {
-  const { user, logout, memberships, activeMembershipId } = useStore();
+  const { user, logout, memberships, activeMembershipId } = useStoreShallow(s => ({
+    user: s.user,
+    logout: s.logout,
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId,
+  }));
   const { partnerName, manifest } = usePartner();
   const t = useT();
   const [view, setView] = useState<AdminTab>('dashboard');
