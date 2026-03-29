@@ -120,6 +120,7 @@ export const tickets = pgTable('tickets', {
   partnerCreatedIdx: index('idx_tickets_partner_created').on(table.partnerId, table.createdAt),
   partnerStatusIdx: index('idx_tickets_partner_status').on(table.partnerId, table.status),
   supportIdIdx: index('idx_tickets_support_id').on(table.supportId),
+  participantsGinIdx: index('idx_tickets_participants_gin').using('gin', table.participants),
 }));
 
 export const messages = pgTable('messages', {
