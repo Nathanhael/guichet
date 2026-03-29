@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { tickets, ticketLabels, memberships } from '../../db/schema.js';
+import { tickets, ticketLabels } from '../../db/schema.js';
 import { eq, and, or, ilike, sql, asc, desc, gte, lte, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
@@ -57,13 +57,10 @@ export const ticketRouter = router({
 
         // H-6: Department isolation for support users with assigned departments
         // Empty/null departments = generalist (sees all). Admin and platform_operator are not restricted.
-        if (!ctx.user.isPlatformOperator && ctx.user.role === 'support' && ctx.user.membershipId) {
-          const membershipRow = await db.select({ departments: memberships.departments })
-            .from(memberships)
-            .where(eq(memberships.id, ctx.user.membershipId))
-            .limit(1);
-          const depts = membershipRow[0]?.departments as string[] | null | undefined;
-          if (Array.isArray(depts) && depts.length > 0) {
+        // Departments sourced from JWT context (refreshed on token rotation, max staleness = ACCESS_TOKEN_EXPIRY).
+        if (!ctx.user.isPlatformOperator && ctx.user.role === 'support') {
+          const depts = ctx.user.departments;
+          if (depts.length > 0) {
             conditions.push(inArray(tickets.dept, depts));
           }
         }
