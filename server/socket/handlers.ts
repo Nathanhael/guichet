@@ -720,6 +720,7 @@ export function registerSocketHandlers(io: Server) {
           mediaUrl,
           whisper: isWhisper,
         });
+        const messageId = msgPayload.id;
 
         if (isWhisper) {
           // CR-01: Whisper messages must only be sent to support/admin sockets, never to end-users
