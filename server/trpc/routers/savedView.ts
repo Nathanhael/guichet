@@ -13,7 +13,12 @@ const filtersSchema = z.object({
   dept: z.string().optional(),
   tab: z.enum(['queue', 'archive', 'search']).optional(),
   status: z.string().optional(),
-}).passthrough();
+  labels: z.array(z.string()).optional(),
+  search: z.string().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  agentId: z.string().optional(),
+}).strict();
 
 export const savedViewRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {

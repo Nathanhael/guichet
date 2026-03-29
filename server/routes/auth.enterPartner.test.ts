@@ -159,7 +159,7 @@ describe('auth enter-partner route', () => {
     expect(decoded.membershipId).toBe('platform_platform-1_tenant-a');
     expect(decoded.isPlatformOperator).toBe(true);
     expect(typeof decoded.platformStepUpAt).toBe('number');
-    expect(insertMock).toHaveBeenCalledTimes(1);
+    expect(insertMock).toHaveBeenCalledTimes(2); // audit log + refresh token
     expect(insertValuesMock).toHaveBeenCalledWith(expect.objectContaining({
       action: 'platform.enter_partner',
       actorId: 'platform-1',
