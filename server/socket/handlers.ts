@@ -3,7 +3,29 @@ import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { parse as parseCookie } from 'cookie';
 import * as presenceService from '../services/presence.js';
-import { query, get, run, transaction } from '../db.js';
+import {
+  findTicketPartner,
+  findTicketForJoin,
+  findTicketForClose,
+  findTicketOwner,
+  findTicketParticipants,
+  findTicketForMessage,
+  findRecentClosedTickets,
+  findActiveTicketsForAgent,
+  findActiveTicketsForSupport,
+  findTicketForTransfer,
+  findPartnerLabels,
+  createTicket,
+  assignSupport,
+  findUpdatedParticipants,
+  updateParticipants,
+  closeTicket,
+  updateTicketSla,
+  transferTicket,
+  returnTicketToQueue,
+  replaceTicketLabels,
+  insertRating,
+} from '../services/ticketQueries.js';
 import { getBusinessHoursStatus, broadcastQueuePositions, broadcastAgentStatus, BusinessHoursSchedule } from '../services/businessHours.js';
 import logger from '../utils/logger.js';
 import config from '../config.js';
@@ -90,24 +112,6 @@ interface SenderInfo {
   lang: string;
 }
 
-interface TicketRow {
-  id: string;
-  partner_id: string;
-  dept: string;
-  agent_id: string;
-  agent_lang: string;
-  support_id: string | null;
-  support_name: string | null;
-  support_lang: string | null;
-  support_joined_at: string | null;
-  status: string;
-  participants: string;
-  created_at: string;
-}
-
-interface TicketParticipantsRow {
-  participants: string;
-}
 
 let ioInstance: Server | null = null;
 
@@ -386,9 +390,9 @@ export function registerSocketHandlers(io: Server) {
         try {
           let activeTickets: { id: string }[] = [];
           if (effectiveRole === 'agent') {
-            activeTickets = await query("SELECT id FROM tickets WHERE agent_id = $1 AND partner_id = $2 AND status != 'closed'", [userId, partnerId]) as { id: string }[];
+            activeTickets = await findActiveTicketsForAgent(userId, partnerId);
           } else if (socket.data.isSupport) {
-            activeTickets = await query("SELECT id FROM tickets WHERE (support_id = $1 OR participants::jsonb @> $3::jsonb) AND partner_id = $2 AND status != 'closed'", [userId, partnerId, JSON.stringify([{ id: userId }])]) as { id: string }[];
+            activeTickets = await findActiveTicketsForSupport(userId, partnerId);
           }
           for (const t of activeTickets) socket.join(Rooms.ticket(t.id));
         } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[socket:identify] failed to rejoin ticket rooms'); }
@@ -438,7 +442,7 @@ export function registerSocketHandlers(io: Server) {
         let reopenCount = 0;
         const incomingValues = (references || []).map(r => r.value).filter(Boolean);
         if (incomingValues.length > 0) {
-          const recentClosed = await query('SELECT id, reopen_count, "references" FROM tickets WHERE partner_id = $1 AND status = \'closed\' ORDER BY created_at DESC LIMIT $2', [partnerId, RECENT_CLOSED_TICKETS_LIMIT]) as unknown as Array<{ id: string; reopen_count: number; references: string | Array<{ label: string; value: string }> | null }>;
+          const recentClosed = await findRecentClosedTickets(partnerId, RECENT_CLOSED_TICKETS_LIMIT);
           const match = recentClosed.find(t => {
             try {
               const raw = typeof t.references === 'string' ? JSON.parse(t.references) : t.references;
@@ -448,13 +452,13 @@ export function registerSocketHandlers(io: Server) {
           });
           if (match) {
             reopened = true;
-            reopenCount = (match.reopen_count || 0) + 1;
+            reopenCount = (match.reopenCount || 0) + 1;
           }
         }
 
         const agentUser = await findUserName(agentId);
         const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
-        await run('INSERT INTO tickets (id, partner_id, dept, agent_id, agent_name, agent_lang, "references", status, created_at, participants, reopened, reopen_count) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)', [ticket.id, partnerId, ticket.dept, ticket.agentId, ticket.agentName, ticket.agentLang, JSON.stringify(references), ticket.status, ticket.createdAt, ticket.participants, reopened, reopenCount]);
+        await createTicket({ id: ticket.id, partnerId, dept: ticket.dept, agentId: ticket.agentId, agentName: ticket.agentName, agentLang: ticket.agentLang, references, status: ticket.status, createdAt: ticket.createdAt, participants: ticket.participants, reopened, reopenCount });
 
         let message: Message | null = null;
         if (text?.trim()) {
@@ -470,7 +474,7 @@ export function registerSocketHandlers(io: Server) {
           message = msg as unknown as Message;
         }
         // Calculate SLA due dates based on partner config (respects business hours if enabled)
-        const slaConfig = parseSlaConfig(partnerRow?.sla_config);
+        const slaConfig = parseSlaConfig(partnerRow?.slaConfig);
         const sla = getEffectiveSla(slaConfig, dept);
         const createdDate = new Date(ticket.createdAt);
         const slaOpts = {
@@ -479,7 +483,7 @@ export function registerSocketHandlers(io: Server) {
         };
         const slaResponseDueAt = calculateSlaDueDate(createdDate, sla.responseMs, slaOpts).toISOString();
         const slaResolutionDueAt = calculateSlaDueDate(createdDate, sla.resolutionMs, slaOpts).toISOString();
-        await run('UPDATE tickets SET sla_response_due_at = $1, sla_resolution_due_at = $2 WHERE id = $3', [slaResponseDueAt, slaResolutionDueAt, ticket.id]);
+        await updateTicketSla(ticket.id, slaResponseDueAt, slaResolutionDueAt);
         const ticketWithSla = { ...ticket, slaResponseDueAt, slaResolutionDueAt, slaBreached: false };
 
         socket.join(Rooms.ticket(ticket.id));
@@ -505,11 +509,11 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Not authorized to join tickets' });
         }
 
-        const ticket = await get('SELECT id, partner_id, support_id, support_name, support_lang, support_joined_at, status, participants FROM tickets WHERE id = $1', [ticketId]) as unknown as TicketRow | undefined;
+        const ticket = await findTicketForJoin(ticketId);
         if (!ticket) return;
 
         // Tenant isolation: ticket must belong to caller's partner
-        if (ticket.partner_id !== callerPartnerId) {
+        if (ticket.partnerId !== callerPartnerId) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
@@ -518,24 +522,10 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Cannot join a closed ticket' });
         }
 
-        // Atomic participant update using JSONB to avoid race conditions
-        const participantJson = JSON.stringify({ id: supportId, name: supportName });
-        await run(`UPDATE tickets SET
-          support_id = COALESCE(support_id, $1),
-          support_name = COALESCE(support_name, $2),
-          support_lang = COALESCE(support_lang, $3),
-          support_joined_at = COALESCE(support_joined_at, $4),
-          participants = CASE
-            WHEN NOT (COALESCE(participants, '[]')::jsonb @> $5::jsonb)
-            THEN (COALESCE(participants, '[]')::jsonb || $6::jsonb)::text
-            ELSE participants
-          END,
-          status = 'open'
-        WHERE id = $7`, [supportId, supportName, supportLang, new Date().toISOString(), `[${participantJson}]`, participantJson, ticketId]);
+        await assignSupport(ticketId, supportId, supportName, supportLang);
 
         // Read back updated participants for broadcast
-        const updated = await get('SELECT participants FROM tickets WHERE id = $1', [ticketId]) as { participants: string } | undefined;
-        const participants = JSON.parse(updated?.participants || '[]');
+        const participants = (await findUpdatedParticipants(ticketId)) || [];
         socket.join(Rooms.ticket(ticketId));
         const msgs = (await findTicketMessages(ticketId)).map(mapMessageRow);
         const labelIds = await findTicketLabelIds(ticketId);
@@ -564,23 +554,23 @@ export function registerSocketHandlers(io: Server) {
         const supportId = socket.data.userId;
         const supportName = socket.data.name;
 
-        const ticket = await get('SELECT partner_id, participants FROM tickets WHERE id = $1', [ticketId]) as unknown as (TicketParticipantsRow & { partner_id: string }) | undefined;
+        const ticket = await findTicketParticipants(ticketId);
         if (!ticket) return;
 
         // Tenant isolation
-        if (ticket.partner_id !== socket.data.partnerId) {
+        if (ticket.partnerId !== socket.data.partnerId) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
         // Verify caller is actually a participant in this ticket
-        const currentParticipants: Participant[] = JSON.parse(ticket.participants || '[]');
+        const currentParticipants: Participant[] = (ticket.participants as unknown as Participant[]) || [];
         const isParticipant = currentParticipants.some((p: Participant) => p.id === supportId);
         if (!isParticipant) {
           return socket.emit('error', { message: 'You are not a participant of this ticket' });
         }
 
         let participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
-        await run('UPDATE tickets SET participants = $1 WHERE id = $2', [JSON.stringify(participants), ticketId]);
+        await updateParticipants(ticketId, participants);
         socket.leave(Rooms.ticket(ticketId));
         io.to(Rooms.ticket(ticketId)).emit('support:left', { ticketId, supportId, supportName, participants });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:leave] error'); }
@@ -600,11 +590,11 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Only support staff can close tickets' });
         }
 
-        const ticket = await get('SELECT partner_id, status FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string; status: string } | undefined;
+        const ticket = await findTicketForClose(ticketId);
         if (!ticket) return;
 
         // Tenant isolation: ticket must belong to caller's partner
-        if (ticket.partner_id !== socket.data.partnerId) {
+        if (ticket.partnerId !== socket.data.partnerId) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
@@ -614,13 +604,12 @@ export function registerSocketHandlers(io: Server) {
 
         // Limit closing notes length to prevent abuse
         const sanitizedNotes = closingNotes ? closingNotes.slice(0, MAX_NOTE_LENGTH) : '';
-        const now = new Date().toISOString();
-        await run('UPDATE tickets SET status = $1, closed_at = $2, closed_by = $3, closing_notes = $4 WHERE id = $5', ['closed', now, senderName || 'System', sanitizedNotes, ticketId]);
+        const now = await closeTicket(ticketId, senderName || 'System', sanitizedNotes);
         io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System' });
-        await broadcastQueuePositions(ticket.partner_id);
+        await broadcastQueuePositions(ticket.partnerId);
 
         // Fire-and-forget AI auto-summarize
-        autoSummarizeOnClose(ticket.partner_id, senderId, ticketId, io).catch(() => {});
+        autoSummarizeOnClose(ticket.partnerId, senderId, ticketId, io).catch(() => {});
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
     });
 
@@ -638,24 +627,21 @@ export function registerSocketHandlers(io: Server) {
 
         // Tenant isolation: verify ticket belongs to caller's partner and caller is the agent
         // Read support_id from the ticket instead of trusting client-provided value
-        const ticket = await get('SELECT partner_id, agent_id, support_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string; agent_id: string; support_id: string | null } | undefined;
-        if (!ticket || ticket.partner_id !== socket.data.partnerId) {
+        const ticket = await findTicketOwner(ticketId);
+        if (!ticket || ticket.partnerId !== socket.data.partnerId) {
           return socket.emit('error', { message: 'Not authorized' });
         }
-        if (ticket.agent_id !== socket.data.userId) {
+        if (ticket.agentId !== socket.data.userId) {
           return socket.emit('error', { message: 'Only the ticket agent can submit a rating' });
         }
-        if (!ticket.support_id) {
+        if (!ticket.supportId) {
           return socket.emit('error', { message: 'No support user assigned to this ticket' });
         }
-        const supportId = ticket.support_id;
+        const supportId = ticket.supportId;
 
         const id = uuidv4();
         const safeComment = comment ? comment.slice(0, MAX_NOTE_LENGTH) : null;
-        await run(
-          'INSERT INTO ratings (id, ticket_id, agent_id, support_id, partner_id, rating, comment) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (ticket_id) DO NOTHING',
-          [id, ticketId, agentId, supportId, socket.data.partnerId, intRating, safeComment]
-        );
+        await insertRating({ id, ticketId, agentId: agentId!, supportId, partnerId: socket.data.partnerId, rating: intRating, comment: safeComment });
         io.to(Rooms.ticket(ticketId)).emit('rating:submitted', { ticketId, agentId, supportId, rating: intRating });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[rating:submit] error'); }
     });
@@ -669,16 +655,16 @@ export function registerSocketHandlers(io: Server) {
         logger.info({ ticketId, senderId }, '[message:send] Received');
         if (!ticketId || !text) return;
         if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
-        const ticket = await get('SELECT status, partner_id FROM tickets WHERE id = $1', [ticketId]) as { status: string; partner_id: string } | undefined;
+        const ticket = await findTicketForMessage(ticketId);
         logger.info({ ticketFound: !!ticket, status: ticket?.status }, '[message:send] Ticket lookup');
         if (!ticket || ticket.status === 'closed') return;
-        
+
         // Tenant isolation: ticket must belong to caller's partner
-        if (ticket.partner_id !== socket.data.partnerId) {
+        if (ticket.partnerId !== socket.data.partnerId) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
-        let sender = await findSenderInfo(senderId, ticket.partner_id) as SenderInfo | undefined;
+        let sender = await findSenderInfo(senderId, ticket.partnerId) as SenderInfo | undefined;
 
         // CR-03 fix: Platform operators have no membership row — fall back to socket.data
         if (!sender && socket.data.authedIsPlatformOperator) {
@@ -752,7 +738,7 @@ export function registerSocketHandlers(io: Server) {
         // Fire-and-forget sentiment scoring (skip whispers — internal notes shouldn't affect sentiment)
         // ME-01 fix: Score on guardedText (what's stored/displayed), not raw pre-guard text
         if (!isWhisper) {
-          scoreSentiment(ticket.partner_id, senderId, messageId, guardedText).catch(() => {});
+          scoreSentiment(ticket.partnerId, senderId, messageId, guardedText).catch(() => {});
         }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
     });
@@ -775,8 +761,8 @@ export function registerSocketHandlers(io: Server) {
       if (!ticketId || !messageId) return;
       try {
         // Tenant isolation: verify ticket belongs to caller's partner
-        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
-        if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+        const ticket = await findTicketPartner(ticketId);
+        if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
 
         // Only update messages that belong to this ticket
         const now = await markDelivered(messageId, ticketId);
@@ -789,8 +775,8 @@ export function registerSocketHandlers(io: Server) {
       if (!ticketId || !messageIds?.length) return;
       try {
         // Tenant isolation: verify ticket belongs to caller's partner
-        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
-        if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+        const ticket = await findTicketPartner(ticketId);
+        if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
 
         // Limit array length to prevent DoS
         const limitedIds = messageIds.slice(0, MAX_BATCH_DELETE);
@@ -815,8 +801,8 @@ export function registerSocketHandlers(io: Server) {
         if (newText.trim().length > MAX_MESSAGE_LENGTH) return socket.emit('error', { message: 'Message too long' });
 
         // Verify ticket belongs to caller's partner
-        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
-        if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+        const ticket = await findTicketPartner(ticketId);
+        if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
 
         // Only allow editing own messages within 15 minutes
         const msg = await findMessageForEdit(messageId, ticketId);
@@ -863,8 +849,8 @@ export function registerSocketHandlers(io: Server) {
         const senderId = socket.data.userId;
         if (!senderId || !ticketId || !messageId) return;
 
-        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
-        if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+        const ticket = await findTicketPartner(ticketId);
+        if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
 
         const msg = await findMessageForDelete(messageId, ticketId);
         if (!msg) return;
@@ -897,26 +883,16 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: 'Only support staff can transfer tickets' });
         }
 
-        const ticket = await get('SELECT id, partner_id, support_id, support_name, participants FROM tickets WHERE id = $1', [ticketId]) as unknown as TicketRow | undefined;
+        const ticket = await findTicketForTransfer(ticketId);
         if (!ticket) return socket.emit('error', { message: 'Ticket not found' });
-        if (ticket.partner_id !== callerPartnerId) return socket.emit('error', { message: 'Not authorized' });
+        if (ticket.partnerId !== callerPartnerId) return socket.emit('error', { message: 'Not authorized' });
 
         if (targetSupportId) {
           // Transfer to a specific support agent
           const targetUser = await findTargetSupport(targetSupportId, callerPartnerId);
           if (!targetUser) return socket.emit('error', { message: 'Target user not found or not a member of this partner' });
 
-          // HI-02 fix: Update ticket assignment AND participants JSONB atomically
-          const newParticipantJson = JSON.stringify({ id: targetSupportId, name: targetUser.name });
-          await run(`UPDATE tickets SET
-            support_id = $1,
-            support_name = $2,
-            participants = (
-              SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb) || $4::jsonb
-              FROM jsonb_array_elements(COALESCE(participants, '[]')::jsonb) AS elem
-              WHERE elem->>'id' != $3 AND elem->>'id' != $1
-            )::text
-          WHERE id = $5`, [targetSupportId, targetUser.name, senderId, newParticipantJson, ticketId]);
+          await transferTicket(ticketId, targetSupportId, targetUser.name, senderId);
 
           // Add system message
           const sysText = `Ticket transferred from ${senderName} to ${targetUser.name}`;
@@ -929,7 +905,7 @@ export function registerSocketHandlers(io: Server) {
           io.to(Rooms.staff(callerPartnerId)).emit('ticket:assigned', { ticketId, supportId: targetSupportId, supportName: targetUser.name });
         } else {
           // Return to queue — unassign support
-          await run('UPDATE tickets SET support_id = NULL, support_name = NULL, status = $1 WHERE id = $2', ['open', ticketId]);
+          await returnTicketToQueue(ticketId);
 
           const sysText = `${senderName} returned ticket to queue`;
           const sysMsg = await insertSystemMessage(ticketId, sysText);
@@ -960,20 +936,17 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: `Too many labels (max ${MAX_LABELS_PER_TICKET})` });
         }
 
-        const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
+        const ticket = await findTicketPartner(ticketId);
         if (!ticket) return;
 
         // Tenant isolation: ticket must belong to caller's partner
-        if (ticket.partner_id !== socket.data.partnerId) {
+        if (ticket.partnerId !== socket.data.partnerId) {
           return socket.emit('error', { message: 'Not authorized for this ticket' });
         }
 
         // Validate that all labels belong to this partner
         if (labels.length > 0) {
-          const partnerLabels = await query(
-            `SELECT id FROM labels WHERE partner_id = $1 AND id IN (${labels.map((_, i) => `$${i + 2}`).join(',')})`,
-            [ticket.partner_id, ...labels]
-          ) as { id: string }[];
+          const partnerLabels = await findPartnerLabels(ticket.partnerId, labels);
           const validIds = new Set(partnerLabels.map(l => l.id));
           const invalidLabels = labels.filter(l => !validIds.has(l));
           if (invalidLabels.length > 0) {
@@ -981,12 +954,7 @@ export function registerSocketHandlers(io: Server) {
           }
         }
 
-        await transaction(async () => {
-          await run('DELETE FROM ticket_labels WHERE ticket_id = $1', [ticketId]);
-          for (const labelId of labels) {
-            await run('INSERT INTO ticket_labels (ticket_id, label_id) VALUES ($1, $2)', [ticketId, labelId]);
-          }
-        });
+        await replaceTicketLabels(ticketId, labels);
         io.to(Rooms.ticket(ticketId)).emit('ticket:labels:updated', { ticketId, labels });
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err), ticketId }, '[ticket:labels:update] error');
@@ -1001,8 +969,8 @@ export function registerSocketHandlers(io: Server) {
       if (!ticketId) return;
 
       // Tenant isolation: verify ticket belongs to caller's partner
-      const ticket = await get('SELECT partner_id FROM tickets WHERE id = $1', [ticketId]) as { partner_id: string } | undefined;
-      if (!ticket || ticket.partner_id !== socket.data.partnerId) return;
+      const ticket = await findTicketPartner(ticketId);
+      if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
 
       const userId = socket.data.userId as string;
       const userName = socket.data.name as string;

@@ -12,6 +12,6 @@ describe('ratings table multi-tenancy', () => {
 
   it('handler populates partnerId on rating insert', () => {
     const source = readFileSync(join(__dirname, '../../socket/handlers.ts'), 'utf-8');
-    expect(source).toMatch(/INSERT INTO ratings.*partner_id/is);
+    expect(source).toMatch(/insertRating\(\{[^}]*partnerId/s);
   });
 });

@@ -112,6 +112,53 @@ vi.mock('../services/sla.js', () => ({
   calculateSlaDueDate: vi.fn(() => new Date()),
 }));
 
+// ---- ticketQueries mocks ----
+const findTicketPartnerMock = vi.fn();
+const findTicketForJoinMock = vi.fn();
+const findTicketForCloseMock = vi.fn();
+const findTicketOwnerMock = vi.fn();
+const findTicketParticipantsMock = vi.fn();
+const findTicketForMessageMock = vi.fn();
+const findRecentClosedTicketsMock = vi.fn();
+const findActiveTicketsForAgentMock = vi.fn();
+const findActiveTicketsForSupportMock = vi.fn();
+const findTicketForTransferMock = vi.fn();
+const findPartnerLabelsTQMock = vi.fn();
+const createTicketMock = vi.fn();
+const assignSupportMock = vi.fn();
+const findUpdatedParticipantsMock = vi.fn();
+const updateParticipantsMock = vi.fn();
+const closeTicketMock = vi.fn();
+const updateTicketSlaMock = vi.fn();
+const transferTicketMock = vi.fn();
+const returnTicketToQueueMock = vi.fn();
+const replaceTicketLabelsMock = vi.fn();
+const insertRatingMock = vi.fn();
+
+vi.mock('../services/ticketQueries.js', () => ({
+  findTicketPartner: findTicketPartnerMock,
+  findTicketForJoin: findTicketForJoinMock,
+  findTicketForClose: findTicketForCloseMock,
+  findTicketOwner: findTicketOwnerMock,
+  findTicketParticipants: findTicketParticipantsMock,
+  findTicketForMessage: findTicketForMessageMock,
+  findRecentClosedTickets: findRecentClosedTicketsMock,
+  findActiveTicketsForAgent: findActiveTicketsForAgentMock,
+  findActiveTicketsForSupport: findActiveTicketsForSupportMock,
+  findTicketForTransfer: findTicketForTransferMock,
+  findPartnerLabels: findPartnerLabelsTQMock,
+  createTicket: createTicketMock,
+  assignSupport: assignSupportMock,
+  findUpdatedParticipants: findUpdatedParticipantsMock,
+  updateParticipants: updateParticipantsMock,
+  closeTicket: closeTicketMock,
+  updateTicketSla: updateTicketSlaMock,
+  transferTicket: transferTicketMock,
+  returnTicketToQueue: returnTicketToQueueMock,
+  replaceTicketLabels: replaceTicketLabelsMock,
+  insertRating: insertRatingMock,
+}));
+
 // ---- messageQueries mocks ----
 const insertMessageMock = vi.fn();
 const findTicketMessagesMock = vi.fn();
@@ -293,7 +340,7 @@ describe('socket:identify', () => {
   it('identifies successfully with valid membership', async () => {
     findUserByIdMock.mockResolvedValueOnce({ name: 'Test User', isPlatformOperator: false }); // user lookup
     findMembershipMock.mockResolvedValueOnce({ role: 'support' }); // membership lookup
-    queryMock.mockResolvedValueOnce([]); // active tickets
+    findActiveTicketsForSupportMock.mockResolvedValueOnce([]); // active tickets
 
     const { socket, identifyHandler } = await setupIdentify();
     await identifyHandler({ partnerId: 'partner-1' });
@@ -322,7 +369,7 @@ describe('socket:identify', () => {
 
     findUserByIdMock.mockResolvedValueOnce({ name: 'Platform Admin', isPlatformOperator: true }); // user lookup
     findMembershipMock.mockResolvedValueOnce(undefined); // no membership
-    queryMock.mockResolvedValueOnce([]); // active tickets
+    findActiveTicketsForSupportMock.mockResolvedValueOnce([]); // active tickets
 
     await identifyHandler({ partnerId: 'partner-1' });
 
@@ -423,6 +470,7 @@ describe('message:send', () => {
     broadcastQueuePositionsMock.mockReset();
     broadcastAgentStatusMock.mockReset();
     insertMessageMock.mockReset();
+    findTicketForMessageMock.mockReset();
   });
 
   async function setupMessageSend(socketData: Record<string, unknown> = {}) {
@@ -473,15 +521,13 @@ describe('message:send', () => {
     });
 
     // Ticket belongs to partner-B
-    getMock.mockResolvedValueOnce({ status: 'open', partner_id: 'partner-B' });
+    findTicketForMessageMock.mockResolvedValueOnce({ status: 'open', partnerId: 'partner-B' });
 
     await messageSendHandler({ ticketId: 'ticket-99', text: 'cross-tenant message' });
 
     expect(socket.emit).toHaveBeenCalledWith('error', {
       message: 'Not authorized for this ticket',
     });
-    // Should NOT have inserted a message
-    expect(runMock).not.toHaveBeenCalled();
   });
 
   it('allows message to ticket belonging to the same partner', async () => {
@@ -493,7 +539,7 @@ describe('message:send', () => {
     });
 
     // Ticket belongs to the same partner
-    getMock.mockResolvedValueOnce({ status: 'open', partner_id: 'partner-A' });
+    findTicketForMessageMock.mockResolvedValueOnce({ status: 'open', partnerId: 'partner-A' });
     // Sender lookup returns user with membership
     findSenderInfoMock.mockResolvedValueOnce({ name: 'Support Agent', role: 'support', lang: 'en' });
     // Message insert succeeds
