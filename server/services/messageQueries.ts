@@ -61,18 +61,6 @@ export async function insertMessage(data: InsertMessageData) {
   };
 }
 
-/**
- * Fetches all messages for a ticket, ordered by creation time.
- * Used by: support:join (ticket history)
- */
-export async function findTicketMessages(ticketId: string) {
-  return db
-    .select()
-    .from(messages)
-    .where(eq(messages.ticketId, ticketId))
-    .orderBy(asc(messages.createdAt));
-}
-
 export interface PaginatedMessages {
   messages: Array<typeof messages.$inferSelect>;
   hasMore: boolean;

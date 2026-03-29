@@ -22,7 +22,6 @@ vi.mock('uuid', () => ({ v4: vi.fn(() => 'mock-uuid') }));
 
 import {
   insertMessage,
-  findTicketMessages,
   findTicketLabelIds,
   findMessageForEdit,
   findMessageForDelete,
@@ -61,17 +60,6 @@ describe('messageQueries', () => {
       });
       expect(result.id).toBeDefined();
       expect(result.timestamp).toBe(result.createdAt);
-    });
-  });
-
-  describe('findTicketMessages', () => {
-    it('returns ordered messages', async () => {
-      const msgs = [{ id: 'm1' }, { id: 'm2' }];
-      const chain = { from: vi.fn().mockReturnThis(), where: vi.fn().mockReturnThis(), orderBy: vi.fn().mockResolvedValue(msgs) };
-      vi.mocked(db.select).mockReturnValue(chain as never);
-
-      const result = await findTicketMessages('t1');
-      expect(result).toEqual(msgs);
     });
   });
 
