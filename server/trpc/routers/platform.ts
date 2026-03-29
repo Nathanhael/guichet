@@ -12,6 +12,7 @@ import { MailService } from '../../services/mail.js';
 import { renderInviteNew, renderInviteExisting, renderInviteReminder, renderTestEmail } from '../../services/mailTemplates.js';
 import { hashPassword } from '../../utils/passwords.js';
 import { validateWebhookUrl } from '../../services/webhookDispatch.js';
+import { encrypt } from '../../services/encryption.js';
 
 export const platformRouter = router({
   // --- System Health ---
@@ -185,7 +186,20 @@ export const platformRouter = router({
       if (input.data.authMethod !== undefined) updateData.authMethod = input.data.authMethod;
       if (input.data.aiEnabled !== undefined) updateData.aiEnabled = input.data.aiEnabled;
       if (input.data.aiFeatures !== undefined) updateData.aiFeatures = input.data.aiFeatures;
-      if (input.data.aiConfig !== undefined) updateData.aiConfig = input.data.aiConfig;
+      if (input.data.aiConfig !== undefined) {
+        const configToStore = { ...input.data.aiConfig } as Record<string, unknown>;
+        // Encrypt the API key before storing (SEC-5)
+        if (configToStore.apiKey && typeof configToStore.apiKey === 'string') {
+          try {
+            configToStore.encryptedApiKey = encrypt(configToStore.apiKey);
+            delete configToStore.apiKey; // Never store plaintext
+          } catch {
+            // AI_KEY_ENCRYPTION_SECRET not set — store as-is with warning
+            logger.warn('[platform] AI_KEY_ENCRYPTION_SECRET not set — API key stored unencrypted');
+          }
+        }
+        updateData.aiConfig = configToStore;
+      }
       if (input.data.aiProvider !== undefined) updateData.aiProvider = input.data.aiProvider;
       if (input.data.aiModel !== undefined) updateData.aiModel = input.data.aiModel;
 
@@ -195,11 +209,18 @@ export const platformRouter = router({
 
       if (before[0]) {
         const diff: Record<string, { from: unknown; to: unknown }> = {};
-        const inputData = input.data as Record<string, unknown>;
+        // Redact API key from audit metadata
+        const auditData = { ...input.data } as Record<string, unknown>;
+        if (input.data.aiConfig?.apiKey) {
+          auditData.aiConfig = {
+            ...input.data.aiConfig,
+            apiKey: `****${input.data.aiConfig.apiKey.slice(-4)}`,
+          };
+        }
         const beforeData = before[0] as Record<string, unknown>;
-        Object.keys(inputData).forEach(key => {
-          if (inputData[key] !== beforeData[key]) {
-            diff[key] = { from: beforeData[key], to: inputData[key] };
+        Object.keys(auditData).forEach(key => {
+          if (auditData[key] !== beforeData[key]) {
+            diff[key] = { from: beforeData[key], to: auditData[key] };
           }
         });
 
