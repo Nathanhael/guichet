@@ -6,7 +6,6 @@ import config from '../config.js';
 import { UserRole } from '../types/index.js';
 import { isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
-import logger from '../utils/logger.js';
 
 export const jwtPayloadSchema = z.object({
   userId: z.string(),
@@ -36,12 +35,7 @@ export interface TRPCUser {
 }
 
 export async function createContext({ req, res }: CreateExpressContextOptions) {
-  const authHeader = req.headers.authorization;
-  if (authHeader?.startsWith('Bearer ')) {
-    logger.warn('[Auth] Bearer token auth is deprecated in tRPC context — migrate to cookie-based auth');
-  }
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.split(' ')[1]
-    : req.cookies?.tessera_token ?? undefined;
+  const token: string | undefined = req.cookies?.tessera_token;
   let user: TRPCUser | null = null;
 
   if (token) {

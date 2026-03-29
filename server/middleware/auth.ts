@@ -23,15 +23,7 @@ export interface AuthRequest extends Request {
 }
 
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-  let token: string | undefined;
-
-  if (authHeader?.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-    logger.warn({ ip: req.ip }, '[Auth] Bearer token auth is deprecated — migrate to cookie-based auth');
-  } else if (req.cookies?.tessera_token) {
-    token = req.cookies.tessera_token;
-  }
+  const token: string | undefined = req.cookies?.tessera_token;
 
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });

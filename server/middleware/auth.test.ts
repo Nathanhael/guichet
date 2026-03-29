@@ -33,9 +33,10 @@ function makeToken(payload: Record<string, unknown>) {
   return jwt.sign(payload, SECRET, { expiresIn: '1h' });
 }
 
-function mockReqRes(authHeader?: string) {
+function mockReqRes(cookie?: string) {
   const req: any = {
-    headers: { authorization: authHeader },
+    headers: {},
+    cookies: cookie ? { tessera_token: cookie } : {},
     user: undefined,
   };
   const res: any = {
@@ -52,7 +53,7 @@ describe('auth middleware', () => {
     isRevokedMock.mockResolvedValue(false);
   });
 
-  it('returns 401 when no Authorization header is provided', async () => {
+  it('returns 401 when no cookie is provided', async () => {
     const { auth } = await import('./auth.js');
     const { req, res, next } = mockReqRes(undefined);
     await auth(req, res, next);
@@ -62,18 +63,9 @@ describe('auth middleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('returns 401 when Authorization header does not start with Bearer', async () => {
-    const { auth } = await import('./auth.js');
-    const { req, res, next } = mockReqRes('Basic abc123');
-    await auth(req, res, next);
-
-    expect(res.status).toHaveBeenCalledWith(401);
-    expect(next).not.toHaveBeenCalled();
-  });
-
   it('returns 401 for an invalid/expired JWT', async () => {
     const { auth } = await import('./auth.js');
-    const { req, res, next } = mockReqRes('Bearer invalid.token.here');
+    const { req, res, next } = mockReqRes('invalid.token.here');
     await auth(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
@@ -86,7 +78,7 @@ describe('auth middleware', () => {
 
     const { auth } = await import('./auth.js');
     const token = makeToken({ userId: 'u1', role: 'support', isPlatformOperator: false });
-    const { req, res, next } = mockReqRes(`Bearer ${token}`);
+    const { req, res, next } = mockReqRes(token);
     await auth(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
@@ -97,7 +89,7 @@ describe('auth middleware', () => {
   it('attaches user to req and calls next() for a valid token', async () => {
     const { auth } = await import('./auth.js');
     const token = makeToken({ userId: 'u1', role: 'support', isPlatformOperator: false });
-    const { req, res, next } = mockReqRes(`Bearer ${token}`);
+    const { req, res, next } = mockReqRes(token);
     await auth(req, res, next);
 
     expect(next).toHaveBeenCalled();
@@ -111,7 +103,7 @@ describe('auth middleware', () => {
   it('sets isPlatformOperator from token claim', async () => {
     const { auth } = await import('./auth.js');
     const token = makeToken({ userId: 'u1', role: 'admin', isPlatformOperator: true });
-    const { req, res, next } = mockReqRes(`Bearer ${token}`);
+    const { req, res, next } = mockReqRes(token);
     await auth(req, res, next);
 
     expect(req.user.isPlatformOperator).toBe(true);
