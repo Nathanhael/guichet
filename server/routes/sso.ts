@@ -327,7 +327,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         actorId: user.id,
         targetType: 'user',
         targetId: user.id,
-        metadata: { email, azureGroups },
+        metadata: { email, groupCount: azureGroups.length },
       });
       return res.redirect(`${clientOrigin}/?sso_error=no_matching_groups`);
     }

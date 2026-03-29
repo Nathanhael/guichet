@@ -15,7 +15,7 @@ export function updateTitleBadge(): void {
     try {
         // Dynamically import to avoid circular dependency
         const { default: useStore } = require('../store/useStore');
-        const count = useStore.getState().unreadTickets.size;
+        const count = Object.keys(useStore.getState().unreadTickets).length;
         document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE;
     } catch {
         // Ignore — store not yet initialized

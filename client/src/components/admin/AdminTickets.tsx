@@ -128,7 +128,7 @@ export default function AdminTickets() {
                       </p>
                     </div>
                   )}
-                  {unreadTickets.has(tk.id) && (
+                  {!!unreadTickets[tk.id] && (
                     <span className="absolute top-3 right-3 w-2 h-2 bg-[var(--color-text-primary)]" />
                   )}
                 </button>

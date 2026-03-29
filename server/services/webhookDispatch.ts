@@ -160,6 +160,9 @@ async function deliverOne(
   const logId = uuidv4();
   const start = Date.now();
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
   try {
     // SSRF protection: validate URL and resolve DNS once, then fetch against the resolved IP
     // to prevent DNS rebinding TOCTOU attacks.
@@ -168,9 +171,6 @@ async function deliverOne(
     // Replace hostname with resolved IP to prevent DNS rebinding
     const resolvedUrl = new URL(hook.url);
     resolvedUrl.hostname = resolvedIp;
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
     const res = await fetch(resolvedUrl.toString(), {
       method: 'POST',
@@ -184,8 +184,6 @@ async function deliverOne(
       body,
       signal: controller.signal,
     });
-
-    clearTimeout(timeout);
 
     const responseBody = await res.text().catch(() => '');
     const durationMs = Date.now() - start;
@@ -225,5 +223,7 @@ async function deliverOne(
       { webhookId: hook.id, url: hook.url, err: errorMsg, durationMs },
       'Webhook delivery failed',
     );
+  } finally {
+    clearTimeout(timeout);
   }
 }

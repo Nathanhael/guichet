@@ -248,23 +248,17 @@ describe('verifyAuditChain', () => {
     };
     const hash2 = realHash(hash1, rowData2);
 
-    // verifyAuditChain calls db.select().from().orderBy() — no .where()
-    // Override the mock chain for this test
-    const origSelect = dbMock.select;
-    dbMock.select.mockImplementationOnce(() => ({
-      from: vi.fn(() => ({
-        orderBy: vi.fn(() => [
-          { ...rowData1, chainHash: hash1, archivedAt: '2025-02-01' },
-          { ...rowData2, chainHash: hash2, archivedAt: '2025-02-01' },
-        ]),
-      })),
-    }));
+    // verifyAuditChain calls db.select().from().where().orderBy().limit()
+    // Uses the default mock chain which ends at limitMock -> selectQueue.shift()
+    selectQueue.push([
+      { ...rowData1, chainHash: hash1, archivedAt: '2025-02-01', sequence: 0 },
+      { ...rowData2, chainHash: hash2, archivedAt: '2025-02-01', sequence: 1 },
+    ]);
 
     const { verifyAuditChain } = await import('./archive.js');
     const result = await verifyAuditChain();
 
     expect(result).toEqual({ valid: true, checked: 2 });
-    dbMock.select.mockImplementation(origSelect.getMockImplementation()!);
   });
 
   it('detects tampered row (modified data breaks chain)', async () => {
@@ -283,17 +277,13 @@ describe('verifyAuditChain', () => {
     const hash2 = realHash(hash1, rowData2);
 
     // Tamper: change action in row1 after hash was computed
-    const tamperedRow1 = { ...rowData1, action: 'TAMPERED', chainHash: hash1, archivedAt: '2025-02-01' };
+    const tamperedRow1 = { ...rowData1, action: 'TAMPERED', chainHash: hash1, archivedAt: '2025-02-01', sequence: 0 };
 
-    const origSelect = dbMock.select;
-    dbMock.select.mockImplementationOnce(() => ({
-      from: vi.fn(() => ({
-        orderBy: vi.fn(() => [
-          tamperedRow1,
-          { ...rowData2, chainHash: hash2, archivedAt: '2025-02-01' },
-        ]),
-      })),
-    }));
+    // Uses the default mock chain: limitMock -> selectQueue.shift()
+    selectQueue.push([
+      tamperedRow1,
+      { ...rowData2, chainHash: hash2, archivedAt: '2025-02-01', sequence: 1 },
+    ]);
 
     const { verifyAuditChain } = await import('./archive.js');
     const result = await verifyAuditChain();
@@ -301,7 +291,6 @@ describe('verifyAuditChain', () => {
     expect(result.valid).toBe(false);
     expect(result.brokenAt).toBe('a1');
     expect(result.checked).toBe(1);
-    dbMock.select.mockImplementation(origSelect.getMockImplementation()!);
   });
 });
 

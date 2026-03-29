@@ -285,12 +285,10 @@ export function useSocket(): Socket {
 
     const handleAuthExpired = () => {
       const state = useStore.getState();
-      if (state.user) {
-        s.disconnect();
-        s.connect();
-      } else {
-        state.logout();
-      }
+      // Always logout — reconnecting with same expired JWT causes a tight loop
+      state.logout();
+      s.disconnect();
+      window.location.href = '/';
     };
 
     // Attach all listeners
