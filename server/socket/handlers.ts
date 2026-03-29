@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import { parse as parseCookie } from 'cookie';
 import * as presenceService from '../services/presence.js';
 import {
-  findTicketPartner,
   findTicketForJoin,
   findTicketForClose,
   findTicketOwner,
@@ -33,12 +32,13 @@ import { Ticket, UserRole } from '../types/index.js';
 import { socketioConnectionsActive, socketioEventsTotal } from '../utils/metrics.js';
 import { isValidMediaUrl } from '../utils/security.js';
 import { mapMessageRow } from '../utils/messageMapper.js';
+import { requirePartnerScope } from './partnerScope.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { findPartnerConfig } from '../services/partnerQueries.js';
 import { findUserById, findMembership, findSenderInfo, findUserName, findTargetSupport } from '../services/userQueries.js';
 import {
   insertMessage,
-  findTicketMessages,
+  findTicketMessagesPaginated,
   findTicketLabelIds,
   findMessageForEdit,
   findMessageForDelete,
@@ -221,7 +221,7 @@ function isTokenExpired(socket: Socket): boolean {
 }
 
 /** Interval (ms) between periodic revocation checks on active sockets */
-const REVOCATION_CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const REVOCATION_CHECK_INTERVAL_MS = 60 * 1000; // 60 seconds (safety net — primary revocation is via Pub/Sub)
 
 /** Guard: require socket to be identified before processing events */
 function requireIdentified(socket: Socket): boolean {
@@ -236,18 +236,13 @@ function requireIdentified(socket: Socket): boolean {
     return false;
   }
 
-  // Periodic revocation check — runs at most once every 5 minutes per socket.
-  // SECURITY TRADE-OFF: Between checks, a revoked session can still send socket
-  // messages for up to REVOCATION_CHECK_INTERVAL_MS (currently 5 minutes). This is
-  // an accepted trade-off for performance: synchronous Redis checks on every socket
-  // event would eliminate the window but significantly increase Redis load (especially
-  // under high message throughput). NOTE: The check is fire-and-forget — the event
-  // that triggers it still completes even if revocation is detected. The revoked
-  // socket is disconnected asynchronously, so one additional event may execute.
-  // For high-security deployments requiring near-instant revocation, consider:
-  // (a) reducing REVOCATION_CHECK_INTERVAL_MS (increases Redis calls linearly),
-  // (b) switching to synchronous per-event revocation checks with Redis connection
-  // pooling, or (c) using Redis Pub/Sub to push revocation events to socket servers.
+  // Periodic revocation check — safety net fallback (runs at most once every 60s).
+  // PRIMARY revocation is handled by the Redis Pub/Sub subscriber in
+  // registerSocketHandlers() which disconnects revoked sockets within milliseconds.
+  // This periodic check exists as a fallback in case a Pub/Sub message is missed.
+  // NOTE: The check is fire-and-forget — the event that triggers it still completes
+  // even if revocation is detected. The revoked socket is disconnected asynchronously,
+  // so one additional event may execute.
   const now = Date.now();
   const lastCheck = (socket.data.lastRevocationCheck as number) || 0;
   if (now - lastCheck > REVOCATION_CHECK_INTERVAL_MS) {
@@ -275,6 +270,46 @@ function requireIdentified(socket: Socket): boolean {
 
 export function registerSocketHandlers(io: Server) {
   ioInstance = io;
+
+  // ── Redis Pub/Sub: instant session revocation ──────────────────────────────
+  // When a token or user session is revoked, we receive the event here and
+  // immediately disconnect all matching sockets. This eliminates the previous
+  // 5-minute polling window (REVOCATION_CHECK_INTERVAL_MS).
+  const { subClient } = getRedisClients();
+  if (subClient) {
+    import('../services/sessionRevocation.js').then(({ REVOCATION_CHANNEL }) => {
+      subClient.subscribe(REVOCATION_CHANNEL, (message: string) => {
+        try {
+          const event = JSON.parse(message) as { type: string; jti?: string; userId?: string; revokedAfter?: number };
+          const sockets = io.sockets.sockets;
+
+          for (const [, socket] of sockets) {
+            let shouldDisconnect = false;
+
+            if (event.type === 'token' && event.jti && socket.data.jti === event.jti) {
+              shouldDisconnect = true;
+            }
+
+            if (event.type === 'user' && event.userId && socket.data.userId === event.userId) {
+              const iat = socket.data.iat as number | undefined;
+              if (!iat || (event.revokedAfter && iat <= event.revokedAfter)) {
+                shouldDisconnect = true;
+              }
+            }
+
+            if (shouldDisconnect) {
+              logger.info({ socketId: socket.id, userId: socket.data.userId, eventType: event.type }, '[socket] Instant revocation via Pub/Sub');
+              socket.emit('auth:expired', { message: 'Session revoked — please re-authenticate' });
+              socket.disconnect(true);
+            }
+          }
+        } catch (err) {
+          logger.error({ err: err instanceof Error ? err.message : String(err) }, '[socket] Failed to process revocation event');
+        }
+      });
+      logger.info('[socket] Subscribed to session revocation channel');
+    });
+  }
 
   // ---- Socket-level JWT authentication middleware ----
   io.use(async (socket, next) => {
@@ -525,12 +560,37 @@ export function registerSocketHandlers(io: Server) {
         // Read back updated participants for broadcast
         const participants = (await findUpdatedParticipants(ticketId)) || [];
         socket.join(Rooms.ticket(ticketId));
-        const msgs = (await findTicketMessages(ticketId)).map(mapMessageRow);
+        const { messages: msgRows, hasMore, nextCursor } = await findTicketMessagesPaginated(ticketId, { limit: 100 });
+        const msgs = msgRows.map(mapMessageRow);
         const labelIds = await findTicketLabelIds(ticketId);
-        socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds });
+        socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
         io.to(Rooms.ticket(ticketId)).emit('support:joined', { ticketId, supportName, participants });
         await broadcastQueuePositions(callerPartnerId);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
+    });
+
+    socket.on('message:loadMore', async ({ ticketId, cursor }: { ticketId: string; cursor: string }) => {
+      if (!requireIdentified(socket)) return;
+      if (!ticketId || !cursor) return;
+
+      try {
+        const ticket = await requirePartnerScope(socket, ticketId);
+        if (!ticket) return;
+
+        const { messages: msgRows, hasMore, nextCursor } = await findTicketMessagesPaginated(ticketId, {
+          limit: 50,
+          beforeCursor: cursor,
+        });
+
+        socket.emit('message:morePage', {
+          ticketId,
+          messages: msgRows.map(mapMessageRow),
+          hasMore,
+          nextCursor,
+        });
+      } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err), ticketId }, '[message:loadMore] error');
+      }
     });
 
     socket.on('status:set', async ({ status }: { status: string }) => {
@@ -759,8 +819,8 @@ export function registerSocketHandlers(io: Server) {
       if (!ticketId || !messageId) return;
       try {
         // Tenant isolation: verify ticket belongs to caller's partner
-        const ticket = await findTicketPartner(ticketId);
-        if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
+        const ticket = await requirePartnerScope(socket, ticketId);
+        if (!ticket) return;
 
         // Only update messages that belong to this ticket
         const now = await markDelivered(messageId, ticketId);
@@ -773,8 +833,8 @@ export function registerSocketHandlers(io: Server) {
       if (!ticketId || !messageIds?.length) return;
       try {
         // Tenant isolation: verify ticket belongs to caller's partner
-        const ticket = await findTicketPartner(ticketId);
-        if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
+        const ticket = await requirePartnerScope(socket, ticketId);
+        if (!ticket) return;
 
         // Limit array length to prevent DoS
         const limitedIds = messageIds.slice(0, MAX_BATCH_DELETE);
@@ -799,8 +859,8 @@ export function registerSocketHandlers(io: Server) {
         if (newText.trim().length > MAX_MESSAGE_LENGTH) return socket.emit('error', { message: 'Message too long' });
 
         // Verify ticket belongs to caller's partner
-        const ticket = await findTicketPartner(ticketId);
-        if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
+        const ticket = await requirePartnerScope(socket, ticketId);
+        if (!ticket) return;
 
         // Only allow editing own messages within 15 minutes
         const msg = await findMessageForEdit(messageId, ticketId);
@@ -847,8 +907,8 @@ export function registerSocketHandlers(io: Server) {
         const senderId = socket.data.userId;
         if (!senderId || !ticketId || !messageId) return;
 
-        const ticket = await findTicketPartner(ticketId);
-        if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
+        const ticket = await requirePartnerScope(socket, ticketId);
+        if (!ticket) return;
 
         const msg = await findMessageForDelete(messageId, ticketId);
         if (!msg) return;
@@ -932,13 +992,8 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: `Too many labels (max ${MAX_LABELS_PER_TICKET})` });
         }
 
-        const ticket = await findTicketPartner(ticketId);
+        const ticket = await requirePartnerScope(socket, ticketId);
         if (!ticket) return;
-
-        // Tenant isolation: ticket must belong to caller's partner
-        if (ticket.partnerId !== socket.data.partnerId) {
-          return socket.emit('error', { message: 'Not authorized for this ticket' });
-        }
 
         // Validate that all labels belong to this partner
         if (labels.length > 0) {
@@ -964,8 +1019,8 @@ export function registerSocketHandlers(io: Server) {
       if (!ticketId) return;
 
       // Tenant isolation: verify ticket belongs to caller's partner
-      const ticket = await findTicketPartner(ticketId);
-      if (!ticket || ticket.partnerId !== socket.data.partnerId) return;
+      const ticket = await requirePartnerScope(socket, ticketId);
+      if (!ticket) return;
 
       const userId = socket.data.userId as string;
       const userName = socket.data.name as string;

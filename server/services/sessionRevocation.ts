@@ -6,6 +6,26 @@ const REVOKED_TOKEN_PREFIX = 'auth:revoked:jti:';
 const USER_REVOKED_AFTER_PREFIX = 'auth:user:revoked_after:';
 const USER_REVOKED_AFTER_TTL_SECONDS = 90 * 24 * 60 * 60;
 
+export const REVOCATION_CHANNEL = 'auth:session:revoked';
+
+export interface RevocationEvent {
+  type: 'token' | 'user';
+  jti?: string;
+  userId?: string;
+  revokedAfter?: number;
+  timestamp: number;
+}
+
+async function publishRevocation(event: RevocationEvent): Promise<void> {
+  const { pubClient } = getRedisClients();
+  if (!pubClient) return;
+  try {
+    await pubClient.publish(REVOCATION_CHANNEL, JSON.stringify(event));
+  } catch (err) {
+    logger.error({ err }, 'Failed to publish revocation event');
+  }
+}
+
 function revokedTokenKey(jti: string): string {
   return `${REVOKED_TOKEN_PREFIX}${jti}`;
 }
@@ -27,6 +47,7 @@ export async function revokeToken(jti: string, exp?: number): Promise<boolean> {
 
   try {
     await pubClient.set(revokedTokenKey(jti), '1', { EX: ttl });
+    await publishRevocation({ type: 'token', jti, timestamp: Date.now() });
     return true;
   } catch (err) {
     logger.error({ err, jti }, 'Failed to revoke token');
@@ -49,6 +70,7 @@ export async function revokeUserSessions(userId: string, revokedAfter?: number):
 
   try {
     await pubClient.set(userRevokedAfterKey(userId), String(cutoff), { EX: USER_REVOKED_AFTER_TTL_SECONDS });
+    await publishRevocation({ type: 'user', userId, revokedAfter: cutoff, timestamp: Date.now() });
   } catch (err) {
     logger.error({ err, userId }, 'Failed to revoke user sessions');
   }
