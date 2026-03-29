@@ -5,6 +5,7 @@ import { tickets, ticketLabels, memberships } from '../../db/schema.js';
 import { eq, and, or, ilike, sql, asc, desc, gte, lte, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
+import { escapeLikePattern } from '../../utils/security.js';
 
 async function fetchLabelsForTickets(ticketIds: string[]): Promise<Record<string, string[]>> {
   if (ticketIds.length === 0) return {};
@@ -70,7 +71,7 @@ export const ticketRouter = router({
         if (input.dept && input.dept !== 'all') conditions.push(eq(tickets.dept, input.dept));
 
         if (input.search) {
-          const q = `%${input.search}%`;
+          const q = `%${escapeLikePattern(input.search)}%`;
           conditions.push(or(
             ilike(tickets.agentName, q),
             ilike(tickets.supportName, q)
