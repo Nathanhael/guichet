@@ -81,7 +81,8 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - `authSession.ts` — Auth session management and token lifecycle
 - `platformStepUp.ts` — Platform TOTP step-up authentication
 - `roles.ts` — Role hierarchy and permission checks
-- `sessionRevocation.ts` — Session revocation on password/security changes
+- `sessionRevocation.ts` — Session revocation on password/security changes (also revokes refresh tokens)
+- `refreshToken.ts` — Rotating refresh token lifecycle (create, rotate, revoke family, reuse detection)
 - `repetitionStore.ts` — Message repetition detection for guards
 - `sla.ts` — SLA enforcement with per-department config and alerting
 - `webhookDispatch.ts` — Webhook event dispatch to partner-configured endpoints
@@ -109,7 +110,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - **Token expiry**: JWT `exp` is stored at handshake and checked on every event via `requireIdentified()`. Expired tokens trigger `auth:expired` → client auto-reconnects (cookies sent automatically via `withCredentials: true`).
 
 **Middleware** (`server/middleware/`):
-- `auth.ts` — JWT verification (reads HttpOnly cookie with Bearer header fallback) and role-based access control
+- `auth.ts` — JWT verification (reads HttpOnly cookie only, no Bearer header) and role-based access control
 - `validator.ts` — Express-validator wrapper
 
 ### Database
@@ -141,6 +142,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 | `ai_prompt_templates` | Custom AI prompt templates | `partnerId`, `action`, `template` |
 | `ai_usage_log` | AI provider usage tracking | `partnerId`, `action`, `provider`, `tokens`, `cost` |
 | `daily_ai_usage` | Aggregated AI usage (rolled up from ai_usage_log) | `date`, `partnerId`, `action`, `provider`, `model`, `totalRequests` |
+| `refresh_tokens` | Rotating refresh tokens | `userId`, `tokenHash` (SHA-256), `family`, `expiresAt`, `revokedAt` |
 
 ### Client (`client/src/`)
 
@@ -149,6 +151,8 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 **State**: Zustand store with slices (`auth`, `tickets`, `messages`, `ui`, `config`, `rating`) in `store/useStore.ts`. Session expiry is detected via the `session_expires` cookie (non-HttpOnly companion to the JWT HttpOnly cookie).
 
 **Real-Time**: `hooks/useSocket.ts` — single global Socket.io instance. Always clean up listeners in `useEffect` return.
+
+**Token Refresh**: `hooks/useTokenRefresh.ts` — proactive access token refresh via `POST /api/v1/auth/refresh`. Timer-based with visibility change detection for tab sleep/resume.
 
 **Views**:
 - `PlatformView` — Thin shell (tabs + modal state). Feature modules in `components/platform/`. Each component owns its own tRPC hooks and cache invalidation.
@@ -171,7 +175,8 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - **Roles**: `agent`, `support`, `admin`, `platform_operator`
 - **Multi-Tenancy**: Every query must include `partner_id` filter. No data leaks between partners.
 - **Multi-Partner Users**: Users belong to multiple partners via `memberships`. One active partner at a time — switching issues a new JWT cookie via `/switch-partner`.
-- **HttpOnly Cookie Auth**: JWTs are transported via `HttpOnly SameSite=Lax` cookies (`tessera_token`). Client uses `credentials: 'include'` on all requests. A companion `session_expires` cookie (non-HttpOnly) carries the expiry timestamp for client-side detection. Config: `COOKIE_SECURE` (default `true`), `COOKIE_DOMAIN` (optional, for subdomains).
+- **Cookie-Only Auth**: JWTs are transported exclusively via `HttpOnly SameSite=Lax` cookies (`tessera_token`). No Bearer header support. Client uses `credentials: 'include'` on all requests. A companion `session_expires` cookie (non-HttpOnly) carries the expiry timestamp for client-side detection. Config: `COOKIE_SECURE` (default `true`), `COOKIE_DOMAIN` (optional, for subdomains).
+- **Refresh Tokens**: Short-lived access tokens (`ACCESS_TOKEN_EXPIRY`, default 15m) paired with rotating refresh tokens (`REFRESH_TOKEN_EXPIRY`, default 7d) in `tessera_refresh` HttpOnly cookie (path-restricted to `/api/v1/auth/refresh`). `useTokenRefresh` hook auto-refreshes ~2min before expiry, handles tab sleep/resume. Family-based reuse detection: replaying a used refresh token revokes the entire token family. Session revocation also revokes all refresh tokens.
 - **Partner Status**: `active` | `inactive`. Inactive blocks logins, ticket creation, switching. Enforce at login, switch-partner, socket, and tRPC layers.
 - **Dynamic Departments**: Never hardcode department IDs. Always read from `partner.departments` JSONB. Schema: `{ id (auto-slug), name, description? }`. IDs are immutable.
 - **Department Assignment**: `memberships.departments` is a JSONB array of dept IDs. Empty/null = generalist (sees all).
@@ -211,7 +216,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 tessera/
 ├── server/
 │   ├── db/
-│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 22 tables
+│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 23 tables
 │   │   └── postgres.ts            # DB connection, raw query helpers
 │   ├── trpc/
 │   │   ├── router.ts              # Main tRPC router (17 domain routers)
@@ -223,7 +228,7 @@ tessera/
 │   ├── socket/
 │   │   └── handlers.ts            # Socket.io event handlers
 │   ├── routes/
-│   │   ├── auth.ts                # /api/auth/* (login, switch-partner, enter-partner)
+│   │   ├── auth.ts                # /api/auth/* (login, switch-partner, enter-partner, refresh, logout)
 │   │   ├── sso.ts                 # /api/auth/sso/* (SAML/OIDC flows)
 │   │   ├── logos.ts               # /api/v1/logos
 │   │   ├── uploads.ts             # /api/v1/uploads (file attachments)
@@ -245,6 +250,7 @@ tessera/
 │   │   ├── platformStepUp.ts      # Platform TOTP step-up
 │   │   ├── roles.ts               # Role hierarchy/permissions
 │   │   ├── sessionRevocation.ts   # Session revocation on security changes
+│   │   ├── refreshToken.ts        # Rotating refresh token lifecycle
 │   │   ├── repetitionStore.ts     # Message repetition detection
 │   │   └── webhookDispatch.ts     # Webhook event dispatch
 │   ├── middleware/                 # Express middleware (auth, validator)
@@ -262,7 +268,7 @@ tessera/
 │   │   │   └── *.tsx              # Shared: ChatWindow, MessageBubble, ConfirmDialog, Toast, etc.
 │   │   ├── views/                 # PlatformView, AdminView, SupportView, AgentView, LoginView
 │   │   │   └── __tests__/         # Vitest tests for views
-│   │   ├── hooks/                 # useSocket, useStore, useTranslation, etc.
+│   │   ├── hooks/                 # useSocket, useTokenRefresh, useStore, useTranslation, etc.
 │   │   ├── store/
 │   │   │   ├── useStore.ts        # Zustand composed store
 │   │   │   └── slices/            # Auth, ticket, message, UI, config, rating slices
@@ -281,7 +287,7 @@ tessera/
 │   └── SECURITY_AUDIT_2026-03-26.md # Security audit results (historical)
 ├── testing/
 │   ├── nginx.conf                 # Reverse proxy config for load testing
-│   ├── load/                      # k6 load test scripts (smoke.js, load.js, ws.js)
+│   ├── load/                      # k6 load test scripts (smoke.js, load.js, refresh.js, ws.js)
 │   └── e2e/                       # Playwright E2E specs
 ├── playwright.config.ts           # Playwright E2E config
 ├── PLAN.md                        # Sprint plan (completed + next sprint)
@@ -315,14 +321,15 @@ powershell -File scripts/ci.ps1 -Skip e2e      # Skip slow E2E tests
 k6 scripts in `testing/load/`. Run via Docker:
 
 ```bash
-MSYS_NO_PATHCONV=1 docker run --rm --network=host -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/smoke.js
-MSYS_NO_PATHCONV=1 docker run --rm --network=host -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/load.js
+MSYS_NO_PATHCONV=1 docker run --rm -e K6_BASE_URL=http://host.docker.internal:3001 -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/smoke.js
+MSYS_NO_PATHCONV=1 docker run --rm -e K6_BASE_URL=http://host.docker.internal:3001 -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/refresh.js
 ```
 
 | Script | VUs | Duration | Tests |
 |--------|-----|----------|-------|
-| `smoke.js` | 1 | 30s | health, login, ticket.list |
+| `smoke.js` | 1 | 30s | health, login, ticket.list, refresh |
 | `load.js` | 50 | 3m | random mix of endpoints under sustained load |
+| `refresh.js` | 5 | 30s | login once per VU, then continuous refresh token rotation |
 
 ## Debugging
 
