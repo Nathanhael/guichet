@@ -372,7 +372,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 
     logger.info({ userId: user.id, memberships: activeMemberships.length }, '[SSO] Login complete, redirecting');
 
-    setAuthCookie(res, token, parseExpiryToSeconds(config.JWT_EXPIRY));
+    setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
     // Redirect with only the opaque token — no user data in the URL
     res.redirect(`${clientOrigin}/#sso_token=${opaqueToken}`);
   } catch (err: unknown) {
