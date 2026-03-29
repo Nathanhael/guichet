@@ -29,6 +29,8 @@ export function useTokenRefresh() {
   const logout = useStore(s => s.logout);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastRefreshRef = useRef<number>(0);
+  const isRefreshingRef = useRef<boolean>(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -55,6 +57,9 @@ export function useTokenRefresh() {
     }
 
     async function doRefresh() {
+      // Mutex — prevent parallel refresh requests (e.g. rapid alt-tab)
+      if (isRefreshingRef.current) return;
+
       // Debounce — don't refresh more than once per MIN_REFRESH_INTERVAL_MS
       const now = Date.now();
       if (now - lastRefreshRef.current < MIN_REFRESH_INTERVAL_MS) {
@@ -62,11 +67,16 @@ export function useTokenRefresh() {
         return;
       }
       lastRefreshRef.current = now;
+      isRefreshingRef.current = true;
+
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       try {
         const res = await fetch('/api/v1/auth/refresh', {
           method: 'POST',
           credentials: 'include',
+          signal: controller.signal,
         });
 
         if (res.ok) {
@@ -76,9 +86,16 @@ export function useTokenRefresh() {
           // Refresh failed (token revoked, expired, etc.) — log out
           logout();
         }
-      } catch {
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+          // Component unmounted — do not retry or update state
+          return;
+        }
         // Network error — retry in 30s rather than immediately logging out
         timerRef.current = setTimeout(doRefresh, 30_000);
+      } finally {
+        isRefreshingRef.current = false;
+        abortRef.current = null;
       }
     }
 
@@ -103,6 +120,7 @@ export function useTokenRefresh() {
 
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      if (abortRef.current) abortRef.current.abort();
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [user, logout]);
