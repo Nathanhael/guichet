@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import PartnerSwitcher from '../components/PartnerSwitcher';
-import AdminStats from '../components/admin/AdminStats';
+const AdminStats = lazy(() => import('../components/admin/AdminStats'));
 import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
@@ -17,7 +17,7 @@ import AdminBusinessHours from '../components/admin/AdminBusinessHours';
 import AdminDepartments from '../components/admin/AdminDepartments';
 import AdminAlerts from '../components/admin/AdminAlerts';
 import AdminTeam from '../components/admin/AdminTeam';
-import AdminSatisfaction from '../components/admin/AdminSatisfaction';
+const AdminSatisfaction = lazy(() => import('../components/admin/AdminSatisfaction'));
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import { usePartner } from '../hooks/usePartner';
 import { Flame, Building2, Users } from 'lucide-react';
@@ -139,8 +139,8 @@ export default function AdminView() {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto bg-[var(--color-bg-base)] p-8 custom-scrollbar">
-          {view === 'dashboard' && <AdminStats />}
-          {view === 'satisfaction' && <AdminSatisfaction />}
+          {view === 'dashboard' && <Suspense fallback={<div className="p-8 text-text-secondary font-mono text-xs">Loading...</div>}><AdminStats /></Suspense>}
+          {view === 'satisfaction' && <Suspense fallback={<div className="p-8 text-text-secondary font-mono text-xs">Loading...</div>}><AdminSatisfaction /></Suspense>}
           {view === 'team' && <AdminTeam />}
           {view === 'alerts' && <AdminAlerts />}
           {view === 'business_hours' && <AdminBusinessHours />}
