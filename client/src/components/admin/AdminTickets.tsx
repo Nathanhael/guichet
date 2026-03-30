@@ -38,7 +38,7 @@ export default function AdminTickets() {
 
   useEffect(() => {
     if (messagesQuery.data) {
-      setPreviewMessages(messagesQuery.data as unknown as Message[]);
+      setPreviewMessages(messagesQuery.data.messages as unknown as Message[]);
     }
   }, [messagesQuery.data]);
 

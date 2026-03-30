@@ -46,7 +46,7 @@ export default function AdminArchive() {
   );
 
   useEffect(() => {
-    if (messagesQuery.data) setPreviewMessages(messagesQuery.data as unknown as Message[]);
+    if (messagesQuery.data) setPreviewMessages(messagesQuery.data.messages as unknown as Message[]);
   }, [messagesQuery.data]);
 
   useEffect(() => { setCursor(undefined); setTickets([]); setHasMore(false); }, [search, dept, dateFrom, dateTo]);
