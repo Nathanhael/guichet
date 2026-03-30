@@ -762,6 +762,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
         });
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
+        await revokeAllUserRefreshTokens(req.user!.id);
         const refreshResult = await createRefreshToken(req.user!.id);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
