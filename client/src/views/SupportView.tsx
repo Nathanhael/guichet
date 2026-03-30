@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import useStore from '../store/useStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getSocket } from '../hooks/useSocket';
 import { useBusinessHours } from '../hooks/useBusinessHours';
 import { useT } from '../i18n';
@@ -18,17 +19,33 @@ import { Ticket } from '../types';
 import { trpc } from '../utils/trpc';
 
 export default function SupportView() {
-  const user = useStore((s) => s.user);
-  const tickets = useStore((s) => s.tickets);
-  const setTickets = useStore((s) => s.setTickets);
-  const supportOpenTickets = useStore((s) => s.supportOpenTickets);
-  const addSupportOpenTicket = useStore((s) => s.addSupportOpenTicket);
-  const removeSupportOpenTicket = useStore((s) => s.removeSupportOpenTicket);
-  const clearUnread = useStore((s) => s.clearUnread);
-  const focusMode = useStore((s) => s.focusMode);
-  const memberships = useStore((s) => s.memberships);
-  const activeMembershipId = useStore((s) => s.activeMembershipId);
-  const notificationsEnabled = useStore((s) => s.notificationsEnabled);
+  const {
+    user,
+    tickets,
+    setTickets,
+    supportOpenTickets,
+    addSupportOpenTicket,
+    removeSupportOpenTicket,
+    clearUnread,
+    focusMode,
+    memberships,
+    activeMembershipId,
+    notificationsEnabled,
+  } = useStore(
+    useShallow((s) => ({
+      user: s.user,
+      tickets: s.tickets,
+      setTickets: s.setTickets,
+      supportOpenTickets: s.supportOpenTickets,
+      addSupportOpenTicket: s.addSupportOpenTicket,
+      removeSupportOpenTicket: s.removeSupportOpenTicket,
+      clearUnread: s.clearUnread,
+      focusMode: s.focusMode,
+      memberships: s.memberships,
+      activeMembershipId: s.activeMembershipId,
+      notificationsEnabled: s.notificationsEnabled,
+    }))
+  );
   const { status: businessHoursStatus } = useBusinessHours();
   const t = useT();
 
