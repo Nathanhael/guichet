@@ -19,7 +19,7 @@ export interface TicketSlice {
   setActiveTicketId: (id: string | null) => void;
   markUnread: (ticketId: string) => void;
   clearUnread: (ticketId: string) => void;
-  setParticipantOnline: (participantId: string, online: boolean) => void;
+  setParticipantOnline: (ticketId: string, online: boolean) => void;
   addSupportOpenTicket: (ticketId: string) => void;
   removeSupportOpenTicket: (ticketId: string) => void;
   setQueuePosition: (pos: { position: number; etaMins: number } | null) => void;
@@ -78,8 +78,8 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
       const { [ticketId]: _, ...rest } = state.unreadTickets;
       return { unreadTickets: rest };
     }),
-  setParticipantOnline: (participantId, online) =>
-    set((state) => ({ participantsOnline: { ...state.participantsOnline, [participantId]: online } })),
+  setParticipantOnline: (ticketId, online) =>
+    set((state) => ({ participantsOnline: { ...state.participantsOnline, [ticketId]: online } })),
   addSupportOpenTicket: (ticketId) =>
     set((state) => ({
       supportOpenTickets: state.supportOpenTickets.includes(ticketId)

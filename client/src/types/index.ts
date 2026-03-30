@@ -1,8 +1,6 @@
 export type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 export interface ThemeConfig {
-  glassBlur?: string;
-  glassOpacity?: string;
   brandPrimary?: string;
   brandSecondary?: string;
   accentColor?: string;
@@ -125,7 +123,7 @@ export interface Ticket {
   agentId: string;
   agentName: string | null;
   agentLang: string | null;
-  references?: Array<{ label: string; value: string }> | unknown;
+  references?: Array<{ label: string; value: string }> | null;
   cdbId?: string | null; // legacy
   dareRef?: string | null; // legacy
   status: 'open' | 'pending' | 'closed' | 'resolved';
