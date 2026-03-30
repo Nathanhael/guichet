@@ -982,6 +982,7 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
         });
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
+        await revokeAllUserRefreshTokens(userId);
         const refreshResult = await createRefreshToken(userId, partner.id);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
