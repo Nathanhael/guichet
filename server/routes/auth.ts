@@ -518,7 +518,7 @@ router.post('/login-local', loginRateLimit, [
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
-        const refreshResult = await createRefreshToken(user.id);
+        const refreshResult = await createRefreshToken(user.id, defaultMembership?.partnerId);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json(buildAuthResponse({
             user: {
@@ -672,7 +672,7 @@ router.post('/login', loginRateLimit, [
         await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
-        const refreshResult = await createRefreshToken(user.id);
+        const refreshResult = await createRefreshToken(user.id, defaultMembership?.partnerId);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json(buildAuthResponse({
             user: {
@@ -763,7 +763,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
         await revokeAllUserRefreshTokens(req.user!.id);
-        const refreshResult = await createRefreshToken(req.user!.id);
+        const refreshResult = await createRefreshToken(req.user!.id, membership.partnerId);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
             activePartnerId: membership.partnerId,
@@ -828,14 +828,26 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
         const userMemberships = await listUserMemberships(result.userId);
         const activeMemberships = userMemberships.filter(m => m.status === 'active');
-        const defaultMembership = activeMemberships[0];
+
+        // Prefer the partner stored in the refresh token (preserves context across rotation).
+        // Fall back to first active membership only if the stored partner is no longer active.
+        const preferredMembership = result.partnerId
+            ? activeMemberships.find(m => m.partnerId === result.partnerId)
+            : null;
+        const membership = preferredMembership || activeMemberships[0];
+
+        if (!membership) {
+            clearAuthCookie(res);
+            clearRefreshCookie(res);
+            return res.status(401).json({ error: 'No active memberships' });
+        }
 
         const token = buildAuthToken({
             userId: refreshUser.id,
-            role: defaultMembership?.role || 'agent',
-            departments: (defaultMembership?.departments as unknown[]) || [],
-            partnerId: defaultMembership?.partnerId,
-            membershipId: defaultMembership?.id,
+            role: membership.role,
+            departments: (membership.departments as unknown[]) || [],
+            partnerId: membership.partnerId,
+            membershipId: membership.id,
             isPlatformOperator: !!refreshUser.isPlatformOperator,
         });
 
@@ -951,7 +963,7 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
         });
 
         setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
-        const refreshResult = await createRefreshToken(userId);
+        const refreshResult = await createRefreshToken(userId, partner.id);
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
             activePartnerId: partner.id,

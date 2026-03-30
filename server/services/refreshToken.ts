@@ -10,7 +10,7 @@ function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
-export async function createRefreshToken(userId: string): Promise<{ token: string; family: string; expiresAt: string }> {
+export async function createRefreshToken(userId: string, partnerId?: string): Promise<{ token: string; family: string; expiresAt: string }> {
   const token = crypto.randomBytes(32).toString('hex');
   const family = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY) * 1000).toISOString();
@@ -19,13 +19,14 @@ export async function createRefreshToken(userId: string): Promise<{ token: strin
     userId,
     tokenHash: hashToken(token),
     family,
+    partnerId: partnerId ?? null,
     expiresAt,
   });
 
   return { token, family, expiresAt };
 }
 
-export async function rotateRefreshToken(oldToken: string): Promise<{ token: string; userId: string; family: string; expiresAt: string } | null> {
+export async function rotateRefreshToken(oldToken: string): Promise<{ token: string; userId: string; family: string; partnerId: string | null; expiresAt: string } | null> {
   const oldHash = hashToken(oldToken);
 
   const rows = await db.select()
@@ -72,11 +73,12 @@ export async function rotateRefreshToken(oldToken: string): Promise<{ token: str
       userId: existing.userId,
       tokenHash: hashToken(newToken),
       family: existing.family,
+      partnerId: existing.partnerId,
       expiresAt,
     });
   });
 
-  return { token: newToken, userId: existing.userId, family: existing.family, expiresAt };
+  return { token: newToken, userId: existing.userId, family: existing.family, partnerId: existing.partnerId, expiresAt };
 }
 
 export async function revokeFamily(family: string): Promise<void> {
