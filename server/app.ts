@@ -359,6 +359,53 @@ registerSocketHandlers(io);
 
 setBusinessHoursIo(io);
 
+// Graceful shutdown — drain connections on SIGTERM/SIGINT (Docker stop, Ctrl+C)
+let shuttingDown = false;
+async function gracefulShutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info({ signal }, '[shutdown] Received signal, draining connections...');
+
+  // 1. Stop accepting new connections
+  httpServer.close(() => {
+    logger.info('[shutdown] HTTP server closed');
+  });
+
+  // 2. Close all Socket.io connections
+  io.close(() => {
+    logger.info('[shutdown] Socket.io server closed');
+  });
+
+  // 3. Close Redis clients
+  try {
+    const { pubClient, subClient } = getRedisClients();
+    if (pubClient) await pubClient.quit();
+    if (subClient) await subClient.quit();
+    logger.info('[shutdown] Redis connections closed');
+  } catch (err) {
+    logger.warn({ err }, '[shutdown] Redis cleanup failed (non-fatal)');
+  }
+
+  // 4. Close database pool
+  try {
+    const { pool } = await import('./db/postgres.js');
+    await pool.end();
+    logger.info('[shutdown] Database pool closed');
+  } catch (err) {
+    logger.warn({ err }, '[shutdown] Database cleanup failed (non-fatal)');
+  }
+
+  // 5. Exit after drain timeout
+  const DRAIN_TIMEOUT_MS = 10_000;
+  setTimeout(() => {
+    logger.warn('[shutdown] Drain timeout reached, forcing exit');
+    process.exit(1);
+  }, DRAIN_TIMEOUT_MS).unref();
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
 // Serve built client (production / CI / test — skipped when dist doesn't exist i.e. Docker dev)
 import { existsSync } from 'fs';
 const clientDist = path.resolve(__dirname, '../client/dist');
