@@ -882,16 +882,18 @@ router.post('/refresh', async (req: Request, res: Response) => {
 router.post('/logout', (await import('../middleware/auth.js')).auth, async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
+        let revocationFailed = false;
         if (req.user.tokenJti) {
             const revoked = await revokeToken(req.user.tokenJti, req.user.tokenExp);
             if (!revoked) {
                 logger.error({ jti: req.user.tokenJti }, '[Auth] SECURITY: Token revocation failed at logout — token may remain valid until expiry');
+                revocationFailed = true;
             }
         }
         await revokeAllUserRefreshTokens(req.user.id);
         clearAuthCookie(res);
         clearRefreshCookie(res);
-        res.json({ success: true });
+        res.json({ success: true, ...(revocationFailed && { revocationFailed: true }) });
     } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[Auth] Logout FATAL error');
         res.status(500).json({ error: 'Server error during logout' });
