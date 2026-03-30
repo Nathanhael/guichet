@@ -1,11 +1,7 @@
 import { createHash } from 'crypto';
-import config from '../../config.js';
-import { db } from '../../db/postgres.js';
-import { partners } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import logger from '../../utils/logger.js';
-import { decrypt } from '../encryption.js';
 import type { AiProvider } from './types.js';
+import { getAiContext } from './context.js';
 import { validateAiBaseUrl } from './validateUrl.js';
 import { OllamaProvider } from './ollama.js';
 import { AzureOpenAiProvider } from './azure-openai.js';
@@ -34,6 +30,8 @@ function buildProvider(
   providerName: string,
   opts: { baseUrl?: string; apiKey?: string; model?: string; deployment?: string } = {},
 ): AiProvider {
+  const { config } = getAiContext();
+
   switch (providerName) {
     case 'ollama':
       return new OllamaProvider(
@@ -78,6 +76,9 @@ function buildProvider(
  * 3. Cache provider instances per config hash
  */
 export async function getProvider(partnerId?: string): Promise<AiProvider> {
+  const { db, logger, config, schema, decrypt } = getAiContext();
+  const { partners } = schema as any;
+
   // ── Per-partner override ──────────────────────────────────────────────────
   if (partnerId) {
     const [partner] = await db
@@ -153,6 +154,9 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
  * Check if AI is globally enabled AND (optionally) enabled for a specific partner.
  */
 export async function isAiEnabled(partnerId?: string): Promise<boolean> {
+  const { db, config, schema } = getAiContext();
+  const { partners } = schema as any;
+
   if (!config.AI_ENABLED) return false;
 
   if (partnerId) {

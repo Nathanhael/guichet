@@ -1,13 +1,14 @@
-import { db } from '../../db/postgres.js';
-import { aiUsageLog } from '../../db/schema.js';
-import logger from '../../utils/logger.js';
 import type { AiUsageEntry } from './types.js';
+import { getAiContext } from './context.js';
 
 /**
  * Log an AI usage event to the database.
  * Fire-and-forget — errors are logged but never thrown.
  */
 export async function logUsage(entry: AiUsageEntry): Promise<void> {
+  const { db, logger, schema } = getAiContext();
+  const { aiUsageLog } = schema as any;
+
   try {
     await db.insert(aiUsageLog).values({
       id: crypto.randomUUID(),
