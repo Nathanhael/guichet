@@ -21,33 +21,30 @@ vi.mock('./messageFormatter.js', () => ({
 
 const mockDbUpdate = vi.fn();
 
-vi.mock('../../db.js', () => ({
-  db: {
-    update: (...args: unknown[]) => mockDbUpdate(...args),
-  },
-}));
+const mockTicketsSchema = {
+  id: 'id',
+  partnerId: 'partner_id',
+  closingNotes: 'closing_notes',
+};
 
-vi.mock('../../db/schema.js', () => ({
-  tickets: {
-    id: 'id',
-    partnerId: 'partner_id',
-    closingNotes: 'closing_notes',
-  },
+vi.mock('./context.js', () => ({
+  getAiContext: vi.fn(() => ({
+    db: {
+      update: (...args: unknown[]) => mockDbUpdate(...args),
+    },
+    redis: null,
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    config: { AI_ENABLED: true } as any,
+    decrypt: (s: string) => s,
+    schema: { tickets: mockTicketsSchema },
+  })),
+  initAiContext: vi.fn(),
 }));
 
 vi.mock('drizzle-orm', () => ({
   eq: vi.fn((...args: unknown[]) => ({ type: 'eq', args })),
   and: vi.fn((...args: unknown[]) => ({ type: 'and', args })),
   sql: vi.fn((strings: TemplateStringsArray) => ({ type: 'sql', value: strings.join('') })),
-}));
-
-vi.mock('../../utils/logger.js', () => ({
-  default: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
 }));
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
