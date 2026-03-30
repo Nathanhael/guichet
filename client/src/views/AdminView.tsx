@@ -5,7 +5,6 @@ import DarkModeToggle from '../components/DarkModeToggle';
 import NeuroToggle from '../components/NeuroToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import PartnerSwitcher from '../components/PartnerSwitcher';
-const AdminStats = lazy(() => import('../components/admin/AdminStats'));
 import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
@@ -17,10 +16,16 @@ import AdminBusinessHours from '../components/admin/AdminBusinessHours';
 import AdminDepartments from '../components/admin/AdminDepartments';
 import AdminAlerts from '../components/admin/AdminAlerts';
 import AdminTeam from '../components/admin/AdminTeam';
-const AdminSatisfaction = lazy(() => import('../components/admin/AdminSatisfaction'));
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import { usePartner } from '../hooks/usePartner';
 import { Flame, Building2, Users } from 'lucide-react';
+
+const AdminStats = lazy(() => import('../components/admin/AdminStats'));
+const AdminSatisfaction = lazy(() => import('../components/admin/AdminSatisfaction'));
+
+const LoadingFallback = () => (
+  <div className="p-8 mono-label text-[10px]">Loading</div>
+);
 
 type AdminTab = 'dashboard' | 'satisfaction' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned_responses' | 'knowledge_base' | 'webhooks';
 
@@ -139,8 +144,8 @@ export default function AdminView() {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto bg-[var(--color-bg-base)] p-8 custom-scrollbar">
-          {view === 'dashboard' && <Suspense fallback={<div className="p-8 text-text-secondary font-mono text-xs">Loading...</div>}><AdminStats /></Suspense>}
-          {view === 'satisfaction' && <Suspense fallback={<div className="p-8 text-text-secondary font-mono text-xs">Loading...</div>}><AdminSatisfaction /></Suspense>}
+          {view === 'dashboard' && <Suspense fallback={<LoadingFallback />}><AdminStats /></Suspense>}
+          {view === 'satisfaction' && <Suspense fallback={<LoadingFallback />}><AdminSatisfaction /></Suspense>}
           {view === 'team' && <AdminTeam />}
           {view === 'alerts' && <AdminAlerts />}
           {view === 'business_hours' && <AdminBusinessHours />}
