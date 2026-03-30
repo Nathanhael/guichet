@@ -33,6 +33,9 @@ import { register } from './utils/metrics.js';
 
 import { initRedis, getRedisClients } from './utils/redis.js';
 import jwt from 'jsonwebtoken';
+import { initAiContext } from './services/ai/index.js';
+import { decrypt } from './services/encryption.js';
+import * as schema from './db/schema.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -71,6 +74,23 @@ initRedis().then(({ pubClient, subClient }) => {
     io.adapter(createAdapter(pubClient, subClient));
     logger.info('Socket.io Redis adapter initialized');
   }
+
+  // Initialize AI service layer with shared dependencies
+  initAiContext({
+    db,
+    redis: pubClient,
+    logger,
+    config,
+    decrypt,
+    schema: {
+      partners: schema.partners,
+      tickets: schema.tickets,
+      messages: schema.messages,
+      aiPromptTemplates: schema.aiPromptTemplates,
+      aiUsageLog: schema.aiUsageLog,
+    },
+  });
+  logger.info('AI context initialized');
 }).catch(err => {
   logger.error({ err }, 'Failed to initialize Redis');
 });
@@ -192,7 +212,6 @@ v1Router.use(
   })
 );
 
-import { partners } from './db/schema.js';
 import { eq } from 'drizzle-orm';
 import { db } from './db.js';
 
@@ -211,11 +230,11 @@ v1Router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) 
   let businessHoursSchedule: unknown = null;
 
   const result = await db.select({
-    businessHoursSchedule: partners.businessHoursSchedule,
-    businessHoursStart: partners.businessHoursStart,
-    businessHoursEnd: partners.businessHoursEnd,
-    businessHoursTimezone: partners.businessHoursTimezone,
-  }).from(partners).where(eq(partners.id, partnerId)).limit(1);
+    businessHoursSchedule: schema.partners.businessHoursSchedule,
+    businessHoursStart: schema.partners.businessHoursStart,
+    businessHoursEnd: schema.partners.businessHoursEnd,
+    businessHoursTimezone: schema.partners.businessHoursTimezone,
+  }).from(schema.partners).where(eq(schema.partners.id, partnerId)).limit(1);
   if (result.length > 0) {
     businessHoursSchedule = result[0].businessHoursSchedule ?? businessHoursSchedule;
     businessHoursStart = result[0].businessHoursStart ?? businessHoursStart;
