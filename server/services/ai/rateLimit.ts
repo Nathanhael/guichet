@@ -1,5 +1,4 @@
-import { getAiRedis } from './redis.js';
-import logger from '../../utils/logger.js';
+import { getAiContext } from './context.js';
 
 // ─── Rate Limiter for AI calls ──────────────────────────────────────────────
 // Per-partner Redis counters with minute and daily windows.
@@ -61,7 +60,11 @@ export async function checkRateLimit(
   const perDay = limits?.perDay ?? DEFAULT_PER_DAY;
 
   try {
-    const r = await getAiRedis();
+    const { redis: r, logger } = getAiContext();
+    if (!r) {
+      logger.warn({ partnerId }, 'Redis not available, allowing AI request');
+      return { allowed: true };
+    }
     const minuteKey = `ai:rate:${partnerId}:minute`;
     const dayKey = `ai:rate:${partnerId}:day`;
 
@@ -84,6 +87,7 @@ export async function checkRateLimit(
 
     return { allowed: true };
   } catch (err) {
+    const { logger } = getAiContext();
     // If Redis is down, allow the request but log a warning
     logger.warn({ err, partnerId }, 'AI rate-limit check failed — allowing request');
     return { allowed: true };
@@ -95,7 +99,8 @@ export async function checkRateLimit(
  */
 export async function getUsageCounts(partnerId: string): Promise<{ minute: number; day: number }> {
   try {
-    const r = await getAiRedis();
+    const { redis: r } = getAiContext();
+    if (!r) return { minute: 0, day: 0 };
     const [minute, day] = await Promise.all([
       r.get(`ai:rate:${partnerId}:minute`),
       r.get(`ai:rate:${partnerId}:day`),
