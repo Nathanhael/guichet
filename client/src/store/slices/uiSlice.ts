@@ -57,14 +57,14 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
       localStorage.setItem('dyslexicMode', String(next));
       if (next) document.documentElement.classList.add('dyslexic-mode');
       else document.documentElement.classList.remove('dyslexic-mode');
-      trpcVanilla.user.updateAccessibilityPrefs.mutate({ dyslexicMode: next }).catch(() => {});
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ dyslexicMode: next }).catch((err) => { console.error('[uiSlice] Failed to persist dyslexicMode:', err); });
       return { dyslexicMode: next, prefsModifiedLocally: true };
     }),
   toggleBionicReading: () =>
     set((state) => {
       const next = !state.bionicReading;
       localStorage.setItem('bionicReading', String(next));
-      trpcVanilla.user.updateAccessibilityPrefs.mutate({ bionicReading: next }).catch(() => {});
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ bionicReading: next }).catch((err) => { console.error('[uiSlice] Failed to persist bionicReading:', err); });
       return { bionicReading: next, prefsModifiedLocally: true };
     }),
   toggleMonochromeMode: () =>
@@ -73,14 +73,14 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
       localStorage.setItem('monochromeMode', String(next));
       if (next) document.documentElement.classList.add('monochrome-mode');
       else document.documentElement.classList.remove('monochrome-mode');
-      trpcVanilla.user.updateAccessibilityPrefs.mutate({ monochromeMode: next }).catch(() => {});
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ monochromeMode: next }).catch((err) => { console.error('[uiSlice] Failed to persist monochromeMode:', err); });
       return { monochromeMode: next, prefsModifiedLocally: true };
     }),
   toggleFocusMode: () =>
     set((state) => {
       const next = !state.focusMode;
       localStorage.setItem('focusMode', String(next));
-      trpcVanilla.user.updateAccessibilityPrefs.mutate({ focusMode: next }).catch(() => {});
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ focusMode: next }).catch((err) => { console.error('[uiSlice] Failed to persist focusMode:', err); });
       return { focusMode: next, prefsModifiedLocally: true };
     }),
 
