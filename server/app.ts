@@ -28,6 +28,7 @@ import { runDailyPurge } from './services/gdpr.js';
 import { cleanupExpiredTokens } from './services/refreshToken.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
+import { createTaskRunner } from './utils/taskRunner.js';
 import { register } from './utils/metrics.js';
 
 import { initRedis, getRedisClients } from './utils/redis.js';
@@ -303,6 +304,9 @@ app.get('/metrics', async (req: Request, res: Response) => {
 });
 
 
+const gdprRunner = createTaskRunner('gdpr-purge');
+const tokenCleanupRunner = createTaskRunner('token-cleanup');
+
 // GDPR purge — startup catch-up + scheduled runs
 // Check if a purge is overdue by looking at the most recent audit entry age
 (async () => {
@@ -315,7 +319,7 @@ app.get('/metrics', async (req: Request, res: Response) => {
       const archiveThresholdMs = config.AUDIT_ARCHIVE_DELAY_DAYS * 24 * 60 * 60 * 1000;
       if (ageMs > archiveThresholdMs) {
         logger.info({ ageHours: Math.round(ageMs / 3600000) }, '[GDPR] Overdue audit entries detected — running catch-up purge');
-        await runDailyPurge();
+        await gdprRunner.run(runDailyPurge);
       }
     }
   } catch (err) {
@@ -326,31 +330,27 @@ app.get('/metrics', async (req: Request, res: Response) => {
 // Regular schedule: initial after random delay (1-60 min jitter), then interval ± 1h
 const purgeJitterMs = Math.floor(Math.random() * 60 * 60 * 1000);
 setTimeout(() => {
-  runDailyPurge();
+  gdprRunner.run(runDailyPurge);
   // Subsequent runs: interval ± 1h jitter
   setInterval(() => {
     const jitter = Math.floor(Math.random() * 2 * 60 * 60 * 1000) - 60 * 60 * 1000; // ±1h
-    setTimeout(runDailyPurge, Math.max(0, jitter));
+    setTimeout(() => gdprRunner.run(runDailyPurge), Math.max(0, jitter));
   }, config.PURGE_INTERVAL_MS);
 }, purgeJitterMs);
 logger.info({ purgeJitterMin: Math.round(purgeJitterMs / 60000) }, '[GDPR] Purge scheduled with jitter');
 
 // Refresh token cleanup — runs every 6 hours to prevent unbounded table growth (SEC-7)
 const TOKEN_CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
-setTimeout(async () => {
-  try {
+setTimeout(() => {
+  tokenCleanupRunner.run(async () => {
     const cleaned = await cleanupExpiredTokens();
     if (cleaned > 0) logger.info({ cleaned }, '[auth] Expired refresh tokens cleaned up');
-  } catch (err) {
-    logger.warn({ err }, '[auth] Refresh token cleanup failed (non-fatal)');
-  }
-  setInterval(async () => {
-    try {
+  });
+  setInterval(() => {
+    tokenCleanupRunner.run(async () => {
       const cleaned = await cleanupExpiredTokens();
       if (cleaned > 0) logger.info({ cleaned }, '[auth] Expired refresh tokens cleaned up');
-    } catch (err) {
-      logger.warn({ err }, '[auth] Refresh token cleanup failed (non-fatal)');
-    }
+    });
   }, TOKEN_CLEANUP_INTERVAL_MS);
 }, Math.floor(Math.random() * 30 * 60 * 1000)); // 0-30min startup jitter
 
