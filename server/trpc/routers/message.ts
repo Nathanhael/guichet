@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { messages, tickets } from '../../db/schema.js';
-import { eq, and, asc, desc, ilike } from 'drizzle-orm';
+import { eq, and, asc, desc, ilike, or, gt } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
@@ -13,6 +13,8 @@ export const messageRouter = router({
   list: protectedProcedure
     .input(z.object({
       ticketId: z.string(),
+      limit: z.number().int().min(1).max(100).default(50),
+      cursor: z.string().optional(),
     }))
     .query(async ({ input, ctx }) => {
       try {
@@ -37,27 +39,45 @@ export const messageRouter = router({
         if (!isSupport && ticketResult[0].agentId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to view these messages' });
         }
-        
-        let query = db.select().from(messages).where(eq(messages.ticketId, input.ticketId));
+
+        // Build conditions array
+        const conditions = [eq(messages.ticketId, input.ticketId)];
 
         // Agents shouldn't see whispers
         if (!isSupport) {
-          query = db.select().from(messages).where(
-            and(
-              eq(messages.ticketId, input.ticketId),
-              eq(messages.whisper, 0) // whisper is integer (0/1) in the schema
-            )
+          conditions.push(eq(messages.whisper, 0)); // whisper is integer (0/1) in the schema
+        }
+
+        // Cursor-based keyset pagination (format: "createdAt|id")
+        if (input.cursor) {
+          const [cursorTime, cursorId] = input.cursor.split('|');
+          conditions.push(
+            or(
+              gt(messages.createdAt, cursorTime),
+              and(eq(messages.createdAt, cursorTime), gt(messages.id, cursorId))
+            )!
           );
         }
 
-        const rows = await query.orderBy(asc(messages.createdAt)).limit(2000);
+        const rows = await db
+          .select()
+          .from(messages)
+          .where(and(...conditions))
+          .orderBy(asc(messages.createdAt), asc(messages.id))
+          .limit(input.limit + 1);
 
-        return rows.map(mapMessageRow);
+        const hasMore = rows.length > input.limit;
+        const items = hasMore ? rows.slice(0, input.limit) : rows;
+        const nextCursor = hasMore
+          ? `${items[items.length - 1].createdAt}|${items[items.length - 1].id}`
+          : undefined;
+
+        return { messages: items.map(mapMessageRow), hasMore, nextCursor };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         const message = err instanceof Error ? err.message : String(err);
         logger.error({ err: message, ticketId: input.ticketId }, 'tRPC: Error listing messages');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' });
       }
     }),
 
@@ -131,7 +151,7 @@ export const messageRouter = router({
         if (err instanceof TRPCError) throw err;
         const message = err instanceof Error ? err.message : String(err);
         logger.error({ err: message }, 'tRPC: Error searching messages');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message });
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' });
       }
     }),
 });

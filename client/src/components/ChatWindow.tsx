@@ -86,7 +86,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     if (messageQuery.data && ticketId) {
       // tRPC infers server mapMessageRow return type which differs slightly from client Message interface
       // (e.g. optional text field presence). Runtime data is compatible.
-      setMessages(ticketId, messageQuery.data as unknown as Message[]);
+      setMessages(ticketId, messageQuery.data.messages as unknown as Message[]);
     }
   }, [messageQuery.data, ticketId, setMessages]);
 
