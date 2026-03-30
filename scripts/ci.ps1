@@ -45,7 +45,7 @@ Run-Step "audit" @("docker compose exec server npm audit --audit-level=high", "d
 Run-Step "test-server" @("docker compose exec server npm test")
 Run-Step "test-client" @("docker compose exec client npm test")
 Run-Step "migrate" @("docker compose exec server npm run db:migrate")
-Run-Step "e2e" @("docker compose exec client npm run build", "docker compose exec client npx playwright test")
+Run-Step "e2e" @("docker compose exec client npm run build", "npx playwright test")
 
 $stopwatch.Stop()
 Write-Host "`n========================================" -ForegroundColor White
