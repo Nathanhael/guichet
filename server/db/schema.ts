@@ -146,6 +146,7 @@ export const messages = pgTable('messages', {
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
   senderIdIdx: index('idx_messages_sender_id').on(table.senderId),
   ticketDeletedIdx: index('idx_messages_ticket_deleted').on(table.ticketId, table.deletedAt),
+  ticketCreatedIdx: index('idx_messages_ticket_created').on(table.ticketId, table.createdAt),
 }));
 
 export const ratings = pgTable('ratings', {
