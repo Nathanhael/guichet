@@ -159,20 +159,22 @@ app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
 }, express.static(rootUploadDir));
 
 // API v1 Routing
-import swaggerUi from 'swagger-ui-express';
-import { openapiSpec } from './docs/openapi.js';
 const v1Router = express.Router();
 
-// API Documentation (Swagger UI)
-v1Router.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Tessera API Documentation',
-}));
+// API Documentation (Swagger UI) — disabled in production to save 12 MB
+if (process.env.NODE_ENV !== 'production') {
+  const swaggerUi = await import('swagger-ui-express');
+  const { openapiSpec } = await import('./docs/openapi.js');
+  v1Router.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Tessera API Documentation',
+  }));
 
-// Serve tRPC reference markdown as plain text
-v1Router.get('/trpc-reference', (_req: Request, res: Response) => {
-  res.type('text/markdown').sendFile(path.join(__dirname, 'docs', 'trpc-reference.md'));
-});
+  // Serve tRPC reference markdown as plain text
+  v1Router.get('/trpc-reference', (_req: Request, res: Response) => {
+    res.type('text/markdown').sendFile(path.join(__dirname, 'docs', 'trpc-reference.md'));
+  });
+}
 
 v1Router.use('/tickets', ticketRoutes); // Kept for export support
 v1Router.use('/uploads', uploadLimiter, uploadRoutes);

@@ -9,7 +9,7 @@ import { randomBytes } from 'crypto';
 import { getBusinessHoursStatus, type BusinessHoursSchedule } from '../../services/businessHours.js';
 import { hashPassword } from '../../utils/passwords.js';
 import { canAssignTenantRole } from '../../services/roles.js';
-import { getPartnerAiConfig } from '../../services/ai/config.js';
+import { getPartnerAiConfig } from '../../services/ai/index.js';
 import config from '../../config.js';
 
 // simple slugify helper
