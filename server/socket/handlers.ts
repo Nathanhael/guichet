@@ -50,9 +50,7 @@ import {
 import { isRevoked } from '../services/sessionRevocation.js';
 import { runSyncGuards, guardRepetition } from '../services/guards.js';
 import { getRedisClients } from '../utils/redis.js';
-import { invalidateSummary } from '../services/ai/summaryCache.js';
-import { autoSummarizeOnClose } from '../services/ai/autoSummarize.js';
-import { scoreSentiment } from '../services/ai/sentiment.js';
+import { invalidateSummary, autoSummarizeOnClose, scoreSentiment } from '../services/ai/index.js';
 import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../services/sla.js';
 import { Rooms } from '../utils/rooms.js';
 import { insertSystemMessage } from '../services/systemMessage.js';
