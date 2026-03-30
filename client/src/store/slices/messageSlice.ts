@@ -35,8 +35,8 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       newMessages.forEach(m => msgMap.set(m.id, m));
       
       // Sort by creation time to maintain order
-      const merged = Array.from(msgMap.values()).sort((a, b) => 
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      const merged = Array.from(msgMap.values()).sort((a, b) =>
+        (new Date(a.createdAt || a.timestamp || 0).getTime() || 0) - (new Date(b.createdAt || b.timestamp || 0).getTime() || 0)
       );
 
       return { messages: { ...state.messages, [ticketId]: merged } };
@@ -71,7 +71,7 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       newMessages.forEach(m => msgMap.set(m.id, m));
       existing.forEach(m => msgMap.set(m.id, m)); // existing wins on conflict
       const merged = Array.from(msgMap.values()).sort((a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        (new Date(a.createdAt || a.timestamp || 0).getTime() || 0) - (new Date(b.createdAt || b.timestamp || 0).getTime() || 0)
       );
       return { messages: { ...state.messages, [ticketId]: merged } };
     }),
