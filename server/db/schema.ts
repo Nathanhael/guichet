@@ -260,6 +260,7 @@ export const auditLog = pgTable('audit_log', {
   partnerCreatedIdx: index('idx_audit_log_partner_created').on(table.partnerId, table.createdAt),
   actorCreatedIdx: index('idx_audit_log_actor_created').on(table.actorId, table.createdAt),
   actionIdx: index('idx_audit_log_action').on(table.action),
+  createdAtIdx: index('idx_audit_log_created_at').on(table.createdAt),
 }));
 
 // ─── Canned Responses ────────────────────────────────────────────────────────
