@@ -28,3 +28,4 @@ export { verifyTicketOwnership, fetchTicketMessages } from './ticketMessages.js'
 export { runAiAction } from './runAction.js';
 export { autoSummarizeOnClose } from './autoSummarize.js';
 export { scoreSentiment } from './sentiment.js';
+export { initAiContext, getAiContext } from './context.js';
