@@ -18,7 +18,7 @@ vi.mock('../db/postgres.js', () => {
   };
 });
 
-vi.mock('uuid', () => ({ v4: vi.fn(() => 'mock-uuid') }));
+vi.stubGlobal('crypto', { ...crypto, randomUUID: vi.fn(() => 'mock-uuid') });
 
 import {
   insertMessage,

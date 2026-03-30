@@ -1,6 +1,5 @@
 // server/services/messageQueries.ts
 import { eq, and, asc, isNull, inArray, lt, or } from 'drizzle-orm';
-import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db/postgres.js';
 import { messages, ticketLabels } from '../db/schema.js';
 
@@ -24,7 +23,7 @@ export type SocketMessage = Awaited<ReturnType<typeof insertMessage>>;
  * Used by: message:send, ticket:new
  */
 export async function insertMessage(data: InsertMessageData) {
-  const id = uuidv4();
+  const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
   await db.insert(messages).values({

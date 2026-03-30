@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
-import { v4 as uuidv4 } from 'uuid';
 import { router, partnerAdminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { webhooks, webhookLogs } from '../../db/schema.js';
@@ -62,7 +61,7 @@ export const webhookRouter = router({
       // SSRF protection: validate URL before registering
       await validateWebhookUrl(input.url);
 
-      const id = uuidv4();
+      const id = crypto.randomUUID();
       const secret = randomBytes(32).toString('hex');
       const now = new Date().toISOString();
 

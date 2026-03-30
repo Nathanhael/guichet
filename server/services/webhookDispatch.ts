@@ -15,7 +15,6 @@
 
 import { createHmac } from 'crypto';
 import dns from 'dns';
-import { v4 as uuidv4 } from 'uuid';
 import { db } from '../db.js';
 import { webhooks, webhookLogs } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
@@ -157,7 +156,7 @@ async function deliverOne(
   const body = JSON.stringify({ event, data, timestamp });
   const signature = signPayload(body, hook.secret);
 
-  const logId = uuidv4();
+  const logId = crypto.randomUUID();
   const start = Date.now();
 
   const controller = new AbortController();

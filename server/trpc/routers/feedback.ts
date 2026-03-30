@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
 import { router, protectedProcedure, adminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { appFeedback, memberships } from '../../db/schema.js';
@@ -53,7 +52,7 @@ export const feedbackRouter = router({
           throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner context required to submit feedback' });
         }
 
-        const id = uuidv4();
+        const id = crypto.randomUUID();
         // Use server-side identity — never trust client-supplied userId/userName
         const entry = {
           id,

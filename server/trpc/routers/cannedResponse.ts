@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
 import { router, partnerScopedProcedure, partnerAdminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { cannedResponses } from '../../db/schema.js';
@@ -65,7 +64,7 @@ export const cannedResponseRouter = router({
         }
       }
 
-      const id = uuidv4();
+      const id = crypto.randomUUID();
       const now = new Date().toISOString();
 
       await db.insert(cannedResponses).values({

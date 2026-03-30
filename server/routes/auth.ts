@@ -1,8 +1,8 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
-import { body } from 'express-validator';
+import { z } from 'zod';
 import { get, run } from '../db.js';
-import { validate } from '../middleware/validator.js';
+import { validateBody } from '../middleware/validator.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { User } from '../types/index.js';
@@ -201,10 +201,9 @@ const FORGOT_PW_MAX_PER_EMAIL = 3;
  *                 success: { type: boolean }
  *                 message: { type: string }
  */
-router.post('/forgot-password', resetPasswordRateLimit, [
-    body('email').isEmail().withMessage('Valid email is required'),
-    validate([])
-], async (req: Request, res: Response) => {
+router.post('/forgot-password', resetPasswordRateLimit, validateBody(z.object({
+    email: z.string().email('Valid email is required'),
+}).passthrough()), async (req: Request, res: Response) => {
     try {
         const { email } = req.body;
         logger.info({ email: maskEmail(email) }, '[Auth] Password reset requested');
@@ -282,12 +281,10 @@ router.post('/forgot-password', resetPasswordRateLimit, [
  *       400:
  *         description: Invalid/expired token or password too weak
  */
-router.post('/reset-password', [
-    resetPasswordRateLimit,
-    body('token').notEmpty().withMessage('Token is required'),
-    body('password').isLength({ min: 10 }).withMessage('Password must be at least 10 characters'),
-    validate([])
-], async (req: Request, res: Response) => {
+router.post('/reset-password', resetPasswordRateLimit, validateBody(z.object({
+    token: z.string().min(1, 'Token is required'),
+    password: z.string().min(10, 'Password must be at least 10 characters'),
+}).passthrough()), async (req: Request, res: Response) => {
     try {
         const { token, password, totpCode } = req.body;
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
@@ -404,11 +401,10 @@ router.post('/reset-password', [
  *       423:
  *         description: Account locked due to failed attempts
  */
-router.post('/login-local', loginRateLimit, [
-    body('email').isEmail().withMessage('Valid email is required'),
-    body('password').notEmpty().withMessage('Password is required'),
-    validate([])
-], async (req: Request, res: Response) => {
+router.post('/login-local', loginRateLimit, validateBody(z.object({
+    email: z.string().email('Valid email is required'),
+    password: z.string().min(1, 'Password is required'),
+}).passthrough()), async (req: Request, res: Response) => {
     try {
         const { email, password } = req.body;
         logger.info({ email: maskEmail(email) }, '[Auth] Local login attempt started');
@@ -567,11 +563,10 @@ router.post('/login-local', loginRateLimit, [
  *       423:
  *         description: Account locked
  */
-router.post('/login', loginRateLimit, [
-    body('id').notEmpty().withMessage('User ID is required'),
-    body('password').notEmpty().withMessage('Password is required'),
-    validate([])
-], async (req: Request, res: Response) => {
+router.post('/login', loginRateLimit, validateBody(z.object({
+    id: z.string().min(1, 'User ID is required'),
+    password: z.string().min(1, 'Password is required'),
+}).passthrough()), async (req: Request, res: Response) => {
     try {
         const { id, password } = req.body;
         logger.debug({ id }, '[Auth] Login attempt started');
