@@ -183,6 +183,7 @@ async function deliverOne(
       },
       body,
       signal: controller.signal,
+      redirect: 'error',
     });
 
     const responseBody = await res.text().catch(() => '');
