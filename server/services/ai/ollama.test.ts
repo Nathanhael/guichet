@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { OllamaProvider } from './ollama.js';
+import { initAiContext } from './context.js';
 
 // Mock global fetch
 const mockFetch = vi.fn();
@@ -7,6 +8,35 @@ vi.stubGlobal('fetch', mockFetch);
 
 describe('OllamaProvider', () => {
   let provider: OllamaProvider;
+
+  beforeAll(() => {
+    initAiContext({
+      db: {} as any,
+      redis: null,
+      logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+      config: {
+        AI_ENABLED: true,
+        AI_PROVIDER: 'ollama',
+        AI_BASE_URL: 'http://localhost:11434',
+        AI_API_KEY: '',
+        AI_TIMEOUT_MS: 30000,
+        OLLAMA_KEEPALIVE: '30m',
+        OLLAMA_HOST: 'http://localhost:11434',
+        OLLAMA_MODEL: 'llama3',
+        AZURE_OPENAI_DEPLOYMENT: '',
+        NODE_ENV: 'test',
+        REDIS_URL: '',
+      } as any,
+      decrypt: (s: string) => s,
+      schema: {
+        partners: {} as any,
+        tickets: {} as any,
+        messages: {} as any,
+        aiPromptTemplates: {} as any,
+        aiUsageLog: {} as any,
+      },
+    });
+  });
 
   beforeEach(() => {
     provider = new OllamaProvider('http://localhost:11434', 'llama3');

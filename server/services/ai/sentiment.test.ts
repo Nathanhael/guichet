@@ -29,6 +29,18 @@ vi.mock('../../db/schema.js', () => ({
   messages: { id: 'id', sentiment: 'sentiment' },
 }));
 
+vi.mock('./context.js', () => ({
+  getAiContext: vi.fn(() => ({
+    db: { update: mockUpdate },
+    redis: null,
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
+    config: { AI_ENABLED: true } as any,
+    decrypt: (s: string) => s,
+    schema: { messages: { id: 'id', sentiment: 'sentiment' } },
+  })),
+  initAiContext: vi.fn(),
+}));
+
 vi.mock('./index.js', () => ({
   isFeatureEnabled: mockIsFeatureEnabled,
   getProvider: mockGetProvider,
