@@ -1,5 +1,4 @@
 import { Server, Socket } from 'socket.io';
-import { v4 as uuidv4 } from 'uuid';
 import jwt from 'jsonwebtoken';
 import { parse as parseCookie } from 'cookie';
 import * as presenceService from '../services/presence.js';
@@ -498,7 +497,7 @@ export function registerSocketHandlers(io: Server) {
         }
 
         const agentUser = await findUserName(agentId);
-        const ticket: Ticket = { id: uuidv4(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
+        const ticket: Ticket = { id: crypto.randomUUID(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
         await createTicket({ id: ticket.id, partnerId, dept: ticket.dept, agentId: ticket.agentId, agentName: ticket.agentName, agentLang: ticket.agentLang, references, status: ticket.status, createdAt: ticket.createdAt, participants: [], reopened, reopenCount });
 
         let message: SocketMessage | null = null;
@@ -685,7 +684,7 @@ export function registerSocketHandlers(io: Server) {
         }
         const supportId = ticket.supportId;
 
-        const id = uuidv4();
+        const id = crypto.randomUUID();
         const safeComment = comment ? comment.slice(0, MAX_NOTE_LENGTH) : null;
         await insertRating({ id, ticketId, agentId: agentId!, supportId, partnerId: socket.data.partnerId, rating: intRating, comment: safeComment });
         io.to(Rooms.ticket(ticketId)).emit('rating:submitted', { ticketId, agentId, supportId, rating: intRating });

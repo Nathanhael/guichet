@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
 import { router, adminProcedure, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { labels, ticketLabels } from '../../db/schema.js';
@@ -50,7 +49,7 @@ export const labelRouter = router({
       try {
         if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
 
-        const id = `l_${uuidv4()}`;
+        const id = `l_${crypto.randomUUID()}`;
         await db.insert(labels).values({
           id,
           partnerId: ctx.user.partnerId,

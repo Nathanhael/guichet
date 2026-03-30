@@ -1,8 +1,8 @@
 import express, { Response } from 'express';
 import { query } from '../db.js';
 import logger from '../utils/logger.js';
-import { query as queryVal } from 'express-validator';
-import { validate } from '../middleware/validator.js';
+import { z } from 'zod';
+import { validateQuery } from '../middleware/validator.js';
 import { Ticket } from '../types/index.js';
 import { auth, authorize, AuthRequest } from '../middleware/auth.js';
 import { canExportTickets } from '../services/roles.js';
@@ -14,16 +14,13 @@ const router = express.Router();
  * LEGACY EXPORT ROUTE
  * Kept because tRPC is not ideal for direct binary/CSV downloads in browser windows.
  */
-router.get('/export', [
-  auth,
-  authorize(['admin', 'support']),
-  queryVal('partnerId').optional().isString(),
-  queryVal('dept').optional().isString(),
-  queryVal('search').optional().isString(),
-  queryVal('dateFrom').optional().isISO8601(),
-  queryVal('dateTo').optional().isISO8601(),
-  validate([])
-], async (req: AuthRequest, res: Response) => {
+router.get('/export', auth, authorize(['admin', 'support']), validateQuery(z.object({
+  partnerId: z.string().optional(),
+  dept: z.string().optional(),
+  search: z.string().optional(),
+  dateFrom: z.string().refine((v) => !isNaN(Date.parse(v)), 'Invalid ISO 8601 date').optional(),
+  dateTo: z.string().refine((v) => !isNaN(Date.parse(v)), 'Invalid ISO 8601 date').optional(),
+}).passthrough()), async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user || !canExportTickets(req.user.role, req.user.isPlatformOperator)) {
       return res.status(403).json({ error: 'Forbidden' });

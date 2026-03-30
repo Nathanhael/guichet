@@ -12,6 +12,6 @@
     "@playwright/test": "^1.52.0"
   },
   "lint-staged": {
-    "*.{ts,tsx}": "echo"
+    "*.{ts,tsx}": "echo lint-staged placeholder"
   }
 }

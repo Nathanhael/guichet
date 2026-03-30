@@ -1,7 +1,6 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
-import * as jose from 'jose';
-import { v4 as uuid } from 'uuid';
+import jwt from 'jsonwebtoken';
 import { db } from '../db.js';
 import { users, memberships, partners, partnerGroupMappings, auditLog } from '../db/schema.js';
 import { eq, and, inArray, or } from 'drizzle-orm';
@@ -30,19 +29,45 @@ function ensureConfigured(): boolean {
   return !!(TENANT() && CLIENT_ID() && CLIENT_SECRET() && REDIRECT_URI());
 }
 
-// Lazily-created JWKS client for Azure AD token signature verification
-let cachedJwks: { tenantId: string; jwks: ReturnType<typeof jose.createRemoteJWKSet> } | null = null;
-function getJwks() {
+// JWKS cache for Azure AD token signature verification
+interface JwkKey { kid: string; kty: string; n?: string; e?: string; x5c?: string[]; [k: string]: unknown }
+let cachedJwks: { tenantId: string; keys: JwkKey[]; fetchedAt: number } | null = null;
+const JWKS_CACHE_TTL = 3600_000; // 1 hour
+
+async function fetchJwks(): Promise<JwkKey[]> {
   const tenantId = TENANT()!;
-  if (!cachedJwks || cachedJwks.tenantId !== tenantId) {
-    cachedJwks = {
-      tenantId,
-      jwks: jose.createRemoteJWKSet(
-        new URL(`https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`)
-      ),
-    };
+  const now = Date.now();
+  if (cachedJwks && cachedJwks.tenantId === tenantId && (now - cachedJwks.fetchedAt) < JWKS_CACHE_TTL) {
+    return cachedJwks.keys;
   }
-  return cachedJwks.jwks;
+  const url = `https://login.microsoftonline.com/${tenantId}/discovery/v2.0/keys`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`JWKS fetch failed: ${res.status}`);
+  const body = await res.json() as { keys: JwkKey[] };
+  cachedJwks = { tenantId, keys: body.keys, fetchedAt: now };
+  return body.keys;
+}
+
+function jwkToPublicKey(jwk: JwkKey): string {
+  // Use Node's crypto to convert JWK to PEM
+  const keyObject = crypto.createPublicKey({ key: jwk as crypto.JsonWebKey, format: 'jwk' });
+  return keyObject.export({ type: 'spki', format: 'pem' }) as string;
+}
+
+async function getSigningKey(token: string): Promise<string> {
+  const header = jwt.decode(token, { complete: true })?.header;
+  if (!header?.kid) throw new Error('Token header missing kid');
+  const keys = await fetchJwks();
+  const key = keys.find(k => k.kid === header.kid);
+  if (!key) {
+    // Key not found — invalidate cache and retry once (key rotation)
+    cachedJwks = null;
+    const freshKeys = await fetchJwks();
+    const freshKey = freshKeys.find(k => k.kid === header.kid);
+    if (!freshKey) throw new Error(`Signing key not found for kid: ${header.kid}`);
+    return jwkToPublicKey(freshKey);
+  }
+  return jwkToPublicKey(key);
 }
 
 // SSO CSRF state tokens stored in Redis with 10-minute TTL (multi-instance safe)
@@ -170,20 +195,21 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 
     // Verify ID token signature against Microsoft's JWKS endpoint
     const idToken = tokenData.id_token;
-    let payload: jose.JWTPayload;
+    let payload: jwt.JwtPayload;
     try {
-      const result = await jose.jwtVerify(idToken, getJwks(), {
+      const signingKey = await getSigningKey(idToken);
+      payload = jwt.verify(idToken, signingKey, {
         issuer: `https://login.microsoftonline.com/${TENANT()}/v2.0`,
         audience: CLIENT_ID()!,
-      });
-      payload = result.payload;
+        algorithms: ['RS256'],
+      }) as jwt.JwtPayload;
     } catch (verifyErr) {
       logger.error({ err: verifyErr instanceof Error ? verifyErr.message : String(verifyErr) }, '[SSO] ID token signature verification failed');
       return res.redirect(`${clientOrigin}/?sso_error=token_verification_failed`);
     }
 
     // Azure-specific claims from the verified payload
-    const claims = payload as jose.JWTPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string> };
+    const claims = payload as jwt.JwtPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string };
 
     // Verify nonce to prevent token replay attacks
     if (claims.nonce !== expectedNonce) {
@@ -230,7 +256,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         }
       } else {
         // Brand new SSO user
-        const newId = uuid();
+        const newId = crypto.randomUUID();
         await db.insert(users).values({
           id: newId,
           email,
@@ -290,7 +316,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           .limit(1);
 
         if (existing.length === 0) {
-          const mId = uuid();
+          const mId = crypto.randomUUID();
           await db.insert(memberships).values({
             id: mId,
             userId: user.id,

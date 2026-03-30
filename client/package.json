@@ -18,7 +18,6 @@
     "lucide-react": "^0.577.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-is": "^19.2.4",
     "recharts": "^3.8.0",
     "socket.io-client": "^4.8.1",
     "zustand": "^5.0.12"
@@ -34,9 +33,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.0",
-    "autoprefixer": "^10.4.20",
     "jsdom": "^29.0.0",
-    "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vite": "^8.0.1",

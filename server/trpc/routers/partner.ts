@@ -5,7 +5,6 @@ import { partners, users, memberships, auditLog } from '../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
-import { v4 as uuidv4 } from 'uuid';
 import { randomBytes } from 'crypto';
 import { getBusinessHoursStatus, type BusinessHoursSchedule } from '../../services/businessHours.js';
 import { hashPassword } from '../../utils/passwords.js';
@@ -498,7 +497,7 @@ export const partnerRouter = router({
           throw new TRPCError({ code: 'CONFLICT', message: 'User already on this partner' });
         }
 
-        const newMembershipId = uuidv4();
+        const newMembershipId = crypto.randomUUID();
 
         await db.insert(memberships).values({
           id: newMembershipId,
@@ -570,7 +569,7 @@ export const partnerRouter = router({
           }
 
           // 3. Create user — with or without password based on auth method
-          newUserId = uuidv4();
+          newUserId = crypto.randomUUID();
 
           let hashedPassword: string | undefined;
           if (isLocal) {
@@ -587,7 +586,7 @@ export const partnerRouter = router({
           });
 
           // 4. Create membership
-          newMembershipId = uuidv4();
+          newMembershipId = crypto.randomUUID();
           await tx.insert(memberships).values({
             id: newMembershipId,
             userId: newUserId,

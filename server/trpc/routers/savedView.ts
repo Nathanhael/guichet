@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { v4 as uuidv4 } from 'uuid';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { savedViews } from '../../db/schema.js';
@@ -74,7 +73,7 @@ export const savedViewRouter = router({
             ));
         }
 
-        const id = `sv_${uuidv4()}`;
+        const id = `sv_${crypto.randomUUID()}`;
         const now = new Date().toISOString();
 
         await db.insert(savedViews).values({
