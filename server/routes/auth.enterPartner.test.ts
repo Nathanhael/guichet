@@ -38,6 +38,14 @@ vi.mock('../db.js', () => ({
   query: vi.fn(),
 }));
 
+vi.mock('../services/refreshToken.js', () => ({
+  createRefreshToken: vi.fn().mockResolvedValue({ token: 'mock-refresh-token', family: 'mock-family' }),
+  rotateRefreshToken: vi.fn(),
+  revokeAllUserRefreshTokens: vi.fn().mockResolvedValue(undefined),
+  revokeFamily: vi.fn(),
+  cleanupExpiredTokens: vi.fn(),
+}));
+
 vi.mock('../utils/logger.js', () => ({
   default: {
     error: vi.fn(),
@@ -159,7 +167,7 @@ describe('auth enter-partner route', () => {
     expect(decoded.membershipId).toBe('platform_platform-1_tenant-a');
     expect(decoded.isPlatformOperator).toBe(true);
     expect(typeof decoded.platformStepUpAt).toBe('number');
-    expect(insertMock).toHaveBeenCalledTimes(2); // audit log + refresh token
+    expect(insertMock).toHaveBeenCalledTimes(1); // audit log (refresh token handled by mocked service)
     expect(insertValuesMock).toHaveBeenCalledWith(expect.objectContaining({
       action: 'platform.enter_partner',
       actorId: 'platform-1',

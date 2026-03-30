@@ -8,24 +8,25 @@ describe('Presence reconnect includes status (#25)', () => {
     'utf-8'
   );
 
-  it('sets status to available in the reconnect else branch', () => {
-    // Verify that the else branch (handling existing connections) includes status: 'available'
-    const elseBlockStart = presenceSource.indexOf('// Existing connection');
-    const elseBlockEnd = presenceSource.indexOf('await pipeline.exec()', elseBlockStart);
-    const elseBlock = presenceSource.slice(elseBlockStart, elseBlockEnd);
+  it('sets status to available in the identifyUser Lua script', () => {
+    // The Lua script handles both new and existing connections atomically.
+    // Verify that the script sets status to 'available' in both branches.
+    const luaStart = presenceSource.indexOf('local exists = redis.call');
+    const luaEnd = presenceSource.indexOf('return exists', luaStart);
+    const luaBlock = presenceSource.slice(luaStart, luaEnd);
 
-    expect(elseBlock).toMatch(/status\s*:\s*['"]?available['"]?/);
+    expect(luaBlock).toMatch(/['"]status['"]\s*,\s*['"]available['"]/);
   });
 
-  it('includes all required fields in reconnect hSet', () => {
-    const elseBlockStart = presenceSource.indexOf('// Existing connection');
-    const elseBlockEnd = presenceSource.indexOf('await pipeline.exec()', elseBlockStart);
-    const elseBlock = presenceSource.slice(elseBlockStart, elseBlockEnd);
+  it('includes all required fields in the identifyUser Lua script', () => {
+    const luaStart = presenceSource.indexOf('local exists = redis.call');
+    const luaEnd = presenceSource.indexOf('return exists', luaStart);
+    const luaBlock = presenceSource.slice(luaStart, luaEnd);
 
-    // Verify all required fields are present
+    // Verify all required fields are set in the HSET calls
     const requiredFields = ['userId', 'name', 'role', 'partnerId', 'isPlatformOperator', 'status'];
     requiredFields.forEach((field) => {
-      expect(elseBlock).toContain(field);
+      expect(luaBlock).toContain(field);
     });
   });
 });
