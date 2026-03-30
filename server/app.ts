@@ -395,12 +395,15 @@ async function gracefulShutdown(signal: string) {
     logger.warn({ err }, '[shutdown] Database cleanup failed (non-fatal)');
   }
 
-  // 5. Exit after drain timeout
+  // 5. Clean exit (with safety timeout in case something hangs)
   const DRAIN_TIMEOUT_MS = 10_000;
   setTimeout(() => {
     logger.warn('[shutdown] Drain timeout reached, forcing exit');
     process.exit(1);
   }, DRAIN_TIMEOUT_MS).unref();
+
+  logger.info('[shutdown] All connections drained, exiting cleanly');
+  process.exit(0);
 }
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
