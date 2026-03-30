@@ -80,3 +80,6 @@ testing/e2e/test-results/
 docs/videos/
 
 gha-creds-*.json
+
+# Git worktrees
+.worktrees/
