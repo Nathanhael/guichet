@@ -836,7 +836,24 @@ router.post('/refresh', async (req: Request, res: Response) => {
             : null;
         const membership = preferredMembership || activeMemberships[0];
 
+        // Platform operators without partner memberships can still operate
+        if (!membership && refreshUser.isPlatformOperator) {
+            const token = buildAuthToken({
+                userId: refreshUser.id,
+                role: 'platform_operator',
+                departments: [],
+                partnerId: undefined,
+                membershipId: undefined,
+                isPlatformOperator: true,
+            });
+            const accessExpiry = parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY);
+            setAuthCookie(res, token, accessExpiry);
+            setRefreshCookie(res, result.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
+            return res.json({ expiresIn: accessExpiry });
+        }
+
         if (!membership) {
+            await revokeAllUserRefreshTokens(result.userId);
             clearAuthCookie(res);
             clearRefreshCookie(res);
             return res.status(401).json({ error: 'No active memberships' });
