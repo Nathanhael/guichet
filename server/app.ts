@@ -21,7 +21,7 @@ import ticketRoutes from './routes/tickets.js'; // Kept for export route support
 import { query } from './db.js';
 import config from './config.js';
 import logger from './utils/logger.js';
-import { auth, authorize } from './middleware/auth.js';
+import { auth as authMiddleware, authorize, AuthRequest } from './middleware/auth.js';
 import * as presenceService from './services/presence.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
@@ -193,26 +193,31 @@ import { partners } from './db/schema.js';
 import { eq } from 'drizzle-orm';
 import { db } from './db.js';
 
-v1Router.get('/config', async (req: Request, res: Response) => {
-  const partnerId = req.query.partnerId as string;
+v1Router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) => {
+  const partnerId = (req.query.partnerId as string) || req.user?.partnerId;
+  if (!partnerId) {
+    return res.status(400).json({ error: 'Missing partnerId' });
+  }
+  // Tenant isolation: non-platform users can only query their own partner
+  if (!req.user?.isPlatformOperator && partnerId !== req.user?.partnerId) {
+    return res.status(403).json({ error: 'Not authorized for this partner' });
+  }
   let businessHoursStart = config.BUSINESS_HOURS_START;
   let businessHoursEnd = config.BUSINESS_HOURS_END;
   let businessHoursTimezone = 'Europe/Brussels';
   let businessHoursSchedule: unknown = null;
 
-  if (partnerId) {
-    const result = await db.select({
-      businessHoursSchedule: partners.businessHoursSchedule,
-      businessHoursStart: partners.businessHoursStart,
-      businessHoursEnd: partners.businessHoursEnd,
-      businessHoursTimezone: partners.businessHoursTimezone,
-    }).from(partners).where(eq(partners.id, partnerId)).limit(1);
-    if (result.length > 0) {
-      businessHoursSchedule = result[0].businessHoursSchedule ?? businessHoursSchedule;
-      businessHoursStart = result[0].businessHoursStart ?? businessHoursStart;
-      businessHoursEnd = result[0].businessHoursEnd ?? businessHoursEnd;
-      businessHoursTimezone = result[0].businessHoursTimezone ?? businessHoursTimezone;
-    }
+  const result = await db.select({
+    businessHoursSchedule: partners.businessHoursSchedule,
+    businessHoursStart: partners.businessHoursStart,
+    businessHoursEnd: partners.businessHoursEnd,
+    businessHoursTimezone: partners.businessHoursTimezone,
+  }).from(partners).where(eq(partners.id, partnerId)).limit(1);
+  if (result.length > 0) {
+    businessHoursSchedule = result[0].businessHoursSchedule ?? businessHoursSchedule;
+    businessHoursStart = result[0].businessHoursStart ?? businessHoursStart;
+    businessHoursEnd = result[0].businessHoursEnd ?? businessHoursEnd;
+    businessHoursTimezone = result[0].businessHoursTimezone ?? businessHoursTimezone;
   }
 
   const businessHoursStatus = getBusinessHoursStatus({
