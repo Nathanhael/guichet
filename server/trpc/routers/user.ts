@@ -1,4 +1,5 @@
 import { router, platformProcedure, publicProcedure, protectedProcedure } from '../trpc.js';
+import config from '../../config.js';
 import { query } from '../../db.js';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
@@ -42,7 +43,7 @@ export const userRouter = router({
   /** Public demo user list — only available when DEMO_MODE=true */
   demoList: publicProcedure
     .query(async () => {
-      if (process.env.DEMO_MODE !== 'true') {
+      if (!config.DEMO_MODE) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
       }
       try {
@@ -66,7 +67,7 @@ export const userRouter = router({
   demoLogin: publicProcedure
     .input(z.object({ email: z.string().email() }))
     .mutation(async ({ input }) => {
-      if (process.env.DEMO_MODE !== 'true') {
+      if (!config.DEMO_MODE) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
       }
       try {
