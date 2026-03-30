@@ -372,6 +372,8 @@ export function registerSocketHandlers(io: Server) {
       }
 
       try {
+        const isPlatformOp = !!socket.data.authedIsPlatformOperator;
+
         // Look up the user's name from the DB (don't trust client-supplied name)
         const userRow = await findUserById(userId);
         if (!userRow) {
@@ -386,7 +388,7 @@ export function registerSocketHandlers(io: Server) {
         let effectiveRole: UserRole;
         if (!membership) {
           // No membership — check if user is a platform operator
-          if (!isPlatformAdmin(!!socket.data.authedIsPlatformOperator)) {
+          if (!isPlatformAdmin(isPlatformOp)) {
             socket.emit('error', { message: 'Not authorized for this partner' });
             socket.disconnect();
             return;
@@ -396,20 +398,24 @@ export function registerSocketHandlers(io: Server) {
           effectiveRole = membership.role as UserRole;
         }
 
+        const isSupport = canUseSupportWorkflows(effectiveRole, isPlatformOp);
+
+        // All async lookups succeeded — assign socket.data atomically
         socket.data.userId = userId;
         socket.data.role = effectiveRole;
         socket.data.name = name;
         socket.data.partnerId = partnerId;
-        socket.data.isSupport = canUseSupportWorkflows(effectiveRole, !!socket.data.authedIsPlatformOperator);
+        socket.data.isSupport = isSupport;
+        socket.data.identified = true;
 
-        await presenceService.identifyUser(userId, effectiveRole, name, partnerId, !!socket.data.authedIsPlatformOperator);
+        await presenceService.identifyUser(userId, effectiveRole, name, partnerId, isPlatformOp);
 
         // Join partner-wide room (for events all users need: partner:deactivated, hours:closed, etc.)
         socket.join(Rooms.partner(partnerId));
 
         // Staff (support/admin/platform) get a separate room for ticket-level broadcasts.
         // Agents must NOT receive other users' ticket data — they only see their own via ticket:created:self.
-        if (socket.data.isSupport) {
+        if (isSupport) {
           socket.join(Rooms.staff(partnerId));
           await presenceService.broadcastOnlineSupport(partnerId);
         }
@@ -426,7 +432,7 @@ export function registerSocketHandlers(io: Server) {
           let activeTickets: { id: string }[] = [];
           if (effectiveRole === 'agent') {
             activeTickets = await findActiveTicketsForAgent(userId, partnerId);
-          } else if (socket.data.isSupport) {
+          } else if (isSupport) {
             activeTickets = await findActiveTicketsForSupport(userId, partnerId);
           }
           for (const t of activeTickets) socket.join(Rooms.ticket(t.id));
