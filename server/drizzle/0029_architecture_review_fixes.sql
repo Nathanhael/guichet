@@ -7,3 +7,6 @@ CREATE INDEX IF NOT EXISTS idx_messages_ticket_created ON messages(ticket_id, cr
 
 -- Task 13: Standalone audit_log created_at index for platform-wide queries
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
+
+-- Task 14: Partial index for waitingTickets query (open + unassigned)
+CREATE INDEX IF NOT EXISTS idx_tickets_open_unassigned ON tickets (partner_id, created_at) WHERE status = 'open' AND support_id IS NULL;

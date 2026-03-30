@@ -1,8 +1,7 @@
 import { z } from 'zod';
 import { router, partnerScopedProcedure } from '../trpc.js';
 import { query, db } from '../../db.js';
-import { ratings as ratingsTable, messages as messagesTable } from '../../db/schema.js';
-import { and, eq, inArray, isNotNull, sql } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { computeLiveDayStats, calculatePercentile } from '../../services/stats.js';
 import { parseSlaConfig } from '../../services/sla.js';
 import { TRPCError } from '@trpc/server';
@@ -225,38 +224,46 @@ export const statsRouter = router({
           : allLiveTicketsRaw;
 
         const liveTickets = (dept && dept !== 'all') ? allLiveTickets.filter(t => t.dept === dept) : allLiveTickets;
-        const liveTicketIds = liveTickets.map(t => t.id);
         const ticketMap = new Map<string, Ticket>(allLiveTickets.map(t => [t.id, t]));
 
+        // JOIN-based queries — avoids unbounded IN clause with large ticket ID lists (#14)
         let liveRatings: RatingRow[] = [];
-        if (liveTicketIds.length > 0) {
-          liveRatings = (await db.select().from(ratingsTable).where(inArray(ratingsTable.ticketId, liveTicketIds))) as unknown as RatingRow[];
+        {
+          const ratingRows = await query(
+            `SELECT r.ticket_id AS "ticketId", r.rating, r.comment, r.created_at AS "createdAt"
+             FROM ratings r
+             JOIN tickets t ON r.ticket_id = t.id
+             WHERE t.created_at::date >= $1 AND t.created_at::date <= $2 AND t.partner_id = $3${dept && dept !== 'all' ? ' AND t.dept = $4' : ''}`,
+            dept && dept !== 'all' ? [rangeStart, rangeEnd, partnerId, dept] : [rangeStart, rangeEnd, partnerId]
+          );
+          liveRatings = ratingRows as unknown as RatingRow[];
         }
 
         // SQL AVG aggregates — avoids loading all message rows into memory (#13)
         let ticketSentimentAvgs: TicketSentimentAvg[] = [];
-        let deptSentimentAvgs: DeptSentimentAvg[] = [];
-        if (liveTicketIds.length > 0) {
-          const ticketRows = await db
-            .select({
-              ticketId: messagesTable.ticketId,
-              sentimentAvg: sql<number | null>`AVG(${messagesTable.sentiment})`,
-              sentimentCount: sql<number>`COUNT(${messagesTable.sentiment})`,
-            })
-            .from(messagesTable)
-            .where(and(inArray(messagesTable.ticketId, liveTicketIds), isNotNull(messagesTable.sentiment)))
-            .groupBy(messagesTable.ticketId);
-          ticketSentimentAvgs = ticketRows as TicketSentimentAvg[];
+        {
+          const ticketRows = await query(
+            `SELECT m.ticket_id AS "ticketId", AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
+             FROM messages m
+             JOIN tickets t ON m.ticket_id = t.id
+             WHERE t.created_at::date >= $1 AND t.created_at::date <= $2 AND t.partner_id = $3${dept && dept !== 'all' ? ' AND t.dept = $4' : ''} AND m.sentiment IS NOT NULL
+             GROUP BY m.ticket_id`,
+            dept && dept !== 'all' ? [rangeStart, rangeEnd, partnerId, dept] : [rangeStart, rangeEnd, partnerId]
+          );
+          ticketSentimentAvgs = ticketRows as unknown as TicketSentimentAvg[];
+        }
 
-          const deptRows = (await query(
+        let deptSentimentAvgs: DeptSentimentAvg[] = [];
+        {
+          const deptRows = await query(
             `SELECT t.dept, AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
              FROM messages m
              JOIN tickets t ON m.ticket_id = t.id
-             WHERE m.ticket_id = ANY($1) AND m.sentiment IS NOT NULL
+             WHERE t.created_at::date >= $1 AND t.created_at::date <= $2 AND t.partner_id = $3 AND m.sentiment IS NOT NULL
              GROUP BY t.dept`,
-            [liveTicketIds]
-          )) as unknown as DeptSentimentAvg[];
-          deptSentimentAvgs = deptRows;
+            [rangeStart, rangeEnd, partnerId]
+          );
+          deptSentimentAvgs = deptRows as unknown as DeptSentimentAvg[];
         }
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0, totalReopened = 0;
