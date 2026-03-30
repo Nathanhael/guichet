@@ -80,42 +80,55 @@ export async function identifyUser(userId: string, role: string, name: string, p
   const key = hashKey(partnerId, userId);
   const sKey = setKey(partnerId);
   try {
-    // Atomic: use HSETNX on userId field to detect first-time creation
-    const wasNew = await pubClient.hSetNX(key, 'userId', userId);
-    if (wasNew) {
-      // First connection: set all fields atomically
-      await pubClient.hSet(key, {
-        userId,
-        name,
-        role,
-        partnerId,
-        isPlatformOperator: isPlatformOperator ? '1' : '0',
-        status: 'available',
-        count: '1',
-      });
-      await pubClient.expire(key, TTL_SECONDS);
-    } else {
-      // Existing connection: re-set all identity fields, increment count, and refresh TTL
-      // atomically via pipeline. This handles the TOCTOU window where the TTL may have
-      // expired between hSetNX returning false and this branch executing — without the
-      // hSet here the hash would be incomplete (only userId field set by hSetNX).
-      const pipeline = pubClient.multi();
-      pipeline.hSet(key, {
-        userId,
-        name,
-        role,
-        partnerId,
-        isPlatformOperator: isPlatformOperator ? '1' : '0',
-        status: 'available',
-      });
-      pipeline.hIncrBy(key, 'count', 1);
-      pipeline.expire(key, TTL_SECONDS);
-      await pipeline.exec();
-    }
+    // Atomic Lua script: check existence, set fields, manage count, refresh TTL,
+    // and update partner set — all in one Redis round-trip (no TOCTOU gap).
+    const luaScript = `
+      local key = KEYS[1]
+      local sKey = KEYS[2]
+      local userId = ARGV[1]
+      local name = ARGV[2]
+      local role = ARGV[3]
+      local partnerId = ARGV[4]
+      local isPlatformOp = ARGV[5]
+      local ttl = tonumber(ARGV[6])
 
-    // Add userId to partner set and refresh TTL
-    await pubClient.sAdd(sKey, userId);
-    await pubClient.expire(sKey, TTL_SECONDS);
+      local exists = redis.call('EXISTS', key)
+      if exists == 0 then
+        redis.call('HSET', key,
+          'userId', userId,
+          'name', name,
+          'role', role,
+          'partnerId', partnerId,
+          'isPlatformOperator', isPlatformOp,
+          'status', 'available',
+          'count', '1')
+      else
+        redis.call('HSET', key,
+          'userId', userId,
+          'name', name,
+          'role', role,
+          'partnerId', partnerId,
+          'isPlatformOperator', isPlatformOp,
+          'status', 'available')
+        redis.call('HINCRBY', key, 'count', 1)
+      end
+      redis.call('EXPIRE', key, ttl)
+      redis.call('SADD', sKey, userId)
+      redis.call('EXPIRE', sKey, ttl)
+      return exists
+    `;
+
+    await pubClient.eval(luaScript, {
+      keys: [key, sKey],
+      arguments: [
+        userId,
+        name,
+        role,
+        partnerId,
+        isPlatformOperator ? '1' : '0',
+        String(TTL_SECONDS),
+      ],
+    });
 
     if (canUseSupportWorkflows(role as UserRole, isPlatformOperator)) {
       await broadcastOnlineSupport(partnerId);
