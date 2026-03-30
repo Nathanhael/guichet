@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date, jsonb, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 // Enums
 export const roleEnum = pgEnum('user_role', ['agent', 'support', 'admin', 'platform_operator']);
@@ -121,6 +122,7 @@ export const tickets = pgTable('tickets', {
   partnerStatusIdx: index('idx_tickets_partner_status').on(table.partnerId, table.status),
   supportIdIdx: index('idx_tickets_support_id').on(table.supportId),
   participantsGinIdx: index('idx_tickets_participants_gin').using('gin', table.participants),
+  openUnassignedIdx: index('idx_tickets_open_unassigned').on(table.partnerId, table.createdAt).where(sql`status = 'open' AND support_id IS NULL`),
 }));
 
 export const messages = pgTable('messages', {
