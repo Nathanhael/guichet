@@ -68,7 +68,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const isTypingRef = useRef(false);
   const isNearBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
-  const labelsMenuRef = useRef<HTMLDivElement>(null);
   const initialScrollDoneRef = useRef<string | null>(null);
 
   const isSupport = isSupportLike(user?.role);
@@ -231,17 +230,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     setUnreadCount(0);
   }, [ticketId]);
 
-  // Handle outside click for labels menu
-  useEffect(() => {
-    function onOutsideClick(e: MouseEvent) {
-      if (labelsMenuRef.current && !labelsMenuRef.current.contains(e.target as Node)) {
-        // setShowLabelsMenu(false);
-      }
-    }
-    document.addEventListener('mousedown', onOutsideClick, true);
-    return () => document.removeEventListener('mousedown', onOutsideClick, true);
-  }, []);
-
   useEffect(() => {
     if (!ticketId) return;
     const count = ticketMessages.length;
@@ -301,8 +289,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   useEffect(() => {
     if (!ticketId) return;
     function onFocus() {
-      const unreadIds = ticketMessages
-        .filter(m => m.senderId !== user?.id && !m.readAt)
+      const currentMessages = useStore.getState().messages[ticketId] || [];
+      const currentUserId = useStore.getState().user?.id;
+      const unreadIds = currentMessages
+        .filter(m => m.senderId !== currentUserId && !m.readAt)
         .map(m => m.id);
 
       if (unreadIds.length > 0) {
@@ -312,7 +302,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     }
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
-  }, [ticketMessages, ticketId, user?.id]);
+  }, [ticketId]);
 
   if (!ticket) return null;
 
