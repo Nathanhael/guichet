@@ -1,6 +1,5 @@
 import type { AiProvider, ChatParams, ChatResult } from './types.js';
-import logger from '../../utils/logger.js';
-import config from '../../config.js';
+import { getAiContext } from './context.js';
 
 /**
  * Ollama provider — local LLM inference.
@@ -19,6 +18,7 @@ export class OllamaProvider implements AiProvider {
   }
 
   private wrapTimeoutError(err: unknown): never {
+    const { config } = getAiContext();
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new Error(`AI request timed out after ${config.AI_TIMEOUT_MS}ms (provider: ollama)`);
     }
@@ -26,6 +26,7 @@ export class OllamaProvider implements AiProvider {
   }
 
   async chat(params: ChatParams): Promise<ChatResult> {
+    const { config } = getAiContext();
     const model = params.model || this.defaultModel;
     const url = `${this.host}/api/chat`;
 
@@ -71,6 +72,7 @@ export class OllamaProvider implements AiProvider {
   }
 
   async *chatStream(params: ChatParams): AsyncIterable<string> {
+    const { config, logger } = getAiContext();
     const model = params.model || this.defaultModel;
     const url = `${this.host}/api/chat`;
 

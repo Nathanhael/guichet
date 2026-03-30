@@ -6,9 +6,8 @@
  * DB queries and tenant-isolation checks.
  */
 
-import { db } from '../../db.js';
-import { messages as messagesTable, tickets } from '../../db/schema.js';
 import { eq, and, asc, isNull, ne } from 'drizzle-orm';
+import { getAiContext } from './context.js';
 
 interface TicketMessage {
   senderName: string | null;
@@ -24,6 +23,9 @@ export async function verifyTicketOwnership(
   ticketId: string,
   partnerId: string,
 ): Promise<{ id: string } | null> {
+  const { db, schema } = getAiContext();
+  const { tickets } = schema as any;
+
   const [ticket] = await db
     .select({ id: tickets.id })
     .from(tickets)
@@ -38,6 +40,9 @@ export async function verifyTicketOwnership(
  * Returns formatted messages ready for AI consumption.
  */
 export async function fetchTicketMessages(ticketId: string): Promise<TicketMessage[]> {
+  const { db, schema } = getAiContext();
+  const { messages: messagesTable } = schema as any;
+
   const msgs = await db
     .select({
       senderName: messagesTable.senderName,
@@ -55,5 +60,5 @@ export async function fetchTicketMessages(ticketId: string): Promise<TicketMessa
     .orderBy(asc(messagesTable.createdAt));
 
   // Filter out empty messages
-  return msgs.filter((m) => m.text && m.text.trim());
+  return msgs.filter((m: TicketMessage) => m.text && m.text.trim());
 }

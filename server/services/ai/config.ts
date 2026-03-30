@@ -1,8 +1,6 @@
-import { db } from '../../db/postgres.js';
-import { partners } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import config from '../../config.js';
 import type { PartnerAiConfig, ImprovementMode } from './types.js';
+import { getAiContext } from './context.js';
 
 const DEFAULT_CONFIG: PartnerAiConfig = {
   messageImprovement: 'off',
@@ -18,6 +16,9 @@ const DEFAULT_CONFIG: PartnerAiConfig = {
  * Returns all-off config if AI is globally disabled or partner has AI off.
  */
 export async function getPartnerAiConfig(partnerId: string): Promise<PartnerAiConfig> {
+  const { db, config, schema } = getAiContext();
+  const { partners } = schema as any;
+
   // Global kill switch
   if (!config.AI_ENABLED) return { ...DEFAULT_CONFIG };
 

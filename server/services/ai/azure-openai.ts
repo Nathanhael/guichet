@@ -1,6 +1,5 @@
 import type { AiProvider, ChatParams, ChatResult } from './types.js';
-import logger from '../../utils/logger.js';
-import config from '../../config.js';
+import { getAiContext } from './context.js';
 
 /**
  * Azure OpenAI provider.
@@ -26,6 +25,7 @@ export class AzureOpenAiProvider implements AiProvider {
   }
 
   private wrapTimeoutError(err: unknown): never {
+    const { config } = getAiContext();
     if (err instanceof DOMException && err.name === 'AbortError') {
       throw new Error(`AI request timed out after ${config.AI_TIMEOUT_MS}ms (provider: azure-openai)`);
     }
@@ -33,6 +33,7 @@ export class AzureOpenAiProvider implements AiProvider {
   }
 
   async chat(params: ChatParams): Promise<ChatResult> {
+    const { config } = getAiContext();
     let res: Response;
     try {
       res = await fetch(this.endpoint, {
@@ -72,6 +73,7 @@ export class AzureOpenAiProvider implements AiProvider {
   }
 
   async *chatStream(params: ChatParams): AsyncIterable<string> {
+    const { config, logger } = getAiContext();
     let res: Response;
     try {
       res = await fetch(this.endpoint, {

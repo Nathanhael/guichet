@@ -16,7 +16,7 @@ import {
   checkRateLimit,
   logUsage,
 } from './index.js';
-import logger from '../../utils/logger.js';
+import { getAiContext } from './context.js';
 
 type AiFeature =
   | 'messageImprovement'
@@ -42,6 +42,8 @@ interface RunAiActionOpts {
 export async function runAiAction(
   opts: RunAiActionOpts,
 ): Promise<{ content: string; model: string }> {
+  const { logger } = getAiContext();
+
   // 1. Feature gate
   const enabled = await isFeatureEnabled(opts.partnerId, opts.feature);
   if (!enabled) {

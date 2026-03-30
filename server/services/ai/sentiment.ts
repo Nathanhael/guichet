@@ -4,10 +4,8 @@
 // Never throws — all errors are caught and logged.
 
 import { isFeatureEnabled, getProvider, getPromptTemplate, interpolate, logUsage, checkRateLimit } from './index.js';
-import { db } from '../../db.js';
-import { messages } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
-import logger from '../../utils/logger.js';
+import { getAiContext } from './context.js';
 
 /**
  * Parse a sentiment score from AI response text.
@@ -35,6 +33,9 @@ export async function scoreSentiment(
   messageId: string,
   text: string,
 ): Promise<void> {
+  const { db, logger, schema } = getAiContext();
+  const { messages } = schema as any;
+
   try {
     // 1. Feature gate
     const enabled = await isFeatureEnabled(partnerId, 'sentimentDetection');

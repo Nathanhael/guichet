@@ -8,11 +8,9 @@
 import { runAiAction } from './runAction.js';
 import { verifyTicketOwnership, fetchTicketMessages } from './ticketMessages.js';
 import { formatMessagesForAi } from './messageFormatter.js';
-import { db } from '../../db.js';
-import { tickets } from '../../db/schema.js';
 import { eq, and, sql } from 'drizzle-orm';
 import type { Server } from 'socket.io';
-import logger from '../../utils/logger.js';
+import { getAiContext } from './context.js';
 
 /**
  * Auto-summarize a ticket conversation on close.
@@ -31,6 +29,9 @@ export async function autoSummarizeOnClose(
   ticketId: string,
   io: Server,
 ): Promise<void> {
+  const { db, logger, schema } = getAiContext();
+  const { tickets } = schema as any;
+
   try {
     // 1. Verify ticket belongs to this partner (prevent cross-tenant data leak)
     const ticket = await verifyTicketOwnership(ticketId, partnerId);

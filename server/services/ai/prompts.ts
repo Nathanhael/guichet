@@ -1,7 +1,6 @@
-import { db } from '../../db/postgres.js';
-import { aiPromptTemplates } from '../../db/schema.js';
 import { eq, and, isNull } from 'drizzle-orm';
 import type { AiAction } from './types.js';
+import { getAiContext } from './context.js';
 
 // ─── Built-in Default Prompts ───────────────────────────────────────────────
 
@@ -73,6 +72,9 @@ export async function getPromptTemplate(
   action: AiAction,
   partnerId?: string,
 ): Promise<string> {
+  const { db, schema } = getAiContext();
+  const { aiPromptTemplates } = schema as any;
+
   // 1. Check partner-specific override
   if (partnerId) {
     const [partnerTemplate] = await db

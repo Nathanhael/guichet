@@ -7,11 +7,13 @@ import type { RedisClientType } from 'redis';
  */
 export interface AiContext {
   /** Drizzle ORM database instance */
-  db: unknown;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  db: any;
   /** Shared Redis client (the app's pubClient) */
   redis: RedisClientType | null;
   /** Pino-compatible logger */
   logger: {
+    debug: (obj: unknown, msg?: string) => void;
     info: (obj: unknown, msg?: string) => void;
     warn: (obj: unknown, msg?: string) => void;
     error: (obj: unknown, msg?: string) => void;
@@ -23,7 +25,11 @@ export interface AiContext {
     AI_BASE_URL?: string;
     AI_API_KEY?: string;
     AI_TIMEOUT_MS: number;
+    OLLAMA_HOST: string;
+    OLLAMA_MODEL: string;
     OLLAMA_KEEPALIVE: string;
+    AZURE_OPENAI_DEPLOYMENT?: string;
+    NODE_ENV: string;
     REDIS_URL: string;
   };
   /** Decrypt an encrypted string (for API keys stored in DB) */
