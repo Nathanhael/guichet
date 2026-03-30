@@ -162,20 +162,47 @@ export async function decrementUserCount(userId: string, partnerId: string) {
   if (!pubClient) return null;
 
   const key = hashKey(partnerId, userId);
+  const sKey = setKey(partnerId);
   try {
-    const user = await pubClient.hGetAll(key);
-    if (!user || !user.userId) return null;
+    // Atomic Lua: decrement count, read fields, and conditionally clean up in one round-trip.
+    // Returns: [removed (0/1), role, partnerId, isPlatformOperator] or nil if key missing.
+    const luaScript = `
+      local key = KEYS[1]
+      local sKey = KEYS[2]
+      local userId = ARGV[1]
 
-    const newCount = await pubClient.hIncrBy(key, 'count', -1);
-    if (newCount <= 0) {
-      await pubClient.del(key);
-      await pubClient.sRem(setKey(partnerId), userId);
-      if (canUseSupportWorkflows(user.role as UserRole, user.isPlatformOperator === '1')) {
+      if redis.call('EXISTS', key) == 0 then
+        return nil
+      end
+
+      local newCount = redis.call('HINCRBY', key, 'count', -1)
+      local role = redis.call('HGET', key, 'role') or ''
+      local pid = redis.call('HGET', key, 'partnerId') or ''
+      local isPlatOp = redis.call('HGET', key, 'isPlatformOperator') or '0'
+
+      if newCount <= 0 then
+        redis.call('DEL', key)
+        redis.call('SREM', sKey, userId)
+        return {1, role, pid, isPlatOp}
+      end
+      return {0, role, pid, isPlatOp}
+    `;
+
+    const result = await pubClient.eval(luaScript, {
+      keys: [key, sKey],
+      arguments: [userId],
+    }) as [number, string, string, string] | null;
+
+    if (!result) return null;
+
+    const [removed, role, pid, isPlatOp] = result;
+    if (removed) {
+      if (canUseSupportWorkflows(role as UserRole, isPlatOp === '1')) {
         await broadcastOnlineSupport(partnerId);
       }
-      return { role: user.role, partnerId: user.partnerId, removed: true };
+      return { role, partnerId: pid, removed: true };
     }
-    return { role: user.role, partnerId: user.partnerId, removed: false };
+    return { role, partnerId: pid, removed: false };
   } catch (err) {
     logger.error({ err, userId }, 'Failed to decrement user count in Redis');
   }
