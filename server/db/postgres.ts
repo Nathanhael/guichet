@@ -26,6 +26,7 @@ pool.on('error', (err) => {
   logger.error({ err: err.message }, 'Unexpected error on idle PostgreSQL client');
 });
 
+export { pool };
 export const db = drizzle(pool, { schema });
 
 // Convert snake_case keys to camelCase
