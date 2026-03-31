@@ -272,12 +272,13 @@ describe('registerSocketHandlers', () => {
   });
 
   it('JWT middleware accepts valid tokens and attaches userId', async () => {
-    const jwt = await import('jsonwebtoken');
-    const token = jwt.default.sign(
-      { userId: 'u1', role: 'support', isPlatformOperator: false },
-      'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
-      { expiresIn: '1h' }
-    );
+    const { SignJWT } = await import('jose');
+    const secret = new TextEncoder().encode('test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!');
+    const token = await new SignJWT({ userId: 'u1', role: 'support', isPlatformOperator: false })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(secret);
 
     const { registerSocketHandlers } = await import('./handlers.js');
     const io = createMockIo();

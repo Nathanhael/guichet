@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import jwt from 'jsonwebtoken';
+import { SignJWT } from 'jose';
 
 const isRevokedMock = vi.fn();
 
@@ -28,9 +28,14 @@ vi.mock('../services/roles.js', () => ({
 }));
 
 const SECRET = 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!';
+const secretBytes = new TextEncoder().encode(SECRET);
 
-function makeToken(payload: Record<string, unknown>) {
-  return jwt.sign(payload, SECRET, { expiresIn: '1h' });
+async function makeToken(payload: Record<string, unknown>) {
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('1h')
+    .sign(secretBytes);
 }
 
 function mockReqRes(cookie?: string) {
@@ -77,7 +82,7 @@ describe('auth middleware', () => {
     isRevokedMock.mockResolvedValue(true);
 
     const { auth } = await import('./auth.js');
-    const token = makeToken({ userId: 'u1', role: 'support', isPlatformOperator: false });
+    const token = await makeToken({ userId: 'u1', role: 'support', isPlatformOperator: false });
     const { req, res, next } = mockReqRes(token);
     await auth(req, res, next);
 
@@ -88,7 +93,7 @@ describe('auth middleware', () => {
 
   it('attaches user to req and calls next() for a valid token', async () => {
     const { auth } = await import('./auth.js');
-    const token = makeToken({ userId: 'u1', role: 'support', isPlatformOperator: false });
+    const token = await makeToken({ userId: 'u1', role: 'support', isPlatformOperator: false });
     const { req, res, next } = mockReqRes(token);
     await auth(req, res, next);
 
@@ -102,7 +107,7 @@ describe('auth middleware', () => {
 
   it('sets isPlatformOperator from token claim', async () => {
     const { auth } = await import('./auth.js');
-    const token = makeToken({ userId: 'u1', role: 'admin', isPlatformOperator: true });
+    const token = await makeToken({ userId: 'u1', role: 'admin', isPlatformOperator: true });
     const { req, res, next } = mockReqRes(token);
     await auth(req, res, next);
 

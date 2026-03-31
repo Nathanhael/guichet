@@ -148,7 +148,7 @@ export const platformSecurityRouter = router({
         metadata: {},
       });
 
-      const token = buildAuthToken({
+      const token = await buildAuthToken({
         userId: ctx.user.id,
         role: ctx.user.role,
         partnerId: ctx.user.partnerId,
@@ -177,7 +177,7 @@ export const platformSecurityRouter = router({
       }
 
       const platformStepUpAt = getCurrentUnixTime();
-      const token = buildAuthToken({
+      const token = await buildAuthToken({
         userId: ctx.user.id,
         role: ctx.user.role,
         partnerId: ctx.user.partnerId,

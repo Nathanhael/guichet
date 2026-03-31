@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { eq, and, isNull, lt } from 'drizzle-orm';
-import { db, transaction } from '../db.js';
+import { db } from '../db.js';
 import { refreshTokens } from '../db/schema.js';
 import config from '../config.js';
 import { parseExpiryToSeconds } from './authSession.js';
@@ -64,7 +64,7 @@ export async function rotateRefreshToken(oldToken: string): Promise<{ token: str
   const expiresAt = new Date(Date.now() + parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY) * 1000).toISOString();
 
   // Atomically revoke old token and issue new one — prevents crash-between-ops lockout
-  await transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     await tx.update(refreshTokens)
       .set({ revokedAt: new Date().toISOString() })
       .where(eq(refreshTokens.id, existing.id));

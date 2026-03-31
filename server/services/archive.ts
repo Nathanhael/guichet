@@ -10,7 +10,7 @@
  */
 
 import crypto from 'crypto';
-import { db, transaction } from '../db.js';
+import { db } from '../db.js';
 import { auditLog, auditArchive, tickets, archivedTickets, messages } from '../db/schema.js';
 import { lte, asc, desc, eq, and, inArray, sql, notExists, gt } from 'drizzle-orm';
 import logger from '../utils/logger.js';
@@ -66,7 +66,7 @@ export async function archiveAuditLog(archiveDelayDays?: number): Promise<number
       const now = new Date().toISOString();
 
       // Wrap insert + delete in a single transaction to prevent partial chain states
-      const archivedCount = await transaction(async (tx) => {
+      const archivedCount = await db.transaction(async (tx) => {
         const archivedIds: string[] = [];
 
         for (const row of rows) {
@@ -221,7 +221,7 @@ export async function archiveTickets(retentionDays?: number): Promise<number> {
     const msgCountMap = new Map(msgCounts.map(m => [m.ticketId, Number(m.count)]));
     const now = new Date().toISOString();
 
-    await transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       for (const ticket of rows) {
         await tx.insert(archivedTickets).values({
           id: ticket.id,

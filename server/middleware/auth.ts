@@ -1,5 +1,7 @@
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 import config from '../config.js';
+
+const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 import { Request, Response, NextFunction } from 'express';
 import { User, UserRole } from '../types/index.js';
 import { jwtPayloadSchema } from '../trpc/context.js';
@@ -29,7 +31,8 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
     return res.status(401).json({ error: 'No token provided' });
   }
   try {
-    const decoded = jwtPayloadSchema.parse(jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }));
+    const { payload } = await jwtVerify(token, jwtSecret, { algorithms: ['HS256'] });
+    const decoded = jwtPayloadSchema.parse(payload);
     const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
     if (revoked) {
       return res.status(401).json({ error: 'Session revoked' });
