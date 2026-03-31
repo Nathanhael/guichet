@@ -100,7 +100,7 @@ npm run db:backup:docker        # Same, from Docker container
 ## API Documentation
 
 - **REST** — Swagger UI at `/api/v1/docs/`
-- **tRPC** — Reference at `/api/v1/trpc-reference` (68 procedures, 13 routers)
+- **tRPC** — Reference at `/api/v1/trpc-reference` (18 routers)
 
 ## Architecture
 
