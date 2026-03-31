@@ -34,6 +34,7 @@ const fr: Record<string, string> = {
     close: 'Fermer',
     leave: 'Quitter',
     no_messages: 'Aucun message pour l\u2019instant.',
+    message_deleted: 'Ce message a été supprimé',
     ticket_closed_notice: 'Ce ticket a \u00e9t\u00e9 ferm\u00e9.',
     close_ticket_title: 'Fermer le ticket\u00a0?',
     close_ticket_body: "Le chat sera ferm\u00e9 pour l'agent et le support. Cette action est irr\u00e9versible.",
@@ -349,6 +350,7 @@ const fr: Record<string, string> = {
     export_csv: 'Exporter en CSV',
 
     feedback: 'Feedback',
+    feedback_and_ratings: 'Feedback & Évaluations',
     labels: '\u00c9tiquettes',
     feedback_desc: 'Partagez vos suggestions ou signalez un probl\u00e8me.',
     feedback_placeholder: 'Que souhaitez-vous partager\u00a0?',

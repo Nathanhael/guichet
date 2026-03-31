@@ -63,11 +63,13 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
           const isUnread = !!unreadTickets[ticket.id];
           const time = getTicketTime(ticket.createdAt);
 
+          const refs = (ticket.references as Array<{label: string; value: string}>) || [];
+
           return (
             <button
               key={ticket.id}
               onClick={() => selectTicket(ticket.id)}
-              className={`w-full text-left px-4 py-3 border-b border-[var(--color-border)] ${
+              className={`w-full text-left px-4 py-3.5 border-b border-[var(--color-border)] ${
                 isActive
                   ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
                   : 'hover:bg-[var(--color-bg-hover)]'
@@ -75,23 +77,34 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="mono-label opacity-70">{ticket.dept}</span>
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[ticket.status] || STATUS_DOT.open}`} />
-                    <span className="text-[10px] uppercase opacity-50">{ticket.status}</span>
+                  {/* Department badge + status */}
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className={`text-[9px] font-bold uppercase tracking-widest px-1.5 py-0.5 border shrink-0 ${
+                      isActive ? 'border-current' : 'border-[var(--color-border)]'
+                    }`}>{ticket.dept}</span>
+                    <span className={`w-1.5 h-1.5 shrink-0 ${STATUS_DOT[ticket.status] || STATUS_DOT.open}`} />
+                    <span className="text-[9px] uppercase tracking-wider opacity-50">{ticket.status}</span>
                   </div>
-                  {(ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
-                    <p className="text-[11px] opacity-60 truncate">
-                      {(ticket.references as Array<{label: string; value: string}> || []).map((r) => r.value).join(' · ')}
+
+                  {/* Primary: reference values as ticket identifier */}
+                  {refs.length > 0 ? (
+                    <p className="text-sm font-bold truncate">
+                      {refs.map((r) => r.value).join(' \u00b7 ')}
+                    </p>
+                  ) : (
+                    <p className="text-sm font-bold truncate opacity-40 font-mono">
+                      #{ticket.id.slice(0, 8)}
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-1 text-[10px] opacity-50">
-                    <span>{LANG_FLAG[ticket.agentLang ?? ''] || ''}</span>
-                    <span>{time}</span>
+
+                  {/* Footer: lang + time */}
+                  <div className="flex items-center gap-2 mt-1.5 text-[10px] opacity-40">
+                    {LANG_FLAG[ticket.agentLang ?? ''] && <span>{LANG_FLAG[ticket.agentLang ?? '']}</span>}
+                    <span className="font-mono">{time}</span>
                   </div>
                 </div>
 
-                {isUnread && <span className="w-2.5 h-2.5 bg-[var(--color-text-primary)] rounded-full shrink-0 mt-1" />}
+                {isUnread && !isActive && <span className="w-2 h-2 bg-[var(--color-accent-blue)] shrink-0 mt-2" />}
               </div>
             </button>
           );

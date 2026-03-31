@@ -37,6 +37,7 @@ const en: Record<string, string> = {
     close: 'Close',
     leave: 'Leave',
     no_messages: 'No messages yet.',
+    message_deleted: 'This message was deleted',
     ticket_closed_notice: 'This ticket has been closed.',
     close_ticket_title: 'Close ticket?',
     close_ticket_body: 'The chat will be closed for both the agent and the support team. This cannot be undone.',
@@ -359,6 +360,7 @@ const en: Record<string, string> = {
 
     // Feedback
     feedback: 'Feedback',
+    feedback_and_ratings: 'Feedback & Ratings',
     labels: 'Labels',
     feedback_desc: 'Share your suggestions or report an issue.',
     feedback_placeholder: 'What would you like to share?',
