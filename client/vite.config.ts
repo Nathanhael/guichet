@@ -37,9 +37,10 @@ function swBuildHashPlugin() {
 export default defineConfig({
   plugins: [react(), tailwindcss(), swBuildHashPlugin()],
   resolve: {
-    dedupe: ['react', 'react-dom'],
+    dedupe: ['react', 'react-dom', 'react-is'],
   },
   optimizeDeps: {
+    include: ['react-is', 'recharts'],
     exclude: ['@trpc/server'],
   },
   server: {

@@ -163,7 +163,7 @@ export const ratingRouter = router({
           FROM ratings r JOIN tickets t ON r.ticket_id = t.id
           WHERE ${whereClause}
           GROUP BY DATE(r.created_at) ORDER BY date ASC
-        `)) as unknown as Record<string, unknown>[];
+        `)).rows as unknown as Record<string, unknown>[];
 
         // 2) Distribution
         const distRows = (await db.execute(sql`
@@ -171,7 +171,7 @@ export const ratingRouter = router({
           FROM ratings r JOIN tickets t ON r.ticket_id = t.id
           WHERE ${whereClause}
           GROUP BY r.rating ORDER BY r.rating ASC
-        `)) as unknown as Record<string, unknown>[];
+        `)).rows as unknown as Record<string, unknown>[];
 
         // 3) By department
         const deptRows = (await db.execute(sql`
@@ -179,7 +179,7 @@ export const ratingRouter = router({
           FROM ratings r JOIN tickets t ON r.ticket_id = t.id
           WHERE ${whereClause}
           GROUP BY t.dept ORDER BY avg DESC
-        `)) as unknown as Record<string, unknown>[];
+        `)).rows as unknown as Record<string, unknown>[];
 
         // 4) By staff
         const staffRows = (await db.execute(sql`
@@ -189,7 +189,7 @@ export const ratingRouter = router({
           LEFT JOIN users u ON r.support_id = u.id
           WHERE ${whereClause}
           GROUP BY r.support_id, u.name ORDER BY avg DESC
-        `)) as unknown as Record<string, unknown>[];
+        `)).rows as unknown as Record<string, unknown>[];
 
         // 5) Summary
         const summaryRows = (await db.execute(sql`
@@ -198,7 +198,7 @@ export const ratingRouter = router({
                  COUNT(r.comment) FILTER (WHERE r.comment IS NOT NULL AND r.comment != '')::int AS with_comment
           FROM ratings r JOIN tickets t ON r.ticket_id = t.id
           WHERE ${whereClause}
-        `)) as unknown as Record<string, unknown>[];
+        `)).rows as unknown as Record<string, unknown>[];
 
         const summaryRow = summaryRows[0] ?? {};
 

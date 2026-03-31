@@ -1,5 +1,5 @@
 import React from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 
@@ -9,7 +9,12 @@ interface BusinessHoursGuardProps {
 }
 
 export default function BusinessHoursGuard({ children, mode = 'block' }: BusinessHoursGuardProps) {
-  const { businessHoursStatus, user, memberships, activeMembershipId } = useStore();
+  const { businessHoursStatus, user, memberships, activeMembershipId } = useStoreShallow(s => ({
+    businessHoursStatus: s.businessHoursStatus,
+    user: s.user,
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId
+  }));
   const t = useT();
   const activeMembership = memberships.find((membership) => membership.id === activeMembershipId);
   const partnerName = activeMembership?.partnerName || 'Current workspace';

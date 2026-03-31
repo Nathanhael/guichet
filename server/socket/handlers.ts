@@ -349,13 +349,19 @@ export function registerSocketHandlers(io: Server) {
     logger.info({ socketId: socket.id }, '[socket] connected');
     socketioConnectionsActive.inc();
 
-    socket.on('socket:identify', async ({ partnerId }: { userId?: string, role?: string, name?: string, partnerId: string }) => {
+    socket.on('socket:identify', async ({ userId: clientUserId, partnerId }: { userId?: string, role?: string, name?: string, partnerId: string }) => {
       // Use the verified identity from JWT middleware — never trust client-supplied userId
       const userId = socket.data.authedUserId as string;
       if (!userId) {
         socket.emit('error', { message: 'Not authenticated' });
         socket.disconnect();
         return;
+      }
+
+      // H-9: Warn when client session is stale — client thinks it's a different user than the JWT proves.
+      // This happens when multiple users log in from the same browser (cookie overwrite).
+      if (clientUserId && clientUserId !== userId) {
+        logger.warn({ socketId: socket.id, jwtUserId: userId, clientUserId }, '[socket] userId mismatch — client session stale, JWT belongs to different user');
       }
 
       // H-8: Validate client-supplied partnerId against JWT's partnerId
@@ -447,29 +453,30 @@ export function registerSocketHandlers(io: Server) {
       if (socket.data.role !== 'agent') return socket.emit('error', { message: 'Only agents can create tickets' });
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
-      const partnerId = socket.data.partnerId;
-      const partnerRow = partnerId ? await findPartnerConfig(partnerId) : null;
-      
-      if (partnerRow && partnerRow.status !== 'active') {
-        return socket.emit('error', { message: 'Partner is currently inactive.' });
-      }
-
-      const partnerHours = partnerRow ? {
-        businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null,
-        businessHoursStart: partnerRow.businessHoursStart,
-        businessHoursEnd: partnerRow.businessHoursEnd,
-        businessHoursTimezone: partnerRow.businessHoursTimezone,
-      } : undefined;
-
-      const businessHoursStatus = getBusinessHoursStatus(partnerHours);
-      if (!businessHoursStatus.isOpen) {
-        return socket.emit('hours:closed', {
-          code: 'BUSINESS_HOURS_CLOSED',
-          message: businessHoursStatus.message,
-          status: businessHoursStatus,
-        });
-      }
       try {
+        const partnerId = socket.data.partnerId;
+        const partnerRow = partnerId ? await findPartnerConfig(partnerId) : null;
+
+        if (partnerRow && partnerRow.status !== 'active') {
+          return socket.emit('error', { message: 'Partner is currently inactive.' });
+        }
+
+        const partnerHours = partnerRow ? {
+          businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null,
+          businessHoursStart: partnerRow.businessHoursStart,
+          businessHoursEnd: partnerRow.businessHoursEnd,
+          businessHoursTimezone: partnerRow.businessHoursTimezone,
+        } : undefined;
+
+        const businessHoursStatus = getBusinessHoursStatus(partnerHours);
+        if (!businessHoursStatus.isOpen) {
+          return socket.emit('hours:closed', {
+            code: 'BUSINESS_HOURS_CLOSED',
+            message: businessHoursStatus.message,
+            status: businessHoursStatus,
+          });
+        }
+
         const { agentLang, dept, references = [], text, mediaUrl } = data;
         const agentId = socket.data.userId; // Server-side identity — never trust client-supplied agentId
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
@@ -529,7 +536,10 @@ export function registerSocketHandlers(io: Server) {
         // Broadcast to staff only — agents must not see other users' tickets (CR-04 socket-layer fix)
         io.to(Rooms.staff(partnerId)).emit('ticket:created', { ticket: { ...ticketWithSla, participants: [], labels: [] }, firstMessage: message });
         await broadcastQueuePositions(partnerId);
-      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:new] error'); }
+      } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:new] error');
+        socket.emit('error', { message: 'Failed to create ticket' });
+      }
     });
 
     socket.on('support:join', async ({ ticketId, supportLang }: SupportJoinPayload) => {

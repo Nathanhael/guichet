@@ -41,7 +41,7 @@ export async function runDailyPurge() {
       WHERE ${tickets.createdAt} < ${cutoff.toISOString()} AND ${tickets.status} = 'closed'
       AND NOT EXISTS (SELECT 1 FROM ${archivedTickets} WHERE ${archivedTickets.id} = ${tickets.id})
     `);
-    const unarchivedCount = (unarchivedRows as unknown as { count: number }[])[0]?.count ?? 0;
+    const unarchivedCount = (unarchivedRows.rows as unknown as { count: number }[])[0]?.count ?? 0;
 
     if (unarchivedCount > 0) {
       logger.warn({ unarchivedCount }, '[purge] Unarchived closed tickets exist — archiving first');

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 
@@ -24,7 +24,11 @@ function Star({ filled, onClick }: StarProps) {
 }
 
 export default function RatingModal() {
-  const { user, ratingPrompt, clearRatingPrompt } = useStore();
+  const { user, ratingPrompt, clearRatingPrompt } = useStoreShallow(s => ({
+    user: s.user,
+    ratingPrompt: s.ratingPrompt,
+    clearRatingPrompt: s.clearRatingPrompt
+  }));
   const t = useT();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');

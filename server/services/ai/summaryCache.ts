@@ -24,7 +24,7 @@ export async function getCachedSummary(ticketId: string): Promise<string | null>
  */
 export async function setCachedSummary(ticketId: string, summary: string): Promise<void> {
   try {
-    const { redis: r, logger } = getAiContext();
+    const { redis: r } = getAiContext();
     if (!r) return;
     await r.set(key(ticketId), summary, { EX: SUMMARY_TTL });
   } catch (err) {

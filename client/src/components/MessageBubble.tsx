@@ -5,6 +5,7 @@ import BionicText from './BionicText';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import { Message } from '../types';
+import { safeDate } from '../utils/dateUtils';
 import { useAutoTranslation } from '../hooks/useTranslation';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '../../../server/trpc/router';
@@ -66,13 +67,13 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   // Show translated text if available and user hasn't toggled to original
   const displayText = (!isDeleted && translated && !showOriginal) ? translated : originalDisplayText;
 
-  const time = new Date(message.timestamp || message.createdAt || '').toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const msgDate = safeDate(message.timestamp || message.createdAt);
+  const time = msgDate
+    ? msgDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    : '—';
 
   // Check if message is within edit window (15 min)
-  const ageMs = Date.now() - new Date(message.timestamp || message.createdAt || '').getTime();
+  const ageMs = msgDate ? Date.now() - msgDate.getTime() : Infinity;
   const canEdit = isMine && !message.system && !isDeleted && ageMs < 15 * 60 * 1000;
   const canDelete = (isMine || user?.role === 'admin' || user?.isPlatformOperator) && !message.system && !isDeleted;
 

@@ -4,8 +4,9 @@ import { useT } from '../../i18n';
 
 export default function PlatformSystemHealth() {
   const t = useT();
-  const { data: health, isLoading } = trpc.platform.getSystemHealth.useQuery(undefined, {
-    refetchInterval: 10000
+  const { data: health, isLoading, isError, error, refetch } = trpc.platform.getSystemHealth.useQuery(undefined, {
+    refetchInterval: 10000,
+    retry: 1
   });
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
 
@@ -19,7 +20,23 @@ export default function PlatformSystemHealth() {
   }
   const visibleAlerts = alerts.filter(a => !dismissedAlerts.includes(a.id));
 
-  if (isLoading || !health) return <div className="p-8 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('loading_system_health')}</div>;
+  if (isLoading) return <div className="p-8 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] animate-pulse">{t('loading_system_health')}</div>;
+
+  if (isError || !health) return (
+    <div className="p-8 border border-[var(--color-accent-red)] bg-[var(--color-bg-elevated)]">
+      <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent-red)] mb-2">
+        Failed to load system health data.
+      </p>
+      {error && (
+        <p className="font-mono text-[9px] text-[var(--color-text-muted)] mb-4 uppercase">
+          Error: {error.message}
+        </p>
+      )}
+      <button onClick={() => refetch()} className="btn-primary text-[10px] uppercase tracking-widest px-4 py-2">
+        Retry Connection
+      </button>
+    </div>
+  );
 
   return (
     <div className="max-w-6xl space-y-8">

@@ -18,9 +18,9 @@ const mockStore = {
 };
 
 vi.mock('../../store/useStore', () => {
-  const store = () => mockStore;
+  const store = (selector?: (s: typeof mockStore) => unknown) => selector ? selector(mockStore) : mockStore;
   store.getState = () => mockStore;
-  return { default: store };
+  return { default: store, useStoreShallow: (selector: (s: typeof mockStore) => unknown) => selector(mockStore) };
 });
 
 /* ------------------------------------------------------------------ */

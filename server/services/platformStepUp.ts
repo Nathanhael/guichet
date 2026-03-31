@@ -150,6 +150,10 @@ export function getPlatformStepUpWindowSeconds(): number {
 }
 
 export function isPlatformStepUpSatisfied(platformStepUpAt?: number | null, now = Math.floor(Date.now() / 1000)): boolean {
+  if (!config.REQUIRE_PLATFORM_STEP_UP) {
+    return true;
+  }
+
   if (!platformStepUpAt) {
     return false;
   }

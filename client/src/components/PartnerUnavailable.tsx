@@ -1,7 +1,13 @@
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 
 export default function PartnerUnavailable() {
-  const { user, logout, activeMembershipId, setActiveMembershipId, memberships } = useStore();
+  const { user, logout, activeMembershipId, setActiveMembershipId, memberships } = useStoreShallow(s => ({
+    user: s.user,
+    logout: s.logout,
+    activeMembershipId: s.activeMembershipId,
+    setActiveMembershipId: s.setActiveMembershipId,
+    memberships: s.memberships
+  }));
   const isPlatformOperator = user?.isPlatformOperator;
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const isInactive = activeMembership?.status === 'inactive';

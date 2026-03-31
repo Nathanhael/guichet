@@ -14,7 +14,7 @@ import {
   Cell,
 } from 'recharts';
 import { trpc } from '../../utils/trpc';
-import useStore from '../../store/useStore';
+import { useStoreShallow } from '../../store/useStore';
 
 interface AnalyticsData {
   trend: { date: string; avg: number; count: number }[];
@@ -58,7 +58,10 @@ function barFill(rating: number): string {
 }
 
 export default function AdminSatisfaction() {
-  const { memberships, activeMembershipId } = useStore();
+  const { memberships, activeMembershipId } = useStoreShallow((s) => ({
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId,
+  }));
   const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
   const departments: { id: string; name: string }[] = activeMembership?.manifest?.departments || [];
 

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   buildTotpUri,
   generateTotpSecret,
@@ -7,6 +7,13 @@ import {
   isPlatformStepUpSatisfied,
   verifyTotpToken,
 } from './platformStepUp.js';
+
+vi.mock('../config.js', () => ({
+  default: {
+    REQUIRE_PLATFORM_STEP_UP: true,
+    PLATFORM_STEP_UP_WINDOW_MINUTES: 15,
+  },
+}));
 
 function generateCodeForTest(secret: string, timestampMs: number): string {
   const key = secret.toUpperCase().replace(/[^A-Z2-7]/g, '');

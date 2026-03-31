@@ -1,5 +1,10 @@
 export const safeDate = (date: string | number | Date | null | undefined): Date | null => {
   if (!date) return null;
+  // DB timestamps (mode: 'string') arrive without timezone suffix e.g. "2026-03-31 22:08:59.773".
+  // Without 'Z', new Date() treats them as local time instead of UTC. Normalize before parsing.
+  if (typeof date === 'string' && !date.endsWith('Z') && !/[+-]\d{2}:\d{2}$/.test(date)) {
+    date = date.replace(' ', 'T') + 'Z';
+  }
   const d = new Date(date);
   return isNaN(d.getTime()) ? null : d;
 };

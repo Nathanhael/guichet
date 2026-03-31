@@ -9,9 +9,10 @@ import PlatformView from '../PlatformView';
 const mockLogout = vi.fn();
 
 vi.mock('../../store/useStore', () => {
-  const store = () => ({ logout: mockLogout, token: 'test' });
-  store.getState = () => ({ logout: mockLogout, token: 'test' });
-  return { default: store };
+  const state = { logout: mockLogout, token: 'test' };
+  const store = (selector?: (s: typeof state) => unknown) => selector ? selector(state) : state;
+  store.getState = () => state;
+  return { default: store, useStoreShallow: (selector: (s: typeof state) => unknown) => selector(state) };
 });
 
 vi.mock('../../i18n', () => ({

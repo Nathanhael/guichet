@@ -1,9 +1,13 @@
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { PartnerManifest } from '../types';
 import { isPlatformAdmin } from '../utils/roles';
 
 export function usePartner() {
-  const { user, memberships, activeMembershipId } = useStore();
+  const { user, memberships, activeMembershipId } = useStoreShallow((s) => ({
+    user: s.user,
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId,
+  }));
   
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   

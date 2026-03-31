@@ -18,19 +18,28 @@ import config from '../../config.js';
 export const platformRouter = router({
   // --- System Health ---
   getSystemHealth: platformProcedure.query(async () => {
-    const lastPurge = await db.select({ createdAt: auditLog.createdAt })
-      .from(auditLog)
-      .where(eq(auditLog.action, 'system.gdpr_purge'))
-      .orderBy(desc(auditLog.createdAt))
-      .limit(1);
+    let lastPurgeAt: string | null = null;
+    let gdprSuccess = false;
+
+    try {
+      const lastPurge = await db.select({ createdAt: auditLog.createdAt })
+        .from(auditLog)
+        .where(eq(auditLog.action, 'system.gdpr_purge'))
+        .orderBy(desc(auditLog.createdAt))
+        .limit(1);
+      lastPurgeAt = lastPurge[0]?.createdAt || null;
+      gdprSuccess = !!lastPurge[0];
+    } catch (err) {
+      logger.error({ err }, 'Health Check: Audit Log error');
+    }
 
     const health = {
       postgres: false,
       redis: false,
       postgresConnections: 0,
       redisMemoryUsed: '0',
-      gdprLastRun: lastPurge[0]?.createdAt || 'Never',
-      gdprSuccess: !!lastPurge[0],
+      gdprLastRun: lastPurgeAt || 'Never',
+      gdprSuccess,
       gdprRecordsPurged: 0,
       gdprNextPurge: (() => {
         const next = new Date();
@@ -51,7 +60,12 @@ export const platformRouter = router({
     try {
       const { pubClient } = getRedisClients();
       if (pubClient) {
-        await pubClient.ping();
+        // Add timeout to prevent hanging on unreachable Redis
+        await Promise.race([
+          pubClient.ping(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Redis ping timeout')), 2000))
+        ]);
+        
         health.redis = true;
         const memoryInfo = await pubClient.info('memory');
         const match = memoryInfo.match(/used_memory_human:([^\r\n]+)/);
