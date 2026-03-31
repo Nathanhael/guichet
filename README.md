@@ -41,7 +41,7 @@ docker compose up
 docker compose exec server npx tsx seed_pg.ts
 ```
 
-Open `http://localhost:5173` and use the demo login panel to explore all roles.
+Open `http://localhost:3001`. When `DEMO_MODE=true` (dev default), a demo login panel lets you explore all roles. Demo mode is blocked in production (`NODE_ENV=production`).
 
 ### First-Time Production Setup
 
