@@ -123,11 +123,11 @@ export default function TicketForm({ manifest }: TicketFormProps) {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-lg border border-[var(--color-border)] p-8">
-        <h2 className="text-2xl font-bold uppercase tracking-tight mb-2">
+      <div className="w-full max-w-lg border-2 border-[var(--color-border-heavy)] p-8">
+        <h2 className="text-3xl font-bold uppercase tracking-tighter mb-2">
           {t('hello')}, {user.name}
         </h2>
-        <p className="text-sm opacity-60 mb-8">{t('choose_dept_desc')}</p>
+        <p className="text-sm opacity-50 mb-8 font-medium">{t('choose_dept_desc')}</p>
 
         <form onSubmit={handleSubmit} aria-label={t('new_ticket')} className="space-y-6">
           {/* Department grid */}
@@ -195,7 +195,7 @@ export default function TicketForm({ manifest }: TicketFormProps) {
           <button
             type="submit"
             disabled={!text.trim() || !allRefsFilledIn || !canCreateTicket}
-            className="btn-primary w-full py-4 disabled:opacity-30"
+            className="btn-primary w-full py-4 text-sm font-bold uppercase tracking-wider disabled:opacity-30"
           >
             {t('connect_with_support')}
           </button>

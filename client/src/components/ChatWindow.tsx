@@ -504,7 +504,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               </span>
             )}
             <div className="flex flex-col">
-              <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${focusMode ? 'text-sm opacity-80' : 'text-base'}`}>
+              <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${focusMode ? 'text-sm opacity-80' : 'text-lg'}`}>
                 {ticket.agentName}
                 {isSupport && !isClosed && (
                   <span
@@ -514,9 +514,15 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                 )}
               </span>
               {!focusMode && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
-                <span className="text-[10px] font-bold text-text-primary opacity-40 uppercase tracking-tighter">
-                  {(ticket.references as Array<{label: string; value: string}> || []).map((ref) => `${ref.label}: ${ref.value}`).join(' · ')}
-                </span>
+                <div className="flex items-center gap-3 mt-0.5">
+                  {(ticket.references as Array<{label: string; value: string}> || []).map((ref, i) => (
+                    <span key={i} className="text-xs text-text-muted">
+                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-50">{ref.label}</span>
+                      {' '}
+                      <span className="font-bold text-text-primary">{ref.value}</span>
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
             

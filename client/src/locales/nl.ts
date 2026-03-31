@@ -34,6 +34,7 @@ const nl: Record<string, string> = {
     close: 'Sluiten',
     leave: 'Verlaten',
     no_messages: 'Nog geen berichten.',
+    message_deleted: 'Dit bericht is verwijderd',
     ticket_closed_notice: 'Dit ticket is gesloten.',
     close_ticket_title: 'Ticket sluiten?',
     close_ticket_body: 'De chat wordt afgesloten voor zowel de agent als het supportteam. Dit kan niet ongedaan worden gemaakt.',
@@ -349,6 +350,7 @@ const nl: Record<string, string> = {
     export_csv: 'Exporteer naar CSV',
 
     feedback: 'Feedback',
+    feedback_and_ratings: 'Feedback & Beoordelingen',
     labels: 'Labels',
     feedback_desc: 'Deel je suggesties of meld een probleem.',
     feedback_placeholder: 'Wat wil je delen?',

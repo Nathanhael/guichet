@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useState, lazy } from 'react';
-import useStore from './store/useStore';
+import useStore, { useStoreShallow } from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import { useTheme } from './hooks/useTheme';
 import { useTokenRefresh } from './hooks/useTokenRefresh';
@@ -23,7 +23,7 @@ const LoadingFallback = () => (
 );
 
 function NoPartnerState() {
-  const { logout } = useStore();
+  const logout = useStore((s) => s.logout);
   return (
     <div className="h-screen flex flex-col items-center justify-center bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
       <div className="text-center max-w-md px-8">
@@ -49,7 +49,12 @@ function NoPartnerState() {
 }
 
 export default function App() {
-  const { user, memberships, activeMembershipId, setActiveMembershipId } = useStore();
+  const { user, memberships, activeMembershipId, setActiveMembershipId } = useStoreShallow((s) => ({
+    user: s.user,
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId,
+    setActiveMembershipId: s.setActiveMembershipId,
+  }));
   const [securityOpen, setSecurityOpen] = useState(false);
 
   useTheme();
@@ -123,8 +128,8 @@ export default function App() {
   const dyslexicMode = useStore((s) => s.dyslexicMode);
 
   return (
-    <div>
-      <div className={dyslexicMode ? 'dyslexic-mode' : ''}>
+    <div className="h-full">
+      <div className={`h-full ${dyslexicMode ? 'dyslexic-mode' : ''}`}>
         {renderView()}
 
         {/* Global security settings trigger (visible when logged in) */}
