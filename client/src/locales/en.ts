@@ -293,6 +293,7 @@ const en: Record<string, string> = {
     in_progress: 'in progress',
     waiting_badge: 'waiting',
     lang_label: 'Lang',
+    en: 'English',
     jump_in: 'Jump in',
     join: 'Join',
     open: 'Open',

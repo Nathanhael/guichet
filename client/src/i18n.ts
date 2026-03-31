@@ -65,7 +65,5 @@ export function useT() {
  * Uses English only since async loading isn't practical outside React.
  */
 export function tBrowser(key: string): string {
-  const lang = typeof navigator !== 'undefined' ? navigator.language.slice(0, 2) : 'en';
-  const t = loaded[lang] || loaded.en;
-  return t[key] ?? loaded.en[key] ?? key;
+  return loaded.en[key] ?? key;
 }
