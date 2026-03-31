@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { trpc } from '../../utils/trpc';
 import { Bookmark, Plus, Trash2, Star, X } from 'lucide-react';
 import { useT } from '../../i18n';
@@ -18,6 +19,31 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
   const [isOpen, setIsOpen] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (isOpen && toggleRef.current) {
+      const rect = toggleRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 4,
+        left: rect.left,
+      });
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (toggleRef.current && !toggleRef.current.contains(e.target as Node)) {
+        const dropdown = document.querySelector('[data-saved-view-dropdown]');
+        if (dropdown && dropdown.contains(e.target as Node)) return;
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isOpen]);
 
   const utils = trpc.useUtils();
 
@@ -69,6 +95,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
     <div className="relative">
       {/* Toggle button */}
       <button
+        ref={toggleRef}
         onClick={() => setIsOpen((v) => !v)}
         className={[
           'w-7 h-7 flex items-center justify-center border border-[var(--color-border)] transition-colors',
@@ -83,8 +110,12 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
       </button>
 
       {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute top-full left-0 mt-1 w-56 bg-[var(--color-bg-surface)] border border-[var(--color-border)] z-50 animate-fade-in">
+      {isOpen && createPortal(
+        <div
+          data-saved-view-dropdown
+          className="fixed w-56 bg-[var(--color-bg-surface)] border border-[var(--color-border)] z-50 animate-fade-in"
+          style={{ top: dropdownPos.top, left: dropdownPos.left }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
             <span className="font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
@@ -200,7 +231,8 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
