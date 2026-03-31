@@ -1,9 +1,10 @@
 import express, { Response } from 'express';
-import { query } from '../db.js';
+import { eq, and, ilike, gte, lte, or, desc, type SQL } from 'drizzle-orm';
+import { db } from '../db/postgres.js';
+import { tickets } from '../db/schema.js';
 import logger from '../utils/logger.js';
 import { z } from 'zod';
 import { validateQuery } from '../middleware/validator.js';
-import { Ticket } from '../types/index.js';
 import { auth, authorize, AuthRequest } from '../middleware/auth.js';
 import { canExportTickets } from '../services/roles.js';
 import { escapeLikePattern } from '../utils/security.js';
@@ -43,40 +44,40 @@ router.get('/export', auth, authorize(['admin', 'support']), validateQuery(z.obj
 
     const { dept, search, dateFrom, dateTo } = req.query as { dept?: string; search?: string; dateFrom?: string; dateTo?: string };
 
-    let sql = "SELECT * FROM tickets WHERE status = 'closed'";
-    const params: unknown[] = [];
-    let pIdx = 1;
-
-    sql += ` AND partner_id = $${pIdx}`;
-    params.push(partnerId);
-    pIdx++;
+    const conditions: SQL[] = [
+      eq(tickets.status, 'closed'),
+      eq(tickets.partnerId, partnerId),
+    ];
 
     if (dept && dept !== 'all') {
-      sql += ` AND dept = $${pIdx}`;
-      params.push(dept);
-      pIdx++;
+      conditions.push(eq(tickets.dept, dept));
     }
+
     if (search) {
-      const q = `%${escapeLikePattern(search)}%`;
-      sql += ` AND (agent_name ILIKE $${pIdx} ESCAPE '\\' OR support_name ILIKE $${pIdx} ESCAPE '\\')`;
-      params.push(q);
-      pIdx++;
+      const pattern = `%${escapeLikePattern(search)}%`;
+      conditions.push(
+        or(
+          ilike(tickets.agentName, pattern),
+          ilike(tickets.supportName, pattern),
+        )!,
+      );
     }
+
     if (dateFrom) {
-      sql += ` AND created_at >= $${pIdx}`;
-      params.push(dateFrom);
-      pIdx++;
+      conditions.push(gte(tickets.createdAt, dateFrom));
     }
+
     if (dateTo) {
       const end = dateTo + 'T23:59:59';
-      sql += ` AND created_at <= $${pIdx}`;
-      params.push(end);
-      pIdx++;
+      conditions.push(lte(tickets.createdAt, end));
     }
 
-    sql += ' ORDER BY closed_at DESC LIMIT 10000';
-
-    const result = (await query(sql, params)) as unknown as Ticket[];
+    const result = await db
+      .select()
+      .from(tickets)
+      .where(and(...conditions))
+      .orderBy(desc(tickets.closedAt))
+      .limit(10000);
     
     // Format as CSV
     const headers = ['ID', 'Department', 'Agent', 'References', 'Support', 'Created At', 'Closed At', 'Status'];
