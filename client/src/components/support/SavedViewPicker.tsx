@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { trpc } from '../../utils/trpc';
 import { Bookmark, Plus, Trash2, Star, X } from 'lucide-react';
@@ -20,9 +20,10 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
   const [saveName, setSaveName] = useState('');
   const [showSaveInput, setShowSaveInput] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isOpen && toggleRef.current) {
       const rect = toggleRef.current.getBoundingClientRect();
       setDropdownPos({
@@ -36,13 +37,23 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
     if (!isOpen) return;
     function handleClick(e: MouseEvent) {
       if (toggleRef.current && !toggleRef.current.contains(e.target as Node)) {
-        const dropdown = document.querySelector('[data-saved-view-dropdown]');
-        if (dropdown && dropdown.contains(e.target as Node)) return;
+        if (dropdownRef.current?.contains(e.target as Node)) return;
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const close = () => setIsOpen(false);
+    window.addEventListener('scroll', close, true); // capture phase for nested scrolls
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
   }, [isOpen]);
 
   const utils = trpc.useUtils();
@@ -112,6 +123,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
       {/* Dropdown */}
       {isOpen && createPortal(
         <div
+          ref={dropdownRef}
           data-saved-view-dropdown
           className="fixed w-56 bg-[var(--color-bg-surface)] border border-[var(--color-border)] z-50 animate-fade-in"
           style={{ top: dropdownPos.top, left: dropdownPos.left }}
