@@ -1,6 +1,6 @@
 # Tessera tRPC API Reference
 
-Auto-generated reference for all tRPC procedures.
+Reference for all tRPC procedures (18 routers).
 Client access: `trpc.<router>.<procedure>`
 
 ## Auth Levels
@@ -159,6 +159,50 @@ Client access: `trpc.<router>.<procedure>`
 | `beginSetup` | mutation | platformBase | Generate platform TOTP secret for step-up setup |
 | `enable` | mutation | platformBase | Enable platform step-up with TOTP verification |
 | `verify` | mutation | platformBase | Verify step-up TOTP code (unlocks platform tabs for 15 min) |
+
+## ai
+
+| Procedure | Type | Auth | Description |
+|-----------|------|------|-------------|
+| `improveMessage` | mutation | protected | Rewrite a message for clarity and professionalism |
+| `translateMessage` | mutation | protected | Translate a message to a target language (nl/en/fr) |
+| `summarizeChat` | mutation | role(support,admin) | Summarize a ticket's chat conversation (Redis-cached) |
+| `getTicketSentiment` | query | role(support,admin) | Get average sentiment, trend, and scored message count for a ticket |
+| `getTicketSentiments` | query | role(support,admin) | Get average sentiment per open ticket for the current partner |
+| `getNegativeSentimentTickets` | query | role(support,admin) | List open tickets with negative average sentiment below -0.3 |
+
+## kb
+
+| Procedure | Type | Auth | Description |
+|-----------|------|------|-------------|
+| `list` | query | protected | List KB articles for the current partner, with optional filters |
+| `search` | query | protected | Full-text keyword search across article title and body |
+| `aiSearch` | query | protected | AI-powered question answering with article ranking |
+| `getById` | query | protected | Get a single KB article by ID |
+| `create` | mutation | admin | Create a new KB article |
+| `update` | mutation | admin | Update an existing KB article |
+| `delete` | mutation | admin | Delete a KB article |
+
+## webhook
+
+| Procedure | Type | Auth | Description |
+|-----------|------|------|-------------|
+| `list` | query | admin | List all webhooks for the current partner |
+| `create` | mutation | admin | Create a new webhook endpoint with SSRF-validated URL |
+| `update` | mutation | admin | Update a webhook's URL, events, description, or active status |
+| `regenerateSecret` | mutation | admin | Regenerate the HMAC signing secret for a webhook |
+| `delete` | mutation | admin | Delete a webhook |
+| `logs` | query | admin | Get recent delivery logs for a webhook |
+| `test` | mutation | admin | Test-fire a webhook with a sample payload |
+
+## savedView
+
+| Procedure | Type | Auth | Description |
+|-----------|------|------|-------------|
+| `list` | query | protected | List saved views for the current user and partner |
+| `create` | mutation | protected | Create a saved ticket queue view with filter criteria (max 20) |
+| `update` | mutation | protected | Update a saved view's name, filters, or default status |
+| `delete` | mutation | protected | Delete a saved view |
 
 ---
 

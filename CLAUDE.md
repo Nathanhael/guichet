@@ -62,7 +62,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 **API Layer**:
 - **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 18 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `savedView`, `stats`, `ticket`, `user`, `webhook`. Input validation via Zod.
 - **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`).
-- **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference` (68 procedures).
+- **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference` (98 procedures).
 
 **tRPC Middleware** (`server/trpc/trpc.ts`):
 - `publicProcedure` → `protectedProcedure` → `adminProcedure` / `platformProcedure`

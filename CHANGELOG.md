@@ -3,6 +3,49 @@
 All notable changes to Tessera are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.0] - 2026-03-31
+
+### Added
+- **AiContext dependency injection** — All AI modules use centralized DI (wired at boot) via barrel imports; `ai/redis.ts` removed in favor of shared `pubClient`
+- **AI API key encryption** — AES-256-GCM encryption for AI API keys at rest (`AI_KEY_ENCRYPTION_SECRET` env var, fatal in production when AI is enabled)
+- **Cursor-paginated messages** — `message.list` tRPC endpoint with "load older messages" UI
+- **Centralized tenant guard** — `requirePartnerScope` / `requirePartnerScopeWith` for consistent multi-tenant query scoping
+- **Graceful shutdown** — SIGTERM/SIGINT handler with clean exit path and TaskRunner mutex for background jobs
+- **Instant socket revocation** — Redis Pub/Sub-based session revocation for deactivated users
+- **Caddy TLS** — Production compose includes Caddy reverse proxy with automatic TLS
+- **Azure AD locale extraction** — SSO login extracts locale claim for user language preference
+- **Saved views** — Per-user saved ticket filter views (`saved_views` table, `savedView` tRPC router, `SavedViewPicker` component)
+
+### Security
+- Revoke refresh tokens before creating new one in `/enter-partner`
+- Require authentication on `/api/v1/config` endpoint
+- Prevent SSRF via webhook redirect following
+- `AI_KEY_ENCRYPTION_SECRET` fatal when AI is enabled in production
+- `DEMO_MODE` added to Zod config with production guard
+- Handle platform operators and revoke tokens on no-membership rejection
+
+### Performance
+- Split i18n into per-locale dynamic imports
+- Lazy-load `AdminStats` and `AdminSatisfaction`
+- Consolidate SupportView store subscriptions with `useShallow`
+- Replace unbounded `IN` clause with JOIN queries in stats
+- Add DB indexes: `audit_log(created_at)`, `messages(ticket_id, created_at)`, `tickets.participants` GIN
+- Hoist `getAiConfig` query from `MessageBubble` to `ChatWindow`
+- Eliminate redundant DB query in `ticket.list` for support users
+
+### Fixed
+- Presence: replace TOCTOU-prone `hSetNX`/`decrementUserCount` with atomic Lua scripts
+- Socket: make identify handler set `socket.data` atomically; replace module-level `listenersAttached` with `useRef`
+- Auth: return `revocationFailed` flag on logout token revocation failure
+- Messages: add `createdAt` fallback in sort to prevent NaN ordering
+- Client: log `trpcVanilla` mutation errors instead of silently swallowing
+- i18n: make `tBrowser` English-only and add missing `'en'` key
+
+### Refactored
+- Migrate CSV export query and `insertRating` to Drizzle query builder
+- Extract `ticketQueries` Drizzle module with tests
+- Cruft audit: prune 6 redundant deps, remove dead code, delete 33 historical markdown files
+
 ## [2.0.0] - 2026-03-27
 
 ### Design System
