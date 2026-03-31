@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { trpc } from '../../utils/trpc';
-import useStore from '../../store/useStore';
+import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { Pencil, Trash2, Check, X, Plus } from 'lucide-react';
 import Toast from '../Toast';
@@ -26,7 +26,11 @@ function mapDepts(raw: Array<{ id?: string; name?: string; description?: string;
 }
 
 export default function AdminDepartments() {
-  const { memberships, activeMembershipId, setMemberships } = useStore();
+  const { memberships, activeMembershipId, setMemberships } = useStoreShallow((s) => ({
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId,
+    setMemberships: s.setMemberships,
+  }));
   const t = useT();
   const utils = trpc.useUtils();
 
@@ -60,14 +64,25 @@ export default function AdminDepartments() {
 
   const memberCounts = useMemo(() => {
     const counts: Record<string, number> = {};
+    let generalistCount = 0;
     (allMembers || []).forEach(m => {
       const deptArr = (m.departments || []) as string[];
-      deptArr.forEach(deptId => {
-        counts[deptId] = (counts[deptId] || 0) + 1;
-      });
+      if (deptArr.length === 0) {
+        generalistCount++;
+      } else {
+        deptArr.forEach(deptId => {
+          counts[deptId] = (counts[deptId] || 0) + 1;
+        });
+      }
     });
+    // Generalists (no department assignment) can see all departments
+    if (generalistCount > 0) {
+      departments.forEach(dept => {
+        counts[dept.id] = (counts[dept.id] || 0) + generalistCount;
+      });
+    }
     return counts;
-  }, [allMembers]);
+  }, [allMembers, departments]);
 
   const updateDeptsMutation = trpc.partner.updateDepartments.useMutation({
     onSuccess: (data) => {

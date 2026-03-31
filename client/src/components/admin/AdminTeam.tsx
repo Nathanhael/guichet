@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
-import useStore from '../../store/useStore';
+import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
+import { Pencil, Check, X } from 'lucide-react';
 import Toast from '../Toast';
 
 export default function AdminTeam() {
   const t = useT();
-  const { activeMembershipId, memberships } = useStore();
+  const { activeMembershipId, memberships } = useStoreShallow((s) => ({
+    activeMembershipId: s.activeMembershipId,
+    memberships: s.memberships,
+  }));
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
 
@@ -23,9 +27,16 @@ export default function AdminTeam() {
     onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
+  const updateMemberMutation = trpc.partner.updateMember.useMutation({
+    onSuccess: () => { setEditingMembershipId(null); refetch(); },
+    onError: (err) => setToast({ message: err.message, type: 'error' })
+  });
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
+  const [editDepts, setEditDepts] = useState<string[]>([]);
 
   return (
     <div className="max-w-7xl surface-card p-6">
@@ -92,24 +103,87 @@ export default function AdminTeam() {
                       )}
                     </td>
                     <td className="p-3 text-xs uppercase text-[var(--color-text-secondary)]">
-                      {member.departments && (member.departments as string[]).length > 0
-                        ? (member.departments as string[]).map((dId: string) => {
-                            const dInfo = departments.find(d => d.id === dId);
-                            return dInfo ? dInfo.name : dId;
-                          }).join(', ')
-                        : <span className="text-[var(--color-text-muted)] italic">All (Generalist)</span>}
+                      {member.role === 'agent' ? (
+                        <span className="text-[var(--color-text-muted)]">—</span>
+                      ) : editingMembershipId === member.membershipId ? (
+                        <div className="space-y-1">
+                          {departments.map(d => (
+                            <label key={d.id} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={editDepts.includes(d.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) setEditDepts([...editDepts, d.id]);
+                                  else setEditDepts(editDepts.filter(id => id !== d.id));
+                                }}
+                                className="w-3.5 h-3.5"
+                              />
+                              <span className="text-xs uppercase">{d.name}</span>
+                            </label>
+                          ))}
+                          <p className="text-[9px] text-[var(--color-text-muted)] mt-1">
+                            {editDepts.length === 0 ? 'No selection = Generalist (all depts)' : ''}
+                          </p>
+                          <div className="flex items-center gap-1 pt-1">
+                            <button
+                              onClick={() => updateMemberMutation.mutate({ membershipId: member.membershipId, departments: editDepts })}
+                              disabled={updateMemberMutation.isPending}
+                              className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
+                              title="Save"
+                            >
+                              <Check className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={() => setEditingMembershipId(null)}
+                              className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white"
+                              title="Cancel"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <span
+                          className="cursor-pointer hover:underline"
+                          onClick={() => {
+                            setEditingMembershipId(member.membershipId);
+                            setEditDepts((member.departments as string[]) || []);
+                          }}
+                        >
+                          {member.departments && (member.departments as string[]).length > 0
+                            ? (member.departments as string[]).map((dId: string) => {
+                                const dInfo = departments.find(d => d.id === dId);
+                                return dInfo ? dInfo.name : dId;
+                              }).join(', ')
+                            : <span className="text-[var(--color-text-muted)] italic">All (Generalist)</span>}
+                        </span>
+                      )}
                     </td>
                     <td className="p-3 text-right">
-                      <button
-                        onClick={() => {
-                          if (confirm('Remove user from this partner?')) {
-                            removeMutation.mutate({ membershipId: member.membershipId });
-                          }
-                        }}
-                        className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)] hover:line-through"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {member.role !== 'agent' && (
+                          <button
+                            onClick={() => {
+                              setEditingMembershipId(member.membershipId);
+                              setEditDepts((member.departments as string[]) || []);
+                            }}
+                            className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
+                            title="Edit departments"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (confirm('Remove user from this partner?')) {
+                              removeMutation.mutate({ membershipId: member.membershipId });
+                            }
+                          }}
+                          className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)] hover:line-through"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -149,7 +223,10 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const { activeMembershipId, memberships } = useStore();
+  const { activeMembershipId, memberships } = useStoreShallow((s) => ({
+    activeMembershipId: s.activeMembershipId,
+    memberships: s.memberships,
+  }));
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
 
@@ -190,26 +267,28 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
               <option value="support">Support (Handles Tickets)</option>
             </select>
           </div>
-          <div>
-            <label className="mono-label mb-1 block">Departments (Optional)</label>
-            <div className="space-y-2 max-h-40 overflow-y-auto border border-[var(--color-border)] p-2">
-              {departments.map(d => (
-                <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedDepts.includes(d.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
-                      else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
-                    }}
-                    className="w-4 h-4"
-                  />
-                  {d.name}
-                </label>
-              ))}
+          {role !== 'agent' && departments.length > 0 && (
+            <div>
+              <label className="mono-label mb-1 block">Departments (Optional)</label>
+              <div className="space-y-2 max-h-40 overflow-y-auto border border-[var(--color-border)] p-2">
+                {departments.map(d => (
+                  <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedDepts.includes(d.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
+                        else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
+                      }}
+                      className="w-4 h-4"
+                    />
+                    {d.name}
+                  </label>
+                ))}
+              </div>
+              <p className="text-[9px] uppercase text-[var(--color-text-muted)] mt-1">Leave empty to assign to all departments (Generalist).</p>
             </div>
-            <p className="text-[9px] uppercase text-[var(--color-text-muted)] mt-1">Leave empty to assign to all departments (Generalist).</p>
-          </div>
+          )}
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={addMutation.isPending} className="btn-primary flex-1 disabled:opacity-50">
@@ -232,7 +311,10 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   const [tempPassword, setTempPassword] = useState<string | null>(null);
   const [authMethod, setAuthMethod] = useState<'local' | 'sso'>('local');
 
-  const { activeMembershipId, memberships } = useStore();
+  const { activeMembershipId, memberships } = useStoreShallow((s) => ({
+    activeMembershipId: s.activeMembershipId,
+    memberships: s.memberships,
+  }));
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
   const partnerAuthMethod = activeMembership?.manifest?.authMethod;
@@ -347,25 +429,27 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
               </div>
             </div>
           )}
-          <div>
-            <label className="mono-label mb-1 block">Departments (Optional)</label>
-            <div className="space-y-2 max-h-32 overflow-y-auto border border-[var(--color-border)] p-2">
-              {departments.map(d => (
-                <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedDepts.includes(d.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
-                      else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
-                    }}
-                    className="w-4 h-4"
-                  />
-                  {d.name}
-                </label>
-              ))}
+          {role !== 'agent' && departments.length > 0 && (
+            <div>
+              <label className="mono-label mb-1 block">Departments (Optional)</label>
+              <div className="space-y-2 max-h-32 overflow-y-auto border border-[var(--color-border)] p-2">
+                {departments.map(d => (
+                  <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedDepts.includes(d.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
+                        else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
+                      }}
+                      className="w-4 h-4"
+                    />
+                    {d.name}
+                  </label>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
             <button type="submit" disabled={inviteMutation.isPending} className="btn-primary flex-1 disabled:opacity-50">
