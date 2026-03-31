@@ -301,6 +301,8 @@ const en: Record<string, string> = {
     ready_to_help: 'Ready to support',
     select_ticket_hint: 'Select a ticket from the queue and click "Join" to start supporting.',
     preview_mode: 'Preview Mode',
+    waiting_for_expert: 'Waiting for expert',
+    search_messages: 'Search messages\u2026',
     conversation_closed: 'Conversation closed.',
     total_chats: 'total chats',
     no_results: 'No results.',

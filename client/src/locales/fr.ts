@@ -298,6 +298,8 @@ const fr: Record<string, string> = {
     ready_to_help: 'Pr\u00eat \u00e0 supporter',
     select_ticket_hint: 'S\u00e9lectionnez un ticket dans la file et cliquez sur \u00ab\u00a0Rejoindre\u00a0\u00bb pour commencer.',
     preview_mode: 'Aper\u00e7u',
+    waiting_for_expert: 'En attente d\u2019un expert',
+    search_messages: 'Rechercher des messages\u2026',
     conversation_closed: 'Conversation cl\u00f4tur\u00e9e.',
     total_chats: 'chats au total',
     no_results: 'Aucun r\u00e9sultat.',
