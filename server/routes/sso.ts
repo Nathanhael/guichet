@@ -279,7 +279,9 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         logger.info({ userId: newId, oid }, '[SSO] Created new SSO user');
       }
     } else {
-      // Update name/email if changed in Azure
+      // Update name/email if changed in Azure (intentionally NOT updating lang —
+      // the user may have manually switched language via the UI, and we don't
+      // want Azure to overwrite that choice on every login)
       await db.update(users).set({ name, email }).where(eq(users.id, user.id));
     }
 
