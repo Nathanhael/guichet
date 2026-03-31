@@ -209,7 +209,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     }
 
     // Azure-specific claims from the verified payload
-    const claims = payload as jwt.JwtPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string };
+    const claims = payload as jwt.JwtPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string; locale?: string; xms_lang?: string };
 
     // Verify nonce to prevent token replay attacks
     if (claims.nonce !== expectedNonce) {
@@ -219,6 +219,16 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     const oid: string = claims.oid || '';
     const email: string = (claims.email || claims.preferred_username || '').toLowerCase();
     const name: string = claims.name || email;
+
+    // Map Azure locale claim to supported Tessera languages (nl, fr, en)
+    const SUPPORTED_LANGS = ['nl', 'fr', 'en'] as const;
+    type SupportedLang = typeof SUPPORTED_LANGS[number];
+    const rawLang = claims.locale ?? claims.xms_lang;
+    const azureLang: SupportedLang | null = rawLang
+      ? (SUPPORTED_LANGS.includes(rawLang.slice(0, 2).toLowerCase() as SupportedLang)
+          ? (rawLang.slice(0, 2).toLowerCase() as SupportedLang)
+          : null)
+      : null;
 
     if (!oid || !email) {
       logger.error({ hasOid: !!oid, hasEmail: !!email }, '[SSO] Missing oid or email in ID token');
@@ -263,6 +273,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           name,
           externalId: oid,
           password: null,
+          ...(azureLang && { lang: azureLang }),
         });
         user = (await db.select().from(users).where(eq(users.id, newId)).limit(1))[0];
         logger.info({ userId: newId, oid }, '[SSO] Created new SSO user');
