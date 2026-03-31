@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 import { buildAuthResponse, buildAuthToken, parseExpiryToSeconds, setAuthCookie, clearAuthCookie } from './authSession.js';
 
 describe('auth session helpers', () => {
-  it('builds a consistent JWT payload for tenant-scoped sessions', () => {
-    const token = buildAuthToken({
+  it('builds a consistent JWT payload for tenant-scoped sessions', async () => {
+    const token = await buildAuthToken({
       userId: 'user-1',
       role: 'support',
       departments: ['billing'],
@@ -13,7 +13,8 @@ describe('auth session helpers', () => {
       isPlatformOperator: false,
     });
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as Record<string, unknown>;
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+    const { payload: decoded } = await jwtVerify(token, secret);
 
     expect(decoded.userId).toBe('user-1');
     expect(typeof decoded.jti).toBe('string');

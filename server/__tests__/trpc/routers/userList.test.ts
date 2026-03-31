@@ -8,7 +8,7 @@ describe('user.list pagination', () => {
       join(__dirname, '../../../trpc/routers/user.ts'),
       'utf-8'
     );
-    expect(source.toLowerCase()).toMatch(/limit\s+\$/);
+    expect(source).toMatch(/\.limit\(input\.limit\)/);
   });
 
   it('input schema accepts limit and offset params', () => {

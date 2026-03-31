@@ -1,10 +1,12 @@
-import jwt from 'jsonwebtoken';
+import { SignJWT } from 'jose';
 import crypto from 'crypto';
 import type { Response } from 'express';
 import { eq, and, isNull, sql } from 'drizzle-orm';
 import { db } from '../db.js';
 import { memberships, partners, users } from '../db/schema.js';
 import config from '../config.js';
+
+const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 
 export interface SessionMembership {
   id: string;
@@ -41,7 +43,7 @@ export async function listUserMemberships(userId: string): Promise<SessionMember
     ));
 }
 
-export function buildAuthToken(input: {
+export async function buildAuthToken(input: {
   userId: string;
   role: string;
   departments?: unknown[];
@@ -49,10 +51,10 @@ export function buildAuthToken(input: {
   membershipId?: string;
   isPlatformOperator: boolean;
   platformStepUpAt?: number;
-}): string {
+}): Promise<string> {
   const jti = crypto.randomUUID();
-  return jwt.sign(
-    {
+  const expiresIn = config.ACCESS_TOKEN_EXPIRY || '15m';
+  return new SignJWT({
       jti,
       userId: input.userId,
       role: input.role,
@@ -61,10 +63,11 @@ export function buildAuthToken(input: {
       membershipId: input.membershipId,
       isPlatformOperator: input.isPlatformOperator,
       platformStepUpAt: input.platformStepUpAt,
-    },
-    config.JWT_SECRET,
-    { expiresIn: config.ACCESS_TOKEN_EXPIRY } as jwt.SignOptions
-  );
+    })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .sign(jwtSecret);
 }
 
 export function buildAuthResponse(input: {

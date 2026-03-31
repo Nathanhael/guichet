@@ -18,6 +18,6 @@ describe('GDPR purge guard', () => {
       'utf-8'
     );
     // Should check for unarchived tickets via NOT EXISTS
-    expect(source).toMatch(/NOT EXISTS.*archived_tickets/i);
+    expect(source).toMatch(/NOT EXISTS.*archived.?[Tt]ickets/i);
   });
 });

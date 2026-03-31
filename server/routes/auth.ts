@@ -1,7 +1,9 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
 import { z } from 'zod';
-import { get, run } from '../db.js';
+import { db } from '../db.js';
+import { auditLog, partners, memberships, users } from '../db/schema.js';
+import { eq, and, isNull } from 'drizzle-orm';
 import { validateBody } from '../middleware/validator.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
@@ -15,10 +17,6 @@ import { canAccessPartnerContext, isPlatformAdmin } from '../services/roles.js';
 import { revokeToken, revokeUserSessions } from '../services/sessionRevocation.js';
 import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
 import { createRefreshToken, rotateRefreshToken, revokeAllUserRefreshTokens } from '../services/refreshToken.js';
-
-import { auditLog, partners, memberships, users } from '../db/schema.js';
-import { eq, and, isNull } from 'drizzle-orm';
-import { db } from '../db.js';
 
 const router = express.Router();
 logger.info('[Auth] Routes file loaded');
@@ -441,9 +439,9 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
         // where a different concurrent request locked the account between our initial check and
         // password verification. The atomic SQL in recordFailedLogin is the primary protection;
         // this is a genuine belt-and-suspenders guard.
-        const freshUser = await get('SELECT locked_until FROM users WHERE id = $1', [user.id]) as { locked_until: string | null } | undefined;
+        const [freshUser] = await db.select({ lockedUntil: users.lockedUntil }).from(users).where(eq(users.id, user.id)).limit(1);
         if (freshUser) {
-            const lockoutAfterPw = checkLockout({ lockedUntil: freshUser.locked_until });
+            const lockoutAfterPw = checkLockout({ lockedUntil: freshUser.lockedUntil });
             if (lockoutAfterPw.locked) {
                 const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
                 return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
@@ -498,7 +496,7 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
         const activeMemberships = userMemberships.filter(m => m.status === 'active');
         const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
 
-        const token = buildAuthToken({
+        const token = await buildAuthToken({
             userId: user.id,
             role: defaultMembership?.role || 'agent',
             departments: (defaultMembership?.departments as unknown[]) || [],
@@ -597,9 +595,9 @@ router.post('/login', loginRateLimit, validateBody(z.object({
         }
 
         // ME-02 fix: Re-check lockout with fresh DB fetch (see login-local route for detailed explanation).
-        const freshUser = await get('SELECT locked_until FROM users WHERE id = $1', [user.id]) as { locked_until: string | null } | undefined;
+        const [freshUser] = await db.select({ lockedUntil: users.lockedUntil }).from(users).where(eq(users.id, user.id)).limit(1);
         if (freshUser) {
-            const lockoutAfterPw = checkLockout({ lockedUntil: freshUser.locked_until });
+            const lockoutAfterPw = checkLockout({ lockedUntil: freshUser.lockedUntil });
             if (lockoutAfterPw.locked) {
                 const retryMins = Math.ceil((lockoutAfterPw.retryAfterMs || 0) / 60000);
                 return res.status(423).json({ error: `Account locked. Try again in ${retryMins} minute(s).` });
@@ -651,7 +649,7 @@ router.post('/login', loginRateLimit, validateBody(z.object({
         const activeMemberships = userMemberships.filter(m => m.status === 'active');
         const defaultMembership = activeMemberships.length > 0 ? activeMemberships[0] : null;
 
-        const token = buildAuthToken({
+        const token = await buildAuthToken({
             userId: user.id,
             role: defaultMembership?.role || 'agent',
             departments: (defaultMembership?.departments as unknown[]) || [],
@@ -746,7 +744,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
             ? isPlatformStepUpSatisfied(req.user.platformStepUpAt)
             : false;
 
-        const token = buildAuthToken({
+        const token = await buildAuthToken({
             userId,
             role: membership.role,
             departments: (membership.departments as unknown[]) || [],
@@ -833,7 +831,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
 
         // Platform operators without partner memberships can still operate
         if (!membership && refreshUser.isPlatformOperator) {
-            const token = buildAuthToken({
+            const token = await buildAuthToken({
                 userId: refreshUser.id,
                 role: 'platform_operator',
                 departments: [],
@@ -854,7 +852,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'No active memberships' });
         }
 
-        const token = buildAuthToken({
+        const token = await buildAuthToken({
             userId: refreshUser.id,
             role: membership.role,
             departments: (membership.departments as unknown[]) || [],
@@ -952,7 +950,7 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
             return res.status(403).json({ error: 'Partner access denied' });
         }
 
-        const token = buildAuthToken({
+        const token = await buildAuthToken({
             userId,
             role: 'admin',
             departments: [],

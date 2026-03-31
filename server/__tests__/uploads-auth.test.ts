@@ -7,8 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(path.join(__dirname, '../app.ts'), 'utf-8');
 
 describe('SEC-6: /uploads route authentication guard', () => {
-  it('should import jsonwebtoken in app.ts', () => {
-    expect(appSource).toMatch(/import jwt from ['"]jsonwebtoken['"]/);
+  it('should import jwtVerify from jose in app.ts', () => {
+    expect(appSource).toMatch(/import\s*\{[^}]*jwtVerify[^}]*\}\s*from\s*['"]jose['"]/);
   });
 
   it('should have a JWT cookie check middleware before express.static for /uploads', () => {
@@ -23,8 +23,8 @@ describe('SEC-6: /uploads route authentication guard', () => {
     // Must check tessera_token cookie
     expect(block).toContain('tessera_token');
 
-    // Must call jwt.verify
-    expect(block).toMatch(/jwt\.verify\(/);
+    // Must call jwtVerify
+    expect(block).toMatch(/jwtVerify\(/);
 
     // Must respond 401 when no token
     expect(block).toContain('401');
@@ -40,6 +40,6 @@ describe('SEC-6: /uploads route authentication guard', () => {
   });
 
   it('should use config.JWT_SECRET for verification', () => {
-    expect(appSource).toMatch(/jwt\.verify\(token,\s*config\.JWT_SECRET\)/);
+    expect(appSource).toMatch(/jwtVerify\(token,\s*new TextEncoder/);
   });
 });

@@ -1,11 +1,11 @@
-import { query, run, transaction, db } from '../db.js';
-import { sql, inArray } from 'drizzle-orm';
+import { db } from '../db.js';
+import { sql, inArray, and, eq, lt, gte } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
-import { ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable, dailyAiUsage } from '../db/schema.js';
+import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets } from '../db/schema.js';
 
 export async function runDailyPurge() {
   // Step 0: Archive before purging (uses AUDIT_ARCHIVE_DELAY_DAYS, default 2 days)
@@ -36,13 +36,12 @@ export async function runDailyPurge() {
     // The old guard relied on the archiveTickets return value being non-zero, which
     // is false on day 2+ when tickets were already archived in a prior run — causing
     // all subsequent purge runs to be silently skipped and GDPR data retained indefinitely.
-    const unarchivedRows = await query(
-      `SELECT COUNT(*)::int as count FROM tickets t
-       WHERE t.created_at < $1 AND t.status = 'closed'
-       AND NOT EXISTS (SELECT 1 FROM archived_tickets a WHERE a.id = t.id)`,
-      [cutoff.toISOString()]
-    ) as { count: number }[];
-    const unarchivedCount = unarchivedRows[0]?.count ?? 0;
+    const unarchivedRows = await db.execute(sql`
+      SELECT COUNT(*)::int as count FROM ${tickets}
+      WHERE ${tickets.createdAt} < ${cutoff.toISOString()} AND ${tickets.status} = 'closed'
+      AND NOT EXISTS (SELECT 1 FROM ${archivedTickets} WHERE ${archivedTickets.id} = ${tickets.id})
+    `);
+    const unarchivedCount = (unarchivedRows as unknown as { count: number }[])[0]?.count ?? 0;
 
     if (unarchivedCount > 0) {
       logger.warn({ unarchivedCount }, '[purge] Unarchived closed tickets exist — archiving first');
@@ -55,17 +54,16 @@ export async function runDailyPurge() {
     const windowEnd = cutoffDate;
     const windowStart = '1970-01-01'; // aggregate everything older than cutoff
 
-    const allTickets = (await query(
-      `SELECT id, partner_id, dept, agent_id, support_id, status, created_at, updated_at,
-              closed_at, closing_notes, closed_by, participants, reopened, reopen_count,
-              sla_response_due_at, sla_resolution_due_at, sla_breached,
-              agent_name, agent_lang, support_name, support_lang, support_joined_at, "references"
-       FROM tickets
-       WHERE created_at >= $1 AND created_at < $2
-         AND status = 'closed'
-       ORDER BY partner_id, created_at`,
-      [windowStart, windowEnd]
-    )) as unknown as Ticket[];
+    const allTickets = (await db
+      .select()
+      .from(tickets)
+      .where(and(
+        gte(tickets.createdAt, windowStart),
+        lt(tickets.createdAt, windowEnd),
+        eq(tickets.status, 'closed'),
+      ))
+      .orderBy(tickets.partnerId, tickets.createdAt)
+    ) as unknown as Ticket[];
 
     if (allTickets.length > 0) {
       const allTicketIds = allTickets.map(t => t.id);
@@ -89,7 +87,6 @@ export async function runDailyPurge() {
       }
 
       // Group tickets by (date, partner_id) — single in-memory pass
-      // query() auto-converts snake_case → camelCase, so partner_id becomes partnerId at runtime
       type TicketWithPartner = Ticket & { partnerId: string };
       type DayPartnerKey = string; // "YYYY-MM-DD|partnerId"
       const grouped = new Map<DayPartnerKey, { date: string; partnerId: string; tickets: TicketWithPartner[] }>();
@@ -109,41 +106,36 @@ export async function runDailyPurge() {
 
         const stats = computeLiveDayStats(dayTickets, dayRatings, 'all', dayMessages);
 
-        await run(
-          `INSERT INTO daily_stats
-          (date, partner_id, total, closed, abandoned, reopened, "avg_response_ms", "avg_duration_ms", "avg_rating", "rating_count", "sla_resolved", "sla_compliant", "p95_response_ms", "sentiment_sum", "sentiment_count", "dept_counts", "ratings_by_dept", hourly)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
-          ON CONFLICT (date, partner_id) DO UPDATE SET
-            total = EXCLUDED.total,
-            closed = EXCLUDED.closed,
-            abandoned = EXCLUDED.abandoned,
-            reopened = EXCLUDED.reopened,
-            "avg_response_ms" = EXCLUDED."avg_response_ms",
-            "avg_duration_ms" = EXCLUDED."avg_duration_ms",
-            "avg_rating" = EXCLUDED."avg_rating",
-            "rating_count" = EXCLUDED."rating_count",
-            "sla_resolved" = EXCLUDED."sla_resolved",
-            "sla_compliant" = EXCLUDED."sla_compliant",
-            "p95_response_ms" = EXCLUDED."p95_response_ms",
-            "sentiment_sum" = EXCLUDED."sentiment_sum",
-            "sentiment_count" = EXCLUDED."sentiment_count",
-            "dept_counts" = EXCLUDED."dept_counts",
-            "ratings_by_dept" = EXCLUDED."ratings_by_dept",
-            hourly = EXCLUDED.hourly`,
-          [
-            date, partnerId, stats.total, stats.closed, stats.abandoned, stats.reopened,
-            stats.responseCount > 0 ? Math.round(stats.responseSum / stats.responseCount) : 0,
-            stats.durationCount > 0 ? Math.round(stats.durationSum / stats.durationCount) : 0,
-            stats.ratingCount > 0 ? Math.round((stats.ratingSum / stats.ratingCount) * 10) / 10 : null,
-            stats.ratingCount, stats.slaResolved, stats.slaCompliant,
-            stats.p95ResponseMs, stats.sentimentSum, stats.sentimentCount,
-            JSON.stringify(stats.deptCounts), JSON.stringify(stats.ratingsByDept), JSON.stringify(stats.hourly)
-          ]
-        );
+        const avgResponseMs = stats.responseCount > 0 ? Math.round(stats.responseSum / stats.responseCount) : 0;
+        const avgDurationMs = stats.durationCount > 0 ? Math.round(stats.durationSum / stats.durationCount) : 0;
+        const avgRating = stats.ratingCount > 0 ? Math.round((stats.ratingSum / stats.ratingCount) * 10) / 10 : null;
+
+        const row = {
+          date, partnerId,
+          total: stats.total, closed: stats.closed, abandoned: stats.abandoned, reopened: stats.reopened,
+          avgResponseMs, avgDurationMs, avgRating,
+          ratingCount: stats.ratingCount, slaResolved: stats.slaResolved, slaCompliant: stats.slaCompliant,
+          p95ResponseMs: stats.p95ResponseMs, sentimentSum: stats.sentimentSum, sentimentCount: stats.sentimentCount,
+          deptCounts: stats.deptCounts, ratingsByDept: stats.ratingsByDept, hourly: stats.hourly,
+        };
+
+        await db.insert(dailyStats).values(row).onConflictDoUpdate({
+          target: [dailyStats.date, dailyStats.partnerId],
+          set: {
+            total: sql`EXCLUDED.total`, closed: sql`EXCLUDED.closed`,
+            abandoned: sql`EXCLUDED.abandoned`, reopened: sql`EXCLUDED.reopened`,
+            avgResponseMs: sql`EXCLUDED.avg_response_ms`, avgDurationMs: sql`EXCLUDED.avg_duration_ms`,
+            avgRating: sql`EXCLUDED.avg_rating`, ratingCount: sql`EXCLUDED.rating_count`,
+            slaResolved: sql`EXCLUDED.sla_resolved`, slaCompliant: sql`EXCLUDED.sla_compliant`,
+            p95ResponseMs: sql`EXCLUDED.p95_response_ms`, sentimentSum: sql`EXCLUDED.sentiment_sum`,
+            sentimentCount: sql`EXCLUDED.sentiment_count`, deptCounts: sql`EXCLUDED.dept_counts`,
+            ratingsByDept: sql`EXCLUDED.ratings_by_dept`, hourly: sql`EXCLUDED.hourly`,
+          },
+        });
       }
     }
 
-    await transaction(async (tx) => {
+    await db.transaction(async (tx) => {
       // Only delete tickets that are closed (and thus have been archived above).
       // Open/pending tickets are never purged to prevent data loss.
       await tx.execute(sql`DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
@@ -215,10 +207,10 @@ export async function aggregateAndPurgeAiUsage(): Promise<number> {
 
   // ME-04 fix: Wrap aggregate + delete in a transaction to prevent data loss on crash
   let purgedCount = 0;
-  await transaction(async () => {
+  await db.transaction(async (tx) => {
     // Step 1: Aggregate into daily_ai_usage (upsert to be idempotent)
-    await run(`
-      INSERT INTO daily_ai_usage
+    await tx.execute(sql`
+      INSERT INTO ${dailyAiUsage}
         (id, date, partner_id, action, provider, model,
          total_input_tokens, total_output_tokens, total_requests,
          success_count, error_count, avg_latency_ms)
@@ -237,29 +229,28 @@ export async function aggregateAndPurgeAiUsage(): Promise<number> {
         CASE WHEN COUNT(*) FILTER (WHERE latency_ms IS NOT NULL) > 0
              THEN (SUM(latency_ms) / COUNT(*) FILTER (WHERE latency_ms IS NOT NULL))::int
              ELSE NULL END
-      FROM ai_usage_log
-      WHERE created_at < $1
+      FROM ${aiUsageLog}
+      WHERE ${aiUsageLog.createdAt} < ${cutoffDate}
       GROUP BY created_at::date::text, partner_id, action, provider, model
       ON CONFLICT (date, partner_id, action, provider, model) DO UPDATE SET
-        total_input_tokens  = daily_ai_usage.total_input_tokens  + EXCLUDED.total_input_tokens,
-        total_output_tokens = daily_ai_usage.total_output_tokens + EXCLUDED.total_output_tokens,
-        total_requests      = daily_ai_usage.total_requests      + EXCLUDED.total_requests,
-        success_count       = daily_ai_usage.success_count       + EXCLUDED.success_count,
-        error_count         = daily_ai_usage.error_count         + EXCLUDED.error_count,
+        total_input_tokens  = ${dailyAiUsage}.total_input_tokens  + EXCLUDED.total_input_tokens,
+        total_output_tokens = ${dailyAiUsage}.total_output_tokens + EXCLUDED.total_output_tokens,
+        total_requests      = ${dailyAiUsage}.total_requests      + EXCLUDED.total_requests,
+        success_count       = ${dailyAiUsage}.success_count       + EXCLUDED.success_count,
+        error_count         = ${dailyAiUsage}.error_count         + EXCLUDED.error_count,
         avg_latency_ms      = CASE
-          WHEN (daily_ai_usage.total_requests + EXCLUDED.total_requests) > 0
-          THEN ((COALESCE(daily_ai_usage.avg_latency_ms, 0) * daily_ai_usage.total_requests
+          WHEN (${dailyAiUsage}.total_requests + EXCLUDED.total_requests) > 0
+          THEN ((COALESCE(${dailyAiUsage}.avg_latency_ms, 0) * ${dailyAiUsage}.total_requests
                + COALESCE(EXCLUDED.avg_latency_ms, 0) * EXCLUDED.total_requests)
-               / (daily_ai_usage.total_requests + EXCLUDED.total_requests))::int
+               / (${dailyAiUsage}.total_requests + EXCLUDED.total_requests))::int
           ELSE NULL END
-    `, [cutoffDate]);
+    `);
 
     // Step 2: Delete the now-aggregated source rows (same transaction)
-    const result = await run(
-      `DELETE FROM ai_usage_log WHERE created_at < $1`,
-      [cutoffDate]
-    );
-    purgedCount = result.changes ?? 0;
+    const result = await tx.execute(sql`
+      DELETE FROM ${aiUsageLog} WHERE ${aiUsageLog.createdAt} < ${cutoffDate}
+    `);
+    purgedCount = (result as unknown as { rowCount?: number }).rowCount ?? 0;
   });
 
   return purgedCount;

@@ -1,12 +1,11 @@
 import { router, platformProcedure, publicProcedure, protectedProcedure } from '../trpc.js';
 import config from '../../config.js';
-import { query } from '../../db.js';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { revokeUserSessions } from '../../services/sessionRevocation.js';
 import { db } from '../../db.js';
-import { auditLog, users } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { auditLog, users, memberships } from '../../db/schema.js';
+import { eq, and, isNull, desc, asc, sql, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { verifyPassword, hashPassword, validatePasswordStrength, isPasswordReused, PASSWORD_HISTORY_LIMIT } from '../../utils/passwords.js';
 import logger from '../../utils/logger.js';
@@ -19,20 +18,26 @@ export const userRouter = router({
     }).default({ limit: 100, offset: 0 }))
     .query(async ({ input }) => {
       try {
-        const userRows = await query(`
-          SELECT id, name, lang, is_platform_operator,
-            (SELECT json_agg(DISTINCT role) FROM memberships WHERE user_id = users.id) as roles
-          FROM users
-          WHERE deleted_at IS NULL
-          ORDER BY is_platform_operator DESC, name ASC
-          LIMIT $1 OFFSET $2
-        `, [input.limit, input.offset]);
+        const userRows = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            lang: users.lang,
+            isPlatformOperator: users.isPlatformOperator,
+            roles: sql<string[]>`(SELECT json_agg(DISTINCT ${memberships.role}) FROM ${memberships} WHERE ${memberships.userId} = ${users.id})`,
+          })
+          .from(users)
+          .where(isNull(users.deletedAt))
+          .orderBy(desc(users.isPlatformOperator), asc(users.name))
+          .limit(input.limit)
+          .offset(input.offset);
 
-        const countRows = await query(
-          `SELECT COUNT(*)::int as total FROM users WHERE deleted_at IS NULL`
-        );
+        const [{ total }] = await db
+          .select({ total: count() })
+          .from(users)
+          .where(isNull(users.deletedAt));
 
-        return { users: userRows, total: (countRows[0] as Record<string, unknown>)?.total ?? 0 };
+        return { users: userRows, total };
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
         if (err instanceof TRPCError) throw err;
@@ -48,14 +53,16 @@ export const userRouter = router({
       }
       try {
         // IM-04: Only return minimum fields for demo login UI — no privilege exposure
-        const users = await query(`
-          SELECT id, name,
-            (SELECT role FROM memberships WHERE user_id = users.id LIMIT 1) as role
-          FROM users
-          WHERE deleted_at IS NULL
-          ORDER BY name ASC
-        `);
-        return users;
+        const demoUsers = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            role: sql<string>`(SELECT ${memberships.role} FROM ${memberships} WHERE ${memberships.userId} = ${users.id} LIMIT 1)`,
+          })
+          .from(users)
+          .where(isNull(users.deletedAt))
+          .orderBy(asc(users.name));
+        return demoUsers;
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
         if (err instanceof TRPCError) throw err;
@@ -71,10 +78,11 @@ export const userRouter = router({
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
       }
       try {
-        const rows = await query(
-          `SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1`,
-          [input.email]
-        );
+        const rows = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(and(eq(users.email, input.email), isNull(users.deletedAt)))
+          .limit(1);
         if (!rows || rows.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Demo user not found' });
         }

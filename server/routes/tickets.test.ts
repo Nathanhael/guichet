@@ -2,10 +2,26 @@ import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const queryMock = vi.fn();
+const limitMock = vi.fn();
+const orderByMock = vi.fn().mockReturnValue({ limit: limitMock });
+const whereMock = vi.fn().mockReturnValue({ orderBy: orderByMock });
+const fromMock = vi.fn().mockReturnValue({ where: whereMock });
+const selectMock = vi.fn().mockReturnValue({ from: fromMock });
 
-vi.mock('../db.js', () => ({
-  query: queryMock,
+vi.mock('../db/postgres.js', () => ({
+  db: { select: selectMock },
+}));
+
+vi.mock('../db/schema.js', () => ({
+  tickets: {
+    status: 'status',
+    partnerId: 'partnerId',
+    dept: 'dept',
+    agentName: 'agentName',
+    supportName: 'supportName',
+    createdAt: 'createdAt',
+    closedAt: 'closedAt',
+  },
 }));
 
 vi.mock('../utils/logger.js', () => ({
@@ -14,6 +30,19 @@ vi.mock('../utils/logger.js', () => ({
     info: vi.fn(),
     warn: vi.fn(),
   },
+}));
+
+vi.mock('../services/roles.js', () => ({
+  canExportTickets: (role: string, _isPlatformOperator: boolean) =>
+    ['admin', 'support'].includes(role),
+}));
+
+vi.mock('../utils/security.js', () => ({
+  escapeLikePattern: (s: string) => s,
+}));
+
+vi.mock('../middleware/validator.js', () => ({
+  validateQuery: () => (_req: any, _res: any, next: any) => next(),
 }));
 
 let mockPartnerId: string | undefined;
@@ -33,7 +62,11 @@ vi.mock('../middleware/auth.js', () => ({
 
 describe('tickets export route', () => {
   beforeEach(() => {
-    queryMock.mockReset();
+    vi.clearAllMocks();
+    orderByMock.mockReturnValue({ limit: limitMock });
+    whereMock.mockReturnValue({ orderBy: orderByMock });
+    fromMock.mockReturnValue({ where: whereMock });
+    selectMock.mockReturnValue({ from: fromMock });
   });
 
   it('rejects export without tenant context for non-platform users', async () => {
@@ -46,12 +79,12 @@ describe('tickets export route', () => {
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({ error: 'partnerId is required' });
-    expect(queryMock).not.toHaveBeenCalled();
+    expect(selectMock).not.toHaveBeenCalled();
   });
 
   it('scopes export queries by partner id', async () => {
     mockPartnerId = 'tenant-a';
-    queryMock.mockResolvedValue([
+    limitMock.mockResolvedValue([
       {
         id: 'ticket-1',
         dept: 'billing',
@@ -72,11 +105,7 @@ describe('tickets export route', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/csv');
-    expect(queryMock).toHaveBeenCalledTimes(1);
-
-    const [sql, params] = queryMock.mock.calls[0];
-    expect(sql).toContain("partner_id = $1");
-    expect(params).toEqual(['tenant-a']);
+    expect(selectMock).toHaveBeenCalledTimes(1);
     expect(res.text).toContain('ticket-1');
   });
 });

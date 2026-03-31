@@ -1,7 +1,9 @@
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { Server } from 'socket.io';
 import config from '../config.js';
-import { query } from '../db.js';
+import { db } from '../db.js';
+import { tickets } from '../db/schema.js';
+import { eq, ne, and, isNull, asc } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 
 let io: Server | null = null;
@@ -292,7 +294,7 @@ export function isWithinBusinessHours(partner?: {
 export async function broadcastAgentStatus(agentId: string, online: boolean) {
   try {
     if (!io) return;
-    const openTickets = await query('SELECT id FROM tickets WHERE agent_id = $1 AND status != $2', [agentId, 'closed']) as { id: string }[];
+    const openTickets = await db.select({ id: tickets.id }).from(tickets).where(and(eq(tickets.agentId, agentId), ne(tickets.status, 'closed')));
     for (const ticket of openTickets) io.to(`ticket:${ticket.id}`).emit('agent:status', { ticketId: ticket.id, agentId, online });
   } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[agent:status] error'); }
 }
@@ -303,12 +305,12 @@ export async function broadcastQueuePositions(partnerId?: string) {
     let openTickets: { id: string }[];
     if (partnerId) {
       // Scoped: only broadcast within a single partner
-      openTickets = await query('SELECT id FROM tickets WHERE status = $1 AND support_id IS NULL AND partner_id = $2 ORDER BY created_at ASC', ['open', partnerId]) as { id: string }[];
+      openTickets = await db.select({ id: tickets.id }).from(tickets).where(and(eq(tickets.status, 'open'), isNull(tickets.supportId), eq(tickets.partnerId, partnerId))).orderBy(asc(tickets.createdAt));
     } else {
       // Fallback: broadcast per-partner to avoid cross-tenant leakage
-      const partnerIds = await query('SELECT DISTINCT partner_id FROM tickets WHERE status = $1 AND support_id IS NULL', ['open']) as { partner_id: string }[];
-      for (const p of partnerIds) {
-        await broadcastQueuePositions(p.partner_id);
+      const partnerRows = await db.selectDistinct({ partnerId: tickets.partnerId }).from(tickets).where(and(eq(tickets.status, 'open'), isNull(tickets.supportId)));
+      for (const p of partnerRows) {
+        await broadcastQueuePositions(p.partnerId);
       }
       return;
     }

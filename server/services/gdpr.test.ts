@@ -2,27 +2,38 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // --- Mocks ---
 
-const queryMock = vi.fn();
-const runMock = vi.fn();
-const transactionMock = vi.fn();
-const insertValuesMock = vi.fn();
+const executeMock = vi.fn();
+const insertOnConflictMock = vi.fn();
+const insertValuesMock = vi.fn(() => ({ onConflictDoUpdate: insertOnConflictMock }));
 
-const selectWhereMock = vi.fn(async () => []);
+// Track the orderBy mock separately so tests can set return values
+const orderByMock = vi.fn(async () => []);
+
+// Each db.select() call creates a fresh chain. The `where` result has an
+// optional `.orderBy` (used by the ticket query) — when absent the `where`
+// itself is awaited (ratings/messages queries).
+function makeSelectChain() {
+  const whereMock = vi.fn((..._args: unknown[]) => {
+    // Return a thenable that also exposes `.orderBy`
+    const p = Promise.resolve([]);
+    (p as unknown as Record<string, unknown>).orderBy = orderByMock;
+    return p;
+  });
+  return {
+    from: vi.fn(() => ({ where: whereMock })),
+  };
+}
+
 const dbMock = {
+  execute: executeMock,
   insert: vi.fn(() => ({
     values: insertValuesMock,
   })),
-  select: vi.fn(() => ({
-    from: vi.fn(() => ({
-      where: selectWhereMock,
-    })),
-  })),
+  select: vi.fn(() => makeSelectChain()),
+  transaction: vi.fn(),
 };
 
 vi.mock('../db.js', () => ({
-  query: queryMock,
-  run: runMock,
-  transaction: transactionMock,
   db: dbMock,
 }));
 
@@ -42,6 +53,18 @@ vi.mock('../utils/logger.js', () => ({
   },
 }));
 
+vi.mock('drizzle-orm', () => ({
+  sql: Object.assign(
+    (strings: TemplateStringsArray, ...values: unknown[]) => ({ strings, values, _tag: 'sql' }),
+    { raw: (s: string) => s }
+  ),
+  inArray: vi.fn(),
+  and: vi.fn((...args: unknown[]) => args),
+  eq: vi.fn((a: unknown, b: unknown) => ({ op: 'eq', a, b })),
+  lt: vi.fn((a: unknown, b: unknown) => ({ op: 'lt', a, b })),
+  gte: vi.fn((a: unknown, b: unknown) => ({ op: 'gte', a, b })),
+}));
+
 const archiveAuditLogMock = vi.fn();
 const archiveTicketsMock = vi.fn();
 const verifyAuditChainMock = vi.fn();
@@ -59,10 +82,15 @@ vi.mock('./stats.js', () => ({
 }));
 
 vi.mock('../db/schema.js', () => ({
+  tickets: { id: 'id', partnerId: 'partner_id', status: 'status', createdAt: 'created_at' },
+  archivedTickets: { id: 'id' },
   auditLog: 'audit_log_table',
   ratings: { ticketId: 'ticket_id' },
   messages: { ticketId: 'ticket_id' },
-  dailyAiUsage: 'daily_ai_usage_table',
+  dailyStats: { date: 'date', partnerId: 'partner_id' },
+  dailyAiUsage: { totalRequests: 'total_requests', avgLatencyMs: 'avg_latency_ms', totalInputTokens: 'total_input_tokens', totalOutputTokens: 'total_output_tokens', successCount: 'success_count', errorCount: 'error_count' },
+  aiUsageLog: { createdAt: 'created_at' },
+  appFeedback: 'app_feedback_table',
 }));
 
 // --- Helpers ---
@@ -91,37 +119,44 @@ function makeFakeStats(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/** Set up default mocks for a purge run with no tickets to aggregate */
+function setupEmptyPurge() {
+  // db.execute for unarchived count check
+  executeMock.mockResolvedValueOnce([{ count: 0 }]);
+  // db.select().from(tickets).where().orderBy() for bulk ticket fetch
+  orderByMock.mockResolvedValueOnce([]);
+}
+
+/** Set up mocks for a purge with tickets */
+function setupPurgeWithTickets(ticketRows: unknown[]) {
+  executeMock.mockResolvedValueOnce([{ count: 0 }]);
+  orderByMock.mockResolvedValueOnce(ticketRows);
+  // ratings and messages queries return empty via where() default (Promise.resolve([]))
+}
+
 describe('runDailyPurge', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    queryMock.mockReset();
-    runMock.mockReset();
-    transactionMock.mockReset();
-    insertValuesMock.mockReset();
-    archiveAuditLogMock.mockReset();
-    archiveTicketsMock.mockReset();
-    verifyAuditChainMock.mockReset();
-    computeLiveDayStatsMock.mockReset();
 
-    // Defaults: archive returns 0, chain verification passes, transaction executes callback
+    // Defaults: archive returns 0, chain verification passes
     archiveAuditLogMock.mockResolvedValue(0);
     archiveTicketsMock.mockResolvedValue(0);
     verifyAuditChainMock.mockResolvedValue({ valid: true, checked: 0 });
-    transactionMock.mockImplementation(async (cb: (tx: { execute: ReturnType<typeof vi.fn> }) => Promise<void>) => {
+
+    // db.transaction executes callback with a tx mock
+    dbMock.transaction.mockImplementation(async (cb: (tx: { execute: ReturnType<typeof vi.fn> }) => Promise<void>) => {
       const tx = { execute: vi.fn().mockResolvedValue({ rowCount: 0 }) };
       await cb(tx);
     });
-    insertValuesMock.mockResolvedValue(undefined);
-    runMock.mockResolvedValue({ changes: 0 });
+
+    insertOnConflictMock.mockResolvedValue(undefined);
+    insertValuesMock.mockReturnValue({ onConflictDoUpdate: insertOnConflictMock });
   });
 
   it('archives audit log and tickets before deleting', async () => {
     archiveAuditLogMock.mockResolvedValue(10);
     archiveTicketsMock.mockResolvedValue(5);
-    // Count query for guard check (no closed tickets to worry about)
-    queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // Bulk ticket query returns empty (nothing to aggregate)
-    queryMock.mockResolvedValueOnce([]);
+    setupEmptyPurge();
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
@@ -131,59 +166,44 @@ describe('runDailyPurge', () => {
 
     // Archive is called before transaction (delete)
     const archiveOrder = archiveAuditLogMock.mock.invocationCallOrder[0];
-    const txOrder = transactionMock.mock.invocationCallOrder[0];
+    const txOrder = dbMock.transaction.mock.invocationCallOrder[0];
     expect(archiveOrder).toBeLessThan(txOrder);
   });
 
   it('deletes tickets and messages older than retention window', async () => {
-    // Count query for guard check (no closed tickets)
-    queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // No dates to aggregate
-    queryMock.mockResolvedValueOnce([]);
+    setupEmptyPurge();
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
 
     // Transaction called twice: main GDPR purge + AI usage aggregate+purge
-    expect(transactionMock).toHaveBeenCalledTimes(2);
+    expect(dbMock.transaction).toHaveBeenCalledTimes(2);
 
     // Verify the first transaction callback (GDPR purge) executes DELETEs
-    const txCallback = transactionMock.mock.calls[0][0];
+    const txCallback = dbMock.transaction.mock.calls[0][0];
     const txMock = { execute: vi.fn().mockResolvedValue({ rowCount: 0 }) };
     await txCallback(txMock);
     expect(txMock.execute).toHaveBeenCalledTimes(7); // messages, ratings, ticket_labels, app_feedback, tickets + audit_log anonymize + audit_archive anonymize
   });
 
   it('does NOT delete tickets within the retention window', async () => {
-    // The cutoff is based on config.GDPR_RETENTION_DAYS (30).
-    // The function deletes WHERE created_at < cutoffDate.
-    // Tickets created today (within 30 days) should NOT match.
-    // We verify the cutoff date is ~30 days ago.
-    // Count query for guard check (no closed tickets)
-    queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    queryMock.mockResolvedValueOnce([]);
+    setupEmptyPurge();
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
 
     // The transaction is called twice: once for main GDPR purge, once for AI usage aggregate+purge
-    expect(transactionMock).toHaveBeenCalledTimes(2);
-    // The cutoff is embedded in the SQL template literal via drizzle's sql`...`
-    // We trust drizzle builds the correct query; the key is that config.GDPR_RETENTION_DAYS = 30
-    // and the cutoff is computed as today - 30 days.
+    expect(dbMock.transaction).toHaveBeenCalledTimes(2);
   });
 
   it('per-partner aggregation produces correct daily_stats rows', async () => {
     const stats = makeFakeStats();
     computeLiveDayStatsMock.mockReturnValue(stats);
-    // Archival succeeded
     archiveTicketsMock.mockResolvedValue(1);
 
-    // Count query for guard check
-    queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // Single bulk query: all tickets in window grouped by (date, partner_id)
-    queryMock.mockResolvedValueOnce([{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }]);
-    // Ratings and messages are fetched via db.select() (mocked via selectWhereMock → [])
+    setupPurgeWithTickets([
+      { id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' },
+    ]);
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
@@ -196,16 +216,16 @@ describe('runDailyPurge', () => {
       []
     );
 
-    // Verify INSERT INTO daily_stats was called via run()
-    const dailyStatsRuns = runMock.mock.calls.filter((c: unknown[]) => (c[0] as string).includes('daily_stats'));
-    expect(dailyStatsRuns).toHaveLength(1);
-    const runArgs = dailyStatsRuns[0];
-    expect(runArgs[0]).toContain('INSERT INTO daily_stats');
-    // Check the values array includes date and partnerId
-    expect(runArgs[1][0]).toBe('2026-02-01');
-    expect(runArgs[1][1]).toBe('partner-A');
-    expect(runArgs[1][2]).toBe(stats.total);
-    expect(runArgs[1][3]).toBe(stats.closed);
+    // Verify INSERT INTO daily_stats was called via db.insert()
+    expect(dbMock.insert).toHaveBeenCalled();
+    expect(insertValuesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        date: '2026-02-01',
+        partnerId: 'partner-A',
+        total: stats.total,
+        closed: stats.closed,
+      })
+    );
   });
 
   it('purge of one partner does not affect another partner (multi-tenant isolation)', async () => {
@@ -214,18 +234,13 @@ describe('runDailyPurge', () => {
     computeLiveDayStatsMock
       .mockReturnValueOnce(statsA)
       .mockReturnValueOnce(statsB);
-    // Archival succeeded
     archiveTicketsMock.mockResolvedValue(2);
 
-    // Count query for guard check
-    queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // Single bulk query: all tickets for both partners in window
-    queryMock.mockResolvedValueOnce([
+    setupPurgeWithTickets([
       { id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' },
       { id: 't2', partnerId: 'partner-B', createdAt: '2026-02-01T11:00:00.000Z', status: 'closed' },
       { id: 't3', partnerId: 'partner-B', createdAt: '2026-02-01T12:00:00.000Z', status: 'closed' },
     ]);
-    // Ratings and messages are fetched via db.select() (mocked via selectWhereMock → [])
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
@@ -243,33 +258,29 @@ describe('runDailyPurge', () => {
       { id: 't3', partnerId: 'partner-B', createdAt: '2026-02-01T12:00:00.000Z', status: 'closed' },
     ]);
 
-    // run() called once per partner for INSERT INTO daily_stats (plus 2 for AI usage purge)
-    const dailyStatsRuns = runMock.mock.calls.filter((c: unknown[]) => (c[0] as string).includes('daily_stats'));
-    expect(dailyStatsRuns).toHaveLength(2);
-    expect(dailyStatsRuns[0][1][1]).toBe('partner-A');
-    expect(dailyStatsRuns[0][1][2]).toBe(3); // statsA.total
-    expect(dailyStatsRuns[1][1][1]).toBe('partner-B');
-    expect(dailyStatsRuns[1][1][2]).toBe(7); // statsB.total
+    // db.insert called for each partner's daily_stats (+ 1 for audit log entry)
+    const insertCalls = insertValuesMock.mock.calls;
+    const dailyStatsCalls = insertCalls.filter((c: unknown[]) =>
+      c[0] && typeof c[0] === 'object' && 'partnerId' in (c[0] as Record<string, unknown>) && 'total' in (c[0] as Record<string, unknown>)
+    );
+    expect(dailyStatsCalls).toHaveLength(2);
+    expect((dailyStatsCalls[0][0] as Record<string, unknown>).partnerId).toBe('partner-A');
+    expect((dailyStatsCalls[0][0] as Record<string, unknown>).total).toBe(3);
+    expect((dailyStatsCalls[1][0] as Record<string, unknown>).partnerId).toBe('partner-B');
+    expect((dailyStatsCalls[1][0] as Record<string, unknown>).total).toBe(7);
   });
 
   it('handles empty result set (no tickets to purge)', async () => {
-    // Count query for guard check (no closed tickets)
-    queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // No dates to aggregate at all
-    queryMock.mockResolvedValueOnce([]);
+    setupEmptyPurge();
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
 
-    // No ticket aggregation or daily_stats run calls
+    // No ticket aggregation
     expect(computeLiveDayStatsMock).not.toHaveBeenCalled();
 
     // Transaction runs twice: main GDPR purge + AI usage aggregate+purge
-    expect(transactionMock).toHaveBeenCalledTimes(2);
-
-    // run() called twice by AI usage purge (aggregate INSERT + DELETE), but not for daily_stats
-    const dailyStatsRuns = runMock.mock.calls.filter((c: unknown[]) => (c[0] as string).includes('daily_stats'));
-    expect(dailyStatsRuns).toHaveLength(0);
+    expect(dbMock.transaction).toHaveBeenCalledTimes(2);
 
     // Audit log entry still written
     expect(dbMock.insert).toHaveBeenCalledOnce();
@@ -280,9 +291,7 @@ describe('runDailyPurge', () => {
 
     archiveAuditLogMock.mockResolvedValue(3);
     archiveTicketsMock.mockResolvedValue(2);
-    // Count query for guard check
-    queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    queryMock.mockResolvedValueOnce([]);
+    setupEmptyPurge();
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();
@@ -302,13 +311,9 @@ describe('runDailyPurge', () => {
   it('logs error and does not throw when purge fails', async () => {
     const logger = (await import('../utils/logger.js')).default;
 
-    // Archiving and chain verification succeed (defaults).
-    // Count query for guard check
-    queryMock.mockResolvedValueOnce([{ count: 0 }]);
-    // Dates query returns empty
-    queryMock.mockResolvedValueOnce([]);
+    setupEmptyPurge();
     // Transaction fails — this is INSIDE the try/catch
-    transactionMock.mockRejectedValueOnce(new Error('DB down'));
+    dbMock.transaction.mockRejectedValueOnce(new Error('DB down'));
 
     const { runDailyPurge } = await import('./gdpr.js');
 
@@ -322,8 +327,7 @@ describe('runDailyPurge', () => {
   });
 
   it('writes audit log entry after successful purge', async () => {
-    queryMock.mockResolvedValueOnce([{ count: 0 }]); // guard count query
-    queryMock.mockResolvedValueOnce([]);              // dates query
+    setupEmptyPurge();
 
     const { runDailyPurge } = await import('./gdpr.js');
     await runDailyPurge();

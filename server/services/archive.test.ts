@@ -25,6 +25,8 @@ function makeQueryChain() {
   return chain;
 }
 
+const transactionMock = vi.fn();
+
 const dbMock = {
   select: vi.fn(() => ({
     from: vi.fn(() => makeQueryChain()),
@@ -35,15 +37,16 @@ const dbMock = {
   delete: vi.fn(() => ({
     where: deleteMock,
   })),
+  transaction: transactionMock,
 };
 
-const transactionMock = vi.fn(async (cb: (tx: typeof dbMock) => Promise<unknown>) => {
+// transaction receives a callback and passes the db mock as the transaction handle
+transactionMock.mockImplementation(async (cb: (tx: typeof dbMock) => Promise<unknown>) => {
   return await cb(dbMock);
 });
 
 vi.mock('../db.js', () => ({
   db: dbMock,
-  transaction: transactionMock,
 }));
 
 vi.mock('../utils/logger.js', () => ({

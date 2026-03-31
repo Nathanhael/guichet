@@ -18,7 +18,8 @@ import logoRoutes from './routes/logos.js';
 import authRoutes from './routes/auth.js';
 import ssoRoutes from './routes/sso.js';
 import ticketRoutes from './routes/tickets.js'; // Kept for export route support
-import { query } from './db.js';
+import { db } from './db.js';
+import { sql, eq } from 'drizzle-orm';
 import config from './config.js';
 import logger from './utils/logger.js';
 import { auth as authMiddleware, authorize, AuthRequest } from './middleware/auth.js';
@@ -32,7 +33,7 @@ import { createTaskRunner } from './utils/taskRunner.js';
 import { register } from './utils/metrics.js';
 
 import { initRedis, getRedisClients } from './utils/redis.js';
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 import { initAiContext } from './services/ai/index.js';
 import { decrypt } from './services/encryption.js';
 import * as schema from './db/schema.js';
@@ -165,13 +166,13 @@ app.use(metricsMiddleware);
 
 const rootUploadDir = path.join(__dirname, 'uploads');
 // Uploads require authentication — prevents public access to uploaded files (SEC-6).
-app.use('/uploads', (req: Request, res: Response, next: NextFunction) => {
+app.use('/uploads', async (req: Request, res: Response, next: NextFunction) => {
   const token = req.cookies?.tessera_token;
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   try {
-    jwt.verify(token, config.JWT_SECRET);
+    await jwtVerify(token, new TextEncoder().encode(config.JWT_SECRET));
     next();
   } catch {
     return res.status(401).json({ error: 'Authentication required' });
@@ -212,8 +213,7 @@ v1Router.use(
   })
 );
 
-import { eq } from 'drizzle-orm';
-import { db } from './db.js';
+
 
 v1Router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) => {
   const partnerId = (req.query.partnerId as string) || req.user?.partnerId;
@@ -281,7 +281,7 @@ v1Router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) 
  */
 v1Router.get('/health', async (_req: Request, res: Response) => {
   try {
-    await query('SELECT 1');
+    await db.execute(sql`SELECT 1`);
     res.json({ status: 'ok', database: 'connected' });
   } catch (err) {
     logger.error({ err }, 'Health check failed');
@@ -332,9 +332,10 @@ const tokenCleanupRunner = createTaskRunner('token-cleanup');
 // Check if a purge is overdue by looking at the most recent audit entry age
 (async () => {
   try {
-    const { query: rawQuery } = await import('./db.js');
-    const result = await rawQuery('SELECT MIN(created_at) as oldest FROM audit_log') as { oldest: string | null }[];
-    const oldest = result?.[0]?.oldest;
+    const { pool: dbPool } = await import('./db.js');
+    const result = await dbPool.query('SELECT MIN(created_at) as oldest FROM audit_log');
+    const rows = result.rows as { oldest: string | null }[];
+    const oldest = rows?.[0]?.oldest;
     if (oldest) {
       const ageMs = Date.now() - new Date(oldest).getTime();
       const archiveThresholdMs = config.AUDIT_ARCHIVE_DELAY_DAYS * 24 * 60 * 60 * 1000;

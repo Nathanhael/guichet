@@ -1,5 +1,5 @@
 import { router, roleProcedure, adminProcedure } from '../trpc.js';
-import { db, query } from '../../db.js';
+import { db } from '../../db.js';
 import { ratings, tickets, users } from '../../db/schema.js';
 import { desc, eq, inArray, sql, and, gte, lt } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
@@ -139,92 +139,66 @@ export const ratingRouter = router({
 
         const partnerId = ctx.user.partnerId;
 
-        // Build dynamic WHERE clause fragments and params
-        // $1 is always partnerId
-        const params: unknown[] = [partnerId];
-        const extraWhere: string[] = [];
-
+        // Build dynamic WHERE fragments using Drizzle sql operator
+        const conditions = [sql`t.partner_id = ${partnerId}`];
         if (input.dateFrom) {
-          params.push(new Date(input.dateFrom).toISOString());
-          extraWhere.push(`r.created_at >= $${params.length}`);
+          conditions.push(sql`r.created_at >= ${new Date(input.dateFrom).toISOString()}`);
         }
         if (input.dateTo) {
           const endDate = new Date(input.dateTo);
           endDate.setDate(endDate.getDate() + 1);
-          params.push(endDate.toISOString());
-          extraWhere.push(`r.created_at < $${params.length}`);
+          conditions.push(sql`r.created_at < ${endDate.toISOString()}`);
         }
         if (input.dept) {
-          params.push(input.dept);
-          extraWhere.push(`t.dept = $${params.length}`);
+          conditions.push(sql`t.dept = ${input.dept}`);
         }
 
-        const extraSQL = extraWhere.length > 0 ? ' AND ' + extraWhere.join(' AND ') : '';
-        const baseWhere = `t.partner_id = $1${extraSQL}`;
+        const whereClause = sql.join(conditions, sql` AND `);
 
         // 1) Daily trend
-        const trendRows = (await query(
-          `SELECT DATE(r.created_at) AS date,
-                  ROUND(AVG(r.rating)::numeric, 2) AS avg,
-                  COUNT(*)::int AS count
-           FROM ratings r
-           JOIN tickets t ON r.ticket_id = t.id
-           WHERE ${baseWhere}
-           GROUP BY DATE(r.created_at)
-           ORDER BY date ASC`,
-          params,
-        )) as Record<string, unknown>[];
+        const trendRows = (await db.execute(sql`
+          SELECT DATE(r.created_at) AS date,
+                 ROUND(AVG(r.rating)::numeric, 2) AS avg,
+                 COUNT(*)::int AS count
+          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          WHERE ${whereClause}
+          GROUP BY DATE(r.created_at) ORDER BY date ASC
+        `)) as unknown as Record<string, unknown>[];
 
         // 2) Distribution
-        const distRows = (await query(
-          `SELECT r.rating,
-                  COUNT(*)::int AS count
-           FROM ratings r
-           JOIN tickets t ON r.ticket_id = t.id
-           WHERE ${baseWhere}
-           GROUP BY r.rating
-           ORDER BY r.rating ASC`,
-          params,
-        )) as Record<string, unknown>[];
+        const distRows = (await db.execute(sql`
+          SELECT r.rating, COUNT(*)::int AS count
+          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          WHERE ${whereClause}
+          GROUP BY r.rating ORDER BY r.rating ASC
+        `)) as unknown as Record<string, unknown>[];
 
         // 3) By department
-        const deptRows = (await query(
-          `SELECT t.dept,
-                  ROUND(AVG(r.rating)::numeric, 2) AS avg,
-                  COUNT(*)::int AS count
-           FROM ratings r
-           JOIN tickets t ON r.ticket_id = t.id
-           WHERE ${baseWhere}
-           GROUP BY t.dept
-           ORDER BY avg DESC`,
-          params,
-        )) as Record<string, unknown>[];
+        const deptRows = (await db.execute(sql`
+          SELECT t.dept, ROUND(AVG(r.rating)::numeric, 2) AS avg, COUNT(*)::int AS count
+          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          WHERE ${whereClause}
+          GROUP BY t.dept ORDER BY avg DESC
+        `)) as unknown as Record<string, unknown>[];
 
         // 4) By staff
-        const staffRows = (await query(
-          `SELECT r.support_id,
-                  COALESCE(u.name, 'Unknown') AS name,
-                  ROUND(AVG(r.rating)::numeric, 2) AS avg,
-                  COUNT(*)::int AS count
-           FROM ratings r
-           JOIN tickets t ON r.ticket_id = t.id
-           LEFT JOIN users u ON r.support_id = u.id
-           WHERE ${baseWhere}
-           GROUP BY r.support_id, u.name
-           ORDER BY avg DESC`,
-          params,
-        )) as Record<string, unknown>[];
+        const staffRows = (await db.execute(sql`
+          SELECT r.support_id, COALESCE(u.name, 'Unknown') AS name,
+                 ROUND(AVG(r.rating)::numeric, 2) AS avg, COUNT(*)::int AS count
+          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          LEFT JOIN users u ON r.support_id = u.id
+          WHERE ${whereClause}
+          GROUP BY r.support_id, u.name ORDER BY avg DESC
+        `)) as unknown as Record<string, unknown>[];
 
         // 5) Summary
-        const summaryRows = (await query(
-          `SELECT ROUND(AVG(r.rating)::numeric, 2) AS avg,
-                  COUNT(*)::int AS total,
-                  COUNT(r.comment) FILTER (WHERE r.comment IS NOT NULL AND r.comment != '')::int AS with_comment
-           FROM ratings r
-           JOIN tickets t ON r.ticket_id = t.id
-           WHERE ${baseWhere}`,
-          params,
-        )) as Record<string, unknown>[];
+        const summaryRows = (await db.execute(sql`
+          SELECT ROUND(AVG(r.rating)::numeric, 2) AS avg,
+                 COUNT(*)::int AS total,
+                 COUNT(r.comment) FILTER (WHERE r.comment IS NOT NULL AND r.comment != '')::int AS with_comment
+          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          WHERE ${whereClause}
+        `)) as unknown as Record<string, unknown>[];
 
         const summaryRow = summaryRows[0] ?? {};
 

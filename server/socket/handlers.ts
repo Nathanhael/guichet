@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 import { parse as parseCookie } from 'cookie';
 import * as presenceService from '../services/presence.js';
 import {
@@ -63,6 +63,8 @@ import {
   MAX_NOTE_LENGTH,
   RECENT_CLOSED_TICKETS_LIMIT,
 } from '../constants.js';
+
+const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 
 interface TicketNewPayload {
   agentId?: string; // Deprecated — server uses socket.data.userId instead
@@ -320,9 +322,8 @@ export function registerSocketHandlers(io: Server) {
         return next(new Error('Authentication required'));
       }
 
-      const decoded = jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }) as {
-        userId: string; role: string; partnerId?: string; jti?: string; iat?: number; exp?: number;
-        isPlatformOperator?: boolean;
+      const { payload: decoded } = await jwtVerify(token, jwtSecret, { algorithms: ['HS256'] }) as {
+        payload: { userId: string; role: string; partnerId?: string; jti?: string; iat?: number; exp?: number; isPlatformOperator?: boolean };
       };
 
       const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });

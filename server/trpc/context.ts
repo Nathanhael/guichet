@@ -1,8 +1,10 @@
 import { inferAsyncReturnType } from '@trpc/server';
 import { CreateExpressContextOptions } from '@trpc/server/adapters/express';
-import jwt from 'jsonwebtoken';
+import { jwtVerify } from 'jose';
 import { z } from 'zod';
 import config from '../config.js';
+
+const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 import { UserRole } from '../types/index.js';
 import { isPlatformAdmin } from '../services/roles.js';
 import { isRevoked } from '../services/sessionRevocation.js';
@@ -41,7 +43,8 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
 
   if (token) {
     try {
-      const decoded = jwtPayloadSchema.parse(jwt.verify(token, config.JWT_SECRET, { algorithms: ['HS256'] }));
+      const { payload } = await jwtVerify(token, jwtSecret, { algorithms: ['HS256'] });
+      const decoded = jwtPayloadSchema.parse(payload);
       const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
       if (revoked) {
         return { req, res, user: null };

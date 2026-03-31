@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import crypto from 'crypto';
-import jwt from 'jsonwebtoken';
+import { decodeProtectedHeader, jwtVerify, importSPKI, type JWTPayload } from 'jose';
 import { db } from '../db.js';
 import { users, memberships, partners, partnerGroupMappings, auditLog } from '../db/schema.js';
 import { eq, and, inArray, or } from 'drizzle-orm';
@@ -55,7 +55,7 @@ function jwkToPublicKey(jwk: JwkKey): string {
 }
 
 async function getSigningKey(token: string): Promise<string> {
-  const header = jwt.decode(token, { complete: true })?.header;
+  const header = decodeProtectedHeader(token);
   if (!header?.kid) throw new Error('Token header missing kid');
   const keys = await fetchJwks();
   const key = keys.find(k => k.kid === header.kid);
@@ -195,21 +195,23 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 
     // Verify ID token signature against Microsoft's JWKS endpoint
     const idToken = tokenData.id_token;
-    let payload: jwt.JwtPayload;
+    let payload: JWTPayload;
     try {
-      const signingKey = await getSigningKey(idToken);
-      payload = jwt.verify(idToken, signingKey, {
+      const signingKeyPem = await getSigningKey(idToken);
+      const publicKey = await importSPKI(signingKeyPem, 'RS256');
+      const result = await jwtVerify(idToken, publicKey, {
         issuer: `https://login.microsoftonline.com/${TENANT()}/v2.0`,
         audience: CLIENT_ID()!,
         algorithms: ['RS256'],
-      }) as jwt.JwtPayload;
+      });
+      payload = result.payload;
     } catch (verifyErr) {
       logger.error({ err: verifyErr instanceof Error ? verifyErr.message : String(verifyErr) }, '[SSO] ID token signature verification failed');
       return res.redirect(`${clientOrigin}/?sso_error=token_verification_failed`);
     }
 
     // Azure-specific claims from the verified payload
-    const claims = payload as jwt.JwtPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string; locale?: string; xms_lang?: string };
+    const claims = payload as JWTPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string; locale?: string; xms_lang?: string };
 
     // Verify nonce to prevent token replay attacks
     if (claims.nonce !== expectedNonce) {
@@ -371,7 +373,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       return res.redirect(`${clientOrigin}/?sso_error=no_matching_groups`);
     }
 
-    const token = buildAuthToken({
+    const token = await buildAuthToken({
       userId: user.id,
       role: defaultMembership?.role || 'agent',
       departments: (defaultMembership?.departments as unknown[]) || [],
