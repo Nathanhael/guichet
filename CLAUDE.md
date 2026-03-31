@@ -60,7 +60,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 ### Server (`server/`)
 
 **API Layer**:
-- **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 17 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `stats`, `ticket`, `user`, `webhook`. Input validation via Zod.
+- **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 18 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `savedView`, `stats`, `ticket`, `user`, `webhook`. Input validation via Zod.
 - **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`).
 - **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference` (68 procedures).
 
@@ -100,7 +100,9 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - `summaryCache.ts` — Redis-backed summary caching
 - `messageFormatter.ts` — Message formatting for AI context
 - `ticketMessages.ts` — Ticket message retrieval for AI operations
-- `redis.ts` — AI-specific Redis utilities
+- `context.ts` — AiContext dependency injection (replaces direct imports; wired at boot)
+- `index.ts` — Barrel exports (enforced by lint)
+- `validateUrl.ts` — AI endpoint URL validation
 
 **Socket.io** (`server/socket/handlers.ts`):
 - All real-time event handlers. Uses Redis adapter for horizontal scaling.
@@ -143,6 +145,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 | `ai_usage_log` | AI provider usage tracking | `partnerId`, `action`, `provider`, `tokens`, `cost` |
 | `daily_ai_usage` | Aggregated AI usage (rolled up from ai_usage_log) | `date`, `partnerId`, `action`, `provider`, `model`, `totalRequests` |
 | `refresh_tokens` | Rotating refresh tokens | `userId`, `tokenHash` (SHA-256), `family`, `expiresAt`, `revokedAt` |
+| `saved_views` | Per-user saved ticket filter views | `userId`, `partnerId`, `name`, `filters` (JSONB) |
 
 ### Client (`client/src/`)
 
@@ -162,11 +165,11 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - `LoginView` — Auth flow: login, password reset, MFA challenge, partner selection
 
 **Component Directories**:
-- `components/platform/` — PlatformView feature modules (PartnerList, UserTable, modals)
-- `components/admin/` — AdminView panels: AdminAlerts, AdminArchive, AdminBusinessHours, AdminCannedResponses, AdminDepartments, AdminFeedback, AdminKnowledgeBase, AdminLabels, AdminStats, AdminTeam, AdminTickets, AdminWebhooks, PlatformAuditLog, PlatformArchiveViewer, PlatformSecurityOps, PlatformSystemHealth, PlatformSystemSettings
+- `components/platform/` — PlatformView feature modules (PartnerList, UserTable, CreatePartnerModal, DeletePartnerModal, EditPartnerModal, EditUserProfileModal, InviteUserModal, ManageAccessModal, GroupMappingsPanel)
+- `components/admin/` — AdminView panels: AdminAlerts, AdminArchive, AdminBusinessHours, AdminCannedResponses, AdminDepartments, AdminFeedback, AdminKnowledgeBase, AdminLabels, AdminSatisfaction, AdminStats, AdminTeam, AdminTickets, AdminWebhooks, DashboardHelpers, ErrorBox, PlatformAuditLog, PlatformArchiveViewer, PlatformSecurityOps, PlatformSystemHealth, PlatformSystemSettings
 - `components/agent/` — AgentNav, AgentTicketSidebar, TicketForm
-- `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SupportNav
-- Shared: ChatWindow, MessageBubble, ConfirmDialog, Toast, TicketPreview, UserAvatar, CannedResponsePicker, BusinessHoursGuard, ConnectionStatus, ErrorBoundary, SlaIndicator, SentimentDot, StatusPicker, DarkModeToggle, LanguageSwitcher, PartnerSwitcher, FeedbackModal, NavToolbar, UserSecurityModal, NotificationToggle, RatingModal, LegalModal
+- `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
+- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NavToolbar, NeuroToggle, NotificationToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserSecurityModal
 
 **Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
 
@@ -191,7 +194,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - **Cursor-Based Pagination**: Ticket list and audit archive use keyset pagination (`createdAt|id` composite cursor). Pattern: fetch `limit+1`, detect hasMore, return `{ items, nextCursor }`.
 - **Platform Operator Bootstrap**: On first startup with no platform operators, auto-creates one from `PLATFORM_ADMIN_EMAIL` (and optional `PLATFORM_ADMIN_PASSWORD`) env vars. Runs before server accepts traffic. Race-safe, non-fatal.
 - **Platform Operator Partner Access**: Platform operators can enter any active partner's admin view via `POST /enter-partner` without needing a membership. Socket auth bypasses membership check for operators.
-- **AI Provider Abstraction**: Multi-provider AI via factory pattern (`server/services/ai/`). Supports Ollama, Azure OpenAI, and OpenAI-compatible APIs. Per-partner AI config (`aiEnabled`, `aiFeatures` JSONB) controls feature availability. Features: message improvement (optional/forced modes with revert), chat summarization (Redis-cached), translation, sentiment detection (fire-and-forget), auto-summarize on close. Rate limiting and usage logging per partner.
+- **AI Provider Abstraction**: Multi-provider AI via factory pattern (`server/services/ai/`). Uses `AiContext` dependency injection (wired at boot) — all AI modules import from the barrel `index.ts`, never directly. Supports Ollama, Azure OpenAI, and OpenAI-compatible APIs. Per-partner AI config (`aiEnabled`, `aiFeatures` JSONB) controls feature availability. Features: message improvement (optional/forced modes with revert), chat summarization (Redis-cached), translation, sentiment detection (fire-and-forget), auto-summarize on close. Rate limiting and usage logging per partner.
 - **Knowledge Base**: Per-partner KB articles (`kb_articles` table). CRUD via `trpc.kb.*`. Admin UI in `AdminKnowledgeBase`.
 - **Webhooks**: Per-partner webhook endpoints (`webhooks` table) with event subscriptions, HMAC signing, delivery logs (`webhook_logs`). Dispatch via `webhookDispatch.ts`. Admin UI in `AdminWebhooks`.
 - **Alerts & SLA**: Topic alerts with configurable thresholds (`topic_alerts` table). Per-department SLA config with `SlaIndicator` component. Admin UI in `AdminAlerts`.
@@ -229,15 +232,15 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 tessera/
 ├── server/
 │   ├── db/
-│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 23 tables
+│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 25 tables
 │   │   └── postgres.ts            # DB connection, raw query helpers
 │   ├── trpc/
-│   │   ├── router.ts              # Main tRPC router (17 domain routers)
+│   │   ├── router.ts              # Main tRPC router (18 domain routers)
 │   │   ├── trpc.ts                # Procedure middleware (auth, roles)
 │   │   ├── context.ts             # JWT → tRPC context
 │   │   └── routers/               # ai, alerts, cannedResponse, feedback, kb, label, message,
 │   │                              # mfa, partner, platform, platformSecurity, presence,
-│   │                              # rating, stats, ticket, user, webhook
+│   │                              # rating, savedView, stats, ticket, user, webhook
 │   ├── socket/
 │   │   └── handlers.ts            # Socket.io event handlers
 │   ├── routes/
@@ -275,13 +278,13 @@ tessera/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── platform/          # PlatformView feature modules (self-contained)
-│   │   │   ├── admin/             # AdminView panels (19 components)
+│   │   │   ├── admin/             # AdminView panels (20 components)
 │   │   │   ├── agent/             # AgentView components (AgentNav, TicketForm, sidebar)
 │   │   │   ├── support/           # SupportView components (queue, chat tabs, AI copilot)
 │   │   │   └── *.tsx              # Shared: ChatWindow, MessageBubble, ConfirmDialog, Toast, etc.
 │   │   ├── views/                 # PlatformView, AdminView, SupportView, AgentView, LoginView
 │   │   │   └── __tests__/         # Vitest tests for views
-│   │   ├── hooks/                 # useSocket, useTokenRefresh, useStore, useTranslation, etc.
+│   │   ├── hooks/                 # useBusinessHours, usePartner, useSocket, useTheme, useTokenRefresh, useTranslation
 │   │   ├── store/
 │   │   │   ├── useStore.ts        # Zustand composed store
 │   │   │   └── slices/            # Auth, ticket, message, UI, config, rating slices
@@ -297,13 +300,18 @@ tessera/
 │   ├── TECHNICAL.md               # Technical architecture deep-dive
 │   ├── TENANT_IDENTITY_SPEC.md    # Multi-tenant identity specification
 │   ├── USER_GUIDE.md              # End-user guide (roles, auth, features)
-│   └── SECURITY_AUDIT_2026-03-26.md # Security audit results (historical)
+├── conductor/
+│   ├── index.md                   # Conductor overview
+│   ├── product.md                 # Product definition
+│   ├── product-guidelines.md      # Product guidelines
+│   ├── tech-stack.md              # Technology stack
+│   ├── tracks.md                  # Development tracks
+│   └── workflow.md                # Workflow documentation
 ├── testing/
 │   ├── nginx.conf                 # Reverse proxy config for load testing
 │   ├── load/                      # k6 load test scripts (smoke.js, load.js, refresh.js, ws.js)
 │   └── e2e/                       # Playwright E2E specs
 ├── playwright.config.ts           # Playwright E2E config
-├── PLAN.md                        # Sprint plan (completed + next sprint)
 ├── CHANGELOG.md                   # Project changelog (v1.0.0, v2.0.0)
 ├── SECURITY.md                    # Security policy and vulnerability reporting
 ├── scripts/ci.ps1                 # Local CI: typecheck, tests, migrations, e2e
