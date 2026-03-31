@@ -121,18 +121,6 @@ tessera/
 └── testing/         # k6 load tests + Playwright E2E
 ```
 
-## CI Pipeline
-
-GitHub Actions runs 5 parallel jobs on push/PR to `main`:
-
-| Job | Check |
-|-----|-------|
-| lint-and-typecheck | `tsc --noEmit` on server + client |
-| test-client | Client unit tests |
-| test-server | Server unit tests |
-| migrate-check | Migrations against fresh Postgres 18 |
-| e2e | Playwright E2E (Chromium) |
-
 ## License
 
 Proprietary. All rights reserved.
