@@ -73,19 +73,18 @@ All demo users use password `password123`. Use the demo panel on the login page 
 
 ```bash
 # Unit tests
-docker compose exec server npm test          # 167 server tests (Vitest)
-docker compose exec client npm test          # 69 client tests (Vitest + jsdom)
+docker compose exec server npm test          # Server tests (Vitest)
+docker compose exec client npm test          # Client tests (Vitest + jsdom)
 
 # TypeScript
 docker compose exec server npx tsc --noEmit
 docker compose exec client npx tsc --noEmit
 
-# E2E tests (Playwright)
+# E2E tests (Playwright — runs on host)
 npx playwright test
 
-# Load tests (k6)
-docker run --rm --network=host -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/smoke.js
-docker run --rm --network=host -v "$(pwd)/testing/load:/scripts" grafana/k6 run /scripts/load.js
+# Local CI (all checks)
+powershell -File scripts/ci.ps1
 ```
 
 ## Database Management
