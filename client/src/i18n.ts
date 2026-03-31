@@ -40,7 +40,8 @@ async function ensureLocale(lang: string): Promise<void> {
  * falling back to English until it's ready.
  */
 export function useT() {
-  const { user, selectedLang } = useStore();
+  const user = useStore(s => s.user);
+  const selectedLang = useStore(s => s.selectedLang);
   const cache = useSyncExternalStore(subscribe, getSnapshot);
 
   const browserLang = typeof navigator !== 'undefined' ? navigator.language.slice(0, 2) : 'en';

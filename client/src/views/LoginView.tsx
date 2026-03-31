@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import type { User, Membership, UserRole } from '../types';
 import DarkModeToggle from '../components/DarkModeToggle';
@@ -19,7 +19,11 @@ type PartnerSelection = {
 };
 
 export default function LoginView() {
-  const { setUser, setMemberships, setActiveMembershipId } = useStore();
+  const { setUser, setMemberships, setActiveMembershipId } = useStoreShallow((s) => ({
+    setUser: s.setUser,
+    setMemberships: s.setMemberships,
+    setActiveMembershipId: s.setActiveMembershipId,
+  }));
   const t = useT();
   const [filter, setFilter] = useState<'all' | 'platform' | 'support' | 'admin' | 'agent'>('all');
   const [selectingPartner, setSelectingPartner] = useState<PartnerSelection | null>(null);

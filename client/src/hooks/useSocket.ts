@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { notify, updateTitleBadge } from '../utils/notifications';
 import { io, Socket } from 'socket.io-client';
-import useStore from '../store/useStore';
+import useStore, { useStoreShallow } from '../store/useStore';
 import { SOCKET_URL } from '../config';
 import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, TopicAlert, Participant } from '../types';
 import { isTenantAdmin } from '../utils/roles';
@@ -36,7 +36,19 @@ export function useSocket(): Socket {
     setOnlineSupportUsers,
     addTopicAlert,
     setActiveTicketId,
-  } = useStore();
+  } = useStoreShallow((s) => ({
+    user: s.user,
+    activePartnerId: s.activePartnerId,
+    addTicket: s.addTicket,
+    updateTicket: s.updateTicket,
+    addMessage: s.addMessage,
+    setMessages: s.setMessages,
+    setBusinessHoursStatus: s.setBusinessHoursStatus,
+    setTyping: s.setTyping,
+    setOnlineSupportUsers: s.setOnlineSupportUsers,
+    addTopicAlert: s.addTopicAlert,
+    setActiveTicketId: s.setActiveTicketId,
+  }));
   
   // Re-identify whenever user or partner changes (e.g. after login or switch)
   useEffect(() => {

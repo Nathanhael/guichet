@@ -21,7 +21,7 @@ import type { PlatformTab, Partner, GlobalUser } from '../components/platform/ty
 import { trpc } from '../utils/trpc';
 
 export default function PlatformView() {
-  const { logout } = useStore();
+  const logout = useStore((s) => s.logout);
   const t = useT();
   const [activeTab, setActiveTab] = useState<PlatformTab>('partners');
   const { data: securityStatus, isLoading: securityStatusLoading } = trpc.platformSecurity.getStatus.useQuery();

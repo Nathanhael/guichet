@@ -209,9 +209,9 @@ export const statsRouter = router({
           }
         }
 
-        const historicalStats = (await db.execute(sql`SELECT date, total, closed, abandoned, avg_response_ms, avg_duration_ms, avg_rating, rating_count, sla_resolved, sla_compliant, p95_response_ms, reopened, sentiment_sum, sentiment_count, dept_counts, ratings_by_dept, hourly FROM daily_stats WHERE date >= ${rangeStart} AND date <= ${rangeEnd} AND partner_id = ${partnerId}`)) as unknown as HistoricalStatRow[];
+        const historicalStats = ((await db.execute(sql`SELECT date, total, closed, abandoned, avg_response_ms, avg_duration_ms, avg_rating, rating_count, sla_resolved, sla_compliant, p95_response_ms, reopened, sentiment_sum, sentiment_count, dept_counts, ratings_by_dept, hourly FROM daily_stats WHERE date >= ${rangeStart} AND date <= ${rangeEnd} AND partner_id = ${partnerId}`)).rows ?? []) as unknown as HistoricalStatRow[];
         const historicalStatsMap = new Map<string, HistoricalStatRow>(historicalStats.map(s => [s.date, s]));
-        const allLiveTicketsRaw = (await db.execute(sql`SELECT id, created_at, status, closed_at, dept, agent_id, agent_name, support_id, support_name, support_joined_at, sla_breached, sla_response_due_at, sla_resolution_due_at, reopened_at, closing_notes, closed_by, partner_id FROM tickets WHERE created_at::date >= ${rangeStart} AND created_at::date <= ${rangeEnd} AND partner_id = ${partnerId}`)) as unknown as Ticket[];
+        const allLiveTicketsRaw = (await db.execute(sql`SELECT id, created_at, status, closed_at, dept, agent_id, agent_name, support_id, support_name, support_joined_at, sla_breached, sla_response_due_at, sla_resolution_due_at, reopened_at, closing_notes, closed_by, partner_id FROM tickets WHERE created_at::date >= ${rangeStart} AND created_at::date <= ${rangeEnd} AND partner_id = ${partnerId}`)).rows as unknown as Ticket[];
         const allLiveTickets = (excludeWeekends)
           ? allLiveTicketsRaw.filter(t => {
             if (!t.createdAt) return false;
@@ -235,7 +235,7 @@ export const statsRouter = router({
             : await db.execute(sql`SELECT r.ticket_id AS "ticketId", r.rating, r.comment, r.created_at AS "createdAt"
                FROM ratings r JOIN tickets t ON r.ticket_id = t.id
                WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}`);
-          liveRatings = ratingRows as unknown as RatingRow[];
+          liveRatings = ratingRows.rows as unknown as RatingRow[];
         }
 
         // SQL AVG aggregates — avoids loading all message rows into memory (#13)
@@ -250,7 +250,7 @@ export const statsRouter = router({
                FROM messages m JOIN tickets t ON m.ticket_id = t.id
                WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND m.sentiment IS NOT NULL
                GROUP BY m.ticket_id`);
-          ticketSentimentAvgs = ticketRows as unknown as TicketSentimentAvg[];
+          ticketSentimentAvgs = ticketRows.rows as unknown as TicketSentimentAvg[];
         }
 
         let deptSentimentAvgs: DeptSentimentAvg[] = [];
@@ -259,7 +259,7 @@ export const statsRouter = router({
              FROM messages m JOIN tickets t ON m.ticket_id = t.id
              WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND m.sentiment IS NOT NULL
              GROUP BY t.dept`);
-          deptSentimentAvgs = deptRows as unknown as DeptSentimentAvg[];
+          deptSentimentAvgs = deptRows.rows as unknown as DeptSentimentAvg[];
         }
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0, totalReopened = 0;
@@ -472,7 +472,7 @@ export const statsRouter = router({
         }
 
         const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-        const waitingTickets = (await db.execute(sql`SELECT created_at FROM tickets WHERE status = 'open' AND support_id IS NULL AND created_at >= ${thirtyMinsAgo} AND partner_id = ${partnerId}`)) as unknown as { createdAt: string }[];
+        const waitingTickets = (await db.execute(sql`SELECT created_at FROM tickets WHERE status = 'open' AND support_id IS NULL AND created_at >= ${thirtyMinsAgo} AND partner_id = ${partnerId}`)).rows as unknown as { createdAt: string }[];
         let oldest = 0;
         waitingTickets.forEach(t => {
           if (t.createdAt) {
@@ -588,9 +588,9 @@ export const statsRouter = router({
 
         const prevHist = excludeWeekends
           ? (await db.execute(sql`SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(sla_resolved) as slares, AVG(sla_compliant) as slacomp, AVG(avg_rating) as avgrat
-             FROM daily_stats WHERE date >= ${prevStartStr} AND date <= ${prevEndStr} AND partner_id = ${partnerId} AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)`)) as unknown as (PrevHistRow & { avgrat: number | null })[]
+             FROM daily_stats WHERE date >= ${prevStartStr} AND date <= ${prevEndStr} AND partner_id = ${partnerId} AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)`)).rows as unknown as (PrevHistRow & { avgrat: number | null })[]
           : (await db.execute(sql`SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(sla_resolved) as slares, AVG(sla_compliant) as slacomp, AVG(avg_rating) as avgrat
-             FROM daily_stats WHERE date >= ${prevStartStr} AND date <= ${prevEndStr} AND partner_id = ${partnerId}`)) as unknown as (PrevHistRow & { avgrat: number | null })[];
+             FROM daily_stats WHERE date >= ${prevStartStr} AND date <= ${prevEndStr} AND partner_id = ${partnerId}`)).rows as unknown as (PrevHistRow & { avgrat: number | null })[];
 
         const prevSlares = prevHist[0]?.slares ?? 0;
         const prevSlacomp = prevHist[0]?.slacomp ?? 0;
@@ -638,7 +638,7 @@ export const statsRouter = router({
                                JOIN tickets t ON tl.ticket_id = t.id
                                WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}
                                GROUP BY l.name, t.dept
-                               ORDER BY t.dept, count DESC`)) as unknown as LabelCountRow[];
+                               ORDER BY t.dept, count DESC`)).rows as unknown as LabelCountRow[];
             const summary: Record<string, string[]> = {};
             labelCounts.forEach(lc => {
               if (!summary[lc.dept]) summary[lc.dept] = [];

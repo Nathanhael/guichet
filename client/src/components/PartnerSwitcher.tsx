@@ -1,9 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { usePartner } from '../hooks/usePartner';
 
 export default function PartnerSwitcher() {
-  const { memberships, activeMembershipId, setActiveMembershipId } = useStore();
+  const { memberships, activeMembershipId, setActiveMembershipId } = useStoreShallow(s => ({
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId,
+    setActiveMembershipId: s.setActiveMembershipId
+  }));
   const { partnerName, isPlatformOperator } = usePartner();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

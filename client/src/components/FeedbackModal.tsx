@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import { trpc } from '../utils/trpc';
 
@@ -8,7 +8,7 @@ interface FeedbackModalProps {
 }
 
 export default function FeedbackModal({ onClose }: FeedbackModalProps) {
-  const { user } = useStore();
+  const { user } = useStoreShallow(s => ({ user: s.user }));
   const t = useT();
   const [text, setText] = useState('');
   const [sent, setSent] = useState(false);

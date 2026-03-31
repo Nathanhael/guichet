@@ -1,4 +1,4 @@
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 
 const LANGUAGES = [
   { code: 'en', label: 'EN' },
@@ -7,7 +7,11 @@ const LANGUAGES = [
 ] as const;
 
 export default function LanguageSwitcher() {
-  const { user, selectedLang, setSelectedLang } = useStore();
+  const { user, selectedLang, setSelectedLang } = useStoreShallow(s => ({
+    user: s.user,
+    selectedLang: s.selectedLang,
+    setSelectedLang: s.setSelectedLang
+  }));
   const currentLang = selectedLang || user?.lang || 'en';
 
   return (

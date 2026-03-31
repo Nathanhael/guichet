@@ -13,7 +13,7 @@ import {
   Legend,
 } from 'recharts';
 import { trpc } from '../../utils/trpc';
-import useStore from '../../store/useStore';
+import { useStoreShallow } from '../../store/useStore';
 import { exportDashboardCSV, exportDashboardPDF, DashboardStats } from '../../utils/exportDashboard';
 import { Download, FileText, AlertTriangle } from 'lucide-react';
 
@@ -49,7 +49,10 @@ interface DashboardData {
 }
 
 export default function AdminStats() {
-  const { memberships, activeMembershipId } = useStore();
+  const { memberships, activeMembershipId } = useStoreShallow((s) => ({
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId,
+  }));
   const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
   const departments: { id: string; name: string }[] = activeMembership?.manifest?.departments || [];
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 
 function ToggleSwitch({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
   return (
@@ -33,7 +33,16 @@ export default function AccessibilityMenu() {
     bionicReading, toggleBionicReading,
     monochromeMode, toggleMonochromeMode,
     focusMode, toggleFocusMode,
-  } = useStore();
+  } = useStoreShallow(s => ({
+    dyslexicMode: s.dyslexicMode,
+    toggleDyslexicMode: s.toggleDyslexicMode,
+    bionicReading: s.bionicReading,
+    toggleBionicReading: s.toggleBionicReading,
+    monochromeMode: s.monochromeMode,
+    toggleMonochromeMode: s.toggleMonochromeMode,
+    focusMode: s.focusMode,
+    toggleFocusMode: s.toggleFocusMode,
+  }));
 
   const anyActive = dyslexicMode || bionicReading || focusMode;
 

@@ -1,4 +1,4 @@
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { Type, Zap, Contrast } from 'lucide-react';
 
 export default function NeuroToggle() {
@@ -6,7 +6,14 @@ export default function NeuroToggle() {
     dyslexicMode, toggleDyslexicMode,
     bionicReading, toggleBionicReading,
     monochromeMode, toggleMonochromeMode
-  } = useStore();
+  } = useStoreShallow(s => ({
+    dyslexicMode: s.dyslexicMode,
+    toggleDyslexicMode: s.toggleDyslexicMode,
+    bionicReading: s.bionicReading,
+    toggleBionicReading: s.toggleBionicReading,
+    monochromeMode: s.monochromeMode,
+    toggleMonochromeMode: s.toggleMonochromeMode
+  }));
 
   return (
     <div className="flex items-center p-0.5 bg-black/10 dark:bg-white/5 border border-black dark:border-white">

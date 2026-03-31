@@ -4,7 +4,7 @@ import { useT } from '../../i18n';
 import { Plus, Trash2, RefreshCw, Pencil, X, Check, BookOpen, Eye, EyeOff, Search } from 'lucide-react';
 import ErrorBox from './ErrorBox';
 import BionicText from '../BionicText';
-import useStore from '../../store/useStore';
+import { useStoreShallow } from '../../store/useStore';
 
 interface KBArticle {
   id: string;
@@ -20,7 +20,7 @@ interface KBArticle {
 
 export default function AdminKnowledgeBase() {
   const t = useT();
-  const { bionicReading } = useStore();
+  const { bionicReading } = useStoreShallow(s => ({ bionicReading: s.bionicReading }));
   // Create form
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');

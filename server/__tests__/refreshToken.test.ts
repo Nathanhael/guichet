@@ -114,17 +114,11 @@ describe('Refresh Token Infrastructure', () => {
   });
 
   describe('migration', () => {
-    it('migration SQL file 0027 exists', () => {
-      const sqlPath = path.join(ROOT, 'drizzle', '0027_refresh_tokens.sql');
+    it('squashed migration includes refresh_tokens table', () => {
+      const sqlPath = path.join(ROOT, 'drizzle', '0000_cloudy_the_twelve.sql');
       expect(fs.existsSync(sqlPath)).toBe(true);
-    });
-
-    it('journal has entry for idx 27', () => {
-      const journalPath = path.join(ROOT, 'drizzle', 'meta', '_journal.json');
-      const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8'));
-      const entry = journal.entries.find((e: { idx: number }) => e.idx === 27);
-      expect(entry).toBeDefined();
-      expect(entry.tag).toBe('0027_refresh_tokens');
+      const sql = fs.readFileSync(sqlPath, 'utf8');
+      expect(sql).toMatch(/CREATE TABLE.*refresh_tokens/);
     });
   });
 });

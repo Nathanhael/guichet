@@ -19,7 +19,7 @@ services:
   server:
     build:
       context: ./server
-      dockerfile: Dockerfile.prod
+      dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/tessera
       - REDIS_URL=redis://:devpassword@redis:6379

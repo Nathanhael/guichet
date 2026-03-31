@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import useStore from '../../store/useStore';
+import { useStoreShallow } from '../../store/useStore';
 import { trpc } from '../../utils/trpc';
 import ChatWindow from '../ChatWindow';
 import TicketPreview from '../TicketPreview';
@@ -7,7 +7,15 @@ import { Ticket, Message } from '../../types';
 import { useT } from '../../i18n';
 
 export default function AdminTickets() {
-  const { tickets, setTickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket, unreadTickets, clearUnread } = useStore();
+  const { tickets, setTickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket, unreadTickets, clearUnread } = useStoreShallow((s) => ({
+    tickets: s.tickets,
+    setTickets: s.setTickets,
+    supportOpenTickets: s.supportOpenTickets,
+    addSupportOpenTicket: s.addSupportOpenTicket,
+    removeSupportOpenTicket: s.removeSupportOpenTicket,
+    unreadTickets: s.unreadTickets,
+    clearUnread: s.clearUnread,
+  }));
   const t = useT();
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicketId, setPreviewTicketId] = useState<string | null>(null);

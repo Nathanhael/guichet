@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 import { useBusinessHours } from '../hooks/useBusinessHours';
 import { useT } from '../i18n';
 import ChatWindow from '../components/ChatWindow';
@@ -15,16 +15,29 @@ import { trpc } from '../utils/trpc';
 import { Ticket } from '../types';
 
 export default function AgentView() {
-  const user = useStore((s) => s.user);
-  const tickets = useStore((s) => s.tickets);
-  const setTickets = useStore((s) => s.setTickets);
-  const activeTicketId = useStore((s) => s.activeTicketId);
-  const setActiveTicketId = useStore((s) => s.setActiveTicketId);
-  const focusMode = useStore((s) => s.focusMode);
-  const memberships = useStore((s) => s.memberships);
-  const activeMembershipId = useStore((s) => s.activeMembershipId);
-  const unreadTickets = useStore((s) => s.unreadTickets);
-  const queuePosition = useStore((s) => s.queuePosition);
+  const {
+    user,
+    tickets,
+    setTickets,
+    activeTicketId,
+    setActiveTicketId,
+    focusMode,
+    memberships,
+    activeMembershipId,
+    unreadTickets,
+    queuePosition,
+  } = useStoreShallow((s) => ({
+    user: s.user,
+    tickets: s.tickets,
+    setTickets: s.setTickets,
+    activeTicketId: s.activeTicketId,
+    setActiveTicketId: s.setActiveTicketId,
+    focusMode: s.focusMode,
+    memberships: s.memberships,
+    activeMembershipId: s.activeMembershipId,
+    unreadTickets: s.unreadTickets,
+    queuePosition: s.queuePosition,
+  }));
 
   const t = useT();
   const [showFeedback, setShowFeedback] = useState(false);

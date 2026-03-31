@@ -1,7 +1,10 @@
-import useStore from '../store/useStore';
+import { useStoreShallow } from '../store/useStore';
 
 export default function DarkModeToggle() {
-  const { darkMode, toggleDarkMode } = useStore();
+  const { darkMode, toggleDarkMode } = useStoreShallow(s => ({
+    darkMode: s.darkMode,
+    toggleDarkMode: s.toggleDarkMode
+  }));
 
   return (
     <button

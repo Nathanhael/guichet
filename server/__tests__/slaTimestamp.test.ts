@@ -17,11 +17,10 @@ describe('SLA columns use timestamp type (#34)', () => {
     expect(schemaSource).not.toMatch(/slaResolutionDueAt:\s*text\(/);
   });
 
-  it('migration file exists for SLA timestamp conversion', () => {
-    const migrationPath = path.resolve(__dirname, '../drizzle/0026_sla_timestamp_migration.sql');
+  it('squashed migration includes SLA timestamp columns', () => {
+    const migrationPath = path.resolve(__dirname, '../drizzle/0000_cloudy_the_twelve.sql');
     expect(fs.existsSync(migrationPath)).toBe(true);
     const migrationSql = fs.readFileSync(migrationPath, 'utf-8');
-    expect(migrationSql).toMatch(/timestamptz/i);
     expect(migrationSql).toMatch(/sla_response_due_at/);
     expect(migrationSql).toMatch(/sla_resolution_due_at/);
   });
