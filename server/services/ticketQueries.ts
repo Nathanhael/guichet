@@ -1,6 +1,6 @@
 import { eq, and, ne, desc, sql, inArray } from 'drizzle-orm';
 import { db } from '../db/postgres.js';
-import { tickets, ticketLabels, labels } from '../db/schema.js';
+import { tickets, ticketLabels, labels, ratings } from '../db/schema.js';
 
 // ── SELECT queries ──────────────────────────────────────────────────────────
 
@@ -320,7 +320,6 @@ export async function replaceTicketLabels(ticketId: string, labelIds: string[]) 
 
 /**
  * Inserts a rating (ON CONFLICT DO NOTHING for idempotency).
- * Uses raw SQL for the ON CONFLICT clause.
  * Used by: rating:submit
  */
 export async function insertRating(data: {
@@ -332,7 +331,13 @@ export async function insertRating(data: {
   rating: number;
   comment: string | null;
 }) {
-  await db.execute(sql`INSERT INTO ratings (id, ticket_id, agent_id, support_id, partner_id, rating, comment)
-    VALUES (${data.id}, ${data.ticketId}, ${data.agentId}, ${data.supportId}, ${data.partnerId}, ${data.rating}, ${data.comment})
-    ON CONFLICT (ticket_id) DO NOTHING`);
+  await db.insert(ratings).values({
+    id: data.id,
+    ticketId: data.ticketId,
+    agentId: data.agentId,
+    supportId: data.supportId,
+    partnerId: data.partnerId,
+    rating: data.rating,
+    comment: data.comment,
+  }).onConflictDoNothing({ target: ratings.ticketId });
 }
