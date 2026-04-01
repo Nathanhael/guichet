@@ -298,6 +298,8 @@ const nl: Record<string, string> = {
     ready_to_help: 'Klaar om te ondersteunen',
     select_ticket_hint: 'Selecteer een ticket uit de wachtrij en klik op "Join" om te beginnen.',
     preview_mode: 'Voorbeeld',
+    waiting_for_expert: 'Wachten op expert',
+    search_messages: 'Zoek berichten\u2026',
     conversation_closed: 'Gesprek gesloten.',
     total_chats: 'totaal chats',
     no_results: 'Geen resultaten.',

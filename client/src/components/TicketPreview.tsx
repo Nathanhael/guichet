@@ -96,11 +96,11 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
             <p className="text-sm font-bold uppercase text-text-muted">{t('conversation_closed')}</p>
           ) : (
             <>
-              <p className="text-sm font-bold uppercase tracking-widest text-text-primary">{t('waiting_for_expert')}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-text-muted">{t('waiting_for_expert')}</p>
               <button
                 onClick={onJoin}
                 disabled={joinDisabled}
-                className={`px-6 py-2 text-[10px] font-bold uppercase tracking-widest ${joinDisabled
+                className={`px-8 py-3 text-xs font-bold uppercase tracking-widest ${joinDisabled
                   ? 'btn-secondary opacity-20 cursor-not-allowed'
                   : 'btn-primary'
                   }`}
