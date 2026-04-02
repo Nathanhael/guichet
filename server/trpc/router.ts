@@ -17,8 +17,10 @@ import { cannedResponseRouter } from './routers/cannedResponse.js';
 import { kbRouter } from './routers/kb.js';
 import { webhookRouter } from './routers/webhook.js';
 import { aiRouter } from './routers/ai.js';
+import { statusRouter } from './routers/status.js';
 
 export const appRouter = router({
+  status: statusRouter,
   ai: aiRouter,
   cannedResponse: cannedResponseRouter,
   kb: kbRouter,
