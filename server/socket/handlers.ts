@@ -431,6 +431,12 @@ export function registerSocketHandlers(io: Server) {
           broadcastAgentStatus(userId, true);
         }
 
+        // Restore persisted status to client
+        const persistedStatus = await presenceService.getUserStatus(userId, partnerId);
+        if (persistedStatus && persistedStatus !== 'available') {
+          socket.emit('status:restored', { status: persistedStatus });
+        }
+
         // Re-join active ticket rooms
         try {
           let activeTickets: { id: string }[] = [];
