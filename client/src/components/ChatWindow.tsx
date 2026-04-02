@@ -8,6 +8,7 @@ import { Ticket, Message } from '../types';
 import { trpc } from '../utils/trpc';
 import { LANG_FLAG } from '../constants';
 import { isSupportLike } from '../utils/roles';
+import { usePartner } from '../hooks/usePartner';
 import { Eye } from 'lucide-react';
 import SlaIndicator from './SlaIndicator';
 
@@ -19,7 +20,7 @@ interface ChatWindowProps {
 }
 
 export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
-  const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, onlineSupportUsers, setRatingPrompt } = useStoreShallow(s => ({
+  const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, setRatingPrompt } = useStoreShallow(s => ({
     user: s.user,
     messages: s.messages,
     messageCursors: s.messageCursors,
@@ -32,10 +33,10 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     activePartnerId: s.activePartnerId,
     focusMode: s.focusMode,
     typingUsers: s.typingUsers,
-    onlineSupportUsers: s.onlineSupportUsers,
     setRatingPrompt: s.setRatingPrompt,
   }));
   const t = useT();
+  const { role: activeRole, manifest } = usePartner();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
   const [whisperMode, setWhisperMode] = useState(false);
@@ -53,6 +54,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const [_unreadCount, setUnreadCount] = useState(0);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
+  const [transferNote, setTransferNote] = useState('');
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
@@ -70,7 +72,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   const prevMessageCountRef = useRef(0);
   const initialScrollDoneRef = useRef<string | null>(null);
 
-  const isSupport = isSupportLike(user?.role);
+  const isSupport = isSupportLike(activeRole);
   const ticketId = ticket?.id ?? '';
 
   // tRPC: Message History
@@ -474,23 +476,23 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
     }, 10000);
   }
 
-  function leaveTicket() {
-    if (!isSupport) return;
-    getSocket().emit('support:leave', { ticketId: ticket!.id, supportId: user?.id, supportName: user?.name });
-    if (onClose) onClose();
-  }
-
-  function transferTicket(targetSupportId?: string) {
-    getSocket().emit('ticket:transfer', { ticketId: ticket!.id, targetSupportId: targetSupportId || undefined });
+  function transferTicket(departmentId?: string) {
+    getSocket().emit('ticket:transfer', {
+      ticketId: ticket!.id,
+      departmentId: departmentId || undefined,
+      note: transferNote.trim() || undefined,
+    });
     setShowTransferMenu(false);
+    setTransferNote('');
     if (onClose) onClose();
   }
 
-  // Other support agents available for transfer (exclude self)
-  const transferTargets = (onlineSupportUsers || []).filter(s => s.userId !== user?.id);
+  const transferDepartments = (manifest?.departments || []).filter(
+    (d: { id: string; name: string }) => d.id !== ticket?.dept
+  );
 
-  const canClose = isSupportLike(user?.role);
-  const isClosed = ticket.status === 'closed';
+  const canClose = isSupportLike(activeRole);
+  const isClosed = ticket.status === 'closed' || ticket.status === 'resolved';
 
   return (
     <div className={`relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden`}>
@@ -596,9 +598,9 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             </button>
           )}
 
+          {/* Secondary actions: Transfer + Leave */}
           {canClose && !isClosed && (
             <div className="flex items-center gap-2">
-              {/* Transfer button */}
               <div className="relative">
                 <button
                   onClick={() => setShowTransferMenu(!showTransferMenu)}
@@ -609,61 +611,65 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   {t('transfer') || 'Transfer'}
                 </button>
                 {showTransferMenu && (
-                  <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[200px] z-50 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[220px] z-50 overflow-hidden">
                     <button
                       onClick={() => transferTicket()}
                       className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-bg-elevated border-b border-border"
                     >
                       {t('return_to_queue') || 'Return to queue'}
                     </button>
-                    {transferTargets.length > 0 && (
-                      <div className="px-3 py-1.5">
-                        <span className="text-[9px] font-bold uppercase tracking-widest text-text-primary opacity-40">
-                          {t('transfer_to') || 'Transfer to'}
-                        </span>
-                      </div>
+                    {transferDepartments.length > 0 && (
+                      <>
+                        <div className="px-3 py-1.5">
+                          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-text-primary opacity-40">
+                            {t('transfer_to_department') || 'Transfer to department'}
+                          </span>
+                        </div>
+                        <div className="px-3 pb-2">
+                          <input
+                            type="text"
+                            value={transferNote}
+                            onChange={(e) => setTransferNote(e.target.value)}
+                            placeholder={t('transfer_note_placeholder') || 'Add context for the next agent...'}
+                            className="w-full text-[11px] bg-bg-elevated border border-border px-2 py-1.5 text-text-primary placeholder:text-text-muted placeholder:opacity-40"
+                          />
+                        </div>
+                      </>
                     )}
-                    {transferTargets.map((s) => (
+                    {transferDepartments.map((d: { id: string; name: string }) => (
                       <button
-                        key={s.userId}
-                        onClick={() => transferTicket(s.userId)}
-                        className="w-full text-left px-4 py-2 text-xs hover:bg-bg-elevated flex items-center gap-2"
+                        key={d.id}
+                        onClick={() => transferTicket(d.id)}
+                        className="w-full text-left px-4 py-2 text-xs font-mono font-bold hover:bg-bg-elevated"
                       >
-                        <span className="w-2 h-2 rounded-full bg-text-primary shrink-0" />
-                        <span className="font-medium">{s.name}</span>
+                        {d.name}
                       </button>
                     ))}
-                    {transferTargets.length === 0 && (
-                      <div className="px-4 py-2 text-[10px] text-text-primary opacity-40 italic">
-                        {t('no_other_support_online') || 'No other support online'}
-                      </div>
-                    )}
                   </div>
                 )}
               </div>
-              <button
-                onClick={leaveTicket}
-                title={t('leave')}
-                className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
-              >
-                {t('leave') || 'Leave'}
-              </button>
+            </div>
+          )}
+
+          {/* Primary action: Close Ticket — visually separated */}
+          {canClose && !isClosed && (
+            <div className="border-l-2 border-border-heavy pl-3">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   closeTicket();
                 }}
                 disabled={closing}
-                className={`text-xs font-bold bg-accent-blue text-white hover:bg-accent-blue/80 border border-border-heavy flex items-center gap-2 ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
+                className={`text-sm font-bold uppercase tracking-widest bg-accent-blue text-white hover:bg-accent-blue/80 border-2 border-accent-blue flex items-center gap-2 ${focusMode ? 'px-3 py-1.5' : 'px-5 py-2.5'}`}
               >
                 {closing ? (
                   <span className="text-[10px] font-bold opacity-40 shrink-0">...</span>
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                 )}
-                {t('close')}
+                {t('close') || 'Close'}
               </button>
             </div>
           )}
@@ -671,6 +677,9 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             <button
               onClick={(e) => {
                 e.stopPropagation();
+                if (isSupport && ticket) {
+                  getSocket().emit('support:leave', { ticketId: ticket.id, supportId: user?.id, supportName: user?.name });
+                }
                 onClose();
               }}
               aria-label="Close"
