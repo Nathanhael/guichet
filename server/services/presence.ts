@@ -147,6 +147,7 @@ export async function setUserStatus(userId: string, partnerId: string, status: s
     const user = await pubClient.hGetAll(key);
     if (user && user.userId) {
       await pubClient.hSet(key, 'status', status);
+      await pubClient.hSet(key, 'statusChangedAt', new Date().toISOString());
       await broadcastOnlineSupport(partnerId);
       logger.info({ userId, status }, 'User status updated in Redis');
       return true;
