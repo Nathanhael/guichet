@@ -174,7 +174,8 @@ export interface Message {
 export interface OnlineSupport {
   userId: string;
   name: string;
-  status: string;
+  status: 'available' | 'break' | 'lunch' | 'meeting' | 'training';
+  role?: string;
 }
 
 export interface RatingPromptData {
