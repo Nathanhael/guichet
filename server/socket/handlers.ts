@@ -48,6 +48,7 @@ import {
 } from '../services/messageQueries.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 import { runSyncGuards, guardRepetition } from '../services/guards.js';
+import * as statusTracking from '../services/statusTracking.js';
 import { getRedisClients } from '../utils/redis.js';
 import { invalidateSummary, autoSummarizeOnClose, scoreSentiment } from '../services/ai/index.js';
 import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../services/sla.js';
@@ -431,10 +432,13 @@ export function registerSocketHandlers(io: Server) {
           broadcastAgentStatus(userId, true);
         }
 
-        // Restore persisted status to client
-        const persistedStatus = await presenceService.getUserStatus(userId, partnerId);
-        if (persistedStatus && persistedStatus !== 'available') {
-          socket.emit('status:restored', { status: persistedStatus });
+        // Restore persisted status to client and open status tracking row
+        if (isSupport) {
+          const persistedStatus = await presenceService.getUserStatus(userId, partnerId);
+          await statusTracking.logTransition(userId, partnerId, persistedStatus || 'available');
+          if (persistedStatus && persistedStatus !== 'available') {
+            socket.emit('status:restored', { status: persistedStatus });
+          }
         }
 
         // Re-join active ticket rooms
@@ -616,6 +620,7 @@ export function registerSocketHandlers(io: Server) {
       const partnerId = socket.data.partnerId;
       if (userId && partnerId) {
         await presenceService.setUserStatus(userId, partnerId, status);
+        await statusTracking.logTransition(userId, partnerId, status);
       }
     });
 
@@ -1096,8 +1101,12 @@ export function registerSocketHandlers(io: Server) {
       if (userId && partnerId) {
         try {
           const result = await presenceService.decrementUserCount(userId, partnerId);
-          if (result && result.removed && result.role === 'agent') {
-            broadcastAgentStatus(userId, false);
+          if (result && result.removed) {
+            if (result.role === 'agent') {
+              broadcastAgentStatus(userId, false);
+            }
+            // Close status tracking row when user fully disconnects (all roles)
+            await statusTracking.closeOpenRow(userId, partnerId);
           }
         } catch (err) {
           // M-06: Don't let presence errors crash the disconnect handler
