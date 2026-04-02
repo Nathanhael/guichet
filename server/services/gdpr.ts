@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
-import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets } from '../db/schema.js';
+import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog } from '../db/schema.js';
 
 export async function runDailyPurge() {
   // Step 0: Archive before purging (uses AUDIT_ARCHIVE_DELAY_DAYS, default 2 days)
@@ -180,6 +180,13 @@ export async function runDailyPurge() {
     if (aiPurged > 0) {
       logger.info({ aiPurged }, '[purge] AI usage log aggregate + purge complete');
     }
+
+    // Purge agent status log entries older than 30 days
+    const statusCutoff = new Date(Date.now() - 30 * 86400000).toISOString();
+    await db
+      .delete(agentStatusLog)
+      .where(lt(agentStatusLog.startedAt, statusCutoff));
+    logger.info({ cutoff: statusCutoff }, '[gdpr] Purged old agent_status_log entries');
 
     // Log the successful purge in audit_log
     await db.insert(auditLogTable).values({
