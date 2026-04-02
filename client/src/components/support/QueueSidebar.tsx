@@ -4,9 +4,10 @@ import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
 import { trpc } from '../../utils/trpc';
 import { ARCHIVE_PAGE_SIZE } from '../../config';
-import { Ticket, Membership } from '../../types';
+import { Ticket, Membership, OnlineSupport } from '../../types';
 import SlaIndicator from '../SlaIndicator';
 import SentimentDot from '../SentimentDot';
+import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import SavedViewPicker, { ViewFilters } from './SavedViewPicker';
 
 interface QueueSidebarProps {
@@ -36,7 +37,11 @@ export default function QueueSidebar({
   const tickets = useStore((s) => s.tickets);
   const supportOpenTickets = useStore((s) => s.supportOpenTickets);
   const unreadTickets = useStore((s) => s.unreadTickets);
+  const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
   const t = useT();
+
+  const availableCount = onlineSupportUsers.filter((u) => u.status === 'available').length;
+  const totalOnline = onlineSupportUsers.length;
 
   // Batch sentiment scores for open tickets
   const { data: sentimentMap } = trpc.ai.getTicketSentiments.useQuery(undefined, {
@@ -339,6 +344,40 @@ export default function QueueSidebar({
       {sidebarTab === 'queue' && (
         <div className="px-4 py-2 border-t border-[var(--color-border)] mono-label opacity-40 text-center">
           {queueFiltered.length} {t('in_queue') || 'in queue'}
+        </div>
+      )}
+
+      {/* Online team status */}
+      {onlineSupportUsers.length > 0 && (
+        <div className="border-t border-border px-3 py-3">
+          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-text-muted mb-2">
+            {t('online_team')}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {onlineSupportUsers.map((agent) => {
+              const colors = getStatusColors(agent.status);
+              return (
+                <div key={agent.userId} className="flex items-center gap-2 px-1 py-0.5">
+                  <div className="w-6 h-6 rounded-full bg-bg-elevated flex items-center justify-center text-[9px] font-bold text-text-primary shrink-0">
+                    {agent.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] font-semibold text-text-primary truncate">{agent.name}</div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`w-2 h-2 rounded-full ${colors.dot}`} />
+                    <span className={`text-[9px] font-bold uppercase ${colors.text}`}>
+                      {t(getStatusI18nKey(agent.status))}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-2 pt-2 border-t border-border">
+            <span className="text-[9px] font-mono font-bold uppercase text-text-muted">{t('team_capacity')}</span>
+            <span className="text-[11px] font-bold text-accent-green">{availableCount} / {totalOnline}</span>
+          </div>
         </div>
       )}
     </aside>
