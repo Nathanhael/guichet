@@ -604,7 +604,7 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('status:set', async ({ status }: { status: string }) => {
       if (!requireIdentified(socket)) return;
-      const VALID_STATUSES = ['available', 'busy', 'away'] as const;
+      const VALID_STATUSES = ['available', 'break', 'lunch', 'meeting', 'training'] as const;
       if (!VALID_STATUSES.includes(status as typeof VALID_STATUSES[number])) return;
       const userId = socket.data.userId;
       const partnerId = socket.data.partnerId;
