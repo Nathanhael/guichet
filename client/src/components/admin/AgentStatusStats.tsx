@@ -77,7 +77,7 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
               tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }}
             />
             <Tooltip
-              formatter={(value: number) => formatSeconds(value)}
+              formatter={(value) => formatSeconds(Number(value) || 0)}
               contentStyle={{
                 backgroundColor: 'var(--color-bg-surface)',
                 border: '1px solid var(--color-border-heavy)',
@@ -98,7 +98,7 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
       {chartData.length > 0 && (
         <div className="flex gap-4 flex-wrap mt-3 pt-3 border-t border-border">
           {(['Available', 'Break', 'Lunch', 'Meeting', 'Training'] as const).map((key) => {
-            const total = chartData.reduce((sum, row) => sum + ((row as Record<string, number>)[key] || 0), 0);
+            const total = chartData.reduce((sum, row) => sum + ((row as unknown as Record<string, number>)[key] || 0), 0);
             const colorMap: Record<string, string> = {
               Available: 'bg-accent-green',
               Break: 'bg-accent-amber',
