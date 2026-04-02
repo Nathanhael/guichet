@@ -3,6 +3,7 @@ import { useT } from '../../i18n';
 import NavToolbar from '../NavToolbar';
 import NeuroToggle from '../NeuroToggle';
 import StatusPicker from '../StatusPicker';
+import { OnlineSupport } from '../../types';
 
 interface SupportNavProps {
   partnerName: string;
@@ -20,6 +21,9 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
   const logout = useStore((s) => s.logout);
   const focusMode = useStore((s) => s.focusMode);
   const toggleFocusMode = useStore((s) => s.toggleFocusMode);
+  const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
+  const availableCount = onlineSupportUsers.filter((u) => u.status === 'available').length;
+  const totalOnline = onlineSupportUsers.length;
   const t = useT();
 
   if (!user) return null;
@@ -65,6 +69,15 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
         )}
 
         <StatusPicker />
+
+        {totalOnline > 0 && (
+          <div className="flex items-center gap-2 px-2">
+            <span className="text-[9px] font-mono font-bold uppercase text-text-muted">{t('team_capacity')}</span>
+            <span className="bg-bg-elevated border border-border px-2 py-0.5 text-[11px] font-bold text-accent-green">
+              {availableCount} / {totalOnline}
+            </span>
+          </div>
+        )}
 
         <NavToolbar>
           <button
