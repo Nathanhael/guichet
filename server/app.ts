@@ -26,6 +26,7 @@ import { auth as authMiddleware, authorize, AuthRequest } from './middleware/aut
 import * as presenceService from './services/presence.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
+import { rollupDay } from './services/statusTracking.js';
 import { cleanupExpiredTokens } from './services/refreshToken.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
@@ -375,6 +376,20 @@ setTimeout(() => {
     });
   }, TOKEN_CLEANUP_INTERVAL_MS);
 }, Math.floor(Math.random() * 30 * 60 * 1000)); // 0-30min startup jitter
+
+// Daily agent status rollup — runs every hour, rolls up yesterday's data
+setInterval(async () => {
+  try {
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const allPartners = await db.select({ id: schema.partners.id }).from(schema.partners);
+    for (const p of allPartners) {
+      await rollupDay(p.id, yesterday);
+    }
+    logger.info({ date: yesterday }, '[statusTracking] Hourly rollup complete');
+  } catch (err) {
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[statusTracking] Rollup error');
+  }
+}, 60 * 60 * 1000).unref();
 
 // Socket.IO handlers
 registerSocketHandlers(io);
