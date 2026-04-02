@@ -37,6 +37,16 @@ export default function StatusPicker() {
     return () => document.removeEventListener('mousedown', onOutsideClick);
   }, []);
 
+  useEffect(() => {
+    const socket = getSocket();
+    function onStatusRestored({ status }: { status: string }) {
+      const valid = STATUSES.find((s) => s.key === status);
+      if (valid) setValue(status);
+    }
+    socket.on('status:restored', onStatusRestored);
+    return () => { socket.off('status:restored', onStatusRestored); };
+  }, []);
+
   function handleChange(newStatus: string) {
     setValue(newStatus);
     setOpen(false);
