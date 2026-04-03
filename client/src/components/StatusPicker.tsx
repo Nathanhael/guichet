@@ -11,10 +11,10 @@ interface StatusOption {
 
 const STATUSES: StatusOption[] = [
   { key: 'available', label: 'status_available', dot: 'bg-accent-green' },
-  { key: 'break', label: 'status_break', dot: 'bg-text-muted' },
-  { key: 'lunch', label: 'status_lunch', dot: 'bg-text-muted' },
-  { key: 'meeting', label: 'status_meeting', dot: 'bg-text-muted' },
-  { key: 'training', label: 'status_training', dot: 'bg-text-muted' },
+  { key: 'break', label: 'status_break', dot: 'bg-accent-amber' },
+  { key: 'lunch', label: 'status_lunch', dot: 'bg-accent-orange' },
+  { key: 'meeting', label: 'status_meeting', dot: 'bg-accent-red' },
+  { key: 'training', label: 'status_training', dot: 'bg-accent-blue' },
 ];
 
 /**
@@ -37,16 +37,23 @@ export default function StatusPicker() {
     return () => document.removeEventListener('mousedown', onOutsideClick);
   }, []);
 
+  useEffect(() => {
+    const socket = getSocket();
+    function onStatusRestored({ status }: { status: string }) {
+      const valid = STATUSES.find((s) => s.key === status);
+      if (valid) setValue(status);
+    }
+    socket.on('status:restored', onStatusRestored);
+    return () => { socket.off('status:restored', onStatusRestored); };
+  }, []);
+
   function handleChange(newStatus: string) {
     setValue(newStatus);
     setOpen(false);
 
     // Emit status to server so it's visible to admins / other support
     if (user) {
-      getSocket().emit('support:status', {
-        userId: user.id,
-        status: newStatus,
-      });
+      getSocket().emit('status:set', { status: newStatus });
     }
   }
 

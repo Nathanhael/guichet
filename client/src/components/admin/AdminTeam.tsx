@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
-import { useStoreShallow } from '../../store/useStore';
+import useStore, { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { Pencil, Check, X } from 'lucide-react';
 import Toast from '../Toast';
+import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
+import { OnlineSupport } from '../../types';
 
 export default function AdminTeam() {
   const t = useT();
@@ -13,6 +15,9 @@ export default function AdminTeam() {
   }));
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
+
+  const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
+  const onlineStatusMap = new Map(onlineSupportUsers.map((u) => [u.userId, u.status]));
 
   const [page, setPage] = useState(0);
   const LIMIT = 50;
@@ -73,6 +78,9 @@ export default function AdminTeam() {
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Email</th>
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Role</th>
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Status</th>
+                  <th className="text-left px-3 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-text-muted">
+                    {t('team_status')}
+                  </th>
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Departments</th>
                   <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] text-right">Actions</th>
                 </tr>
@@ -86,6 +94,19 @@ export default function AdminTeam() {
                       <span className="px-2 py-0.5 border border-[var(--color-border)] text-[10px] font-bold uppercase">
                         {member.role}
                       </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      {(() => {
+                        const onlineStatus = onlineStatusMap.get(member.userId);
+                        const colors = getStatusColors(onlineStatus);
+                        const label = onlineStatus ? t(getStatusI18nKey(onlineStatus)) : t('status_offline');
+                        return (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                            <span className={`text-[9px] font-bold uppercase ${colors.text}`}>{label}</span>
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="p-3">
                       {member.externalId || member.lastActiveAt ? (

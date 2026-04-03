@@ -19,7 +19,6 @@ import {
   updateParticipants,
   closeTicket,
   updateTicketSla,
-  transferTicket,
   returnTicketToQueue,
   replaceTicketLabels,
   insertRating,
@@ -34,7 +33,7 @@ import { mapMessageRow } from '../utils/messageMapper.js';
 import { requirePartnerScope, requirePartnerScopeWith } from './partnerScope.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
 import { findPartnerConfig } from '../services/partnerQueries.js';
-import { findUserById, findMembership, findSenderInfo, findUserName, findTargetSupport } from '../services/userQueries.js';
+import { findUserById, findMembership, findSenderInfo, findUserName } from '../services/userQueries.js';
 import {
   insertMessage,
   findTicketMessagesPaginated,
@@ -49,11 +48,13 @@ import {
 } from '../services/messageQueries.js';
 import { isRevoked } from '../services/sessionRevocation.js';
 import { runSyncGuards, guardRepetition } from '../services/guards.js';
+import * as statusTracking from '../services/statusTracking.js';
 import { getRedisClients } from '../utils/redis.js';
 import { invalidateSummary, autoSummarizeOnClose, scoreSentiment } from '../services/ai/index.js';
 import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../services/sla.js';
 import { Rooms } from '../utils/rooms.js';
-import { insertSystemMessage } from '../services/systemMessage.js';
+import { insertSystemMessage, insertWhisperMessage } from '../services/systemMessage.js';
+import { findPartnerDepartments, transferTicketToDepartment } from '../services/transferService.js';
 import {
   VIEWER_TTL_SECONDS,
   MAX_BATCH_DELETE,
@@ -431,6 +432,15 @@ export function registerSocketHandlers(io: Server) {
           broadcastAgentStatus(userId, true);
         }
 
+        // Restore persisted status to client and open status tracking row
+        if (isSupport) {
+          const persistedStatus = await presenceService.getUserStatus(userId, partnerId);
+          await statusTracking.logTransition(userId, partnerId, persistedStatus || 'available');
+          if (persistedStatus && persistedStatus !== 'available') {
+            socket.emit('status:restored', { status: persistedStatus });
+          }
+        }
+
         // Re-join active ticket rooms
         try {
           let activeTickets: { id: string }[] = [];
@@ -604,12 +614,13 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('status:set', async ({ status }: { status: string }) => {
       if (!requireIdentified(socket)) return;
-      const VALID_STATUSES = ['available', 'busy', 'away'] as const;
+      const VALID_STATUSES = ['available', 'break', 'lunch', 'meeting', 'training'] as const;
       if (!VALID_STATUSES.includes(status as typeof VALID_STATUSES[number])) return;
       const userId = socket.data.userId;
       const partnerId = socket.data.partnerId;
       if (userId && partnerId) {
         await presenceService.setUserStatus(userId, partnerId, status);
+        await statusTracking.logTransition(userId, partnerId, status);
       }
     });
 
@@ -919,7 +930,7 @@ export function registerSocketHandlers(io: Server) {
     });
 
     // ── Ticket Transfer ──────────────────────────────────────────────────────
-    socket.on('ticket:transfer', async ({ ticketId, targetSupportId }: { ticketId: string; targetSupportId?: string }) => {
+    socket.on('ticket:transfer', async ({ ticketId, departmentId, note }: { ticketId: string; departmentId?: string; note?: string }) => {
       if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'ticket:transfer' });
       try {
@@ -934,37 +945,70 @@ export function registerSocketHandlers(io: Server) {
         const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForTransfer);
         if (!ticket) return;
 
-        if (targetSupportId) {
-          // Transfer to a specific support agent
-          const targetUser = await findTargetSupport(targetSupportId, callerPartnerId);
-          if (!targetUser) return socket.emit('error', { message: 'Target user not found or not a member of this partner' });
+        if (departmentId) {
+          // Transfer to a different department
+          const depts = await findPartnerDepartments(callerPartnerId);
+          const targetDept = depts.find(d => d.id === departmentId);
+          if (!targetDept) return socket.emit('error', { message: 'Department not found' });
 
-          await transferTicket(ticketId, targetSupportId, targetUser.name, senderId);
+          // Optional whisper note for context handoff
+          if (note?.trim()) {
+            const senderInfo = await findSenderInfo(senderId, callerPartnerId);
+            const whisperMsg = await insertWhisperMessage(
+              ticketId, senderId, senderName,
+              senderInfo?.role || 'support', senderInfo?.lang || 'en',
+              note.trim(),
+            );
+            io.to(Rooms.ticket(ticketId)).emit('message:new', whisperMsg);
+          }
 
-          // Add system message
-          const sysText = `Ticket transferred from ${senderName} to ${targetUser.name}`;
+          // Update ticket: new department, clear support assignment, re-open
+          await transferTicketToDepartment(ticketId, departmentId);
+
+          // System message
+          const sysText = `Ticket transferred to ${targetDept.name} by ${senderName}`;
           const sysMsg = await insertSystemMessage(ticketId, sysText);
           io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
-          io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: targetSupportId, toName: targetUser.name });
+          io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', {
+            ticketId,
+            fromId: senderId,
+            fromName: senderName,
+            toDepartment: departmentId,
+            toDepartmentName: targetDept.name,
+          });
 
-          // Notify the target support agent via partner room
-          // Notify staff only — agents should not receive assignment broadcasts
-          io.to(Rooms.staff(callerPartnerId)).emit('ticket:assigned', { ticketId, supportId: targetSupportId, supportName: targetUser.name });
+          // Remove ALL support sockets from ticket room
+          const ticketRoom = Rooms.ticket(ticketId);
+          const socketsInRoom = await io.in(ticketRoom).fetchSockets();
+          for (const s of socketsInRoom) {
+            if (s.data.isSupport) s.leave(ticketRoom);
+          }
+
+          // Broadcast queue positions for both departments
+          await broadcastQueuePositions(callerPartnerId);
         } else {
-          // Return to queue — unassign support
+          // Return to queue — same department, unassign support
           await returnTicketToQueue(ticketId);
 
           const sysText = `${senderName} returned ticket to queue`;
           const sysMsg = await insertSystemMessage(ticketId, sysText);
           io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
-          io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', { ticketId, fromId: senderId, fromName: senderName, toId: null, toName: null });
+          io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', {
+            ticketId,
+            fromId: senderId,
+            fromName: senderName,
+            toId: null,
+            toName: null,
+          });
+
+          // Remove sender from ticket room
+          socket.leave(Rooms.ticket(ticketId));
 
           await broadcastQueuePositions(callerPartnerId);
         }
-
-        // Remove sender from the ticket room
-        socket.leave(Rooms.ticket(ticketId));
-      } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:transfer] error'); }
+      } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:transfer] error');
+      }
     });
 
     socket.on('ticket:labels:update', async ({ ticketId, labels }: { ticketId: string, labels: string[] }) => {
@@ -1057,8 +1101,12 @@ export function registerSocketHandlers(io: Server) {
       if (userId && partnerId) {
         try {
           const result = await presenceService.decrementUserCount(userId, partnerId);
-          if (result && result.removed && result.role === 'agent') {
-            broadcastAgentStatus(userId, false);
+          if (result && result.removed) {
+            if (result.role === 'agent') {
+              broadcastAgentStatus(userId, false);
+            }
+            // Close status tracking row when user fully disconnects (all roles)
+            await statusTracking.closeOpenRow(userId, partnerId);
           }
         } catch (err) {
           // M-06: Don't let presence errors crash the disconnect handler

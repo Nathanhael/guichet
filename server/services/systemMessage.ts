@@ -18,3 +18,26 @@ export async function insertSystemMessage(ticketId: string, text: string) {
     system: true,
   });
 }
+
+/**
+ * Inserts a whisper message (visible only to support staff) into a ticket.
+ * Used for context handoff during department transfers.
+ */
+export async function insertWhisperMessage(
+  ticketId: string,
+  senderId: string,
+  senderName: string,
+  senderRole: string,
+  senderLang: string,
+  text: string,
+) {
+  return insertMessage({
+    ticketId,
+    senderId,
+    senderName,
+    senderRole,
+    senderLang,
+    text,
+    whisper: true,
+  });
+}
