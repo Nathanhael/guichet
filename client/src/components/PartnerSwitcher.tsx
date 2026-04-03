@@ -66,7 +66,7 @@ export default function PartnerSwitcher() {
               </button>
             )}
             
-            {memberships.map((m) => (
+            {memberships.filter(m => !m.id.startsWith('platform_')).map((m) => (
               <button
                 key={m.id}
                 onClick={() => {

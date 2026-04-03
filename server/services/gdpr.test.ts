@@ -24,6 +24,8 @@ function makeSelectChain() {
   };
 }
 
+const deleteMock = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+
 const dbMock = {
   execute: executeMock,
   insert: vi.fn(() => ({
@@ -31,6 +33,7 @@ const dbMock = {
   })),
   select: vi.fn(() => makeSelectChain()),
   transaction: vi.fn(),
+  delete: deleteMock,
 };
 
 vi.mock('../db.js', () => ({
@@ -91,6 +94,7 @@ vi.mock('../db/schema.js', () => ({
   dailyAiUsage: { totalRequests: 'total_requests', avgLatencyMs: 'avg_latency_ms', totalInputTokens: 'total_input_tokens', totalOutputTokens: 'total_output_tokens', successCount: 'success_count', errorCount: 'error_count' },
   aiUsageLog: { createdAt: 'created_at' },
   appFeedback: 'app_feedback_table',
+  agentStatusLog: { startedAt: 'started_at' },
 }));
 
 // --- Helpers ---
@@ -151,6 +155,7 @@ describe('runDailyPurge', () => {
 
     insertOnConflictMock.mockResolvedValue(undefined);
     insertValuesMock.mockReturnValue({ onConflictDoUpdate: insertOnConflictMock });
+    deleteMock.mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
   });
 
   it('archives audit log and tickets before deleting', async () => {

@@ -54,6 +54,16 @@ vi.mock('../utils/logger.js', () => ({
   },
 }));
 
+vi.mock('../services/platformStepUp.js', () => ({
+  isPlatformStepUpSatisfied: (platformStepUpAt?: number | null) => {
+    // Enforce step-up in tests: require a recent platformStepUpAt timestamp
+    if (!platformStepUpAt) return false;
+    return Date.now() / 1000 - platformStepUpAt < 900; // 15-minute window
+  },
+  getPlatformStepUpExpiry: vi.fn(() => null),
+  getCurrentUnixTime: vi.fn(() => Math.floor(Date.now() / 1000)),
+}));
+
 describe('auth enter-partner route', () => {
   beforeEach(() => {
     getEnterPartnerContextMock.mockReset();

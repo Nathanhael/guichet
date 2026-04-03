@@ -980,6 +980,7 @@ router.post('/enter-partner', (await import('../middleware/auth.js')).auth, asyn
         setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
         res.json({
             activePartnerId: partner.id,
+            partnerName: partner.name,
             manifest: {
                 industry: partner.industry,
                 logoUrl: partner.logoUrl,

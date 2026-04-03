@@ -114,12 +114,28 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
         const err = await res.json();
         throw new Error(err.error || 'Failed to enter partner');
       }
-      await res.json();
+      const data = await res.json();
       const userId = get().user?.id;
       const syntheticMembershipId = `platform_${userId}_${partnerId}`;
+
+      // Build a synthetic membership so usePartner can resolve the tenant name
+      const syntheticMembership: Membership = {
+        id: syntheticMembershipId,
+        partnerId,
+        partnerName: data.partnerName || partnerId,
+        role: 'admin',
+        departments: [],
+        manifest: data.manifest || { industry: 'general', departments: [] },
+      };
+
+      const existing = get().memberships.filter(m => !m.id.startsWith('platform_'));
       sessionStorage.setItem('activeMembershipId', syntheticMembershipId);
       sessionStorage.setItem('activePartnerId', partnerId);
-      set({ activeMembershipId: syntheticMembershipId, activePartnerId: partnerId });
+      set({
+        memberships: [...existing, syntheticMembership],
+        activeMembershipId: syntheticMembershipId,
+        activePartnerId: partnerId,
+      });
     },
     logout: async () => {
       try {

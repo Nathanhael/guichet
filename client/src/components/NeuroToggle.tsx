@@ -49,19 +49,17 @@ export default function NeuroToggle() {
       </button>
 
       {/* Bionic Reading Button */}
-      {dyslexicMode && (
-        <button
-          onClick={toggleBionicReading}
-          title={bionicReading ? 'Standard text' : 'Bionic reading'}
-          className={`px-2 py-1 text-[10px] font-bold ml-0.5 ${
-            bionicReading
-              ? 'bg-black/20 dark:bg-white/10 text-black dark:text-white'
-              : 'text-black dark:text-white opacity-40 hover:opacity-100'
-          }`}
-        >
-          <Zap size={12} fill={bionicReading ? "currentColor" : "none"} strokeWidth={bionicReading ? 2.5 : 2} />
-        </button>
-      )}
+      <button
+        onClick={toggleBionicReading}
+        title={bionicReading ? 'Standard text' : 'Bionic reading'}
+        className={`px-2 py-1 text-[10px] font-bold ml-0.5 ${
+          bionicReading
+            ? 'bg-black/20 dark:bg-white/10 text-black dark:text-white'
+            : 'text-black dark:text-white opacity-40 hover:opacity-100'
+        }`}
+      >
+        <Zap size={12} fill={bionicReading ? "currentColor" : "none"} strokeWidth={bionicReading ? 2.5 : 2} />
+      </button>
     </div>
   );
 }

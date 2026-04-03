@@ -53,15 +53,28 @@ export const userRouter = router({
       }
       try {
         // IM-04: Only return minimum fields for demo login UI — no privilege exposure
-        const demoUsers = await db
+        const rows = await db
           .select({
             id: users.id,
             name: users.name,
-            role: sql<string>`(SELECT ${memberships.role} FROM ${memberships} WHERE ${memberships.userId} = ${users.id} LIMIT 1)`,
+            email: users.email,
+            lang: users.lang,
+            isPlatformOperator: users.isPlatformOperator,
           })
           .from(users)
           .where(isNull(users.deletedAt))
           .orderBy(asc(users.name));
+
+        // Fetch first membership role per user (avoids duplicate rows from multi-partner users)
+        const roleRows = await db
+          .select({ userId: memberships.userId, role: memberships.role })
+          .from(memberships);
+        const roleMap = new Map(roleRows.map(r => [r.userId, r.role]));
+
+        const demoUsers = rows.map(u => ({
+          ...u,
+          role: roleMap.get(u.id) ?? null,
+        }));
         return demoUsers;
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');

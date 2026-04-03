@@ -108,9 +108,9 @@ async function seed() {
 
     // 3. Create labels
     const demoLabels = [
-        { id: 'label_billing', name: 'Billing', color: '#000000' },
-        { id: 'label_technical', name: 'Technical', color: '#000000' },
-        { id: 'label_urgent', name: 'Urgent', color: '#000000' },
+        { id: 'label_billing', name: 'Billing', color: 'amber' },
+        { id: 'label_technical', name: 'Technical', color: 'blue' },
+        { id: 'label_urgent', name: 'Urgent', color: 'rose' },
     ];
 
     for (const l of demoLabels) {

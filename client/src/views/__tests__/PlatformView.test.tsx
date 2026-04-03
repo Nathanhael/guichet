@@ -6,7 +6,7 @@ import PlatformView from '../PlatformView';
 /*  Mocks                                                              */
 /* ------------------------------------------------------------------ */
 
-const mockLogout = vi.fn();
+const mockLogout = vi.hoisted(() => vi.fn());
 
 vi.mock('../../store/useStore', () => {
   const state = { logout: mockLogout, token: 'test' };

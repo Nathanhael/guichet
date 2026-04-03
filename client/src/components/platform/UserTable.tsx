@@ -68,15 +68,17 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
         <div className="flex-1">
           <h1 className="text-4xl font-bold uppercase tracking-tighter font-mono">{t('global_users')}</h1>
           <p className="text-sm font-bold uppercase text-[var(--color-text-muted)] mt-1 tracking-widest">{t('manage_identities_desc')}</p>
-          <div className="mt-6 flex flex-col sm:flex-row gap-4 max-w-2xl relative">
-            <div className="flex-1 relative">
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 max-w-3xl">
+            <div className="flex-[2] min-w-0 relative">
               <input type="text" placeholder={t('search_users_placeholder')} className="input-field w-full" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
               {userSearch && <button onClick={() => setUserSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">{t('clear')}</button>}
             </div>
-            <select className="input-field px-4 py-2.5 text-sm font-bold uppercase tracking-widest" value={selectedPartnerId} onChange={(e) => setSelectedPartnerId(e.target.value)}>
-              <option value="all">{t('all_partners')}</option>
-              {partners?.filter(p => !p.deletedAt).map(p => <option key={p.id} value={p.id}>{p.status === 'inactive' ? `[${t('inactive_status')}] ${p.name}` : p.name}</option>)}
-            </select>
+            <div className="flex-1 min-w-[200px]">
+              <select className="input-field w-full px-4 py-2.5 text-sm font-bold uppercase tracking-widest" value={selectedPartnerId} onChange={(e) => setSelectedPartnerId(e.target.value)}>
+                <option value="all">{t('all_partners')}</option>
+                {partners?.filter(p => !p.deletedAt).map(p => <option key={p.id} value={p.id}>{p.status === 'inactive' ? `[${t('inactive_status')}] ${p.name}` : p.name}</option>)}
+              </select>
+            </div>
           </div>
         </div>
         <button onClick={onInviteClick} className="btn-primary px-8 py-3 text-[10px] uppercase tracking-widest shrink-0">{t('invite_new_user')}</button>

@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useState, lazy } from 'react';
+import { Suspense, useEffect, lazy } from 'react';
 import useStore, { useStoreShallow } from './store/useStore';
 import { useSocket } from './hooks/useSocket';
 import { useTheme } from './hooks/useTheme';
@@ -7,14 +7,12 @@ import { initTitleBadgeListener } from './utils/notifications';
 import DarkModeToggle from './components/DarkModeToggle';
 import ErrorBoundary from './components/ErrorBoundary';
 import { isPlatformAdmin, isTenantAdmin } from './utils/roles';
-import { Shield } from 'lucide-react';
 
 const LoginView = lazy(() => import('./views/LoginView'));
 const SupportView = lazy(() => import('./views/SupportView'));
 const AdminView = lazy(() => import('./views/AdminView'));
 const PlatformView = lazy(() => import('./views/PlatformView'));
 const AgentView = lazy(() => import('./views/AgentView'));
-const UserSecurityModal = lazy(() => import('./components/UserSecurityModal'));
 
 const LoadingFallback = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-[var(--color-bg-base)]">
@@ -55,8 +53,6 @@ export default function App() {
     activeMembershipId: s.activeMembershipId,
     setActiveMembershipId: s.setActiveMembershipId,
   }));
-  const [securityOpen, setSecurityOpen] = useState(false);
-
   useTheme();
   useSocket();
   useTokenRefresh();
@@ -132,22 +128,6 @@ export default function App() {
       <div className={`h-full ${dyslexicMode ? 'dyslexic-mode' : ''}`}>
         {renderView()}
 
-        {/* Global security settings trigger (visible when logged in) */}
-        {user && (
-          <button
-            onClick={() => setSecurityOpen(true)}
-            title="Account Security"
-            className="fixed bottom-6 right-6 z-50 w-10 h-10 border border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] text-[var(--color-text-primary)] flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white hover:border-[var(--color-accent-blue)]"
-          >
-            <Shield className="h-4 w-4" />
-          </button>
-        )}
-
-        {securityOpen && (
-          <Suspense fallback={null}>
-            <UserSecurityModal onClose={() => setSecurityOpen(false)} />
-          </Suspense>
-        )}
       </div>
     </div>
   );

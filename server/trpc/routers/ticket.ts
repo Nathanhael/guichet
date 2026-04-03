@@ -40,7 +40,7 @@ export const ticketRouter = router({
 
         // Scope by partner
         if (ctx.user.isPlatformOperator) {
-          const opPartnerId = input.partnerId;
+          const opPartnerId = input.partnerId || ctx.user.partnerId;
           if (!opPartnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Platform operators must provide partnerId' });
           conditions.push(eq(tickets.partnerId, opPartnerId));
         } else {

@@ -218,11 +218,14 @@ export default function AdminSatisfaction() {
                 />
                 <Tooltip
                   contentStyle={{
-                    background: 'var(--color-bg-surface)',
-                    border: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-bg-elevated)',
+                    border: '1px solid var(--color-text-secondary)',
+                    borderRadius: 0,
+                    color: 'var(--color-text-primary)',
                     fontFamily: 'monospace',
                     fontSize: 10,
                   }}
+                  labelStyle={{ color: 'var(--color-text-primary)' }}
                 />
                 <Legend wrapperStyle={{ fontFamily: 'monospace', fontSize: 9 }} />
                 <Line
@@ -254,11 +257,14 @@ export default function AdminSatisfaction() {
                 <YAxis tick={{ fontFamily: 'monospace', fontSize: 9 }} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    background: 'var(--color-bg-surface)',
-                    border: '1px solid var(--color-border)',
+                    backgroundColor: 'var(--color-bg-elevated)',
+                    border: '1px solid var(--color-text-secondary)',
+                    borderRadius: 0,
+                    color: 'var(--color-text-primary)',
                     fontFamily: 'monospace',
                     fontSize: 10,
                   }}
+                  labelStyle={{ color: 'var(--color-text-primary)' }}
                 />
                 <Bar dataKey="count" name="Count">
                   {fullDist.map(entry => (

@@ -21,9 +21,8 @@ interface MessageBubbleProps {
 }
 
 export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig }: MessageBubbleProps) {
-  const { user, participantsOnline, bionicReading } = useStoreShallow(s => ({
+  const { user, bionicReading } = useStoreShallow(s => ({
     user: s.user,
-    participantsOnline: s.participantsOnline,
     bionicReading: s.bionicReading,
   }));
   const t = useT();
@@ -106,14 +105,12 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
       onMouseEnter={() => !isDeleted && setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); }}
     >
-      <div className={`flex flex-col justify-end w-8 shrink-0 ${isMine ? 'ml-3' : 'mr-3'}`}>
+      <div className={`flex flex-col justify-end w-6 shrink-0 ${isMine ? 'ml-3' : 'mr-3'}`}>
         {!isMine && isGroupStart && !isWhisper && (
           <UserAvatar
             userId={message.senderId}
             name={message.senderName || 'User'}
-            size="sm"
-            showStatus
-            isOnline={participantsOnline[ticketId]}
+            size="xs"
           />
         )}
       </div>
@@ -121,7 +118,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
       <div className={`relative max-w-[75%] min-w-[60px] px-4 py-2.5 ${bubbleClasses} ${isDeleted ? 'opacity-50 italic' : ''}`}>
 
         {!isMine && !isWhisper && isGroupStart && (
-          <div className="text-[11px] font-bold mb-1 uppercase tracking-tight text-text-muted">
+          <div className="text-[11px] font-mono font-bold mb-1 uppercase tracking-tight text-text-muted">
             {message.senderName}
           </div>
         )}
