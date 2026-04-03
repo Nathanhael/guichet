@@ -50,7 +50,7 @@ export default function AdminView() {
   const NavButton = ({ id, label, icon }: { id: AdminTab; label: string; icon: React.ReactNode }) => (
     <button
       onClick={() => setView(id)}
-      title={!sidebarOpen ? label : undefined}
+      title={label}
       className={`flex items-center gap-2.5 w-full px-4 py-2.5 font-mono text-[10px] uppercase tracking-wide ${
         sidebarOpen ? 'justify-start' : 'justify-center'
       } ${
@@ -59,8 +59,8 @@ export default function AdminView() {
           : 'text-[var(--color-text-muted)] hover:bg-[var(--color-accent-blue)] hover:text-white'
       }`}
     >
-      {icon}
-      {sidebarOpen && <span>{label}</span>}
+      <span className="shrink-0">{icon}</span>
+      {sidebarOpen && <span className="truncate">{label}</span>}
     </button>
   );
 
@@ -80,12 +80,13 @@ export default function AdminView() {
             </button>
             <span className="font-bold text-2xl tracking-tighter uppercase">Tessera</span>
             <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide">Admin</span>
+            <span className="text-[var(--color-text-muted)] mx-1 select-none">/</span>
             {manifest.logoUrl ? (
               <img src={manifest.logoUrl} alt={partnerName} className="h-6 object-contain" />
             ) : (
-              <span className="w-6 h-6 flex items-center justify-center bg-bg-elevated text-[10px] font-bold uppercase">{partnerName.charAt(0)}</span>
+              <span className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] text-[10px] font-bold uppercase font-mono">{partnerName.charAt(0)}</span>
             )}
-            <span className="mono-label text-[var(--color-text-muted)]">{partnerName}</span>
+            <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
           </div>
         </div>
 

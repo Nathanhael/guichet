@@ -9,7 +9,7 @@ export function isPlatformAdmin(user: Pick<User, 'isPlatformOperator'> | null | 
 }
 
 export function isSupportLike(role: UserRole | undefined | null): boolean {
-  return role === 'support' || isTenantAdmin(role);
+  return role === 'support' || role === 'platform_operator' || isTenantAdmin(role);
 }
 
 export function getRoleConcept(role: UserRole | undefined | null, isPlatformOperator = false): 'agent' | 'support' | 'tenant_admin' | 'platform_admin' | 'unknown' {

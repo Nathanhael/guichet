@@ -48,6 +48,11 @@ export default function AdminLabels() {
     { key: 'slate', bg: 'bg-slate-500', ring: 'ring-slate-500' },
   ];
 
+  /** Map color key → full Tailwind bg class (avoids dynamic class purge) */
+  const colorBgMap: Record<string, string> = Object.fromEntries(
+    colors.map((c) => [c.key, c.bg]),
+  );
+
   const error = fetchError?.message || createMutation.error?.message || deleteMutation.error?.message;
 
   return (
@@ -133,7 +138,7 @@ export default function AdminLabels() {
               className="grid grid-cols-[auto_1fr_60px] border-b border-[var(--color-border)] group hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
             >
               <div className="px-4 py-3 w-16 flex items-center justify-center">
-                <div className={`w-3.5 h-3.5 rounded-full bg-${l.color}-500`} />
+                <div className={`w-3.5 h-3.5 rounded-full ${colorBgMap[l.color] ?? 'bg-slate-500'}`} />
               </div>
               <div className="px-4 py-3 font-bold text-sm flex items-center">{l.text}</div>
               <div className="px-4 py-3 flex items-center justify-center">
