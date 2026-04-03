@@ -101,15 +101,16 @@ export async function identifyUser(userId: string, role: string, name: string, p
           'partnerId', partnerId,
           'isPlatformOperator', isPlatformOp,
           'status', 'available',
+          'statusChangedAt', ARGV[7],
           'count', '1')
       else
+        -- Preserve existing status and statusChangedAt on reconnect
         redis.call('HSET', key,
           'userId', userId,
           'name', name,
           'role', role,
           'partnerId', partnerId,
-          'isPlatformOperator', isPlatformOp,
-          'status', 'available')
+          'isPlatformOperator', isPlatformOp)
         redis.call('HINCRBY', key, 'count', 1)
       end
       redis.call('EXPIRE', key, ttl)
@@ -127,6 +128,7 @@ export async function identifyUser(userId: string, role: string, name: string, p
         partnerId,
         isPlatformOperator ? '1' : '0',
         String(TTL_SECONDS),
+        new Date().toISOString(),
       ],
     });
 
@@ -147,6 +149,7 @@ export async function setUserStatus(userId: string, partnerId: string, status: s
     const user = await pubClient.hGetAll(key);
     if (user && user.userId) {
       await pubClient.hSet(key, 'status', status);
+      await pubClient.hSet(key, 'statusChangedAt', new Date().toISOString());
       await broadcastOnlineSupport(partnerId);
       logger.info({ userId, status }, 'User status updated in Redis');
       return true;
@@ -155,6 +158,19 @@ export async function setUserStatus(userId: string, partnerId: string, status: s
     logger.error({ err, userId }, 'Failed to update user status in Redis');
   }
   return false;
+}
+
+export async function getUserStatus(userId: string, partnerId: string): Promise<string | null> {
+  const { pubClient } = getRedisClients();
+  if (!pubClient) return null;
+
+  const key = hashKey(partnerId, userId);
+  try {
+    return await pubClient.hGet(key, 'status') || null;
+  } catch (err) {
+    logger.error({ err, userId }, 'Failed to get user status from Redis');
+    return null;
+  }
 }
 
 export async function decrementUserCount(userId: string, partnerId: string) {

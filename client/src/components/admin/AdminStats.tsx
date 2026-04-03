@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Panel, StatCard, Skeleton } from './DashboardHelpers';
+import AgentStatusStats from './AgentStatusStats';
 import {
   ResponsiveContainer,
   BarChart,
@@ -16,6 +17,15 @@ import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { exportDashboardCSV, exportDashboardPDF, DashboardStats } from '../../utils/exportDashboard';
 import { Download, FileText, AlertTriangle } from 'lucide-react';
+
+/** Shared Recharts tooltip styles using brutalist design tokens */
+const tooltipStyle: React.CSSProperties = {
+  backgroundColor: 'var(--color-bg-elevated)',
+  border: '1px solid var(--color-text-secondary)',
+  borderRadius: 0,
+  color: 'var(--color-text-primary)',
+};
+const tooltipLabelStyle: React.CSSProperties = { color: 'var(--color-text-primary)' };
 
 /** Typed shape of the getGlobalStats tRPC response for safe property access */
 interface DashboardData {
@@ -141,23 +151,21 @@ export default function AdminStats() {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 border border-[var(--color-border)] p-2 bg-[var(--color-bg-surface)] overflow-x-auto">
+        <div className="flex items-center gap-2 border border-[var(--color-border)] p-2 bg-[var(--color-bg-surface)]">
           {/* Department filter */}
-          <div className="flex gap-1">
-            {(['all', ...departments.map(d => d.id)] as string[]).map((d) => (
-              <button
-                key={d}
-                onClick={() => setStatsDept(d)}
-                className={`px-3 py-1.5 text-xs font-bold uppercase border ${
-                  statsDept === d
-                    ? 'border-[var(--color-border)] bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
-                }`}
-              >
-                {d === 'all' ? 'All' : (departments.find(dep => dep.id === d)?.name || d)}
-              </button>
+          <select
+            value={statsDept}
+            onChange={(e) => setStatsDept(e.target.value)}
+            className="input-field text-xs font-bold uppercase min-w-[120px]"
+            aria-label="Filter by department"
+          >
+            <option value="all">All Departments</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
             ))}
-          </div>
+          </select>
 
           <div className="w-px h-6 bg-[var(--color-border)] mx-1" />
 
@@ -307,7 +315,7 @@ export default function AdminStats() {
             <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
             <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={Math.ceil(stats.dailyTrend.length / 10)} />
             <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-            <Tooltip />
+            <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
             <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
             <Line type="monotone" dataKey="total" stroke="var(--color-text-primary)" strokeWidth={2} dot={false} name="Total" />
           </LineChart>
@@ -325,7 +333,7 @@ export default function AdminStats() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="total" fill="var(--color-text-primary)" name="Total Tasks" />
                 <Bar dataKey="today" fill="var(--color-text-secondary)" name="Today" />
@@ -343,7 +351,7 @@ export default function AdminStats() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                 <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="total" fill="var(--color-text-primary)" name="Total Tickets" />
                 <Bar dataKey="today" fill="var(--color-text-secondary)" name="Today" />
@@ -355,6 +363,9 @@ export default function AdminStats() {
 
       {/* Team Satisfaction */}
       <TeamSatisfaction dateFrom={statsDateFrom} dateTo={statsDateTo} />
+
+      {/* Agent Status Time Breakdown */}
+      <AgentStatusStats />
     </div>
   );
 }
@@ -425,7 +436,7 @@ function SentimentPanel({ stats }: { stats: DashboardData }) {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
               <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={Math.ceil(trendData.length / 6)} />
               <YAxis tick={{ fontSize: 9 }} domain={[-1, 1]} ticks={[-1, -0.5, 0, 0.5, 1]} />
-              <Tooltip formatter={(v) => [Number(v).toFixed(2), 'Sentiment']} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(v) => [Number(v).toFixed(2), 'Sentiment']} />
               <Line type="monotone" dataKey="sentiment" stroke="var(--color-text-primary)" strokeWidth={2} dot={false} name="Sentiment" />
             </LineChart>
           </ResponsiveContainer>

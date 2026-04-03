@@ -440,6 +440,48 @@ export const dailyAiUsage = pgTable('daily_ai_usage', {
   uniqueDayKey: uniqueIndex('idx_daily_ai_usage_unique').on(table.date, table.partnerId, table.action, table.provider, table.model),
 }));
 
+// ─── Agent Status Tracking ──────────────────────────────────────────────────
+
+/**
+ * Granular status transition log.
+ * Each row = one status period (startedAt → endedAt).
+ * endedAt is null for the agent's current status.
+ */
+export const agentStatusLog = pgTable('agent_status_log', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  status: text('status').notNull(),
+  startedAt: timestamp('started_at', { mode: 'string' }).notNull().defaultNow(),
+  endedAt: timestamp('ended_at', { mode: 'string' }),
+  duration: integer('duration'),
+}, (table) => ({
+  userPartnerIdx: index('idx_agent_status_log_user_partner').on(table.userId, table.partnerId),
+  partnerStartedIdx: index('idx_agent_status_log_partner_started').on(table.partnerId, table.startedAt),
+  openRowIdx: index('idx_agent_status_log_open').on(table.userId, table.partnerId).where(sql`ended_at IS NULL`),
+}));
+
+/**
+ * Daily rollup of agent time-in-status.
+ * One row per user × partner × day.
+ * Aggregated from agent_status_log for fast dashboard queries.
+ */
+export const dailyAgentStatus = pgTable('daily_agent_status', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  date: text('date').notNull(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  availableSeconds: integer('available_seconds').notNull().default(0),
+  breakSeconds: integer('break_seconds').notNull().default(0),
+  lunchSeconds: integer('lunch_seconds').notNull().default(0),
+  meetingSeconds: integer('meeting_seconds').notNull().default(0),
+  trainingSeconds: integer('training_seconds').notNull().default(0),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  partnerDateIdx: index('idx_daily_agent_status_partner_date').on(table.partnerId, table.date),
+  uniqueDayKey: uniqueIndex('idx_daily_agent_status_unique').on(table.date, table.userId, table.partnerId),
+}));
+
 // ─── Saved Views ─────────────────────────────────────────────────────────────
 
 export const savedViews = pgTable('saved_views', {
