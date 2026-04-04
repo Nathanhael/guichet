@@ -25,7 +25,7 @@ export const ticketRouter = router({
   list: protectedProcedure
     .input(z.object({
       agentId: z.string().optional(),
-      status: z.enum(['open', 'pending', 'closed']).optional(),
+      status: z.enum(['open', 'pending', 'closed', 'resolved']).optional(),
       dept: z.string().optional(),
       search: z.string().optional(),
       limit: z.number().min(1).optional(),
