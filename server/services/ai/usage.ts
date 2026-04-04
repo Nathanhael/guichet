@@ -7,7 +7,7 @@ import { getAiContext } from './context.js';
  */
 export async function logUsage(entry: AiUsageEntry): Promise<void> {
   const { db, logger, schema } = getAiContext();
-  const { aiUsageLog } = schema as any;
+  const { aiUsageLog } = schema;
 
   try {
     await db.insert(aiUsageLog).values({

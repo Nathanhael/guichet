@@ -17,7 +17,7 @@ const DEFAULT_CONFIG: PartnerAiConfig = {
  */
 export async function getPartnerAiConfig(partnerId: string): Promise<PartnerAiConfig> {
   const { db, config, schema } = getAiContext();
-  const { partners } = schema as any;
+  const { partners } = schema;
 
   // Global kill switch
   if (!config.AI_ENABLED) return { ...DEFAULT_CONFIG };

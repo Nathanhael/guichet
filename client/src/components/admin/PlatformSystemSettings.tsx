@@ -4,9 +4,21 @@ import { Mail, ShieldCheck, Save, Send } from 'lucide-react';
 import { useT } from '../../i18n';
 import Toast from '../Toast';
 
+interface MailConfig {
+  provider: 'none' | 'smtp' | 'resend' | 'sendgrid';
+  fromEmail: string;
+  fromName: string;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPass: string;
+  smtpSecure: boolean;
+  apiKey: string;
+}
+
 export default function PlatformSystemSettings() {
   const t = useT();
-  const [mailConfig, setMailConfig] = useState<any>({
+  const [mailConfig, setMailConfig] = useState<MailConfig>({
     provider: 'none',
     fromEmail: '',
     fromName: 'Tessera Support',
@@ -32,7 +44,7 @@ export default function PlatformSystemSettings() {
   // IM-22: Use functional setState to avoid stale closure over mailConfig
   useEffect(() => {
     if (remoteConfig) {
-      setMailConfig((prev: Record<string, unknown>) => ({ ...prev, ...remoteConfig }));
+      setMailConfig((prev) => ({ ...prev, ...remoteConfig }));
     }
   }, [remoteConfig]);
 
@@ -75,7 +87,7 @@ export default function PlatformSystemSettings() {
                   <label className="mono-label mb-2 block">{t('provider_label')}</label>
                   <select
                     value={mailConfig.provider}
-                    onChange={e => setMailConfig({ ...mailConfig, provider: e.target.value })}
+                    onChange={e => setMailConfig({ ...mailConfig, provider: e.target.value as MailConfig['provider'] })}
                     className="input-field w-full"
                   >
                     <option value="none">{t('provider_none')}</option>
