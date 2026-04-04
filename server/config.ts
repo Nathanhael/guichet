@@ -54,6 +54,9 @@ const configSchema = z.object({
     DISABLE_RATE_LIMIT: z.string().default('false').transform(v => v === 'true'),
     NODE_ENV: z.string().default('development'),
     DEMO_MODE: z.preprocess(v => v === 'true' || v === '1' || v === true, z.boolean()).default(false),
+    VAPID_PUBLIC_KEY: z.string().optional(),
+    VAPID_PRIVATE_KEY: z.string().optional(),
+    VAPID_SUBJECT: z.string().optional().default('mailto:admin@tessera.app'),
 });
 
 export type Config = z.infer<typeof configSchema>;
@@ -101,6 +104,9 @@ const parseResult = configSchema.safeParse({
     DISABLE_RATE_LIMIT: process.env.DISABLE_RATE_LIMIT,
     NODE_ENV: process.env.NODE_ENV,
     DEMO_MODE: process.env.DEMO_MODE,
+    VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+    VAPID_SUBJECT: process.env.VAPID_SUBJECT,
 });
 
 if (!parseResult.success) {
