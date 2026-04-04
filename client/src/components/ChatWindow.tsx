@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import useStore, { useStoreShallow } from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
 import CannedResponsePicker from './CannedResponsePicker';
 import { Ticket, Message } from '../types';
+import type { ChatWindowHandle } from '../types/command';
 import { trpc } from '../utils/trpc';
 import { LANG_FLAG } from '../constants';
 import { isSupportLike } from '../utils/roles';
@@ -20,7 +21,7 @@ interface ChatWindowProps {
   compact?: boolean;
 }
 
-export default function ChatWindow({ ticket, onClose, onFocus, focused, compact }: ChatWindowProps) {
+const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWindow({ ticket, onClose, onFocus, focused, compact }, ref) {
   const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, setRatingPrompt } = useStoreShallow(s => ({
     user: s.user,
     messages: s.messages,
@@ -62,6 +63,18 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused, compact 
   const [summarizing, setSummarizing] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [viewers, setViewers] = useState<Array<{ userId: string; userName: string }>>([]);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Expose minimal imperative handle for command palette actions
+  useImperativeHandle(ref, () => ({
+    focusTextarea: () => textareaRef.current?.focus(),
+    toggleWhisper: () => setWhisperMode((v) => !v),
+    openTransferMenu: () => setShowTransferMenu(true),
+    triggerCloseTicket: () => {
+      if (onClose) onClose();
+    },
+  }), [onClose]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -909,6 +922,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused, compact 
                 />
               )}
               <textarea
+                ref={textareaRef}
                 aria-label="Type a message"
                 value={text}
                 onChange={(e) => {
@@ -969,4 +983,6 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused, compact 
       )}
     </div>
   );
-}
+});
+
+export default ChatWindow;

@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import useStore from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getSocket } from '../hooks/useSocket';
@@ -19,7 +19,10 @@ import AgentStatusStats from '../components/admin/AgentStatusStats';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 import { Ticket } from '../types';
+import type { Command, ChatWindowHandle } from '../types/command';
 import { trpc } from '../utils/trpc';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import CommandPalette from '../components/support/CommandPalette';
 
 export default function SupportView() {
   const {
@@ -60,6 +63,10 @@ export default function SupportView() {
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showMyStats, setShowMyStats] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [showCustomerInfo, setShowCustomerInfo] = useState(true);
+  const [showCopilot, setShowCopilot] = useState(true);
+  const chatWindowRef = useRef<ChatWindowHandle>(null);
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
   const partnerName = activeMembership?.partnerName || 'Tessera';
@@ -170,6 +177,49 @@ export default function SupportView() {
     }
   }
 
+  // ── Command Palette ──
+
+  const navigateTab = useCallback((direction: 1 | -1) => {
+    if (openTabTickets.length < 2 || !activeTab) return;
+    const idx = openTabTickets.findIndex((tk) => tk.id === activeTab);
+    const next = (idx + direction + openTabTickets.length) % openTabTickets.length;
+    setActiveTab(openTabTickets[next].id);
+  }, [openTabTickets, activeTab]);
+
+  const commands: Command[] = useMemo(() => [
+    // Navigation
+    { id: 'focus-message', labelKey: 'cmd_focus_message', groupKey: 'cmd_group_navigation', shortcutHint: '/', execute: () => chatWindowRef.current?.focusTextarea(), keywords: ['type', 'input', 'chat'] },
+    { id: 'next-tab', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2193', execute: () => navigateTab(1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
+    { id: 'prev-tab', labelKey: 'cmd_prev_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2191', execute: () => navigateTab(-1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
+    { id: 'toggle-sidebar', labelKey: 'cmd_toggle_sidebar', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+B', execute: () => setSidebarOpen((v) => !v), keywords: ['queue', 'sidebar', 'hide', 'show'] },
+    { id: 'search-tickets', labelKey: 'cmd_search_tickets', groupKey: 'cmd_group_navigation', execute: () => { setSidebarOpen(true); setTimeout(() => { const el = document.querySelector<HTMLInputElement>('[data-queue-search]'); el?.focus(); }, 50); }, keywords: ['find', 'search', 'filter'] },
+    // Actions
+    { id: 'toggle-whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.toggleWhisper(), enabled: !!activeTab, keywords: ['whisper', 'internal', 'private'] },
+    { id: 'transfer-ticket', labelKey: 'cmd_transfer_ticket', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.openTransferMenu(), enabled: !!activeTab, keywords: ['transfer', 'hand off', 'department'] },
+    { id: 'close-tab', labelKey: 'cmd_close_tab', groupKey: 'cmd_group_actions', execute: () => { if (activeTab) closeTab(activeTab); }, enabled: !!activeTab, keywords: ['close', 'tab'] },
+    { id: 'close-ticket', labelKey: 'cmd_close_ticket', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.triggerCloseTicket(), enabled: !!activeTab, keywords: ['resolve', 'close', 'end'] },
+    // Status
+    { id: 'status-available', labelKey: 'cmd_status_available', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'available' }), keywords: ['available', 'online'] },
+    { id: 'status-break', labelKey: 'cmd_status_break', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'break' }), keywords: ['break', 'pause'] },
+    { id: 'status-lunch', labelKey: 'cmd_status_lunch', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'lunch' }), keywords: ['lunch', 'eat'] },
+    { id: 'status-meeting', labelKey: 'cmd_status_meeting', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'meeting' }), keywords: ['meeting', 'call'] },
+    { id: 'status-training', labelKey: 'cmd_status_training', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'training' }), keywords: ['training', 'learn'] },
+    // View & Toggles
+    { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
+    { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
+    { id: 'toggle-copilot', labelKey: 'cmd_toggle_copilot', groupKey: 'cmd_group_view', execute: () => setShowCopilot((v) => !v), keywords: ['ai', 'copilot', 'assistant'] },
+    { id: 'toggle-customer-info', labelKey: 'cmd_toggle_customer_info', groupKey: 'cmd_group_view', execute: () => setShowCustomerInfo((v) => !v), keywords: ['customer', 'info', 'panel', 'details'] },
+  ], [activeTab, openTabTickets, navigateTab]);
+
+  useKeyboardShortcuts({
+    enabled: !paletteOpen,
+    onOpenPalette: () => setPaletteOpen(true),
+    onFocusMessage: () => chatWindowRef.current?.focusTextarea(),
+    onNextTab: () => navigateTab(1),
+    onPrevTab: () => navigateTab(-1),
+    onToggleSidebar: () => setSidebarOpen((v) => !v),
+  });
+
   // ── Guards ──
 
   if (!user) return null;
@@ -277,6 +327,7 @@ export default function SupportView() {
                 />
               ) : activeTab ? (
                 <ChatWindow
+                  ref={chatWindowRef}
                   key={activeTab}
                   ticket={tickets.find((tk) => tk.id === activeTab)}
                   onClose={() => closeTab(activeTab)}
@@ -289,19 +340,22 @@ export default function SupportView() {
             </div>
 
             {/* Customer context panel (only in normal mode) */}
-            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && (() => {
+            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && showCustomerInfo && (() => {
               const activeTicket = tickets.find((tk) => tk.id === activeTab);
               return activeTicket ? <CustomerInfoPanel ticket={activeTicket} /> : null;
             })()}
 
             {/* AI Copilot sidebar (only in normal mode) */}
-            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && (() => {
+            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && showCopilot && (() => {
               const activeTicket = tickets.find((tk) => tk.id === activeTab);
               return activeTicket ? <AiCopilotSidebar ticket={activeTicket} /> : null;
             })()}
           </div>
         </main>
       </div>
+
+      {/* Command Palette overlay */}
+      {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
     </div>
   );
 }

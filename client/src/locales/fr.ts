@@ -507,5 +507,33 @@ const fr: Record<string, string> = {
 
     // Dashboard Export
     export_pdf: 'PDF',
+
+    // Command Palette
+    cmd_palette_title: 'Palette de commandes',
+    cmd_palette_placeholder: 'Tapez une commande...',
+    cmd_no_results: 'Aucune commande trouv\u00e9e',
+    cmd_group_navigation: 'Navigation',
+    cmd_group_actions: 'Actions',
+    cmd_group_status: 'Statut agent',
+    cmd_group_view: 'Affichage',
+    cmd_focus_message: 'Focus sur le message',
+    cmd_next_tab: 'Onglet suivant',
+    cmd_prev_tab: 'Onglet pr\u00e9c\u00e9dent',
+    cmd_toggle_sidebar: 'Afficher/masquer la file',
+    cmd_search_tickets: 'Rechercher des tickets',
+    cmd_toggle_whisper: 'Mode chuchotement',
+    cmd_transfer_ticket: 'Transf\u00e9rer le ticket',
+    cmd_close_tab: 'Fermer l\u2019onglet',
+    cmd_close_ticket: 'Cl\u00f4turer le ticket',
+    cmd_status_available: 'Statut : Disponible',
+    cmd_status_break: 'Statut : Pause',
+    cmd_status_lunch: 'Statut : D\u00e9jeuner',
+    cmd_status_meeting: 'Statut : R\u00e9union',
+    cmd_status_training: 'Statut : Formation',
+    cmd_toggle_focus: 'Mode focus',
+    cmd_toggle_dark: 'Mode sombre',
+    cmd_toggle_copilot: 'Copilote IA',
+    cmd_toggle_customer_info: 'Infos client',
+    cmd_shortcut_hint: 'Ctrl+K',
 };
 export default fr;
