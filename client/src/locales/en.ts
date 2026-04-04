@@ -342,6 +342,7 @@ const en: Record<string, string> = {
     time_in_status: 'Time in Status',
     available_label: 'Available',
     online_team: 'Online Team',
+    my_stats: 'My Stats',
 
     // Whisper / Internal
     whisper_mode: 'Internal mode',

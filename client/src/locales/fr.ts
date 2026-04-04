@@ -339,6 +339,7 @@ const fr: Record<string, string> = {
     time_in_status: 'Temps par statut',
     available_label: 'Disponible',
     online_team: 'Équipe en ligne',
+    my_stats: 'Mes stats',
 
     active_tickets: 'Tickets actifs',
     statistics: 'Statistiques',
