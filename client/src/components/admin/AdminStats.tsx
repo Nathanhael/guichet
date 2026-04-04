@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { Panel, StatCard, Skeleton } from './DashboardHelpers';
 import AgentStatusStats from './AgentStatusStats';
+import { useT } from '../../i18n';
+import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import {
   ResponsiveContainer,
   BarChart,
@@ -59,6 +61,7 @@ interface DashboardData {
 }
 
 export default function AdminStats() {
+  const t = useT();
   const { memberships, activeMembershipId } = useStoreShallow((s) => ({
     memberships: s.memberships,
     activeMembershipId: s.activeMembershipId,
@@ -101,6 +104,14 @@ export default function AdminStats() {
     },
     { refetchInterval: 30000 }
   );
+
+  const { data: onlineTeam } = trpc.status.getTeamStatus.useQuery(undefined, {
+    refetchInterval: 15000,
+  });
+  const onlineUsers = (onlineTeam || []) as Array<{ userId: string; name: string; role: string; status: string }>;
+  const availableCount = onlineUsers.filter(u => u.status === 'available').length;
+  const totalOnline = onlineUsers.length;
+  const capacityPct = totalOnline > 0 ? Math.round((availableCount / totalOnline) * 100) : 0;
 
   if (isLoading || !stats) {
     return (
@@ -294,10 +305,49 @@ export default function AdminStats() {
           )}
         </Panel>
 
-        <Panel title="Online now">
-          <div className="py-4 text-center">
-            <p className="text-sm text-[var(--color-text-secondary)]">Live presence monitoring active</p>
-          </div>
+        <Panel title="Online now" badge={`${totalOnline}`}>
+          {onlineUsers.length === 0 ? (
+            <p className="text-sm text-text-muted py-4 text-center">{t('no_data') || 'No agents online'}</p>
+          ) : (
+            <>
+              {/* Capacity bar */}
+              <div className="mb-3">
+                <div className="flex justify-between text-[9px] font-mono font-bold uppercase text-text-muted mb-1">
+                  <span>{t('team_capacity') || 'Team capacity'}</span>
+                  <span className="text-text-primary">{availableCount} / {totalOnline} ({capacityPct}%)</span>
+                </div>
+                <div className="h-2 bg-bg-elevated w-full">
+                  <div
+                    className="h-full bg-accent-green"
+                    style={{ width: `${capacityPct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Agent list */}
+              <div className="flex flex-col gap-1">
+                {onlineUsers.map((agent) => {
+                  const colors = getStatusColors(agent.status);
+                  return (
+                    <div key={agent.userId} className="flex items-center gap-2 py-1">
+                      <div className="w-6 h-6 rounded-full bg-bg-elevated flex items-center justify-center text-[9px] font-bold text-text-primary shrink-0">
+                        {agent.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[11px] font-semibold text-text-primary truncate block">{agent.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className={`w-2 h-2 rounded-full ${colors.dot}`} />
+                        <span className={`text-[9px] font-bold uppercase ${colors.text}`}>
+                          {t(getStatusI18nKey(agent.status))}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </Panel>
       </div>
 
