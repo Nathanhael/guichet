@@ -46,6 +46,27 @@ export default function AgentView() {
   // Keep business hours store fresh even when TicketForm is unmounted (agent in active chat)
   useBusinessHours();
 
+  // Handle service worker postMessage for notification click navigation
+  useEffect(() => {
+    function handleSwMessage(event: MessageEvent) {
+      if (event.data?.type === 'NAVIGATE_TICKET' && event.data.ticketId) {
+        setActiveTicketId(event.data.ticketId as string);
+      }
+    }
+    navigator.serviceWorker?.addEventListener('message', handleSwMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', handleSwMessage);
+  }, [setActiveTicketId]);
+
+  // Handle ?ticket= URL param on load (e.g. opened from push notification when app was closed)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ticketId = params.get('ticket');
+    if (ticketId) {
+      setActiveTicketId(ticketId);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [setActiveTicketId]);
+
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
   const manifest = useMemo(
     () => activeMembership?.manifest || { industry: 'general', departments: [] },
