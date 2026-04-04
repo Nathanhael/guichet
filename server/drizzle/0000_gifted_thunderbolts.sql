@@ -3,6 +3,16 @@ CREATE TYPE "public"."auth_method" AS ENUM('local', 'sso', 'both');--> statement
 CREATE TYPE "public"."user_role" AS ENUM('agent', 'support', 'admin', 'platform_operator');--> statement-breakpoint
 CREATE TYPE "public"."severity" AS ENUM('low', 'medium', 'high', 'critical');--> statement-breakpoint
 CREATE TYPE "public"."ticket_status" AS ENUM('open', 'pending', 'closed', 'resolved');--> statement-breakpoint
+CREATE TABLE "agent_status_log" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"partner_id" text NOT NULL,
+	"status" text NOT NULL,
+	"started_at" timestamp DEFAULT now() NOT NULL,
+	"ended_at" timestamp,
+	"duration" integer
+);
+--> statement-breakpoint
 CREATE TABLE "ai_prompt_templates" (
 	"id" text PRIMARY KEY NOT NULL,
 	"partner_id" text,
@@ -90,6 +100,19 @@ CREATE TABLE "canned_responses" (
 	"created_by" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "daily_agent_status" (
+	"id" text PRIMARY KEY NOT NULL,
+	"date" text NOT NULL,
+	"user_id" text NOT NULL,
+	"partner_id" text NOT NULL,
+	"available_seconds" integer DEFAULT 0 NOT NULL,
+	"break_seconds" integer DEFAULT 0 NOT NULL,
+	"lunch_seconds" integer DEFAULT 0 NOT NULL,
+	"meeting_seconds" integer DEFAULT 0 NOT NULL,
+	"training_seconds" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "daily_ai_usage" (
@@ -353,6 +376,8 @@ CREATE TABLE "webhooks" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+ALTER TABLE "agent_status_log" ADD CONSTRAINT "agent_status_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "agent_status_log" ADD CONSTRAINT "agent_status_log_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_prompt_templates" ADD CONSTRAINT "ai_prompt_templates_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_usage_log" ADD CONSTRAINT "ai_usage_log_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ai_usage_log" ADD CONSTRAINT "ai_usage_log_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
@@ -363,6 +388,8 @@ ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_actor_id_users_id_fk" FOREIGN 
 ALTER TABLE "audit_log" ADD CONSTRAINT "audit_log_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "canned_responses" ADD CONSTRAINT "canned_responses_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "canned_responses" ADD CONSTRAINT "canned_responses_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "daily_agent_status" ADD CONSTRAINT "daily_agent_status_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "daily_agent_status" ADD CONSTRAINT "daily_agent_status_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "daily_ai_usage" ADD CONSTRAINT "daily_ai_usage_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "daily_stats" ADD CONSTRAINT "daily_stats_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "kb_articles" ADD CONSTRAINT "kb_articles_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -388,6 +415,9 @@ ALTER TABLE "topic_alerts" ADD CONSTRAINT "topic_alerts_partner_id_partners_id_f
 ALTER TABLE "webhook_logs" ADD CONSTRAINT "webhook_logs_webhook_id_webhooks_id_fk" FOREIGN KEY ("webhook_id") REFERENCES "public"."webhooks"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "webhooks" ADD CONSTRAINT "webhooks_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "webhooks" ADD CONSTRAINT "webhooks_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "idx_agent_status_log_user_partner" ON "agent_status_log" USING btree ("user_id","partner_id");--> statement-breakpoint
+CREATE INDEX "idx_agent_status_log_partner_started" ON "agent_status_log" USING btree ("partner_id","started_at");--> statement-breakpoint
+CREATE INDEX "idx_agent_status_log_open" ON "agent_status_log" USING btree ("user_id","partner_id") WHERE ended_at IS NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_ai_prompts_partner_action" ON "ai_prompt_templates" USING btree ("partner_id","action");--> statement-breakpoint
 CREATE INDEX "idx_ai_usage_partner_created" ON "ai_usage_log" USING btree ("partner_id","created_at");--> statement-breakpoint
 CREATE INDEX "idx_ai_usage_user_created" ON "ai_usage_log" USING btree ("user_id","created_at");--> statement-breakpoint
@@ -406,6 +436,8 @@ CREATE INDEX "idx_audit_log_action" ON "audit_log" USING btree ("action");--> st
 CREATE INDEX "idx_audit_log_created_at" ON "audit_log" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "idx_canned_partner" ON "canned_responses" USING btree ("partner_id");--> statement-breakpoint
 CREATE INDEX "idx_canned_shortcut" ON "canned_responses" USING btree ("partner_id","shortcut");--> statement-breakpoint
+CREATE INDEX "idx_daily_agent_status_partner_date" ON "daily_agent_status" USING btree ("partner_id","date");--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_daily_agent_status_unique" ON "daily_agent_status" USING btree ("date","user_id","partner_id");--> statement-breakpoint
 CREATE INDEX "idx_daily_ai_usage_partner_date" ON "daily_ai_usage" USING btree ("partner_id","date");--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_daily_ai_usage_unique" ON "daily_ai_usage" USING btree ("date","partner_id","action","provider","model");--> statement-breakpoint
 CREATE INDEX "idx_kb_partner" ON "kb_articles" USING btree ("partner_id");--> statement-breakpoint
