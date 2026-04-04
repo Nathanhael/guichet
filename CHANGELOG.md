@@ -3,6 +3,62 @@
 All notable changes to Tessera are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [3.0.0] - 2026-04-04
+
+### Added
+- **Department-based ticket transfer** — Transfer tickets to departments instead of individual agents, with optional whisper notes for context handoff
+- **Agent status visibility** — 5 statuses (Available, Break, Lunch, Meeting, Training) with distinct CSS color tokens per state
+- **Status persistence** — Agent status survives socket reconnects via Redis; `identifyUser` Lua script preserves existing status instead of resetting to Available
+- **Time-in-status tracking** — `agent_status_log` table records granular status transitions; hourly rollup job aggregates into `daily_agent_status`
+- **Real-time team status panel** — QueueSidebar shows online agents with colored status dots, updated live
+- **Team Status column** — AdminTeam table includes real-time agent status with colored indicators
+- **Team Capacity badge** — SupportNav displays available/total agent count as a live badge
+- **Live team capacity widget** — Admin dashboard widget shows utilization bar, auto-refreshes every 15 seconds
+- **Agent self-view stats panel** — "My Stats" collapsible panel in SupportView with time-in-status breakdown
+- **Historical availability trend** — Line chart in My Stats panel when date range spans 2+ days
+- **Split View** — 2–4 chat panels side-by-side with auto-layout (2 = equal columns, 3 = primary+secondary, 4 = 2×2 grid)
+- **Preview Pane** — Read-only ticket triage view with metadata summary card, last 3 messages, and Join button
+- **ViewModeDropdown** — Unified layout mode switcher (Normal, Split, Preview, Focus) replacing the standalone Focus toggle
+- **Compact ChatWindow mode** — Minimal header for split view panels
+- **Sidebar overlay** — Hamburger toggle shows/hides sidebar in split view mode
+- **Mobile transfer button** — Removed `hidden sm:block` restriction so transfer is accessible on small screens
+- **Comprehensive demo seed** (`seed.ts`) — 2 partners, 20 users, 50 tickets, 200 messages, ratings, stats, KB articles
+- **`accent-amber` and `accent-orange` CSS design tokens** — Used for status dot colors
+- **`statusColors.ts`** — Shared utility for consistent status rendering across components
+- **28 Playwright E2E tests** — Covering agent status, ticket transfer, and view modes
+
+### Changed
+- Ticket transfer targets departments, not individual agents
+- `StatusPicker` emits `status:set` event (was `support:status`) to match server handler
+- `identifyUser` Lua script preserves existing Redis status on reconnect (was resetting to Available)
+- Queue sidebar filters out both `closed` and `resolved` tickets (was filtering `closed` only)
+- `ticket.list` tRPC endpoint accepts `resolved` status and status arrays
+- GDPR purge includes `agent_status_log` entries (30-day retention)
+- Drizzle migration regenerated as single baseline
+- Business hours set to 24/7 for demo/test purposes
+
+### Fixed
+- GDPR test mock returning wrong shape (`[]` instead of `{ rows: [] }`)
+- Recharts Tooltip formatter type error in `AgentStatusStats`
+- Resolved tickets appearing in the active support queue
+
+### Database
+- New table: `agent_status_log` — granular per-agent status transition records
+- New table: `daily_agent_status` — pre-aggregated daily time-in-status rollup
+
+### New Files
+- `server/services/statusTracking.ts`
+- `server/services/transferService.ts`
+- `server/trpc/routers/status.ts`
+- `client/src/components/support/ViewModeDropdown.tsx`
+- `client/src/components/support/SplitChatLayout.tsx`
+- `client/src/components/support/TicketPreviewCard.tsx`
+- `client/src/components/admin/AgentStatusStats.tsx`
+- `client/src/utils/statusColors.ts`
+- `server/seed.ts`
+- `testing/e2e/status-and-transfer.spec.ts`
+- `testing/e2e/view-modes.spec.ts`
+
 ## [2.1.0] - 2026-03-31
 
 ### Added
