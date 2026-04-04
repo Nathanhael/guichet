@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { useT } from '../../i18n';
 import { trpc } from '../../utils/trpc';
 
@@ -93,6 +93,38 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
             <Bar dataKey="Training" stackId="a" fill="var(--color-accent-blue)" />
           </BarChart>
         </ResponsiveContainer>
+      )}
+
+      {/* Historical trend — only show for multi-day ranges */}
+      {chartData.length > 1 && (
+        <div className="mt-4 pt-4 border-t border-border">
+          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-text-muted mb-2">
+            Availability Trend
+          </div>
+          <ResponsiveContainer width="100%" height={160}>
+            <LineChart data={chartData}>
+              <XAxis dataKey="date" tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }} />
+              <YAxis
+                tickFormatter={(v: number) => formatSeconds(v)}
+                tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }}
+              />
+              <Tooltip
+                formatter={(value) => formatSeconds(Number(value) || 0)}
+                contentStyle={{
+                  backgroundColor: 'var(--color-bg-surface)',
+                  border: '1px solid var(--color-border-heavy)',
+                  fontFamily: 'JetBrains Mono',
+                  fontSize: 11,
+                }}
+              />
+              <Line type="monotone" dataKey="Available" stroke="var(--color-accent-green)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="Break" stroke="var(--color-accent-amber)" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="Lunch" stroke="var(--color-accent-orange)" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="Meeting" stroke="var(--color-accent-red)" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="Training" stroke="var(--color-accent-blue)" strokeWidth={1.5} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       )}
 
       {chartData.length > 0 && (
