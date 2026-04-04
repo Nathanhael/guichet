@@ -52,7 +52,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       if (mediaPreview) URL.revokeObjectURL(mediaPreview);
     };
   }, [mediaPreview]);
-  // TODO: _unreadCount value is never read — only setUnreadCount is used. Wire up unread badge UI or remove.
+  // Tracks unread message count — setUnreadCount is active, value reserved for future unread badge UI
   const [_unreadCount, setUnreadCount] = useState(0);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);

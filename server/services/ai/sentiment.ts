@@ -34,7 +34,7 @@ export async function scoreSentiment(
   text: string,
 ): Promise<void> {
   const { db, logger, schema } = getAiContext();
-  const { messages } = schema as any;
+  const { messages } = schema;
 
   try {
     // 1. Feature gate

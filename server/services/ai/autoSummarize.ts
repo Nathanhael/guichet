@@ -30,7 +30,7 @@ export async function autoSummarizeOnClose(
   io: Server,
 ): Promise<void> {
   const { db, logger, schema } = getAiContext();
-  const { tickets } = schema as any;
+  const { tickets } = schema;
 
   try {
     // 1. Verify ticket belongs to this partner (prevent cross-tenant data leak)

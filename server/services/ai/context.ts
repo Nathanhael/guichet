@@ -1,5 +1,16 @@
 // server/services/ai/context.ts
 import type { RedisClientType } from 'redis';
+import type { db as _db } from '../../db/postgres.js';
+import type { partners, tickets, messages, aiPromptTemplates, aiUsageLog } from '../../db/schema.js';
+
+/** Typed Drizzle schema subset used by AI modules */
+export interface AiSchema {
+  partners: typeof partners;
+  tickets: typeof tickets;
+  messages: typeof messages;
+  aiPromptTemplates: typeof aiPromptTemplates;
+  aiUsageLog: typeof aiUsageLog;
+}
 
 /**
  * Dependencies injected into the AI service layer at boot.
@@ -7,8 +18,7 @@ import type { RedisClientType } from 'redis';
  */
 export interface AiContext {
   /** Drizzle ORM database instance */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: any;
+  db: typeof _db;
   /** Shared Redis client (the app's pubClient) */
   redis: RedisClientType | null;
   /** Pino-compatible logger */
@@ -35,13 +45,7 @@ export interface AiContext {
   /** Decrypt an encrypted string (for API keys stored in DB) */
   decrypt: (ciphertext: string) => string;
   /** Drizzle schema tables used by AI modules */
-  schema: {
-    partners: unknown;
-    tickets: unknown;
-    messages: unknown;
-    aiPromptTemplates: unknown;
-    aiUsageLog: unknown;
-  };
+  schema: AiSchema;
 }
 
 let ctx: AiContext | null = null;

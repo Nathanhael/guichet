@@ -73,7 +73,7 @@ export async function getPromptTemplate(
   partnerId?: string,
 ): Promise<string> {
   const { db, schema } = getAiContext();
-  const { aiPromptTemplates } = schema as any;
+  const { aiPromptTemplates } = schema;
 
   // 1. Check partner-specific override
   if (partnerId) {

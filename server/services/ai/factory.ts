@@ -77,7 +77,7 @@ function buildProvider(
  */
 export async function getProvider(partnerId?: string): Promise<AiProvider> {
   const { db, logger, config, schema, decrypt } = getAiContext();
-  const { partners } = schema as any;
+  const { partners } = schema;
 
   // ── Per-partner override ──────────────────────────────────────────────────
   if (partnerId) {
@@ -155,7 +155,7 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
  */
 export async function isAiEnabled(partnerId?: string): Promise<boolean> {
   const { db, config, schema } = getAiContext();
-  const { partners } = schema as any;
+  const { partners } = schema;
 
   if (!config.AI_ENABLED) return false;
 

@@ -24,7 +24,7 @@ export async function verifyTicketOwnership(
   partnerId: string,
 ): Promise<{ id: string } | null> {
   const { db, schema } = getAiContext();
-  const { tickets } = schema as any;
+  const { tickets } = schema;
 
   const [ticket] = await db
     .select({ id: tickets.id })
@@ -41,7 +41,7 @@ export async function verifyTicketOwnership(
  */
 export async function fetchTicketMessages(ticketId: string): Promise<TicketMessage[]> {
   const { db, schema } = getAiContext();
-  const { messages: messagesTable } = schema as any;
+  const { messages: messagesTable } = schema;
 
   const msgs = await db
     .select({
