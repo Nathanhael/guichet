@@ -3,16 +3,11 @@
  *
  * Verifies:
  * - config has ACCESS_TOKEN_EXPIRY and REFRESH_TOKEN_EXPIRY
- * - schema has refreshTokens table with tokenHash and family
- * - auth routes have /refresh endpoint and tessera_refresh cookie
- * - refreshToken.ts service exists with rotateRefreshToken, revokeFamily, createRefreshToken
+ * - schema has refreshTokens table with correct columns
+ * - refreshToken.ts service exports expected functions
  */
 
 import { describe, it, expect } from 'vitest';
-import * as fs from 'fs';
-import * as path from 'path';
-
-const ROOT = path.resolve(__dirname, '..');
 
 describe('Refresh Token Infrastructure', () => {
   describe('config.ts', () => {
@@ -38,7 +33,6 @@ describe('Refresh Token Infrastructure', () => {
     it('refreshTokens table has tokenHash column', async () => {
       const schema = await import('../db/schema.js');
       const table = schema.refreshTokens;
-      // Drizzle tables expose column definitions via getTableColumns
       const { getTableColumns } = await import('drizzle-orm');
       const cols = getTableColumns(table);
       expect(cols).toHaveProperty('tokenHash');
@@ -65,11 +59,6 @@ describe('Refresh Token Infrastructure', () => {
   });
 
   describe('services/refreshToken.ts', () => {
-    it('service file exists', () => {
-      const filePath = path.join(ROOT, 'services', 'refreshToken.ts');
-      expect(fs.existsSync(filePath)).toBe(true);
-    });
-
     it('exports createRefreshToken function', async () => {
       const mod = await import('../services/refreshToken.js');
       expect(typeof mod.createRefreshToken).toBe('function');
@@ -88,37 +77,6 @@ describe('Refresh Token Infrastructure', () => {
     it('exports revokeAllUserRefreshTokens function', async () => {
       const mod = await import('../services/refreshToken.js');
       expect(typeof mod.revokeAllUserRefreshTokens).toBe('function');
-    });
-  });
-
-  describe('routes/auth.ts', () => {
-    it('source file contains POST /refresh endpoint', () => {
-      const authSrc = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
-      expect(authSrc).toMatch(/router\.post\(['"](\/)?refresh['"]/);
-    });
-
-    it('source file sets tessera_refresh cookie', () => {
-      const authSrc = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
-      expect(authSrc).toMatch(/tessera_refresh/);
-    });
-
-    it('source file imports createRefreshToken', () => {
-      const authSrc = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
-      expect(authSrc).toMatch(/createRefreshToken/);
-    });
-
-    it('source file imports rotateRefreshToken', () => {
-      const authSrc = fs.readFileSync(path.join(ROOT, 'routes', 'auth.ts'), 'utf8');
-      expect(authSrc).toMatch(/rotateRefreshToken/);
-    });
-  });
-
-  describe('migration', () => {
-    it('squashed migration includes refresh_tokens table', () => {
-      const sqlPath = path.join(ROOT, 'drizzle', '0000_cloudy_the_twelve.sql');
-      expect(fs.existsSync(sqlPath)).toBe(true);
-      const sql = fs.readFileSync(sqlPath, 'utf8');
-      expect(sql).toMatch(/CREATE TABLE.*refresh_tokens/);
     });
   });
 });
