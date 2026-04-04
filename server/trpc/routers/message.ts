@@ -2,12 +2,27 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { messages, tickets } from '../../db/schema.js';
-import { eq, and, asc, desc, ilike, or, gt } from 'drizzle-orm';
+import { eq, and, asc, desc, or, gt, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
-import { escapeLikePattern } from '../../utils/security.js';
+
+/**
+ * Convert a user search string into a PostgreSQL tsquery with prefix matching.
+ * Each word gets `:*` for prefix matching; words are ANDed together.
+ * Returns null if the input produces no valid tokens after sanitization.
+ */
+function toTsQuery(input: string): string | null {
+  const tokens = input
+    .trim()
+    .split(/\s+/)
+    .filter(w => w.length > 0)
+    .map(w => w.replace(/[^a-zA-Z0-9àâäéèêëïîôùûüÿçñ]/g, ''))
+    .filter(w => w.length > 0)
+    .map(w => `${w}:*`);
+  return tokens.length > 0 ? tokens.join(' & ') : null;
+}
 
 export const messageRouter = router({
   list: protectedProcedure
@@ -121,9 +136,14 @@ export const messageRouter = router({
           conditions.push(eq(tickets.status, input.status));
         }
 
-        // Text search (ILIKE for simplicity — works well for moderate data)
-        const searchPattern = `%${escapeLikePattern(input.query)}%`;
-        conditions.push(ilike(messages.text, searchPattern));
+        // Full-text search using tsvector/tsquery with prefix matching
+        const tsQuery = toTsQuery(input.query);
+        if (!tsQuery) {
+          return [];
+        }
+        conditions.push(
+          sql`"messages"."search_vector" @@ to_tsquery('simple', ${tsQuery})`
+        );
 
         // Exclude whispers from search results
         conditions.push(eq(messages.whisper, 0));
@@ -143,7 +163,10 @@ export const messageRouter = router({
           .from(messages)
           .innerJoin(tickets, eq(messages.ticketId, tickets.id))
           .where(and(...conditions))
-          .orderBy(desc(messages.createdAt))
+          .orderBy(
+            sql`ts_rank("messages"."search_vector", to_tsquery('simple', ${tsQuery})) DESC`,
+            desc(messages.createdAt)
+          )
           .limit(input.limit);
 
         return results;
