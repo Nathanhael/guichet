@@ -18,10 +18,10 @@ vi.mock('../../../i18n', () => ({
 
 function makeCommands(): Command[] {
   return [
-    { id: 'focus', labelKey: 'cmd_focus_message', groupKey: 'cmd_group_navigation', shortcutHint: '/', execute: vi.fn(), keywords: ['type'] },
-    { id: 'next', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2193', execute: vi.fn() },
-    { id: 'whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', execute: vi.fn() },
-    { id: 'disabled-cmd', labelKey: 'cmd_disabled', groupKey: 'cmd_group_actions', execute: vi.fn(), enabled: false },
+    { id: 'focus', labelKey: 'cmd_focus_message', groupKey: 'cmd_group_navigation', shortcutHint: '/', execute: vi.fn() as unknown as () => void, keywords: ['type'] },
+    { id: 'next', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2193', execute: vi.fn() as unknown as () => void },
+    { id: 'whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', execute: vi.fn() as unknown as () => void },
+    { id: 'disabled-cmd', labelKey: 'cmd_disabled', groupKey: 'cmd_group_actions', execute: vi.fn() as unknown as () => void, enabled: false },
   ];
 }
 
@@ -30,7 +30,7 @@ function makeCommands(): Command[] {
 /* ------------------------------------------------------------------ */
 
 describe('CommandPalette', () => {
-  let onClose: ReturnType<typeof vi.fn>;
+  let onClose: () => void;
   let commands: Command[];
 
   beforeEach(() => {

@@ -25,6 +25,6 @@
       "/server/*": ["../server/*"]
     }
   },
-  "include": ["src", "../server/trpc"],
+  "include": ["src", "../server/trpc", "../server/types"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
