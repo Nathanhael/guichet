@@ -86,7 +86,7 @@ export default function QueueSidebar({
     { enabled: sidebarTab === 'search' && searchQuery.length >= 2 }
   );
 
-  // Archive query — uses the same filterDept so chips work for both tabs
+  // Archive query — includes both closed and resolved tickets
   const archiveQuery = trpc.ticket.list.useQuery(
     {
       status: 'closed',
@@ -123,7 +123,7 @@ export default function QueueSidebar({
     () =>
       tickets.filter(
         (tk) =>
-          tk.status !== 'closed' &&
+          tk.status !== 'closed' && tk.status !== 'resolved' &&
           (filterDept === 'all' || tk.dept === filterDept) &&
           (isGeneralist || assignedDepartmentIds.includes(tk.dept)),
       ),
