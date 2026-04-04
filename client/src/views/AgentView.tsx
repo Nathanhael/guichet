@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useBusinessHours } from '../hooks/useBusinessHours';
 import { useT } from '../i18n';
@@ -104,6 +105,7 @@ export default function AgentView() {
   if (!activeMembership) return <PartnerUnavailable />;
 
   return (
+    <ErrorBoundary>
     <BusinessHoursGuard mode={activeTicket ? 'notice' : 'block'}>
       <div className={`h-full bg-transparent flex flex-col overflow-hidden relative ${focusMode ? 'zen-mode' : ''}`}>
         <SystemBackground />
@@ -161,5 +163,6 @@ export default function AgentView() {
       <RatingModal />
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
     </BusinessHoursGuard>
+    </ErrorBoundary>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ErrorBoundary from '../components/ErrorBoundary';
 import useStore from '../store/useStore';
 import DarkModeToggle from '../components/DarkModeToggle';
 import { useT } from '../i18n';
@@ -43,6 +44,7 @@ export default function PlatformView() {
   const [editingUserProfile, setEditingUserProfile] = useState<GlobalUser | null>(null);
 
   return (
+    <ErrorBoundary>
     <div className="h-screen flex flex-col bg-[var(--color-bg-base)] text-[var(--color-text-primary)] overflow-hidden font-sans">
       <nav className="px-8 py-4 border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-4">
@@ -118,5 +120,6 @@ export default function PlatformView() {
       <ManageAccessModal user={editingUser} onClose={() => setEditingUser(null)} />
       <EditUserProfileModal user={editingUserProfile} onClose={() => setEditingUserProfile(null)} />
     </div>
+    </ErrorBoundary>
   );
 }

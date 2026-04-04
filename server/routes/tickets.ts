@@ -1,5 +1,6 @@
-import express, { Response } from 'express';
+import express, { Request, Response } from 'express';
 import { eq, and, ilike, gte, lte, or, desc, type SQL } from 'drizzle-orm';
+import rateLimit from 'express-rate-limit';
 import { db } from '../db/postgres.js';
 import { tickets } from '../db/schema.js';
 import logger from '../utils/logger.js';
@@ -9,13 +10,22 @@ import { auth, authorize, AuthRequest } from '../middleware/auth.js';
 import { canExportTickets } from '../services/roles.js';
 import { escapeLikePattern } from '../utils/security.js';
 
+const exportRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 exports per 15-minute window per user
+  keyGenerator: (req: Request) => (req as Request & { user?: { id: string } }).user?.id || req.ip || 'unknown',
+  message: { error: 'Too many export requests — try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 const router = express.Router();
 
 /**
  * LEGACY EXPORT ROUTE
  * Kept because tRPC is not ideal for direct binary/CSV downloads in browser windows.
  */
-router.get('/export', auth, authorize(['admin', 'support']), validateQuery(z.object({
+router.get('/export', auth, authorize(['admin', 'support']), exportRateLimit, validateQuery(z.object({
   partnerId: z.string().optional(),
   dept: z.string().optional(),
   search: z.string().optional(),

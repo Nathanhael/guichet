@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState } from 'react';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import DarkModeToggle from '../components/DarkModeToggle';
@@ -65,6 +66,7 @@ export default function AdminView() {
   );
 
   return (
+    <ErrorBoundary>
     <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
       <nav className="bg-[var(--color-bg-surface)] px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-4 md:gap-8 sticky top-0 z-50 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-8">
@@ -161,5 +163,6 @@ export default function AdminView() {
         </main>
       </div>
     </div>
+    </ErrorBoundary>
   );
 }
