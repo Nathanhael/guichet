@@ -72,11 +72,13 @@ describe('ticketQueries', () => {
   });
 
   describe('findTicketForClose', () => {
-    it('returns status and partnerId', async () => {
-      const chain = { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([{ status: 'open', partnerId: 'p1' }]) };
+    it('returns status, partnerId, supportId, and supportName', async () => {
+      const chain = { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([{ status: 'open', partnerId: 'p1', supportId: 's1', supportName: 'Support Agent' }]) };
       vi.mocked(db.select).mockReturnValue(chain as never);
       const result = await findTicketForClose('t1');
       expect(result?.status).toBe('open');
+      expect(result?.supportId).toBe('s1');
+      expect(result?.supportName).toBe('Support Agent');
     });
   });
 

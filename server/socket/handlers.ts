@@ -583,7 +583,7 @@ export function registerSocketHandlers(io: Server) {
         const msgs = msgRows.map(mapMessageRow);
         const labelIds = await findTicketLabelIds(ticketId);
         socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
-        io.to(Rooms.ticket(ticketId)).emit('support:joined', { ticketId, supportName, participants });
+        io.to(Rooms.ticket(ticketId)).emit('support:joined', { ticketId, supportId, supportName, participants });
         await broadcastQueuePositions(callerPartnerId);
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
     });
@@ -672,7 +672,7 @@ export function registerSocketHandlers(io: Server) {
         // Limit closing notes length to prevent abuse
         const sanitizedNotes = closingNotes ? closingNotes.slice(0, MAX_NOTE_LENGTH) : '';
         const now = await closeTicket(ticketId, senderName || 'System', sanitizedNotes);
-        io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System' });
+        io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System', supportId: ticket.supportId ?? undefined, supportName: ticket.supportName ?? undefined });
         await broadcastQueuePositions(ticket.partnerId);
 
         // Fire-and-forget AI auto-summarize
