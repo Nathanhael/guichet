@@ -97,11 +97,13 @@ test.describe('ViewModeDropdown', () => {
     await trigger.click();
     await page.waitForTimeout(400);
 
-    // All 4 mode labels must be visible (EN/NL/FR alternatives)
-    await expect(page.getByText(/normal|normaal/i).first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/split|gesplitst/i).first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/preview|voorbeeld|aperçu/i).first()).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText(/^focus$/i).first()).toBeVisible({ timeout: 5000 });
+    // All 4 mode options must be visible in the dropdown
+    // Use button locator within the dropdown to avoid matching unrelated text
+    const dropdown = page.locator('.border-border-heavy, [class*="border-heavy"]').last();
+    await expect(dropdown.getByText(/normal|normaal/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(dropdown.getByText(/split|gesplitst/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(dropdown.getByText(/preview|voorbeeld|aperçu/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(dropdown.getByText(/focus/i).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('selecting a mode closes the dropdown', async ({ page }) => {
