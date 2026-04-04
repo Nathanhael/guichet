@@ -309,6 +309,8 @@ export function registerSocketHandlers(io: Server) {
         }
       });
       logger.info('[socket] Subscribed to session revocation channel');
+    }).catch(err => {
+      logger.error({ err: err instanceof Error ? err.message : String(err) }, '[socket] Failed to subscribe to revocation channel');
     });
   }
 

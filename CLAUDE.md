@@ -60,7 +60,7 @@ All demo users use password `password123`. The seed script truncates all tables 
 
 **API Layer**:
 - **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 19 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `savedView`, `stats`, `status`, `ticket`, `user`, `webhook`. Input validation via Zod.
-- **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`).
+- **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`), Push (`server/routes/push.ts`).
 - **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference` (98 procedures).
 
 **tRPC Middleware** (`server/trpc/trpc.ts`):
@@ -87,6 +87,10 @@ All demo users use password `password123`. The seed script truncates all tables 
 - `repetitionStore.ts` — Message repetition detection for guards
 - `sla.ts` — SLA enforcement with per-department config and alerting
 - `webhookDispatch.ts` — Webhook event dispatch to partner-configured endpoints
+- `encryption.ts` — Field-level encryption utilities
+- `pushNotification.ts` — Web push notification dispatch (VAPID-based)
+- `systemMessage.ts` — System/whisper message insertion (used by transfers, auto-actions)
+- `messageQueries.ts` / `partnerQueries.ts` / `ticketQueries.ts` / `userQueries.ts` — Data-access query helpers (shared by tRPC routers and services)
 
 **AI Service Layer** (`server/services/ai/`):
 - `factory.ts` — Provider factory (Ollama, Azure OpenAI, OpenAI-compatible)
@@ -105,8 +109,9 @@ All demo users use password `password123`. The seed script truncates all tables 
 - `index.ts` — Barrel exports (enforced by lint)
 - `validateUrl.ts` — AI endpoint URL validation
 
-**Socket.io** (`server/socket/handlers.ts`):
-- All real-time event handlers. Uses Redis adapter for horizontal scaling.
+**Socket.io** (`server/socket/`):
+- `handlers.ts` — All real-time event handlers. Uses Redis adapter for horizontal scaling.
+- `partnerScope.ts` — Partner-scoped room helpers and authorization guards for socket events.
 - Identity enforced server-side via `socket.data.userId` — never trust client-supplied identity fields.
 - Key events: `socket:identify`, `message:send`, `message:read`, `message:edit`, `message:delete`, `message:delivered`, `ticket:new`, `ticket:close`, `ticket:transfer`, `ticket:labels:update`, `ticket:viewing`, `ticket:left`, `support:join`, `support:leave`, `typing:start`, `typing:stop`, `status:set`, `rating:submit`
 - All mutation events verify partner-scope authorization before proceeding.
@@ -115,6 +120,7 @@ All demo users use password `password123`. The seed script truncates all tables 
 **Middleware** (`server/middleware/`):
 - `auth.ts` — JWT verification (reads HttpOnly cookie only, no Bearer header) and role-based access control
 - `validator.ts` — Express-validator wrapper
+- `metrics.ts` — Prometheus metrics collection (request duration, status codes)
 
 ### Database
 
@@ -149,6 +155,7 @@ All demo users use password `password123`. The seed script truncates all tables 
 | `saved_views` | Per-user saved ticket filter views | `userId`, `partnerId`, `name`, `filters` (JSONB) |
 | `agent_status_log` | Agent status transitions | `userId`, `partnerId`, `status`, `startedAt`, `endedAt`, `duration` |
 | `daily_agent_status` | Daily time-in-status rollup | `date`, `userId`, `partnerId`, `availableSeconds`, `breakSeconds`, `lunchSeconds`, `meetingSeconds`, `trainingSeconds` |
+| `push_subscriptions` | Web push notification subscriptions | `userId`, `partnerId`, `endpoint`, `keys` (JSONB) |
 
 ### Client (`client/src/`)
 
@@ -207,6 +214,7 @@ All demo users use password `password123`. The seed script truncates all tables 
 - **PWA**: Progressive Web App with `manifest.json`, `sw.js`, and icons for mobile installation.
 - **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users). Toggle UI in security modal.
 - **Agent Status Visibility**: 5 statuses (available/break/lunch/meeting/training) with distinct color tokens (`accent-green`, `accent-amber`, `accent-orange`, `accent-red`, `accent-blue`). Status persists in Redis across reconnects (Lua script preserves status on re-identify). Visible in QueueSidebar (team panel), AdminTeam (status column), SupportNav (capacity badge). Time-in-status tracked in `agent_status_log`, rolled up hourly to `daily_agent_status`. Stats via `trpc.status.*` (getTeamStatus, getAgentStats, getTeamStats). GDPR: log purged at 30 days, daily rollup retained as aggregate.
+- **Push Notifications**: VAPID-based web push via `pushNotification.ts` service, `push.ts` Express route, and `push_subscriptions` table. Client subscribes via `utils/notifications.ts`. Type definitions in `server/types/web-push.d.ts`.
 - **Department Transfer**: Tickets transfer between department queues (not individual agents). Socket event `ticket:transfer` accepts `{ ticketId, departmentId?, note? }`. Optional whisper note for context handoff. Clears support assignment, re-opens ticket, removes all support sockets from room. Service layer: `transferService.ts` + `insertWhisperMessage` in `systemMessage.ts`.
 
 ## Production Hardening
@@ -238,23 +246,25 @@ All demo users use password `password123`. The seed script truncates all tables 
 tessera/
 ├── server/
 │   ├── db/
-│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 25 tables
+│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 28 tables
 │   │   └── postgres.ts            # DB connection, raw query helpers
 │   ├── trpc/
-│   │   ├── router.ts              # Main tRPC router (18 domain routers)
+│   │   ├── router.ts              # Main tRPC router (19 domain routers)
 │   │   ├── trpc.ts                # Procedure middleware (auth, roles)
 │   │   ├── context.ts             # JWT → tRPC context
 │   │   └── routers/               # ai, alerts, cannedResponse, feedback, kb, label, message,
 │   │                              # mfa, partner, platform, platformSecurity, presence,
 │   │                              # rating, savedView, stats, ticket, user, webhook
 │   ├── socket/
-│   │   └── handlers.ts            # Socket.io event handlers
+│   │   ├── handlers.ts            # Socket.io event handlers
+│   │   └── partnerScope.ts        # Partner-scoped room helpers
 │   ├── routes/
 │   │   ├── auth.ts                # /api/auth/* (login, switch-partner, enter-partner, refresh, logout)
 │   │   ├── sso.ts                 # /api/auth/sso/* (SAML/OIDC flows)
 │   │   ├── logos.ts               # /api/v1/logos
 │   │   ├── uploads.ts             # /api/v1/uploads (file attachments)
-│   │   └── tickets.ts             # /api/v1/tickets (REST ticket endpoints)
+│   │   ├── tickets.ts             # /api/v1/tickets (REST ticket endpoints)
+│   │   └── push.ts                # /api/v1/push (web push subscriptions)
 │   ├── services/                  # Business logic
 │   │   ├── ai/                    # AI provider abstraction (factory, providers, prompts, sentiment)
 │   │   ├── bootstrap.ts           # First-run platform operator creation
@@ -274,23 +284,31 @@ tessera/
 │   │   ├── sessionRevocation.ts   # Session revocation on security changes
 │   │   ├── refreshToken.ts        # Rotating refresh token lifecycle
 │   │   ├── repetitionStore.ts     # Message repetition detection
-│   │   └── webhookDispatch.ts     # Webhook event dispatch
-│   ├── middleware/                 # Express middleware (auth, validator)
+│   │   ├── webhookDispatch.ts     # Webhook event dispatch
+│   │   ├── encryption.ts          # Field-level encryption
+│   │   ├── pushNotification.ts    # Web push dispatch (VAPID)
+│   │   ├── systemMessage.ts       # System/whisper message insertion
+│   │   └── *Queries.ts            # Data-access helpers (message, partner, ticket, user)
+│   ├── middleware/                 # Express middleware (auth, validator, metrics)
 │   ├── utils/                     # Logger, Redis, metrics, security
+│   ├── types/                     # TypeScript types (index.ts, web-push.d.ts)
+│   ├── docs/openapi.ts            # Swagger/OpenAPI spec generation
 │   ├── app.ts                     # Server bootstrap
 │   ├── config.ts                  # Env validation via Zod
+│   ├── constants.ts               # Shared constants
+│   ├── db.ts                      # DB connection shorthand
 │   └── drizzle.config.ts          # Drizzle Kit config
 ├── client/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── platform/          # PlatformView feature modules (self-contained)
-│   │   │   ├── admin/             # AdminView panels (20 components)
+│   │   │   ├── admin/             # AdminView panels (21 components)
 │   │   │   ├── agent/             # AgentView components (AgentNav, TicketForm, sidebar)
 │   │   │   ├── support/           # SupportView components (queue, chat tabs, AI copilot)
 │   │   │   └── *.tsx              # Shared: ChatWindow, MessageBubble, ConfirmDialog, Toast, etc.
 │   │   ├── views/                 # PlatformView, AdminView, SupportView, AgentView, LoginView
 │   │   │   └── __tests__/         # Vitest tests for views
-│   │   ├── hooks/                 # useBusinessHours, usePartner, useSocket, useTheme, useTokenRefresh, useTranslation
+│   │   ├── hooks/                 # useBusinessHours, useIdleStatus, useKeyboardShortcuts, usePartner, useSocket, useTheme, useTokenRefresh, useTranslation
 │   │   ├── store/
 │   │   │   ├── useStore.ts        # Zustand composed store
 │   │   │   └── slices/            # Auth, ticket, message, UI, config, rating slices
@@ -323,6 +341,8 @@ tessera/
 ├── scripts/ci.ps1                 # Local CI: typecheck, tests, migrations, e2e
 ├── docker-compose.yml             # Dev: db, server, client, redis, lb, prometheus, grafana
 ├── docker-compose.prod.yml        # Production environment
+├── README.md                      # Project readme
+├── GEMINI.md                      # Gemini CLI instructions
 └── CLAUDE.md                      # This file
 ```
 

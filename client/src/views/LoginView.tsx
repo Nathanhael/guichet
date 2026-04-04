@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import type { User, Membership, UserRole } from '../types';
@@ -337,6 +338,7 @@ export default function LoginView() {
   }
 
   return (
+    <ErrorBoundary>
     <div className="min-h-screen flex flex-col items-center justify-center p-6 text-[var(--color-text-primary)] relative">
       <SystemBackground />
       <div className="absolute top-6 right-6 z-50 flex items-center gap-2 bg-[var(--color-bg-elevated)] p-1 border border-[var(--color-border)]">
@@ -560,5 +562,6 @@ export default function LoginView() {
       </div>
       {legalModal && <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />}
     </div>
+    </ErrorBoundary>
   );
 }

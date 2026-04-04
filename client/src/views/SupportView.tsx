@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react';
+import ErrorBoundary from '../components/ErrorBoundary';
 import useStore from '../store/useStore';
 import { useShallow } from 'zustand/react/shallow';
 import { getSocket } from '../hooks/useSocket';
@@ -230,6 +231,7 @@ export default function SupportView() {
   // ── Render ──
 
   return (
+    <ErrorBoundary>
     <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
       {/* Business hours notice bar */}
       {businessHoursStatus && !businessHoursStatus.isOpen && (
@@ -359,5 +361,6 @@ export default function SupportView() {
       {/* Command Palette overlay */}
       {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
     </div>
+    </ErrorBoundary>
   );
 }

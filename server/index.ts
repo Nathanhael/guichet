@@ -10,7 +10,9 @@ if (process.env.NODE_ENV === 'production' && config.JWT_SECRET.startsWith('super
 
 const PORT = config.PORT || 3001;
 
-bootstrapPlatformOperator().then(() => {
+bootstrapPlatformOperator().catch(err => {
+  logger.error({ err }, 'Failed to bootstrap platform operator');
+}).then(() => {
   const server = httpServer.listen(PORT, () => {
     logger.info(`Server running on http://localhost:${PORT}`);
   });
