@@ -3,6 +3,7 @@ import { useT } from '../../i18n';
 import NavToolbar from '../NavToolbar';
 import NeuroToggle from '../NeuroToggle';
 import StatusPicker from '../StatusPicker';
+import ViewModeDropdown from './ViewModeDropdown';
 import { OnlineSupport } from '../../types';
 
 interface SupportNavProps {
@@ -80,6 +81,7 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
         )}
 
         <NavToolbar>
+          <ViewModeDropdown />
           <button
             onClick={toggleFocusMode}
             aria-label={focusMode ? t('exit_focus') : t('enter_focus')}
