@@ -5,7 +5,7 @@
 FROM node:24-alpine AS builder
 
 WORKDIR /app
-RUN chown node:node /app
+RUN chown node:node /app && npm install -g npm@latest
 
 USER node
 
@@ -15,6 +15,9 @@ RUN npm install --legacy-peer-deps
 
 # --- Production Stage ---
 FROM node:24-alpine AS runner
+
+# Patch Alpine OS-level CVEs (e.g. CVE-2025-60876 busybox)
+RUN apk upgrade --no-cache && npm install -g npm@latest
 
 WORKDIR /app
 

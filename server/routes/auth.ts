@@ -173,32 +173,6 @@ import { getRedisClients } from '../utils/redis.js';
 const FORGOT_PW_WINDOW_SECS = 60;
 const FORGOT_PW_MAX_PER_EMAIL = 3;
 
-/**
- * @openapi
- * /auth/forgot-password:
- *   post:
- *     summary: Request a password reset email
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email]
- *             properties:
- *               email: { type: string, format: email }
- *     responses:
- *       200:
- *         description: Always returns success to prevent user enumeration
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean }
- *                 message: { type: string }
- */
 router.post('/forgot-password', resetPasswordRateLimit, validateBody(z.object({
     email: z.string().email('Valid email is required'),
 }).passthrough()), async (req: Request, res: Response) => {
@@ -257,28 +231,6 @@ router.post('/forgot-password', resetPasswordRateLimit, validateBody(z.object({
     }
 });
 
-/**
- * @openapi
- * /auth/reset-password:
- *   post:
- *     summary: Reset password using a reset token
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [token, password]
- *             properties:
- *               token: { type: string, description: Token from reset email }
- *               password: { type: string, minLength: 10, description: 'Must meet strength requirements (upper/lower/digit/special)' }
- *     responses:
- *       200:
- *         description: Password updated and all sessions revoked
- *       400:
- *         description: Invalid/expired token or password too weak
- */
 router.post('/reset-password', resetPasswordRateLimit, validateBody(z.object({
     token: z.string().min(1, 'Token is required'),
     password: z.string().min(10, 'Password must be at least 10 characters'),
@@ -368,37 +320,6 @@ router.post('/reset-password', resetPasswordRateLimit, validateBody(z.object({
     }
 });
 
-/**
- * @openapi
- * /auth/login-local:
- *   post:
- *     summary: Authenticate with email and password
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, password]
- *             properties:
- *               email: { type: string, format: email }
- *               password: { type: string }
- *               totpCode: { type: string, description: '6-digit TOTP or recovery code (required if MFA enabled)' }
- *     responses:
- *       200:
- *         description: JWT token + user profile, or MFA challenge
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - $ref: '#/components/schemas/LoginResponse'
- *                 - $ref: '#/components/schemas/MfaChallengeResponse'
- *       401:
- *         description: Invalid credentials or invalid MFA code
- *       423:
- *         description: Account locked due to failed attempts
- */
 router.post('/login-local', loginRateLimit, validateBody(z.object({
     email: z.string().email('Valid email is required'),
     password: z.string().min(1, 'Password is required'),
@@ -530,37 +451,6 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
     }
 });
 
-/**
- * @openapi
- * /auth/login:
- *   post:
- *     summary: Authenticate with user ID and password (demo mode)
- *     tags: [Authentication]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [id, password]
- *             properties:
- *               id: { type: string, description: User ID }
- *               password: { type: string }
- *               totpCode: { type: string, description: '6-digit TOTP or recovery code (required if MFA enabled)' }
- *     responses:
- *       200:
- *         description: JWT token + user profile, or MFA challenge
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - $ref: '#/components/schemas/LoginResponse'
- *                 - $ref: '#/components/schemas/MfaChallengeResponse'
- *       401:
- *         description: Invalid credentials
- *       423:
- *         description: Account locked
- */
 router.post('/login', loginRateLimit, validateBody(z.object({
     id: z.string().min(1, 'User ID is required'),
     password: z.string().min(1, 'Password is required'),
@@ -683,29 +573,6 @@ router.post('/login', loginRateLimit, validateBody(z.object({
     }
 });
 
-/**
- * @openapi
- * /auth/switch-partner:
- *   post:
- *     summary: Switch active partner context
- *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [membershipId]
- *             properties:
- *               membershipId: { type: string, description: Target membership ID }
- *     responses:
- *       200:
- *         description: New JWT token scoped to the target partner
- *       403:
- *         description: Invalid membership or partner inactive
- */
 router.post('/switch-partner', (await import('../middleware/auth.js')).auth, async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
@@ -772,30 +639,6 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
     }
 });
 
-/**
- * @openapi
- * /auth/logout:
- *   post:
- *     summary: Revoke the current session token
- *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Token revoked successfully
- */
-/**
- * @openapi
- * /auth/refresh:
- *   post:
- *     summary: Rotate refresh token and issue new access token
- *     tags: [Authentication]
- *     responses:
- *       200:
- *         description: New access and refresh tokens issued
- *       401:
- *         description: Invalid or expired refresh token
- */
 router.post('/refresh', async (req: Request, res: Response) => {
     try {
         const refreshTokenCookie = req.cookies?.tessera_refresh;
@@ -893,31 +736,6 @@ router.post('/logout', (await import('../middleware/auth.js')).auth, async (req:
     }
 });
 
-/**
- * @openapi
- * /auth/enter-partner:
- *   post:
- *     summary: Platform operator enters a partner's admin context
- *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [partnerId]
- *             properties:
- *               partnerId: { type: string }
- *     responses:
- *       200:
- *         description: New JWT scoped to partner with admin role
- *       403:
- *         description: Not a platform operator, or step-up required, or partner inactive
- *       404:
- *         description: Partner not found
- */
 router.post('/enter-partner', (await import('../middleware/auth.js')).auth, async (req: AuthRequest, res: Response) => {
     try {
         if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
