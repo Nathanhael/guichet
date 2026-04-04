@@ -82,43 +82,51 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Push notifications
+// ─── Push Notifications ─────────────────────────────────────────────────────
+
 self.addEventListener('push', (event) => {
   if (!event.data) return;
 
-  try {
-    const data = event.data.json();
-    const options = {
-      body: data.body || '',
-      icon: '/icons/icon-192.svg',
-      badge: '/icons/icon-192.svg',
-      tag: data.tag || 'tessera-notification',
-      data: { url: data.url || '/' },
-    };
+  const payload = event.data.json();
 
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Tessera', options)
-    );
-  } catch {
-    // Silently fail for malformed push data
-  }
+  const promiseChain = self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then((clients) => {
+      const focused = clients.some((client) => client.focused);
+      if (focused) return;
+
+      return self.registration.showNotification(payload.title, {
+        body: payload.body,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        tag: payload.tag || 'tessera',
+        data: {
+          ticketId: payload.ticketId,
+          type: payload.type,
+        },
+        renotify: true,
+      });
+    });
+
+  event.waitUntil(promiseChain);
 });
 
-// Notification click: focus or open the app
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || '/';
 
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
-      // Focus existing tab if found
+  const { ticketId } = event.notification.data || {};
+  const targetUrl = ticketId ? `/?ticket=${ticketId}` : '/';
+
+  const promiseChain = self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+    .then((clients) => {
       for (const client of clients) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          return client.focus();
+        if (client.url.includes(self.location.origin)) {
+          client.focus();
+          client.postMessage({ type: 'NAVIGATE_TICKET', ticketId });
+          return;
         }
       }
-      // Otherwise open a new window
-      return self.clients.openWindow(url);
-    })
-  );
+      return self.clients.openWindow(targetUrl);
+    });
+
+  event.waitUntil(promiseChain);
 });
