@@ -1,7 +1,7 @@
 # Stage 1: Build (needs devDependencies for TypeScript compilation)
 FROM node:24-alpine AS builder
 WORKDIR /app
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ && npm install -g npm@latest
 COPY package.json package-lock.json* ./
 RUN npm ci
 COPY . .
@@ -10,13 +10,13 @@ RUN npx tsc --project tsconfig.json
 # Stage 2: Production dependencies only
 FROM node:24-alpine AS deps
 WORKDIR /app
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 make g++ && npm install -g npm@latest
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
 
 # Stage 3: Runtime
 FROM node:24-alpine
-RUN apk upgrade --no-cache
+RUN apk upgrade --no-cache && npm install -g npm@latest
 WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=deps /app/node_modules ./node_modules

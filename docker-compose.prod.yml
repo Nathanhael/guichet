@@ -97,7 +97,7 @@ services:
       - server
 
   caddy:
-    image: caddy:2-alpine
+    image: caddy:2.8-alpine
     restart: always
     deploy:
       resources:
