@@ -55,6 +55,7 @@ import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../service
 import { Rooms } from '../utils/rooms.js';
 import { insertSystemMessage, insertWhisperMessage } from '../services/systemMessage.js';
 import { findPartnerDepartments, transferTicketToDepartment } from '../services/transferService.js';
+import { sendPush } from '../services/pushNotification.js';
 import {
   VIEWER_TTL_SECONDS,
   MAX_BATCH_DELETE,
@@ -585,6 +586,15 @@ export function registerSocketHandlers(io: Server) {
         socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
         io.to(Rooms.ticket(ticketId)).emit('support:joined', { ticketId, supportId, supportName, participants });
         await broadcastQueuePositions(callerPartnerId);
+        if (ticket.agentId) {
+          sendPush(ticket.agentId, {
+            title: 'Support joined your ticket',
+            body: `${socket.data.name} joined your conversation`,
+            ticketId,
+            type: 'joined',
+            tag: `ticket-${ticketId}`,
+          });
+        }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
     });
 
@@ -674,6 +684,15 @@ export function registerSocketHandlers(io: Server) {
         const now = await closeTicket(ticketId, senderName || 'System', sanitizedNotes);
         io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System', supportId: ticket.supportId ?? undefined, supportName: ticket.supportName ?? undefined });
         await broadcastQueuePositions(ticket.partnerId);
+        if (ticket.agentId) {
+          sendPush(ticket.agentId, {
+            title: 'How was your experience?',
+            body: 'Your ticket has been closed. Rate your support.',
+            ticketId,
+            type: 'rating',
+            tag: `ticket-${ticketId}`,
+          });
+        }
 
         // Fire-and-forget AI auto-summarize
         autoSummarizeOnClose(ticket.partnerId, senderId, ticketId, io).catch(() => {});
@@ -794,6 +813,16 @@ export function registerSocketHandlers(io: Server) {
           io.to(Rooms.ticket(ticketId)).emit('message:new', msgPayload);
         }
         logger.info({ messageId, whisper: !!isWhisper }, '[message:send] Emitted message:new');
+        // Push notification to agent when support replies (fire-and-forget)
+        if (socket.data.isSupport && !isWhisper && ticket.agentId) {
+          sendPush(ticket.agentId, {
+            title: 'New message from support',
+            body: `${sender.name}: ${guardedText.slice(0, 100)}`,
+            ticketId,
+            type: 'message',
+            tag: `ticket-${ticketId}`,
+          });
+        }
         // Invalidate cached AI summary for this ticket (fire-and-forget)
         invalidateSummary(ticketId).catch(() => {});
         // Fire-and-forget sentiment scoring (skip whispers — internal notes shouldn't affect sentiment)
