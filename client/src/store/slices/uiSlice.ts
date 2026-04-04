@@ -2,11 +2,15 @@ import { StateCreator } from 'zustand';
 import { StoreState, ZenSettings } from '../../types';
 import { trpcVanilla } from '../../utils/trpc';
 
+export type ViewMode = 'normal' | 'split' | 'preview' | 'focus';
+
 export interface UISlice {
   dyslexicMode: boolean;
   bionicReading: boolean;
   monochromeMode: boolean;
   focusMode: boolean;
+  viewMode: ViewMode;
+  setViewMode: (mode: ViewMode) => void;
   prefsModifiedLocally: boolean;
   zenSettings: ZenSettings;
   darkMode: boolean;
@@ -35,6 +39,7 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
   bionicReading: localStorage.getItem('bionicReading') === 'true',
   monochromeMode: localStorage.getItem('monochromeMode') === 'true',
   focusMode: localStorage.getItem('focusMode') === 'true',
+  viewMode: (localStorage.getItem('viewMode') as ViewMode) || 'normal',
   prefsModifiedLocally: false,
   zenSettings: { autoBionic: false, notificationShield: false },
   darkMode: localStorage.getItem('darkMode') === 'true',
@@ -78,11 +83,19 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
     }),
   toggleFocusMode: () =>
     set((state) => {
-      const next = !state.focusMode;
-      localStorage.setItem('focusMode', String(next));
-      trpcVanilla.user.updateAccessibilityPrefs.mutate({ focusMode: next }).catch((err) => { console.error('[uiSlice] Failed to persist focusMode:', err); });
-      return { focusMode: next, prefsModifiedLocally: true };
+      const newFocus = !state.focusMode;
+      localStorage.setItem('focusMode', String(newFocus));
+      localStorage.setItem('viewMode', newFocus ? 'focus' : 'normal');
+      trpcVanilla.user.updateAccessibilityPrefs.mutate({ focusMode: newFocus }).catch((err) => { console.error('[uiSlice] Failed to persist focusMode:', err); });
+      return { focusMode: newFocus, viewMode: newFocus ? 'focus' : 'normal', prefsModifiedLocally: true };
     }),
+
+  setViewMode: (mode) => {
+    localStorage.setItem('viewMode', mode);
+    const isFocus = mode === 'focus';
+    localStorage.setItem('focusMode', String(isFocus));
+    set({ viewMode: mode, focusMode: isFocus });
+  },
 
   updateZenSettings: (updates) =>
     set((state) => {
