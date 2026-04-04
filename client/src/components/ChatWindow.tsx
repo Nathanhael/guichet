@@ -17,9 +17,10 @@ interface ChatWindowProps {
   onClose?: () => void;
   onFocus?: () => void;
   focused?: boolean;
+  compact?: boolean;
 }
 
-export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWindowProps) {
+export default function ChatWindow({ ticket, onClose, onFocus, focused, compact }: ChatWindowProps) {
   const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, setRatingPrompt } = useStoreShallow(s => ({
     user: s.user,
     messages: s.messages,
@@ -497,16 +498,16 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
   return (
     <div className={`relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden`}>
       {/* Header */}
-      <div className={`relative z-50 flex items-center justify-between px-6 border-b-2 border-border-heavy bg-bg-elevated ${focusMode ? 'py-2' : 'py-4'}`}>
+      <div className={`relative z-50 flex items-center justify-between px-6 border-b-2 border-border-heavy bg-bg-elevated ${(focusMode || compact) ? 'py-2' : 'py-4'}`}>
         <div className="min-w-0 pr-4">
           <div className="flex items-center gap-3 flex-wrap">
-            {!focusMode && (
+            {!focusMode && !compact && (
               <span className="text-[10px] font-bold px-2.5 py-1 shrink-0 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy">
                 {ticket.dept}
               </span>
             )}
             <div className="flex flex-col">
-              <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${focusMode ? 'text-sm opacity-80' : 'text-lg'}`}>
+              <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${(focusMode || compact) ? 'text-sm opacity-80' : 'text-lg'}`}>
                 {ticket.agentName}
                 {isSupport && !isClosed && (
                   <span
@@ -515,7 +516,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   />
                 )}
               </span>
-              {!focusMode && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
+              {!focusMode && !compact && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
                 <div className="flex items-center gap-3 mt-0.5">
                   {(ticket.references as Array<{label: string; value: string}> || []).map((ref, i) => (
                     <span key={i} className="text-xs text-text-muted">
@@ -528,14 +529,14 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               )}
             </div>
             
-            {!focusMode && ticket.agentLang && (
+            {!focusMode && !compact && ticket.agentLang && (
               <span className="text-sm cursor-default" title={ticket.agentLang.toUpperCase()}>
                 {LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]}
               </span>
             )}
             
             {/* Active Labels Display */}
-            {!focusMode && liveTicket.labels && liveTicket.labels.length > 0 && (
+            {!focusMode && !compact && liveTicket.labels && liveTicket.labels.length > 0 && (
               <div className="flex flex-wrap gap-1.5 ml-2">
                 {liveTicket.labels.map(id => {
                   const info = getLabelInfo(id);
@@ -553,13 +554,13 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
             )}
 
             {/* SLA Indicator — only for support, open tickets without support response */}
-            {!focusMode && isSupport && !isClosed && !liveTicket.supportJoinedAt && liveTicket.slaResponseDueAt && (
+            {!focusMode && !compact && isSupport && !isClosed && !liveTicket.supportJoinedAt && liveTicket.slaResponseDueAt && (
               <SlaIndicator dueAt={liveTicket.slaResponseDueAt} breached={liveTicket.slaBreached} />
             )}
           </div>
         </div>
 
-        <div className={`flex items-center gap-3 shrink-0 ${focusMode ? 'opacity-60 hover:opacity-100' : ''}`}>
+        <div className={`flex items-center gap-3 shrink-0 ${(focusMode || compact) ? 'opacity-60 hover:opacity-100' : ''}`}>
           {onFocus && (
             <button
               onClick={onFocus}
@@ -585,7 +586,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
               disabled={summarizing}
               aria-label="Summarize conversation"
               title="AI: Summarize conversation"
-              className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:flex items-center gap-1.5 ${focusMode ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
+              className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:flex items-center gap-1.5 ${(focusMode || compact) ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
             >
               {summarizing ? (
                 <span className="text-[10px] font-bold opacity-40">...</span>
@@ -594,7 +595,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               )}
-              {!focusMode && 'Summarize'}
+              {!focusMode && !compact && 'Summarize'}
             </button>
           )}
 
@@ -606,7 +607,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   onClick={() => setShowTransferMenu(!showTransferMenu)}
                   aria-label={t('transfer') || 'Transfer'}
                   title={t('transfer') || 'Transfer'}
-                  className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
+                  className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy ${(focusMode || compact) ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
                 >
                   {t('transfer') || 'Transfer'}
                 </button>
@@ -660,7 +661,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   closeTicket();
                 }}
                 disabled={closing}
-                className={`text-sm font-bold uppercase tracking-widest bg-accent-blue text-white hover:bg-accent-blue/80 border-2 border-accent-blue flex items-center gap-2 ${focusMode ? 'px-3 py-1.5' : 'px-5 py-2.5'}`}
+                className={`text-sm font-bold uppercase tracking-widest bg-accent-blue text-white hover:bg-accent-blue/80 border-2 border-accent-blue flex items-center gap-2 ${(focusMode || compact) ? 'px-3 py-1.5' : 'px-5 py-2.5'}`}
               >
                 {closing ? (
                   <span className="text-[10px] font-bold opacity-40 shrink-0">...</span>
