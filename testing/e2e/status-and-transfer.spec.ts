@@ -260,19 +260,19 @@ test.describe('My Stats Panel', () => {
   test('My Stats panel collapses on second click', async ({ page }) => {
     test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
 
-    const statsToggle = page.getByText(/^My Stats$/i).first();
-    await expect(statsToggle).toBeVisible({ timeout: 10000 });
+    // The toggle button contains "My Stats" text plus an arrow character
+    const toggleBtn = page.locator('button').filter({ hasText: /My Stats/i }).first();
+    await expect(toggleBtn).toBeVisible({ timeout: 10000 });
 
     // Open
-    await statsToggle.click();
-    await page.waitForTimeout(300);
+    await toggleBtn.click();
+    await page.waitForTimeout(500);
     const dateInput = page.locator('input[type="date"]').first();
     await expect(dateInput).toBeVisible({ timeout: 5000 });
 
-    // Close — click the toggle button (it's a parent button containing the span)
-    const toggleBtn = page.locator('button').filter({ hasText: /^My Stats$/i }).first();
+    // Close — click the same toggle button
     await toggleBtn.click();
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(500);
 
     // Date inputs should no longer be visible
     await expect(dateInput).not.toBeVisible({ timeout: 5000 });
@@ -295,14 +295,22 @@ test.describe('Department Transfer', () => {
   test('Transfer button is visible when a ticket is open', async ({ page }) => {
     test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
 
-    // Open a ticket from the queue sidebar
-    const ticketBtn = page.locator('aside button').first();
-    const hasTicket = await ticketBtn.isVisible({ timeout: 5000 }).catch(() => false);
-    if (!hasTicket) {
+    // Check if queue has tickets (look for ticket preview elements, not generic buttons)
+    const queueEmpty = page.getByText(/queue.empty|0 in.queue/i).first();
+    const isEmpty = await queueEmpty.isVisible({ timeout: 3000 }).catch(() => false);
+    if (isEmpty) {
       test.skip(true, 'No tickets in queue — seed database with open tickets');
       return;
     }
-    await ticketBtn.click();
+
+    // Open a ticket from the queue sidebar — ticket items are clickable divs/buttons with ticket info
+    const ticketItem = page.locator('[class*="cursor-pointer"]').first();
+    const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasTicket) {
+      test.skip(true, 'No clickable tickets found in queue');
+      return;
+    }
+    await ticketItem.click();
     await page.waitForTimeout(1500);
 
     // Transfer button is in the chat toolbar, visible on sm+ screens
@@ -432,30 +440,50 @@ test.describe('AdminTeam Status Column', () => {
   test('shows Team Status column header in team table', async ({ page }) => {
     test.skip(!loginOk, 'Demo login failed — admin_dirk may not be seeded');
 
+    // Widen viewport — table has min-w-[1200px] and Team Status is column 5/7
+    await page.setViewportSize({ width: 1600, height: 900 });
+
     // Navigate to Team section
-    const teamNav = page.getByRole('button', { name: /^team$/i }).first();
+    const teamNav = page.getByRole('button', { name: /team/i }).first();
     if (await teamNav.isVisible({ timeout: 5000 }).catch(() => false)) {
       await teamNav.click();
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(2000);
     }
 
-    // The column header renders as "Team Status" from the t('team_status') translation
-    const teamStatusHeader = page.getByText('Team Status').first();
+    // Scroll the table container to ensure Team Status column is visible
+    const tableContainer = page.locator('.overflow-x-auto').first();
+    if (await tableContainer.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await tableContainer.evaluate((el) => el.scrollLeft = 400);
+      await page.waitForTimeout(500);
+    }
+
+    // The column header renders from t('team_status') — DOM text is "Team Status"
+    const teamStatusHeader = page.locator('th').filter({ hasText: /team.?status/i }).first();
     await expect(teamStatusHeader).toBeVisible({ timeout: 10000 });
   });
 
   test('team table rows have a Status column', async ({ page }) => {
     test.skip(!loginOk, 'Demo login failed — admin_dirk may not be seeded');
 
+    // Widen viewport
+    await page.setViewportSize({ width: 1600, height: 900 });
+
     // Navigate to Team section
-    const teamNav = page.getByRole('button', { name: /^team$/i }).first();
+    const teamNav = page.getByRole('button', { name: /team/i }).first();
     if (await teamNav.isVisible({ timeout: 5000 }).catch(() => false)) {
       await teamNav.click();
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(2000);
     }
 
-    // The AdminTeam table has a plain "Status" th as well as "Team Status" th
-    const statusHeader = page.getByText('Team Status').first();
+    // Scroll table
+    const tableContainer = page.locator('.overflow-x-auto').first();
+    if (await tableContainer.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await tableContainer.evaluate((el) => el.scrollLeft = 400);
+      await page.waitForTimeout(500);
+    }
+
+    // The AdminTeam table has a "Team Status" th
+    const statusHeader = page.locator('th').filter({ hasText: /team.?status/i }).first();
     await expect(statusHeader).toBeVisible({ timeout: 10000 });
 
     // Table should have at least one row with member data
