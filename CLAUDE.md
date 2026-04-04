@@ -60,7 +60,7 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 ### Server (`server/`)
 
 **API Layer**:
-- **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 18 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `savedView`, `stats`, `ticket`, `user`, `webhook`. Input validation via Zod.
+- **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 19 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `savedView`, `stats`, `status`, `ticket`, `user`, `webhook`. Input validation via Zod.
 - **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`).
 - **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference` (98 procedures).
 
@@ -74,7 +74,9 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - `archive.ts` — WORM audit archive (SHA-256 hash chain) + ticket archiving with summary metadata
 - `guards.ts` — Content moderation pipeline (length, caps, repetition, injection, swearing, threats, discrimination)
 - `businessHours.ts` — Business hours enforcement and queue position broadcasting
-- `presence.ts` — User online/offline tracking via Redis
+- `presence.ts` — User online/offline tracking via Redis, status persistence across reconnects
+- `statusTracking.ts` — Agent status transition logging, daily rollup aggregation, time-in-status queries
+- `transferService.ts` — Department-based ticket transfer (findPartnerDepartments, transferTicketToDepartment)
 - `stats.ts` — Live statistics computation for dashboard (Recharts)
 - `accountLockout.ts` — 5-attempt lockout with 15-min window, email notification
 - `mail.ts` / `mailTemplates.ts` — Centralized email service + B&W templates (lockout, MFA, password reset)
@@ -146,6 +148,8 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 | `daily_ai_usage` | Aggregated AI usage (rolled up from ai_usage_log) | `date`, `partnerId`, `action`, `provider`, `model`, `totalRequests` |
 | `refresh_tokens` | Rotating refresh tokens | `userId`, `tokenHash` (SHA-256), `family`, `expiresAt`, `revokedAt` |
 | `saved_views` | Per-user saved ticket filter views | `userId`, `partnerId`, `name`, `filters` (JSONB) |
+| `agent_status_log` | Agent status transitions | `userId`, `partnerId`, `status`, `startedAt`, `endedAt`, `duration` |
+| `daily_agent_status` | Daily time-in-status rollup | `date`, `userId`, `partnerId`, `availableSeconds`, `breakSeconds`, `lunchSeconds`, `meetingSeconds`, `trainingSeconds` |
 
 ### Client (`client/src/`)
 
@@ -166,9 +170,10 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 
 **Component Directories**:
 - `components/platform/` — PlatformView feature modules (PartnerList, UserTable, CreatePartnerModal, DeletePartnerModal, EditPartnerModal, EditUserProfileModal, InviteUserModal, ManageAccessModal, GroupMappingsPanel)
-- `components/admin/` — AdminView panels: AdminAlerts, AdminArchive, AdminBusinessHours, AdminCannedResponses, AdminDepartments, AdminFeedback, AdminKnowledgeBase, AdminLabels, AdminSatisfaction, AdminStats, AdminTeam, AdminTickets, AdminWebhooks, DashboardHelpers, ErrorBox, PlatformAuditLog, PlatformArchiveViewer, PlatformSecurityOps, PlatformSystemHealth, PlatformSystemSettings
+- `components/admin/` — AdminView panels: AdminAlerts, AdminArchive, AdminBusinessHours, AdminCannedResponses, AdminDepartments, AdminFeedback, AdminKnowledgeBase, AdminLabels, AdminSatisfaction, AdminStats, AdminTeam, AdminTickets, AdminWebhooks, AgentStatusStats, DashboardHelpers, ErrorBox, PlatformAuditLog, PlatformArchiveViewer, PlatformSecurityOps, PlatformSystemHealth, PlatformSystemSettings
 - `components/agent/` — AgentNav, AgentTicketSidebar, TicketForm
 - `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
+- `utils/` — `statusColors.ts` (getStatusColors, getStatusI18nKey for consistent status dot rendering)
 - Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NavToolbar, NeuroToggle, NotificationToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserSecurityModal
 
 **Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
@@ -202,6 +207,8 @@ All demo users use password `password123`. The reset script clears lockout, MFA,
 - **Collision Detection**: `ticket:viewing` / `ticket:left` socket events track who's viewing a ticket. Viewer badges and typing indicators prevent duplicate responses.
 - **PWA**: Progressive Web App with `manifest.json`, `sw.js`, and icons for mobile installation.
 - **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users). Toggle UI in security modal.
+- **Agent Status Visibility**: 5 statuses (available/break/lunch/meeting/training) with distinct color tokens (`accent-green`, `accent-amber`, `accent-orange`, `accent-red`, `accent-blue`). Status persists in Redis across reconnects (Lua script preserves status on re-identify). Visible in QueueSidebar (team panel), AdminTeam (status column), SupportNav (capacity badge). Time-in-status tracked in `agent_status_log`, rolled up hourly to `daily_agent_status`. Stats via `trpc.status.*` (getTeamStatus, getAgentStats, getTeamStats). GDPR: log purged at 30 days, daily rollup retained as aggregate.
+- **Department Transfer**: Tickets transfer between department queues (not individual agents). Socket event `ticket:transfer` accepts `{ ticketId, departmentId?, note? }`. Optional whisper note for context handoff. Clears support assignment, re-opens ticket, removes all support sockets from room. Service layer: `transferService.ts` + `insertWhisperMessage` in `systemMessage.ts`.
 
 ## Production Hardening
 
