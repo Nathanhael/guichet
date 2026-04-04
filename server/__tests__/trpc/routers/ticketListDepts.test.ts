@@ -24,9 +24,9 @@ describe('ticket.list department isolation', () => {
   it('does not reference membershipId in the department isolation block', () => {
     // The old pattern checked ctx.user.membershipId to decide whether to query.
     // Department filtering should use ctx.user.departments directly.
-    // Anchors: comment "H-6: Department isolation" → next condition "if (input.status)"
+    // Anchors: comment "H-6: Department isolation" → next comment "Normalize status filter"
     const startAnchor = 'H-6: Department isolation';
-    const endAnchor = 'if (input.status)';
+    const endAnchor = '// Normalize status filter';
     const start = source.indexOf(startAnchor);
     const end = source.indexOf(endAnchor);
     expect(start).toBeGreaterThan(-1);
