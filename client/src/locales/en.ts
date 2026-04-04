@@ -343,6 +343,17 @@ const en: Record<string, string> = {
     available_label: 'Available',
     online_team: 'Online Team',
     my_stats: 'My Stats',
+    view_normal: 'Normal',
+    view_split: 'Split View',
+    view_preview: 'Preview',
+    view_focus: 'Focus',
+    view_mode: 'View Mode',
+    join_ticket: 'Join',
+    preview_ticket: 'Preview',
+    split_min_tabs: 'Split view requires 2+ open chats',
+    split_min_width: 'Split view requires a wider screen',
+    select_ticket_preview: 'Select a ticket to preview',
+    recent_messages: 'Recent Messages',
 
     // Whisper / Internal
     whisper_mode: 'Internal mode',
