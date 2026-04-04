@@ -440,6 +440,23 @@ export const dailyAiUsage = pgTable('daily_ai_usage', {
   uniqueDayKey: uniqueIndex('idx_daily_ai_usage_unique').on(table.date, table.partnerId, table.action, table.provider, table.model),
 }));
 
+// ─── Push Subscriptions ─────────────────────────────────────────────────────
+
+/**
+ * Web Push subscription endpoints for agent notifications.
+ * Each row = one device/browser subscription for a user.
+ */
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  endpoint: text('endpoint').notNull(),
+  keys: jsonb('keys').notNull(),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => ({
+  userIdx: index('idx_push_subscriptions_user').on(table.userId),
+  endpointIdx: uniqueIndex('idx_push_subscriptions_endpoint').on(table.endpoint),
+}));
+
 // ─── Agent Status Tracking ──────────────────────────────────────────────────
 
 /**
