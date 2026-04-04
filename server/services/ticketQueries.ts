@@ -25,6 +25,7 @@ export async function findTicketForJoin(ticketId: string) {
     .select({
       id: tickets.id,
       partnerId: tickets.partnerId,
+      agentId: tickets.agentId,
       supportId: tickets.supportId,
       supportName: tickets.supportName,
       supportLang: tickets.supportLang,
@@ -43,7 +44,7 @@ export async function findTicketForJoin(ticketId: string) {
  */
 export async function findTicketForClose(ticketId: string) {
   const rows = await db
-    .select({ status: tickets.status, partnerId: tickets.partnerId, supportId: tickets.supportId, supportName: tickets.supportName })
+    .select({ status: tickets.status, partnerId: tickets.partnerId, agentId: tickets.agentId, supportId: tickets.supportId, supportName: tickets.supportName })
     .from(tickets)
     .where(eq(tickets.id, ticketId));
   return rows[0];
@@ -79,7 +80,7 @@ export async function findTicketParticipants(ticketId: string) {
  */
 export async function findTicketForMessage(ticketId: string) {
   const rows = await db
-    .select({ status: tickets.status, partnerId: tickets.partnerId })
+    .select({ status: tickets.status, partnerId: tickets.partnerId, agentId: tickets.agentId })
     .from(tickets)
     .where(eq(tickets.id, ticketId));
   return rows[0];
