@@ -125,15 +125,15 @@ function makeFakeStats(overrides: Record<string, unknown> = {}) {
 
 /** Set up default mocks for a purge run with no tickets to aggregate */
 function setupEmptyPurge() {
-  // db.execute for unarchived count check
-  executeMock.mockResolvedValueOnce([{ count: 0 }]);
+  // db.execute for unarchived count check — gdpr.ts reads `result.rows`
+  executeMock.mockResolvedValueOnce({ rows: [{ count: 0 }] });
   // db.select().from(tickets).where().orderBy() for bulk ticket fetch
   orderByMock.mockResolvedValueOnce([]);
 }
 
 /** Set up mocks for a purge with tickets */
 function setupPurgeWithTickets(ticketRows: unknown[]) {
-  executeMock.mockResolvedValueOnce([{ count: 0 }]);
+  executeMock.mockResolvedValueOnce({ rows: [{ count: 0 }] });
   orderByMock.mockResolvedValueOnce(ticketRows);
   // ratings and messages queries return empty via where() default (Promise.resolve([]))
 }
