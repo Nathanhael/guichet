@@ -89,8 +89,9 @@ export default function QueueSidebar({
   // Archive query — includes both closed and resolved tickets
   const archiveQuery = trpc.ticket.list.useQuery(
     {
-      status: 'closed',
+      status: ['closed', 'resolved'],
       limit: ARCHIVE_PAGE_SIZE,
+      cursor: archiveCursor,
       dept: filterDept === 'all' ? undefined : filterDept,
     },
     { enabled: sidebarTab === 'archive' },
@@ -104,10 +105,9 @@ export default function QueueSidebar({
           archiveCursor ? [...prev, ...data.tickets!] : data.tickets!
         );
         setHasMoreArchive(!!data.nextCursor);
-        if (data.nextCursor) setArchiveCursor(data.nextCursor);
       }
     }
-  }, [archiveQuery.data]);
+  }, [archiveQuery.data, archiveCursor]);
 
   // Reset archived tickets when switching dept filter while on archive tab
   useEffect(() => {
@@ -327,7 +327,10 @@ export default function QueueSidebar({
                 {hasMoreArchive && (
                   <li className="p-3">
                     <button
-                      onClick={() => archiveQuery.refetch()}
+                      onClick={() => {
+                        const data = archiveQuery.data as { nextCursor?: string } | undefined;
+                        if (data?.nextCursor) setArchiveCursor(data.nextCursor);
+                      }}
                       disabled={archiveQuery.isFetching}
                       className="w-full py-2 text-[9px] font-bold uppercase tracking-wide border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-30"
                     >

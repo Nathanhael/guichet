@@ -25,7 +25,7 @@ export const ticketRouter = router({
   list: protectedProcedure
     .input(z.object({
       agentId: z.string().optional(),
-      status: z.enum(['open', 'pending', 'closed', 'resolved']).optional(),
+      status: z.union([z.enum(['open', 'pending', 'closed', 'resolved']), z.array(z.enum(['open', 'pending', 'closed', 'resolved']))]).optional(),
       dept: z.string().optional(),
       search: z.string().optional(),
       limit: z.number().min(1).optional(),
@@ -64,7 +64,15 @@ export const ticketRouter = router({
             conditions.push(inArray(tickets.dept, depts));
           }
         }
-        if (input.status) conditions.push(eq(tickets.status, input.status));
+        // Normalize status filter (single value or array)
+        const statusArr = input.status
+          ? (Array.isArray(input.status) ? input.status : [input.status])
+          : [];
+        if (statusArr.length === 1) {
+          conditions.push(eq(tickets.status, statusArr[0]));
+        } else if (statusArr.length > 1) {
+          conditions.push(inArray(tickets.status, statusArr));
+        }
         if (input.dept && input.dept !== 'all') conditions.push(eq(tickets.dept, input.dept));
 
         if (input.search) {
@@ -81,8 +89,9 @@ export const ticketRouter = router({
           conditions.push(lte(tickets.createdAt, end));
         }
 
-        const isClosed = input.status === 'closed';
-        const orderCol = isClosed ? tickets.closedAt : tickets.createdAt;
+        // Terminal statuses (closed/resolved) sort by closedAt DESC; active statuses by createdAt ASC
+        const isTerminal = statusArr.length > 0 && statusArr.every(s => ['closed', 'resolved'].includes(s));
+        const orderCol = isTerminal ? tickets.closedAt : tickets.createdAt;
 
         // Cursor-based pagination
         if (input.limit !== undefined) {
@@ -92,7 +101,7 @@ export const ticketRouter = router({
               const cursorTime = input.cursor.slice(0, sepIdx);
               const cursorId = input.cursor.slice(sepIdx + 1);
               // Closed = DESC, Open = ASC
-              if (isClosed) {
+              if (isTerminal) {
                 conditions.push(
                   sql`(${orderCol} < ${cursorTime} OR (${orderCol} = ${cursorTime} AND ${tickets.id} < ${cursorId}))`
                 );
@@ -107,7 +116,7 @@ export const ticketRouter = router({
           const where = conditions.length > 0 ? and(...conditions) : undefined;
 
           const rows = await db.select().from(tickets).where(where)
-            .orderBy(isClosed ? desc(orderCol) : asc(orderCol), isClosed ? desc(tickets.id) : asc(tickets.id))
+            .orderBy(isTerminal ? desc(orderCol) : asc(orderCol), isTerminal ? desc(tickets.id) : asc(tickets.id))
             .limit(input.limit + 1);
 
           const hasMore = rows.length > input.limit;
@@ -125,7 +134,7 @@ export const ticketRouter = router({
           }));
 
           const lastItem = pageRows[pageRows.length - 1];
-          const cursorValue = isClosed ? (lastItem.closedAt ?? lastItem.createdAt) : lastItem.createdAt;
+          const cursorValue = isTerminal ? (lastItem.closedAt ?? lastItem.createdAt) : lastItem.createdAt;
           const nextCursor = hasMore && lastItem ? `${cursorValue}|${lastItem.id}` : '';
 
           return { tickets: ticketsWithLabels, nextCursor };
@@ -135,7 +144,7 @@ export const ticketRouter = router({
         const where = conditions.length > 0 ? and(...conditions) : undefined;
 
         const rows = await db.select().from(tickets).where(where)
-          .orderBy(isClosed ? desc(orderCol) : asc(orderCol))
+          .orderBy(isTerminal ? desc(orderCol) : asc(orderCol))
           .limit(500);
 
         if (rows.length === 0) return [];

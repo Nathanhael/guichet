@@ -12,7 +12,7 @@
 import crypto from 'crypto';
 import { db } from '../db.js';
 import { auditLog, auditArchive, tickets, archivedTickets, messages } from '../db/schema.js';
-import { lte, asc, desc, eq, and, inArray, sql, notExists, gt } from 'drizzle-orm';
+import { lte, asc, desc, eq, and, inArray, or, sql, notExists, gt } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 import config from '../config.js';
 
@@ -191,12 +191,12 @@ export async function archiveTickets(retentionDays?: number): Promise<number> {
   const cutoffStr = cutoff.toISOString().slice(0, 10); // date only
 
   try {
-    // Find closed tickets older than cutoff that aren't already archived
+    // Find closed/resolved tickets older than cutoff that aren't already archived
     const rows = await db.select()
       .from(tickets)
       .where(and(
         lte(tickets.createdAt, cutoffStr),
-        eq(tickets.status, 'closed'),
+        or(eq(tickets.status, 'closed'), eq(tickets.status, 'resolved')),
         notExists(
           db.select({ id: archivedTickets.id })
             .from(archivedTickets)
