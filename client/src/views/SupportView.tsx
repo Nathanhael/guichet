@@ -182,7 +182,7 @@ export default function SupportView() {
           <div className="border-b border-border">
             <button
               onClick={() => setShowMyStats((v) => !v)}
-              className="w-full flex items-center justify-between px-4 py-1.5 text-[9px] font-mono font-bold uppercase tracking-widest text-text-muted hover:bg-bg-elevated"
+              className="w-full flex items-center justify-between px-4 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-text-primary bg-bg-surface hover:bg-bg-elevated border-b border-border"
             >
               <span>{t('my_stats')}</span>
               <span>{showMyStats ? '▲' : '▼'}</span>
