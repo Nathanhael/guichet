@@ -80,6 +80,8 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
           </div>
         )}
 
+        <kbd className="text-[9px] font-mono px-1.5 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] select-none cursor-default" title={t('cmd_palette_title') || 'Command Palette'}>Ctrl+K</kbd>
+
         <NavToolbar>
           <ViewModeDropdown />
           <button

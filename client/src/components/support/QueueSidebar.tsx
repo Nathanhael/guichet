@@ -167,6 +167,7 @@ export default function QueueSidebar({
           <input
             type="text"
             aria-label="Search tickets"
+            data-queue-search
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('search_messages') || 'Search messages...'}

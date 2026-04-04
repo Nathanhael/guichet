@@ -521,5 +521,33 @@ const en: Record<string, string> = {
 
     // Dashboard Export
     export_pdf: 'PDF',
+
+    // Command Palette
+    cmd_palette_title: 'Command Palette',
+    cmd_palette_placeholder: 'Type a command...',
+    cmd_no_results: 'No matching commands',
+    cmd_group_navigation: 'Navigation',
+    cmd_group_actions: 'Actions',
+    cmd_group_status: 'Agent Status',
+    cmd_group_view: 'View & Toggles',
+    cmd_focus_message: 'Focus message input',
+    cmd_next_tab: 'Next chat tab',
+    cmd_prev_tab: 'Previous chat tab',
+    cmd_toggle_sidebar: 'Toggle queue sidebar',
+    cmd_search_tickets: 'Search tickets',
+    cmd_toggle_whisper: 'Toggle whisper mode',
+    cmd_transfer_ticket: 'Transfer ticket',
+    cmd_close_tab: 'Close current tab',
+    cmd_close_ticket: 'Close / resolve ticket',
+    cmd_status_available: 'Set status: Available',
+    cmd_status_break: 'Set status: Break',
+    cmd_status_lunch: 'Set status: Lunch',
+    cmd_status_meeting: 'Set status: Meeting',
+    cmd_status_training: 'Set status: Training',
+    cmd_toggle_focus: 'Toggle focus mode',
+    cmd_toggle_dark: 'Toggle dark mode',
+    cmd_toggle_copilot: 'Toggle AI copilot',
+    cmd_toggle_customer_info: 'Toggle customer info',
+    cmd_shortcut_hint: 'Ctrl+K',
 };
 export default en;

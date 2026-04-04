@@ -507,5 +507,33 @@ const nl: Record<string, string> = {
 
     // Dashboard Export
     export_pdf: 'PDF',
+
+    // Command Palette
+    cmd_palette_title: 'Opdrachtenpalet',
+    cmd_palette_placeholder: 'Typ een opdracht...',
+    cmd_no_results: 'Geen opdrachten gevonden',
+    cmd_group_navigation: 'Navigatie',
+    cmd_group_actions: 'Acties',
+    cmd_group_status: 'Agentstatus',
+    cmd_group_view: 'Weergave',
+    cmd_focus_message: 'Focus op berichtveld',
+    cmd_next_tab: 'Volgend tabblad',
+    cmd_prev_tab: 'Vorig tabblad',
+    cmd_toggle_sidebar: 'Wachtrij tonen/verbergen',
+    cmd_search_tickets: 'Tickets zoeken',
+    cmd_toggle_whisper: 'Fluistermodus',
+    cmd_transfer_ticket: 'Ticket overdragen',
+    cmd_close_tab: 'Tabblad sluiten',
+    cmd_close_ticket: 'Ticket sluiten',
+    cmd_status_available: 'Status: Beschikbaar',
+    cmd_status_break: 'Status: Pauze',
+    cmd_status_lunch: 'Status: Lunch',
+    cmd_status_meeting: 'Status: Vergadering',
+    cmd_status_training: 'Status: Training',
+    cmd_toggle_focus: 'Focusmodus',
+    cmd_toggle_dark: 'Donkere modus',
+    cmd_toggle_copilot: 'AI-copiloot',
+    cmd_toggle_customer_info: 'Klantinformatie',
+    cmd_shortcut_hint: 'Ctrl+K',
 };
 export default nl;
