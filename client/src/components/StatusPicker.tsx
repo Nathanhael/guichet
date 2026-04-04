@@ -23,6 +23,7 @@ const STATUSES: StatusOption[] = [
  */
 export default function StatusPicker() {
   const user = useStore((s) => s.user);
+  const setAgentStatus = useStore((s) => s.setAgentStatus);
   const [value, setValue] = useState('available');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -42,6 +43,7 @@ export default function StatusPicker() {
     function onStatusRestored({ status }: { status: string }) {
       const valid = STATUSES.find((s) => s.key === status);
       if (valid) setValue(status);
+      if (valid) setAgentStatus(status);
     }
     socket.on('status:restored', onStatusRestored);
     return () => { socket.off('status:restored', onStatusRestored); };
@@ -49,6 +51,7 @@ export default function StatusPicker() {
 
   function handleChange(newStatus: string) {
     setValue(newStatus);
+    setAgentStatus(newStatus);
     setOpen(false);
 
     // Emit status to server so it's visible to admins / other support
