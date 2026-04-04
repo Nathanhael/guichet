@@ -606,7 +606,7 @@ export default function ChatWindow({ ticket, onClose, onFocus, focused }: ChatWi
                   onClick={() => setShowTransferMenu(!showTransferMenu)}
                   aria-label={t('transfer') || 'Transfer'}
                   title={t('transfer') || 'Transfer'}
-                  className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:block ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
+                  className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy ${focusMode ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
                 >
                   {t('transfer') || 'Transfer'}
                 </button>
