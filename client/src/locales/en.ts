@@ -553,5 +553,6 @@ const en: Record<string, string> = {
     cmd_toggle_copilot: 'Toggle AI copilot',
     cmd_toggle_customer_info: 'Toggle customer info',
     cmd_shortcut_hint: 'Ctrl+K',
+    idle_status_set: 'Status set to Break (idle)',
 };
 export default en;
