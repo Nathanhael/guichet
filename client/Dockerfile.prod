@@ -8,6 +8,9 @@ RUN npm run build
 
 # Stage 2: Serve with unprivileged nginx (non-root)
 FROM nginxinc/nginx-unprivileged:alpine
+USER root
+RUN apk upgrade --no-cache
+USER nginx
 COPY --from=builder /app/dist /usr/share/nginx/html
 # NOTE: Production nginx.conf must listen on 8080 (unprivileged ports only).
 # The dev client/nginx.conf listens on 80 and is NOT used here.
