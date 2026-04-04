@@ -6,6 +6,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [3.0.0] - 2026-04-04
 
 ### Added
+- **Auto-status on idle** — support/admin users auto-set to Break after 5 minutes of inactivity, restores previous status on activity
+- **PWA push notifications for agents** — Web Push alerts for ticket replies, status changes, support joining, and rating requests (background-only, bell icon opt-in)
+- **`useIdleStatus` hook** with configurable timeout and activity detection (mouse, keyboard, touch, scroll, visibility)
+- **Push notification service** with VAPID authentication and automatic cleanup of expired subscriptions
+- **`push_subscriptions` database table** for Web Push subscription storage
 - **Department-based ticket transfer** — Transfer tickets to departments instead of individual agents, with optional whisper notes for context handoff
 - **Agent status visibility** — 5 statuses (Available, Break, Lunch, Meeting, Training) with distinct CSS color tokens per state
 - **Status persistence** — Agent status survives socket reconnects via Redis; `identifyUser` Lua script preserves existing status instead of resetting to Available
@@ -38,6 +43,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Business hours set to 24/7 for demo/test purposes
 
 ### Fixed
+- CommandPalette test mock type mismatch (`vi.fn()` vs `() => void`)
+- Unused `afterEach` import in useKeyboardShortcuts test
+- Client tsconfig missing server/types include for web-push declarations
 - GDPR test mock returning wrong shape (`[]` instead of `{ rows: [] }`)
 - Recharts Tooltip formatter type error in `AgentStatusStats`
 - Resolved tickets appearing in the active support queue
@@ -45,8 +53,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Database
 - New table: `agent_status_log` — granular per-agent status transition records
 - New table: `daily_agent_status` — pre-aggregated daily time-in-status rollup
+- New table: `push_subscriptions` — Web Push subscription endpoints per user
 
 ### New Files
+- `server/services/pushNotification.ts`
+- `server/routes/push.ts`
+- `server/types/web-push.d.ts`
+- `client/src/hooks/useIdleStatus.ts`
 - `server/services/statusTracking.ts`
 - `server/services/transferService.ts`
 - `server/trpc/routers/status.ts`
