@@ -17,6 +17,8 @@ export interface UISlice {
   selectedLang: string | null;
   notificationsEnabled: boolean;
   connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
+  agentStatus: string;
+  setAgentStatus: (status: string) => void;
 
   toggleDarkMode: () => void;
   toggleDyslexicMode: () => void;
@@ -46,6 +48,7 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
   selectedLang: localStorage.getItem('selectedLang') || null,
   notificationsEnabled: localStorage.getItem('notificationsEnabled') !== 'false',
   connectionStatus: 'disconnected',
+  agentStatus: 'available',
 
   toggleDarkMode: () =>
     set((state) => {
@@ -115,6 +118,8 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
   },
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
+
+  setAgentStatus: (status) => set({ agentStatus: status }),
 
   hydrateAccessibilityPrefs: (prefs) => {
     if (get().prefsModifiedLocally) return; // don't overwrite local changes made this session
