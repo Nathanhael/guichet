@@ -60,7 +60,7 @@ export default function NotificationToggle() {
         const { vapidPublicKey } = await keyRes.json() as { vapidPublicKey: string };
         const sub = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+          applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
         });
         const p256dh = sub.getKey('p256dh');
         const auth = sub.getKey('auth');

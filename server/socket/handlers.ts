@@ -819,7 +819,7 @@ export function registerSocketHandlers(io: Server) {
             title: 'New message from support',
             body: `${sender.name}: ${guardedText.slice(0, 100)}`,
             ticketId,
-            type: 'message',
+            type: 'reply',
             tag: `ticket-${ticketId}`,
           });
         }
