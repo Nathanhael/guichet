@@ -23,6 +23,7 @@ import type { Command, ChatWindowHandle } from '../types/command';
 import { trpc } from '../utils/trpc';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import CommandPalette from '../components/support/CommandPalette';
+import { useIdleStatus } from '../hooks/useIdleStatus';
 
 export default function SupportView() {
   const {
@@ -58,6 +59,7 @@ export default function SupportView() {
   );
   const { status: businessHoursStatus } = useBusinessHours();
   const t = useT();
+  useIdleStatus();
 
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);

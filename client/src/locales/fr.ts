@@ -539,5 +539,6 @@ const fr: Record<string, string> = {
     cmd_toggle_copilot: 'Copilote IA',
     cmd_toggle_customer_info: 'Infos client',
     cmd_shortcut_hint: 'Ctrl+K',
+    idle_status_set: 'Statut mis en Pause (inactif)',
 };
 export default fr;

@@ -539,5 +539,6 @@ const nl: Record<string, string> = {
     cmd_toggle_copilot: 'AI-copiloot',
     cmd_toggle_customer_info: 'Klantinformatie',
     cmd_shortcut_hint: 'Ctrl+K',
+    idle_status_set: 'Status op Pauze gezet (inactief)',
 };
 export default nl;
