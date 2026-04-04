@@ -63,7 +63,7 @@ test.describe('StatusPicker', () => {
   });
 
   test('shows status picker button in nav', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     // StatusPicker button has aria-label "Status: <current status>"
     const picker = page.locator('button[aria-label^="Status:"]');
@@ -71,7 +71,7 @@ test.describe('StatusPicker', () => {
   });
 
   test('shows 5 status options when opened', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     const picker = page.locator('button[aria-label^="Status:"]');
     await expect(picker).toBeVisible({ timeout: 10000 });
@@ -86,7 +86,7 @@ test.describe('StatusPicker', () => {
   });
 
   test('status options each have a colored dot', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     const picker = page.locator('button[aria-label^="Status:"]');
     await expect(picker).toBeVisible({ timeout: 10000 });
@@ -108,7 +108,7 @@ test.describe('StatusPicker', () => {
   });
 
   test('changes status on selection', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     const picker = page.locator('button[aria-label^="Status:"]');
     await expect(picker).toBeVisible({ timeout: 10000 });
@@ -123,7 +123,7 @@ test.describe('StatusPicker', () => {
   });
 
   test('persists status across page reload', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     const picker = page.locator('button[aria-label^="Status:"]');
     await expect(picker).toBeVisible({ timeout: 10000 });
@@ -164,7 +164,7 @@ test.describe('Team Capacity Badge', () => {
   });
 
   test('shows Team Capacity label in SupportNav when other support online', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     // The capacity badge is conditional on totalOnline > 0, so we check for the
     // label or the X/Y count badge. The badge renders in SupportNav.
@@ -235,7 +235,7 @@ test.describe('My Stats Panel', () => {
   });
 
   test('My Stats toggle button is visible in SupportView', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     // The toggle is a full-width button with text "My Stats" (uppercase via CSS)
     const statsToggle = page.getByText(/^My Stats$/i).first();
@@ -243,7 +243,7 @@ test.describe('My Stats Panel', () => {
   });
 
   test('clicking My Stats toggle expands the stats panel', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     const statsToggle = page.getByText(/^My Stats$/i).first();
     await expect(statsToggle).toBeVisible({ timeout: 10000 });
@@ -258,7 +258,7 @@ test.describe('My Stats Panel', () => {
   });
 
   test('My Stats panel collapses on second click', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     // The toggle button contains "My Stats" text plus an arrow character
     const toggleBtn = page.locator('button').filter({ hasText: /My Stats/i }).first();
@@ -287,15 +287,17 @@ test.describe('Department Transfer', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'expert_alex');
+    // Use support_jan — member of wavelink partner which has open tickets
+    const res = await loginAsDemo(page, 'support_jan');
     loginOk = !!res.ok;
     await page.waitForTimeout(2000);
   });
 
   test('Transfer button is visible when a ticket is open', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
+    await page.setViewportSize({ width: 1600, height: 900 });
 
-    // Check if queue has tickets (look for ticket preview elements, not generic buttons)
+    // Check if queue has tickets
     const queueEmpty = page.getByText(/queue.empty|0 in.queue/i).first();
     const isEmpty = await queueEmpty.isVisible({ timeout: 3000 }).catch(() => false);
     if (isEmpty) {
@@ -303,7 +305,7 @@ test.describe('Department Transfer', () => {
       return;
     }
 
-    // Open a ticket from the queue sidebar — ticket items are clickable divs/buttons with ticket info
+    // Open a ticket from the queue sidebar
     const ticketItem = page.locator('[class*="cursor-pointer"]').first();
     const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
     if (!hasTicket) {
@@ -313,100 +315,122 @@ test.describe('Department Transfer', () => {
     await ticketItem.click();
     await page.waitForTimeout(1500);
 
+    // Support agent may need to "Join" the ticket first before toolbar appears
+    const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
+    const joinVisible = await joinBtn.isVisible({ timeout: 3000 }).catch(() => false);
+    if (joinVisible) {
+      await joinBtn.click();
+      await page.waitForTimeout(2000);
+    }
+
     // Transfer button is in the chat toolbar, visible on sm+ screens
-    const transferBtn = page.getByRole('button', { name: /transfer/i }).first();
+    const transferBtn = page.getByRole('button', { name: /transfer|overdragen|transférer/i }).first();
     await expect(transferBtn).toBeVisible({ timeout: 10000 });
   });
 
   test('transfer menu shows Return to queue and department options', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
+    await page.setViewportSize({ width: 1600, height: 900 });
 
-    const ticketBtn = page.locator('aside button').first();
-    const hasTicket = await ticketBtn.isVisible({ timeout: 5000 }).catch(() => false);
+    const ticketItem = page.locator('[class*="cursor-pointer"]').first();
+    const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
     if (!hasTicket) {
-      test.skip(true, 'No tickets in queue — seed database with open tickets');
+      test.skip(true, 'No tickets in queue');
       return;
     }
-    await ticketBtn.click();
+    await ticketItem.click();
     await page.waitForTimeout(1500);
 
-    const transferBtn = page.getByRole('button', { name: /transfer/i }).first();
+    // Join if needed
+    const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
+    if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await joinBtn.click();
+      await page.waitForTimeout(2000);
+    }
+
+    const transferBtn = page.getByRole('button', { name: /transfer|overdragen|transférer/i }).first();
     const transferVisible = await transferBtn.isVisible({ timeout: 10000 }).catch(() => false);
     if (!transferVisible) {
-      test.skip(true, 'Transfer button not visible — ticket may already be closed');
+      test.skip(true, 'Transfer button not visible');
       return;
     }
     await transferBtn.click();
     await page.waitForTimeout(500);
 
-    // "Return to queue" option must always be present
-    await expect(page.getByText(/return to queue/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/return to queue|terug naar wachtrij|remettre en file/i).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('transfer menu shows department section header', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
+    await page.setViewportSize({ width: 1600, height: 900 });
 
-    const ticketBtn = page.locator('aside button').first();
-    const hasTicket = await ticketBtn.isVisible({ timeout: 5000 }).catch(() => false);
+    const ticketItem = page.locator('[class*="cursor-pointer"]').first();
+    const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
     if (!hasTicket) {
-      test.skip(true, 'No tickets in queue — seed database with open tickets');
+      test.skip(true, 'No tickets in queue');
       return;
     }
-    await ticketBtn.click();
+    await ticketItem.click();
     await page.waitForTimeout(1500);
 
-    const transferBtn = page.getByRole('button', { name: /transfer/i }).first();
+    const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
+    if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await joinBtn.click();
+      await page.waitForTimeout(2000);
+    }
+
+    const transferBtn = page.getByRole('button', { name: /transfer|overdragen|transférer/i }).first();
     const transferVisible = await transferBtn.isVisible({ timeout: 10000 }).catch(() => false);
     if (!transferVisible) {
-      test.skip(true, 'Transfer button not visible — ticket may already be closed');
+      test.skip(true, 'Transfer button not visible');
       return;
     }
     await transferBtn.click();
     await page.waitForTimeout(500);
 
-    // The dropdown shows "Transfer to department" section header when departments exist
-    const deptHeader = page.getByText(/transfer to department/i).first();
-    const deptHeaderVisible = await deptHeader.isVisible().catch(() => false);
-    // Return to queue is always present; departments header is conditional on having other depts
-    const returnToQueue = page.getByText(/return to queue/i).first();
+    const returnToQueue = page.getByText(/return to queue|terug naar wachtrij|remettre en file/i).first();
     await expect(returnToQueue).toBeVisible({ timeout: 5000 });
 
+    // Department header is conditional on having departments
+    const deptHeader = page.getByText(/transfer to department|overdragen naar afdeling|transférer au département/i).first();
+    const deptHeaderVisible = await deptHeader.isVisible().catch(() => false);
     if (deptHeaderVisible) {
       await expect(deptHeader).toBeVisible();
     }
   });
 
   test('transfer menu has a note input field', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
+    await page.setViewportSize({ width: 1600, height: 900 });
 
-    const ticketBtn = page.locator('aside button').first();
-    const hasTicket = await ticketBtn.isVisible({ timeout: 5000 }).catch(() => false);
+    const ticketItem = page.locator('[class*="cursor-pointer"]').first();
+    const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
     if (!hasTicket) {
-      test.skip(true, 'No tickets in queue — seed database with open tickets');
+      test.skip(true, 'No tickets in queue');
       return;
     }
-    await ticketBtn.click();
+    await ticketItem.click();
     await page.waitForTimeout(1500);
 
-    const transferBtn = page.getByRole('button', { name: /transfer/i }).first();
+    const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
+    if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await joinBtn.click();
+      await page.waitForTimeout(2000);
+    }
+
+    const transferBtn = page.getByRole('button', { name: /transfer|overdragen|transférer/i }).first();
     const transferVisible = await transferBtn.isVisible({ timeout: 10000 }).catch(() => false);
     if (!transferVisible) {
-      test.skip(true, 'Transfer button not visible — ticket may already be closed');
+      test.skip(true, 'Transfer button not visible');
       return;
     }
     await transferBtn.click();
     await page.waitForTimeout(500);
 
-    // Note textarea inside the transfer dropdown
-    const noteTextarea = page.locator('textarea').filter({ hasText: '' }).first();
-    // Also try by placeholder text
-    const noteByPlaceholder = page.locator('textarea[placeholder*="context" i], textarea[placeholder*="agent" i]').first();
-
-    const textareaVisible =
-      (await noteTextarea.isVisible().catch(() => false)) ||
-      (await noteByPlaceholder.isVisible().catch(() => false));
-
-    expect(textareaVisible).toBeTruthy();
+    // Note input field inside the transfer dropdown
+    const noteInput = page.locator('input[type="text"][placeholder*="context" i], input[type="text"][placeholder*="agent" i], input[type="text"][placeholder*="volgende" i]').first();
+    const inputVisible = await noteInput.isVisible().catch(() => false);
+    expect(inputVisible).toBeTruthy();
   });
 });
 
