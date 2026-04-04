@@ -12,6 +12,7 @@ import PartnerUnavailable from '../components/PartnerUnavailable';
 import AgentNav from '../components/agent/AgentNav';
 import AgentTicketSidebar from '../components/agent/AgentTicketSidebar';
 import TicketForm from '../components/agent/TicketForm';
+import PwaInstallPrompt from '../components/PwaInstallPrompt';
 import { trpc } from '../utils/trpc';
 import { Ticket } from '../types';
 
@@ -162,6 +163,7 @@ export default function AgentView() {
 
       <RatingModal />
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
+      <PwaInstallPrompt />
     </BusinessHoursGuard>
     </ErrorBoundary>
   );
