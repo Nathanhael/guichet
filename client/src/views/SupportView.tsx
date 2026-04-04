@@ -13,6 +13,8 @@ import QueueSidebar from '../components/support/QueueSidebar';
 import ChatTabBar from '../components/support/ChatTabBar';
 import CustomerInfoPanel from '../components/support/CustomerInfoPanel';
 import AiCopilotSidebar from '../components/support/AiCopilotSidebar';
+import SplitChatLayout from '../components/support/SplitChatLayout';
+import TicketPreviewCard from '../components/support/TicketPreviewCard';
 import AgentStatusStats from '../components/admin/AgentStatusStats';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
@@ -29,6 +31,8 @@ export default function SupportView() {
     removeSupportOpenTicket,
     clearUnread,
     focusMode,
+    viewMode,
+    setViewMode,
     memberships,
     activeMembershipId,
     notificationsEnabled,
@@ -42,6 +46,8 @@ export default function SupportView() {
       removeSupportOpenTicket: s.removeSupportOpenTicket,
       clearUnread: s.clearUnread,
       focusMode: s.focusMode,
+      viewMode: s.viewMode,
+      setViewMode: s.setViewMode,
       memberships: s.memberships,
       activeMembershipId: s.activeMembershipId,
       notificationsEnabled: s.notificationsEnabled,
@@ -101,6 +107,20 @@ export default function SupportView() {
     }
   }, [supportOpenTickets, previewTicket]);
 
+  // Auto-fallback from split view when fewer than 2 tabs are open
+  useEffect(() => {
+    if (viewMode === 'split' && supportOpenTickets.length < 2) {
+      setViewMode('normal');
+    }
+  }, [viewMode, supportOpenTickets.length, setViewMode]);
+
+  // Auto-fallback from split view on narrow viewports
+  useEffect(() => {
+    if (viewMode === 'split' && window.innerWidth < 768) {
+      setViewMode('normal');
+    }
+  }, [viewMode, setViewMode]);
+
   // ── Actions ──
 
   function selectTicket(ticket: Ticket) {
@@ -112,6 +132,20 @@ export default function SupportView() {
     } else if (!atMaxChats) {
       setPreviewTicket(ticket);
     }
+  }
+
+  function handleSelectTicket(ticket: Ticket) {
+    if (viewMode === 'preview') {
+      setPreviewTicket(ticket);
+    } else {
+      selectTicket(ticket);
+    }
+  }
+
+  function handleJoinFromPreview(ticket: Ticket) {
+    setPreviewTicket(null);
+    setViewMode('normal');
+    joinTicket(ticket);
   }
 
   function joinTicket(ticket: Ticket) {
@@ -164,46 +198,77 @@ export default function SupportView() {
 
       <SupportNav partnerName={partnerName} logoUrl={logoUrl} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {activeMembership && (
           <QueueSidebar
             activeMembership={activeMembership}
             activeTab={activeTab}
             previewTicketId={previewTicket?.id || null}
             atMaxChats={atMaxChats}
-            isOpen={!focusMode && sidebarOpen}
-            onSelectTicket={selectTicket}
+            isOpen={viewMode !== 'focus' && viewMode !== 'split' && sidebarOpen}
+            onSelectTicket={handleSelectTicket}
             onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
           />
         )}
 
-        <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
-          {/* My Stats toggle + panel */}
-          <div className="border-b border-border">
-            <button
-              onClick={() => setShowMyStats((v) => !v)}
-              className="w-full flex items-center justify-between px-4 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-text-primary bg-bg-surface hover:bg-bg-elevated border-b border-border"
-            >
-              <span>{t('my_stats')}</span>
-              <span>{showMyStats ? '▲' : '▼'}</span>
-            </button>
-            {showMyStats && user && (
-              <div className="px-4 pb-3">
-                <AgentStatusStats userId={user.id} />
-              </div>
-            )}
-          </div>
+        {/* Sidebar toggle for split view (overlay hamburger) */}
+        {viewMode === 'split' && !sidebarOpen && (
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-30 bg-bg-surface border border-border px-1 py-3 hover:bg-bg-elevated"
+            aria-label="Toggle sidebar"
+          >
+            <span className="text-text-muted text-xs">{'\u2630'}</span>
+          </button>
+        )}
 
-          <ChatTabBar
-            tabs={openTabTickets}
-            activeTab={activeTab}
-            onSelectTab={(id) => setActiveTab(id)}
-            onCloseTab={closeTab}
-          />
+        <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
+          {/* My Stats toggle + panel (hidden in preview mode) */}
+          {viewMode !== 'preview' && (
+            <div className="border-b border-border">
+              <button
+                onClick={() => setShowMyStats((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-text-primary bg-bg-surface hover:bg-bg-elevated border-b border-border"
+              >
+                <span>{t('my_stats')}</span>
+                <span>{showMyStats ? '\u25B2' : '\u25BC'}</span>
+              </button>
+              {showMyStats && user && (
+                <div className="px-4 pb-3">
+                  <AgentStatusStats userId={user.id} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ChatTabBar (hidden in preview mode) */}
+          {viewMode !== 'preview' && (
+            <ChatTabBar
+              tabs={openTabTickets}
+              activeTab={activeTab}
+              onSelectTab={(id) => setActiveTab(id)}
+              onCloseTab={closeTab}
+            />
+          )}
 
           <div className="flex-1 overflow-hidden flex">
             <div className="flex-1 overflow-hidden">
-              {showPreview ? (
+              {viewMode === 'split' && openTabTickets.length >= 2 ? (
+                <SplitChatLayout
+                  tabs={openTabTickets}
+                  activeTab={activeTab}
+                  onSelectTab={(id) => setActiveTab(id)}
+                  onCloseTab={closeTab}
+                />
+              ) : viewMode === 'preview' ? (
+                previewTicket ? (
+                  <TicketPreviewCard ticket={previewTicket} onJoin={handleJoinFromPreview} />
+                ) : (
+                  <div className="flex-1 flex items-center justify-center h-full">
+                    <p className="mono-label opacity-20">{t('select_ticket_preview') || 'Select a ticket to preview'}</p>
+                  </div>
+                )
+              ) : showPreview ? (
                 <TicketPreview
                   ticket={previewTicket!}
                   onJoin={() => joinTicket(previewTicket!)}
@@ -223,14 +288,14 @@ export default function SupportView() {
               )}
             </div>
 
-            {/* Customer context panel */}
-            {activeTab && !showPreview && !focusMode && (() => {
+            {/* Customer context panel (only in normal mode) */}
+            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && (() => {
               const activeTicket = tickets.find((tk) => tk.id === activeTab);
               return activeTicket ? <CustomerInfoPanel ticket={activeTicket} /> : null;
             })()}
 
-            {/* AI Copilot sidebar */}
-            {activeTab && !showPreview && !focusMode && (() => {
+            {/* AI Copilot sidebar (only in normal mode) */}
+            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && (() => {
               const activeTicket = tickets.find((tk) => tk.id === activeTab);
               return activeTicket ? <AiCopilotSidebar ticket={activeTicket} /> : null;
             })()}
