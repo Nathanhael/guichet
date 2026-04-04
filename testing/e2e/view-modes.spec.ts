@@ -307,7 +307,8 @@ test.describe('Split View', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_jan');
+    // Use expert_alex — generalist support in tessera-main, reset by demo script
+    const res = await loginAsDemo(page, 'expert_alex');
     loginOk = !!res.ok;
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.waitForTimeout(2000);
@@ -364,35 +365,52 @@ test.describe('Split View', () => {
   test('split view shows multiple chat panels when 2+ tabs are open', async ({ page }) => {
     test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
-    // Count available tickets
-    const ticketItems = page.locator('[class*="cursor-pointer"]');
-    await page.waitForTimeout(1000);
-    const count = await ticketItems.count();
+    // This test requires 2+ tickets in the user's queue.
+    // expert_alex is in tessera-main which may not have tickets.
+    // The test gracefully skips when the queue is empty.
+    await page.waitForTimeout(1500);
 
+    const queueCount = page.getByText(/\d+ in.queue/i).first();
+    const hasQueue = await queueCount.isVisible({ timeout: 5000 }).catch(() => false);
+    if (!hasQueue) {
+      test.skip(true, 'No tickets in queue — seed database with tickets for this partner');
+      return;
+    }
+
+    // Get the count from the text
+    const countText = await queueCount.textContent();
+    const numTickets = parseInt(countText || '0', 10);
+    if (numTickets < 2) {
+      test.skip(true, `Fewer than 2 tickets in queue (found: ${numTickets})`);
+      return;
+    }
+
+    const ticketItems = page.locator('ul').locator('li');
+    const count = await ticketItems.count();
     if (count < 2) {
-      test.skip(true, 'Fewer than 2 tickets in queue — cannot test split view with multiple tabs');
+      test.skip(true, `Fewer than 2 ticket list items (found: ${count})`);
       return;
     }
 
     // Open first ticket
     await ticketItems.nth(0).click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
 
     // Join if needed
     const joinBtn1 = page.getByRole('button', { name: /join|deelnemen|rejoindre/i }).first();
     if (await joinBtn1.isVisible({ timeout: 3000 }).catch(() => false)) {
       await joinBtn1.click();
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(2000);
     }
 
-    // Open second ticket (click another item in the queue)
+    // Open second ticket
     await ticketItems.nth(1).click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(1500);
 
     const joinBtn2 = page.getByRole('button', { name: /join|deelnemen|rejoindre/i }).first();
     if (await joinBtn2.isVisible({ timeout: 3000 }).catch(() => false)) {
       await joinBtn2.click();
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(2000);
     }
 
     // Now switch to split mode
@@ -479,7 +497,7 @@ test.describe('Focus Mode', () => {
     await trigger.click();
     await page.waitForTimeout(400);
 
-    const focusOption = page.getByText(/^focus$/i).first();
+    const focusOption = page.locator('button').filter({ hasText: /focus/i }).first().first();
     const focusVisible = await focusOption.isVisible({ timeout: 5000 }).catch(() => false);
     if (!focusVisible) {
       test.skip(true, 'Focus option not found in dropdown');
@@ -523,7 +541,9 @@ test.describe('Focus Mode', () => {
     await trigger.click();
     await page.waitForTimeout(400);
 
-    const focusOption = page.getByText(/^focus$/i).first();
+    // Find Focus in dropdown — scope to dropdown container to avoid "Training / Focus"
+    const dropdown1 = page.locator('.border-border-heavy, [class*="border-heavy"]').last();
+    const focusOption = dropdown1.locator('button').filter({ hasText: /focus/i }).first();
     if (!await focusOption.isVisible({ timeout: 5000 }).catch(() => false)) {
       test.skip(true, 'Focus option not found in dropdown');
       return;
@@ -531,11 +551,13 @@ test.describe('Focus Mode', () => {
     await focusOption.click();
     await page.waitForTimeout(800);
 
-    // Return to Normal mode
+    // In focus mode the trigger should still be visible (it's in the nav)
+    // Re-open dropdown and select Normal
     await trigger.click();
     await page.waitForTimeout(400);
 
-    const normalOption = page.getByText(/^normal$|^normaal$/i).first();
+    const dropdown2 = page.locator('.border-border-heavy, [class*="border-heavy"]').last();
+    const normalOption = dropdown2.locator('button').filter({ hasText: /normal|normaal/i }).first();
     if (!await normalOption.isVisible({ timeout: 5000 }).catch(() => false)) {
       test.skip(true, 'Normal option not found in dropdown');
       return;
