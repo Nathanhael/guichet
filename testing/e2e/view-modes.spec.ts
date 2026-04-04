@@ -6,7 +6,7 @@
  *
  * Prerequisites:
  *   - Server running at E2E_BASE_URL
- *   - Seeded demo database (seed_pg.ts)
+ *   - Seeded demo database (seed.ts)
  */
 
 import { test, expect, type Page } from '@playwright/test';
