@@ -17,7 +17,7 @@ export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardP
     { ticketId: ticket.id, limit: 3 },
     { enabled: !!ticket.id },
   );
-  const messages = (messagesData as { messages?: Array<{ id: string; senderName: string; text: string; createdAt: string; system?: boolean }> })?.messages || [];
+  const messages = messagesData?.messages || [];
 
   return (
     <div className="flex-1 flex items-start justify-center p-6 overflow-y-auto">
@@ -43,8 +43,8 @@ export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardP
         {ticket.labels && ticket.labels.length > 0 && (
           <div className="px-5 py-2 border-b border-border flex gap-1.5 flex-wrap">
             {ticket.labels.map((label) => (
-              <span key={typeof label === 'string' ? label : label.id} className="text-[9px] font-mono font-bold uppercase bg-bg-elevated px-2 py-0.5 text-text-secondary">
-                {typeof label === 'string' ? label : label.name}
+              <span key={label} className="text-[9px] font-mono font-bold uppercase bg-bg-elevated px-2 py-0.5 text-text-secondary">
+                {label}
               </span>
             ))}
           </div>
@@ -65,7 +65,7 @@ export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardP
                     <span className="text-[10px] font-bold text-text-primary">{msg.senderName}</span>
                     <span className="text-[9px] font-mono text-text-muted">{getTicketTime(msg.createdAt)}</span>
                   </div>
-                  <p className="text-[11px] text-text-secondary leading-relaxed">{msg.text}</p>
+                  <p className="text-[11px] text-text-secondary leading-relaxed">{msg.processedText || msg.originalText}</p>
                 </div>
               ))}
             </div>

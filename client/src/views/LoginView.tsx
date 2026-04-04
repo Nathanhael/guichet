@@ -60,7 +60,7 @@ export default function LoginView() {
   const filtered = filter === 'all' ? users :
     filter === 'platform' ? users.filter((u: DemoUser) => u.isPlatformOperator) :
     filter === 'support' ? users.filter((u: DemoUser) => u.role === 'support') :
-    filter === 'admin' ? users.filter((u: DemoUser) => u.role === 'admin') :
+    filter === 'admin' ? users.filter((u: DemoUser) => u.role === 'admin' && !u.isPlatformOperator) :
     filter === 'agent' ? users.filter((u: DemoUser) => u.role === 'agent') :
     users;
 
