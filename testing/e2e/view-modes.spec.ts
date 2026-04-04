@@ -307,8 +307,8 @@ test.describe('Split View', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    // Use expert_alex — generalist support in tessera-main, reset by demo script
-    const res = await loginAsDemo(page, 'expert_alex');
+    // Use support_thomas — generalist support at wavelink (no dept filter), has tickets
+    const res = await loginAsDemo(page, 'support_thomas');
     loginOk = !!res.ok;
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.waitForTimeout(2000);
