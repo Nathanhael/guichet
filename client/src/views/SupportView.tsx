@@ -13,6 +13,7 @@ import QueueSidebar from '../components/support/QueueSidebar';
 import ChatTabBar from '../components/support/ChatTabBar';
 import CustomerInfoPanel from '../components/support/CustomerInfoPanel';
 import AiCopilotSidebar from '../components/support/AiCopilotSidebar';
+import AgentStatusStats from '../components/admin/AgentStatusStats';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 import { Ticket } from '../types';
@@ -52,6 +53,7 @@ export default function SupportView() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showMyStats, setShowMyStats] = useState(false);
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
   const partnerName = activeMembership?.partnerName || 'Tessera';
@@ -176,6 +178,22 @@ export default function SupportView() {
         )}
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
+          {/* My Stats toggle + panel */}
+          <div className="border-b border-border">
+            <button
+              onClick={() => setShowMyStats((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-1.5 text-[9px] font-mono font-bold uppercase tracking-widest text-text-muted hover:bg-bg-elevated"
+            >
+              <span>{t('my_stats')}</span>
+              <span>{showMyStats ? '▲' : '▼'}</span>
+            </button>
+            {showMyStats && user && (
+              <div className="px-4 pb-3">
+                <AgentStatusStats userId={user.id} />
+              </div>
+            )}
+          </div>
+
           <ChatTabBar
             tabs={openTabTickets}
             activeTab={activeTab}

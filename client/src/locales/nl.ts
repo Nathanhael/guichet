@@ -339,6 +339,7 @@ const nl: Record<string, string> = {
     time_in_status: 'Tijd per status',
     available_label: 'Beschikbaar',
     online_team: 'Online team',
+    my_stats: 'Mijn stats',
 
     active_tickets: 'Actieve tickets',
     statistics: 'Statistieken',
