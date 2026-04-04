@@ -112,8 +112,8 @@ export function useSocket(): Socket {
       setActiveTicketId(ticket.id);
     };
 
-    const handleSupportJoined = ({ ticketId, supportName, participants }: { ticketId: string; supportName: string; participants: Participant[] }) => {
-      updateTicket(ticketId, { supportName, status: 'open', participants: participants || [] });
+    const handleSupportJoined = ({ ticketId, supportId, supportName, participants }: { ticketId: string; supportId?: string; supportName: string; participants: Participant[] }) => {
+      updateTicket(ticketId, { ...(supportId && { supportId }), supportName, status: 'open', participants: participants || [] });
     };
 
     const handleTicketHistory = ({ ticketId, messages, labels, hasMore, nextCursor }: {
@@ -245,6 +245,7 @@ export function useSocket(): Socket {
     };
 
     const handleTicketAssigned = ({ ticketId, supportId, supportName }: { ticketId: string; supportId: string; supportName: string }) => {
+      updateTicket(ticketId, { supportId, supportName });
       const state = useStore.getState();
       if (supportId === state.user?.id && state.notificationsEnabled) {
         notify(`Ticket assigned to you`, {

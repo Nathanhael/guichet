@@ -43,7 +43,7 @@ export async function findTicketForJoin(ticketId: string) {
  */
 export async function findTicketForClose(ticketId: string) {
   const rows = await db
-    .select({ status: tickets.status, partnerId: tickets.partnerId })
+    .select({ status: tickets.status, partnerId: tickets.partnerId, supportId: tickets.supportId, supportName: tickets.supportName })
     .from(tickets)
     .where(eq(tickets.id, ticketId));
   return rows[0];
