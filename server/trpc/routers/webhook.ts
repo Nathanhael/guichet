@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
-import { router, partnerAdminProcedure } from '../trpc.js';
+import { router, partnerAdminProcedure, featureGate } from '../trpc.js';
 import { db } from '../../db.js';
 import { webhooks, webhookLogs } from '../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
@@ -33,9 +33,12 @@ async function verifyWebhookOwnership(id: string, partnerId: string) {
   return rows[0];
 }
 
+// DISABLED_FEATURE: Webhooks — gated until feature is production-ready
+const gatedPartnerAdmin = partnerAdminProcedure.use(featureGate('webhooks'));
+
 export const webhookRouter = router({
   /** List all webhooks for the current partner */
-  list: partnerAdminProcedure.query(async ({ ctx }) => {
+  list: gatedPartnerAdmin.query(async ({ ctx }) => {
     return db
       .select({
         id: webhooks.id,
@@ -51,7 +54,7 @@ export const webhookRouter = router({
   }),
 
   /** Create a new webhook endpoint */
-  create: partnerAdminProcedure
+  create: gatedPartnerAdmin
     .input(z.object({
       url: z.string().url().max(2000),
       events: webhookEventsSchema,
@@ -82,7 +85,7 @@ export const webhookRouter = router({
     }),
 
   /** Update a webhook */
-  update: partnerAdminProcedure
+  update: gatedPartnerAdmin
     .input(z.object({
       id: z.string(),
       url: z.string().url().max(2000).optional(),
@@ -109,7 +112,7 @@ export const webhookRouter = router({
     }),
 
   /** Regenerate the signing secret for a webhook */
-  regenerateSecret: partnerAdminProcedure
+  regenerateSecret: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await verifyWebhookOwnership(input.id, ctx.user.partnerId);
@@ -123,7 +126,7 @@ export const webhookRouter = router({
     }),
 
   /** Delete a webhook */
-  delete: partnerAdminProcedure
+  delete: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await db
@@ -134,7 +137,7 @@ export const webhookRouter = router({
     }),
 
   /** Get recent delivery logs for a webhook */
-  logs: partnerAdminProcedure
+  logs: gatedPartnerAdmin
     .input(z.object({
       webhookId: z.string(),
       limit: z.number().min(1).max(100).optional(),
@@ -165,7 +168,7 @@ export const webhookRouter = router({
     }),
 
   /** Test-fire a webhook with a sample payload */
-  test: partnerAdminProcedure
+  test: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Fetch the specific webhook (verifies ownership and gets secret/url)
