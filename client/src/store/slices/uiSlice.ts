@@ -2,7 +2,7 @@ import { StateCreator } from 'zustand';
 import { StoreState, ZenSettings } from '../../types';
 import { trpcVanilla } from '../../utils/trpc';
 
-export type ViewMode = 'normal' | 'split' | 'preview' | 'focus';
+export type ViewMode = 'normal' | 'split-grid' | 'split-stack' | 'focus';
 
 export interface UISlice {
   dyslexicMode: boolean;
@@ -19,6 +19,8 @@ export interface UISlice {
   connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
   agentStatus: string;
   setAgentStatus: (status: string) => void;
+  rightSidebarExpanded: boolean;
+  toggleRightSidebar: () => void;
 
   toggleDarkMode: () => void;
   toggleDyslexicMode: () => void;
@@ -49,6 +51,14 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
   notificationsEnabled: localStorage.getItem('notificationsEnabled') !== 'false',
   connectionStatus: 'disconnected',
   agentStatus: 'online',
+  rightSidebarExpanded: localStorage.getItem('rightSidebarExpanded') === 'true',
+
+  toggleRightSidebar: () =>
+    set((state) => {
+      const next = !state.rightSidebarExpanded;
+      localStorage.setItem('rightSidebarExpanded', String(next));
+      return { rightSidebarExpanded: next };
+    }),
 
   toggleDarkMode: () =>
     set((state) => {
