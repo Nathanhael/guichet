@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { getRoleDisplayName } from '../../utils/roles';
@@ -138,6 +138,11 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
   const [azureGroupName, setAzureGroupName] = useState('');
   const [defaultRole, setDefaultRole] = useState<'agent' | 'support' | 'admin'>('agent');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
+  const selectedPartner = ssoPartners.find(p => p.id === partnerId);
+  const partnerDepts = (selectedPartner?.departments as { id: string; name: string }[] | undefined) || [];
+
+  useEffect(() => { setSelectedDepts([]); }, [partnerId]);
 
   const addMutation = trpc.platform.addGroupMapping.useMutation({
     onSuccess: onAdded,
@@ -151,6 +156,7 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
       azureGroupId: azureGroupId.trim(),
       azureGroupName: azureGroupName.trim() || undefined,
       defaultRole,
+      defaultDepartments: defaultRole === 'agent' ? [] : selectedDepts,
     });
   };
 
@@ -209,11 +215,44 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
               <p className="text-[9px] uppercase font-bold mt-1 text-[var(--color-accent-red)]">{t('admin_role_warning')}</p>
             )}
           </div>
+          {defaultRole !== 'agent' && partnerDepts.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="mono-label">Departments</label>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDepts(selectedDepts.length === partnerDepts.length ? [] : partnerDepts.map(d => d.id))}
+                  className="text-[8px] font-bold uppercase tracking-widest text-[var(--color-accent-blue)] hover:underline"
+                >
+                  {selectedDepts.length === partnerDepts.length ? 'Deselect all' : 'Select all'}
+                </button>
+              </div>
+              <div className="space-y-1 max-h-32 overflow-y-auto border border-[var(--color-border)] p-3">
+                {partnerDepts.map(d => (
+                  <label key={d.id} className="flex items-center gap-2 text-xs font-bold uppercase cursor-pointer hover:text-[var(--color-accent-blue)] py-0.5">
+                    <input
+                      type="checkbox"
+                      checked={selectedDepts.includes(d.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
+                        else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
+                      }}
+                      className="w-3.5 h-3.5 accent-[var(--color-accent-blue)]"
+                    />
+                    {d.name}
+                  </label>
+                ))}
+              </div>
+              {defaultRole === 'support' && selectedDepts.length === 0 && (
+                <p className="text-[8px] font-bold uppercase text-[var(--color-accent-red)] mt-1">Support requires at least one department</p>
+              )}
+            </div>
+          )}
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="btn-secondary flex-1 py-3 uppercase text-[10px] tracking-widest">
               {t('cancel')}
             </button>
-            <button type="submit" disabled={addMutation.isPending} className="btn-primary flex-1 py-3 uppercase text-[10px] tracking-widest disabled:opacity-30">
+            <button type="submit" disabled={addMutation.isPending || (defaultRole === 'support' && selectedDepts.length === 0)} className="btn-primary flex-1 py-3 uppercase text-[10px] tracking-widest disabled:opacity-30">
               {addMutation.isPending ? '...' : t('add_mapping')}
             </button>
           </div>
@@ -233,6 +272,10 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
   const [azureGroupName, setAzureGroupName] = useState(mapping.azureGroupName || '');
   const [defaultRole, setDefaultRole] = useState<'agent' | 'support' | 'admin'>(mapping.defaultRole as 'agent' | 'support' | 'admin');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const { data: partnersList } = trpc.platform.listPartners.useQuery();
+  const partner = partnersList?.find(p => p.id === mapping.partnerId);
+  const partnerDepts = (partner?.departments as { id: string; name: string }[] | undefined) || [];
+  const [selectedDepts, setSelectedDepts] = useState<string[]>((mapping.defaultDepartments as string[]) || []);
 
   const updateMutation = trpc.platform.updateGroupMapping.useMutation({
     onSuccess: onUpdated,
@@ -245,6 +288,7 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
       id: mapping.id,
       azureGroupName: azureGroupName.trim() || undefined,
       defaultRole,
+      defaultDepartments: defaultRole === 'agent' ? [] : selectedDepts,
     });
   };
 
@@ -278,11 +322,44 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
               <p className="text-[9px] uppercase font-bold mt-1 text-[var(--color-accent-red)]">{t('admin_role_warning')}</p>
             )}
           </div>
+          {defaultRole !== 'agent' && partnerDepts.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label className="mono-label">Departments</label>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDepts(selectedDepts.length === partnerDepts.length ? [] : partnerDepts.map(d => d.id))}
+                  className="text-[8px] font-bold uppercase tracking-widest text-[var(--color-accent-blue)] hover:underline"
+                >
+                  {selectedDepts.length === partnerDepts.length ? 'Deselect all' : 'Select all'}
+                </button>
+              </div>
+              <div className="space-y-1 max-h-32 overflow-y-auto border border-[var(--color-border)] p-3">
+                {partnerDepts.map(d => (
+                  <label key={d.id} className="flex items-center gap-2 text-xs font-bold uppercase cursor-pointer hover:text-[var(--color-accent-blue)] py-0.5">
+                    <input
+                      type="checkbox"
+                      checked={selectedDepts.includes(d.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
+                        else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
+                      }}
+                      className="w-3.5 h-3.5 accent-[var(--color-accent-blue)]"
+                    />
+                    {d.name}
+                  </label>
+                ))}
+              </div>
+              {defaultRole === 'support' && selectedDepts.length === 0 && (
+                <p className="text-[8px] font-bold uppercase text-[var(--color-accent-red)] mt-1">Support requires at least one department</p>
+              )}
+            </div>
+          )}
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="btn-secondary flex-1 py-3 uppercase text-[10px] tracking-widest">
               {t('cancel')}
             </button>
-            <button type="submit" disabled={updateMutation.isPending} className="btn-primary flex-1 py-3 uppercase text-[10px] tracking-widest disabled:opacity-30">
+            <button type="submit" disabled={updateMutation.isPending || (defaultRole === 'support' && selectedDepts.length === 0)} className="btn-primary flex-1 py-3 uppercase text-[10px] tracking-widest disabled:opacity-30">
               {updateMutation.isPending ? '...' : t('save')}
             </button>
           </div>
