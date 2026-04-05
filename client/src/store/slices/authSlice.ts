@@ -85,11 +85,15 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       set({ memberships });
     },
     setActiveMembershipId: (id) => {
-      if (id) sessionStorage.setItem('activeMembershipId', id);
-      else {
+      if (id) {
+        sessionStorage.setItem('activeMembershipId', id);
+      } else {
         sessionStorage.removeItem('activeMembershipId');
         sessionStorage.removeItem('activePartnerId');
-        set({ activeMembershipId: null, activePartnerId: null });
+        // Clean up synthetic memberships when returning to platform cockpit
+        const filtered = get().memberships.filter(m => !m.id.startsWith('platform_'));
+        sessionStorage.setItem('memberships', JSON.stringify(filtered));
+        set({ activeMembershipId: null, activePartnerId: null, memberships: filtered });
         return;
       }
 
@@ -129,10 +133,14 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       };
 
       const existing = get().memberships.filter(m => !m.id.startsWith('platform_'));
+      const newMemberships = [...existing, syntheticMembership];
+      
       sessionStorage.setItem('activeMembershipId', syntheticMembershipId);
       sessionStorage.setItem('activePartnerId', partnerId);
+      sessionStorage.setItem('memberships', JSON.stringify(newMemberships));
+      
       set({
-        memberships: [...existing, syntheticMembership],
+        memberships: newMemberships,
         activeMembershipId: syntheticMembershipId,
         activePartnerId: partnerId,
       });
