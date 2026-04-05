@@ -3,7 +3,7 @@ import { Context } from './context.js';
 import { UserRole } from '../types/index.js';
 import { isPlatformAdmin, isTenantAdmin } from '../services/roles.js';
 import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
-import { DISABLED_FEATURES } from '../constants.js';
+import { DISABLED_FEATURES, type DisabledFeature } from '../constants.js';
 
 const t = initTRPC.context<Context>().create();
 
@@ -111,7 +111,7 @@ export const partnerRoleProcedure = (roles: UserRole[]) =>
  * Returns FORBIDDEN with a clear message when the feature is in DISABLED_FEATURES.
  * To re-enable, remove the feature name from DISABLED_FEATURES in constants.ts.
  */
-export const featureGate = (feature: string) =>
+export const featureGate = (feature: DisabledFeature) =>
   t.middleware(({ next }) => {
     if (DISABLED_FEATURES.includes(feature)) {
       throw new TRPCError({

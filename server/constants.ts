@@ -29,8 +29,9 @@ export const RECENT_CLOSED_TICKETS_LIMIT = 100;
  * Remove a feature name from this array to enable it.
  * Used by featureGate() middleware in trpc.ts to block all procedures.
  */
-export const DISABLED_FEATURES: readonly string[] = [
+export type DisabledFeature = 'cannedResponse' | 'knowledgeBase' | 'webhooks';
+export const DISABLED_FEATURES: readonly DisabledFeature[] = [
   'cannedResponse',
   'knowledgeBase',
   'webhooks',
-] as const;
+];
