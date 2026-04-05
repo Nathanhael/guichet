@@ -43,6 +43,9 @@ export default defineConfig({
     include: ['react-is', 'recharts'],
     exclude: ['@trpc/server'],
   },
+  preview: {
+    allowedHosts: true,
+  },
   server: {
     port: 5173,
     host: true,

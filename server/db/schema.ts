@@ -263,6 +263,7 @@ export const auditLog = pgTable('audit_log', {
   actorCreatedIdx: index('idx_audit_log_actor_created').on(table.actorId, table.createdAt),
   actionIdx: index('idx_audit_log_action').on(table.action),
   createdAtIdx: index('idx_audit_log_created_at').on(table.createdAt),
+  targetIdIdx: index('idx_audit_log_target_id').on(table.targetId),
 }));
 
 // ─── Canned Responses ────────────────────────────────────────────────────────
@@ -305,6 +306,7 @@ export const auditArchive = pgTable('audit_archive', {
   createdAtIdx: index('idx_audit_archive_created').on(table.createdAt),
   archivedAtIdx: index('idx_audit_archive_archived').on(table.archivedAt),
   partnerIdx: index('idx_audit_archive_partner').on(table.partnerId),
+  targetIdIdx: index('idx_audit_archive_target_id').on(table.targetId),
   sequenceIdx: index('idx_audit_archive_sequence').on(table.sequence),
 }));
 

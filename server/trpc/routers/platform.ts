@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, platformProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { partners, memberships, users, auditLog, tickets, systemSettings, partnerGroupMappings, auditArchive, archivedTickets } from '../../db/schema.js';
-import { eq, asc, desc, sql, isNull, and, gte, lte, inArray } from 'drizzle-orm';
+import { eq, asc, desc, sql, isNull, and, gte, lte, inArray, ilike } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { randomUUID, randomBytes } from 'crypto';
 import { getRedisClients } from '../../utils/redis.js';
@@ -660,7 +660,7 @@ export const platformRouter = router({
     }))
     .query(async ({ input }) => {
       const conditions = [];
-      if (input.action) conditions.push(eq(auditArchive.action, input.action));
+      if (input.action) conditions.push(ilike(auditArchive.action, `%${input.action}%`));
       if (input.partnerId) conditions.push(eq(auditArchive.partnerId, input.partnerId));
       if (input.dateFrom) conditions.push(gte(auditArchive.createdAt, `${input.dateFrom}T00:00:00`));
       if (input.dateTo) conditions.push(lte(auditArchive.createdAt, `${input.dateTo}T23:59:59.999`));
@@ -715,6 +715,7 @@ export const platformRouter = router({
   getArchivedTickets: platformProcedure
     .input(z.object({
       partnerId: z.string().optional(),
+      dept: z.string().optional(),
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
       limit: z.number().min(1).max(100).default(50),
@@ -723,6 +724,7 @@ export const platformRouter = router({
     .query(async ({ input }) => {
       const conditions = [];
       if (input.partnerId) conditions.push(eq(archivedTickets.partnerId, input.partnerId));
+      if (input.dept) conditions.push(ilike(archivedTickets.dept, `%${input.dept}%`));
       if (input.dateFrom) conditions.push(gte(archivedTickets.createdAt, `${input.dateFrom}T00:00:00`));
       if (input.dateTo) conditions.push(lte(archivedTickets.createdAt, `${input.dateTo}T23:59:59.999`));
 
@@ -738,7 +740,20 @@ export const platformRouter = router({
       }
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-      const results = await db.select().from(archivedTickets)
+      const results = await db.select({
+        id: archivedTickets.id,
+        partnerId: archivedTickets.partnerId,
+        dept: archivedTickets.dept,
+        agentId: archivedTickets.agentId,
+        supportId: archivedTickets.supportId,
+        status: archivedTickets.status,
+        messageCount: archivedTickets.messageCount,
+        createdAt: archivedTickets.createdAt,
+        closedAt: archivedTickets.closedAt,
+        archivedAt: archivedTickets.archivedAt,
+        agentName: sql<string>`(SELECT name FROM users WHERE id = ${archivedTickets.agentId})`.as('agent_name'),
+        supportName: sql<string>`(SELECT name FROM users WHERE id = ${archivedTickets.supportId})`.as('support_name'),
+      }).from(archivedTickets)
         .where(whereClause)
         .orderBy(desc(archivedTickets.createdAt), desc(archivedTickets.id))
         .limit(input.limit + 1);
@@ -1048,7 +1063,7 @@ export const platformRouter = router({
         .leftJoin(users, eq(auditLog.actorId, users.id))
         .where(whereClause)
         .orderBy(desc(auditLog.createdAt))
-        .limit(1000); // Reasonable limit for direct export
+        .limit(10000); // Safety cap for CSV export
       } catch (err: unknown) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }

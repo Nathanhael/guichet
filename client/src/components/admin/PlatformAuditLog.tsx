@@ -4,69 +4,133 @@ import { useT } from '../../i18n';
 import Toast from '../Toast';
 
 const ACTION_OPTIONS = [
+  // Partner
   'partner.created',
   'partner.config_updated',
   'partner.deactivated',
   'partner.reactivated',
   'partner.deleted',
+  'partner.sla_config_updated',
+  // Platform
   'platform.enter_partner',
+  'platform_operator_bootstrap',
+  // Members
   'member.added',
   'member.invited',
+  'member.invite_resent',
   'member.removed',
   'member.updated',
-  'user.sessions_revoked',
+  // Users
   'user.deleted',
+  'user.login',
+  'user.profile_updated',
+  'user.sessions_revoked',
+  // Security
+  'security.account_locked',
+  'security.mfa_disabled',
+  'security.mfa_disabled_by_admin',
+  'security.mfa_enabled',
+  'security.mfa_recovery_codes_regenerated',
+  'security.user_unlocked_by_admin',
+  // SSO
+  'sso.email_conflict',
   'sso.group_mapping_added',
   'sso.group_mapping_updated',
   'sso.group_mapping_removed',
-  'gdpr.purge',
+  'sso.membership_auto_created',
+  'sso.no_matching_groups',
+  // System
+  'system.archive_run',
+  'system.gdpr_purge',
+  'system.mail_config_updated',
+  // Content
+  'kb.created',
+  'label.created',
+  'webhook.created',
 ] as const;
-
-const SECURITY_ACTIONS = new Set<string>([
-  'partner.created',
-  'partner.deactivated',
-  'partner.reactivated',
-  'partner.deleted',
-  'platform.enter_partner',
-  'member.added',
-  'member.invited',
-  'member.removed',
-  'member.updated',
-  'user.sessions_revoked',
-  'user.deleted',
-  'sso.group_mapping_added',
-  'sso.group_mapping_updated',
-  'sso.group_mapping_removed',
-]);
 
 function formatAuditDetails(log: { action: string; metadata?: unknown; targetId: string | null; actorName: string | null }) {
   const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
 
   switch (log.action) {
-    case 'user.sessions_revoked':
-      return `Revoked active sessions for ${log.targetId || 'user'}`;
-    case 'platform.enter_partner':
-      return `Platform entry into tenant ${log.targetId || '-'}`;
-    case 'member.updated':
-      return `Role ${String(metadata.oldRole || '?')} -> ${String(metadata.newRole || '?')}`;
-    case 'member.removed':
-      return `Removed membership ${String(metadata.membershipId || log.targetId || '-')}`;
-    case 'member.invited':
-      return `Invited ${String(metadata.email || log.targetId || '-')}`;
+    // Partner
     case 'partner.created':
       return `Created tenant with ${String(metadata.authMethod || 'unknown')} auth`;
+    case 'partner.config_updated':
+      return `Updated tenant configuration`;
     case 'partner.deactivated':
       return 'Tenant deactivated';
     case 'partner.reactivated':
       return 'Tenant reactivated';
     case 'partner.deleted':
       return 'Tenant deleted';
+    case 'partner.sla_config_updated':
+      return 'SLA configuration updated';
+    // Platform
+    case 'platform.enter_partner':
+      return `Platform entry into tenant ${log.targetId || '-'}`;
+    case 'platform_operator_bootstrap':
+      return 'Platform operator auto-created on first startup';
+    // Members
+    case 'member.added':
+      return `Added member ${String(metadata.email || log.targetId || '-')}`;
+    case 'member.invited':
+      return `Invited ${String(metadata.email || log.targetId || '-')}`;
+    case 'member.invite_resent':
+      return `Resent invite to ${String(metadata.email || log.targetId || '-')}`;
+    case 'member.removed':
+      return `Removed membership ${String(metadata.membershipId || log.targetId || '-')}`;
+    case 'member.updated':
+      return `Role ${String(metadata.oldRole || '?')} -> ${String(metadata.newRole || '?')}`;
+    // Users
+    case 'user.deleted':
+      return `User deleted ${log.targetId || ''}`;
+    case 'user.login':
+      return `Login from IP ${String(metadata.ip || metadata.IP || '-')}`;
+    case 'user.profile_updated':
+      return 'Profile updated';
+    case 'user.sessions_revoked':
+      return `Revoked active sessions for ${log.targetId || 'user'}`;
+    // Security
+    case 'security.account_locked':
+      return `Account locked after failed login attempts`;
+    case 'security.mfa_disabled':
+      return 'MFA disabled by user';
+    case 'security.mfa_disabled_by_admin':
+      return 'MFA disabled by admin';
+    case 'security.mfa_enabled':
+      return 'MFA enabled';
+    case 'security.mfa_recovery_codes_regenerated':
+      return 'MFA recovery codes regenerated';
+    case 'security.user_unlocked_by_admin':
+      return 'Account unlocked by admin';
+    // SSO
+    case 'sso.email_conflict':
+      return `SSO email conflict: ${String(metadata.email || '-')}`;
     case 'sso.group_mapping_added':
       return `Mapped Azure group ${String(metadata.azureGroupId || '-')}`;
     case 'sso.group_mapping_updated':
       return `Updated group mapping ${log.targetId || '-'}`;
     case 'sso.group_mapping_removed':
       return `Removed Azure group ${String(metadata.azureGroupId || '-')}`;
+    case 'sso.membership_auto_created':
+      return `Auto-created membership via SSO`;
+    case 'sso.no_matching_groups':
+      return 'SSO login: no matching group mappings';
+    // System
+    case 'system.archive_run':
+      return `Archived ${String(metadata.count || '?')} records`;
+    case 'system.gdpr_purge':
+      return `Purged ${String(metadata.ticketsPurged || '?')} tickets, ${String(metadata.messagesPurged || '?')} messages`;
+    case 'system.mail_config_updated':
+      return 'Mail configuration updated';
+    // Content
+    case 'kb.created':
+      return `KB article: ${String(metadata.title || '-')}`;
+    case 'label.created':
+      return `Label: ${String(metadata.name || '-')}`;
+    case 'webhook.created':
+      return `Webhook: ${String(metadata.url || '-')}`;
     default:
       return JSON.stringify(metadata);
   }
@@ -81,8 +145,6 @@ export default function PlatformAuditLog() {
   const [filterActorId, setFilterActorId] = useState('');
   const [filterTargetId, setFilterTargetId] = useState('');
   const [debouncedTargetId, setDebouncedTargetId] = useState('');
-  const [securityOnly, setSecurityOnly] = useState(false);
-
   // Date filtering state
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -125,7 +187,7 @@ export default function PlatformAuditLog() {
   const { data, isLoading } = trpc.platform.getAuditLog.useQuery(queryParams);
   const utils = trpc.useUtils();
   const items = data?.items || [];
-  const visibleData = securityOnly ? items.filter((log) => SECURITY_ACTIONS.has(log.action)) : items;
+  const visibleData = items;
   const page = cursorStack.length;
 
   async function handleExport() {
@@ -193,20 +255,6 @@ export default function PlatformAuditLog() {
       </div>
 
       <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => { setSecurityOnly(true); resetCursor(); }}
-            className={`px-4 py-2 border font-bold uppercase text-[10px] tracking-wide ${securityOnly ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]' : 'border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white'}`}
-          >
-            {t('security_events')}
-          </button>
-          <button
-            onClick={() => { setSecurityOnly(false); resetCursor(); }}
-            className={`px-4 py-2 border font-bold uppercase text-[10px] tracking-wide ${!securityOnly ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]' : 'border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white'}`}
-          >
-            {t('all_events')}
-          </button>
-        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="space-y-1">
             <label className="mono-label ml-1">{t('action_type')}</label>
@@ -251,7 +299,7 @@ export default function PlatformAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <label className="mono-label ml-1">{t('target_id_subject')}</label>
+            <label className="mono-label ml-1">{t('col_target_id')}</label>
             <input
               type="text"
               placeholder={t('search_target_id')}
@@ -318,6 +366,7 @@ export default function PlatformAuditLog() {
                 <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_action')}</th>
                 <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_actor')}</th>
                 <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_partner_id')}</th>
+                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_target_id')}</th>
                 <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_details')}</th>
               </tr>
             </thead>
@@ -330,6 +379,7 @@ export default function PlatformAuditLog() {
                   <td className="p-3 text-xs font-bold uppercase">{log.action}</td>
                   <td className="p-3 text-xs uppercase">{log.actorName || <span className="text-[var(--color-text-muted)]">{t('system')}</span>}</td>
                   <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.partnerId || '-'}</td>
+                  <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.targetId || '-'}</td>
                   <td className="p-3 text-[10px] text-[var(--color-text-secondary)] max-w-xs" title={JSON.stringify(log.metadata)}>
                     <div className="font-bold uppercase tracking-wide">{formatAuditDetails(log)}</div>
                     <div className="font-mono text-[var(--color-text-muted)] truncate">{JSON.stringify(log.metadata)}</div>
