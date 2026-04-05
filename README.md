@@ -37,11 +37,11 @@ cp .env.example .env
 # 2. Start development
 docker compose up
 
-# 3. Seed demo data
+# 3. Clean database (truncate tables)
 docker compose exec server npx tsx seed.ts
 ```
 
-Open `http://localhost:3001`. When `DEMO_MODE=true` (dev default), a demo login panel lets you explore all roles. Demo mode is blocked in production (`NODE_ENV=production`).
+Open `http://localhost:3001`. Tessera uses SSO for partner authentication. For local development, you can log in as the platform operator to configure the system.
 
 ### First-Time Production Setup
 
@@ -57,17 +57,6 @@ PLATFORM_ADMIN_PASSWORD=changeme123            # Optional — omit for SSO-only
 ```bash
 docker compose -f docker-compose.prod.yml up
 ```
-
-## Demo Users
-
-All demo users use password `password123`. Use the demo panel on the login page to quick-login as any role.
-
-| Role | Users |
-|------|-------|
-| Platform Operator | Bart Operator |
-| Admin | Dirk De Smedt |
-| Support | Alex Johnson, Piet Van Damme, Sophie Laurent |
-| Agent | Jan Peeters, Karim Benali, Lisa Janssens, Marie Dubois, Tom Williams |
 
 ## Testing
 
