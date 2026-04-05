@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, partnerScopedProcedure, partnerAdminProcedure } from '../trpc.js';
+import { router, partnerScopedProcedure, partnerAdminProcedure, featureGate } from '../trpc.js';
 import { db } from '../../db.js';
 import { kbArticles } from '../../db/schema.js';
 import { eq, and, asc, ilike, or, sql } from 'drizzle-orm';
@@ -26,12 +26,16 @@ const articleListColumns = {
   slug: kbArticles.slug,
 } as const;
 
+// DISABLED_FEATURE: Knowledge Base — gated until feature is production-ready
+const gatedPartnerScoped = partnerScopedProcedure.use(featureGate('knowledgeBase'));
+const gatedPartnerAdmin = partnerAdminProcedure.use(featureGate('knowledgeBase'));
+
 export const kbRouter = router({
   /**
    * List KB articles for the current partner.
    * All authenticated users can view published articles; admin sees drafts too.
    */
-  list: partnerScopedProcedure
+  list: gatedPartnerScoped
     .input(z.object({
       dept: z.string().optional(),
       tag: z.string().optional(),
@@ -72,7 +76,7 @@ export const kbRouter = router({
   /**
    * Full-text keyword search across title + body.
    */
-  search: partnerScopedProcedure
+  search: gatedPartnerScoped
     .input(z.object({ query: z.string().min(1).max(200) }))
     .query(async ({ ctx, input }) => {
       const q = `%${escapeLikePattern(input.query)}%`;
@@ -93,7 +97,7 @@ export const kbRouter = router({
    * AI-powered search — ask a question, get relevant articles ranked by relevance.
    * Falls back to keyword search when AI is unavailable.
    */
-  aiSearch: partnerScopedProcedure
+  aiSearch: gatedPartnerScoped
     .input(z.object({ question: z.string().min(1).max(500) }))
     .query(async ({ ctx, input }) => {
       // IM-14: Limit articles loaded for AI search to prevent unbounded memory usage
@@ -210,7 +214,7 @@ Only return valid JSON, nothing else.`,
     }),
 
   /** Get a single article by ID */
-  getById: partnerScopedProcedure
+  getById: gatedPartnerScoped
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const rows = await db
@@ -223,7 +227,7 @@ Only return valid JSON, nothing else.`,
     }),
 
   /** Create a new KB article (admin only) */
-  create: partnerAdminProcedure
+  create: gatedPartnerAdmin
     .input(z.object({
       title: z.string().min(1).max(200),
       body: z.string().min(1).max(50000),
@@ -255,7 +259,7 @@ Only return valid JSON, nothing else.`,
     }),
 
   /** Update a KB article (admin only) */
-  update: partnerAdminProcedure
+  update: gatedPartnerAdmin
     .input(z.object({
       id: z.string(),
       title: z.string().min(1).max(200).optional(),
@@ -287,7 +291,7 @@ Only return valid JSON, nothing else.`,
     }),
 
   /** Delete a KB article (admin only) */
-  delete: partnerAdminProcedure
+  delete: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await db
