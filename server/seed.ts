@@ -191,6 +191,7 @@ async function seedFull() {
         partnerId: pId,
         role: role as any,
         departments: role === 'agent' ? [] : faker.helpers.arrayElements(DEPARTMENTS.map(d => d.id), { min: 1, max: 3 }),
+        source: 'sso',
       });
     }
   }
