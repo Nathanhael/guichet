@@ -138,106 +138,108 @@ export default function AdminStats() {
   const totalTickets = stats.total || 1;
 
   return (
-    <div className="space-y-6 min-w-[1280px] max-w-7xl mx-auto pb-10">
-      <div className="flex items-center justify-between gap-6">
-        <div>
-          <h2 className="text-2xl font-bold uppercase tracking-tight">Dashboard</h2>
-          <p className="text-sm text-[var(--color-text-secondary)] mt-1">Real-time performance metrics and historical trends</p>
+    <div className="space-y-4 min-w-[1280px] max-w-screen-2xl mx-auto pb-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-baseline gap-3">
+          <h2 className="text-xl font-bold uppercase tracking-tight">Dashboard</h2>
+          <p className="text-[10px] font-mono uppercase text-[var(--color-text-muted)]">Real-time metrics</p>
         </div>
 
-        <div className="flex gap-1 shrink-0">
-          <button
-            onClick={() => exportDashboardCSV(stats as DashboardStats)}
-            className="btn-secondary"
-            title="Export as CSV"
-          >
-            <Download className="h-3.5 w-3.5" /> CSV
-          </button>
-          <button
-            onClick={() => exportDashboardPDF(stats as DashboardStats)}
-            className="btn-secondary"
-            title="Export as PDF"
-          >
-            <FileText className="h-3.5 w-3.5" /> PDF
-          </button>
-        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 border border-[var(--color-border)] p-1 bg-[var(--color-bg-surface)]">
+            {/* Department filter */}
+            <select
+              value={statsDept}
+              onChange={(e) => setStatsDept(e.target.value)}
+              className="input-field py-1 text-[10px] font-bold uppercase min-w-[110px]"
+              aria-label="Filter by department"
+            >
+              <option value="all">All Depts</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
 
-        <div className="flex items-center gap-2 border border-[var(--color-border)] p-2 bg-[var(--color-bg-surface)]">
-          {/* Department filter */}
-          <select
-            value={statsDept}
-            onChange={(e) => setStatsDept(e.target.value)}
-            className="input-field text-xs font-bold uppercase min-w-[120px]"
-            aria-label="Filter by department"
-          >
-            <option value="all">All Departments</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name}
-              </option>
-            ))}
-          </select>
+            <div className="w-px h-5 bg-[var(--color-border)] mx-0.5" />
 
-          <div className="w-px h-6 bg-[var(--color-border)] mx-1" />
+            {/* Date presets */}
+            <div className="flex gap-0.5">
+              {[
+                { key: 'today', label: 'Today' },
+                { key: '7d', label: '7D' },
+                { key: '14d', label: '14D' },
+                { key: '30d', label: '30D' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => applyPreset(key)}
+                  className={`px-2 py-1 text-[10px] font-bold uppercase border ${
+                    activePreset === key
+                      ? 'border-[var(--color-border)] bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
+                      : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-          {/* Date presets */}
-          <div className="flex gap-1">
-            {[
-              { key: 'today', label: 'Today' },
-              { key: '7d', label: '7D' },
-              { key: '14d', label: '14D' },
-              { key: '30d', label: '30D' },
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => applyPreset(key)}
-                className={`px-2.5 py-1.5 text-xs font-bold uppercase border ${
-                  activePreset === key
-                    ? 'border-[var(--color-border)] bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
+            <div className="w-px h-5 bg-[var(--color-border)] mx-0.5" />
+
+            {/* Date range */}
+            <div className="flex items-center gap-1.5 px-1">
+              <input
+                type="date"
+                aria-label="Start date"
+                value={statsDateFrom}
+                onChange={(e) => { setStatsDateFrom(e.target.value); setActivePreset(null); }}
+                className="input-field py-1 text-[10px] w-[105px]"
+              />
+              <span className="text-[10px] text-[var(--color-text-muted)]">→</span>
+              <input
+                type="date"
+                aria-label="End date"
+                value={statsDateTo}
+                onChange={(e) => { setStatsDateTo(e.target.value); setActivePreset(null); }}
+                className="input-field py-1 text-[10px] w-[105px]"
+              />
+              {(statsDept !== 'all' || statsDateFrom || statsDateTo) && (
+                <button
+                  onClick={() => { setStatsDept('all'); setStatsDateFrom(''); setStatsDateTo(''); setActivePreset(null); }}
+                  className="p-1 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:opacity-100"
+                  title="Clear all filters"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="w-px h-6 bg-[var(--color-border)] mx-1" />
-
-          {/* Date range */}
-          <div className="flex items-center gap-2">
-            <input
-              type="date"
-              aria-label="Start date"
-              value={statsDateFrom}
-              onChange={(e) => { setStatsDateFrom(e.target.value); setActivePreset(null); }}
-              className="input-field text-xs"
-            />
-            <span className="text-xs text-[var(--color-text-muted)]">→</span>
-            <input
-              type="date"
-              aria-label="End date"
-              value={statsDateTo}
-              onChange={(e) => { setStatsDateTo(e.target.value); setActivePreset(null); }}
-              className="input-field text-xs"
-            />
-            {(statsDept !== 'all' || statsDateFrom || statsDateTo) && (
-              <button
-                onClick={() => { setStatsDept('all'); setStatsDateFrom(''); setStatsDateTo(''); setActivePreset(null); }}
-                className="p-1.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:opacity-100"
-                title="Clear all filters"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
+          <div className="flex gap-1 shrink-0">
+            <button
+              onClick={() => exportDashboardCSV(stats as DashboardStats)}
+              className="btn-secondary py-1 text-[10px]"
+              title="Export as CSV"
+            >
+              <Download className="h-3 w-3" /> CSV
+            </button>
+            <button
+              onClick={() => exportDashboardPDF(stats as DashboardStats)}
+              className="btn-secondary py-1 text-[10px]"
+              title="Export as PDF"
+            >
+              <FileText className="h-3 w-3" /> PDF
+            </button>
           </div>
         </div>
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-6 gap-4">
+      <div className="grid grid-cols-6 gap-3">
         <StatCard label="Total Tickets" value={stats.total} color="dark" prev={stats.previousPeriod?.total} />
         <StatCard
           label="Response Time"
@@ -262,115 +264,105 @@ export default function AdminStats() {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {/* Queue health */}
-        <Panel title="Queue health">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div className={`border p-3 ${stats.oldestWaitMinutes > 3 ? 'border-[var(--color-border)]' : 'border-[var(--color-border)]'}`}>
-              <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)]">Oldest waiting</p>
-              <p className={`text-2xl font-bold mt-0.5 ${stats.oldestWaitMinutes > 3 ? '' : 'text-[var(--color-text-muted)]'}`}>
-                {stats.oldestWaitMinutes > 0 ? `${stats.oldestWaitMinutes}m` : '—'}
-              </p>
+      <div className="grid grid-cols-12 gap-4">
+        {/* Left Column: Health & Team */}
+        <div className="col-span-4 space-y-4">
+          <Panel title="Queue health">
+            <div className="grid grid-cols-2 gap-3">
+              <div className={`border p-3 ${stats.oldestWaitMinutes > 3 ? 'border-[var(--color-border)]' : 'border-[var(--color-border)]'}`}>
+                <p className="text-[9px] uppercase font-bold text-[var(--color-text-secondary)]">Oldest waiting</p>
+                <p className={`text-xl font-bold mt-0.5 ${stats.oldestWaitMinutes > 3 ? '' : 'text-[var(--color-text-muted)]'}`}>
+                  {stats.oldestWaitMinutes > 0 ? `${stats.oldestWaitMinutes}m` : '—'}
+                </p>
+              </div>
+              <div className={`border p-3 ${stats.waitingOver3 > 0 ? 'border-[var(--color-border)]' : 'border-[var(--color-border)]'}`}>
+                <p className="text-[9px] uppercase font-bold text-[var(--color-text-secondary)]">Waiting &gt;3 min</p>
+                <p className={`text-xl font-bold mt-0.5 ${stats.waitingOver3 > 0 ? '' : 'text-[var(--color-text-muted)]'}`}>
+                  {stats.waitingOver3}
+                </p>
+              </div>
             </div>
-            <div className={`border p-3 ${stats.waitingOver3 > 0 ? 'border-[var(--color-border)]' : 'border-[var(--color-border)]'}`}>
-              <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)]">Waiting &gt;3 min</p>
-              <p className={`text-2xl font-bold mt-0.5 ${stats.waitingOver3 > 0 ? '' : 'text-[var(--color-text-muted)]'}`}>
-                {stats.waitingOver3}
-              </p>
-            </div>
+          </Panel>
+
+          <Panel title="Online now" badge={`${totalOnline}`}>
+            {onlineUsers.length === 0 ? (
+              <p className="text-sm text-text-muted py-2 text-center">{t('no_data') || 'No agents online'}</p>
+            ) : (
+              <>
+                <div className="mb-3">
+                  <div className="flex justify-between text-[9px] font-mono font-bold uppercase text-text-muted mb-1">
+                    <span>{t('team_capacity') || 'Team capacity'}</span>
+                    <span className="text-text-primary">{availableCount} / {totalOnline} ({capacityPct}%)</span>
+                  </div>
+                  <div className="h-1.5 bg-bg-elevated w-full">
+                    <div className="h-full bg-accent-green" style={{ width: `${capacityPct}%` }} />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto pr-1">
+                  {onlineUsers.map((agent) => {
+                    const colors = getStatusColors(agent.status);
+                    return (
+                      <div key={agent.userId} className="flex items-center gap-2 py-0.5">
+                        <div className="w-5 h-5 rounded-full bg-bg-elevated flex items-center justify-center text-[8px] font-bold text-text-primary shrink-0">
+                          {agent.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <span className="text-[10px] font-semibold text-text-primary truncate flex-1">{agent.name}</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                        <span className={`text-[8px] font-bold uppercase ${colors.text}`}>{t(getStatusI18nKey(agent.status))}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </Panel>
+        </div>
+
+        {/* Center/Right: Trends & Distribution */}
+        <div className="col-span-8 space-y-4">
+          <Panel title={`Tickets Trend (${stats.trendGranularity})`}>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={stats.dailyTrend} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={Math.ceil(stats.dailyTrend.length / 12)} />
+                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
+                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                <Line type="monotone" dataKey="total" stroke="var(--color-text-primary)" strokeWidth={2} dot={false} name="Total" />
+              </LineChart>
+            </ResponsiveContainer>
+          </Panel>
+
+          <div className="grid grid-cols-2 gap-4">
+            <Panel title="Dept distribution">
+              {departments.length === 0 ? (
+                <p className="text-sm text-text-muted py-2">No departments</p>
+              ) : (
+                <div className="space-y-2">
+                  {departments.map((dept) => {
+                    const count = deptCounts[dept.id] || 0;
+                    const pct = Math.round((count / totalTickets) * 100);
+                    return (
+                      <div key={dept.id}>
+                        <div className="flex justify-between mb-0.5">
+                          <span className="text-[9px] font-bold uppercase">{dept.name}</span>
+                          <span className="text-[9px] font-bold text-[var(--color-text-secondary)]">{count} ({pct}%)</span>
+                        </div>
+                        <div className="h-1 w-full bg-bg-elevated">
+                          <div className="h-full bg-[var(--color-text-primary)]" style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Panel>
+            <SentimentSummary stats={stats as DashboardData} />
           </div>
-
-          {/* Department distribution */}
-          {departments.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-[var(--color-border)]">
-              <p className="mono-label text-[var(--color-text-secondary)] mb-3">Dept distribution</p>
-              <div className="space-y-2">
-                {departments.map((dept) => {
-                  const count = deptCounts[dept.id] || 0;
-                  const pct = Math.round((count / totalTickets) * 100);
-                  return (
-                    <div key={dept.id}>
-                      <div className="flex justify-between mb-1">
-                        <span className="text-[10px] font-bold uppercase">{dept.name}</span>
-                        <span className="text-[10px] font-bold text-[var(--color-text-secondary)]">{count} ({pct}%)</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-bg-elevated">
-                        <div className="h-full bg-[var(--color-text-primary)]" style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </Panel>
-
-        <Panel title="Online now" badge={`${totalOnline}`}>
-          {onlineUsers.length === 0 ? (
-            <p className="text-sm text-text-muted py-4 text-center">{t('no_data') || 'No agents online'}</p>
-          ) : (
-            <>
-              {/* Capacity bar */}
-              <div className="mb-3">
-                <div className="flex justify-between text-[9px] font-mono font-bold uppercase text-text-muted mb-1">
-                  <span>{t('team_capacity') || 'Team capacity'}</span>
-                  <span className="text-text-primary">{availableCount} / {totalOnline} ({capacityPct}%)</span>
-                </div>
-                <div className="h-2 bg-bg-elevated w-full">
-                  <div
-                    className="h-full bg-accent-green"
-                    style={{ width: `${capacityPct}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Agent list */}
-              <div className="flex flex-col gap-1">
-                {onlineUsers.map((agent) => {
-                  const colors = getStatusColors(agent.status);
-                  return (
-                    <div key={agent.userId} className="flex items-center gap-2 py-1">
-                      <div className="w-6 h-6 rounded-full bg-bg-elevated flex items-center justify-center text-[9px] font-bold text-text-primary shrink-0">
-                        {agent.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-semibold text-text-primary truncate block">{agent.name}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`w-2 h-2 rounded-full ${colors.dot}`} />
-                        <span className={`text-[9px] font-bold uppercase ${colors.text}`}>
-                          {t(getStatusI18nKey(agent.status))}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </Panel>
+        </div>
       </div>
 
-      {/* Sentiment Analysis */}
       <SentimentPanel stats={stats as DashboardData} />
-
-      {/* Trend chart */}
-      <Panel
-        title={`Tickets Trend (${
-          stats.trendGranularity === 'weekly' ? `${stats.dailyTrend.length} weeks` : stats.trendGranularity === 'monthly' ? `${stats.dailyTrend.length} months` : `${stats.dailyTrend.length} days`
-        })`}
-      >
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={stats.dailyTrend} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-            <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={Math.ceil(stats.dailyTrend.length / 10)} />
-            <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-            <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-            <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
-            <Line type="monotone" dataKey="total" stroke="var(--color-text-primary)" strokeWidth={2} dot={false} name="Total" />
-          </LineChart>
-        </ResponsiveContainer>
-      </Panel>
 
       {/* Support & Agent performance */}
       <div className="grid grid-cols-2 gap-4">
@@ -378,13 +370,12 @@ export default function AdminStats() {
           {stats.supportStats.length === 0 ? (
             <p className="text-sm text-[var(--color-text-secondary)]">No data yet</p>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(160, stats.supportStats.length * 40)}>
+            <ResponsiveContainer width="100%" height={Math.max(160, stats.supportStats.length * 35)}>
               <BarChart data={stats.supportStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
                 <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="total" fill="var(--color-text-primary)" name="Total Tasks" />
                 <Bar dataKey="today" fill="var(--color-text-secondary)" name="Today" />
               </BarChart>
@@ -396,13 +387,12 @@ export default function AdminStats() {
           {stats.agentStats.length === 0 ? (
             <p className="text-sm text-[var(--color-text-secondary)]">No data yet</p>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(160, stats.agentStats.length * 40)}>
+            <ResponsiveContainer width="100%" height={Math.max(160, stats.agentStats.length * 35)}>
               <BarChart data={stats.agentStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
                 <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="total" fill="var(--color-text-primary)" name="Total Tickets" />
                 <Bar dataKey="today" fill="var(--color-text-secondary)" name="Today" />
               </BarChart>
@@ -411,12 +401,33 @@ export default function AdminStats() {
         </Panel>
       </div>
 
-      {/* Team Satisfaction */}
-      <TeamSatisfaction dateFrom={statsDateFrom} dateTo={statsDateTo} />
-
-      {/* Agent Status Time Breakdown */}
-      <AgentStatusStats />
+      <div className="grid grid-cols-2 gap-4">
+        <TeamSatisfaction dateFrom={statsDateFrom} dateTo={statsDateTo} />
+        <AgentStatusStats />
+      </div>
     </div>
+  );
+}
+
+function SentimentSummary({ stats }: { stats: DashboardData }) {
+  const score = stats.sentimentScore ?? 0;
+  return (
+    <Panel title="Sentiment Summary">
+      <div className="flex items-center gap-4 h-full">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <SentimentDot score={score} />
+            <span className="text-3xl font-bold tracking-tighter">{score.toFixed(2)}</span>
+          </div>
+          <p className="text-[10px] font-bold uppercase text-[var(--color-text-secondary)]">{sentimentLabel(score)}</p>
+        </div>
+        <div className="w-px h-12 bg-[var(--color-border)]" />
+        <div className="flex-1 text-right">
+          <p className="text-[9px] uppercase font-bold text-[var(--color-text-muted)]">Ratings</p>
+          <p className="text-xl font-bold">{stats.totalRatings}</p>
+        </div>
+      </div>
+    </Panel>
   );
 }
 

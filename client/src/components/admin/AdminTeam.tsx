@@ -19,11 +19,12 @@ export default function AdminTeam() {
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
   const onlineStatusMap = new Map(onlineSupportUsers.map((u) => [u.userId, u.status]));
 
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
-  const LIMIT = 50;
+  const LIMIT = 20;
 
   const { data, refetch, isLoading } = trpc.partner.listMembers.useQuery(
-    { limit: LIMIT, offset: page * LIMIT },
+    { limit: LIMIT, offset: page * LIMIT, search: search.trim() || undefined },
     { enabled: !!activeMembershipId }
   );
 
@@ -44,92 +45,121 @@ export default function AdminTeam() {
   const [editDepts, setEditDepts] = useState<string[]>([]);
 
   return (
-    <div className="max-w-7xl surface-card p-6">
-      <div className="flex justify-between items-start mb-6">
+    <div className="flex flex-col min-h-full">
+      <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center gap-4 mb-6 border-b border-border pb-6">
         <div>
-          <h2 className="text-lg font-bold uppercase tracking-wide">Team Members</h2>
-          <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-1">Manage users and roles for this partner</p>
+          <h2 className="text-3xl font-bold uppercase tracking-tighter">Team</h2>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)] mt-1 opacity-60">Manage users and roles</p>
         </div>
-        <div className="flex gap-2">
+        
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:w-64">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+              placeholder="Filter members..."
+              className="w-full bg-bg-elevated border-2 border-border-heavy px-3 py-2 text-xs font-bold uppercase placeholder:opacity-30 focus:border-accent-blue outline-none pr-8"
+            />
+            {search && (
+              <button 
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+          <div className="h-8 w-px bg-border mx-1 hidden sm:block" />
           <button
             onClick={() => setShowAddModal(true)}
-            className="btn-secondary"
+            className="px-4 py-2 text-[10px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all"
           >
-            Add Existing User
+            Add Existing
           </button>
           <button
             onClick={() => setShowInviteModal(true)}
-            className="btn-primary"
+            className="px-4 py-2 text-[10px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/80 transition-all"
           >
-            Invite External User
+            Invite External
           </button>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center uppercase font-bold text-[var(--color-text-muted)]">Loading...</div>
+        <div className="flex-1 flex flex-col items-center justify-center py-20 opacity-30">
+          <div className="animate-spin h-6 w-6 border-2 border-current border-t-transparent mb-4" />
+          <p className="text-[10px] font-bold uppercase tracking-widest">Loading Team...</p>
+        </div>
       ) : (
-        <>
-          <div className="border border-[var(--color-border)] mb-4 overflow-x-auto">
-            <table className="w-full min-w-[1200px] text-left border-collapse">
+        <div className="bg-bg-surface border-2 border-border-heavy overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
               <thead>
-                <tr className="border-b border-[var(--color-border)] bg-bg-elevated">
-                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Name</th>
-                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Email</th>
-                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Role</th>
-                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Status</th>
-                  <th className="text-left px-3 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-text-muted">
-                    {t('team_status')}
-                  </th>
-                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Departments</th>
-                  <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] text-right">Actions</th>
+                <tr className="border-b-2 border-border-heavy bg-bg-elevated text-left font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
+                  <th className="px-4 py-2.5 font-bold tracking-widest">User / Identity</th>
+                  <th className="px-4 py-2.5 font-bold tracking-widest">Role</th>
+                  <th className="px-4 py-2.5 font-bold tracking-widest text-center">App</th>
+                  <th className="px-4 py-2.5 font-bold tracking-widest text-center">Auth</th>
+                  <th className="px-4 py-2.5 font-bold tracking-widest">Departments / Access</th>
+                  <th className="px-4 py-2.5 font-bold tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
-                {data?.map((member) => (
-                  <tr key={member.membershipId} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
-                    <td className="p-3 text-sm font-bold uppercase">{member.name}</td>
-                    <td className="p-3 text-sm font-mono text-[var(--color-text-secondary)]">{member.email}</td>
-                    <td className="p-3 text-sm">
-                      <span className="px-2 py-0.5 border border-[var(--color-border)] text-[10px] font-bold uppercase">
+              <tbody className="divide-y divide-border/40">
+                {data?.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-20 text-center opacity-30">
+                      <p className="text-[10px] font-bold uppercase tracking-widest">No matching users found.</p>
+                    </td>
+                  </tr>
+                ) : data?.map((member) => (
+                  <tr key={member.membershipId} className="hover:bg-bg-elevated/50 transition-colors">
+                    <td className="px-4 py-2.5">
+                      <div className="flex flex-col min-w-[200px]">
+                        <span className="font-bold uppercase tracking-tight text-[13px]">{member.name}</span>
+                        <span className="text-[10px] font-mono opacity-40">{member.email}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span className="px-1.5 py-0.5 border border-border bg-bg-elevated text-[9px] font-bold uppercase tracking-widest">
                         {member.role}
                       </span>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-4 py-2.5 text-center">
                       {(() => {
                         const onlineStatus = onlineStatusMap.get(member.userId);
                         const colors = getStatusColors(onlineStatus);
                         const label = onlineStatus ? t(getStatusI18nKey(onlineStatus)) : t('status_offline');
                         return (
-                          <span className="inline-flex items-center gap-1.5">
+                          <span className="inline-flex items-center gap-1.5 justify-center" title={label}>
                             <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
-                            <span className={`text-[9px] font-bold uppercase ${colors.text}`}>{label}</span>
+                            <span className={`text-[9px] font-bold uppercase tracking-tighter ${colors.text}`}>{label}</span>
                           </span>
                         );
                       })()}
                     </td>
-                    <td className="p-3">
+                    <td className="px-4 py-2.5 text-center">
                       {member.externalId || member.lastActiveAt ? (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 bg-[var(--color-text-primary)]" />
-                          <span className="text-[9px] font-bold uppercase tracking-wide">
-                            {member.externalId ? t('status_linked_sso') : t('status_active_local')}
+                        <div className="flex items-center gap-1.5 justify-center">
+                          <div className="w-1 h-1 bg-[var(--color-text-primary)]" />
+                          <span className="text-[9px] font-bold uppercase tracking-widest opacity-60">
+                            {member.externalId ? 'SSO' : 'Local'}
                           </span>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
-                          <div className="w-1.5 h-1.5 border border-[var(--color-border)]" />
-                          <span className="text-[9px] font-bold uppercase tracking-wide">{t('status_pending')}</span>
+                        <div className="flex items-center gap-1.5 text-[var(--color-text-muted)] justify-center">
+                          <div className="w-1 h-1 border border-[var(--color-border)] opacity-30" />
+                          <span className="text-[9px] font-bold uppercase tracking-widest opacity-20">Pending</span>
                         </div>
                       )}
                     </td>
-                    <td className="p-3 text-xs uppercase text-[var(--color-text-secondary)]">
+                    <td className="px-4 py-2.5">
                       {member.role === 'agent' ? (
-                        <span className="text-[var(--color-text-muted)]">—</span>
+                        <span className="text-[9px] font-bold uppercase opacity-10 tracking-widest">Global Agent</span>
                       ) : editingMembershipId === member.membershipId ? (
-                        <div className="space-y-1">
+                        <div className="space-y-1 bg-bg-elevated p-2 border border-border-heavy min-w-[180px]">
                           {departments.map(d => (
-                            <label key={d.id} className="flex items-center gap-2 cursor-pointer">
+                            <label key={d.id} className="flex items-center gap-2 cursor-pointer py-0.5">
                               <input
                                 type="checkbox"
                                 checked={editDepts.includes(d.id)}
@@ -137,35 +167,30 @@ export default function AdminTeam() {
                                   if (e.target.checked) setEditDepts([...editDepts, d.id]);
                                   else setEditDepts(editDepts.filter(id => id !== d.id));
                                 }}
-                                className="w-3.5 h-3.5"
+                                className="w-3 h-3 accent-accent-blue"
                               />
-                              <span className="text-xs uppercase">{d.name}</span>
+                              <span className="text-[9px] font-bold uppercase tracking-tighter">{d.name}</span>
                             </label>
                           ))}
-                          <p className="text-[9px] text-[var(--color-text-muted)] mt-1">
-                            {editDepts.length === 0 ? 'No selection = Generalist (all depts)' : ''}
-                          </p>
-                          <div className="flex items-center gap-1 pt-1">
+                          <div className="flex items-center gap-1 pt-2 border-t border-border mt-1">
                             <button
                               onClick={() => updateMemberMutation.mutate({ membershipId: member.membershipId, departments: editDepts })}
                               disabled={updateMemberMutation.isPending}
-                              className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
-                              title="Save"
+                              className="flex-1 py-1 text-[8px] font-bold bg-accent-blue text-white uppercase disabled:opacity-50"
                             >
-                              <Check className="h-3 w-3" />
+                              Save
                             </button>
                             <button
                               onClick={() => setEditingMembershipId(null)}
-                              className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white"
-                              title="Cancel"
+                              className="px-2 py-1 text-[8px] font-bold border border-border uppercase"
                             >
-                              <X className="h-3 w-3" />
+                              Cancel
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <span
-                          className="cursor-pointer hover:underline"
+                        <div
+                          className="cursor-pointer group flex flex-wrap gap-1 items-center min-h-[24px]"
                           onClick={() => {
                             setEditingMembershipId(member.membershipId);
                             setEditDepts((member.departments as string[]) || []);
@@ -174,61 +199,57 @@ export default function AdminTeam() {
                           {member.departments && (member.departments as string[]).length > 0
                             ? (member.departments as string[]).map((dId: string) => {
                                 const dInfo = departments.find(d => d.id === dId);
-                                return dInfo ? dInfo.name : dId;
-                              }).join(', ')
-                            : <span className="text-[var(--color-text-muted)] italic">All (Generalist)</span>}
-                        </span>
+                                return (
+                                  <span key={dId} className="text-[8px] font-bold border border-border px-1.5 py-0.5 bg-bg-elevated uppercase tracking-tighter">
+                                    {dInfo ? dInfo.name : dId}
+                                  </span>
+                                );
+                              })
+                            : <span className="text-[9px] font-bold uppercase tracking-widest opacity-30 italic">Generalist (All Depts)</span>}
+                          <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1 text-accent-blue" />
+                        </div>
                       )}
                     </td>
-                    <td className="p-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        {member.role !== 'agent' && (
-                          <button
-                            onClick={() => {
-                              setEditingMembershipId(member.membershipId);
-                              setEditDepts((member.departments as string[]) || []);
-                            }}
-                            className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
-                            title="Edit departments"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => {
-                            if (confirm('Remove user from this partner?')) {
-                              removeMutation.mutate({ membershipId: member.membershipId });
-                            }
-                          }}
-                          className="text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-secondary)] hover:line-through"
-                        >
-                          Remove
-                        </button>
-                      </div>
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        onClick={() => {
+                          if (confirm('Remove user from this partner?')) {
+                            removeMutation.mutate({ membershipId: member.membershipId });
+                          }
+                        }}
+                        className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)] hover:text-red-500 hover:line-through transition-colors"
+                      >
+                        Remove
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div className="flex justify-between items-center text-xs font-bold uppercase">
-            <button
-              disabled={page === 0}
-              onClick={() => setPage(p => p - 1)}
-              className="btn-secondary disabled:opacity-30"
-            >
-              Previous
-            </button>
-            <span>Page {page + 1}</span>
-            <button
-              disabled={(data?.length || 0) < LIMIT}
-              onClick={() => setPage(p => p + 1)}
-              className="btn-secondary disabled:opacity-30"
-            >
-              Next
-            </button>
+          
+          <div className="px-4 py-2.5 border-t-2 border-border-heavy flex items-center justify-between bg-bg-elevated/30">
+            <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">
+              {data?.length || 0} users showing (Max {LIMIT} per page)
+            </span>
+            <div className="flex gap-2">
+              <button
+                disabled={page === 0}
+                onClick={() => setPage(p => p - 1)}
+                className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest border-2 border-border-heavy hover:bg-bg-elevated transition-all disabled:opacity-20"
+              >
+                Prev
+              </button>
+              <button
+                disabled={(data?.length || 0) < LIMIT}
+                onClick={() => setPage(p => p + 1)}
+                className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest border-2 border-border-heavy hover:bg-bg-elevated transition-all disabled:opacity-20"
+              >
+                Next
+              </button>
+            </div>
           </div>
-        </>
+        </div>
       )}
 
       {showAddModal && <AddExistingUserModal onClose={() => setShowAddModal(false)} onAdded={() => { setShowAddModal(false); refetch(); }} />}

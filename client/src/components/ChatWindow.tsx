@@ -16,12 +16,10 @@ import SlaIndicator from './SlaIndicator';
 interface ChatWindowProps {
   ticket?: Ticket;
   onClose?: () => void;
-  onFocus?: () => void;
-  focused?: boolean;
   compact?: boolean;
 }
 
-const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWindow({ ticket, onClose, onFocus, focused, compact }, ref) {
+const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWindow({ ticket, onClose, compact }, ref) {
   const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, allLabels, setMessages, activePartnerId, focusMode, typingUsers, setRatingPrompt } = useStoreShallow(s => ({
     user: s.user,
     messages: s.messages,
@@ -511,29 +509,29 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   return (
     <div className={`relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden`}>
       {/* Header */}
-      <div className={`relative z-50 flex items-center justify-between px-6 border-b-2 border-border-heavy bg-bg-elevated ${(focusMode || compact) ? 'py-2' : 'py-4'}`}>
+      <div className={`relative z-50 flex items-center justify-between px-4 border-b-2 border-border-heavy bg-bg-elevated ${(focusMode || compact) ? 'py-2' : 'py-3'}`}>
         <div className="min-w-0 pr-4">
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {!focusMode && !compact && (
-              <span className="text-[10px] font-bold px-2.5 py-1 shrink-0 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy">
+              <span className="text-[9px] font-bold px-2 py-0.5 shrink-0 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy">
                 {ticket.dept}
               </span>
             )}
             <div className="flex flex-col">
-              <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${(focusMode || compact) ? 'text-sm opacity-80' : 'text-lg'}`}>
+              <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${(focusMode || compact) ? 'text-sm opacity-80' : 'text-base'}`}>
                 {ticket.agentName}
                 {isSupport && !isClosed && (
                   <span
                     title={agentIsOnline ? 'Agent online' : 'Agent offline'}
-                    className={`w-2 h-2 rounded-full shrink-0 ${agentIsOnline ? 'bg-text-primary' : 'border border-border'}`}
+                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${agentIsOnline ? 'bg-text-primary' : 'border border-border'}`}
                   />
                 )}
               </span>
               {!focusMode && !compact && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
-                <div className="flex items-center gap-3 mt-0.5">
+                <div className="flex items-center gap-2.5 mt-0.5">
                   {(ticket.references as Array<{label: string; value: string}> || []).map((ref, i) => (
-                    <span key={i} className="text-xs text-text-muted">
-                      <span className="text-[10px] font-bold uppercase tracking-wider opacity-50">{ref.label}</span>
+                    <span key={i} className="text-[11px] text-text-muted">
+                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-40">{ref.label}</span>
                       {' '}
                       <span className="font-bold text-text-primary">{ref.value}</span>
                     </span>
@@ -543,21 +541,21 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
             </div>
             
             {!focusMode && !compact && ticket.agentLang && (
-              <span className="text-sm cursor-default" title={ticket.agentLang.toUpperCase()}>
+              <span className="text-xs cursor-default" title={ticket.agentLang.toUpperCase()}>
                 {LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]}
               </span>
             )}
             
             {/* Active Labels Display */}
             {!focusMode && !compact && liveTicket.labels && liveTicket.labels.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 ml-2">
+              <div className="flex flex-wrap gap-1 ml-2">
                 {liveTicket.labels.map(id => {
                   const info = getLabelInfo(id);
                   if (!info) return null;
                   return (
                     <span
                       key={id}
-                      className={`text-[9px] font-bold px-2 py-0.5 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy`}
+                      className={`text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy`}
                     >
                       {info.text}
                     </span>
@@ -573,25 +571,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
           </div>
         </div>
 
-        <div className={`flex items-center gap-3 shrink-0 ${(focusMode || compact) ? 'opacity-60 hover:opacity-100' : ''}`}>
-          {onFocus && (
-            <button
-              onClick={onFocus}
-              title={focused ? 'Restore split' : 'Maximize'}
-              className="w-8 h-8 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
-            >
-              {focused ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-              )}
-            </button>
-          )}
-
+        <div className={`flex items-center gap-2 shrink-0 ${(focusMode || compact) ? 'opacity-60 hover:opacity-100' : ''}`}>
           {/* Summarize button (support/admin only) */}
           {canSummarize && !isClosed && (
             <button
@@ -599,12 +579,12 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
               disabled={summarizing}
               aria-label="Summarize conversation"
               title="AI: Summarize conversation"
-              className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:flex items-center gap-1.5 ${(focusMode || compact) ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
+              className={`text-[10px] font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:flex items-center gap-1.5 ${(focusMode || compact) ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}
             >
               {summarizing ? (
                 <span className="text-[10px] font-bold opacity-40">...</span>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               )}
@@ -620,15 +600,15 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                   onClick={() => setShowTransferMenu(!showTransferMenu)}
                   aria-label={t('transfer') || 'Transfer'}
                   title={t('transfer') || 'Transfer'}
-                  className={`text-xs font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy ${(focusMode || compact) ? 'px-2.5 py-1.5' : 'px-4 py-2'}`}
+                  className={`text-[10px] font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy ${(focusMode || compact) ? 'px-2 py-1' : 'px-3 py-1.5'}`}
                 >
                   {t('transfer') || 'Transfer'}
                 </button>
                 {showTransferMenu && (
-                  <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[220px] z-50 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[200px] z-50 overflow-hidden shadow-xl">
                     <button
                       onClick={() => transferTicket()}
-                      className="w-full text-left px-4 py-2.5 text-xs font-bold hover:bg-bg-elevated border-b border-border"
+                      className="w-full text-left px-4 py-2.5 text-[11px] font-bold hover:bg-bg-elevated border-b border-border"
                     >
                       {t('return_to_queue') || 'Return to queue'}
                     </button>
@@ -644,8 +624,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                             type="text"
                             value={transferNote}
                             onChange={(e) => setTransferNote(e.target.value)}
-                            placeholder={t('transfer_note_placeholder') || 'Add context for the next agent...'}
-                            className="w-full text-[11px] bg-bg-elevated border border-border px-2 py-1.5 text-text-primary placeholder:text-text-muted placeholder:opacity-40"
+                            placeholder={t('transfer_note_placeholder') || 'Add context...'}
+                            className="w-full text-[10px] bg-bg-elevated border border-border px-2 py-1 text-text-primary placeholder:text-text-muted placeholder:opacity-40"
                           />
                         </div>
                       </>
@@ -654,7 +634,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                       <button
                         key={d.id}
                         onClick={() => transferTicket(d.id)}
-                        className="w-full text-left px-4 py-2 text-xs font-mono font-bold hover:bg-bg-elevated"
+                        className="w-full text-left px-4 py-2 text-[11px] font-mono font-bold hover:bg-bg-elevated"
                       >
                         {d.name}
                       </button>
@@ -667,19 +647,19 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
           {/* Primary action: Close Ticket — visually separated */}
           {canClose && !isClosed && (
-            <div className="border-l-2 border-border-heavy pl-3">
+            <div className="border-l-2 border-border-heavy pl-2">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   closeTicket();
                 }}
                 disabled={closing}
-                className={`text-sm font-bold uppercase tracking-widest bg-accent-blue text-white hover:bg-accent-blue/80 border-2 border-accent-blue flex items-center gap-2 ${(focusMode || compact) ? 'px-3 py-1.5' : 'px-5 py-2.5'}`}
+                className={`text-[11px] font-bold uppercase tracking-widest bg-accent-blue text-white hover:bg-accent-blue/80 border-2 border-accent-blue flex items-center gap-2 ${(focusMode || compact) ? 'px-2.5 py-1' : 'px-4 py-2'}`}
               >
                 {closing ? (
                   <span className="text-[10px] font-bold opacity-40 shrink-0">...</span>
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                 )}
@@ -697,9 +677,9 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                 onClose();
               }}
               aria-label="Close"
-              className="w-8 h-8 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
+              className="w-7 h-7 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

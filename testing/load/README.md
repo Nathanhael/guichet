@@ -37,7 +37,7 @@ K6_BASE_URL=https://staging.example.com k6 run testing/load/smoke.js
 | `ws.js` | 25 | 90s | WebSocket (Socket.io) connection stress |
 | `ws-500.js` | 500 | 5m | WebSocket — 500 concurrent connections |
 
-> **Seed data requirement**: `load.js`, `ws.js`, and `ws-500.js` expect `alice@acme.com` / `acme-corp` from `seed_e2e.ts`. Run `docker compose exec server npx tsx scripts/seed_e2e.ts` before using these scripts. `smoke.js` works with any seed.
+> **Seed data requirement**: `load.js`, `ws.js`, and `ws-500.js` expect `alice@acme.com` / `acme-corp` from `seed.ts --e2e`. Run `docker compose exec server npx tsx seed.ts --e2e` before using these scripts. `smoke.js` works with any seed.
 
 ### WebSocket test
 

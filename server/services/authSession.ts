@@ -22,6 +22,41 @@ export interface SessionMembership {
 }
 
 export async function listUserMemberships(userId: string): Promise<SessionMembership[]> {
+  // 1. Check if user is a platform operator
+  const userResults = await db.select({ isPlatformOperator: users.isPlatformOperator }).from(users).where(eq(users.id, userId)).limit(1);
+  const isPlatform = !!userResults[0]?.isPlatformOperator;
+
+  if (isPlatform) {
+    // 2. Platform operators get "virtual" memberships to all active partners
+    const allPartners = await db
+      .select({
+        partnerId: partners.id,
+        partnerName: partners.name,
+        logoUrl: partners.logoUrl,
+        industry: partners.industry,
+        partnerDepartments: partners.departments,
+        status: partners.status,
+        authMethod: partners.authMethod,
+      })
+      .from(partners)
+      .where(eq(partners.status, 'active'));
+
+    return allPartners.map((p) => ({
+      id: `virtual_platform_${userId}_${p.partnerId}`,
+      userId,
+      partnerId: p.partnerId,
+      role: 'admin',
+      departments: [], // Platform admins see all by default
+      partnerName: p.partnerName,
+      logoUrl: p.logoUrl,
+      industry: p.industry,
+      partnerDepartments: p.partnerDepartments,
+      status: p.status,
+      authMethod: p.authMethod,
+    }));
+  }
+
+  // 3. Regular users use explicit memberships
   return db
     .select({
       id: memberships.id,

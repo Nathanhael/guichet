@@ -20,11 +20,11 @@ export function Stars({ value }: { value: number }) {
 
 export function Panel({ title, badge, className = '', children }: { title: string; badge?: string; className?: string; children: React.ReactNode }) {
   return (
-    <div className={`bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-6 ${className}`}>
-      <div className="flex items-center justify-between mb-5">
+    <div className={`bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-4 ${className}`}>
+      <div className="flex items-center justify-between mb-4">
         <p className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{title}</p>
         {badge && (
-          <span className="px-2.5 py-1 bg-bg-elevated text-[10px] font-bold uppercase tracking-tighter border border-[var(--color-border)]">
+          <span className="px-2 py-0.5 bg-bg-elevated text-[10px] font-bold uppercase tracking-tighter border border-[var(--color-border)]">
             {badge}
           </span>
         )}
@@ -54,7 +54,7 @@ export function StatCard({ label, value, prev, invertTrend }: StatCardProps) {
         const isUp = delta > 0;
         const isGood = invertTrend ? !isUp : isUp;
         trendEl = (
-          <span className={`inline-flex items-center gap-1 text-[10px] font-bold mt-2 px-2 py-0.5 border ${isGood ? 'border-[var(--color-border)]' : 'text-[var(--color-text-secondary)] border-[var(--color-border)]'}`}>
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold mt-1 px-1.5 py-0.5 border ${isGood ? 'border-[var(--color-border)]' : 'text-[var(--color-text-secondary)] border-[var(--color-border)]'}`}>
             {isUp ? '↑' : '↓'} {Math.abs(pct)}%
           </span>
         );
@@ -63,9 +63,9 @@ export function StatCard({ label, value, prev, invertTrend }: StatCardProps) {
   }
 
   return (
-    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-5">
+    <div className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] p-4 flex flex-col justify-between">
       <p className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide leading-none">{label}</p>
-      <p className="text-3xl font-bold mt-2 tracking-tighter leading-none">{value}</p>
+      <p className="text-3xl font-bold mt-1 tracking-tighter leading-none">{value}</p>
       {trendEl}
     </div>
   );

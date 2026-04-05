@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, adminProcedure, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { partners, users, memberships, auditLog } from '../../db/schema.js';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, or, ilike, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { randomBytes } from 'crypto';
@@ -439,11 +439,30 @@ export const partnerRouter = router({
     .input(z.object({
       limit: z.number().min(1).max(100).default(50),
       offset: z.number().min(0).default(0),
+      search: z.string().optional(),
     }))
     .query(async ({ input, ctx }) => {
       try {
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+        const filters = [eq(memberships.partnerId, partnerId)];
+        if (input.search?.trim()) {
+          const s = `%${input.search.trim()}%`;
+          filters.push(or(
+            ilike(users.name, s),
+            ilike(users.email, s),
+            sql`${memberships.role}::text ILIKE ${s}`,
+            // ME-07 fix: Allow filtering by department name (access grants)
+            sql`EXISTS (
+              SELECT 1 FROM jsonb_array_elements(${partners.departments}) d
+              WHERE d->>'id' = ANY(SELECT jsonb_array_elements_text(${memberships.departments}))
+              AND d->>'name' ILIKE ${s}
+            )`,
+            // ME-07 fix: Allow filtering "Generalist" (empty departments)
+            sql`CASE WHEN jsonb_array_length(${memberships.departments}) = 0 THEN 'Generalist' ELSE '' END ILIKE ${s}`
+          )!);
+        }
 
         const result = await db
           .select({
@@ -459,7 +478,8 @@ export const partnerRouter = router({
           })
           .from(memberships)
           .innerJoin(users, eq(memberships.userId, users.id))
-          .where(eq(memberships.partnerId, partnerId))
+          .innerJoin(partners, eq(memberships.partnerId, partners.id))
+          .where(and(...filters))
           .limit(input.limit)
           .offset(input.offset);
 
