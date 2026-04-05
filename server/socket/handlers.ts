@@ -12,7 +12,6 @@ import {
   findActiveTicketsForAgent,
   findActiveTicketsForSupport,
   findTicketForTransfer,
-  findTicketForLabels,
   findPartnerLabels,
   createTicket,
   assignSupport,
@@ -1065,7 +1064,7 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: `Too many labels (max ${MAX_LABELS_PER_TICKET})` });
         }
 
-        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForLabels);
+        const ticket = await requirePartnerScope(socket, ticketId);
         if (!ticket) return;
 
         // Validate that all labels belong to this partner
