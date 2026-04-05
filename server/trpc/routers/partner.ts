@@ -448,19 +448,32 @@ export const partnerRouter = router({
 
         const filters = [eq(memberships.partnerId, partnerId)];
         if (input.search?.trim()) {
-          const s = `%${input.search.trim()}%`;
+          const rawSearch = input.search.trim();
+          const s = `%${rawSearch}%`;
+          
+          // ME-07 fix: Allow filtering by department name (access grants)
+          const matchesDept = sql`EXISTS (
+            SELECT 1 FROM jsonb_array_elements(${partners.departments}) d
+            JOIN jsonb_array_elements_text(${memberships.departments}) md(id) ON d->>'id' = md.id
+            WHERE d->>'name' ILIKE ${s}
+          )`;
+
           filters.push(or(
             ilike(users.name, s),
             ilike(users.email, s),
+            // Match the role (e.g. "agent", "support")
             sql`${memberships.role}::text ILIKE ${s}`,
-            // ME-07 fix: Allow filtering by department name (access grants)
-            sql`EXISTS (
-              SELECT 1 FROM jsonb_array_elements(${partners.departments}) d
-              WHERE d->>'id' = ANY(SELECT jsonb_array_elements_text(${memberships.departments}))
-              AND d->>'name' ILIKE ${s}
-            )`,
-            // ME-07 fix: Allow filtering "Generalist" (empty departments)
-            sql`CASE WHEN jsonb_array_length(${memberships.departments}) = 0 THEN 'Generalist' ELSE '' END ILIKE ${s}`
+            sql`${rawSearch} ILIKE CONCAT(${memberships.role}::text, 's')`,
+            // Match department names
+            matchesDept,
+            // Support typing "grants" or "access" to see all departmental users
+            sql`CASE WHEN ${rawSearch} ILIKE 'grant%' OR ${rawSearch} ILIKE 'access%' THEN jsonb_array_length(${memberships.departments}) > 0 ELSE FALSE END`,
+            // Match "Generalist" or "Global" for users with no departments
+            sql`CASE 
+              WHEN jsonb_array_length(${memberships.departments}) = 0 
+              THEN ('Generalist' ILIKE ${s} OR 'Global Agent' ILIKE ${s}) 
+              ELSE FALSE 
+            END`
           )!);
         }
 
@@ -485,6 +498,7 @@ export const partnerRouter = router({
 
         return result;
       } catch (err: unknown) {
+        logger.error({ err, search: input.search }, 'listMembers error');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
     }),

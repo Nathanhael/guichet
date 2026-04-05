@@ -1000,13 +1000,18 @@ export function registerSocketHandlers(io: Server) {
           const sysText = `Ticket transferred to ${targetDept.name} by ${senderName}`;
           const sysMsg = await insertSystemMessage(ticketId, sysText);
           io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
-          io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', {
+
+          const transferPayload = {
             ticketId,
             fromId: senderId,
             fromName: senderName,
             toDepartment: departmentId,
             toDepartmentName: targetDept.name,
-          });
+          };
+
+          // Emit to ticket room (for the user/agent) AND partner room (for support sidebars)
+          io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', transferPayload);
+          io.to(Rooms.partner(callerPartnerId)).emit('ticket:transferred', transferPayload);
 
           // Remove ALL support sockets from ticket room
           const ticketRoom = Rooms.ticket(ticketId);

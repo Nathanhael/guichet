@@ -28,6 +28,8 @@ export default function AdminArchive() {
     search: search.trim() || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+  }, {
+    refetchInterval: 60000, // Refresh once a minute
   });
 
   useEffect(() => {
