@@ -17,10 +17,29 @@ import { useBusinessHours } from '../../hooks/useBusinessHours';
 import { useT } from '../../i18n';
 
 const TIMEZONES = [
+  // Europe
   'Europe/Brussels', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
   'Europe/Amsterdam', 'Europe/Madrid', 'Europe/Rome', 'Europe/Zurich',
+  'Europe/Athens', 'Europe/Helsinki', 'Europe/Istanbul', 'Europe/Lisbon',
+  'Europe/Moscow', 'Europe/Warsaw',
+  // Americas
   'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-  'Asia/Tokyo', 'Asia/Shanghai', 'Australia/Sydney',
+  'America/Anchorage', 'America/Toronto', 'America/Vancouver', 'America/Mexico_City',
+  'America/Sao_Paulo', 'America/Argentina/Buenos_Aires', 'America/Bogota',
+  // Middle East
+  'Asia/Dubai', 'Asia/Riyadh', 'Asia/Qatar', 'Asia/Bahrain', 'Asia/Kuwait',
+  'Asia/Jerusalem', 'Asia/Tehran',
+  // South & Southeast Asia
+  'Asia/Kolkata', 'Asia/Colombo', 'Asia/Dhaka', 'Asia/Karachi',
+  'Asia/Bangkok', 'Asia/Singapore', 'Asia/Jakarta', 'Asia/Manila',
+  'Asia/Kuala_Lumpur', 'Asia/Ho_Chi_Minh',
+  // East Asia & Oceania
+  'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Seoul', 'Asia/Taipei',
+  'Australia/Sydney', 'Australia/Melbourne', 'Australia/Perth',
+  'Pacific/Auckland', 'Pacific/Honolulu',
+  // Africa
+  'Africa/Cairo', 'Africa/Lagos', 'Africa/Johannesburg', 'Africa/Nairobi',
+  'Africa/Casablanca',
 ];
 
 function cloneSchedule(schedule: BusinessHoursSchedule) {

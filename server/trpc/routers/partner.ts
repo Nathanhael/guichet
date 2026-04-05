@@ -419,6 +419,12 @@ export const partnerRouter = router({
           .set({ departments: mappedDepartments })
           .where(eq(partners.id, partnerId));
 
+        // Auto-sync: admin members always get all department IDs
+        const allDeptIds = mappedDepartments.map(d => d.id);
+        await db.update(memberships)
+          .set({ departments: allDeptIds })
+          .where(and(eq(memberships.partnerId, partnerId), eq(memberships.role, 'admin')));
+
         await db.insert(auditLog).values({
           action: 'partner.config_updated',
           actorId: ctx.user.id,
@@ -679,6 +685,10 @@ export const partnerRouter = router({
 
         if (membership.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
+        }
+
+        if (membership[0].role === 'admin') {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Admin departments are managed automatically' });
         }
 
         const isSupport = membership[0].role === 'support';
