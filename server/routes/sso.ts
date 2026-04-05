@@ -340,6 +340,14 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           .where(and(eq(memberships.userId, user.id), eq(memberships.partnerId, pId)))
           .limit(1);
 
+        // Admin members always get all partner department IDs
+        let depts = target.departments;
+        if (target.role === 'admin') {
+          const partner = await db.select({ departments: partners.departments }).from(partners).where(eq(partners.id, pId)).limit(1);
+          const allDepts = (partner[0]?.departments as Array<{ id: string }>) || [];
+          depts = allDepts.map(d => d.id);
+        }
+
         if (existing.length === 0) {
           const mId = crypto.randomUUID();
           await db.insert(memberships).values({
@@ -347,7 +355,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
             userId: user.id,
             partnerId: pId,
             role: target.role as any,
-            departments: target.departments,
+            departments: depts,
             source: 'sso',
           });
 
@@ -366,7 +374,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         } else if (existing[0].source === 'sso' && existing[0].role !== target.role) {
           // Force role update if it changed in Azure
           await db.update(memberships)
-            .set({ role: target.role as any })
+            .set({ role: target.role as any, departments: depts })
             .where(eq(memberships.id, existing[0].id));
 
           await db.insert(auditLog).values({

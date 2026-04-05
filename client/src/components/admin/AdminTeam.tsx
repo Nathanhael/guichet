@@ -48,7 +48,7 @@ export default function AdminTeam() {
       total: nonAdminData.length,
       agents: nonAdminData.filter(m => m.role === 'agent').length,
       support: nonAdminData.filter(m => m.role === 'support').length,
-      unconfigured: nonAdminData.filter(m => !m.departments || m.departments.length === 0).length,
+      unconfigured: nonAdminData.filter(m => !m.departments || !Array.isArray(m.departments) || m.departments.length === 0).length,
       online: nonAdminData.filter(m => onlineStatusMap.has(m.userId)).length,
     };
   }, [nonAdminData, onlineStatusMap]);
@@ -62,7 +62,7 @@ export default function AdminTeam() {
       result = result.filter(m => onlineStatusMap.has(m.userId));
     }
     if (unconfiguredOnly) {
-      result = result.filter(m => !m.departments || m.departments.length === 0);
+      result = result.filter(m => !m.departments || !Array.isArray(m.departments) || m.departments.length === 0);
     }
     return result;
   }, [nonAdminData, roleFilter, onlineOnly, unconfiguredOnly, onlineStatusMap]);
@@ -91,6 +91,7 @@ export default function AdminTeam() {
   };
 
   const handleOnlineFilter = () => {
+    setRoleFilter('');
     setOnlineOnly(!onlineOnly);
     setUnconfiguredOnly(false);
     setPage(0);
@@ -238,10 +239,8 @@ export default function AdminTeam() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        {member.role === 'admin' ? <Shield className="h-3 w-3 text-accent-purple" /> : <User className="h-3 w-3 text-text-muted" />}
-                        <span className={`px-2 py-0.5 border text-[9px] font-bold uppercase tracking-widest ${
-                          member.role === 'admin' ? 'border-accent-purple text-accent-purple bg-accent-purple/5' : 'border-border bg-bg-elevated'
-                        }`}>
+                        <User className="h-3 w-3 text-text-muted" />
+                        <span className="px-2 py-0.5 border text-[9px] font-bold uppercase tracking-widest border-border bg-bg-elevated">
                           {member.role}
                         </span>
                         {member.source === 'manual' && (
