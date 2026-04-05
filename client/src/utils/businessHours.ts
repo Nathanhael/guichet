@@ -148,8 +148,12 @@ function buildBoundaryTimestamp(date: string, minutes: number) {
 function nextBoundary(schedule: BusinessHoursSchedule, now: Date, kind: 'open' | 'close') {
   const current = getZonedParts(now, schedule.timezone);
 
+  // Use calendar-day arithmetic instead of raw milliseconds to avoid
+  // DST transitions causing 23h/25h day shifts (matches server HI-04 fix).
+  const [baseYear, baseMonth, baseDay] = current.date.split('-').map(Number);
+
   for (let offset = 0; offset < 8; offset++) {
-    const candidate = new Date(now.getTime() + offset * 24 * 60 * 60 * 1000);
+    const candidate = new Date(Date.UTC(baseYear, baseMonth - 1, baseDay + offset, 12, 0, 0));
     const zonedCandidate = getZonedParts(candidate, schedule.timezone);
     const windowSet = getWindowSet(schedule, zonedCandidate.date, zonedCandidate.weekday);
 
@@ -158,13 +162,13 @@ function nextBoundary(schedule: BusinessHoursSchedule, now: Date, kind: 'open' |
       const endMinutes = parseMinutes(window.end);
       const overnight = endMinutes <= startMinutes;
       const boundaryMinutes = kind === 'open' ? startMinutes : endMinutes;
-      const boundaryOffset = offset + (kind === 'close' && overnight ? 1 : 0);
+      const boundaryDayOffset = offset + (kind === 'close' && overnight ? 1 : 0);
 
       if (offset === 0 && boundaryMinutes <= current.minutes && !(kind === 'close' && overnight)) {
         continue;
       }
 
-      const boundaryDate = new Date(now.getTime() + boundaryOffset * 24 * 60 * 60 * 1000);
+      const boundaryDate = new Date(Date.UTC(baseYear, baseMonth - 1, baseDay + boundaryDayOffset, 12, 0, 0));
       const zonedBoundary = getZonedParts(boundaryDate, schedule.timezone);
       return buildBoundaryTimestamp(zonedBoundary.date, boundaryMinutes);
     }

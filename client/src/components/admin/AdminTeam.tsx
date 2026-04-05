@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { trpc } from '../../utils/trpc';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, Check, X, Search, Users, Shield, User } from 'lucide-react';
+import { Pencil, Check, X, Search, Users, Shield, User, UserX } from 'lucide-react';
 import Toast from '../Toast';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import { OnlineSupport } from '../../types';
@@ -21,7 +21,8 @@ export default function AdminTeam() {
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
-  const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | 'admin' | ''>('');
+  const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | ''>('');
+  const [unconfiguredOnly, setUnconfiguredOnly] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
   const LIMIT = 20;
 
@@ -30,27 +31,41 @@ export default function AdminTeam() {
       limit: LIMIT,
       offset: page * LIMIT,
       search: search.trim() || undefined,
-      role: roleFilter || undefined,
     },
     { enabled: !!activeMembershipId }
   );
 
-  // Summary logic
+  // Exclude admins — they always have all departments and are managed automatically
+  const nonAdminData = useMemo(() => {
+    if (!data) return [];
+    return data.filter(m => m.role !== 'admin');
+  }, [data]);
+
+  // Summary logic (admins excluded)
   const stats = useMemo(() => {
-    if (!data) return { total: 0, agents: 0, support: 0, online: 0 };
+    if (!nonAdminData.length) return { total: 0, agents: 0, support: 0, unconfigured: 0, online: 0 };
     return {
-      total: data.length,
-      agents: data.filter(m => m.role === 'agent').length,
-      support: data.filter(m => m.role === 'support').length,
-      online: data.filter(m => onlineStatusMap.has(m.userId)).length,
+      total: nonAdminData.length,
+      agents: nonAdminData.filter(m => m.role === 'agent').length,
+      support: nonAdminData.filter(m => m.role === 'support').length,
+      unconfigured: nonAdminData.filter(m => !m.departments || m.departments.length === 0).length,
+      online: nonAdminData.filter(m => onlineStatusMap.has(m.userId)).length,
     };
-  }, [data, onlineStatusMap]);
+  }, [nonAdminData, onlineStatusMap]);
 
   const displayData = useMemo(() => {
-    if (!data) return [];
-    if (!onlineOnly) return data;
-    return data.filter(m => onlineStatusMap.has(m.userId));
-  }, [data, onlineOnly, onlineStatusMap]);
+    let result = nonAdminData;
+    if (roleFilter) {
+      result = result.filter(m => m.role === roleFilter);
+    }
+    if (onlineOnly) {
+      result = result.filter(m => onlineStatusMap.has(m.userId));
+    }
+    if (unconfiguredOnly) {
+      result = result.filter(m => !m.departments || m.departments.length === 0);
+    }
+    return result;
+  }, [nonAdminData, roleFilter, onlineOnly, unconfiguredOnly, onlineStatusMap]);
 
   const removeMutation = trpc.partner.removeMember.useMutation({
     onSuccess: () => refetch(),
@@ -68,27 +83,24 @@ export default function AdminTeam() {
   const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
   const [editDepts, setEditDepts] = useState<string[]>([]);
 
-  const handleRoleFilter = (role: '' | 'agent' | 'support' | 'admin') => {
+  const handleRoleFilter = (role: '' | 'agent' | 'support') => {
     setRoleFilter(role);
     setOnlineOnly(false);
+    setUnconfiguredOnly(false);
     setPage(0);
   };
 
   const handleOnlineFilter = () => {
     setOnlineOnly(!onlineOnly);
+    setUnconfiguredOnly(false);
     setPage(0);
   };
 
-  const handleTagFilter = (tag: string) => {
-    if (['agent', 'support', 'admin'].includes(tag.toLowerCase())) {
-      handleRoleFilter(tag.toLowerCase() as 'agent' | 'support' | 'admin');
-      setSearch('');
-    } else {
-      setRoleFilter('');
-      setOnlineOnly(false);
-      setSearch(tag);
-      setPage(0);
-    }
+  const handleUnconfiguredFilter = () => {
+    setRoleFilter('');
+    setOnlineOnly(false);
+    setUnconfiguredOnly(!unconfiguredOnly);
+    setPage(0);
   };
 
   return (
@@ -135,12 +147,13 @@ export default function AdminTeam() {
         </div>
       </div>
 
-      {/* Stats Bar & Quick Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Bar — each card doubles as a filter */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
         {[
-          { label: 'Total Members', value: stats.total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !onlineOnly },
+          { label: 'All Members', value: stats.total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !onlineOnly && !unconfiguredOnly },
           { label: 'Support Staff', value: stats.support, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', color: 'text-accent-purple' },
           { label: 'Agents', value: stats.agents, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', color: 'text-accent-blue' },
+          { label: 'Unconfigured', value: stats.unconfigured, icon: UserX, handler: handleUnconfiguredFilter, active: unconfiguredOnly, color: 'text-accent-amber' },
           { label: 'Currently Online', value: stats.online, icon: Check, handler: handleOnlineFilter, active: onlineOnly, color: 'text-accent-green' },
         ].map((stat) => (
           <button
@@ -154,24 +167,6 @@ export default function AdminTeam() {
             </div>
             <span className="text-2xl font-bold font-mono tracking-tighter relative z-10">{stat.value}</span>
             <div className="absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full bg-accent-blue transition-all duration-300" />
-          </button>
-        ))}
-      </div>
-
-      {/* Quick Filter Tags */}
-      <div className="flex flex-wrap gap-2 items-center px-1">
-        <span className="text-[8px] font-bold uppercase tracking-widest text-text-muted">Filter:</span>
-        {['Agent', 'Support', 'Admin', 'Unconfigured'].map(tag => (
-          <button
-            key={tag}
-            onClick={() => handleTagFilter(tag)}
-            className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-tighter border transition-colors ${
-              (tag.toLowerCase() === roleFilter) || (tag === 'Unconfigured' && search.toLowerCase() === 'unconfigured')
-                ? 'bg-accent-blue text-white border-accent-blue'
-                : 'border-border text-text-secondary hover:border-text-muted'
-            }`}
-          >
-            {tag}
           </button>
         ))}
       </div>
