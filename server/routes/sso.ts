@@ -387,7 +387,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       user: {
         id: user.id,
         name: user.name,
-        email: user.email,
+        email: user.email ?? '',
         lang: user.lang,
         isPlatformOperator: user.isPlatformOperator,
         accessibilityPrefs: user.accessibilityPrefs ?? {},

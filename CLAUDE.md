@@ -46,13 +46,13 @@ docker compose -f docker-compose.prod.yml up               # Production deployme
 docker compose -f docker-compose.prod.yml build            # Build prod images
 ```
 
-### Demo Users
+### Seed Script
 
 ```bash
-docker compose exec server npx tsx seed.ts                       # Full demo seed (truncate + reseed everything)
+docker compose exec server npx tsx seed.ts                       # Truncate all tables (clean slate)
 ```
 
-All demo users use password `password123`. The seed script truncates all tables and creates 2 partners, ~20 users, ~50 tickets with messages, labels, ratings, canned responses, KB articles, 30 days of stats, agent status data, archived tickets, feedback, alerts, and webhooks. Platform step-up TOTP is controlled by `REQUIRE_PLATFORM_STEP_UP` (default `false`). When `false`, all PlatformView tabs are accessible without authenticator setup. Set to `true` in production to enforce TOTP verification before accessing platform admin.
+The seed script truncates all tables. The platform operator is auto-created by the bootstrap service on server startup from `PLATFORM_ADMIN_EMAIL` env var. Platform step-up TOTP is controlled by `REQUIRE_PLATFORM_STEP_UP` (default `false`). When `false`, all PlatformView tabs are accessible without authenticator setup. Set to `true` in production to enforce TOTP verification before accessing platform admin.
 
 ## Architecture
 

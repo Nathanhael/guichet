@@ -179,14 +179,7 @@ export default function PlatformSystemSettings() {
                 </div>
               )}
 
-              <div className="pt-8 flex gap-4">
-                <button
-                  onClick={handleSave}
-                  disabled={updateConfig.isPending}
-                  className="btn-primary flex-1 disabled:opacity-50"
-                >
-                  <Save size={14} /> {updateConfig.isPending ? t('saving') : t('save_config')}
-                </button>
+              <div className="pt-8 flex justify-end gap-4">
                 <button
                   disabled={mailConfig.provider === 'none'}
                   onClick={handleTestEmail}
@@ -194,16 +187,32 @@ export default function PlatformSystemSettings() {
                 >
                   <Send size={14} /> {t('send_test')}
                 </button>
+                <button
+                  onClick={handleSave}
+                  disabled={updateConfig.isPending}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  <Save size={14} /> {updateConfig.isPending ? t('saving') : t('save_config')}
+                </button>
               </div>
             </div>
           </section>
 
-          {/* Identity Security Settings */}
-          <section className="surface-card p-8 relative opacity-40 grayscale cursor-not-allowed">
+          {/* Identity Security Settings — planned */}
+          <section className="surface-card p-8 relative opacity-50 cursor-not-allowed">
             <div className="absolute -top-4 left-6 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-3 py-1 text-[10px] font-bold uppercase tracking-wide flex items-center gap-2">
               <ShieldCheck size={12} /> {t('identity_security')}
+              <span className="ml-1 text-[7px] opacity-70 border border-[var(--color-bg-base)] px-1.5 py-0.5">{t('coming_soon')}</span>
             </div>
-            <p className="font-mono text-[9px] font-bold uppercase tracking-wide text-center py-8 text-[var(--color-text-muted)]">{t('security_locked_desc')}</p>
+            <p className="font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-6 mt-2">{t('identity_security_desc')}</p>
+            <ul className="space-y-3">
+              {(['identity_feature_password', 'identity_feature_lockout', 'identity_feature_mfa', 'identity_feature_session'] as const).map((key) => (
+                <li key={key} className="flex items-start gap-3 text-[10px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
+                  <span className="mt-1 w-1.5 h-1.5 bg-[var(--color-text-muted)] shrink-0" />
+                  {t(key)}
+                </li>
+              ))}
+            </ul>
           </section>
         </div>
 

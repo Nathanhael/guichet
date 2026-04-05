@@ -455,7 +455,7 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
             user: {
                 id: user.id,
                 name: user.name,
-                email: user.email,
+                email: user.email ?? '',
                 lang: user.lang,
                 isPlatformOperator: user.isPlatformOperator,
                 accessibilityPrefs: user.accessibilityPrefs ?? {},
@@ -584,7 +584,7 @@ router.post('/login', loginRateLimit, validateBody(z.object({
             user: {
                 id: user.id,
                 name: user.name,
-                email: user.email,
+                email: user.email ?? '',
                 lang: user.lang,
                 isPlatformOperator: user.isPlatformOperator,
                 accessibilityPrefs: user.accessibilityPrefs ?? {},
