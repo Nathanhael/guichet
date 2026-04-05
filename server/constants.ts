@@ -23,3 +23,14 @@ export const MAX_NOTE_LENGTH = 2_000;
 
 /** Max recent closed tickets fetched during identify reconnect. */
 export const RECENT_CLOSED_TICKETS_LIMIT = 100;
+
+/**
+ * Features that are built but not yet enabled for production use.
+ * Remove a feature name from this array to enable it.
+ * Used by featureGate() middleware in trpc.ts to block all procedures.
+ */
+export const DISABLED_FEATURES: readonly string[] = [
+  'cannedResponse',
+  'knowledgeBase',
+  'webhooks',
+] as const;
