@@ -3,6 +3,7 @@ import { Context } from './context.js';
 import { UserRole } from '../types/index.js';
 import { isPlatformAdmin, isTenantAdmin } from '../services/roles.js';
 import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
+import { DISABLED_FEATURES } from '../constants.js';
 
 const t = initTRPC.context<Context>().create();
 
@@ -99,6 +100,24 @@ export const partnerRoleProcedure = (roles: UserRole[]) =>
     // Platform operators can bypass role checks to manage data across any partner
     if (!roles.includes(ctx.user.role) && !isPlatformAdmin(ctx.user.isPlatformOperator)) {
       throw new TRPCError({ code: 'FORBIDDEN' });
+    }
+    return next();
+  });
+
+/**
+ * Middleware that blocks all procedures for a disabled feature.
+ * Usage: `partnerScopedProcedure.use(featureGate('featureName'))`
+ *
+ * Returns FORBIDDEN with a clear message when the feature is in DISABLED_FEATURES.
+ * To re-enable, remove the feature name from DISABLED_FEATURES in constants.ts.
+ */
+export const featureGate = (feature: string) =>
+  t.middleware(({ next }) => {
+    if (DISABLED_FEATURES.includes(feature)) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: `Feature "${feature}" is not yet available`,
+      });
     }
     return next();
   });
