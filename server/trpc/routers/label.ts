@@ -70,7 +70,7 @@ export const labelRouter = router({
 
         emitToPartner(ctx, 'label:created', { id, name: input.name, color: input.color });
 
-        return { id, ...input };
+        return { id, name: input.name, color: input.color };
       } catch (err: unknown) {
         if (err instanceof Error && 'code' in err && (err as Error & { code: string }).code === '23505') {
           throw conflict('Label name already exists for this partner');
@@ -96,14 +96,14 @@ export const labelRouter = router({
 
           await tx.delete(ticketLabels).where(eq(ticketLabels.labelId, id));
           await tx.delete(labels).where(and(...conditions));
-        });
 
-        await db.insert(auditLog).values({
-          action: 'label.deleted',
-          actorId: ctx.user.id,
-          partnerId: ctx.user.partnerId,
-          targetType: 'label',
-          targetId: id,
+          await tx.insert(auditLog).values({
+            action: 'label.deleted',
+            actorId: ctx.user.id,
+            partnerId: ctx.user.partnerId,
+            targetType: 'label',
+            targetId: id,
+          });
         });
 
         emitToPartner(ctx, 'label:deleted', { id });
