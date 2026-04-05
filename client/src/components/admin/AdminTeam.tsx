@@ -21,10 +21,17 @@ export default function AdminTeam() {
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+  const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | 'admin' | ''>('');
+  const [onlineOnly, setOnlineOnly] = useState(false);
   const LIMIT = 20;
 
   const { data, refetch, isLoading } = trpc.partner.listMembers.useQuery(
-    { limit: LIMIT, offset: page * LIMIT, search: search.trim() || undefined },
+    {
+      limit: LIMIT,
+      offset: page * LIMIT,
+      search: search.trim() || undefined,
+      role: roleFilter || undefined,
+    },
     { enabled: !!activeMembershipId }
   );
 
@@ -38,6 +45,12 @@ export default function AdminTeam() {
       online: data.filter(m => onlineStatusMap.has(m.userId)).length,
     };
   }, [data, onlineStatusMap]);
+
+  const displayData = useMemo(() => {
+    if (!data) return [];
+    if (!onlineOnly) return data;
+    return data.filter(m => onlineStatusMap.has(m.userId));
+  }, [data, onlineOnly, onlineStatusMap]);
 
   const removeMutation = trpc.partner.removeMember.useMutation({
     onSuccess: () => refetch(),
@@ -55,9 +68,27 @@ export default function AdminTeam() {
   const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
   const [editDepts, setEditDepts] = useState<string[]>([]);
 
-  const handleQuickFilter = (term: string) => {
-    setSearch(term);
+  const handleRoleFilter = (role: '' | 'agent' | 'support' | 'admin') => {
+    setRoleFilter(role);
+    setOnlineOnly(false);
     setPage(0);
+  };
+
+  const handleOnlineFilter = () => {
+    setOnlineOnly(!onlineOnly);
+    setPage(0);
+  };
+
+  const handleTagFilter = (tag: string) => {
+    if (['agent', 'support', 'admin'].includes(tag.toLowerCase())) {
+      handleRoleFilter(tag.toLowerCase() as 'agent' | 'support' | 'admin');
+      setSearch('');
+    } else {
+      setRoleFilter('');
+      setOnlineOnly(false);
+      setSearch(tag);
+      setPage(0);
+    }
   };
 
   return (
@@ -107,15 +138,15 @@ export default function AdminTeam() {
       {/* Stats Bar & Quick Filters */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Members', value: stats.total, icon: Users, filter: '' },
-          { label: 'Support Staff', value: stats.support, icon: Shield, filter: 'support', color: 'text-accent-purple' },
-          { label: 'Agents', value: stats.agents, icon: User, filter: 'agent', color: 'text-accent-blue' },
-          { label: 'Currently Online', value: stats.online, icon: Check, filter: 'online', color: 'text-accent-green' },
+          { label: 'Total Members', value: stats.total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !onlineOnly },
+          { label: 'Support Staff', value: stats.support, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', color: 'text-accent-purple' },
+          { label: 'Agents', value: stats.agents, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', color: 'text-accent-blue' },
+          { label: 'Currently Online', value: stats.online, icon: Check, handler: handleOnlineFilter, active: onlineOnly, color: 'text-accent-green' },
         ].map((stat) => (
           <button
             key={stat.label}
-            onClick={() => handleQuickFilter(stat.filter)}
-            className="flex flex-col p-4 bg-bg-surface border border-border hover:border-accent-blue group transition-all text-left relative overflow-hidden"
+            onClick={stat.handler}
+            className={`flex flex-col p-4 bg-bg-surface border ${stat.active ? 'border-accent-blue bg-accent-blue/5' : 'border-border'} hover:border-accent-blue group transition-all text-left relative overflow-hidden`}
           >
             <div className="flex justify-between items-start mb-2 relative z-10">
               <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary transition-colors">{stat.label}</span>
@@ -130,12 +161,12 @@ export default function AdminTeam() {
       {/* Quick Filter Tags */}
       <div className="flex flex-wrap gap-2 items-center px-1">
         <span className="text-[8px] font-bold uppercase tracking-widest text-text-muted">Filter:</span>
-        {['Agent', 'Support', 'Admin', 'Generalist'].map(tag => (
+        {['Agent', 'Support', 'Admin', 'Unconfigured'].map(tag => (
           <button
             key={tag}
-            onClick={() => handleQuickFilter(tag)}
+            onClick={() => handleTagFilter(tag)}
             className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-tighter border transition-colors ${
-              search.toLowerCase() === tag.toLowerCase()
+              (tag.toLowerCase() === roleFilter) || (tag === 'Unconfigured' && search.toLowerCase() === 'unconfigured')
                 ? 'bg-accent-blue text-white border-accent-blue'
                 : 'border-border text-text-secondary hover:border-text-muted'
             }`}
@@ -164,7 +195,7 @@ export default function AdminTeam() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {data?.length === 0 ? (
+                {displayData.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="py-24 text-center">
                       <div className="flex flex-col items-center opacity-30">
@@ -179,7 +210,7 @@ export default function AdminTeam() {
                       </div>
                     </td>
                   </tr>
-                ) : data?.map((member) => (
+                ) : displayData.map((member) => (
                   <tr key={member.membershipId} className="hover:bg-bg-elevated/40 transition-colors group/row">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
@@ -218,6 +249,9 @@ export default function AdminTeam() {
                         }`}>
                           {member.role}
                         </span>
+                        {member.source === 'manual' && (
+                          <span className="text-[7px] border border-accent-amber/30 text-accent-amber px-1 font-mono font-bold tracking-tighter">MANUAL</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -256,10 +290,13 @@ export default function AdminTeam() {
                               </label>
                             ))}
                           </div>
+                          {member.role === 'support' && editDepts.length === 0 && (
+                            <p className="text-[8px] font-bold uppercase text-accent-red tracking-widest">Support requires at least one department</p>
+                          )}
                           <div className="flex items-center gap-2 pt-2 border-t border-border mt-2">
                             <button
                               onClick={() => updateMemberMutation.mutate({ membershipId: member.membershipId, departments: editDepts })}
-                              disabled={updateMemberMutation.isPending}
+                              disabled={updateMemberMutation.isPending || (member.role === 'support' && editDepts.length === 0)}
                               className="flex-1 py-1.5 text-[9px] font-bold bg-accent-blue text-white uppercase border border-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 transition-all"
                             >
                               {updateMemberMutation.isPending ? '...' : 'Save'}
@@ -289,7 +326,7 @@ export default function AdminTeam() {
                                   </span>
                                 );
                               })
-                            : <span className="text-[10px] font-bold uppercase tracking-widest opacity-20 italic group-hover/dept:opacity-100 transition-opacity">Generalist (All Access)</span>}
+                            : <span className="text-[10px] font-bold uppercase tracking-widest opacity-20 italic group-hover/dept:opacity-100 transition-opacity">No departments assigned</span>}
                           <Pencil className="h-3 w-3 opacity-0 group-hover/row:opacity-100 transition-opacity ml-auto text-accent-blue" />
                         </div>
                       )}
@@ -315,7 +352,7 @@ export default function AdminTeam() {
           <div className="px-6 py-4 border-t-2 border-border-heavy flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-elevated/20">
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                Showing <span className="text-text-primary">{data?.length || 0}</span> identities
+                Showing <span className="text-text-primary">{displayData.length}</span> identities
               </span>
               <div className="h-4 w-px bg-border hidden sm:block" />
               <div className="flex items-center gap-2">
@@ -332,7 +369,7 @@ export default function AdminTeam() {
                 Previous
               </button>
               <button
-                disabled={(data?.length || 0) < LIMIT}
+                disabled={displayData.length < LIMIT}
                 onClick={() => setPage(p => p + 1)}
                 className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest bg-border-heavy text-white hover:bg-black active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"
               >
@@ -406,7 +443,16 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
           </div>
           {role !== 'agent' && departments.length > 0 && (
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block">Departmental Assignments</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Departmental Assignments</label>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDepts(selectedDepts.length === departments.length ? [] : departments.map(d => d.id))}
+                  className="text-[8px] font-bold uppercase tracking-widest text-accent-blue hover:underline"
+                >
+                  {selectedDepts.length === departments.length ? 'Deselect all' : 'Select all'}
+                </button>
+              </div>
               <div className="space-y-1.5 max-h-40 overflow-y-auto border-2 border-border p-3 bg-bg-elevated/30">
                 {departments.map(d => (
                   <label key={d.id} className="flex items-center gap-3 text-xs font-bold uppercase cursor-pointer hover:text-accent-blue transition-colors py-1">
@@ -423,12 +469,14 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
                   </label>
                 ))}
               </div>
-              <p className="text-[8px] uppercase font-bold text-text-muted opacity-60">Zero selection defaults to Generalist status (access to all buckets).</p>
+              {role === 'support' && selectedDepts.length === 0 && (
+                <p className="text-[8px] font-bold uppercase text-accent-red tracking-widest">Support requires at least one department</p>
+              )}
             </div>
           )}
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="flex-1 py-3 text-[11px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all">Cancel</button>
-            <button type="submit" disabled={addMutation.isPending} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50 transition-all">
+            <button type="submit" disabled={addMutation.isPending || (role === 'support' && selectedDepts.length === 0)} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50 transition-all">
               {addMutation.isPending ? 'Processing...' : 'Verify & Add'}
             </button>
           </div>
@@ -579,7 +627,16 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
           )}
           {role !== 'agent' && departments.length > 0 && (
             <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block">Assigned Departments</label>
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Assigned Departments</label>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDepts(selectedDepts.length === departments.length ? [] : departments.map(d => d.id))}
+                  className="text-[8px] font-bold uppercase tracking-widest text-accent-blue hover:underline"
+                >
+                  {selectedDepts.length === departments.length ? 'Deselect all' : 'Select all'}
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border-2 border-border p-3 bg-bg-elevated/30">
                 {departments.map(d => (
                   <label key={d.id} className="flex items-center gap-3 text-[10px] font-bold uppercase cursor-pointer hover:text-accent-blue transition-colors py-1">
@@ -596,11 +653,14 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
                   </label>
                 ))}
               </div>
+              {role === 'support' && selectedDepts.length === 0 && (
+                <p className="text-[8px] font-bold uppercase text-accent-red tracking-widest">Support requires at least one department</p>
+              )}
             </div>
           )}
           <div className="flex gap-4 pt-6 border-t border-border">
             <button type="button" onClick={onClose} className="flex-1 py-3 text-[11px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all">Abort</button>
-            <button type="submit" disabled={inviteMutation.isPending} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50 transition-all shadow-[6px_6px_0px_0px_rgba(59,130,246,0.1)]">
+            <button type="submit" disabled={inviteMutation.isPending || (role === 'support' && selectedDepts.length === 0)} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50 transition-all shadow-[6px_6px_0px_0px_rgba(59,130,246,0.1)]">
               {inviteMutation.isPending ? 'Encrypting...' : 'Provision User'}
             </button>
           </div>
