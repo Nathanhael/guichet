@@ -1,17 +1,21 @@
 import { z } from 'zod';
-import { router, partnerScopedProcedure, partnerAdminProcedure } from '../trpc.js';
+import { router, partnerScopedProcedure, partnerAdminProcedure, featureGate } from '../trpc.js';
 import { db } from '../../db.js';
 import { cannedResponses } from '../../db/schema.js';
 import { eq, and, asc, isNull, or } from 'drizzle-orm';
 import { notFound, conflict } from '../../utils/trpcErrors.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
 
+// DISABLED_FEATURE: Canned Responses — gated until feature is production-ready
+const gatedPartnerScoped = partnerScopedProcedure.use(featureGate('cannedResponse'));
+const gatedPartnerAdmin = partnerAdminProcedure.use(featureGate('cannedResponse'));
+
 export const cannedResponseRouter = router({
   /**
    * List canned responses for the current partner.
    * Support/admin can see all; optionally filter by department.
    */
-  list: partnerScopedProcedure
+  list: gatedPartnerScoped
     .input(z.object({ dept: z.string().optional() }).optional())
     .query(async ({ ctx, input }) => {
       if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) return [];
@@ -40,7 +44,7 @@ export const cannedResponseRouter = router({
   /**
    * Create a new canned response (admin only).
    */
-  create: partnerAdminProcedure
+  create: gatedPartnerAdmin
     .input(z.object({
       title: z.string().min(1).max(100),
       body: z.string().min(1).max(5000),
@@ -85,7 +89,7 @@ export const cannedResponseRouter = router({
   /**
    * Update a canned response (admin only).
    */
-  update: partnerAdminProcedure
+  update: gatedPartnerAdmin
     .input(z.object({
       id: z.string(),
       title: z.string().min(1).max(100).optional(),
@@ -116,7 +120,7 @@ export const cannedResponseRouter = router({
   /**
    * Delete a canned response (admin only).
    */
-  delete: partnerAdminProcedure
+  delete: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await db
