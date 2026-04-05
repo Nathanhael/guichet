@@ -462,11 +462,13 @@ export const partnerRouter = router({
           const s = `%${rawSearch}%`;
           
           // ME-07 fix: Allow filtering by department name (access grants)
-          const matchesDept = sql`EXISTS (
+          // Only match department names for non-agent roles — agents show "Selects per ticket"
+          // and shouldn't appear when searching department names like "Technical Support"
+          const matchesDept = sql`(${memberships.role} != 'agent' AND EXISTS (
             SELECT 1 FROM jsonb_array_elements(${partners.departments}) d
             JOIN jsonb_array_elements_text(${memberships.departments}) md(id) ON d->>'id' = md.id
             WHERE d->>'name' ILIKE ${s}
-          )`;
+          ))`;
 
           filters.push(or(
             ilike(users.name, s),
