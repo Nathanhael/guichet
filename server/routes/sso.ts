@@ -348,6 +348,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
             partnerId: pId,
             role: target.role as any,
             departments: target.departments,
+            source: 'sso',
           });
 
           await db.insert(auditLog).values({
@@ -359,7 +360,10 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
             metadata: { role: target.role },
           });
           logger.info({ userId: user.id, partnerId: pId, role: target.role }, '[SSO] Auto-created membership');
-        } else if (existing[0].role !== target.role) {
+          if (target.role === 'support' && target.departments.length === 0) {
+            logger.warn({ userId: user.id, partnerId: pId }, '[SSO] Support membership created with no departments — user will see empty queue');
+          }
+        } else if (existing[0].source === 'sso' && existing[0].role !== target.role) {
           // Force role update if it changed in Azure
           await db.update(memberships)
             .set({ role: target.role as any })
@@ -386,7 +390,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       if (mappedPartnerIds.length > 0) {
         const currentMemberships = await db.select().from(memberships).where(eq(memberships.userId, user.id));
         for (const cm of currentMemberships) {
-          if (mappedPartnerIds.includes(cm.partnerId) && !targetMemberships.has(cm.partnerId)) {
+          if (mappedPartnerIds.includes(cm.partnerId) && !targetMemberships.has(cm.partnerId) && cm.source === 'sso') {
             await db.delete(memberships).where(eq(memberships.id, cm.id));
             await db.insert(auditLog).values({
               action: 'sso.membership_revoked',
