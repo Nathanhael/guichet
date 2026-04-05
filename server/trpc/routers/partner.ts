@@ -522,16 +522,20 @@ export const partnerRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins can only assign agent or support roles' });
         }
 
+        if (input.role === 'support' && (!input.departments || input.departments.length === 0)) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department' });
+        }
+
         const targetUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
         if (targetUser.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
         }
-        
+
         const userId = targetUser[0].id;
 
         const existingMembership = await db.select().from(memberships)
           .where(and(eq(memberships.userId, userId), eq(memberships.partnerId, partnerId))).limit(1);
-        
+
         if (existingMembership.length > 0) {
           throw new TRPCError({ code: 'CONFLICT', message: 'User already on this partner' });
         }
@@ -543,7 +547,8 @@ export const partnerRouter = router({
           userId: userId,
           partnerId: partnerId,
           role: input.role,
-          departments: input.role === 'agent' ? [] : (input.departments || [])
+          departments: input.role === 'agent' ? [] : (input.departments || []),
+          source: 'manual'
         });
 
         await db.insert(auditLog).values({
@@ -576,6 +581,10 @@ export const partnerRouter = router({
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
         if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins can only assign agent or support roles' });
+        }
+
+        if (input.role === 'support' && (!input.departments || input.departments.length === 0)) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department' });
         }
 
         // 1. Look up partner auth method
@@ -631,7 +640,8 @@ export const partnerRouter = router({
             userId: newUserId,
             partnerId: partnerId,
             role: input.role,
-            departments: input.role === 'agent' ? [] : (input.departments || [])
+            departments: input.role === 'agent' ? [] : (input.departments || []),
+            source: 'manual'
           });
 
           // 5. Audit log
@@ -671,8 +681,12 @@ export const partnerRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
         }
 
-        // Agents don't have department assignments — they select per ticket
+        const isSupport = membership[0].role === 'support';
         const depts = membership[0].role === 'agent' ? [] : (input.departments || []);
+
+        if (isSupport && depts.length === 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department' });
+        }
 
         await db.update(memberships)
           .set({ departments: depts })
