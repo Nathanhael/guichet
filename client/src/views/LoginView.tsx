@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
@@ -37,7 +37,7 @@ export default function LoginView() {
   const [viewMode, setViewMode] = useState<AuthViewMode>('sso-selection');
   const [logoClicks, setLogoClicks] = useState(0);
   const [showAdminLoginLink, setShowAdminLoginLink] = useState(false);
-  const logoClickTimeoutRef = useRef<any>(null);
+  const logoClickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleLogoClick = () => {
     if (logoClickTimeoutRef.current) clearTimeout(logoClickTimeoutRef.current);
@@ -68,6 +68,18 @@ export default function LoginView() {
   } | null>(null);
 
   const [isSsoVerifying, setIsSsoVerifying] = useState(false);
+
+  const handleLoginSuccess = useCallback((user: User, memberships: Membership[]) => {
+    if (memberships.length > 1 && !user.isPlatformOperator) {
+      setSelectingPartner({ user, memberships });
+    } else {
+      setUser(user);
+      setMemberships(memberships);
+      if (memberships.length > 0 && !user.isPlatformOperator) {
+        setActiveMembershipId(memberships[0].id);
+      }
+    }
+  }, [setUser, setMemberships, setActiveMembershipId]);
 
   useEffect(() => {
     // Handle password reset token from URL query
@@ -112,21 +124,9 @@ export default function LoginView() {
           setIsSsoVerifying(false);
         });
     }
-  }, []);
+  }, [handleLoginSuccess, t]);
 
-  const handleLoginSuccess = (user: User, memberships: Membership[]) => {
-    if (memberships.length > 1 && !user.isPlatformOperator) {
-      setSelectingPartner({ user, memberships });
-    } else {
-      setUser(user);
-      setMemberships(memberships);
-      if (memberships.length > 0 && !user.isPlatformOperator) {
-        setActiveMembershipId(memberships[0].id);
-      }
-    }
-  };
-
-  const handleMfaRequired = (endpoint: string, body: any, passwordRef: string) => {
+  const handleMfaRequired = (endpoint: string, body: Record<string, unknown>, passwordRef: string) => {
     mfaPasswordRef.current = passwordRef;
     setMfaPending({ endpoint, body });
     setViewMode('mfa');
@@ -162,13 +162,13 @@ export default function LoginView() {
               <button
                 key={m.id}
                 onClick={() => { setUser(selectingPartner.user); setMemberships(selectingPartner.memberships); setActiveMembershipId(m.id); }}
-                className="w-full text-left p-4 border-2 border-[var(--color-border-heavy)] hover:bg-[var(--color-text-primary)] hover:text-[var(--color-bg-base)] flex items-center justify-between"
+                className="group w-full text-left p-4 border-2 border-[var(--color-border-heavy)] hover:bg-[var(--color-text-primary)] hover:text-[var(--color-bg-base)] flex items-center justify-between"
               >
                 <div>
-                  <p className="font-mono font-bold uppercase tracking-tight text-[var(--color-text-primary)]">{m.partnerName}</p>
-                  <p className="mono-label text-[var(--color-text-secondary)] mt-0.5">{getRoleDisplayName(m.role as UserRole, false)} · {m.manifest?.industry}</p>
+                  <p className="font-mono font-bold uppercase tracking-tight text-[var(--color-text-primary)] group-hover:text-[var(--color-bg-base)]">{m.partnerName}</p>
+                  <p className="mono-label text-[var(--color-text-secondary)] group-hover:text-[var(--color-bg-base)] mt-0.5">{getRoleDisplayName(m.role as UserRole, false)} · {m.manifest?.industry}</p>
                 </div>
-                <span className="text-xl font-bold text-[var(--color-text-secondary)]">➔</span>
+                <span className="text-xl font-bold text-[var(--color-text-secondary)] group-hover:text-[var(--color-bg-base)]">➔</span>
               </button>
             ))}
             <button
@@ -290,12 +290,13 @@ export default function LoginView() {
         )}
 
         {viewMode === 'reset' && (
-          <ResetPasswordForm 
+          <ResetPasswordForm
             resetToken={resetToken}
             onSuccess={() => {
               setSuccessMessage(t('password_updated') || 'Password updated successfully');
               setViewMode('sso-selection');
             }}
+            onBackClick={() => { setViewMode('sso-selection'); setError(''); }}
           />
         )}
 
@@ -303,7 +304,7 @@ export default function LoginView() {
           <MfaChallenge
             endpoint={mfaPending.endpoint}
             body={mfaPending.body}
-            passwordRef={mfaPasswordRef.current}
+            passwordRef={mfaPasswordRef}
             onSuccess={handleLoginSuccess}
             onCancel={cancelMfa}
           />

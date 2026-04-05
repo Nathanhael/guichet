@@ -14,6 +14,7 @@ export interface TicketSlice {
   setTickets: (tickets: Ticket[]) => void;
   setArchivedTickets: (archived: Ticket[]) => void;
   addTicket: (ticket: Ticket) => void;
+  removeTicket: (ticketId: string) => void;
   updateTicket: (ticketId: string, updates: Partial<Ticket>) => void;
   toggleTicketLabel: (ticketId: string, labelId: string) => void;
   setActiveTicketId: (id: string | null) => void;
@@ -43,6 +44,10 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
       tickets: state.tickets.some((t) => t.id === ticket.id)
         ? state.tickets
         : [ticket, ...state.tickets],
+    })),
+  removeTicket: (ticketId) =>
+    set((state) => ({
+      tickets: state.tickets.filter((t) => t.id !== ticketId),
     })),
   updateTicket: (ticketId, updates) =>
     set((state) => ({
