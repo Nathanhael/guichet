@@ -156,6 +156,34 @@ export async function findMessageForDelete(messageId: string, ticketId: string) 
 }
 
 /**
+ * Fetches minimal message fields needed for reaction validation.
+ * Used by: message:react
+ */
+export async function findMessageForReact(messageId: string, ticketId: string) {
+  const rows = await db
+    .select({
+      id: messages.id,
+      system: messages.system,
+      deletedAt: messages.deletedAt,
+      reactions: messages.reactions,
+    })
+    .from(messages)
+    .where(and(eq(messages.id, messageId), eq(messages.ticketId, ticketId)));
+  return rows[0];
+}
+
+/**
+ * Writes updated reactions JSONB to the message row.
+ * Used by: message:react
+ */
+export async function updateMessageReactions(messageId: string, reactions: Record<string, string[]>) {
+  await db
+    .update(messages)
+    .set({ reactions })
+    .where(eq(messages.id, messageId));
+}
+
+/**
  * Updates message text and sets editedAt timestamp.
  * Used by: message:edit
  */
