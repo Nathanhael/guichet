@@ -295,18 +295,15 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 
     if (azureGroups.length === 0 && claims._claim_names?.groups) {
       // HI-05 fix: Group overage — Azure omitted groups claim (user has 200+ groups).
-      // Without the full group list, role/department mappings cannot be applied correctly.
-      // Log an actionable error and continue login without group-based assignments.
-      // To fully resolve: call Microsoft Graph API /me/memberOf with the access_token.
       logger.error(
         { userId: user.id, oid, claimNames: Object.keys(claims._claim_names || {}) },
-        '[SSO] Group overage detected — Azure truncated groups claim (>200 groups). ' +
-        'Group-based partner mappings will NOT be applied for this user. ' +
-        'Configure fewer groups or implement Graph API fallback.'
+        '[SSO] Group overage detected — Azure truncated groups claim (>200 groups).'
       );
     }
 
     if (azureGroups.length > 0) {
+      const ROLE_PRIORITY: Record<string, number> = { admin: 3, support: 2, agent: 1 };
+
       // Look up which partners are mapped to these Azure groups
       const mappings = await db
         .select({
@@ -323,11 +320,24 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           eq(partners.status, 'active'),
         ));
 
-      for (const mapping of mappings) {
+      // Resolve best role per partner based on groups
+      const targetMemberships = new Map<string, { role: string, departments: string[] }>();
+      for (const m of mappings) {
+        const current = targetMemberships.get(m.partnerId);
+        if (!current || (ROLE_PRIORITY[m.defaultRole] || 0) > (ROLE_PRIORITY[current.role] || 0)) {
+          targetMemberships.set(m.partnerId, { 
+            role: m.defaultRole, 
+            departments: (m.defaultDepartments as string[]) || [] 
+          });
+        }
+      }
+
+      // Upsert current memberships (Force Sync)
+      for (const [pId, target] of targetMemberships.entries()) {
         const existing = await db
-          .select({ id: memberships.id })
+          .select()
           .from(memberships)
-          .where(and(eq(memberships.userId, user.id), eq(memberships.partnerId, mapping.partnerId)))
+          .where(and(eq(memberships.userId, user.id), eq(memberships.partnerId, pId)))
           .limit(1);
 
         if (existing.length === 0) {
@@ -335,21 +345,59 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           await db.insert(memberships).values({
             id: mId,
             userId: user.id,
-            partnerId: mapping.partnerId,
-            role: mapping.defaultRole,
-            departments: (mapping.defaultDepartments as string[]) || [],
+            partnerId: pId,
+            role: target.role as any,
+            departments: target.departments,
           });
 
           await db.insert(auditLog).values({
             action: 'sso.membership_auto_created',
             actorId: user.id,
-            partnerId: mapping.partnerId,
+            partnerId: pId,
             targetType: 'user',
             targetId: user.id,
-            metadata: { azureGroupId: mapping.azureGroupId, role: mapping.defaultRole },
+            metadata: { role: target.role },
           });
+          logger.info({ userId: user.id, partnerId: pId, role: target.role }, '[SSO] Auto-created membership');
+        } else if (existing[0].role !== target.role) {
+          // Force role update if it changed in Azure
+          await db.update(memberships)
+            .set({ role: target.role as any })
+            .where(eq(memberships.id, existing[0].id));
 
-          logger.info({ userId: user.id, partnerId: mapping.partnerId, membershipId: mId, azureGroupId: mapping.azureGroupId }, '[SSO] Auto-created membership via group mapping');
+          await db.insert(auditLog).values({
+            action: 'sso.role_synced',
+            actorId: user.id,
+            partnerId: pId,
+            targetType: 'user',
+            targetId: user.id,
+            metadata: { oldRole: existing[0].role, newRole: target.role },
+          });
+          logger.info({ userId: user.id, partnerId: pId, oldRole: existing[0].role, newRole: target.role }, '[SSO] Synced role change from Azure');
+        }
+      }
+
+      // Cleanup: Remove memberships for partners that HAVE SSO mappings if the user is no longer in those groups
+      const allMappedPartners = await db
+        .selectDistinct({ partnerId: partnerGroupMappings.partnerId })
+        .from(partnerGroupMappings);
+      const mappedPartnerIds = allMappedPartners.map(p => p.partnerId);
+
+      if (mappedPartnerIds.length > 0) {
+        const currentMemberships = await db.select().from(memberships).where(eq(memberships.userId, user.id));
+        for (const cm of currentMemberships) {
+          if (mappedPartnerIds.includes(cm.partnerId) && !targetMemberships.has(cm.partnerId)) {
+            await db.delete(memberships).where(eq(memberships.id, cm.id));
+            await db.insert(auditLog).values({
+              action: 'sso.membership_revoked',
+              actorId: user.id,
+              partnerId: cm.partnerId,
+              targetType: 'user',
+              targetId: user.id,
+              metadata: { reason: 'No matching SSO groups' },
+            });
+            logger.info({ userId: user.id, partnerId: cm.partnerId }, '[SSO] Revoked membership (no longer in Azure groups)');
+          }
         }
       }
     }
