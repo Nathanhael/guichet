@@ -12,6 +12,7 @@ import {
   findActiveTicketsForAgent,
   findActiveTicketsForSupport,
   findTicketForTransfer,
+  findTicketForLabels,
   findPartnerLabels,
   createTicket,
   assignSupport,
@@ -1049,8 +1050,9 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('ticket:labels:update', async ({ ticketId, labels }: { ticketId: string, labels: string[] }) => {
       if (!requireIdentified(socket)) return;
-      const role = socket.data.role;
-      if (role === 'agent') {
+      const role = socket.data.role as string;
+      const LABEL_ROLES = ['support', 'admin', 'platform_operator'];
+      if (!LABEL_ROLES.includes(role)) {
         return socket.emit('error', { message: 'Not authorized to update labels' });
       }
       try {
@@ -1063,8 +1065,13 @@ export function registerSocketHandlers(io: Server) {
           return socket.emit('error', { message: `Too many labels (max ${MAX_LABELS_PER_TICKET})` });
         }
 
-        const ticket = await requirePartnerScope(socket, ticketId);
+        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForLabels);
         if (!ticket) return;
+
+        // Block label updates on terminal tickets
+        if (ticket.status === 'closed' || ticket.status === 'resolved') {
+          return socket.emit('error', { message: 'Cannot update labels on closed tickets' });
+        }
 
         // Validate that all labels belong to this partner
         if (labels.length > 0) {
