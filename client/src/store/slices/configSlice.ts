@@ -13,6 +13,7 @@ export interface ConfigSlice {
   setAllLabels: (labels: Label[]) => void;
   removeLabelGlobally: (labelId: string) => void;
   addLabelGlobally: (label: Label) => void;
+  updateLabelGlobally: (label: Label) => void;
 }
 
 export const createConfigSlice: StateCreator<StoreState, [], [], ConfigSlice> = (set) => ({
@@ -46,4 +47,8 @@ export const createConfigSlice: StateCreator<StoreState, [], [], ConfigSlice> = 
     set((state) => ({ allLabels: state.allLabels.filter((l) => l.id !== labelId) })),
   addLabelGlobally: (label) =>
     set((state) => ({ allLabels: [...state.allLabels, label] })),
+  updateLabelGlobally: (label) =>
+    set((state) => ({
+      allLabels: state.allLabels.map((l) => (l.id === label.id ? { ...l, ...label } : l)),
+    })),
 });

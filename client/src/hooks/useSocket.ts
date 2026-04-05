@@ -286,6 +286,10 @@ export function useSocket(): Socket {
       useStore.getState().addLabelGlobally(label);
     };
 
+    const handleLabelUpdated = (label: Label) => {
+      useStore.getState().updateLabelGlobally(label);
+    };
+
     const handleHoursClosed = (payload?: { status?: BusinessHoursStatus }) => {
       if (payload?.status) {
         setBusinessHoursStatus(payload.status);
@@ -364,6 +368,7 @@ export function useSocket(): Socket {
     s.on('ticket:labels:updated', handleTicketLabelsUpdated);
     s.on('label:deleted', handleLabelDeleted);
     s.on('label:created', handleLabelCreated);
+    s.on('label:updated', handleLabelUpdated);
     s.on('hours:closed', handleHoursClosed);
     s.on('topic:alert', handleTopicAlert);
     s.on('partner:deactivated', handlePartnerDeactivated);
@@ -398,6 +403,7 @@ export function useSocket(): Socket {
       s.off('ticket:labels:updated', handleTicketLabelsUpdated);
       s.off('label:deleted', handleLabelDeleted);
       s.off('label:created', handleLabelCreated);
+      s.off('label:updated', handleLabelUpdated);
       s.off('hours:closed', handleHoursClosed);
       s.off('topic:alert', handleTopicAlert);
       s.off('partner:deactivated', handlePartnerDeactivated);
