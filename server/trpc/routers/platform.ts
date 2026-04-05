@@ -1124,6 +1124,11 @@ export const platformRouter = router({
       if (partner.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
       if (partner[0].authMethod !== 'sso') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner must use SSO auth method' });
 
+      // Support role requires at least one department in mapping
+      if (input.defaultRole === 'support' && input.defaultDepartments.length === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department in group mapping' });
+      }
+
       const id = randomUUID();
       try {
         await db.insert(partnerGroupMappings).values({
@@ -1164,6 +1169,13 @@ export const platformRouter = router({
     .mutation(async ({ input, ctx }) => {
       const existing = await db.select().from(partnerGroupMappings).where(eq(partnerGroupMappings.id, input.id)).limit(1);
       if (existing.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Mapping not found' });
+
+      // Resolve effective role after update
+      const effectiveRole = input.defaultRole ?? existing[0].defaultRole;
+      const effectiveDepts = input.defaultDepartments ?? (existing[0].defaultDepartments as string[] || []);
+      if (effectiveRole === 'support' && effectiveDepts.length === 0) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department in group mapping' });
+      }
 
       const updates: Record<string, unknown> = {};
       if (input.azureGroupName !== undefined) updates.azureGroupName = input.azureGroupName;
