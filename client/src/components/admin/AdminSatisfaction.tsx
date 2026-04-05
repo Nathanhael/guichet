@@ -102,20 +102,20 @@ export default function AdminSatisfaction() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 pb-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-mono text-[11px] uppercase tracking-widest text-[var(--color-text-muted)]">
+        <h1 className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
           Satisfaction Analytics
         </h1>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 border border-[var(--color-border)] p-1 bg-[var(--color-bg-surface)]">
           {/* Department chips */}
           <button
             onClick={() => setDept('all')}
-            className={`px-3 py-1 font-mono text-[9px] uppercase tracking-wide border ${
+            className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wide border ${
               dept === 'all'
                 ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:border-[var(--color-border)]'
+                : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
             }`}
           >
             All Depts
@@ -124,26 +124,28 @@ export default function AdminSatisfaction() {
             <button
               key={d.id}
               onClick={() => setDept(d.id)}
-              className={`px-3 py-1 font-mono text-[9px] uppercase tracking-wide border ${
+              className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wide border ${
                 dept === d.id
                   ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:border-[var(--color-border)]'
+                  : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
               }`}
             >
               {d.name}
             </button>
           ))}
 
+          <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
+
           {/* Date presets */}
-          <div className="flex items-center gap-1 ml-2">
+          <div className="flex items-center gap-0.5">
             {presets.map(p => (
               <button
                 key={p.key}
                 onClick={() => applyPreset(p.key, setDateFrom, setDateTo, setActivePreset)}
-                className={`px-3 py-1 font-mono text-[9px] uppercase tracking-wide border ${
+                className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wide border ${
                   activePreset === p.key
                     ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:border-[var(--color-border)]'
+                    : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
                 }`}
               >
                 {p.label}
@@ -151,20 +153,24 @@ export default function AdminSatisfaction() {
             ))}
           </div>
 
+          <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
+
           {/* Custom date range */}
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={e => { setDateFrom(e.target.value); setActivePreset(null); }}
-            className="px-2 py-1 font-mono text-[9px] bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)]"
-          />
-          <span className="font-mono text-[9px] text-[var(--color-text-muted)]">–</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={e => { setDateTo(e.target.value); setActivePreset(null); }}
-            className="px-2 py-1 font-mono text-[9px] bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)]"
-          />
+          <div className="flex items-center gap-1 px-1">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => { setDateFrom(e.target.value); setActivePreset(null); }}
+              className="px-2 py-0.5 font-mono text-[9px] bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] w-[105px]"
+            />
+            <span className="font-mono text-[9px] text-[var(--color-text-muted)]">–</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => { setDateTo(e.target.value); setActivePreset(null); }}
+              className="px-2 py-0.5 font-mono text-[9px] bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] w-[105px]"
+            />
+          </div>
         </div>
       </div>
 

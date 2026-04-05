@@ -71,123 +71,130 @@ export default function AdminArchive() {
   });
 
   return (
-    <div className="min-w-[1280px] flex gap-4 items-start">
+    <div className="flex flex-col p-6 min-h-full overflow-x-hidden">
       <div className="flex-1 min-w-0">
         {/* Header + Filters */}
-        <div className="flex items-center gap-2 mb-4 border-b border-[var(--color-border)] pb-4 overflow-x-auto">
-          <h2 className="text-4xl font-bold uppercase tracking-tighter mr-auto">Archive</h2>
-          <button
-            onClick={() => {
-              const params = new URLSearchParams();
-              if (dept !== 'all') params.set('dept', dept);
-              if (search.trim()) params.set('search', search.trim());
-              if (dateFrom) params.set('dateFrom', dateFrom);
-              if (dateTo) params.set('dateTo', dateTo);
-              window.open(`/api/v1/tickets/export?${params.toString()}`, '_blank');
-            }}
-            className="btn-secondary"
-            title={t('export_csv')}
-          >
-            {t('export_csv')}
-          </button>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search agent, ref, support…"
-            className="input-field w-52"
-          />
-          <input
-            type="date"
-            aria-label="Start date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="input-field"
-          />
-          <span className="text-xs font-bold">→</span>
-          <input
-            type="date"
-            aria-label="End date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="input-field"
-          />
-          {(dateFrom || dateTo) && (
-            <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="mono-label border border-[var(--color-border)] px-2 py-1">
-              ✕ Clear
-            </button>
-          )}
-          {allLabels.length > 0 && (
-            <select
-              value={labelFilter}
-              onChange={(e) => setLabelFilter(e.target.value)}
-              className="input-field text-xs font-bold uppercase"
+        <div className="flex items-center gap-3 mb-6 border-b border-[var(--color-border)] pb-5 overflow-x-auto no-scrollbar">
+          <h2 className="text-2xl font-bold uppercase tracking-tight mr-auto shrink-0">Archive</h2>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => {
+                const params = new URLSearchParams();
+                if (dept !== 'all') params.set('dept', dept);
+                if (search.trim()) params.set('search', search.trim());
+                if (dateFrom) params.set('dateFrom', dateFrom);
+                if (dateTo) params.set('dateTo', dateTo);
+                window.open(`/api/v1/tickets/export?${params.toString()}`, '_blank');
+              }}
+              className="px-3 py-1.5 text-[10px] font-bold uppercase border-2 border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:border-[var(--color-accent-blue)] hover:text-white transition-all"
+              title={t('export_csv')}
             >
-              <option value="all">All labels</option>
-              <option value="none">No label</option>
-              <option value="any">Has label</option>
-              {allLabels.map((l) => <option key={l.id} value={l.id}>{l.text}</option>)}
-            </select>
-          )}
+              {t('export_csv')}
+            </button>
+            <div className="h-6 w-px bg-[var(--color-border)] mx-1" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search..."
+              className="bg-bg-elevated border-2 border-border-heavy px-3 py-1.5 text-xs font-bold uppercase placeholder:opacity-30 w-44 focus:border-accent-blue outline-none"
+            />
+            <div className="flex items-center gap-1.5 bg-bg-elevated border-2 border-border-heavy px-2 py-1">
+              <input
+                type="date"
+                aria-label="Start date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="bg-transparent text-[10px] font-bold uppercase outline-none"
+              />
+              <span className="text-[10px] opacity-30">→</span>
+              <input
+                type="date"
+                aria-label="End date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="bg-transparent text-[10px] font-bold uppercase outline-none"
+              />
+            </div>
+            {(dateFrom || dateTo) && (
+              <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[10px] font-bold uppercase text-accent-blue hover:underline px-1">
+                ✕ Clear
+              </button>
+            )}
+            {allLabels.length > 0 && (
+              <select
+                value={labelFilter}
+                onChange={(e) => setLabelFilter(e.target.value)}
+                className="bg-bg-elevated border-2 border-border-heavy px-2 py-1.5 text-[10px] font-bold uppercase outline-none cursor-pointer hover:border-accent-blue"
+              >
+                <option value="all">All labels</option>
+                <option value="none">No label</option>
+                <option value="any">Has label</option>
+                {allLabels.map((l) => <option key={l.id} value={l.id}>{l.text}</option>)}
+              </select>
+            )}
+          </div>
         </div>
 
         {/* Table */}
-        <div className="surface-card overflow-hidden">
+        <div className="bg-bg-surface border-2 border-border-heavy overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             {filteredTickets.length === 0 && !loading ? (
-              <p className="text-center mono-label text-[var(--color-text-muted)] py-12">No results.</p>
+              <div className="flex flex-col items-center justify-center py-20 opacity-30">
+                <p className="text-[10px] font-bold uppercase tracking-widest">No results.</p>
+              </div>
             ) : (
-              <table className="w-full min-w-[1120px] text-sm border-collapse">
+              <table className="w-full text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-[var(--color-border)] bg-bg-elevated text-left font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
-                    <th className="px-4 py-3">Dept</th>
-                    <th className="px-4 py-3">Agent</th>
-                    <th className="px-4 py-3">Ref</th>
-                    <th className="px-4 py-3">Support</th>
-                    <th className="px-4 py-3">Labels</th>
-                    <th className="px-4 py-3">Duration</th>
-                    <th className="px-4 py-3">Created</th>
-                    <th className="px-4 py-3">Closed</th>
+                  <tr className="border-b border-border-heavy bg-bg-elevated text-left font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
+                    <th className="px-4 py-3 font-bold tracking-widest">Dept</th>
+                    <th className="px-4 py-3 font-bold tracking-widest">Agent</th>
+                    <th className="px-4 py-3 font-bold tracking-widest">Ref</th>
+                    <th className="px-4 py-3 font-bold tracking-widest">Support</th>
+                    <th className="px-4 py-3 font-bold tracking-widest">Labels</th>
+                    <th className="px-4 py-3 font-bold tracking-widest">Duration</th>
+                    <th className="px-4 py-3 font-bold tracking-widest">Created</th>
+                    <th className="px-4 py-3 font-bold tracking-widest">Closed</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[var(--color-border)]">
+                <tbody className="divide-y divide-border/40">
                   {filteredTickets.map((ticket) => (
                     <tr
                       key={ticket.id}
                       onClick={() => setPreview(preview?.id === ticket.id ? null : ticket)}
-                      className={`cursor-pointer ${preview?.id === ticket.id ? 'bg-bg-elevated' : 'hover:bg-bg-elevated'}`}
+                      className={`cursor-pointer transition-colors ${preview?.id === ticket.id ? 'bg-bg-elevated' : 'hover:bg-bg-elevated'}`}
                     >
-                      <td className="px-4 py-2.5">
-                        <span className="mono-label border border-[var(--color-border)] px-1.5 py-0.5">{ticket.dept}</span>
+                      <td className="px-4 py-3">
+                        <span className="text-[9px] font-bold border border-border px-1.5 py-0.5 bg-bg-elevated uppercase tracking-widest">{ticket.dept}</span>
                       </td>
-                      <td className="px-4 py-2.5 font-bold">{ticket.agentName}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">
+                      <td className="px-4 py-3 font-bold uppercase tracking-tight">{ticket.agentName}</td>
+                      <td className="px-4 py-3 font-mono text-[10px] text-[var(--color-text-secondary)]">
                         {(ticket.references as Array<{label: string; value: string}> || []).length > 0
                           ? (ticket.references as Array<{label: string; value: string}> || []).map((ref) => (
-                              <span key={ref.label} className="mr-2">
-                                <span className="text-[var(--color-text-secondary)] uppercase text-[9px] font-bold tracking-wide">{ref.label}:</span>{' '}
-                                <span className="font-bold">{ref.value}</span>
+                              <span key={ref.label} className="mr-3 whitespace-nowrap">
+                                <span className="text-[var(--color-text-secondary)] uppercase text-[8px] font-bold tracking-widest opacity-40">{ref.label}:</span>{' '}
+                                <span className="font-bold text-text-primary">{ref.value}</span>
                               </span>
                             ))
-                          : '—'}
+                          : <span className="opacity-20">—</span>}
                       </td>
-                      <td className="px-4 py-2.5 text-[var(--color-text-secondary)]">
-                        {ticket.supportName || <span className="italic">Abandoned</span>}
+                      <td className="px-4 py-3 text-[10px] font-bold uppercase tracking-tight">
+                        {ticket.supportName || <span className="italic opacity-40">Abandoned</span>}
                       </td>
-                      <td className="px-4 py-2.5">
+                      <td className="px-4 py-3">
                         {ticket.labels && (ticket.labels as string[]).length > 0 ? (
-                          <div className="flex gap-1 overflow-x-auto">
+                          <div className="flex gap-1 flex-wrap">
                             {(ticket.labels as string[]).map((id) => {
                               const info = allLabels.find((l) => l.id === id);
                               if (!info) return null;
-                              return <span key={id} className="font-mono text-[9px] uppercase border border-[var(--color-border)] px-1 py-0.5">{info.text}</span>;
+                              return <span key={id} className="font-mono text-[8px] font-bold uppercase border border-border px-1.5 py-0.5 bg-bg-elevated tracking-widest">{info.text}</span>;
                             })}
                           </div>
-                        ) : <span className="opacity-30">—</span>}
+                        ) : <span className="opacity-10">—</span>}
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)]">{duration(ticket)}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(ticket.createdAt)}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-[var(--color-text-secondary)] whitespace-nowrap">{fmt(ticket.closedAt || undefined)}</td>
+                      <td className="px-4 py-3 font-mono text-[10px] font-bold">{duration(ticket)}</td>
+                      <td className="px-4 py-3 font-mono text-[10px] text-[var(--color-text-secondary)] whitespace-nowrap opacity-60">{fmt(ticket.createdAt)}</td>
+                      <td className="px-4 py-3 font-mono text-[10px] text-[var(--color-text-secondary)] whitespace-nowrap opacity-60">{fmt(ticket.closedAt || undefined)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -195,8 +202,8 @@ export default function AdminArchive() {
             )}
           </div>
 
-          <div className="px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between">
-            <span className="mono-label text-[var(--color-text-secondary)]">{tickets.length} chats loaded</span>
+          <div className="px-4 py-3 border-t-2 border-border-heavy flex items-center justify-between bg-bg-elevated/30">
+            <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">{tickets.length} chats loaded</span>
             {hasMore && (
               <button
                 onClick={() => {
@@ -204,7 +211,7 @@ export default function AdminArchive() {
                   if (data?.nextCursor) setCursor(data.nextCursor);
                 }}
                 disabled={loading}
-                className="btn-secondary disabled:opacity-30"
+                className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest border-2 border-border-heavy hover:bg-bg-elevated transition-all disabled:opacity-30"
               >
                 {loading ? 'Loading…' : 'Load more'}
               </button>

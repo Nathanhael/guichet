@@ -305,7 +305,7 @@ if (process.env.NODE_ENV === 'test') {
   v1Router.post('/seed-e2e', async (_req: Request, res: Response) => {
     try {
       const { execSync } = await import('child_process');
-      execSync('npx tsx scripts/seed_e2e.ts', { stdio: 'inherit' });
+      execSync('npx tsx seed.ts --e2e', { stdio: 'inherit' });
       res.json({ success: true });
     } catch (err) {
       logger.error({ err }, 'E2E Seed endpoint failed');

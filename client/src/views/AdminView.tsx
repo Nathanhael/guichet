@@ -127,7 +127,9 @@ export default function AdminView() {
         </aside>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto bg-[var(--color-bg-base)] p-8 custom-scrollbar">
+        <main className={`flex-1 bg-[var(--color-bg-base)] custom-scrollbar ${
+          ['tickets', 'archive'].includes(view) ? 'p-0 overflow-hidden' : 'p-4 overflow-y-auto'
+        }`}>
           {view === 'dashboard' && <Suspense fallback={<LoadingFallback />}><AdminStats /></Suspense>}
           {view === 'satisfaction' && <Suspense fallback={<LoadingFallback />}><AdminSatisfaction /></Suspense>}
           {view === 'team' && <AdminTeam />}
