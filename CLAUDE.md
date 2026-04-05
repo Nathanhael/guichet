@@ -154,7 +154,7 @@ All demo users use password `password123`. The seed script truncates all tables 
 | `refresh_tokens` | Rotating refresh tokens | `userId`, `tokenHash` (SHA-256), `family`, `expiresAt`, `revokedAt` |
 | `saved_views` | Per-user saved ticket filter views | `userId`, `partnerId`, `name`, `filters` (JSONB) |
 | `agent_status_log` | Agent status transitions | `userId`, `partnerId`, `status`, `startedAt`, `endedAt`, `duration` |
-| `daily_agent_status` | Daily time-in-status rollup | `date`, `userId`, `partnerId`, `availableSeconds`, `breakSeconds`, `lunchSeconds`, `meetingSeconds`, `trainingSeconds` |
+| `daily_agent_status` | Daily time-in-status rollup | `date`, `userId`, `partnerId`, `onlineSeconds`, `awaySeconds` |
 | `push_subscriptions` | Web push notification subscriptions | `userId`, `partnerId`, `endpoint`, `keys` (JSONB) |
 
 ### Client (`client/src/`)
@@ -166,6 +166,8 @@ All demo users use password `password123`. The seed script truncates all tables 
 **Real-Time**: `hooks/useSocket.ts` — single global Socket.io instance. Always clean up listeners in `useEffect` return.
 
 **Token Refresh**: `hooks/useTokenRefresh.ts` — proactive access token refresh via `POST /api/v1/auth/refresh`. Timer-based with visibility change detection for tab sleep/resume.
+
+**Navbar**: All 4 views share a unified navbar pattern. Left side: `TESSERA | ROLE_BADGE | PARTNER_NAME` (text only, no logos). Right side: view-specific items + `SettingsPopover` (gear icon, preference toggles) + `UserMenu` (avatar initials, identity/actions dropdown). `SettingsPopover` accepts boolean props to control which items appear per view. `UserMenu` shows account security for all users (modal adapts content: password+MFA for platform operators, notification prefs only for partner users).
 
 **Views**:
 - `PlatformView` — Thin shell (tabs + modal state). Feature modules in `components/platform/`. Each component owns its own tRPC hooks and cache invalidation.
@@ -180,7 +182,7 @@ All demo users use password `password123`. The seed script truncates all tables 
 - `components/agent/` — AgentNav, AgentTicketSidebar, TicketForm
 - `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
 - `utils/` — `statusColors.ts` (getStatusColors, getStatusI18nKey for consistent status dot rendering)
-- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NavToolbar, NeuroToggle, NotificationToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserSecurityModal
+- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, NotificationToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu, UserSecurityModal
 
 **Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
 
@@ -196,11 +198,12 @@ All demo users use password `password123`. The seed script truncates all tables 
 - **Department Assignment**: `memberships.departments` is a JSONB array of dept IDs. Empty/null = generalist (sees all).
 - **TypeScript**: No `any` types. Zod schemas on backend, TypeScript interfaces in `client/src/types/index.ts`.
 - **Argon2id**: Password hashing uses `argon2` (native C bindings). No bcrypt anywhere in the codebase.
-- **Auth Method**: Per-partner setting (`local` | `sso` | `both`) via `authMethodEnum` pgEnum. `both` enables mixed auth with per-user override. Local partners generate temp passwords on invite; SSO partners skip password creation. Invite mutations return `tempPassword: ''` (not `null`) because tRPC without superjson strips null values.
+- **SSO-Only Auth**: Partners authenticate exclusively via SSO. Local auth (password, MFA, lockout) is restricted to platform operators only. Login route, forgot-password, reset-password, `trpc.mfa.*`, and `trpc.user.changePassword` all guard with `isPlatformOperator` check. LoginView shows SSO button primary; "Platform administrator login" link reveals local form.
+- **Auth Method**: Per-partner `authMethodEnum` pgEnum (`local` | `sso` | `both`). Default is `sso`. The `local` and `both` options exist for platform operator contexts only.
 - **Audit Logging**: All significant actions (partner lifecycle, user management, GDPR purges) recorded in `audit_log`.
-- **MFA (TOTP)**: Per-user MFA via `mfaSecret`, `mfaEnabledAt`, `mfaRecoveryCodes` (SHA-256 hashed). Setup/enable/disable via `trpc.mfa.*`. Login challenge returns `{ mfaRequired: true }` and waits for TOTP code re-submission.
-- **Account Lockout**: 5 failed login attempts → 15-minute lockout. State in `failedLoginAttempts` + `lockedUntil` columns. Email notification on lockout (fire-and-forget).
-- **Password Policies**: Min 10 chars, upper/lower/digit/special required, common password blocking, email/name inclusion check. History check prevents reuse of last 5 passwords (Argon2id verified).
+- **MFA (TOTP)**: Platform operators only. Per-user MFA via `mfaSecret`, `mfaEnabledAt`, `mfaRecoveryCodes` (SHA-256 hashed). Setup/enable/disable via `trpc.mfa.*` (guarded to `isPlatformOperator`). Login challenge returns `{ mfaRequired: true }` and waits for TOTP code re-submission.
+- **Account Lockout**: Platform operators only. 5 failed login attempts → 15-minute lockout. State in `failedLoginAttempts` + `lockedUntil` columns. Email notification on lockout (fire-and-forget). `recordFailedLogin` skips non-platform users.
+- **Password Policies**: Platform operators only. Min 10 chars, upper/lower/digit/special required, common password blocking, email/name inclusion check. History check prevents reuse of last 5 passwords (Argon2id verified).
 - **WORM Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Tickets archived with message count summary.
 - **Cursor-Based Pagination**: Ticket list and audit archive use keyset pagination (`createdAt|id` composite cursor). Pattern: fetch `limit+1`, detect hasMore, return `{ items, nextCursor }`.
 - **Platform Operator Bootstrap**: On first startup with no platform operators, auto-creates one from `PLATFORM_ADMIN_EMAIL` (and optional `PLATFORM_ADMIN_PASSWORD`) env vars. Runs before server accepts traffic. Race-safe, non-fatal.
@@ -213,7 +216,7 @@ All demo users use password `password123`. The seed script truncates all tables 
 - **Collision Detection**: `ticket:viewing` / `ticket:left` socket events track who's viewing a ticket. Viewer badges and typing indicators prevent duplicate responses.
 - **PWA**: Progressive Web App with `manifest.json`, `sw.js`, and icons for mobile installation.
 - **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users). Toggle UI in security modal.
-- **Agent Status Visibility**: 5 statuses (available/break/lunch/meeting/training) with distinct color tokens (`accent-green`, `accent-amber`, `accent-orange`, `accent-red`, `accent-blue`). Status persists in Redis across reconnects (Lua script preserves status on re-identify). Visible in QueueSidebar (team panel), AdminTeam (status column), SupportNav (capacity badge). Time-in-status tracked in `agent_status_log`, rolled up hourly to `daily_agent_status`. Stats via `trpc.status.*` (getTeamStatus, getAgentStats, getTeamStats). GDPR: log purged at 30 days, daily rollup retained as aggregate.
+- **Agent Status Visibility**: 2 statuses (online/away) with color tokens (`accent-green` for online, `accent-amber` for away). Auto-away after 5 minutes idle (via `useIdleStatus` hook), auto-online on activity. Status persists in Redis across reconnects (Lua script preserves status on re-identify). Visible in QueueSidebar (team panel), AdminTeam (status column), SupportNav (capacity badge). Time-in-status tracked in `agent_status_log`, rolled up hourly to `daily_agent_status` (`onlineSeconds`, `awaySeconds`). Stats via `trpc.status.*` (getTeamStatus, getAgentStats, getTeamStats). GDPR: log purged at 30 days, daily rollup retained as aggregate.
 - **Push Notifications**: VAPID-based web push via `pushNotification.ts` service, `push.ts` Express route, and `push_subscriptions` table. Client subscribes via `utils/notifications.ts`. Type definitions in `server/types/web-push.d.ts`.
 - **Department Transfer**: Tickets transfer between department queues (not individual agents). Socket event `ticket:transfer` accepts `{ ticketId, departmentId?, note? }`. Optional whisper note for context handoff. Clears support assignment, re-opens ticket, removes all support sockets from room. Service layer: `transferService.ts` + `insertWhisperMessage` in `systemMessage.ts`.
 

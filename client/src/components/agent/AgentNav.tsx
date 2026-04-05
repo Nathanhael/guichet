@@ -1,7 +1,8 @@
 import useStore from '../../store/useStore';
 import { useT } from '../../i18n';
 import ConnectionStatus from '../ConnectionStatus';
-import NavToolbar from '../NavToolbar';
+import SettingsPopover from '../SettingsPopover';
+import UserMenu from '../UserMenu';
 
 interface AgentNavProps {
   logoUrl?: string;
@@ -12,27 +13,20 @@ interface AgentNavProps {
   onShowFeedback: () => void;
 }
 
-/**
- * Top navigation bar for AgentView.
- * Contains: sidebar toggle, logo/industry, user name, connection status,
- * toolbar (lang/dark/notifications), feedback button, sign-out.
- */
 export default function AgentNav({
-  logoUrl,
   partnerName,
-  industry,
   showSidebar,
   onToggleSidebar,
   onShowFeedback,
 }: AgentNavProps) {
   const user = useStore((s) => s.user);
-  const logout = useStore((s) => s.logout);
   const t = useT();
 
   if (!user) return null;
 
   return (
     <nav className="relative z-50 px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] text-[var(--color-text-primary)] flex items-center justify-between">
+      {/* Left side: hamburger + TESSERA + AGENT + partner name */}
       <div className="flex items-center gap-3">
         {showSidebar && (
           <button
@@ -45,40 +39,19 @@ export default function AgentNav({
             </svg>
           </button>
         )}
-        {logoUrl ? (
-          <img src={logoUrl} alt={partnerName} className="h-8 object-contain" />
-        ) : (
-          <span className="font-mono text-[10px] uppercase tracking-wide">{industry} Support</span>
-        )}
-        <span className="mono-label border border-[var(--color-border)] px-2 py-0.5">
-          Agent
+        <span className="font-bold text-2xl uppercase tracking-tighter">TESSERA</span>
+        <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono">
+          {t('agent')}
         </span>
+        <div className="h-6 w-px bg-[var(--color-border)]" />
+        <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
       </div>
 
+      {/* Right side: connection status + gear + avatar */}
       <div className="flex items-center gap-4">
-        <span className="text-sm font-medium text-[var(--color-text-secondary)]">{user.name}</span>
         <ConnectionStatus />
-
-        <NavToolbar />
-
-        <button
-          onClick={onShowFeedback}
-          className="text-[var(--color-text-secondary)] hover:text-white text-sm flex items-center gap-1.5 ml-2 px-3 py-2 hover:bg-[var(--color-accent-blue)]"
-          title={t('feedback')}
-          aria-label={t('feedback')}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-          </svg>
-          {t('feedback')}
-        </button>
-        <button
-          onClick={logout}
-          aria-label={t('sign_out')}
-          className="text-[var(--color-text-secondary)] hover:text-[var(--color-accent-red)] text-sm font-medium ml-2"
-        >
-          {t('sign_out')}
-        </button>
+        <SettingsPopover showAccessibility showNotifications showBionicText />
+        <UserMenu showFeedback showSecurity onFeedback={onShowFeedback} />
       </div>
     </nav>
   );

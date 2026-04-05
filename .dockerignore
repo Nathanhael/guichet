@@ -1,0 +1,11 @@
+# Root dockerignore — used when build context is project root (production client build)
+node_modules
+dist
+.git
+*.md
+!CLAUDE.md
+docs
+testing
+monitoring
+conductor
+.vscode

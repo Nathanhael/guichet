@@ -206,6 +206,11 @@ router.post('/forgot-password', resetPasswordRateLimit, validateBody(z.object({
             return res.json({ success: true, message: 'If an account exists, you will receive a reset link.' });
         }
 
+        // Forgot-password is only for platform operators — return generic success to avoid enumeration
+        if (!user.isPlatformOperator) {
+            return res.json({ message: 'If an account exists with this email, a reset link has been sent.' });
+        }
+
         const token = crypto.randomBytes(32).toString('hex');
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
         const expires = new Date(Date.now() + 3600000).toISOString(); // 1 hour
@@ -244,6 +249,11 @@ router.post('/reset-password', resetPasswordRateLimit, validateBody(z.object({
 
         if (!user || !user.resetPasswordExpires || new Date(user.resetPasswordExpires) < new Date()) {
             return res.status(400).json({ error: 'Invalid or expired reset token' });
+        }
+
+        // Password reset is only for platform operators
+        if (!user.isPlatformOperator) {
+            return res.status(403).json({ error: 'Password reset is not available for this account.' });
         }
 
         // Lockout check — prevents TOTP brute-force via reset token
@@ -333,6 +343,12 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
         if (!user || !user.password) {
             logger.warn({ email: maskEmail(email) }, '[Auth] Local login failed: User not found or no password');
             return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Local login is only available for platform operators
+        if (!user.isPlatformOperator) {
+            logger.warn({ email: maskEmail(email) }, '[Auth] Local login rejected: non-platform user must use SSO');
+            return res.status(403).json({ error: 'Local login is not available. Please use SSO to sign in.' });
         }
 
         // Account lockout check
@@ -439,6 +455,7 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
             user: {
                 id: user.id,
                 name: user.name,
+                email: user.email,
                 lang: user.lang,
                 isPlatformOperator: user.isPlatformOperator,
                 accessibilityPrefs: user.accessibilityPrefs ?? {},
@@ -465,6 +482,12 @@ router.post('/login', loginRateLimit, validateBody(z.object({
         if (!user || !user.password) {
             logger.warn({ id, found: !!user, hasPassword: !!user?.password }, '[Auth] Login failed: User not found or no password');
             return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Local login is only available for platform operators
+        if (!user.isPlatformOperator) {
+            logger.warn({ id }, '[Auth] Local login rejected: non-platform user must use SSO');
+            return res.status(403).json({ error: 'Local login is not available. Please use SSO to sign in.' });
         }
 
         // Account lockout check
@@ -561,6 +584,7 @@ router.post('/login', loginRateLimit, validateBody(z.object({
             user: {
                 id: user.id,
                 name: user.name,
+                email: user.email,
                 lang: user.lang,
                 isPlatformOperator: user.isPlatformOperator,
                 accessibilityPrefs: user.accessibilityPrefs ?? {},

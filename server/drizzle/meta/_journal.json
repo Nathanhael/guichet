@@ -8,6 +8,20 @@
       "when": 1775307392435,
       "tag": "0000_gifted_thunderbolts",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775570400000,
+      "tag": "0001_status_simplification",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775656800000,
+      "tag": "0002_sso_only_default",
+      "breakpoints": true
     }
   ]
 }

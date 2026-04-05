@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { trpc } from '../utils/trpc';
 import { Shield, X, Copy, Check, KeyRound, Bell } from 'lucide-react';
+import useStore from '../store/useStore';
 
 type Step = 'status' | 'setup' | 'verify' | 'recovery' | 'disable' | 'regenerate' | 'password';
 
@@ -12,6 +13,8 @@ const NOTIFICATION_LABELS: Record<string, string> = {
 };
 
 export default function UserSecurityModal({ onClose }: { onClose: () => void }) {
+  const user = useStore((s) => s.user);
+  const isPlatformOperator = user?.isPlatformOperator ?? false;
   const [step, setStep] = useState<Step>('status');
   const [code, setCode] = useState('');
   const [disablePassword, setDisablePassword] = useState('');
@@ -23,7 +26,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
   const [pwSuccess, setPwSuccess] = useState(false);
   const utils = trpc.useUtils();
 
-  const { data: status, isLoading } = trpc.mfa.getStatus.useQuery();
+  const { data: status, isLoading } = trpc.mfa.getStatus.useQuery(undefined, { enabled: isPlatformOperator });
 
   const beginSetup = trpc.mfa.beginSetup.useMutation({
     onSuccess: () => {
@@ -103,64 +106,68 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
             <div className="text-[10px] font-black uppercase opacity-50 text-center py-8">Loading...</div>
           ) : step === 'status' ? (
             <>
-              {/* MFA Status */}
-              <div className="space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Two-Factor Authentication</div>
-                <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 ${status?.enabled ? 'bg-green-600' : 'bg-text-muted'}`} />
-                  <span className="text-sm font-bold uppercase">
-                    {status?.enabled ? 'Enabled' : 'Not Enabled'}
-                  </span>
-                </div>
-                {status?.enabled && status.enabledAt && (
-                  <div className="text-[10px] opacity-50">
-                    Since {new Date(status.enabledAt).toLocaleDateString()}
+              {isPlatformOperator && (
+                <>
+                  {/* MFA Status */}
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Two-Factor Authentication</div>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 ${status?.enabled ? 'bg-green-600' : 'bg-text-muted'}`} />
+                      <span className="text-sm font-bold uppercase">
+                        {status?.enabled ? 'Enabled' : 'Not Enabled'}
+                      </span>
+                    </div>
+                    {status?.enabled && status.enabledAt && (
+                      <div className="text-[10px] opacity-50">
+                        Since {new Date(status.enabledAt).toLocaleDateString()}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="border-t border-border pt-4 space-y-3">
-                {!status?.enabled ? (
-                  <>
-                    <p className="text-[10px] uppercase opacity-60 leading-relaxed">
-                      Protect your account with a time-based one-time password (TOTP) from an authenticator app like Google Authenticator or Authy.
-                    </p>
+                  <div className="border-t border-border pt-4 space-y-3">
+                    {!status?.enabled ? (
+                      <>
+                        <p className="text-[10px] uppercase opacity-60 leading-relaxed">
+                          Protect your account with a time-based one-time password (TOTP) from an authenticator app like Google Authenticator or Authy.
+                        </p>
+                        <button
+                          onClick={() => beginSetup.mutate()}
+                          disabled={busy}
+                          className="w-full p-4 border border-border-heavy bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+                        >
+                          {beginSetup.isPending ? 'Starting...' : 'Enable Two-Factor Authentication'}
+                        </button>
+                      </>
+                    ) : (
+                      <div className="space-y-3">
+                        <button
+                          onClick={() => { setStep('regenerate'); setCode(''); }}
+                          className="w-full p-3 border border-border-heavy font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
+                        >
+                          Regenerate Recovery Codes
+                        </button>
+                        <button
+                          onClick={() => { setStep('disable'); setCode(''); }}
+                          className="w-full p-3 border-2 border-black/30 dark:border-white/30 font-black uppercase text-[10px] tracking-widest opacity-60 hover:opacity-100 hover:border-red-600 hover:text-red-600"
+                        >
+                          Disable Two-Factor Authentication
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Password Change */}
+                  <div className="border-t border-border pt-4 space-y-2">
+                    <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Password</div>
                     <button
-                      onClick={() => beginSetup.mutate()}
-                      disabled={busy}
-                      className="w-full p-4 border border-border-heavy bg-black text-white dark:bg-white dark:text-black font-black uppercase text-[10px] tracking-widest disabled:opacity-30 hover:invert"
+                      onClick={() => { setStep('password'); setPwSuccess(false); changePassword.reset(); }}
+                      className="w-full p-3 border border-border-heavy font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center justify-center gap-2"
                     >
-                      {beginSetup.isPending ? 'Starting...' : 'Enable Two-Factor Authentication'}
-                    </button>
-                  </>
-                ) : (
-                  <div className="space-y-3">
-                    <button
-                      onClick={() => { setStep('regenerate'); setCode(''); }}
-                      className="w-full p-3 border border-border-heavy font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
-                    >
-                      Regenerate Recovery Codes
-                    </button>
-                    <button
-                      onClick={() => { setStep('disable'); setCode(''); }}
-                      className="w-full p-3 border-2 border-black/30 dark:border-white/30 font-black uppercase text-[10px] tracking-widest opacity-60 hover:opacity-100 hover:border-red-600 hover:text-red-600"
-                    >
-                      Disable Two-Factor Authentication
+                      <KeyRound className="h-3 w-3" /> Change Password
                     </button>
                   </div>
-                )}
-              </div>
-
-              {/* Password Change */}
-              <div className="border-t border-border pt-4 space-y-2">
-                <div className="text-[10px] font-bold uppercase tracking-widest opacity-60">Password</div>
-                <button
-                  onClick={() => { setStep('password'); setPwSuccess(false); changePassword.reset(); }}
-                  className="w-full p-3 border border-border-heavy font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center justify-center gap-2"
-                >
-                  <KeyRound className="h-3 w-3" /> Change Password
-                </button>
-              </div>
+                </>
+              )}
 
               {/* Notification Preferences */}
               <div className="border-t border-border pt-4 space-y-3">
@@ -186,7 +193,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 })}
               </div>
             </>
-          ) : step === 'password' ? (
+          ) : step === 'password' && isPlatformOperator ? (
             <>
               {/* Password Change Form */}
               <div className="space-y-4">
@@ -254,7 +261,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 </button>
               </div>
             </>
-          ) : step === 'setup' ? (
+          ) : step === 'setup' && isPlatformOperator ? (
             <>
               {/* Setup: show manual key + verify */}
               <div className="space-y-4">
@@ -305,7 +312,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 </button>
               </div>
             </>
-          ) : step === 'recovery' ? (
+          ) : step === 'recovery' && isPlatformOperator ? (
             <>
               {/* Recovery Codes Display */}
               <div className="space-y-4">
@@ -341,7 +348,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 </button>
               </div>
             </>
-          ) : step === 'disable' ? (
+          ) : step === 'disable' && isPlatformOperator ? (
             <>
               {/* Disable MFA */}
               <div className="space-y-4">
@@ -382,7 +389,7 @@ export default function UserSecurityModal({ onClose }: { onClose: () => void }) 
                 </button>
               </div>
             </>
-          ) : step === 'regenerate' ? (
+          ) : step === 'regenerate' && isPlatformOperator ? (
             <>
               {/* Regenerate Recovery Codes */}
               <div className="space-y-4">

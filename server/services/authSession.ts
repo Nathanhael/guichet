@@ -74,6 +74,7 @@ export function buildAuthResponse(input: {
   user: {
     id: string;
     name: string;
+    email: string;
     lang: string | null;
     isPlatformOperator: boolean | null;
     accessibilityPrefs?: Record<string, unknown> | null;
@@ -87,6 +88,7 @@ export function buildAuthResponse(input: {
     user: {
       id: input.user.id,
       name: input.user.name,
+      email: input.user.email,
       lang: input.user.lang,
       isPlatformOperator: !!input.user.isPlatformOperator,
       accessibilityPrefs: input.user.accessibilityPrefs ?? null,

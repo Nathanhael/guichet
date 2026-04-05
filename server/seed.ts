@@ -110,7 +110,7 @@ async function main() {
     businessHoursTimezone: 'Europe/Brussels',
     slaConfig: { responseMins: 30, resolutionMins: 240 },
     status: 'active',
-    authMethod: 'local',
+    authMethod: 'sso',
     createdAt: ago(90),
     updatedAt: NOW,
   });
@@ -1187,11 +1187,8 @@ async function main() {
       const dayStr = dayDate.toISOString().split('T')[0];
 
       // Vary times per day
-      const availSec = randInt(21600, 28800);  // 6-8 hours
-      const breakSec = randInt(1800, 3600);    // 30-60 min
-      const lunchSec = randInt(1800, 3600);    // 30-60 min
-      const meetingSec = randInt(900, 3600);    // 15-60 min
-      const trainingSec = randInt(900, 1800);   // 15-30 min
+      const availSec = randInt(21600, 28800);  // 6-8 hours online
+      const awaySec = randInt(3600, 10800);    // 1-3 hours away
 
       // Daily rollup
       await db.insert(dailyAgentStatus).values({
@@ -1199,11 +1196,8 @@ async function main() {
         date: dayStr,
         userId: su.id,
         partnerId: su.partnerId,
-        availableSeconds: availSec,
-        breakSeconds: breakSec,
-        lunchSeconds: lunchSec,
-        meetingSeconds: meetingSec,
-        trainingSeconds: trainingSec,
+        onlineSeconds: availSec,
+        awaySeconds: awaySec,
         createdAt: NOW,
       });
 
@@ -1212,14 +1206,9 @@ async function main() {
       baseTime.setHours(8, 0, 0, 0);
 
       const statusEntries: Array<{ status: string; durationSec: number }> = [
-        { status: 'available', durationSec: Math.floor(availSec * 0.4) },
-        { status: 'break', durationSec: breakSec },
-        { status: 'available', durationSec: Math.floor(availSec * 0.2) },
-        { status: 'lunch', durationSec: lunchSec },
-        { status: 'available', durationSec: Math.floor(availSec * 0.2) },
-        { status: 'meeting', durationSec: meetingSec },
-        { status: 'available', durationSec: Math.floor(availSec * 0.2) },
-        { status: 'training', durationSec: trainingSec },
+        { status: 'online', durationSec: Math.floor(availSec * 0.6) },
+        { status: 'away', durationSec: awaySec },
+        { status: 'online', durationSec: Math.floor(availSec * 0.4) },
       ];
 
       let cursor = baseTime.getTime();

@@ -30,6 +30,7 @@ describe('auth session helpers', () => {
       user: {
         id: 'user-1',
         name: 'Alice',
+        email: 'alice@example.com',
         lang: 'en',
         isPlatformOperator: false,
       },
@@ -63,6 +64,7 @@ describe('auth session helpers', () => {
     expect(response.user).toEqual({
       id: 'user-1',
       name: 'Alice',
+      email: 'alice@example.com',
       lang: 'en',
       isPlatformOperator: false,
       accessibilityPrefs: null,
@@ -144,6 +146,7 @@ describe('auth session helpers', () => {
       user: {
         id: 'platform-1',
         name: 'Bob',
+        email: 'bob@example.com',
         lang: 'en',
         isPlatformOperator: true,
       },

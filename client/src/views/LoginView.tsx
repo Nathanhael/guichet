@@ -42,6 +42,7 @@ export default function LoginView() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [viewMode, setViewMode] = useState<'standard' | 'demo' | 'forgot' | 'reset' | 'mfa'>('standard');
+  const [showPlatformLogin, setShowPlatformLogin] = useState(false);
   const [resetToken, setResetToken] = useState('');
   const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | null>(null);
   const [totpCode, setTotpCode] = useState('');
@@ -351,14 +352,15 @@ export default function LoginView() {
           <div>
             <h1 className="text-5xl font-mono font-bold uppercase tracking-tighter italic relative z-10">Tessera</h1>
             <p className="mono-label mt-2 relative z-10" style={{ opacity: 0.8 }}>
-              {viewMode === 'standard' ? t('secure_auth') :
+              {viewMode === 'standard' && !showPlatformLogin ? t('sso_login_description') :
+               viewMode === 'standard' && showPlatformLogin ? t('secure_auth') :
                viewMode === 'forgot' ? t('reset_password_title') :
                viewMode === 'reset' ? t('create_new_password') :
                viewMode === 'mfa' ? 'Verify Identity' :
                t('select_user')}
             </p>
           </div>
-          {(viewMode === 'standard' || viewMode === 'demo') && (
+          {(viewMode === 'demo' || (viewMode === 'standard' && showPlatformLogin)) && (
             <button
               onClick={() => { setError(''); setSuccessMessage(''); setViewMode(viewMode === 'standard' ? 'demo' : 'standard'); }}
               className="mono-label border border-current px-3 py-1.5 hover:bg-[var(--color-bg-base)] hover:text-[var(--color-text-primary)]"
@@ -369,8 +371,45 @@ export default function LoginView() {
           )}
         </div>
 
-        {viewMode === 'standard' && (
+        {viewMode === 'standard' && !showPlatformLogin && (
           <div className="p-8 space-y-6 bg-[var(--color-bg-surface)]">
+            {error && (
+              <div className="p-3 border border-[var(--color-accent-red)] text-[var(--color-accent-red)] flex items-center gap-3">
+                <span className="text-lg font-bold">!</span>
+                <p className="mono-label">{error}</p>
+              </div>
+            )}
+            <p className="mono-label text-[var(--color-text-secondary)] leading-relaxed">{t('sso_login_description')}</p>
+            {/* TODO: Replace /api/v1/auth/sso/login with the correct universal SSO endpoint when available */}
+            <button
+              onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }}
+              className="w-full py-3 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] font-mono font-bold uppercase tracking-widest text-sm hover:bg-[var(--color-accent-blue)] hover:text-white flex items-center justify-center gap-4"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" /></svg>
+              <span>{t('sign_in_sso')}</span>
+            </button>
+            <div className="text-center pt-2">
+              <button
+                type="button"
+                onClick={() => { setShowPlatformLogin(true); setError(''); setSuccessMessage(''); }}
+                className="mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:underline underline-offset-4"
+              >
+                {t('platform_admin_login')}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'standard' && showPlatformLogin && (
+          <div className="p-8 space-y-6 bg-[var(--color-bg-surface)]">
+            <button
+              type="button"
+              onClick={() => { setShowPlatformLogin(false); setError(''); setSuccessMessage(''); }}
+              className="mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] flex items-center gap-1.5"
+            >
+              <span>←</span>
+              <span>{t('back_to_sso')}</span>
+            </button>
             {successMessage && (
               <div className="p-3 border border-[var(--color-accent-green)] text-[var(--color-accent-green)] flex items-center gap-3">
                 <span className="text-lg font-bold">✓</span>
@@ -411,14 +450,6 @@ export default function LoginView() {
                 {isLoginLoading ? <span>{t('authenticating')}</span> : <><span>{t('login_btn')}</span><span>➔</span></>}
               </button>
             </form>
-            <div className="relative flex items-center justify-center py-4">
-              <div className="absolute border-t border-[var(--color-border)] w-full" />
-              <span className="bg-[var(--color-bg-surface)] px-4 mono-label text-[var(--color-text-faint)] relative z-10 italic">{t('sso_enterprise')}</span>
-            </div>
-            <button onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }} className="btn-secondary w-full flex items-center justify-center gap-4">
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" /></svg>
-              <span className="mono-label">{t('sso_microsoft')}</span>
-            </button>
           </div>
         )}
 

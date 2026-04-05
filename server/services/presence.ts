@@ -62,7 +62,7 @@ export async function broadcastOnlineSupport(partnerId: string) {
         list.push({
           userId: data.userId,
           name: data.name,
-          status: data.status || 'available',
+          status: data.status || 'online',
         });
       }
     }
@@ -100,7 +100,7 @@ export async function identifyUser(userId: string, role: string, name: string, p
           'role', role,
           'partnerId', partnerId,
           'isPlatformOperator', isPlatformOp,
-          'status', 'available',
+          'status', 'online',
           'statusChangedAt', ARGV[7],
           'count', '1')
       else

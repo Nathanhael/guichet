@@ -29,6 +29,9 @@ export const mfaRouter = router({
    * Get current MFA status for the authenticated user.
    */
   getStatus: protectedProcedure.query(async ({ ctx }) => {
+    if (!ctx.user.isPlatformOperator) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'MFA is only available for platform operators' });
+    }
     const userRows = await db.select({
       mfaEnabledAt: users.mfaEnabledAt,
     }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
@@ -45,6 +48,9 @@ export const mfaRouter = router({
    * Does NOT enable MFA yet — the user must verify a code first.
    */
   beginSetup: protectedProcedure.mutation(async ({ ctx }) => {
+    if (!ctx.user.isPlatformOperator) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: 'MFA is only available for platform operators' });
+    }
     const userRows = await db.select({
       email: users.email,
       mfaEnabledAt: users.mfaEnabledAt,
@@ -71,6 +77,9 @@ export const mfaRouter = router({
   enable: protectedProcedure
     .input(z.object({ code: z.string().length(6) }))
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.isPlatformOperator) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'MFA is only available for platform operators' });
+      }
       const userRows = await db.select({
         mfaSecret: users.mfaSecret,
         mfaEnabledAt: users.mfaEnabledAt,
@@ -134,6 +143,9 @@ export const mfaRouter = router({
   disable: protectedProcedure
     .input(z.object({ code: z.string().length(6), password: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.isPlatformOperator) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'MFA is only available for platform operators' });
+      }
       const userRows = await db.select({
         mfaSecret: users.mfaSecret,
         mfaEnabledAt: users.mfaEnabledAt,
@@ -201,6 +213,9 @@ export const mfaRouter = router({
   regenerateRecoveryCodes: protectedProcedure
     .input(z.object({ code: z.string().length(6) }))
     .mutation(async ({ ctx, input }) => {
+      if (!ctx.user.isPlatformOperator) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'MFA is only available for platform operators' });
+      }
       const userRows = await db.select({
         mfaSecret: users.mfaSecret,
         mfaEnabledAt: users.mfaEnabledAt,

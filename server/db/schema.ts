@@ -20,7 +20,7 @@ export const partners = pgTable('partners', {
   businessHoursEnd: text('business_hours_end'),
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   status: text('status').notNull().default('active'),
-  authMethod: authMethodEnum('auth_method').notNull().default('local'),
+  authMethod: authMethodEnum('auth_method').notNull().default('sso'),
   // SLA configuration
   slaConfig: jsonb('sla_config').default({}),
   // AI configuration
@@ -488,11 +488,8 @@ export const dailyAgentStatus = pgTable('daily_agent_status', {
   date: text('date').notNull(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
-  availableSeconds: integer('available_seconds').notNull().default(0),
-  breakSeconds: integer('break_seconds').notNull().default(0),
-  lunchSeconds: integer('lunch_seconds').notNull().default(0),
-  meetingSeconds: integer('meeting_seconds').notNull().default(0),
-  trainingSeconds: integer('training_seconds').notNull().default(0),
+  onlineSeconds: integer('online_seconds').notNull().default(0),
+  awaySeconds: integer('away_seconds').notNull().default(0),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({
   partnerDateIdx: index('idx_daily_agent_status_partner_date').on(table.partnerId, table.date),

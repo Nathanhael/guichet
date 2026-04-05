@@ -16,7 +16,6 @@ import CustomerInfoPanel from '../components/support/CustomerInfoPanel';
 import AiCopilotSidebar from '../components/support/AiCopilotSidebar';
 import SplitChatLayout from '../components/support/SplitChatLayout';
 import TicketPreviewCard from '../components/support/TicketPreviewCard';
-import AgentStatusStats from '../components/admin/AgentStatusStats';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 import { Ticket } from '../types';
@@ -65,7 +64,6 @@ export default function SupportView() {
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showMyStats, setShowMyStats] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showCustomerInfo, setShowCustomerInfo] = useState(true);
   const [showCopilot, setShowCopilot] = useState(true);
@@ -202,11 +200,8 @@ export default function SupportView() {
     { id: 'close-tab', labelKey: 'cmd_close_tab', groupKey: 'cmd_group_actions', execute: () => { if (activeTab) closeTab(activeTab); }, enabled: !!activeTab, keywords: ['close', 'tab'] },
     { id: 'close-ticket', labelKey: 'cmd_close_ticket', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.triggerCloseTicket(), enabled: !!activeTab, keywords: ['resolve', 'close', 'end'] },
     // Status
-    { id: 'status-available', labelKey: 'cmd_status_available', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'available' }), keywords: ['available', 'online'] },
-    { id: 'status-break', labelKey: 'cmd_status_break', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'break' }), keywords: ['break', 'pause'] },
-    { id: 'status-lunch', labelKey: 'cmd_status_lunch', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'lunch' }), keywords: ['lunch', 'eat'] },
-    { id: 'status-meeting', labelKey: 'cmd_status_meeting', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'meeting' }), keywords: ['meeting', 'call'] },
-    { id: 'status-training', labelKey: 'cmd_status_training', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'training' }), keywords: ['training', 'learn'] },
+    { id: 'status-online', labelKey: 'cmd_status_online', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'online' }), keywords: ['online', 'available'] },
+    { id: 'status-away', labelKey: 'cmd_status_away', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'away' }), keywords: ['away', 'break', 'pause'] },
     // View & Toggles
     { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
     { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
@@ -277,24 +272,6 @@ export default function SupportView() {
         )}
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
-          {/* My Stats toggle + panel (hidden in preview mode) */}
-          {viewMode !== 'preview' && (
-            <div className="border-b border-border">
-              <button
-                onClick={() => setShowMyStats((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-text-primary bg-bg-surface hover:bg-bg-elevated border-b border-border"
-              >
-                <span>{t('my_stats')}</span>
-                <span>{showMyStats ? '\u25B2' : '\u25BC'}</span>
-              </button>
-              {showMyStats && user && (
-                <div className="px-4 pb-3">
-                  <AgentStatusStats userId={user.id} />
-                </div>
-              )}
-            </div>
-          )}
-
           {/* ChatTabBar (hidden in preview mode) */}
           {viewMode !== 'preview' && (
             <ChatTabBar

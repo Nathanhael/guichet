@@ -10,21 +10,18 @@ interface StatusOption {
 }
 
 const STATUSES: StatusOption[] = [
-  { key: 'available', label: 'status_available', dot: 'bg-accent-green' },
-  { key: 'break', label: 'status_break', dot: 'bg-accent-amber' },
-  { key: 'lunch', label: 'status_lunch', dot: 'bg-accent-orange' },
-  { key: 'meeting', label: 'status_meeting', dot: 'bg-accent-red' },
-  { key: 'training', label: 'status_training', dot: 'bg-accent-blue' },
+  { key: 'online', label: 'status_online', dot: 'bg-accent-green' },
+  { key: 'away', label: 'status_away', dot: 'bg-accent-amber' },
 ];
 
 /**
- * Support staff status picker (available / break / lunch / meeting / training).
+ * Support staff status picker (online / away).
  * Emits `support:status` to the server so admins and other staff can see availability.
  */
 export default function StatusPicker() {
   const user = useStore((s) => s.user);
   const setAgentStatus = useStore((s) => s.setAgentStatus);
-  const [value, setValue] = useState('available');
+  const [value, setValue] = useState('online');
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const t = useT();

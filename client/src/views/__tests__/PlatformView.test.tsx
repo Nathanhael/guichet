@@ -40,6 +40,14 @@ vi.mock('../../components/LanguageSwitcher', () => ({
   default: () => <div data-testid="language-switcher" />,
 }));
 
+vi.mock('../../components/SettingsPopover', () => ({
+  default: () => <div data-testid="settings-popover" />,
+}));
+
+vi.mock('../../components/UserMenu', () => ({
+  default: () => <div data-testid="user-menu" />,
+}));
+
 vi.mock('../../components/admin/PlatformSystemHealth', () => ({
   default: () => <div data-testid="system-health" />,
 }));
@@ -109,10 +117,10 @@ describe('PlatformView', () => {
     vi.clearAllMocks();
   });
 
-  it('renders nav bar with TESSERA brand and operator badge', () => {
+  it('renders nav bar with TESSERA brand and platform badge', () => {
     render(<PlatformView />);
     expect(screen.getByText('TESSERA')).toBeInTheDocument();
-    expect(screen.getByText('platform_operator')).toBeInTheDocument();
+    expect(screen.getByText('platform')).toBeInTheDocument();
   });
 
   it('renders all platform tab buttons', () => {
@@ -156,10 +164,9 @@ describe('PlatformView', () => {
     expect(screen.getByTestId('audit-log')).toBeInTheDocument();
   });
 
-  it('calls logout when sign out is clicked', () => {
+  it('renders user menu in nav bar', () => {
     render(<PlatformView />);
-    fireEvent.click(screen.getByText(/sign_out/));
-    expect(mockLogout).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('user-menu')).toBeInTheDocument();
   });
 
   it('opens CreatePartnerModal when PartnerList triggers create', () => {

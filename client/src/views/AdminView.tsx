@@ -2,10 +2,9 @@ import React, { lazy, Suspense, useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
-import DarkModeToggle from '../components/DarkModeToggle';
-import NeuroToggle from '../components/NeuroToggle';
-import LanguageSwitcher from '../components/LanguageSwitcher';
 import PartnerSwitcher from '../components/PartnerSwitcher';
+import SettingsPopover from '../components/SettingsPopover';
+import UserMenu from '../components/UserMenu';
 import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
@@ -31,13 +30,12 @@ const LoadingFallback = () => (
 type AdminTab = 'dashboard' | 'satisfaction' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned_responses' | 'knowledge_base' | 'webhooks';
 
 export default function AdminView() {
-  const { user, logout, memberships, activeMembershipId } = useStoreShallow(s => ({
+  const { user, memberships, activeMembershipId } = useStoreShallow(s => ({
     user: s.user,
-    logout: s.logout,
     memberships: s.memberships,
     activeMembershipId: s.activeMembershipId,
   }));
-  const { partnerName, manifest } = usePartner();
+  const { partnerName } = usePartner();
   const t = useT();
   const [view, setView] = useState<AdminTab>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -69,45 +67,28 @@ export default function AdminView() {
     <ErrorBoundary>
     <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
       <nav className="bg-[var(--color-bg-surface)] px-4 md:px-8 py-3 md:py-4 flex items-center justify-between gap-4 md:gap-8 sticky top-0 z-50 border-b border-[var(--color-border)]">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setSidebarOpen((v) => !v)}
-              className="p-1.5 hover:bg-[var(--color-accent-blue)] hover:text-white"
-              aria-label={t('toggle_sidebar')}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <span className="font-bold text-2xl tracking-tighter uppercase">Tessera</span>
-            <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide">Admin</span>
-            <span className="text-[var(--color-text-muted)] mx-1 select-none">/</span>
-            {manifest.logoUrl ? (
-              <img src={manifest.logoUrl} alt={partnerName} className="h-6 object-contain" />
-            ) : (
-              <span className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] text-[10px] font-bold uppercase font-mono">{partnerName.charAt(0)}</span>
-            )}
-            <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setSidebarOpen((v) => !v)}
+            className="p-1.5 hover:bg-[var(--color-accent-blue)] hover:text-white"
+            aria-label={t('toggle_sidebar')}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="font-bold text-2xl tracking-tighter uppercase">TESSERA</span>
+          <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono">
+            {t('admin')}
+          </span>
+          <div className="h-6 w-px bg-[var(--color-border)]" />
+          <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
         </div>
 
         <div className="flex items-center gap-4 shrink-0">
-          <div className="flex flex-col items-end mr-2">
-            <span className="text-[10px] font-bold uppercase tracking-tight">{user.name}</span>
-            <span className="text-[8px] text-[var(--color-text-secondary)] font-bold uppercase tracking-wide">{user.role}</span>
-          </div>
-
           <PartnerSwitcher />
-
-          <div className="flex items-center gap-2 bg-bg-elevated p-1 border border-[var(--color-border)]">
-            <LanguageSwitcher />
-            <NeuroToggle />
-            <DarkModeToggle />
-            <button onClick={logout} className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white" title={t('logout')}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-            </button>
-          </div>
+          <SettingsPopover showBionicText />
+          <UserMenu showSecurity />
         </div>
       </nav>
 

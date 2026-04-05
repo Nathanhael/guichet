@@ -9,14 +9,14 @@ function formatSeconds(s: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+// Recharts Tooltip formatter — typed to satisfy Formatter<ValueType, NameType>
+const tooltipFormatter = (value: number | string) => formatSeconds(Number(value) || 0);
+
 interface DailyStatusRow {
   date: string;
   userId: string;
-  availableSeconds: number;
-  breakSeconds: number;
-  lunchSeconds: number;
-  meetingSeconds: number;
-  trainingSeconds: number;
+  onlineSeconds: number;
+  awaySeconds: number;
 }
 
 interface AgentStatusStatsProps {
@@ -36,11 +36,8 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
   const chartData = ((teamStats || []) as DailyStatusRow[]).map((row) => ({
     name: row.userId.slice(0, 8),
     date: row.date,
-    Available: row.availableSeconds,
-    Break: row.breakSeconds,
-    Lunch: row.lunchSeconds,
-    Meeting: row.meetingSeconds,
-    Training: row.trainingSeconds,
+    Online: row.onlineSeconds,
+    Away: row.awaySeconds,
   }));
 
   return (
@@ -77,7 +74,7 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
               tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }}
             />
             <Tooltip
-              formatter={(value) => formatSeconds(Number(value) || 0)}
+              formatter={tooltipFormatter as never}
               contentStyle={{
                 backgroundColor: 'var(--color-bg-surface)',
                 border: '1px solid var(--color-border-heavy)',
@@ -86,11 +83,8 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
               }}
             />
             <Legend wrapperStyle={{ fontFamily: 'JetBrains Mono', fontSize: 10 }} />
-            <Bar dataKey="Available" stackId="a" fill="var(--color-accent-green)" />
-            <Bar dataKey="Break" stackId="a" fill="var(--color-accent-amber)" />
-            <Bar dataKey="Lunch" stackId="a" fill="var(--color-accent-orange)" />
-            <Bar dataKey="Meeting" stackId="a" fill="var(--color-accent-red)" />
-            <Bar dataKey="Training" stackId="a" fill="var(--color-accent-blue)" />
+            <Bar dataKey="Online" fill="var(--color-accent-green)" />
+            <Bar dataKey="Away" fill="var(--color-accent-amber)" />
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -109,7 +103,7 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
                 tick={{ fontSize: 10, fontFamily: 'JetBrains Mono' }}
               />
               <Tooltip
-                formatter={(value) => formatSeconds(Number(value) || 0)}
+                formatter={tooltipFormatter as never}
                 contentStyle={{
                   backgroundColor: 'var(--color-bg-surface)',
                   border: '1px solid var(--color-border-heavy)',
@@ -117,11 +111,8 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
                   fontSize: 11,
                 }}
               />
-              <Line type="monotone" dataKey="Available" stroke="var(--color-accent-green)" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Break" stroke="var(--color-accent-amber)" strokeWidth={1.5} dot={false} />
-              <Line type="monotone" dataKey="Lunch" stroke="var(--color-accent-orange)" strokeWidth={1.5} dot={false} />
-              <Line type="monotone" dataKey="Meeting" stroke="var(--color-accent-red)" strokeWidth={1.5} dot={false} />
-              <Line type="monotone" dataKey="Training" stroke="var(--color-accent-blue)" strokeWidth={1.5} dot={false} />
+              <Line type="monotone" dataKey="Online" stroke="var(--color-accent-green)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="Away" stroke="var(--color-accent-amber)" strokeWidth={1.5} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -129,14 +120,11 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
 
       {chartData.length > 0 && (
         <div className="flex gap-4 flex-wrap mt-3 pt-3 border-t border-border">
-          {(['Available', 'Break', 'Lunch', 'Meeting', 'Training'] as const).map((key) => {
+          {(['Online', 'Away'] as const).map((key) => {
             const total = chartData.reduce((sum, row) => sum + ((row as unknown as Record<string, number>)[key] || 0), 0);
             const colorMap: Record<string, string> = {
-              Available: 'bg-accent-green',
-              Break: 'bg-accent-amber',
-              Lunch: 'bg-accent-orange',
-              Meeting: 'bg-accent-red',
-              Training: 'bg-accent-blue',
+              Online: 'bg-accent-green',
+              Away: 'bg-accent-amber',
             };
             return (
               <div key={key} className="flex items-center gap-1.5">
