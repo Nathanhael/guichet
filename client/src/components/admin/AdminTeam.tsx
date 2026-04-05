@@ -127,20 +127,20 @@ export default function AdminTeam() {
         ))}
       </div>
 
-      {/* Advanced Filter Hints */}
+      {/* Quick Filter Tags */}
       <div className="flex flex-wrap gap-2 items-center px-1">
-        <span className="text-[8px] font-bold uppercase tracking-widest text-text-muted">Quick Tags:</span>
-        {['Grants', 'Global', 'Admin', 'Support', 'Generalist'].map(tag => (
+        <span className="text-[8px] font-bold uppercase tracking-widest text-text-muted">Filter:</span>
+        {['Agent', 'Support', 'Admin', 'Generalist'].map(tag => (
           <button
             key={tag}
             onClick={() => handleQuickFilter(tag)}
             className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-tighter border transition-colors ${
-              search.toLowerCase() === tag.toLowerCase() 
-                ? 'bg-accent-blue text-white border-accent-blue' 
+              search.toLowerCase() === tag.toLowerCase()
+                ? 'bg-accent-blue text-white border-accent-blue'
                 : 'border-border text-text-secondary hover:border-text-muted'
             }`}
           >
-            #{tag}
+            {tag}
           </button>
         ))}
       </div>
