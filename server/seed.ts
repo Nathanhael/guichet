@@ -190,7 +190,7 @@ async function seedFull() {
         userId: user.id,
         partnerId: pId,
         role: role as any,
-        departments: faker.helpers.arrayElements(DEPARTMENTS.map(d => d.id), { min: 1, max: 3 }),
+        departments: role === 'agent' ? [] : faker.helpers.arrayElements(DEPARTMENTS.map(d => d.id), { min: 1, max: 3 }),
       });
     }
   }

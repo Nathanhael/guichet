@@ -538,7 +538,7 @@ export const partnerRouter = router({
           userId: userId,
           partnerId: partnerId,
           role: input.role,
-          departments: input.departments || []
+          departments: input.role === 'agent' ? [] : (input.departments || [])
         });
 
         await db.insert(auditLog).values({
@@ -626,7 +626,7 @@ export const partnerRouter = router({
             userId: newUserId,
             partnerId: partnerId,
             role: input.role,
-            departments: input.departments || []
+            departments: input.role === 'agent' ? [] : (input.departments || [])
           });
 
           // 5. Audit log
@@ -666,8 +666,11 @@ export const partnerRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
         }
 
+        // Agents don't have department assignments — they select per ticket
+        const depts = membership[0].role === 'agent' ? [] : (input.departments || []);
+
         await db.update(memberships)
-          .set({ departments: input.departments || [] })
+          .set({ departments: depts })
           .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, partnerId)));
 
         await db.insert(auditLog).values({
