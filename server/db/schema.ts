@@ -8,6 +8,7 @@ export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'pending', 'clo
 export const severityEnum = pgEnum('severity', ['low', 'medium', 'high', 'critical']);
 export const alertStatusEnum = pgEnum('alert_status', ['active', 'acknowledged', 'resolved']);
 export const authMethodEnum = pgEnum('auth_method', ['local', 'sso', 'both']);
+export const membershipSourceEnum = pgEnum('membership_source', ['sso', 'manual']);
 
 export const partners = pgTable('partners', {
   id: text('id').primaryKey(),
@@ -83,6 +84,7 @@ export const memberships = pgTable('memberships', {
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   role: roleEnum('role').notNull(),
   departments: jsonb('departments').default([]),
+  source: membershipSourceEnum('source').notNull().default('sso'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => ({
   userPartnerIdx: uniqueIndex('idx_memberships_user_partner').on(table.userId, table.partnerId),
