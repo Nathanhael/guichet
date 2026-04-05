@@ -107,7 +107,6 @@ export interface ZenSettings {
 export interface Label {
   id: string;
   name: string;
-  text?: string; // fallback
   color: string;
 }
 
