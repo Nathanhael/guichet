@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QueueSidebar Mockup v2 — Tessera</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --bg-base: #09090b;
+    --bg-surface: #18181b;
+    --bg-elevated: #27272a;
+    --border: #27272a;
+    --border-heavy: #3f3f46;
+    --text-primary: #e4e4e7;
+    --text-secondary: #a1a1aa;
+    --text-muted: #52525b;
+    --text-faint: #3f3f46;
+    --accent-blue: #3b82f6;
+    --accent-purple: #a855f7;
+    --accent-red: #ef4444;
+    --accent-green: #22c55e;
+    --accent-amber: #f59e0b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #111;
+    color: var(--text-primary);
+    padding: 40px;
+  }
+
+  h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--text-muted);
+    margin-bottom: 32px;
+    text-align: center;
+  }
+
+  .comparison {
+    display: flex;
+    gap: 48px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .mockup-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .mockup-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent-blue);
+    padding: 4px 12px;
+    border: 1px solid var(--accent-blue);
+  }
+
+  .sidebar {
+    width: 320px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: 780px;
+    overflow: hidden;
+  }
+
+  /* ─── HEADER ─── */
+  .sidebar-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .header-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+
+  .bookmark-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--text-muted);
+  }
+
+  .tab-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 5px 0;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-primary);
+    opacity: 0.5;
+    cursor: pointer;
+  }
+
+  .tab-btn.active {
+    background: var(--text-primary);
+    color: var(--bg-base);
+    opacity: 1;
+  }
+
+  .dept-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px 0;
+  }
+
+  .dept-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-primary);
+    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  .dept-chip.active {
+    background: var(--text-primary);
+    color: var(--bg-base);
+    opacity: 1;
+  }
+
+  .dept-count {
+    font-size: 8px;
+    color: var(--accent-blue);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ─── TICKET LIST ─── */
+  .ticket-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+  /* ─── TICKET ITEM ─── */
+  .ticket-item {
+    padding: 10px 12px 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    position: relative;
+  }
+
+  .ticket-item:hover {
+    background: var(--bg-elevated);
+  }
+
+  .ticket-item.is-active {
+    border-left: 3px solid var(--accent-blue);
+    background: rgba(59, 130, 246, 0.06);
+    padding-left: 13px;
+  }
+
+  .ticket-item.is-unread {
+    background: rgba(59, 130, 246, 0.04);
+  }
+
+  .ticket-item.is-active.is-unread {
+    background: rgba(59, 130, 246, 0.08);
+  }
+
+  /* Row 1: dept + status + name + time */
+  .ticket-top-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+
+  .dept-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 1px 5px;
+    border: 1px solid var(--accent-blue);
+    color: var(--accent-blue);
+    flex-shrink: 0;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .status-dot.open { background: var(--accent-green); }
+  .status-dot.pending { background: var(--accent-purple); }
+
+  .agent-name {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .timestamp {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
+  /* Row 2: agent avatars + unread count */
+  .ticket-bottom-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Agent monogram badges */
+  .agent-badges {
+    display: flex;
+    align-items: center;
+  }
+
+  .agent-badge {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    border: 1.5px solid var(--bg-surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    position: relative;
+    cursor: default;
+  }
+
+  .agent-badge + .agent-badge {
+    margin-left: -6px;
+  }
+
+  .agent-badge.self {
+    background: var(--accent-blue);
+    color: white;
+    border-color: var(--bg-surface);
+  }
+
+  /* Tooltip */
+  .agent-badge .tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-base);
+    border: 1px solid var(--border-heavy);
+    padding: 4px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap;
+    z-index: 10;
+  }
+
+  .agent-badge:hover .tooltip {
+    display: block;
+  }
+
+  .sentiment-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .unread-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    background: var(--accent-blue);
+    color: white;
+    min-width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  /* ─── FOOTER ─── */
+  .sidebar-footer {
+    border-top: 1px solid var(--border);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .footer-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+
+  .footer-capacity {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--accent-green);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .footer-capacity::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent-green);
+  }
+
+  /* ─── ARCHIVE VIEW ─── */
+  .archive-search {
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .archive-search-input {
+    flex: 1;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-primary);
+    outline: none;
+  }
+
+  .archive-search-input::placeholder {
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 9px;
+  }
+
+  .ticket-item.archived {
+    opacity: 0.7;
+  }
+
+  .ticket-item.archived:hover {
+    opacity: 1;
+  }
+
+  .status-badge-closed {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    border: 1px solid var(--text-faint);
+    padding: 1px 5px;
+    flex-shrink: 0;
+  }
+
+  .status-badge-resolved {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent-green);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    padding: 1px 5px;
+    flex-shrink: 0;
+  }
+
+  /* ─── ANNOTATIONS ─── */
+  .annotation-group {
+    margin-top: 24px;
+    max-width: 320px;
+  }
+
+  .annotation {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+  }
+
+  .annotation-marker {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--accent-green);
+    flex-shrink: 0;
+    width: 16px;
+  }
+
+  .annotation-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  .divider {
+    width: 1px;
+    background: var(--border-heavy);
+    align-self: stretch;
+    margin: 0 8px;
+  }
+</style>
+</head>
+<body>
+
+<h1>QueueSidebar Redesign v2 — Tessera</h1>
+
+<div class="comparison">
+
+  <!-- ─── QUEUE TAB ─── -->
+  <div class="mockup-column">
+    <div class="mockup-label">Queue Tab</div>
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="header-row">
+          <span class="header-title">Queue</span>
+          <svg class="bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="tab-row">
+          <div class="tab-btn active">Queue</div>
+          <div class="tab-btn">Archive</div>
+        </div>
+        <div class="dept-row">
+          <div class="dept-chip active">All <span class="dept-count">9</span></div>
+          <div class="dept-chip">Dispatch <span class="dept-count">5</span></div>
+          <div class="dept-chip">Billing <span class="dept-count">4</span></div>
+        </div>
+      </div>
+
+      <div class="ticket-list">
+
+        <!-- Ticket 1: active + joined by self + another agent + unread -->
+        <div class="ticket-item is-active is-unread">
+          <div class="ticket-top-row">
+            <span class="dept-badge">BIL</span>
+            <span class="status-dot open"></span>
+            <span class="agent-name">Kelvin Ferry-Okuneva</span>
+            <span class="timestamp">08 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge self">
+                <span>YO</span>
+                <span class="tooltip">You</span>
+              </div>
+              <div class="agent-badge">
+                <span>AR</span>
+                <span class="tooltip">Amani Reeves</span>
+              </div>
+            </div>
+            <span class="sentiment-dot" style="background: var(--accent-red);"></span>
+            <span class="unread-count">3</span>
+          </div>
+        </div>
+
+        <!-- Ticket 2: joined by self, read -->
+        <div class="ticket-item">
+          <div class="ticket-top-row">
+            <span class="dept-badge">BIL</span>
+            <span class="status-dot open"></span>
+            <span class="agent-name">Amani Lockman</span>
+            <span class="timestamp">11 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge self">
+                <span>YO</span>
+                <span class="tooltip">You</span>
+              </div>
+            </div>
+            <span class="sentiment-dot" style="background: var(--accent-green);"></span>
+          </div>
+        </div>
+
+        <!-- Ticket 3: pending, unread, no one joined -->
+        <div class="ticket-item is-unread">
+          <div class="ticket-top-row">
+            <span class="dept-badge">BIL</span>
+            <span class="status-dot pending"></span>
+            <span class="agent-name">Kelvin Ferry-Okuneva</span>
+            <span class="timestamp">13 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <span class="unread-count">1</span>
+          </div>
+        </div>
+
+        <!-- Ticket 4: open, another agent joined -->
+        <div class="ticket-item">
+          <div class="ticket-top-row">
+            <span class="dept-badge">DSC</span>
+            <span class="status-dot open"></span>
+            <span class="agent-name">Rodney Deckow</span>
+            <span class="timestamp">15 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge">
+                <span>MG</span>
+                <span class="tooltip">Maurice Goodwin</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ticket 5: open, no agents -->
+        <div class="ticket-item">
+          <div class="ticket-top-row">
+            <span class="dept-badge">BIL</span>
+            <span class="status-dot open"></span>
+            <span class="agent-name">Maurice Goodwin</span>
+            <span class="timestamp">16 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <span class="sentiment-dot" style="background: var(--accent-green);"></span>
+          </div>
+        </div>
+
+        <!-- Ticket 6: unread, 3 agents -->
+        <div class="ticket-item is-unread">
+          <div class="ticket-top-row">
+            <span class="dept-badge">DSC</span>
+            <span class="status-dot open"></span>
+            <span class="agent-name">Hyman Osinski</span>
+            <span class="timestamp">22 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge self">
+                <span>YO</span>
+                <span class="tooltip">You</span>
+              </div>
+              <div class="agent-badge">
+                <span>RD</span>
+                <span class="tooltip">Rodney Deckow</span>
+              </div>
+              <div class="agent-badge">
+                <span>MG</span>
+                <span class="tooltip">Maurice Goodwin</span>
+              </div>
+            </div>
+            <span class="sentiment-dot" style="background: var(--accent-red);"></span>
+            <span class="unread-count">2</span>
+          </div>
+        </div>
+
+        <!-- Ticket 7: pending, joined by self -->
+        <div class="ticket-item">
+          <div class="ticket-top-row">
+            <span class="dept-badge">DSC</span>
+            <span class="status-dot pending"></span>
+            <span class="agent-name">Hyman Osinski</span>
+            <span class="timestamp">29 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge self">
+                <span>YO</span>
+                <span class="tooltip">You</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ticket 8: open, no agents -->
+        <div class="ticket-item">
+          <div class="ticket-top-row">
+            <span class="dept-badge">DSC</span>
+            <span class="status-dot open"></span>
+            <span class="agent-name">Rodney Deckow</span>
+            <span class="timestamp">31 Mar</span>
+          </div>
+          <div class="ticket-bottom-row"></div>
+        </div>
+
+        <!-- Ticket 9: open, no agents -->
+        <div class="ticket-item">
+          <div class="ticket-top-row">
+            <span class="dept-badge">DSC</span>
+            <span class="status-dot open"></span>
+            <span class="agent-name">Maurice Goodwin</span>
+            <span class="timestamp">03 Apr</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <span class="sentiment-dot" style="background: var(--accent-green);"></span>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="footer-count">9 in queue</span>
+        <span class="footer-capacity">3 / 4 online</span>
+      </div>
+    </div>
+
+    <!-- Queue annotations -->
+    <div class="annotation-group">
+      <div class="annotation">
+        <span class="annotation-marker">1.</span>
+        <span class="annotation-text"><strong>2 tabs only</strong> — Queue + Archive. Search lives inside Archive.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">2.</span>
+        <span class="annotation-text"><strong>Status dot</strong> — green=open, purple=pending. Instant ticket state.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">3.</span>
+        <span class="annotation-text"><strong>Agent monogram badges</strong> — see who's joined. Blue = you, gray = others. Hover for full name.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">4.</span>
+        <span class="annotation-text"><strong>Multiple agents stack</strong> — overlapping badges when 2-3 agents are on a ticket (see ticket #6).</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">5.</span>
+        <span class="annotation-text"><strong>Unread count</strong> — replaces tiny dot. Number tells you how much you missed.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">6.</span>
+        <span class="annotation-text"><strong>Unread rows</strong> — subtle blue tint background draws eye.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">7.</span>
+        <span class="annotation-text"><strong>Normal-case names</strong> — Inter font, sentence case. Less visual noise.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">8.</span>
+        <span class="annotation-text"><strong>No message preview</strong> — clicking opens preview window as before.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">9.</span>
+        <span class="annotation-text"><strong>Footer</strong> — queue count + team capacity at a glance.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ─── ARCHIVE TAB ─── -->
+  <div class="mockup-column">
+    <div class="mockup-label">Archive Tab</div>
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="header-row">
+          <span class="header-title">Archive</span>
+          <svg class="bookmark-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </div>
+        <div class="tab-row">
+          <div class="tab-btn">Queue</div>
+          <div class="tab-btn active">Archive</div>
+        </div>
+        <div class="dept-row">
+          <div class="dept-chip active">All <span class="dept-count">--</span></div>
+          <div class="dept-chip">Dispatch <span class="dept-count">--</span></div>
+          <div class="dept-chip">Billing <span class="dept-count">--</span></div>
+        </div>
+      </div>
+
+      <!-- Search bar built into archive -->
+      <div class="archive-search">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="archive-search-input" placeholder="Search messages..." value="">
+      </div>
+
+      <div class="ticket-list">
+
+        <!-- Archived ticket 1: resolved -->
+        <div class="ticket-item archived">
+          <div class="ticket-top-row">
+            <span class="dept-badge">BIL</span>
+            <span class="status-badge-resolved">Resolved</span>
+            <span class="agent-name">Lisa Thompson</span>
+            <span class="timestamp">02 Apr</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge">
+                <span>YO</span>
+                <span class="tooltip">You</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Archived ticket 2: closed -->
+        <div class="ticket-item archived">
+          <div class="ticket-top-row">
+            <span class="dept-badge">DSC</span>
+            <span class="status-badge-closed">Closed</span>
+            <span class="agent-name">Frank Abernathy</span>
+            <span class="timestamp">01 Apr</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge">
+                <span>MG</span>
+                <span class="tooltip">Maurice Goodwin</span>
+              </div>
+              <div class="agent-badge">
+                <span>YO</span>
+                <span class="tooltip">You</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Archived ticket 3: resolved -->
+        <div class="ticket-item archived">
+          <div class="ticket-top-row">
+            <span class="dept-badge">BIL</span>
+            <span class="status-badge-resolved">Resolved</span>
+            <span class="agent-name">Kelvin Ferry-Okuneva</span>
+            <span class="timestamp">28 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge">
+                <span>AR</span>
+                <span class="tooltip">Amani Reeves</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Archived ticket 4: closed -->
+        <div class="ticket-item archived">
+          <div class="ticket-top-row">
+            <span class="dept-badge">DSC</span>
+            <span class="status-badge-closed">Closed</span>
+            <span class="agent-name">Rodney Deckow</span>
+            <span class="timestamp">25 Mar</span>
+          </div>
+          <div class="ticket-bottom-row"></div>
+        </div>
+
+        <!-- Archived ticket 5: resolved -->
+        <div class="ticket-item archived">
+          <div class="ticket-top-row">
+            <span class="dept-badge">BIL</span>
+            <span class="status-badge-resolved">Resolved</span>
+            <span class="agent-name">Hyman Osinski</span>
+            <span class="timestamp">22 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge">
+                <span>YO</span>
+                <span class="tooltip">You</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Archived ticket 6 -->
+        <div class="ticket-item archived">
+          <div class="ticket-top-row">
+            <span class="dept-badge">DSC</span>
+            <span class="status-badge-closed">Closed</span>
+            <span class="agent-name">Maurice Goodwin</span>
+            <span class="timestamp">18 Mar</span>
+          </div>
+          <div class="ticket-bottom-row"></div>
+        </div>
+
+        <!-- Archived ticket 7 -->
+        <div class="ticket-item archived">
+          <div class="ticket-top-row">
+            <span class="dept-badge">BIL</span>
+            <span class="status-badge-closed">Closed</span>
+            <span class="agent-name">Amani Lockman</span>
+            <span class="timestamp">15 Mar</span>
+          </div>
+          <div class="ticket-bottom-row">
+            <div class="agent-badges">
+              <div class="agent-badge">
+                <span>RD</span>
+                <span class="tooltip">Rodney Deckow</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="sidebar-footer">
+        <span class="footer-count">7 archived</span>
+        <span class="footer-capacity">3 / 4 online</span>
+      </div>
+    </div>
+
+    <!-- Archive annotations -->
+    <div class="annotation-group">
+      <div class="annotation">
+        <span class="annotation-marker">1.</span>
+        <span class="annotation-text"><strong>Search built into Archive</strong> — no separate tab. Type to filter archived tickets by message content.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">2.</span>
+        <span class="annotation-text"><strong>Status badges</strong> — "Resolved" (green border) vs "Closed" (gray border) replace the status dot for terminal states.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">3.</span>
+        <span class="annotation-text"><strong>Same row layout</strong> — consistent with queue tab. Agent badges still show who worked on it.</span>
+      </div>
+      <div class="annotation">
+        <span class="annotation-marker">4.</span>
+        <span class="annotation-text"><strong>Slightly dimmed</strong> — archived rows at 0.7 opacity, full on hover. Visually distinct from live queue.</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
