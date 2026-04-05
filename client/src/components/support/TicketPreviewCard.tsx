@@ -1,6 +1,7 @@
 import { useT } from '../../i18n';
 import { Ticket } from '../../types';
 import { trpc } from '../../utils/trpc';
+import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
 import SlaIndicator from '../SlaIndicator';
 
@@ -11,6 +12,7 @@ interface TicketPreviewCardProps {
 
 export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardProps) {
   const t = useT();
+  const allLabels = useStore((s) => s.allLabels);
 
   // Fetch last 3 messages for preview
   const { data: messagesData } = trpc.message.list.useQuery(
@@ -42,11 +44,15 @@ export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardP
         {/* Labels */}
         {ticket.labels && ticket.labels.length > 0 && (
           <div className="px-5 py-2 border-b border-border flex gap-1.5 flex-wrap">
-            {ticket.labels.map((label) => (
-              <span key={label} className="text-[9px] font-mono font-bold uppercase bg-bg-elevated px-2 py-0.5 text-text-secondary">
-                {label}
-              </span>
-            ))}
+            {ticket.labels.map((labelId) => {
+              const info = allLabels.find((l) => l.id === labelId);
+              if (!info) return null;
+              return (
+                <span key={labelId} className="text-[9px] font-mono font-bold uppercase bg-[var(--color-bg-elevated)] px-2 py-0.5 text-[var(--color-text-secondary)]">
+                  {info.name}
+                </span>
+              );
+            })}
           </div>
         )}
 

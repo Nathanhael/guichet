@@ -132,7 +132,7 @@ export default function AdminArchive() {
                 <option value="all">All labels</option>
                 <option value="none">No label</option>
                 <option value="any">Has label</option>
-                {allLabels.map((l) => <option key={l.id} value={l.id}>{l.text}</option>)}
+                {allLabels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             )}
           </div>
@@ -189,7 +189,7 @@ export default function AdminArchive() {
                             {(ticket.labels as string[]).map((id) => {
                               const info = allLabels.find((l) => l.id === id);
                               if (!info) return null;
-                              return <span key={id} className="font-mono text-[8px] font-bold uppercase border border-border px-1.5 py-0.5 bg-bg-elevated tracking-widest">{info.text}</span>;
+                              return <span key={id} className="font-mono text-[8px] font-bold uppercase border border-border px-1.5 py-0.5 bg-bg-elevated tracking-widest">{info.name}</span>;
                             })}
                           </div>
                         ) : <span className="opacity-10">—</span>}
@@ -242,7 +242,7 @@ export default function AdminArchive() {
                     {(preview.labels as string[]).map((id) => {
                       const info = allLabels.find((l) => l.id === id);
                       if (!info) return null;
-                      return <span key={id} className="font-mono text-[9px] uppercase border border-[var(--color-border)] px-1 py-0.5">{info.text}</span>;
+                      return <span key={id} className="font-mono text-[9px] uppercase border border-[var(--color-border)] px-1 py-0.5">{info.name}</span>;
                     })}
                   </div>
                 )}

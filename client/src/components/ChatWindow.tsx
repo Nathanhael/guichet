@@ -557,7 +557,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                       key={id}
                       className={`text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy`}
                     >
-                      {info.text}
+                      {info.name}
                     </span>
                   );
                 })}
