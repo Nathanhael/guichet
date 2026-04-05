@@ -59,13 +59,13 @@ export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🎉', '✅']
    - If array becomes empty -> delete the key
 8. Write updated `reactions` to DB
 9. `socketioEventsTotal.inc({ event: 'message:react' })`
-10. Broadcast `message:reacted` to `Rooms.ticket(ticketId)`
+10. Broadcast `reaction:updated` to `Rooms.ticket(ticketId)`
 
-### Event: `message:reacted` (server -> clients)
+### Event: `reaction:updated` (server -> clients)
 
 **Payload**: `{ ticketId: string, messageId: string, reactions: Record<string, string[]> }`
 
-Client listener calls `updateMessageReaction(ticketId, messageId, reactions)` — this store method already exists.
+Client listener already exists in `useSocket.ts` — `handleReactionUpdated` calls `updateMessageReaction(ticketId, messageId, reactions)`. Store method already implemented in `messageSlice.ts`.
 
 ## Client UI
 
@@ -130,7 +130,10 @@ Reactions contain userIds in the JSONB. Already covered by existing GDPR purge o
 | `server/socket/handlers.ts` | Add `message:react` handler |
 | `server/constants.ts` | Add `REACTION_EMOJIS` constant |
 | `client/src/components/MessageBubble.tsx` | Add quick-react bar + reaction pills UI |
-| `client/src/hooks/useSocket.ts` | Add `message:reacted` listener -> `updateMessageReaction` |
 | `client/src/constants.ts` | Add `REACTION_EMOJIS` constant (mirror server) |
+
+**Already wired (no changes needed):**
+| `client/src/hooks/useSocket.ts` | `reaction:updated` listener already exists → calls `updateMessageReaction` |
+| `client/src/store/slices/messageSlice.ts` | `updateMessageReaction` already implemented |
 
 No new files, no new dependencies, no schema migrations.
