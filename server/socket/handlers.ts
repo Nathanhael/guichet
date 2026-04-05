@@ -40,7 +40,9 @@ import {
   findTicketLabelIds,
   findMessageForEdit,
   findMessageForDelete,
+  findMessageForReact,
   updateMessageText,
+  updateMessageReactions,
   softDeleteMessage,
   markDelivered,
   markRead,
@@ -64,6 +66,7 @@ import {
   MAX_LABELS_PER_TICKET,
   MAX_NOTE_LENGTH,
   RECENT_CLOSED_TICKETS_LIMIT,
+  REACTION_EMOJIS,
 } from '../constants.js';
 
 const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
@@ -958,6 +961,52 @@ export function registerSocketHandlers(io: Server) {
 
         io.to(Rooms.ticket(ticketId)).emit('message:deleted', { ticketId, messageId, deletedAt: now });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delete] error'); }
+    });
+
+    // ── Message Reactions ─────────────────────────────────────────────────────
+    socket.on('message:react', async ({ ticketId, messageId, emoji }: { ticketId: string; messageId: string; emoji: string }) => {
+      if (!requireIdentified(socket)) return;
+      socketioEventsTotal.inc({ event: 'message:react' });
+      try {
+        const userId = socket.data.userId;
+        if (!userId || !ticketId || !messageId || !emoji) return;
+
+        // Validate emoji is in the allowed set
+        if (!REACTION_EMOJIS.includes(emoji as typeof REACTION_EMOJIS[number])) {
+          return socket.emit('error', { message: 'Invalid reaction emoji' });
+        }
+
+        // Tenant isolation
+        const ticket = await requirePartnerScope(socket, ticketId);
+        if (!ticket) return;
+
+        // Fetch message and validate
+        const msg = await findMessageForReact(messageId, ticketId);
+        if (!msg) return;
+        if (msg.system) return socket.emit('error', { message: 'Cannot react to system messages' });
+        if (msg.deletedAt) return socket.emit('error', { message: 'Cannot react to deleted messages' });
+
+        // Toggle reaction: add or remove userId
+        const reactions: Record<string, string[]> = { ...(msg.reactions || {}) };
+        const users = reactions[emoji] || [];
+        const idx = users.indexOf(userId);
+        if (idx >= 0) {
+          users.splice(idx, 1);
+          if (users.length === 0) {
+            delete reactions[emoji];
+          } else {
+            reactions[emoji] = users;
+          }
+        } else {
+          reactions[emoji] = [...users, userId];
+        }
+
+        await updateMessageReactions(messageId, reactions);
+
+        io.to(Rooms.ticket(ticketId)).emit('reaction:updated', { ticketId, messageId, reactions });
+      } catch (err: unknown) {
+        logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:react] error');
+      }
     });
 
     // ── Ticket Transfer ──────────────────────────────────────────────────────
