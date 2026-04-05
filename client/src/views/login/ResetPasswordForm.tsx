@@ -5,9 +5,10 @@ import { Eye, EyeOff } from 'lucide-react';
 interface ResetPasswordFormProps {
   resetToken: string;
   onSuccess: () => void;
+  onBackClick: () => void;
 }
 
-export default function ResetPasswordForm({ resetToken, onSuccess }: ResetPasswordFormProps) {
+export default function ResetPasswordForm({ resetToken, onSuccess, onBackClick }: ResetPasswordFormProps) {
   const t = useT();
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -41,6 +42,14 @@ export default function ResetPasswordForm({ resetToken, onSuccess }: ResetPasswo
 
   return (
     <div className="p-8 space-y-6 bg-[var(--color-bg-surface)]">
+      <button
+        type="button"
+        onClick={onBackClick}
+        className="mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] flex items-center gap-1.5"
+      >
+        <span>←</span>
+        <span>{t('back_to_login')}</span>
+      </button>
       <form onSubmit={handleResetPassword} className="space-y-6">
         <p className="mono-label text-[var(--color-text-secondary)] leading-relaxed">{t('new_password_desc')}</p>
         {error && (
