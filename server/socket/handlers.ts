@@ -1068,11 +1068,6 @@ export function registerSocketHandlers(io: Server) {
         const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForLabels);
         if (!ticket) return;
 
-        // Block label updates on terminal tickets
-        if (ticket.status === 'closed' || ticket.status === 'resolved') {
-          return socket.emit('error', { message: 'Cannot update labels on closed tickets' });
-        }
-
         // Validate that all labels belong to this partner
         if (labels.length > 0) {
           const partnerLabels = await findPartnerLabels(ticket.partnerId, labels);
