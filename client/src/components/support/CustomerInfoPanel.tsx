@@ -92,7 +92,7 @@ export default function CustomerInfoPanel({ ticket }: CustomerInfoPanelProps) {
                 key={label.id}
                 className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase"
               >
-                {label.text || label.name}
+                {label.name}
               </span>
             ))}
           </div>
