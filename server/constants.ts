@@ -35,3 +35,7 @@ export const DISABLED_FEATURES: readonly DisabledFeature[] = [
   'knowledgeBase',
   'webhooks',
 ];
+
+/** Fixed emoji set for message reactions */
+export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🎉', '✅'] as const;
+export type ReactionEmoji = typeof REACTION_EMOJIS[number];
