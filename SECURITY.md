@@ -42,7 +42,6 @@ The following are **out of scope**:
 - Issues requiring physical access to the server
 - Social engineering attacks
 - Denial of service attacks against development/demo instances
-- The default demo credentials included for local development
 
 ### Recognition
 
