@@ -81,7 +81,7 @@ export default function StatusPicker() {
               onClick={() => handleChange(s.key)}
               className={`w-full flex items-center gap-2.5 px-3 py-2 text-[10px] font-bold uppercase ${
                 s.key === value
-                  ? 'bg-accent-blue text-white'
+                  ? 'bg-accent-blue text-[var(--color-btn-text-inverse)]'
                   : 'text-text-primary hover:bg-bg-elevated'
               }`}
             >

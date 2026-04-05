@@ -22,7 +22,7 @@ export default function LanguageSwitcher() {
           onClick={() => setSelectedLang(lang.code)}
           className={`px-2 py-1 text-[9px] font-bold border ${
             currentLang === lang.code
-              ? 'bg-accent-blue text-white border-accent-blue'
+              ? 'bg-accent-blue text-[var(--color-btn-text-inverse)] border-accent-blue'
               : 'bg-transparent text-text-primary border-transparent opacity-40 hover:opacity-100'
           }`}
         >

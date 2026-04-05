@@ -87,7 +87,7 @@ export default function PwaInstallPrompt() {
         </button>
         <button
           onClick={handleInstall}
-          className="text-[10px] font-bold uppercase bg-accent-blue text-white px-3 py-1.5 hover:bg-accent-blue-light"
+          className="text-[10px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] px-3 py-1.5 hover:bg-accent-blue-light"
         >
           {t('install') || 'Install'}
         </button>

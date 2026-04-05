@@ -140,7 +140,7 @@ export default function AdminTeam() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowInviteModal(true)}
-              className="flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-bold uppercase bg-accent-blue text-white border-2 border-accent-blue hover:bg-accent-blue/90 active:scale-[0.98] transition-all shadow-[4px_4px_0px_0px_rgba(59,130,246,0.2)] whitespace-nowrap"
+              className="flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] border-2 border-accent-blue hover:bg-accent-blue/90 active:scale-[0.98] transition-all shadow-[4px_4px_0px_0px_rgba(59,130,246,0.2)] whitespace-nowrap"
             >
               Invite External
             </button>
@@ -291,7 +291,7 @@ export default function AdminTeam() {
                             <button
                               onClick={() => updateMemberMutation.mutate({ membershipId: member.membershipId, departments: editDepts })}
                               disabled={updateMemberMutation.isPending || (member.role === 'support' && editDepts.length === 0)}
-                              className="flex-1 py-1.5 text-[9px] font-bold bg-accent-blue text-white uppercase border border-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 transition-all"
+                              className="flex-1 py-1.5 text-[9px] font-bold bg-accent-blue text-[var(--color-btn-text-inverse)] uppercase border border-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 transition-all"
                             >
                               {updateMemberMutation.isPending ? '...' : 'Save'}
                             </button>
@@ -470,7 +470,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
           )}
           <div className="flex gap-4 pt-4">
             <button type="button" onClick={onClose} className="flex-1 py-3 text-[11px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all">Cancel</button>
-            <button type="submit" disabled={addMutation.isPending || (role === 'support' && selectedDepts.length === 0)} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50 transition-all">
+            <button type="submit" disabled={addMutation.isPending || (role === 'support' && selectedDepts.length === 0)} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/90 disabled:opacity-50 transition-all">
               {addMutation.isPending ? 'Processing...' : 'Verify & Add'}
             </button>
           </div>
@@ -546,7 +546,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
           <div className="flex justify-end mt-8 border-t border-border pt-6">
             <button
               onClick={() => { setTempPassword(null); onInvited(); }}
-              className="px-8 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 transition-all"
+              className="px-8 py-3 text-[11px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/90 transition-all"
             >
               System Ready
             </button>
@@ -654,7 +654,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
           )}
           <div className="flex gap-4 pt-6 border-t border-border">
             <button type="button" onClick={onClose} className="flex-1 py-3 text-[11px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all">Abort</button>
-            <button type="submit" disabled={inviteMutation.isPending || (role === 'support' && selectedDepts.length === 0)} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50 transition-all shadow-[6px_6px_0px_0px_rgba(59,130,246,0.1)]">
+            <button type="submit" disabled={inviteMutation.isPending || (role === 'support' && selectedDepts.length === 0)} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/90 disabled:opacity-50 transition-all shadow-[6px_6px_0px_0px_rgba(59,130,246,0.1)]">
               {inviteMutation.isPending ? 'Encrypting...' : 'Provision User'}
             </button>
           </div>

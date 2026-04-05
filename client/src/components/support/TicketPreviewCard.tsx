@@ -82,7 +82,7 @@ export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardP
         <div className="px-5 py-4 border-t border-border">
           <button
             onClick={() => onJoin(ticket)}
-            className="w-full py-2.5 text-xs font-bold uppercase tracking-wide bg-accent-blue text-white hover:bg-accent-blue-light"
+            className="w-full py-2.5 text-xs font-bold uppercase tracking-wide bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue-light"
           >
             {t('join_ticket') || 'Join'}
           </button>
