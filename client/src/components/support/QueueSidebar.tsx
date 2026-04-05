@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Shield } from 'lucide-react';
 import { useT } from '../../i18n';
 import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
@@ -75,9 +76,9 @@ export default function QueueSidebar({
 
   const departments = (activeMembership.manifest?.departments || []) as { id: string; name: string }[];
   const assignedDepartmentIds = activeMembership.departments || [];
-  const isGeneralist = assignedDepartmentIds.length === 0;
-  const visibleDepartments = isGeneralist
-    ? departments
+  const hasNoDepartments = assignedDepartmentIds.length === 0;
+  const visibleDepartments = hasNoDepartments
+    ? []
     : departments.filter((d) => assignedDepartmentIds.includes(d.id));
 
   // Search query
@@ -125,15 +126,23 @@ export default function QueueSidebar({
         (tk) =>
           tk.status !== 'closed' && tk.status !== 'resolved' &&
           (filterDept === 'all' || tk.dept === filterDept) &&
-          (isGeneralist || assignedDepartmentIds.includes(tk.dept)),
+          assignedDepartmentIds.includes(tk.dept),
       ),
-    [tickets, filterDept, isGeneralist, assignedDepartmentIds],
+    [tickets, filterDept, assignedDepartmentIds],
   );
 
   return (
     <aside className={`${
       isOpen ? 'w-80 border-r border-[var(--color-border)] max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40' : 'w-0 border-r-0'
     } shrink-0 overflow-hidden bg-[var(--color-bg-surface)] flex flex-col`}>
+      {hasNoDepartments ? (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <Shield className="h-8 w-8 text-text-muted opacity-30 mb-4" />
+          <p className="text-sm font-bold uppercase tracking-tight mb-2">No departments assigned</p>
+          <p className="text-[10px] uppercase tracking-widest text-text-muted opacity-60">Contact your administrator to configure department access.</p>
+        </div>
+      ) : (
+      <>
       {/* Header: tabs + dept chips */}
       <div className="px-4 py-3 border-b border-[var(--color-border)]">
         <div className="flex items-center justify-between mb-2">
@@ -383,6 +392,8 @@ export default function QueueSidebar({
             <span className="text-[11px] font-bold text-accent-green">{availableCount} / {totalOnline}</span>
           </div>
         </div>
+      )}
+      </>
       )}
     </aside>
   );
