@@ -11,3 +11,6 @@ export const LANG_LABEL: Record<string, string> = {
   fr: '\u{1F1EB}\u{1F1F7} FR',
   en: '\u{1F1EC}\u{1F1E7} EN',
 };
+
+/** Fixed emoji set for message reactions (mirrors server/constants.ts) */
+export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🎉', '✅'] as const;
