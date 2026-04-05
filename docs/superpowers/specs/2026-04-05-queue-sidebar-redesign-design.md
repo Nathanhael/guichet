@@ -52,9 +52,7 @@ Each ticket row has two lines:
 ### 3. Ticket Row Layout (Archive Tab)
 
 Same 2-row layout as queue, with differences:
-- Status dot replaced by **status badge**: monospace 7px uppercase text with border
-  - "Resolved": green text, green border (`rgba(34,197,94,0.3)`)
-  - "Closed": muted text, faint border
+- Status dot replaced by a single **"Closed" status badge**: monospace 7px uppercase text, muted color, faint border. Both `closed` and `resolved` statuses render the same badge — the `resolved` status is defined in the DB enum but never produced by any user flow, so the UI treats them identically.
 - Entire row at `opacity: 0.7`, full opacity on hover
 - Agent badges still shown (who worked on the ticket)
 - No unread count (irrelevant for archive)
