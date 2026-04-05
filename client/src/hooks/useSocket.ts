@@ -236,11 +236,30 @@ export function useSocket(): Socket {
       updateTicket(ticketId, safeUpdates);
     };
 
-    const handleTicketTransferred = ({ ticketId, toId, toName }: { ticketId: string; fromId: string; fromName: string; toId: string | null; toName: string | null }) => {
-      if (toId) {
-        updateTicket(ticketId, { supportId: toId, supportName: toName || undefined });
-      } else {
-        updateTicket(ticketId, { supportId: null, supportName: undefined, status: 'open' });
+    const handleTicketTransferred = ({ ticketId, toId, toName, toDepartment }: { ticketId: string; fromId: string; fromName: string; toId?: string | null; toName?: string | null; toDepartment?: string }) => {
+      const state = useStore.getState();
+      
+      // If transferred to a specific department, check if current user still has access
+      if (toDepartment) {
+        const userDepts = state.user?.departments || [];
+        const isPlatformOp = state.user?.isPlatformOperator || state.user?.role === 'admin';
+        
+        if (!isPlatformOp && userDepts.length > 0 && !userDepts.includes(toDepartment)) {
+          // User lost access to this ticket due to department transfer
+          state.removeTicket(ticketId);
+          state.removeSupportOpenTicket(ticketId);
+          return;
+        }
+        
+        // Update department locally
+        updateTicket(ticketId, { dept: toDepartment, supportId: null, supportName: undefined, status: 'open' });
+      } else if (toId !== undefined) {
+        // Return to queue or transfer to specific agent
+        if (toId) {
+          updateTicket(ticketId, { supportId: toId, supportName: toName || undefined });
+        } else {
+          updateTicket(ticketId, { supportId: null, supportName: undefined, status: 'open' });
+        }
       }
     };
 

@@ -106,7 +106,7 @@ export default function AdminTickets() {
             </div>
           ) : (
             <div className="divide-y divide-[var(--color-border)]/30">
-              {tickets.map((tk) => (
+              {tickets.filter(tk => ['open', 'pending'].includes(tk.status)).map((tk) => (
                 <button
                   key={tk.id}
                   onClick={() => handlePreview(tk)}

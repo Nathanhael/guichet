@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { trpc } from '../../utils/trpc';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, Check, X } from 'lucide-react';
+import { Pencil, Check, X, Search, Users, Shield, User } from 'lucide-react';
 import Toast from '../Toast';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import { OnlineSupport } from '../../types';
@@ -28,6 +28,17 @@ export default function AdminTeam() {
     { enabled: !!activeMembershipId }
   );
 
+  // Summary logic
+  const stats = useMemo(() => {
+    if (!data) return { total: 0, agents: 0, support: 0, online: 0 };
+    return {
+      total: data.length,
+      agents: data.filter(m => m.role === 'agent').length,
+      support: data.filter(m => m.role === 'support').length,
+      online: data.filter(m => onlineStatusMap.has(m.userId)).length,
+    };
+  }, [data, onlineStatusMap]);
+
   const removeMutation = trpc.partner.removeMember.useMutation({
     onSuccess: () => refetch(),
     onError: (err) => setToast({ message: err.message, type: 'error' })
@@ -44,145 +55,225 @@ export default function AdminTeam() {
   const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
   const [editDepts, setEditDepts] = useState<string[]>([]);
 
+  const handleQuickFilter = (term: string) => {
+    setSearch(term);
+    setPage(0);
+  };
+
   return (
-    <div className="flex flex-col min-h-full">
-      <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center gap-4 mb-6 border-b border-border pb-6">
-        <div>
-          <h2 className="text-3xl font-bold uppercase tracking-tighter">Team</h2>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)] mt-1 opacity-60">Manage users and roles</p>
+    <div className="flex flex-col min-h-full space-y-6">
+      {/* Header & Main Controls */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b-2 border-border-heavy pb-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <Users className="h-6 w-6 text-accent-blue" />
+            <h2 className="text-3xl font-bold uppercase tracking-tighter">Team Management</h2>
+          </div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)] opacity-60">
+            Define roles and departmental access for your organization.
+          </p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+          <div className="relative group min-w-[280px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted group-focus-within:text-accent-blue transition-colors" />
             <input
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              placeholder="Filter members..."
-              className="w-full bg-bg-elevated border-2 border-border-heavy px-3 py-2 text-xs font-bold uppercase placeholder:opacity-30 focus:border-accent-blue outline-none pr-8"
+              placeholder="Filter by name, role, or department..."
+              className="w-full bg-bg-surface border-2 border-border px-9 py-2.5 text-xs font-bold uppercase placeholder:opacity-30 focus:border-accent-blue outline-none transition-all"
             />
             {search && (
               <button 
                 onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-accent-red p-1 transition-colors"
               >
                 <X className="h-3 w-3" />
               </button>
             )}
           </div>
-          <div className="h-8 w-px bg-border mx-1 hidden sm:block" />
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 text-[10px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all"
-          >
-            Add Existing
-          </button>
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="px-4 py-2 text-[10px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/80 transition-all"
-          >
-            Invite External
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated active:scale-[0.98] transition-all whitespace-nowrap"
+            >
+              Add User
+            </button>
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className="flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-bold uppercase bg-accent-blue text-white border-2 border-accent-blue hover:bg-accent-blue/90 active:scale-[0.98] transition-all shadow-[4px_4px_0px_0px_rgba(59,130,246,0.2)] whitespace-nowrap"
+            >
+              Invite External
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Stats Bar & Quick Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Members', value: stats.total, icon: Users, filter: '' },
+          { label: 'Support Staff', value: stats.support, icon: Shield, filter: 'support', color: 'text-accent-purple' },
+          { label: 'Agents', value: stats.agents, icon: User, filter: 'agent', color: 'text-accent-blue' },
+          { label: 'Currently Online', value: stats.online, icon: Check, filter: 'online', color: 'text-accent-green' },
+        ].map((stat) => (
+          <button
+            key={stat.label}
+            onClick={() => handleQuickFilter(stat.filter)}
+            className="flex flex-col p-4 bg-bg-surface border border-border hover:border-accent-blue group transition-all text-left relative overflow-hidden"
+          >
+            <div className="flex justify-between items-start mb-2 relative z-10">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary transition-colors">{stat.label}</span>
+              <stat.icon className={`h-4 w-4 ${stat.color || 'text-text-muted'} opacity-40 group-hover:opacity-100 transition-all`} />
+            </div>
+            <span className="text-2xl font-bold font-mono tracking-tighter relative z-10">{stat.value}</span>
+            <div className="absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full bg-accent-blue transition-all duration-300" />
+          </button>
+        ))}
+      </div>
+
+      {/* Advanced Filter Hints */}
+      <div className="flex flex-wrap gap-2 items-center px-1">
+        <span className="text-[8px] font-bold uppercase tracking-widest text-text-muted">Quick Tags:</span>
+        {['Grants', 'Global', 'Admin', 'Support', 'Generalist'].map(tag => (
+          <button
+            key={tag}
+            onClick={() => handleQuickFilter(tag)}
+            className={`px-2 py-0.5 text-[8px] font-bold uppercase tracking-tighter border transition-colors ${
+              search.toLowerCase() === tag.toLowerCase() 
+                ? 'bg-accent-blue text-white border-accent-blue' 
+                : 'border-border text-text-secondary hover:border-text-muted'
+            }`}
+          >
+            #{tag}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-20 opacity-30">
-          <div className="animate-spin h-6 w-6 border-2 border-current border-t-transparent mb-4" />
-          <p className="text-[10px] font-bold uppercase tracking-widest">Loading Team...</p>
+        <div className="flex-1 flex flex-col items-center justify-center py-32 border-2 border-dashed border-border opacity-30">
+          <div className="animate-spin h-8 w-8 border-2 border-accent-blue border-t-transparent mb-4" />
+          <p className="text-[10px] font-bold uppercase tracking-widest font-mono">Querying directory...</p>
         </div>
       ) : (
-        <div className="bg-bg-surface border-2 border-border-heavy overflow-hidden shadow-sm">
+        <div className="bg-bg-surface border-2 border-border-heavy overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]">
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
               <thead>
                 <tr className="border-b-2 border-border-heavy bg-bg-elevated text-left font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
-                  <th className="px-4 py-2.5 font-bold tracking-widest">User / Identity</th>
-                  <th className="px-4 py-2.5 font-bold tracking-widest">Role</th>
-                  <th className="px-4 py-2.5 font-bold tracking-widest text-center">App</th>
-                  <th className="px-4 py-2.5 font-bold tracking-widest text-center">Auth</th>
-                  <th className="px-4 py-2.5 font-bold tracking-widest">Departments / Access</th>
-                  <th className="px-4 py-2.5 font-bold tracking-widest text-right">Actions</th>
+                  <th className="px-6 py-4 font-bold tracking-widest">Identity</th>
+                  <th className="px-6 py-4 font-bold tracking-widest">Permission Level</th>
+                  <th className="px-6 py-4 font-bold tracking-widest text-center">Status</th>
+                  <th className="px-6 py-4 font-bold tracking-widest">Department Access</th>
+                  <th className="px-6 py-4 font-bold tracking-widest text-right">Control</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/40">
+              <tbody className="divide-y divide-border/60">
                 {data?.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-20 text-center opacity-30">
-                      <p className="text-[10px] font-bold uppercase tracking-widest">No matching users found.</p>
+                    <td colSpan={5} className="py-24 text-center">
+                      <div className="flex flex-col items-center opacity-30">
+                        <Search className="h-8 w-8 mb-4" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest">No match detected for "{search}"</p>
+                        <button 
+                          onClick={() => setSearch('')}
+                          className="mt-4 text-[9px] underline underline-offset-4 hover:text-accent-blue"
+                        >
+                          Reset Filter
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ) : data?.map((member) => (
-                  <tr key={member.membershipId} className="hover:bg-bg-elevated/50 transition-colors">
-                    <td className="px-4 py-2.5">
-                      <div className="flex flex-col min-w-[200px]">
-                        <span className="font-bold uppercase tracking-tight text-[13px]">{member.name}</span>
-                        <span className="text-[10px] font-mono opacity-40">{member.email}</span>
+                  <tr key={member.membershipId} className="hover:bg-bg-elevated/40 transition-colors group/row">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full border-2 border-border-heavy flex items-center justify-center font-bold text-[10px] uppercase bg-bg-elevated">
+                          {member.name?.slice(0, 2)}
+                        </div>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold uppercase tracking-tight text-[13px] group-hover/row:text-accent-blue transition-colors">{member.name}</span>
+                            {member.externalId ? (
+                              <span className="text-[7px] bg-accent-blue/10 text-accent-blue border border-accent-blue/20 px-1 font-mono font-bold tracking-tighter">SSO SYNC</span>
+                            ) : member.lastActiveAt && (
+                              <span className="text-[7px] border border-border px-1 font-mono opacity-40">LOCAL</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-0.5 mt-0.5">
+                            <span className="text-[10px] font-mono opacity-40">{member.email}</span>
+                            <div className="flex items-center gap-2">
+                              {!member.externalId && !member.lastActiveAt ? (
+                                <span className="text-[7px] font-bold uppercase text-accent-purple animate-pulse tracking-tighter">[INVITE PENDING]</span>
+                              ) : member.lastActiveAt && (
+                                <span className="text-[7px] font-mono opacity-30 uppercase tracking-tighter">
+                                  Last Activity: {new Date(member.lastActiveAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-4 py-2.5">
-                      <span className="px-1.5 py-0.5 border border-border bg-bg-elevated text-[9px] font-bold uppercase tracking-widest">
-                        {member.role}
-                      </span>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {member.role === 'admin' ? <Shield className="h-3 w-3 text-accent-purple" /> : <User className="h-3 w-3 text-text-muted" />}
+                        <span className={`px-2 py-0.5 border text-[9px] font-bold uppercase tracking-widest ${
+                          member.role === 'admin' ? 'border-accent-purple text-accent-purple bg-accent-purple/5' : 'border-border bg-bg-elevated'
+                        }`}>
+                          {member.role}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-4 py-2.5 text-center">
+                    <td className="px-6 py-4 text-center">
                       {(() => {
                         const onlineStatus = onlineStatusMap.get(member.userId);
                         const colors = getStatusColors(onlineStatus);
                         const label = onlineStatus ? t(getStatusI18nKey(onlineStatus)) : t('status_offline');
                         return (
-                          <span className="inline-flex items-center gap-1.5 justify-center" title={label}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
-                            <span className={`text-[9px] font-bold uppercase tracking-tighter ${colors.text}`}>{label}</span>
-                          </span>
+                          <div className="inline-flex flex-col items-center gap-1" title={label}>
+                            <div className={`w-2 h-2 rounded-full border border-black/20 ${colors.dot} ${onlineStatus ? 'animate-pulse' : ''}`} />
+                            <span className={`text-[8px] font-bold uppercase tracking-tighter ${colors.text}`}>{label}</span>
+                          </div>
                         );
                       })()}
                     </td>
-                    <td className="px-4 py-2.5 text-center">
-                      {member.externalId || member.lastActiveAt ? (
-                        <div className="flex items-center gap-1.5 justify-center">
-                          <div className="w-1 h-1 bg-[var(--color-text-primary)]" />
-                          <span className="text-[9px] font-bold uppercase tracking-widest opacity-60">
-                            {member.externalId ? 'SSO' : 'Local'}
-                          </span>
+                    <td className="px-6 py-4">
+                      {member.role === 'agent' && (!member.departments || member.departments.length === 0) ? (
+                        <div className="flex items-center gap-2 text-text-muted opacity-30 group-hover/row:opacity-100 transition-opacity">
+                          <Shield className="h-3 w-3" />
+                          <span className="text-[9px] font-bold uppercase tracking-widest italic">Global Agent (All Depts)</span>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1.5 text-[var(--color-text-muted)] justify-center">
-                          <div className="w-1 h-1 border border-[var(--color-border)] opacity-30" />
-                          <span className="text-[9px] font-bold uppercase tracking-widest opacity-20">Pending</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {member.role === 'agent' ? (
-                        <span className="text-[9px] font-bold uppercase opacity-10 tracking-widest">Global Agent</span>
                       ) : editingMembershipId === member.membershipId ? (
-                        <div className="space-y-1 bg-bg-elevated p-2 border border-border-heavy min-w-[180px]">
-                          {departments.map(d => (
-                            <label key={d.id} className="flex items-center gap-2 cursor-pointer py-0.5">
-                              <input
-                                type="checkbox"
-                                checked={editDepts.includes(d.id)}
-                                onChange={(e) => {
-                                  if (e.target.checked) setEditDepts([...editDepts, d.id]);
-                                  else setEditDepts(editDepts.filter(id => id !== d.id));
-                                }}
-                                className="w-3 h-3 accent-accent-blue"
-                              />
-                              <span className="text-[9px] font-bold uppercase tracking-tighter">{d.name}</span>
-                            </label>
-                          ))}
-                          <div className="flex items-center gap-1 pt-2 border-t border-border mt-1">
+                        <div className="space-y-2 bg-bg-surface p-3 border-2 border-accent-blue shadow-[4px_4px_0px_0px_rgba(59,130,246,0.1)] min-w-[200px]">
+                          <div className="max-h-40 overflow-y-auto pr-2 space-y-1 custom-scrollbar">
+                            {departments.map(d => (
+                              <label key={d.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 hover:bg-bg-elevated transition-colors border border-transparent hover:border-border">
+                                <input
+                                  type="checkbox"
+                                  checked={editDepts.includes(d.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) setEditDepts([...editDepts, d.id]);
+                                    else setEditDepts(editDepts.filter(id => id !== d.id));
+                                  }}
+                                  className="w-3.5 h-3.5 accent-accent-blue"
+                                />
+                                <span className="text-[10px] font-bold uppercase tracking-tighter">{d.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-2 pt-2 border-t border-border mt-2">
                             <button
                               onClick={() => updateMemberMutation.mutate({ membershipId: member.membershipId, departments: editDepts })}
                               disabled={updateMemberMutation.isPending}
-                              className="flex-1 py-1 text-[8px] font-bold bg-accent-blue text-white uppercase disabled:opacity-50"
+                              className="flex-1 py-1.5 text-[9px] font-bold bg-accent-blue text-white uppercase border border-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 transition-all"
                             >
-                              Save
+                              {updateMemberMutation.isPending ? '...' : 'Save'}
                             </button>
                             <button
                               onClick={() => setEditingMembershipId(null)}
-                              className="px-2 py-1 text-[8px] font-bold border border-border uppercase"
+                              className="flex-1 py-1.5 text-[9px] font-bold border-2 border-border-heavy uppercase hover:bg-bg-elevated transition-all"
                             >
                               Cancel
                             </button>
@@ -190,7 +281,7 @@ export default function AdminTeam() {
                         </div>
                       ) : (
                         <div
-                          className="cursor-pointer group flex flex-wrap gap-1 items-center min-h-[24px]"
+                          className="cursor-pointer group/dept flex flex-wrap gap-1.5 items-center min-h-[32px] p-1 -m-1 hover:bg-bg-elevated/50 transition-colors border border-transparent hover:border-border"
                           onClick={() => {
                             setEditingMembershipId(member.membershipId);
                             setEditDepts((member.departments as string[]) || []);
@@ -200,24 +291,24 @@ export default function AdminTeam() {
                             ? (member.departments as string[]).map((dId: string) => {
                                 const dInfo = departments.find(d => d.id === dId);
                                 return (
-                                  <span key={dId} className="text-[8px] font-bold border border-border px-1.5 py-0.5 bg-bg-elevated uppercase tracking-tighter">
+                                  <span key={dId} className="text-[9px] font-bold border-2 border-border px-2 py-0.5 bg-bg-surface uppercase tracking-tighter group-hover/dept:border-accent-blue transition-colors">
                                     {dInfo ? dInfo.name : dId}
                                   </span>
                                 );
                               })
-                            : <span className="text-[9px] font-bold uppercase tracking-widest opacity-30 italic">Generalist (All Depts)</span>}
-                          <Pencil className="h-2.5 w-2.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1 text-accent-blue" />
+                            : <span className="text-[10px] font-bold uppercase tracking-widest opacity-20 italic group-hover/dept:opacity-100 transition-opacity">Generalist (All Access)</span>}
+                          <Pencil className="h-3 w-3 opacity-0 group-hover/row:opacity-100 transition-opacity ml-auto text-accent-blue" />
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => {
-                          if (confirm('Remove user from this partner?')) {
+                          if (confirm(`Remove ${member.name} from this partner?`)) {
                             removeMutation.mutate({ membershipId: member.membershipId });
                           }
                         }}
-                        className="text-[9px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)] hover:text-red-500 hover:line-through transition-colors"
+                        className="p-2 text-[9px] font-bold uppercase tracking-widest text-text-muted hover:text-accent-red hover:bg-accent-red/5 transition-all opacity-40 hover:opacity-100"
                       >
                         Remove
                       </button>
@@ -228,24 +319,31 @@ export default function AdminTeam() {
             </table>
           </div>
           
-          <div className="px-4 py-2.5 border-t-2 border-border-heavy flex items-center justify-between bg-bg-elevated/30">
-            <span className="text-[9px] font-bold uppercase tracking-widest opacity-40">
-              {data?.length || 0} users showing (Max {LIMIT} per page)
-            </span>
-            <div className="flex gap-2">
+          <div className="px-6 py-4 border-t-2 border-border-heavy flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-elevated/20">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
+                Showing <span className="text-text-primary">{data?.length || 0}</span> identities
+              </span>
+              <div className="h-4 w-px bg-border hidden sm:block" />
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-bold uppercase tracking-tighter opacity-40">Limit:</span>
+                <span className="px-2 py-0.5 bg-bg-elevated text-[9px] font-mono font-bold border border-border">{LIMIT}</span>
+              </div>
+            </div>
+            <div className="flex gap-3">
               <button
                 disabled={page === 0}
                 onClick={() => setPage(p => p - 1)}
-                className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest border-2 border-border-heavy hover:bg-bg-elevated transition-all disabled:opacity-20"
+                className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-border-heavy hover:bg-bg-elevated active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
               >
-                Prev
+                Previous
               </button>
               <button
                 disabled={(data?.length || 0) < LIMIT}
                 onClick={() => setPage(p => p + 1)}
-                className="px-3 py-1.5 text-[9px] font-bold uppercase tracking-widest border-2 border-border-heavy hover:bg-bg-elevated transition-all disabled:opacity-20"
+                className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest bg-border-heavy text-white hover:bg-black active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"
               >
-                Next
+                Next Page
               </button>
             </div>
           </div>
@@ -284,37 +382,41 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} aria-label="Close" />
-      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
-        <h3 className="text-xl font-bold uppercase tracking-tight mb-4">Add Existing User</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mono-label mb-1 block">Email</label>
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
+      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border-2 border-border-heavy p-8 w-full max-w-[480px] relative z-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.2)]">
+        <h3 className="text-2xl font-bold uppercase tracking-tighter mb-6 flex items-center gap-3">
+          <Users className="h-6 w-6 text-accent-blue" />
+          Add Existing User
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Direct Email Identification</label>
             <input
               type="email"
               required
+              placeholder="USER@EXAMPLE.COM"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="input-field w-full"
+              className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm focus:border-accent-blue outline-none transition-all uppercase font-mono"
             />
           </div>
-          <div>
-            <label className="mono-label mb-1 block">Role</label>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Operational Role</label>
             <select
               value={role}
               onChange={e => setRole(e.target.value as 'agent' | 'support')}
-              className="input-field w-full uppercase font-bold"
+              className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm font-bold uppercase tracking-widest focus:border-accent-blue outline-none transition-all"
             >
-              <option value="agent">Agent (Creates Tickets)</option>
-              <option value="support">Support (Handles Tickets)</option>
+              <option value="agent">Agent (Generates Tickets)</option>
+              <option value="support">Support (Processes Tickets)</option>
             </select>
           </div>
           {role !== 'agent' && departments.length > 0 && (
-            <div>
-              <label className="mono-label mb-1 block">Departments (Optional)</label>
-              <div className="space-y-2 max-h-40 overflow-y-auto border border-[var(--color-border)] p-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block">Departmental Assignments</label>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto border-2 border-border p-3 bg-bg-elevated/30">
                 {departments.map(d => (
-                  <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
+                  <label key={d.id} className="flex items-center gap-3 text-xs font-bold uppercase cursor-pointer hover:text-accent-blue transition-colors py-1">
                     <input
                       type="checkbox"
                       checked={selectedDepts.includes(d.id)}
@@ -322,19 +424,19 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
                         if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
                         else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
                       }}
-                      className="w-4 h-4"
+                      className="w-4 h-4 accent-accent-blue"
                     />
                     {d.name}
                   </label>
                 ))}
               </div>
-              <p className="text-[9px] uppercase text-[var(--color-text-muted)] mt-1">Leave empty to assign to all departments (Generalist).</p>
+              <p className="text-[8px] uppercase font-bold text-text-muted opacity-60">Zero selection defaults to Generalist status (access to all buckets).</p>
             </div>
           )}
           <div className="flex gap-4 pt-4">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={addMutation.isPending} className="btn-primary flex-1 disabled:opacity-50">
-              {addMutation.isPending ? 'Adding...' : 'Add User'}
+            <button type="button" onClick={onClose} className="flex-1 py-3 text-[11px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all">Cancel</button>
+            <button type="submit" disabled={addMutation.isPending} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50 transition-all">
+              {addMutation.isPending ? 'Processing...' : 'Verify & Add'}
             </button>
           </div>
         </form>
@@ -383,31 +485,35 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   if (tempPassword) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black opacity-80" onClick={() => { setTempPassword(null); onInvited(); }} aria-label="Close" />
-        <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
-          <h3 className="text-xl font-bold uppercase tracking-tight mb-4">User Invited</h3>
-          <div className="space-y-4">
-            <p className="text-xs font-bold uppercase tracking-wide">User created successfully.</p>
-            <div className="border border-[var(--color-border)] p-4">
-              <p className="font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] mb-2">Temporary Password</p>
-              <div className="flex items-center justify-between gap-3">
-                <code className="font-mono text-sm font-bold break-all">{tempPassword}</code>
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { setTempPassword(null); onInvited(); }} aria-label="Close" />
+        <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border-2 border-border-heavy p-8 w-full max-w-[480px] relative z-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.2)]">
+          <h3 className="text-2xl font-bold uppercase tracking-tighter mb-4 flex items-center gap-3">
+            <Check className="h-6 w-6 text-accent-green" />
+            Invitation Generated
+          </h3>
+          <div className="space-y-6">
+            <p className="text-sm font-bold uppercase tracking-tight opacity-70">New identity record created. Provision the temporary credentials below:</p>
+            <div className="border-2 border-border bg-bg-surface p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-accent-blue/10 transform rotate-45 translate-x-4 -translate-y-4" />
+              <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-3 italic">One-Time Credentials</p>
+              <div className="flex items-center justify-between gap-4">
+                <code className="font-mono text-base font-bold break-all text-accent-blue select-all bg-bg-elevated px-2 py-1">{tempPassword}</code>
                 <button
                   onClick={() => navigator.clipboard.writeText(tempPassword)}
-                  className="btn-secondary shrink-0"
+                  className="px-4 py-2 text-[10px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated active:scale-95 transition-all"
                 >
                   Copy
                 </button>
               </div>
             </div>
-            <p className="text-[9px] uppercase font-bold text-[var(--color-text-muted)]">Share this securely. It won't be shown again.</p>
+            <p className="text-[9px] uppercase font-bold text-accent-red tracking-widest animate-pulse">Critical: This sequence will not be displayed again. Secure it immediately.</p>
           </div>
-          <div className="flex justify-end mt-6">
+          <div className="flex justify-end mt-8 border-t border-border pt-6">
             <button
               onClick={() => { setTempPassword(null); onInvited(); }}
-              className="btn-primary"
+              className="px-8 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 transition-all"
             >
-              Done
+              System Ready
             </button>
           </div>
         </div>
@@ -417,66 +523,73 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black opacity-80" onClick={onClose} aria-label="Close" />
-      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border border-[var(--color-border)] p-6 w-[480px] relative z-10">
-        <h3 className="text-xl font-bold uppercase tracking-tight mb-4">Invite External User</h3>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mono-label mb-1 block">Name</label>
-            <input
-              type="text"
-              required
-              value={name}
-              onChange={e => setName(e.target.value)}
-              className="input-field w-full uppercase font-bold"
-            />
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
+      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border-2 border-border-heavy p-8 w-full max-w-[520px] relative z-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.2)]">
+        <h3 className="text-2xl font-bold uppercase tracking-tighter mb-6 flex items-center gap-3">
+          <Shield className="h-6 w-6 text-accent-blue" />
+          Invite External Identity
+        </h3>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Legal Name</label>
+              <input
+                type="text"
+                required
+                placeholder="FULL NAME"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm font-bold uppercase tracking-tighter focus:border-accent-blue outline-none transition-all"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Target Email</label>
+              <input
+                type="email"
+                required
+                placeholder="EMAIL@DOMAIN.COM"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm focus:border-accent-blue outline-none transition-all font-mono"
+              />
+            </div>
           </div>
-          <div>
-            <label className="mono-label mb-1 block">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="input-field w-full"
-            />
-          </div>
-          <div>
-            <label className="mono-label mb-1 block">Role</label>
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">System Role</label>
             <select
               value={role}
               onChange={e => setRole(e.target.value as 'agent' | 'support')}
-              className="input-field w-full uppercase font-bold"
+              className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm font-bold uppercase tracking-widest focus:border-accent-blue outline-none transition-all"
             >
-              <option value="agent">Agent (Creates Tickets)</option>
-              <option value="support">Support (Handles Tickets)</option>
+              <option value="agent">Agent (Generative Access)</option>
+              <option value="support">Support (Analytical Access)</option>
             </select>
           </div>
           {partnerAuthMethod === 'both' && (
-            <div>
-              <label className="mono-label mb-1 block">Auth Method</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block">Authentication Protocol</label>
+              <div className="flex flex-col sm:flex-row gap-4 bg-bg-elevated/30 p-3 border-2 border-border">
+                <label className="flex items-center gap-3 cursor-pointer group">
                   <input type="radio" name="inviteAuthMethod" value="local" checked={authMethod === 'local'}
                     onChange={() => setAuthMethod('local')}
-                    className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase">Local (Email + Password)</span>
+                    className="w-4 h-4 accent-accent-blue" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest group-hover:text-accent-blue">Local (Tessera Native)</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex items-center gap-3 cursor-pointer group">
                   <input type="radio" name="inviteAuthMethod" value="sso" checked={authMethod === 'sso'}
                     onChange={() => setAuthMethod('sso')}
-                    className="w-4 h-4" />
-                  <span className="text-xs font-bold uppercase">SSO (Sign in with Microsoft)</span>
+                    className="w-4 h-4 accent-accent-blue" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest group-hover:text-accent-blue">SSO (Microsoft Entra)</span>
                 </label>
               </div>
             </div>
           )}
           {role !== 'agent' && departments.length > 0 && (
-            <div>
-              <label className="mono-label mb-1 block">Departments (Optional)</label>
-              <div className="space-y-2 max-h-32 overflow-y-auto border border-[var(--color-border)] p-2">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block">Assigned Departments</label>
+              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border-2 border-border p-3 bg-bg-elevated/30">
                 {departments.map(d => (
-                  <label key={d.id} className="flex items-center gap-2 text-sm uppercase cursor-pointer">
+                  <label key={d.id} className="flex items-center gap-3 text-[10px] font-bold uppercase cursor-pointer hover:text-accent-blue transition-colors py-1">
                     <input
                       type="checkbox"
                       checked={selectedDepts.includes(d.id)}
@@ -484,7 +597,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
                         if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
                         else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
                       }}
-                      className="w-4 h-4"
+                      className="w-4 h-4 accent-accent-blue"
                     />
                     {d.name}
                   </label>
@@ -492,10 +605,10 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
               </div>
             </div>
           )}
-          <div className="flex gap-4 pt-4">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={inviteMutation.isPending} className="btn-primary flex-1 disabled:opacity-50">
-              {inviteMutation.isPending ? 'Sending...' : 'Generate Invite'}
+          <div className="flex gap-4 pt-6 border-t border-border">
+            <button type="button" onClick={onClose} className="flex-1 py-3 text-[11px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all">Abort</button>
+            <button type="submit" disabled={inviteMutation.isPending} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-white hover:bg-accent-blue/90 disabled:opacity-50 transition-all shadow-[6px_6px_0px_0px_rgba(59,130,246,0.1)]">
+              {inviteMutation.isPending ? 'Encrypting...' : 'Provision User'}
             </button>
           </div>
         </form>
