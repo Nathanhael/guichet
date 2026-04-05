@@ -56,12 +56,15 @@ export const ticketRouter = router({
         }
 
         // H-6: Department isolation for support users with assigned departments
-        // Empty/null departments = generalist (sees all). Admin and platform_operator are not restricted.
+        // Empty departments = unconfigured (sees nothing). Admin and platform_operator are not restricted.
         // Departments sourced from JWT context (refreshed on token rotation, max staleness = ACCESS_TOKEN_EXPIRY).
         if (!ctx.user.isPlatformOperator && ctx.user.role === 'support') {
           const depts = ctx.user.departments;
           if (depts.length > 0) {
             conditions.push(inArray(tickets.dept, depts));
+          } else {
+            // No departments assigned — return nothing (unconfigured support user)
+            conditions.push(sql`1 = 0`);
           }
         }
         // Normalize status filter (single value or array)
