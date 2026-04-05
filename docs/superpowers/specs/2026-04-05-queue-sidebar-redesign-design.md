@@ -95,11 +95,11 @@ Same 2-row layout as queue, with differences:
 - **Unread dot** — replaced by unread count badge
 - **Uppercase agent names** — now normal-case Inter
 - **Team panel always visible** — now collapsible via footer
+- **SavedViewPicker** — the bookmark icon and saved views dropdown are removed. With only 2 tabs and a few department chips, one-click filtering is fast enough. The `SavedViewPicker` component, `trpc.savedView.*` queries in the sidebar, and the default view auto-apply logic are all removed from `QueueSidebar.tsx`. The `SavedViewPicker.tsx` component file and `savedView` tRPC router remain in the codebase (they may be used elsewhere or re-purposed later) but are no longer imported or rendered in the sidebar.
 
 ### 7. No Changes
 
 - Department filter chips (same layout, same behavior)
-- SavedViewPicker bookmark icon
 - SLA indicator on ticket rows (still shown when applicable)
 - Max chats banner
 - Sidebar width (320px) and collapse behavior
