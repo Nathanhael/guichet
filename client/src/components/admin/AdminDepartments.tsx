@@ -236,11 +236,10 @@ export default function AdminDepartments() {
 
       <div className="surface-card">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_1fr_1fr_100px_80px] border-b border-[var(--color-border)] bg-bg-elevated">
+        <div className="grid grid-cols-[1fr_1fr_1fr_80px] border-b border-[var(--color-border)] bg-bg-elevated">
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Name</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Description</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('ref_fields_label') || 'Ref Fields'}</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide text-center">Members</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide text-center"></div>
         </div>
 
@@ -326,7 +325,7 @@ export default function AdminDepartments() {
               </div>
             ) : (
               /* View mode */
-              <div className={`grid grid-cols-[1fr_1fr_1fr_100px_80px] border-b border-[var(--color-border)] ${deletingIdx === idx ? '' : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'}`}>
+              <div className={`grid grid-cols-[1fr_1fr_1fr_80px] border-b border-[var(--color-border)] ${deletingIdx === idx ? '' : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'}`}>
                 <div className="px-4 py-3 font-bold text-sm uppercase">{dept.name}</div>
                 <div className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">{dept.description || '—'}</div>
                 <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
@@ -334,7 +333,6 @@ export default function AdminDepartments() {
                     ? dept.referenceFields.map(f => f.label).join(', ')
                     : '—'}
                 </div>
-                <div className="px-4 py-3 text-sm text-center font-bold">{memberCounts[dept.id] || 0}</div>
                 <div className="px-4 py-3 flex items-center justify-center gap-1">
                   <button
                     onClick={() => startEdit(idx)}
