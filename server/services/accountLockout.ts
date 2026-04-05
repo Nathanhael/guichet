@@ -35,8 +35,11 @@ export function checkLockout(user: { lockedUntil?: string | null }): LockoutStat
 /**
  * Records a failed login attempt. Locks the account if MAX_ATTEMPTS is reached.
  * Uses a single atomic UPDATE to prevent race conditions from concurrent requests.
+ * Lockout only applies to platform operators — partner users authenticate via SSO.
  */
-export async function recordFailedLogin(userId: string): Promise<{ locked: boolean; attemptsLeft: number }> {
+export async function recordFailedLogin(userId: string, isPlatformOperator: boolean = true): Promise<{ locked: boolean; attemptsLeft: number }> {
+  // Lockout only applies to platform operators (partner users use SSO)
+  if (!isPlatformOperator) return { locked: false, attemptsLeft: MAX_ATTEMPTS };
   // Atomic increment + conditional lock in a single UPDATE to prevent TOCTOU race
   const result = await db.execute(sql`
     UPDATE users SET

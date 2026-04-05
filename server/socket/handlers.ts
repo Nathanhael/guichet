@@ -438,8 +438,8 @@ export function registerSocketHandlers(io: Server) {
         // Restore persisted status to client and open status tracking row
         if (isSupport) {
           const persistedStatus = await presenceService.getUserStatus(userId, partnerId);
-          await statusTracking.logTransition(userId, partnerId, persistedStatus || 'available');
-          if (persistedStatus && persistedStatus !== 'available') {
+          await statusTracking.logTransition(userId, partnerId, persistedStatus || 'online');
+          if (persistedStatus && persistedStatus !== 'online') {
             socket.emit('status:restored', { status: persistedStatus });
           }
         }
@@ -626,7 +626,7 @@ export function registerSocketHandlers(io: Server) {
 
     socket.on('status:set', async ({ status }: { status: string }) => {
       if (!requireIdentified(socket)) return;
-      const VALID_STATUSES = ['available', 'break', 'lunch', 'meeting', 'training'] as const;
+      const VALID_STATUSES = ['online', 'away'] as const;
       if (!VALID_STATUSES.includes(status as typeof VALID_STATUSES[number])) return;
       const userId = socket.data.userId;
       const partnerId = socket.data.partnerId;

@@ -149,7 +149,7 @@ export async function rollupDay(partnerId: string, dateStr: string): Promise<voi
       const seconds = Math.max(0, Math.round((end.getTime() - start.getTime()) / 1000));
 
       if (!userTotals.has(row.userId)) {
-        userTotals.set(row.userId, { available: 0, break: 0, lunch: 0, meeting: 0, training: 0 });
+        userTotals.set(row.userId, { online: 0, away: 0 });
       }
       const totals = userTotals.get(row.userId)!;
       if (totals[row.status] !== undefined) {
@@ -165,20 +165,14 @@ export async function rollupDay(partnerId: string, dateStr: string): Promise<voi
           date: dateStr,
           userId,
           partnerId,
-          availableSeconds: totals.available,
-          breakSeconds: totals.break,
-          lunchSeconds: totals.lunch,
-          meetingSeconds: totals.meeting,
-          trainingSeconds: totals.training,
+          onlineSeconds: totals.online,
+          awaySeconds: totals.away,
         })
         .onConflictDoUpdate({
           target: [dailyAgentStatus.date, dailyAgentStatus.userId, dailyAgentStatus.partnerId],
           set: {
-            availableSeconds: sql`EXCLUDED.available_seconds`,
-            breakSeconds: sql`EXCLUDED.break_seconds`,
-            lunchSeconds: sql`EXCLUDED.lunch_seconds`,
-            meetingSeconds: sql`EXCLUDED.meeting_seconds`,
-            trainingSeconds: sql`EXCLUDED.training_seconds`,
+            onlineSeconds: sql`EXCLUDED.online_seconds`,
+            awaySeconds: sql`EXCLUDED.away_seconds`,
           },
         });
     }

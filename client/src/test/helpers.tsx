@@ -29,7 +29,7 @@ export function makePartner(overrides: Partial<Partner> = {}): Partner {
     logoUrl: null,
     industry: 'Tech',
     status: 'active',
-    authMethod: 'local',
+    authMethod: 'sso',
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
     ...overrides,

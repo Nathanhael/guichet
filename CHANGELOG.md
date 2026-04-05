@@ -3,6 +3,44 @@
 All notable changes to Tessera are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [4.0.0] - 2026-04-05
+
+### Added
+- **`SettingsPopover` component** — Gear icon button opening a labeled-rows popover for user preferences (language, dark mode, view mode, accessibility, bionic text, notifications)
+- **`UserMenu` component** — Avatar button (user initials) opening a dropdown with identity header (name + email), account security, feedback (agent only), and sign out
+- **SSO-primary login screen** — SSO button is the primary action; "Platform administrator login" link reveals the local email/password form
+- **User email in auth response** — `buildAuthResponse` now includes email for display in avatar dropdown
+
+### Changed
+- **Navbar consistency** — All 4 views (Platform, Admin, Support, Agent) now follow a unified pattern: `TESSERA | ROLE_BADGE | PARTNER_NAME` on the left, `SettingsPopover + UserMenu` on the right. Partner logos removed from navbar (always text).
+- **Status simplification** — 5 agent statuses (available/break/lunch/meeting/training) reduced to 2 (`online`/`away`). Auto-away triggers after 5 minutes of inactivity, auto-restores to online on activity.
+- **SSO-only auth for partners** — Local login, forgot-password, reset-password, MFA, and account lockout are now restricted to platform operators only. Partner users authenticate exclusively via SSO.
+- **`UserSecurityModal`** — Now conditional: platform operators see password change + MFA setup; partner users see notification preferences only. MFA query only fires for platform operators.
+- **`BusinessHoursGuard`** — Replaced all hardcoded `dark:`/`bg-black`/`border-black` classes with CSS custom property design tokens. Navbar unified to match standard pattern.
+- **Partner `authMethod` default** — Changed from `'local'` to `'sso'` for new partners. Existing `local`/`both` partners migrated to `sso`.
+- **`useIdleStatus` hook** — Simplified: emits `'away'` on idle (was `'break'`), always restores to `'online'` (removed unused `previousStatusRef`).
+- **`AgentStatusStats` chart** — Simplified from 5 bar/line series to 2 (`Online`/`Away`).
+
+### Removed
+- **`NavToolbar` component** — Replaced by `SettingsPopover` + `UserMenu`
+- **"My Stats" panel** — Removed collapsible agent stats panel from SupportView
+- **3 old status color tokens** from status context — `accent-orange` (lunch), `accent-red` (meeting), `accent-blue` (training) no longer used for status dots
+
+### Database
+- **Migration `0001_status_simplification`** — `daily_agent_status`: drops 5 columns (`available_seconds`, `break_seconds`, `lunch_seconds`, `meeting_seconds`, `training_seconds`), adds 2 (`online_seconds`, `away_seconds`). Data migrated: available→online, all others summed→away.
+- **Migration `0002_sso_only_default`** — `partners.auth_method` default changed to `'sso'`. Existing `local`/`both` partners updated to `sso`.
+
+### New Files
+- `client/src/components/SettingsPopover.tsx`
+- `client/src/components/__tests__/SettingsPopover.test.tsx`
+- `client/src/components/UserMenu.tsx`
+- `client/src/components/__tests__/UserMenu.test.tsx`
+- `server/drizzle/0001_status_simplification.sql`
+- `server/drizzle/0002_sso_only_default.sql`
+- `docs/superpowers/specs/2026-04-04-toolbar-status-auth-design.md`
+- `docs/superpowers/plans/2026-04-04-navbar-status-simplification.md`
+- `docs/superpowers/plans/2026-04-05-sso-only-auth.md`
+
 ## [3.0.0] - 2026-04-04
 
 ### Added

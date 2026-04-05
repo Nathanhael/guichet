@@ -40,7 +40,7 @@ export default function QueueSidebar({
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
   const t = useT();
 
-  const availableCount = onlineSupportUsers.filter((u) => u.status === 'available').length;
+  const availableCount = onlineSupportUsers.filter((u) => u.status === 'online').length;
   const totalOnline = onlineSupportUsers.length;
 
   // Batch sentiment scores for open tickets

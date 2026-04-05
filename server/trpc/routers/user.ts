@@ -140,6 +140,9 @@ export const userRouter = router({
       newPassword: z.string().min(10),
     }))
     .mutation(async ({ input, ctx }) => {
+      if (!ctx.user.isPlatformOperator) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Password management is only available for platform operators' });
+      }
       const userRows = await db.select({
         password: users.password,
         email: users.email,

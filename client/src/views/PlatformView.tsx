@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
-import useStore from '../store/useStore';
-import DarkModeToggle from '../components/DarkModeToggle';
 import { useT } from '../i18n';
 import PlatformSystemHealth from '../components/admin/PlatformSystemHealth';
 import PlatformAuditLog from '../components/admin/PlatformAuditLog';
 import PlatformSecurityOps from '../components/admin/PlatformSecurityOps';
 import PlatformSystemSettings from '../components/admin/PlatformSystemSettings';
-import LanguageSwitcher from '../components/LanguageSwitcher';
+import SettingsPopover from '../components/SettingsPopover';
+import UserMenu from '../components/UserMenu';
 import PartnerList from '../components/platform/PartnerList';
 import UserTable from '../components/platform/UserTable';
 import CreatePartnerModal from '../components/platform/CreatePartnerModal';
@@ -22,7 +21,6 @@ import type { PlatformTab, Partner, GlobalUser } from '../components/platform/ty
 import { trpc } from '../utils/trpc';
 
 export default function PlatformView() {
-  const logout = useStore((s) => s.logout);
   const t = useT();
   const [activeTab, setActiveTab] = useState<PlatformTab>('partners');
   const { data: securityStatus, isLoading: securityStatusLoading } = trpc.platformSecurity.getStatus.useQuery();
@@ -49,15 +47,13 @@ export default function PlatformView() {
       <nav className="px-8 py-4 border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-4">
           <span className="text-2xl font-bold uppercase tracking-tighter font-mono">TESSERA</span>
-          <div className="h-6 w-px bg-[var(--color-border)] mx-2" />
-          <span className="text-[10px] font-bold px-2 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] uppercase tracking-widest mr-4 font-mono">{t('platform_operator')}</span>
+          <span className="text-[10px] font-bold px-2.5 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] uppercase tracking-wide font-mono">
+            {t('platform')}
+          </span>
         </div>
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 bg-[var(--color-bg-elevated)] p-1 border border-[var(--color-border)]">
-            <LanguageSwitcher />
-            <DarkModeToggle />
-          </div>
-          <button onClick={logout} className="text-[var(--color-text-primary)] hover:line-through text-xs font-bold uppercase tracking-widest font-mono">&#10142; {t('sign_out')}</button>
+        <div className="flex items-center gap-4">
+          <SettingsPopover />
+          <UserMenu showSecurity />
         </div>
       </nav>
 

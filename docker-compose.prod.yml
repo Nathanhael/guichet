@@ -83,8 +83,8 @@ services:
 
   client:
     build:
-      context: ./client
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: client/Dockerfile.prod
     restart: always
     deploy:
       resources:

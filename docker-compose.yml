@@ -84,6 +84,8 @@ services:
     volumes:
       - ./client:/app
       - client_node_modules:/app/node_modules
+      # Required: client TS imports AppRouter type from /server/trpc/router.
+      # If tsc --noEmit fails with 100+ collision errors, recreate: docker compose up -d client --force-recreate
       - ./server:/server:ro
     depends_on:
       - server

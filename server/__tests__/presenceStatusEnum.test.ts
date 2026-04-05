@@ -8,7 +8,7 @@ describe('Presence setStatus enum validation (#37)', () => {
   );
 
   it('constrains status to an enum of valid values', () => {
-    expect(presenceSource).toMatch(/z\.enum\(\[.*available.*\]/);
+    expect(presenceSource).toMatch(/z\.enum\(\[.*online.*\]/);
   });
 
   it('does not accept arbitrary strings for status', () => {

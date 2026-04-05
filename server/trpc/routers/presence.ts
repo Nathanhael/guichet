@@ -23,7 +23,7 @@ export const presenceRouter = router({
   setStatus: protectedProcedure
     .input(z.object({
       userId: z.string(),
-      status: z.enum(['available', 'break', 'lunch', 'meeting', 'training']),
+      status: z.enum(['online', 'away']),
     }))
     .mutation(async ({ input, ctx }) => {
       // Security: Only allow admins or support to change status (or user changing their own status)

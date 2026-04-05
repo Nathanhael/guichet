@@ -83,3 +83,10 @@ gha-creds-*.json
 
 # Git worktrees
 .worktrees/
+
+# Playwright CLI cache
+.playwright-cli/
+
+# Root-level working artifacts (screenshots, prompt yamls from AI tooling)
+/*.png
+/*.yaml

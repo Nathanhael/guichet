@@ -8,14 +8,14 @@ describe('Presence reconnect includes status (#25)', () => {
     'utf-8'
   );
 
-  it('sets status to available in the identifyUser Lua script', () => {
+  it('sets status to online in the identifyUser Lua script', () => {
     // The Lua script handles both new and existing connections atomically.
-    // Verify that the script sets status to 'available' in both branches.
+    // Verify that the script sets status to 'online' in both branches.
     const luaStart = presenceSource.indexOf('local exists = redis.call');
     const luaEnd = presenceSource.indexOf('return exists', luaStart);
     const luaBlock = presenceSource.slice(luaStart, luaEnd);
 
-    expect(luaBlock).toMatch(/['"]status['"]\s*,\s*['"]available['"]/);
+    expect(luaBlock).toMatch(/['"]status['"]\s*,\s*['"]online['"]/);
   });
 
   it('includes all required fields in the identifyUser Lua script', () => {

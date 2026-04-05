@@ -1,9 +1,8 @@
 import useStore from '../../store/useStore';
 import { useT } from '../../i18n';
-import NavToolbar from '../NavToolbar';
-import NeuroToggle from '../NeuroToggle';
 import StatusPicker from '../StatusPicker';
-import ViewModeDropdown from './ViewModeDropdown';
+import SettingsPopover from '../SettingsPopover';
+import UserMenu from '../UserMenu';
 import { OnlineSupport } from '../../types';
 
 interface SupportNavProps {
@@ -12,18 +11,11 @@ interface SupportNavProps {
   onToggleSidebar: () => void;
 }
 
-/**
- * Top navigation bar for SupportView.
- * Contains: TESSERA brand, partner logo, user name, status picker,
- * toolbar (lang/focus/neuro/dark/notifications), sign-out.
- */
-export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: SupportNavProps) {
+export default function SupportNav({ partnerName, onToggleSidebar }: SupportNavProps) {
   const user = useStore((s) => s.user);
-  const logout = useStore((s) => s.logout);
   const focusMode = useStore((s) => s.focusMode);
-  const toggleFocusMode = useStore((s) => s.toggleFocusMode);
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
-  const availableCount = onlineSupportUsers.filter((u) => u.status === 'available').length;
+  const availableCount = onlineSupportUsers.filter((u) => u.status === 'online').length;
   const totalOnline = onlineSupportUsers.length;
   const t = useT();
 
@@ -35,6 +27,7 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
         focusMode ? 'py-2 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]' : 'py-4 bg-[var(--color-bg-surface)]'
       }`}
     >
+      {/* Left side: hamburger + TESSERA + SUPPORT + partner name */}
       <div className="flex items-center gap-4">
         {!focusMode && (
           <button
@@ -49,61 +42,39 @@ export default function SupportNav({ partnerName, logoUrl, onToggleSidebar }: Su
         )}
         <span className="font-bold text-2xl uppercase tracking-tighter">TESSERA</span>
         {!focusMode && (
-          <div className="flex items-center gap-3">
+          <>
+            <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono">
+              {t('support')}
+            </span>
             <div className="h-6 w-px bg-[var(--color-border)]" />
-            {logoUrl ? (
-              <img src={logoUrl} alt={partnerName} className="h-8 object-contain" />
-            ) : (
-              <span className="mono-label px-3 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]">
-                {partnerName}
-              </span>
-            )}
-          </div>
+            <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
+          </>
         )}
       </div>
 
-      <div className="flex items-center gap-6">
-        {!focusMode && (
-          <div className="flex items-center gap-2 px-4 py-1.5 border border-[var(--color-border)] font-bold uppercase text-[10px]">
-            {user.name}
-          </div>
-        )}
-
+      {/* Right side: status + capacity + Ctrl+K + gear + avatar */}
+      <div className="flex items-center gap-4">
         <StatusPicker />
 
-        {totalOnline > 0 && (
-          <div className="flex items-center gap-2 px-2">
-            <span className="text-[9px] font-mono font-bold uppercase text-text-muted">{t('team_capacity')}</span>
-            <span className="bg-bg-elevated border border-border px-2 py-0.5 text-[11px] font-bold text-accent-green">
-              {availableCount} / {totalOnline}
-            </span>
-          </div>
+        {totalOnline > 0 && !focusMode && (
+          <span className="text-[9px] font-mono font-bold text-[var(--color-text-muted)]">
+            {availableCount} / {totalOnline}
+          </span>
         )}
 
-        <kbd className="text-[9px] font-mono px-1.5 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] select-none cursor-default" title={t('cmd_palette_title') || 'Command Palette'}>Ctrl+K</kbd>
+        {!focusMode && (
+          <kbd className="text-[9px] font-mono px-1.5 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] select-none cursor-default" title={t('cmd_palette_title') || 'Command Palette'}>
+            Ctrl+K
+          </kbd>
+        )}
 
-        <NavToolbar>
-          <ViewModeDropdown />
-          <button
-            onClick={toggleFocusMode}
-            aria-label={focusMode ? t('exit_focus') : t('enter_focus')}
-            className={`w-8 h-8 flex items-center justify-center ${
-              focusMode
-                ? 'bg-[var(--color-bg-base)] text-[var(--color-text-primary)]'
-                : 'hover:bg-[var(--color-accent-blue)] hover:text-white'
-            }`}
-          >
-            Z
-          </button>
-          <NeuroToggle />
-        </NavToolbar>
-
-        <button
-          onClick={logout}
-          className="text-[var(--color-text-primary)] hover:line-through text-xs font-bold uppercase tracking-wide"
-        >
-          {t('sign_out')}
-        </button>
+        <SettingsPopover
+          showAccessibility
+          showNotifications
+          showBionicText
+          showViewMode
+        />
+        <UserMenu showSecurity />
       </div>
     </nav>
   );

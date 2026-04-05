@@ -109,7 +109,7 @@ export default function AdminStats() {
     refetchInterval: 15000,
   });
   const onlineUsers = (onlineTeam || []) as Array<{ userId: string; name: string; role: string; status: string }>;
-  const availableCount = onlineUsers.filter(u => u.status === 'available').length;
+  const availableCount = onlineUsers.filter(u => u.status === 'online').length;
   const totalOnline = onlineUsers.length;
   const capacityPct = totalOnline > 0 ? Math.round((availableCount / totalOnline) * 100) : 0;
 

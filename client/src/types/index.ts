@@ -79,6 +79,7 @@ export interface AccessibilityPrefs {
 export interface User {
   id: string;
   name: string;
+  email?: string;
   role: UserRole;
   lang: 'nl' | 'fr' | 'en';
   isPlatformOperator: boolean;
@@ -174,7 +175,7 @@ export interface Message {
 export interface OnlineSupport {
   userId: string;
   name: string;
-  status: 'available' | 'break' | 'lunch' | 'meeting' | 'training';
+  status: 'online' | 'away';
   role?: string;
 }
 
