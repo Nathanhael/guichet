@@ -79,6 +79,52 @@ export const labelRouter = router({
       }
     }),
 
+  update: adminProcedure
+    .input(z.object({
+      id: z.string().min(1),
+      name: z.string().min(1).max(50).transform(s => s.trim()).optional(),
+      color: z.enum(ALLOWED_COLORS).optional(),
+    }).refine(data => data.name !== undefined || data.color !== undefined, {
+      message: 'At least one field must be provided',
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner' });
+
+        const conditions = [eq(labels.id, input.id), eq(labels.partnerId, ctx.user.partnerId)];
+        const existing = await db.select().from(labels).where(and(...conditions)).limit(1);
+        if (existing.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Label not found or access denied' });
+        }
+
+        const updates: Partial<{ name: string; color: string }> = {};
+        if (input.name !== undefined) updates.name = input.name;
+        if (input.color !== undefined) updates.color = input.color;
+
+        await db.update(labels).set(updates).where(and(...conditions));
+
+        const updated = { id: input.id, name: input.name ?? existing[0].name, color: input.color ?? existing[0].color };
+
+        await db.insert(auditLog).values({
+          action: 'label.updated',
+          actorId: ctx.user.id,
+          partnerId: ctx.user.partnerId,
+          targetType: 'label',
+          targetId: input.id,
+          metadata: updates,
+        });
+
+        emitToPartner(ctx, 'label:updated', updated);
+
+        return updated;
+      } catch (err: unknown) {
+        if (err instanceof Error && 'code' in err && (err as Error & { code: string }).code === '23505') {
+          throw conflict('Label name already exists for this partner');
+        }
+        wrapError(err, 'Error updating label');
+      }
+    }),
+
   delete: adminProcedure
     .input(z.string().min(1))
     .mutation(async ({ input: id, ctx }) => {

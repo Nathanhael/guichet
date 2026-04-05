@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
-import { Plus, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Pencil, Check, X } from 'lucide-react';
 import ErrorBox from './ErrorBox';
 import ConfirmDialog from '../ConfirmDialog';
 import Toast from '../Toast';
@@ -33,12 +33,23 @@ export default function AdminLabels() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editColor, setEditColor] = useState<typeof COLORS[number]['key']>('indigo');
 
   const { data: labels, isLoading, error: fetchError, refetch } = trpc.label.list.useQuery();
 
   const createMutation = trpc.label.create.useMutation({
     onSuccess: () => {
       setNewName('');
+      refetch();
+    },
+    onError: (err) => setToast({ message: err.message, type: 'error' }),
+  });
+
+  const updateMutation = trpc.label.update.useMutation({
+    onSuccess: () => {
+      setEditingId(null);
       refetch();
     },
     onError: (err) => setToast({ message: err.message, type: 'error' }),
@@ -60,6 +71,21 @@ export default function AdminLabels() {
     createMutation.mutate({ name: newName, color: newColor });
   };
 
+  const startEdit = (id: string, name: string, color: string) => {
+    setEditingId(id);
+    setEditName(name);
+    setEditColor(color as typeof COLORS[number]['key']);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+  };
+
+  const saveEdit = () => {
+    if (!editingId || !editName.trim()) return;
+    updateMutation.mutate({ id: editingId, name: editName, color: editColor });
+  };
+
   const confirmDeleteLabel = (id: string, name: string) => {
     setConfirmDelete({ id, name });
   };
@@ -71,7 +97,7 @@ export default function AdminLabels() {
     setConfirmDelete(null);
   };
 
-  const error = fetchError?.message || createMutation.error?.message || deleteMutation.error?.message;
+  const error = fetchError?.message || createMutation.error?.message || updateMutation.error?.message || deleteMutation.error?.message;
 
   return (
     <div className="max-w-3xl">
@@ -139,7 +165,7 @@ export default function AdminLabels() {
 
       {/* Labels list */}
       <div className="surface-card">
-        <div className="grid grid-cols-[auto_1fr_60px] border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
+        <div className="grid grid-cols-[auto_1fr_auto] border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide w-16 text-center">{t('label_color') || 'Color'}</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('labels') || 'Label'}</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide"></div>
@@ -157,23 +183,78 @@ export default function AdminLabels() {
           labels.map((l) => (
             <div
               key={l.id}
-              className="grid grid-cols-[auto_1fr_60px] border-b border-[var(--color-border)] group hover:bg-[var(--color-bg-elevated)]"
+              className="grid grid-cols-[auto_1fr_auto] border-b border-[var(--color-border)] group hover:bg-[var(--color-bg-elevated)]"
             >
-              <div className="px-4 py-3 w-16 flex items-center justify-center">
-                <div className={`w-3.5 h-3.5 ${COLOR_BG_MAP[l.color] ?? 'bg-slate-500'}`} />
-              </div>
-              <div className="px-4 py-3 font-bold text-sm flex items-center">{l.name}</div>
-              <div className="px-4 py-3 flex items-center justify-center">
-                <button
-                  onClick={() => confirmDeleteLabel(l.id, l.name)}
-                  disabled={deletingId === l.id}
-                  className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
-                  title={t('delete') || 'Delete'}
-                  aria-label={`${t('delete') || 'Delete'} ${l.name}`}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
+              {editingId === l.id ? (
+                <>
+                  <div className="px-4 py-2 w-16 flex items-center justify-center">
+                    <div className="flex gap-1">
+                      {COLORS.map((c) => (
+                        <button
+                          key={c.key}
+                          onClick={() => setEditColor(c.key)}
+                          aria-label={c.key}
+                          className={`w-4 h-4 ${c.bg} ${editColor === c.key ? 'ring-1 ring-offset-1 ring-offset-[var(--color-bg-surface)] ' + c.ring : 'opacity-40'}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="px-4 py-2 flex items-center">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                      className="input-field w-full text-sm"
+                      maxLength={50}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="px-4 py-2 flex items-center gap-1">
+                    <button
+                      onClick={saveEdit}
+                      disabled={!editName.trim() || updateMutation.isPending}
+                      className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
+                      title={t('save_label') || 'Save'}
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
+                      title={t('cancel') || 'Cancel'}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="px-4 py-3 w-16 flex items-center justify-center">
+                    <div className={`w-3.5 h-3.5 ${COLOR_BG_MAP[l.color] ?? 'bg-slate-500'}`} />
+                  </div>
+                  <div className="px-4 py-3 font-bold text-sm flex items-center">{l.name}</div>
+                  <div className="px-4 py-3 flex items-center gap-1">
+                    <button
+                      onClick={() => startEdit(l.id, l.name, l.color)}
+                      className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white"
+                      title={t('edit_label') || 'Edit'}
+                      aria-label={`${t('edit_label') || 'Edit'} ${l.name}`}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => confirmDeleteLabel(l.id, l.name)}
+                      disabled={deletingId === l.id}
+                      className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
+                      title={t('delete') || 'Delete'}
+                      aria-label={`${t('delete') || 'Delete'} ${l.name}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ))
         )}
