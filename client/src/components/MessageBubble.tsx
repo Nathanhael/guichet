@@ -147,7 +147,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                 <button onClick={() => setEditing(false)} className="text-[9px] font-bold uppercase px-2 py-0.5 text-text-muted hover:text-text-primary">
                   {t('cancel') || 'Cancel'}
                 </button>
-                <button onClick={submitEdit} className="text-[9px] font-bold uppercase px-2 py-0.5 bg-accent-blue text-white">
+                <button onClick={submitEdit} className="text-[9px] font-bold uppercase px-2 py-0.5 bg-accent-blue text-[var(--color-btn-text-inverse)]">
                   {t('save') || 'Save'}
                 </button>
               </div>

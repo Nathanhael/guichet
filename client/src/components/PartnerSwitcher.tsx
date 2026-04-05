@@ -52,7 +52,7 @@ export default function PartnerSwitcher() {
                 }}
                 className={`w-full text-left px-4 py-3 border mb-1 flex items-center gap-3 ${
                   !activeMembershipId
-                    ? 'bg-accent-blue text-white border-accent-blue'
+                    ? 'bg-accent-blue text-[var(--color-btn-text-inverse)] border-accent-blue'
                     : 'border-transparent hover:bg-bg-elevated'
                 }`}
               >
@@ -75,7 +75,7 @@ export default function PartnerSwitcher() {
                 }}
                 className={`w-full text-left px-4 py-3 border mb-1 flex items-center gap-3 ${
                   activeMembershipId === m.id
-                    ? 'bg-accent-blue text-white border-accent-blue'
+                    ? 'bg-accent-blue text-[var(--color-btn-text-inverse)] border-accent-blue'
                     : 'border-transparent hover:bg-bg-elevated'
                 }`}
               >

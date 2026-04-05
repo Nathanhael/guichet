@@ -113,6 +113,7 @@
   --color-accent-orange: #1c1917;
   --color-own-msg-bg: #f5f5f4;
   --color-whisper-bg: #f5f5f4;
+  --color-btn-text-inverse: #ffffff;
 }
 
 :root.monochrome-mode.dark {
@@ -125,6 +126,7 @@
   --color-accent-orange: #e4e4e7;
   --color-own-msg-bg: #2d2d30;
   --color-whisper-bg: #27272a;
+  --color-btn-text-inverse: #09090b;
 }
 
 /* ===== DYSLEXIC MODE ===== */

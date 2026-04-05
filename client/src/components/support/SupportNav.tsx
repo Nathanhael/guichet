@@ -71,8 +71,6 @@ export default function SupportNav({ partnerName, onToggleSidebar }: SupportNavP
         <SettingsPopover
           showAccessibility
           showNotifications
-          showBionicText
-          showViewMode
         />
         <UserMenu showSecurity />
       </div>

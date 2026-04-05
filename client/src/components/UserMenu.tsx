@@ -88,7 +88,7 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
         aria-label={t('user_menu')}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="w-8 h-8 flex items-center justify-center bg-[var(--color-accent-blue)] text-white text-[10px] font-bold font-mono"
+        className="w-8 h-8 flex items-center justify-center bg-[var(--color-accent-blue)] text-[var(--color-btn-text-inverse)] text-[10px] font-bold font-mono"
       >
         {initials}
       </button>

@@ -50,7 +50,7 @@ export default function AgentNav({
       {/* Right side: connection status + gear + avatar */}
       <div className="flex items-center gap-4">
         <ConnectionStatus />
-        <SettingsPopover showAccessibility showNotifications showBionicText />
+        <SettingsPopover showAccessibility showNotifications />
         <UserMenu showFeedback showSecurity onFeedback={onShowFeedback} />
       </div>
     </nav>

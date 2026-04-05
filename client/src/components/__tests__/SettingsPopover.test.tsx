@@ -14,16 +14,19 @@ vi.mock('../DarkModeToggle', () => ({
   default: () => <div data-testid="dark-mode-toggle" />,
 }));
 
-vi.mock('../AccessibilityMenu', () => ({
-  default: () => <div data-testid="accessibility-menu" />,
-}));
-
 vi.mock('../NotificationToggle', () => ({
   default: () => <div data-testid="notification-toggle" />,
 }));
 
-vi.mock('../NeuroToggle', () => ({
-  default: () => <div data-testid="neuro-toggle" />,
+vi.mock('../../store/useStore', () => ({
+  useStoreShallow: () => ({
+    dyslexicMode: false,
+    toggleDyslexicMode: vi.fn(),
+    bionicReading: false,
+    toggleBionicReading: vi.fn(),
+    monochromeMode: false,
+    toggleMonochromeMode: vi.fn(),
+  }),
 }));
 
 vi.mock('../support/ViewModeDropdown', () => ({
@@ -76,28 +79,22 @@ describe('SettingsPopover', () => {
   it('does not show optional items by default', () => {
     render(<SettingsPopover />);
     fireEvent.click(screen.getByRole('button', { name: 'settings' }));
-    expect(screen.queryByTestId('accessibility-menu')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
     expect(screen.queryByTestId('notification-toggle')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('neuro-toggle')).not.toBeInTheDocument();
     expect(screen.queryByTestId('view-mode-dropdown')).not.toBeInTheDocument();
   });
 
-  it('shows accessibility when showAccessibility=true', () => {
+  it('shows accessibility toggles when showAccessibility=true', () => {
     render(<SettingsPopover showAccessibility />);
     fireEvent.click(screen.getByRole('button', { name: 'settings' }));
-    expect(screen.getByTestId('accessibility-menu')).toBeInTheDocument();
+    const switches = screen.getAllByRole('switch');
+    expect(switches).toHaveLength(3);
   });
 
   it('shows notifications when showNotifications=true', () => {
     render(<SettingsPopover showNotifications />);
     fireEvent.click(screen.getByRole('button', { name: 'settings' }));
     expect(screen.getByTestId('notification-toggle')).toBeInTheDocument();
-  });
-
-  it('shows bionic text (neuro toggle) when showBionicText=true', () => {
-    render(<SettingsPopover showBionicText />);
-    fireEvent.click(screen.getByRole('button', { name: 'settings' }));
-    expect(screen.getByTestId('neuro-toggle')).toBeInTheDocument();
   });
 
   it('shows view mode dropdown when showViewMode=true', () => {
@@ -127,16 +124,14 @@ describe('SettingsPopover', () => {
       <SettingsPopover
         showAccessibility
         showNotifications
-        showBionicText
         showViewMode
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'settings' }));
     expect(screen.getByTestId('language-switcher')).toBeInTheDocument();
     expect(screen.getByTestId('dark-mode-toggle')).toBeInTheDocument();
-    expect(screen.getByTestId('accessibility-menu')).toBeInTheDocument();
+    expect(screen.getAllByRole('switch')).toHaveLength(3);
     expect(screen.getByTestId('notification-toggle')).toBeInTheDocument();
-    expect(screen.getByTestId('neuro-toggle')).toBeInTheDocument();
     expect(screen.getByTestId('view-mode-dropdown')).toBeInTheDocument();
   });
 });

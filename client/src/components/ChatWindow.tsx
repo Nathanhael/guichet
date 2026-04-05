@@ -64,6 +64,14 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const autoResize = () => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  };
+
   // Expose minimal imperative handle for command palette actions
   useImperativeHandle(ref, () => ({
     focusTextarea: () => textareaRef.current?.focus(),
@@ -458,6 +466,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     setOriginalText(null);
     clearMedia();
     stopTyping();
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }
 
   function sendMessage(e?: React.FormEvent) {
@@ -509,36 +518,19 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   return (
     <div className={`relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden`}>
       {/* Header */}
-      <div className={`relative z-50 flex items-center justify-between px-4 border-b-2 border-border-heavy bg-bg-elevated ${(focusMode || compact) ? 'py-2' : 'py-3'}`}>
+      <div className="relative z-50 border-b-2 border-border-heavy bg-bg-elevated">
+        <div className={`flex items-center justify-between px-4 ${(focusMode || compact) ? 'py-2' : 'py-3'}`}>
         <div className="min-w-0 pr-4">
           <div className="flex items-center gap-2.5 flex-wrap">
-            {!focusMode && !compact && (
-              <span className="text-[9px] font-bold px-2 py-0.5 shrink-0 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy">
-                {ticket.dept}
-              </span>
-            )}
-            <div className="flex flex-col">
-              <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${(focusMode || compact) ? 'text-sm opacity-80' : 'text-base'}`}>
-                {ticket.agentName}
-                {isSupport && !isClosed && (
-                  <span
-                    title={agentIsOnline ? 'Agent online' : 'Agent offline'}
-                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${agentIsOnline ? 'bg-text-primary' : 'border border-border'}`}
-                  />
-                )}
-              </span>
-              {!focusMode && !compact && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
-                <div className="flex items-center gap-2.5 mt-0.5">
-                  {(ticket.references as Array<{label: string; value: string}> || []).map((ref, i) => (
-                    <span key={i} className="text-[11px] text-text-muted">
-                      <span className="text-[9px] font-bold uppercase tracking-wider opacity-40">{ref.label}</span>
-                      {' '}
-                      <span className="font-bold text-text-primary">{ref.value}</span>
-                    </span>
-                  ))}
-                </div>
+            <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${(focusMode || compact) ? 'text-sm opacity-80' : 'text-base'}`}>
+              {ticket.agentName}
+              {isSupport && !isClosed && (
+                <span
+                  title={agentIsOnline ? 'Agent online' : 'Agent offline'}
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${agentIsOnline ? 'bg-text-primary' : 'border border-border'}`}
+                />
               )}
-            </div>
+            </span>
             
             {!focusMode && !compact && ticket.agentLang && (
               <span className="text-xs cursor-default" title={ticket.agentLang.toUpperCase()}>
@@ -654,7 +646,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                   closeTicket();
                 }}
                 disabled={closing}
-                className={`text-[11px] font-bold uppercase tracking-widest bg-accent-blue text-white hover:bg-accent-blue/80 border-2 border-accent-blue flex items-center gap-2 ${(focusMode || compact) ? 'px-2.5 py-1' : 'px-4 py-2'}`}
+                className={`text-[11px] font-bold uppercase tracking-widest bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/80 border-2 border-accent-blue flex items-center gap-2 ${(focusMode || compact) ? 'px-2.5 py-1' : 'px-4 py-2'}`}
               >
                 {closing ? (
                   <span className="text-[10px] font-bold opacity-40 shrink-0">...</span>
@@ -685,6 +677,36 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
             </button>
           )}
         </div>
+        </div>
+
+        {/* Info bar: department + references (click to copy) */}
+        {!focusMode && (
+          <div className="flex items-center gap-3 px-4 py-1.5 border-t border-border select-text">
+            <span
+              role="button"
+              tabIndex={0}
+              title="Click to copy department"
+              onClick={() => { navigator.clipboard.writeText(ticket.dept); }}
+              className="text-[9px] font-bold px-2 py-0.5 shrink-0 uppercase tracking-widest bg-bg-surface text-text-primary border border-border-heavy cursor-pointer hover:border-accent-blue"
+            >
+              {ticket.dept}
+            </span>
+            {(ticket.references as Array<{label: string; value: string}> || []).map((ref, i) => (
+              <span
+                key={i}
+                role="button"
+                tabIndex={0}
+                title={`Click to copy ${ref.value}`}
+                onClick={() => { navigator.clipboard.writeText(ref.value); }}
+                className="text-[10px] text-text-muted cursor-pointer hover:text-text-primary"
+              >
+                <span className="text-[9px] font-bold uppercase tracking-wider opacity-40">{ref.label}</span>
+                {' '}
+                <span className="font-bold text-text-primary">{ref.value}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* AI Summary Card */}
@@ -824,10 +846,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
           ? 'bg-bg-elevated border-border-heavy'
           : 'bg-bg-surface border-border-heavy'
           }`}>
-          <div className="max-w-4xl mx-auto w-full">
+          <div className="w-full">
             {whisperMode && (
             <div className="flex items-center gap-2 mb-3">
-              <div className="px-2 py-0.5 bg-accent-blue text-white text-[9px] font-bold uppercase tracking-widest">Whisper</div>
+              <div className="px-2 py-0.5 bg-accent-blue text-[var(--color-btn-text-inverse)] text-[9px] font-bold uppercase tracking-widest">Whisper</div>
               <p className="text-[10px] text-text-primary font-bold uppercase tracking-tight opacity-80">
                 {t('whisper_hint')}
               </p>
@@ -853,7 +875,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
               </div>
             )}
 
-            <div className={`flex items-end gap-3 p-1.5 border-2 ${
+            <div className={`flex items-center gap-3 p-1.5 border-2 ${
               whisperMode
                 ? 'bg-bg-surface border-border-heavy'
                 : 'bg-bg-elevated border-border-heavy'
@@ -866,7 +888,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                   aria-label={t('whisper_mode') || 'Toggle whisper mode'}
                   title={t('whisper_mode')}
                   className={`w-10 h-10 flex items-center justify-center ${whisperMode
-                    ? 'bg-accent-blue text-white'
+                    ? 'bg-accent-blue text-[var(--color-btn-text-inverse)]'
                     : 'text-text-primary opacity-40 hover:opacity-100'
                     }`}
                 >
@@ -902,6 +924,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                   setText(val);
                   // DISABLED_FEATURE: canned picker "/" trigger removed until production-ready
                   emitTyping();
+                  autoResize();
                 }}
                 onKeyDown={(e) => {
                   // DISABLED_FEATURE: canned picker key guard removed until production-ready
@@ -910,7 +933,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                 onPaste={handlePaste}
                 placeholder={t('type_message')}
                 rows={1}
-                className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 max-h-32 scrollbar-none"
+                className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 scrollbar-none overflow-hidden"
               />
             </div>
 
@@ -937,7 +960,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
             <button
               type="submit"
               disabled={uploading || improving || (!text.trim() && !mediaUrl)}
-              className="bg-accent-blue text-white w-10 h-10 flex items-center justify-center disabled:opacity-30"
+              className="bg-accent-blue text-[var(--color-btn-text-inverse)] w-10 h-10 flex items-center justify-center disabled:opacity-30"
               title={improvementMode === 'forced' ? 'AI will improve before sending' : undefined}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 rotate-90" viewBox="0 0 20 20" fill="currentColor">

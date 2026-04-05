@@ -5,7 +5,7 @@ import { trpc } from '../utils/trpc';
 import { Ticket, Message } from '../types';
 
 const DEPT_COLOR: Record<string, string> = {
-  DSC: 'bg-accent-blue text-white',
+  DSC: 'bg-accent-blue text-[var(--color-btn-text-inverse)]',
   FOT: 'bg-bg-elevated text-text-primary border border-border',
 };
 
@@ -45,7 +45,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
               {ticket.dept}
             </span>
             <span className="text-sm font-bold uppercase tracking-tight text-text-primary truncate">{ticket.agentName}</span>
-            <span className="badge bg-accent-blue text-white shrink-0">
+            <span className="badge bg-accent-blue text-[var(--color-btn-text-inverse)] shrink-0">
               {t('preview_mode')}
             </span>
           </div>
