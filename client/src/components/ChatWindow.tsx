@@ -3,7 +3,7 @@ import useStore, { useStoreShallow } from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
-import CannedResponsePicker from './CannedResponsePicker';
+// DISABLED_FEATURE: import CannedResponsePicker from './CannedResponsePicker';
 import { Ticket, Message } from '../types';
 import type { ChatWindowHandle } from '../types/command';
 import { trpc } from '../utils/trpc';
@@ -52,7 +52,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   }, [mediaPreview]);
   // Tracks unread message count — setUnreadCount is active, value reserved for future unread badge UI
   const [_unreadCount, setUnreadCount] = useState(0);
-  const [showCannedPicker, setShowCannedPicker] = useState(false);
+  // DISABLED_FEATURE: const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
   const [transferNote, setTransferNote] = useState('');
   const [originalText, setOriginalText] = useState<string | null>(null);
@@ -892,15 +892,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
             </div>
 
             <div className="relative flex-1">
-              {/* Canned response picker */}
-              {showCannedPicker && isSupport && (
-                <CannedResponsePicker
-                  inputText={text}
-                  dept={ticket.dept}
-                  onSelect={(body) => { setText(body); setShowCannedPicker(false); }}
-                  onClose={() => setShowCannedPicker(false)}
-                />
-              )}
+              {/* DISABLED_FEATURE: CannedResponsePicker removed until production-ready */}
               <textarea
                 ref={textareaRef}
                 aria-label="Type a message"
@@ -908,20 +900,15 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                 onChange={(e) => {
                   const val = e.target.value;
                   setText(val);
-                  // Show canned picker when typing "/" at start
-                  if (isSupport && val.startsWith('/')) {
-                    setShowCannedPicker(true);
-                  } else {
-                    setShowCannedPicker(false);
-                  }
+                  // DISABLED_FEATURE: canned picker "/" trigger removed until production-ready
                   emitTyping();
                 }}
                 onKeyDown={(e) => {
-                  if (showCannedPicker) return; // Let picker handle keys
+                  // DISABLED_FEATURE: canned picker key guard removed until production-ready
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
                 }}
                 onPaste={handlePaste}
-                placeholder={isSupport ? (t('type_message_slash') || 'Type a message or / for quick replies') : t('type_message')}
+                placeholder={t('type_message')}
                 rows={1}
                 className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 max-h-32 scrollbar-none"
               />
