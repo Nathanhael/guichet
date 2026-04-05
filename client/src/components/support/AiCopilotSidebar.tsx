@@ -69,17 +69,17 @@ export default function AiCopilotSidebar({ ticket }: Props) {
     { refetchInterval: 60000, enabled: aiConfig?.sentimentDetection === true }
   );
 
-  // KB search (triggered by user)
+  // DISABLED_FEATURE: KB search disabled until knowledgeBase feature is production-ready
   const kbResults = trpc.kb.search.useQuery(
     { query: kbSearchTrigger },
-    { enabled: !!kbSearchTrigger }
+    { enabled: false /* !!kbSearchTrigger */ }
   );
 
-  // KB AI search (for auto-suggestions based on ticket department)
+  // DISABLED_FEATURE: KB auto-suggest disabled until knowledgeBase feature is production-ready
   const autoQuery = ticket.dept || '';
   const kbAutoSuggest = trpc.kb.search.useQuery(
     { query: autoQuery },
-    { enabled: !!autoQuery && autoQuery.length > 2 }
+    { enabled: false /* !!autoQuery && autoQuery.length > 2 */ }
   );
 
   // Auto-summarize when ticket changes — only if feature is enabled
