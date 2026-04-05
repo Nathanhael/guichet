@@ -81,7 +81,6 @@ const findRecentClosedTicketsMock = vi.fn();
 const findActiveTicketsForAgentMock = vi.fn();
 const findActiveTicketsForSupportMock = vi.fn();
 const findTicketForTransferMock = vi.fn();
-const findTicketForLabelsMock = vi.fn();
 const findPartnerLabelsMock = vi.fn();
 const createTicketMock = vi.fn();
 const assignSupportMock = vi.fn();
@@ -105,7 +104,6 @@ vi.mock('../services/ticketQueries.js', () => ({
   findActiveTicketsForAgent: findActiveTicketsForAgentMock,
   findActiveTicketsForSupport: findActiveTicketsForSupportMock,
   findTicketForTransfer: findTicketForTransferMock,
-  findTicketForLabels: findTicketForLabelsMock,
   findPartnerLabels: findPartnerLabelsMock,
   createTicket: createTicketMock,
   assignSupport: assignSupportMock,
@@ -227,7 +225,6 @@ describe('multi-tenant isolation — socket handlers', () => {
     findActiveTicketsForAgentMock.mockReset();
     findActiveTicketsForSupportMock.mockReset();
     findTicketForTransferMock.mockReset();
-    findTicketForLabelsMock.mockReset();
     findPartnerLabelsMock.mockReset();
     createTicketMock.mockReset();
     assignSupportMock.mockReset();
@@ -357,7 +354,7 @@ describe('multi-tenant isolation — socket handlers', () => {
     const labelsHandler = getHandler(socket, 'ticket:labels:update');
 
     // Ticket belongs to partner-B
-    findTicketForLabelsMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
 
     await labelsHandler({ ticketId: 'ticket-1', labels: ['label-1'] });
 

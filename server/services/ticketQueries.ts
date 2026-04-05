@@ -17,17 +17,6 @@ export async function findTicketPartner(ticketId: string) {
   return rows[0];
 }
 
-/**
- * Fetches partnerId and status for label update authorization.
- * Used by: ticket:labels:update
- */
-export async function findTicketForLabels(ticketId: string) {
-  const rows = await db
-    .select({ partnerId: tickets.partnerId, status: tickets.status })
-    .from(tickets)
-    .where(eq(tickets.id, ticketId));
-  return rows[0];
-}
 
 /**
  * Fetches full ticket info needed for support:join.
