@@ -440,6 +440,7 @@ export const partnerRouter = router({
       limit: z.number().min(1).max(100).default(50),
       offset: z.number().min(0).default(0),
       search: z.string().optional(),
+      role: z.enum(['agent', 'support', 'admin']).optional(),
     }))
     .query(async ({ input, ctx }) => {
       try {
@@ -447,6 +448,9 @@ export const partnerRouter = router({
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
         const filters = [eq(memberships.partnerId, partnerId)];
+        if (input.role) {
+          filters.push(eq(memberships.role, input.role));
+        }
         if (input.search?.trim()) {
           const rawSearch = input.search.trim();
           const s = `%${rawSearch}%`;
@@ -461,18 +465,18 @@ export const partnerRouter = router({
           filters.push(or(
             ilike(users.name, s),
             ilike(users.email, s),
-            // Match the role (e.g. "agent", "support")
             sql`${memberships.role}::text ILIKE ${s}`,
             sql`${rawSearch} ILIKE CONCAT(${memberships.role}::text, 's')`,
-            // Match department names
             matchesDept,
-            // Support typing "grants" or "access" to see all departmental users
-            sql`CASE WHEN ${rawSearch} ILIKE 'grant%' OR ${rawSearch} ILIKE 'access%' THEN jsonb_array_length(${memberships.departments}) > 0 ELSE FALSE END`,
-            // Match "Generalist" or "Global" for users with no departments
-            sql`CASE 
-              WHEN jsonb_array_length(${memberships.departments}) = 0 
-              THEN ('Generalist' ILIKE ${s} OR 'Global Agent' ILIKE ${s}) 
-              ELSE FALSE 
+            sql`CASE
+              WHEN ${memberships.role} = 'support' AND jsonb_array_length(${memberships.departments}) = 0
+              THEN 'Unconfigured' ILIKE ${s}
+              ELSE FALSE
+            END`,
+            sql`CASE
+              WHEN ${memberships.source} = 'manual'
+              THEN 'Manual' ILIKE ${s}
+              ELSE FALSE
             END`
           )!);
         }
@@ -485,6 +489,7 @@ export const partnerRouter = router({
             email: users.email,
             role: memberships.role,
             departments: memberships.departments,
+            source: memberships.source,
             createdAt: memberships.createdAt,
             externalId: users.externalId,
             lastActiveAt: users.lastActiveAt,
