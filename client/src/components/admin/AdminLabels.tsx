@@ -29,7 +29,7 @@ const COLOR_BG_MAP: Record<string, string> = Object.fromEntries(
 export default function AdminLabels() {
   const t = useT();
   const [newName, setNewName] = useState('');
-  const [newColor, setNewColor] = useState<string>('indigo');
+  const [newColor, setNewColor] = useState<typeof COLORS[number]['key']>('indigo');
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
