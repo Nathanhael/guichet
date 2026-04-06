@@ -12,10 +12,8 @@ import PartnerUnavailable from '../components/PartnerUnavailable';
 import SupportNav from '../components/support/SupportNav';
 import QueueSidebar from '../components/support/QueueSidebar';
 import ChatTabBar from '../components/support/ChatTabBar';
-import CustomerInfoPanel from '../components/support/CustomerInfoPanel';
-import AiCopilotSidebar from '../components/support/AiCopilotSidebar';
+import TicketSidebar from '../components/support/TicketSidebar';
 import SplitChatLayout from '../components/support/SplitChatLayout';
-import TicketPreviewCard from '../components/support/TicketPreviewCard';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 import { Ticket } from '../types';
@@ -65,8 +63,7 @@ export default function SupportView() {
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [showCustomerInfo, setShowCustomerInfo] = useState(true);
-  const [showCopilot, setShowCopilot] = useState(true);
+
   const chatWindowRef = useRef<ChatWindowHandle>(null);
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
@@ -115,19 +112,21 @@ export default function SupportView() {
     }
   }, [supportOpenTickets, previewTicket]);
 
-  // Auto-fallback from split view when fewer than 2 tabs are open
+  const isSplitView = viewMode === 'split-grid' || viewMode === 'split-stack';
+
+  // Auto-fallback from split-stack when fewer than 2 tabs open (grid keeps empty slots)
   useEffect(() => {
-    if (viewMode === 'split' && supportOpenTickets.length < 2) {
+    if (viewMode === 'split-stack' && supportOpenTickets.length < 2) {
       setViewMode('normal');
     }
   }, [viewMode, supportOpenTickets.length, setViewMode]);
 
-  // Auto-fallback from split view on narrow viewports
+  // Auto-fallback from split views on narrow viewports
   useEffect(() => {
-    if (viewMode === 'split' && window.innerWidth < 768) {
+    if (isSplitView && window.innerWidth < 768) {
       setViewMode('normal');
     }
-  }, [viewMode, setViewMode]);
+  }, [isSplitView, setViewMode]);
 
   // ── Actions ──
 
@@ -138,22 +137,17 @@ export default function SupportView() {
       clearUnread(ticket.id);
       setPreviewTicket(null);
     } else if (!atMaxChats) {
-      setPreviewTicket(ticket);
+      // In split view, join directly — TicketPreview is not rendered
+      if (isSplitView) {
+        joinTicket(ticket);
+      } else {
+        setPreviewTicket(ticket);
+      }
     }
   }
 
   function handleSelectTicket(ticket: Ticket) {
-    if (viewMode === 'preview') {
-      setPreviewTicket(ticket);
-    } else {
-      selectTicket(ticket);
-    }
-  }
-
-  function handleJoinFromPreview(ticket: Ticket) {
-    setPreviewTicket(null);
-    setViewMode('normal');
-    joinTicket(ticket);
+    selectTicket(ticket);
   }
 
   function joinTicket(ticket: Ticket) {
@@ -171,6 +165,11 @@ export default function SupportView() {
   }
 
   function closeTab(ticketId: string) {
+    // Notify server so it unassigns the agent from the ticket
+    const ticket = tickets.find((tk) => tk.id === ticketId);
+    if (ticket && ticket.status !== 'closed') {
+      getSocket().emit('support:leave', { ticketId });
+    }
     removeSupportOpenTicket(ticketId);
     if (activeTab === ticketId) {
       const remaining = openTabTickets.filter((tk) => tk.id !== ticketId);
@@ -205,8 +204,7 @@ export default function SupportView() {
     // View & Toggles
     { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
     { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
-    { id: 'toggle-copilot', labelKey: 'cmd_toggle_copilot', groupKey: 'cmd_group_view', execute: () => setShowCopilot((v) => !v), keywords: ['ai', 'copilot', 'assistant'] },
-    { id: 'toggle-customer-info', labelKey: 'cmd_toggle_customer_info', groupKey: 'cmd_group_view', execute: () => setShowCustomerInfo((v) => !v), keywords: ['customer', 'info', 'panel', 'details'] },
+    { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_sidebar_right', groupKey: 'cmd_group_view', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'copilot', 'info'] },
   ], [activeTab, openTabTickets, navigateTab]);
 
   useKeyboardShortcuts({
@@ -254,51 +252,30 @@ export default function SupportView() {
             activeTab={activeTab}
             previewTicketId={previewTicket?.id || null}
             atMaxChats={atMaxChats}
-            isOpen={viewMode !== 'focus' && viewMode !== 'split' && sidebarOpen}
+            isOpen={viewMode !== 'focus' && sidebarOpen}
             onSelectTicket={handleSelectTicket}
             onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
           />
         )}
 
-        {/* Sidebar toggle for split view (overlay hamburger) */}
-        {viewMode === 'split' && !sidebarOpen && (
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-30 bg-bg-surface border border-border px-1 py-3 hover:bg-bg-elevated"
-            aria-label="Toggle sidebar"
-          >
-            <span className="text-text-muted text-xs">{'\u2630'}</span>
-          </button>
-        )}
-
         <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
-          {/* ChatTabBar (hidden in preview mode) */}
-          {viewMode !== 'preview' && (
-            <ChatTabBar
-              tabs={openTabTickets}
-              activeTab={activeTab}
-              onSelectTab={(id) => setActiveTab(id)}
-              onCloseTab={closeTab}
-            />
-          )}
+          <ChatTabBar
+            tabs={openTabTickets}
+            activeTab={activeTab}
+            onSelectTab={(id) => setActiveTab(id)}
+            onCloseTab={closeTab}
+          />
 
           <div className="flex-1 overflow-hidden flex">
             <div className="flex-1 overflow-hidden">
-              {viewMode === 'split' && openTabTickets.length >= 2 ? (
+              {isSplitView ? (
                 <SplitChatLayout
                   tabs={openTabTickets}
                   activeTab={activeTab}
                   onSelectTab={(id) => setActiveTab(id)}
                   onCloseTab={closeTab}
+                  mode={viewMode as 'split-grid' | 'split-stack'}
                 />
-              ) : viewMode === 'preview' ? (
-                previewTicket ? (
-                  <TicketPreviewCard ticket={previewTicket} onJoin={handleJoinFromPreview} />
-                ) : (
-                  <div className="flex-1 flex items-center justify-center h-full">
-                    <p className="mono-label opacity-20">{t('select_ticket_preview') || 'Select a ticket to preview'}</p>
-                  </div>
-                )
               ) : showPreview ? (
                 <TicketPreview
                   ticket={previewTicket!}
@@ -320,16 +297,10 @@ export default function SupportView() {
               )}
             </div>
 
-            {/* Customer context panel (only in normal mode) */}
-            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && showCustomerInfo && (() => {
+            {/* Ticket context sidebar (only in normal mode) */}
+            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && (() => {
               const activeTicket = tickets.find((tk) => tk.id === activeTab);
-              return activeTicket ? <CustomerInfoPanel ticket={activeTicket} /> : null;
-            })()}
-
-            {/* AI Copilot sidebar (only in normal mode) */}
-            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && showCopilot && (() => {
-              const activeTicket = tickets.find((tk) => tk.id === activeTab);
-              return activeTicket ? <AiCopilotSidebar ticket={activeTicket} /> : null;
+              return activeTicket ? <TicketSidebar ticket={activeTicket} /> : null;
             })()}
           </div>
         </main>
