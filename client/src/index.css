@@ -310,3 +310,19 @@ body {
 #root {
   height: 100%;
 }
+
+/* ===== MARKDOWN MESSAGE STYLES ===== */
+
+.msg-markdown p { margin: 0; }
+.msg-markdown p + p { margin-top: 0.25rem; }
+.msg-markdown strong { font-weight: 700; }
+.msg-markdown em { font-style: italic; }
+.msg-markdown del { text-decoration: line-through; color: var(--color-text-secondary); }
+.msg-markdown code { background: var(--color-bg-elevated); font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 1px 4px; border: 1px solid var(--color-border); }
+.msg-markdown pre { background: var(--color-bg-elevated); border: 1px solid var(--color-border); padding: 0.75rem; overflow-x: auto; margin: 0.5rem 0; }
+.msg-markdown pre code { background: none; padding: 0; border: none; font-size: 12px; display: block; }
+.msg-markdown blockquote { border-left: 3px solid var(--color-accent-blue); padding-left: 0.75rem; color: var(--color-text-secondary); margin: 0.25rem 0; }
+.msg-markdown ul, .msg-markdown ol { padding-left: 1.5rem; margin: 0.25rem 0; font-size: 13px; }
+.msg-markdown li { margin-bottom: 0.25rem; }
+.msg-markdown a { color: var(--color-accent-blue); text-underline-offset: 2px; }
+.msg-markdown a:hover { text-decoration: underline; }

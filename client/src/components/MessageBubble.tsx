@@ -5,9 +5,11 @@ import BionicText from './BionicText';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import { Message } from '../types';
-import { DeliveryStatus } from './chat';
+import { DeliveryStatus, QuoteBlock } from './chat';
 import { safeDate } from '../utils/dateUtils';
+import { hasMarkdownSyntax, renderMarkdown } from '../utils/markdown';
 import { REACTION_EMOJIS } from '../constants';
+import { CornerUpLeft } from 'lucide-react';
 import { useAutoTranslation } from '../hooks/useTranslation';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '../../../server/trpc/router';
@@ -20,9 +22,10 @@ interface MessageBubbleProps {
   isGroupStart?: boolean;
   isGroupEnd?: boolean;
   aiConfig?: AiConfig;
+  onReply?: (message: Message) => void;
 }
 
-export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig }: MessageBubbleProps) {
+export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig, onReply }: MessageBubbleProps) {
   const { user, bionicReading } = useStoreShallow(s => ({
     user: s.user,
     bionicReading: s.bionicReading,
@@ -107,7 +110,8 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
 
   return (
     <div
-      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row`}
+      id={`msg-${message.id}`}
+      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row transition-colors duration-150`}
       onMouseEnter={() => !isDeleted && setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); }}
     >
@@ -142,6 +146,22 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           </div>
         )}
 
+        {message.replyTo && (
+          <QuoteBlock
+            senderName={message.replyTo.senderName}
+            text={message.replyTo.text}
+            isDeleted={!message.replyTo.text && !message.replyTo.mediaUrl}
+            onClick={() => {
+              const el = document.getElementById(`msg-${message.replyTo!.id}`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('bg-accent-blue/10');
+                setTimeout(() => el.classList.remove('bg-accent-blue/10'), 1000);
+              }
+            }}
+          />
+        )}
+
         <div className="relative">
           {editing ? (
             <div className="flex flex-col gap-2">
@@ -173,13 +193,20 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               {t('message_deleted') || 'This message was deleted'}
             </div>
           ) : displayText.trim() && displayText.trim() !== '[attachment]' ? (
-            <div className="text-[14px] break-words whitespace-pre-wrap leading-snug text-left max-h-60 overflow-y-auto">
-              {bionicReading ? (
-                <BionicText text={displayText} />
-              ) : (
-                displayText
-              )}
-            </div>
+            !bionicReading && hasMarkdownSyntax(displayText) ? (
+              <div
+                className="msg-markdown text-[13px] break-words leading-snug text-left max-h-60 overflow-y-auto"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(displayText) }}
+              />
+            ) : (
+              <div className="text-[14px] break-words whitespace-pre-wrap leading-snug text-left max-h-60 overflow-y-auto">
+                {bionicReading ? (
+                  <BionicText text={displayText} />
+                ) : (
+                  displayText
+                )}
+              </div>
+            )
           ) : null}
 
           {message.mediaUrl && !isDeleted && (message.mediaUrl.startsWith('/uploads/') || message.mediaUrl.startsWith('/api/v1/uploads/')) && (() => {
@@ -295,6 +322,15 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               {emoji}
             </button>
           ))}
+          {onReply && !isDeleted && (
+            <button
+              onClick={() => onReply(message)}
+              title={t('reply') || 'Reply'}
+              className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
+            >
+              <CornerUpLeft size={14} />
+            </button>
+          )}
           {canEdit && (
             <button
               onClick={startEdit}
