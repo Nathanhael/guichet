@@ -12,12 +12,13 @@ const DEPT_COLOR: Record<string, string> = {
 interface TicketPreviewProps {
   ticket: Ticket;
   messages?: Message[];
-  onJoin: () => void;
+  onJoin?: () => void;
   onClose: () => void;
   joinDisabled?: boolean;
+  readOnly?: boolean;
 }
 
-export default function TicketPreview({ ticket, messages: propMessages, onJoin, onClose, joinDisabled }: TicketPreviewProps) {
+export default function TicketPreview({ ticket, messages: propMessages, onJoin, onClose, joinDisabled, readOnly }: TicketPreviewProps) {
   const t = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -46,7 +47,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
             </span>
             <span className="text-sm font-bold uppercase tracking-tight text-text-primary truncate">{ticket.agentName}</span>
             <span className="badge bg-accent-blue text-[var(--color-btn-text-inverse)] shrink-0">
-              {t('preview_mode')}
+              {readOnly ? (t('history_mode') || 'HISTORY') : t('preview_mode')}
             </span>
           </div>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border border-border-heavy font-bold hover:bg-bg-elevated">×</button>
@@ -90,26 +91,28 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
           )}
         </div>
 
-        {/* Join bar */}
-        <div className="px-6 py-4 border-t border-border bg-bg-surface flex items-center justify-between gap-4">
-          {ticket.status === 'closed' ? (
-            <p className="text-sm font-bold uppercase text-text-muted">{t('conversation_closed')}</p>
-          ) : (
-            <>
-              <p className="text-xs font-bold uppercase tracking-wide text-text-muted">{t('waiting_for_expert')}</p>
-              <button
-                onClick={onJoin}
-                disabled={joinDisabled}
-                className={`px-8 py-3 text-xs font-bold uppercase tracking-widest ${joinDisabled
-                  ? 'btn-secondary opacity-20 cursor-not-allowed'
-                  : 'btn-primary'
-                  }`}
-              >
-                {t('join')}
-              </button>
-            </>
-          )}
-        </div>
+        {/* Join bar — hidden in read-only mode */}
+        {!readOnly && (
+          <div className="px-6 py-4 border-t border-border bg-bg-surface flex items-center justify-between gap-4">
+            {ticket.status === 'closed' ? (
+              <p className="text-sm font-bold uppercase text-text-muted">{t('conversation_closed')}</p>
+            ) : (
+              <>
+                <p className="text-xs font-bold uppercase tracking-wide text-text-muted">{t('waiting_for_expert')}</p>
+                <button
+                  onClick={onJoin}
+                  disabled={joinDisabled}
+                  className={`px-8 py-3 text-xs font-bold uppercase tracking-widest ${joinDisabled
+                    ? 'btn-secondary opacity-20 cursor-not-allowed'
+                    : 'btn-primary'
+                    }`}
+                >
+                  {t('join')}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
