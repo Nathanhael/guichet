@@ -46,6 +46,7 @@ export interface Message {
   processedText: string;
   text?: string; // Alias for backward compatibility
   mediaUrl?: string | null;
+  attachments?: Array<{ url: string; name: string; mimeType: string; size: number }> | null;
   whisper: number; // 0 or 1
   system: number; // 0 or 1
   translationSkipped: number; // 0 or 1
@@ -56,7 +57,9 @@ export interface Message {
   readAt?: string;
   editedAt?: string;
   deletedAt?: string;
+  replyToId?: string;
   reactions: Record<string, string[]>;
+  linkPreviews?: Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }> | null;
 }
 
 export interface Rating {

@@ -70,4 +70,39 @@ router.post('/', auth, uploadRateLimit, (req: Request, res: Response) => {
   });
 });
 
+router.post('/multi', auth, uploadRateLimit, (req: Request, res: Response) => {
+  const multiUpload = multer({ storage, fileFilter, limits: { fileSize: config.UPLOAD_MAX_SIZE } }).array('files', 5);
+  multiUpload(req, res, async (err: unknown) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'File too large' });
+      if (err.code === 'LIMIT_UNEXPECTED_FILE') return res.status(400).json({ error: 'Too many files (max 5)' });
+      return res.status(400).json({ error: err.message });
+    }
+    if (err) return res.status(400).json({ error: (err as Error).message });
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) return res.status(400).json({ error: 'No files received' });
+    const results: Array<{ url: string; name: string; mimeType: string; size: number }> = [];
+    for (const file of files) {
+      try {
+        const detected = await fileTypeFromFile(file.path);
+        if (detected && !config.UPLOAD_ALLOWED_TYPES.includes(detected.mime)) {
+          fs.unlinkSync(file.path);
+          continue;
+        }
+      } catch {
+        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        continue;
+      }
+      results.push({
+        url: `/uploads/${file.filename}`,
+        name: file.originalname,
+        mimeType: file.mimetype,
+        size: file.size,
+      });
+    }
+    if (results.length === 0) return res.status(400).json({ error: 'No valid files' });
+    return res.json(results);
+  });
+});
+
 export default router;

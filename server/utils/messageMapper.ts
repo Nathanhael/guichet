@@ -29,9 +29,14 @@ interface MessageRow {
   read_at?: string | null;
   edited_at?: string | null;
   deleted_at?: string | null;
+  reply_to_id?: string | null;
+  link_previews?: Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }> | null;
+  attachments?: Array<{ url: string; name: string; mimeType: string; size: number }> | null;
   // camelCase (Drizzle) — delivery status
   deliveredAt?: string | null;
   readAt?: string | null;
+  replyToId?: string | null;
+  linkPreviews?: Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }> | null;
 }
 
 export function mapMessageRow(row: MessageRow): Message {
@@ -71,6 +76,9 @@ export function mapMessageRow(row: MessageRow): Message {
     readAt: row.read_at ?? row.readAt ?? undefined,
     editedAt: row.edited_at ?? row.editedAt ?? undefined,
     deletedAt: row.deleted_at ?? row.deletedAt ?? undefined,
+    replyToId: row.reply_to_id ?? row.replyToId ?? undefined,
     reactions,
+    linkPreviews: row.link_previews ?? row.linkPreviews ?? undefined,
+    attachments: row.attachments ?? undefined,
   };
 }

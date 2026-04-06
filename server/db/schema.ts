@@ -146,11 +146,16 @@ export const messages = pgTable('messages', {
   sentiment: real('sentiment'),
   editedAt: timestamp('edited_at', { mode: 'string' }),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
+  linkPreviews: jsonb('link_previews').$type<Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }>>(),
+  attachments: jsonb('attachments').$type<Array<{ url: string; name: string; mimeType: string; size: number }>>(),
+  // Self-referencing FK applied at DB level (ALTER TABLE); omit .references() to avoid circular type inference
+  replyToId: text('reply_to_id'),
 }, (table) => ({
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
   senderIdIdx: index('idx_messages_sender_id').on(table.senderId),
   ticketDeletedIdx: index('idx_messages_ticket_deleted').on(table.ticketId, table.deletedAt),
   ticketCreatedIdx: index('idx_messages_ticket_created').on(table.ticketId, table.createdAt),
+  replyToIdx: index('idx_messages_reply_to_id').on(table.replyToId),
 }));
 
 export const ratings = pgTable('ratings', {

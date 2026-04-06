@@ -46,6 +46,8 @@ import {
   softDeleteMessage,
   markDelivered,
   markRead,
+  resolveReplySnippet,
+  updateMessageLinkPreviews,
   type SocketMessage,
 } from '../services/messageQueries.js';
 import { isRevoked } from '../services/sessionRevocation.js';
@@ -58,6 +60,7 @@ import { Rooms } from '../utils/rooms.js';
 import { insertSystemMessage, insertWhisperMessage } from '../services/systemMessage.js';
 import { findPartnerDepartments, transferTicketToDepartment } from '../services/transferService.js';
 import { sendPush } from '../services/pushNotification.js';
+import { unfurlLinks } from '../services/linkPreview.js';
 import {
   VIEWER_TTL_SECONDS,
   MAX_BATCH_DELETE,
@@ -102,7 +105,9 @@ interface MessageSendPayload {
   senderId: string;
   text: string;
   mediaUrl?: string;
+  attachments?: Array<{ url: string; name: string; mimeType: string; size: number }>;
   whisper?: boolean;
+  replyToId?: string;
 }
 
 interface Participant {
@@ -735,7 +740,7 @@ export function registerSocketHandlers(io: Server) {
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[rating:submit] error'); }
     });
 
-    socket.on('message:send', async ({ ticketId, text, mediaUrl, whisper }: Omit<MessageSendPayload, 'senderId'>) => {
+    socket.on('message:send', async ({ ticketId, text, mediaUrl, attachments, whisper, replyToId }: Omit<MessageSendPayload, 'senderId'>) => {
       if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'message:send' });
       try {
@@ -795,6 +800,11 @@ export function registerSocketHandlers(io: Server) {
           }
         }
 
+        // Validate attachments: max 5, each must have a valid upload URL
+        const validAttachments = Array.isArray(attachments)
+          ? attachments.filter(a => a && typeof a.url === 'string' && a.url.startsWith('/uploads/') && typeof a.name === 'string' && typeof a.size === 'number').slice(0, 5)
+          : undefined;
+
         const msgPayload = await insertMessage({
           ticketId,
           senderId,
@@ -803,20 +813,29 @@ export function registerSocketHandlers(io: Server) {
           senderLang: sender.lang,
           text: guardedText,
           mediaUrl,
+          attachments: validAttachments && validAttachments.length > 0 ? validAttachments : null,
           whisper: isWhisper,
+          replyToId: replyToId || null,
         });
         const messageId = msgPayload.id;
+
+        // Resolve reply snippet for broadcast (if replying to a message)
+        let broadcastPayload: typeof msgPayload & { replyTo?: { id: string; senderName: string; text: string; mediaUrl: string | null } | null } = msgPayload;
+        if (replyToId) {
+          const snippet = await resolveReplySnippet(replyToId);
+          broadcastPayload = { ...msgPayload, replyTo: snippet };
+        }
 
         if (isWhisper) {
           // CR-01: Whisper messages must only be sent to support/admin sockets, never to end-users
           const roomSockets = await io.in(Rooms.ticket(ticketId)).fetchSockets();
           for (const s of roomSockets) {
             if (s.data.isSupport) {
-              s.emit('message:new', msgPayload);
+              s.emit('message:new', broadcastPayload);
             }
           }
         } else {
-          io.to(Rooms.ticket(ticketId)).emit('message:new', msgPayload);
+          io.to(Rooms.ticket(ticketId)).emit('message:new', broadcastPayload);
         }
         logger.info({ messageId, whisper: !!isWhisper }, '[message:send] Emitted message:new');
         // Push notification to agent when support replies (fire-and-forget)
@@ -835,6 +854,14 @@ export function registerSocketHandlers(io: Server) {
         // ME-01 fix: Score on guardedText (what's stored/displayed), not raw pre-guard text
         if (!isWhisper) {
           scoreSentiment(ticket.partnerId, senderId, messageId, guardedText).catch(() => {});
+        }
+        // Fire-and-forget: unfurl link previews
+        if (guardedText && !isWhisper) {
+          unfurlLinks(guardedText).then(async (previews) => {
+            if (previews.length === 0) return;
+            await updateMessageLinkPreviews(messageId, previews);
+            io.to(Rooms.ticket(ticketId)).emit('message:linkPreview', { ticketId, messageId, linkPreviews: previews });
+          }).catch(() => {});
         }
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
     });
