@@ -1,0 +1,4 @@
+export { default as ChatHeader } from './ChatHeader';
+export { default as MessageList } from './MessageList';
+export { default as ComposeArea } from './ComposeArea';
+export type { ComposeAreaHandle } from './ComposeArea';
