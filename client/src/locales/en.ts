@@ -415,7 +415,7 @@ const en: Record<string, string> = {
     label_name: 'Name',
     label_color: 'Color',
     label_name_placeholder: 'e.g. Bug Report',
-    add_label: 'Add',
+    add_label: 'Add label',
     adding_label: 'Adding...',
     no_labels: 'No labels created yet',
     delete_label_title: 'Delete Label',
