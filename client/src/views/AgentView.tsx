@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useBusinessHours } from '../hooks/useBusinessHours';
@@ -10,7 +10,6 @@ import FeedbackModal from '../components/FeedbackModal';
 import RatingModal from '../components/RatingModal';
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import AgentNav from '../components/agent/AgentNav';
-import AgentTicketSidebar from '../components/agent/AgentTicketSidebar';
 import TicketForm from '../components/agent/TicketForm';
 import PwaInstallPrompt from '../components/PwaInstallPrompt';
 import { trpc } from '../utils/trpc';
@@ -26,7 +25,6 @@ export default function AgentView() {
     focusMode,
     memberships,
     activeMembershipId,
-    unreadTickets,
     queuePosition,
   } = useStoreShallow((s) => ({
     user: s.user,
@@ -37,13 +35,11 @@ export default function AgentView() {
     focusMode: s.focusMode,
     memberships: s.memberships,
     activeMembershipId: s.activeMembershipId,
-    unreadTickets: s.unreadTickets,
     queuePosition: s.queuePosition,
   }));
 
   const t = useT();
   const [showFeedback, setShowFeedback] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Keep business hours store fresh even when TicketForm is unmounted (agent in active chat)
   useBusinessHours();
@@ -75,16 +71,25 @@ export default function AgentView() {
     [activeMembership?.manifest],
   );
 
-  // Agent's non-closed tickets for the sidebar
-  const agentTickets = useMemo(
-    () => tickets.filter((tk) => tk.agentId === user?.id && tk.status !== 'closed'),
+  // Agent's non-closed ticket (1-ticket limit)
+  const agentTicket = useMemo(
+    () => tickets.find((tk) => tk.agentId === user?.id && tk.status !== 'closed') ?? null,
     [tickets, user?.id],
   );
-  const unreadCount = useMemo(
-    () => agentTickets.filter((tk) => !!unreadTickets[tk.id]).length,
-    [agentTickets, unreadTickets],
-  );
-  const showSidebar = agentTickets.length > 0;
+
+  // Track when user explicitly dismisses the chat panel
+  const dismissedRef = useRef(false);
+
+  // Auto-route to active ticket (skip if user explicitly dismissed)
+  useEffect(() => {
+    if (agentTicket && !activeTicketId && !dismissedRef.current) {
+      setActiveTicketId(agentTicket.id);
+    }
+    // Reset dismissed flag when the ticket changes (e.g. closed and new one created)
+    if (!agentTicket) {
+      dismissedRef.current = false;
+    }
+  }, [agentTicket, activeTicketId, setActiveTicketId]);
 
   // tRPC ticket list
   const { data: ticketList } = trpc.ticket.list.useQuery(
@@ -115,23 +120,13 @@ export default function AgentView() {
           logoUrl={manifest.logoUrl}
           partnerName={activeMembership.partnerName}
           industry={manifest.industry}
-          showSidebar={showSidebar}
-          onToggleSidebar={() => setSidebarOpen((v) => !v)}
           onShowFeedback={() => setShowFeedback(true)}
         />
 
         <div className="flex-1 overflow-hidden flex">
-          {showSidebar && (
-            <AgentTicketSidebar
-              tickets={agentTickets}
-              unreadCount={unreadCount}
-              isOpen={!focusMode && sidebarOpen}
-            />
-          )}
-
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">
             {/* Queue position indicator */}
-            {queuePosition && queuePosition.position > 0 && !activeTicket && agentTickets.some(tk => tk.status === 'open') && (
+            {queuePosition && queuePosition.position > 0 && !activeTicket && agentTicket?.status === 'open' && (
               <div className="px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] flex items-center gap-3">
                 <div className="flex items-center justify-center w-8 h-8 border border-[var(--color-border)] text-[var(--color-text-primary)] text-xs font-bold font-mono">
                   {queuePosition.position}
@@ -151,20 +146,29 @@ export default function AgentView() {
             {activeTicket ? (
               <div className="flex-1 min-h-0 w-full">
                 <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
-                  <ChatWindow key={activeTicket.id} ticket={activeTicket} onClose={() => setActiveTicketId(null)} />
+                  <ChatWindow key={activeTicket.id} ticket={activeTicket} onClose={() => { dismissedRef.current = true; setActiveTicketId(null); }} />
                 </div>
               </div>
-            ) : (
+            ) : !agentTicket ? (
               <TicketForm manifest={manifest} />
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <button
+                  onClick={() => { dismissedRef.current = false; setActiveTicketId(agentTicket.id); }}
+                  className="text-[11px] font-mono font-bold uppercase tracking-widest px-6 py-3 border-2 border-border-heavy text-text-primary hover:bg-bg-elevated"
+                >
+                  {t('return_to_chat') || 'Return to chat'}
+                </button>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      <RatingModal />
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
       <PwaInstallPrompt />
     </BusinessHoursGuard>
+    <RatingModal />
     </ErrorBoundary>
   );
 }

@@ -197,14 +197,14 @@ export async function updateMessageText(messageId: string, newText: string) {
 }
 
 /**
- * Soft-deletes a message (sets deletedAt, clears text).
+ * Soft-deletes a message (sets deletedAt, clears text and mediaUrl).
  * Used by: message:delete
  */
 export async function softDeleteMessage(messageId: string) {
   const now = new Date().toISOString();
   await db
     .update(messages)
-    .set({ deletedAt: now, text: '' })
+    .set({ deletedAt: now, text: '', mediaUrl: null })
     .where(eq(messages.id, messageId));
   return now;
 }

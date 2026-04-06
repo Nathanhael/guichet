@@ -63,6 +63,7 @@ describe('mapMessageRow', () => {
     expect(result.mediaUrl).toBe('https://cdn.example.com/img.png');
     expect(result.whisper).toBe(1);
     expect(result.createdAt).toBe('2026-03-24T11:00:00Z');
+    expect(result.reactions).toEqual({ thumbsUp: ['user-1'] });
   });
 
   it('handles missing optional fields gracefully', () => {
@@ -81,6 +82,38 @@ describe('mapMessageRow', () => {
     expect(result.mediaUrl).toBeNull();
     expect(result.whisper).toBe(0);
     expect(result.system).toBe(0);
+    expect(result.editedAt).toBeUndefined();
+    expect(result.deletedAt).toBeUndefined();
+  });
+
+  it('maps deletedAt and editedAt from camelCase row', () => {
+    const row = {
+      id: 'msg-del-1',
+      text: '',
+      mediaUrl: '/uploads/screenshot.png',
+      deletedAt: '2026-04-06T12:00:00Z',
+      editedAt: null,
+    };
+
+    const result = mapMessageRow(row);
+
+    expect(result.deletedAt).toBe('2026-04-06T12:00:00Z');
+    expect(result.editedAt).toBeUndefined();
+    expect(result.mediaUrl).toBe('/uploads/screenshot.png');
+  });
+
+  it('maps deleted_at and edited_at from snake_case row', () => {
+    const row = {
+      id: 'msg-del-2',
+      text: 'edited text',
+      deleted_at: null,
+      edited_at: '2026-04-06T13:00:00Z',
+    };
+
+    const result = mapMessageRow(row);
+
+    expect(result.deletedAt).toBeUndefined();
+    expect(result.editedAt).toBe('2026-04-06T13:00:00Z');
   });
 
   it('handles reactions as object (not string)', () => {
@@ -92,8 +125,8 @@ describe('mapMessageRow', () => {
 
     const result = mapMessageRow(row);
 
-    // Should serialize the object to string
-    expect(JSON.parse(result.reactions as string)).toEqual({ heart: ['user-1', 'user-2'] });
+    // Should return the object as-is
+    expect(result.reactions).toEqual({ heart: ['user-1', 'user-2'] });
   });
 
   it('handles malformed reactions JSON', () => {
@@ -106,7 +139,7 @@ describe('mapMessageRow', () => {
     const result = mapMessageRow(row);
 
     // Should fall back to empty object
-    expect(result.reactions).toBe('{}');
+    expect(result.reactions).toEqual({});
   });
 
   it('converts truthy whisper/system to 1', () => {

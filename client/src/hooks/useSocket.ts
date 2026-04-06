@@ -195,7 +195,7 @@ export function useSocket(): Socket {
     };
 
     const handleMessageDeleted = ({ ticketId, messageId, deletedAt }: { ticketId: string; messageId: string; deletedAt: string }) => {
-      useStore.getState().updateMessageState(ticketId, messageId, { text: '', deletedAt });
+      useStore.getState().updateMessageState(ticketId, messageId, { text: '', mediaUrl: null, deletedAt });
     };
 
     const handleReactionUpdated = ({ ticketId, messageId, reactions }: { ticketId: string; messageId: string; reactions: Record<string, string[]> }) => {

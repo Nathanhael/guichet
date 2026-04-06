@@ -15,6 +15,8 @@ interface MessageRow {
   senderLang?: string | null;
   mediaUrl?: string | null;
   createdAt?: string | null;
+  editedAt?: string | null;
+  deletedAt?: string | null;
   // snake_case (raw SQL)
   ticket_id?: string;
   sender_id?: string;
@@ -23,6 +25,8 @@ interface MessageRow {
   sender_lang?: string | null;
   media_url?: string | null;
   created_at?: string | null;
+  edited_at?: string | null;
+  deleted_at?: string | null;
 }
 
 export function mapMessageRow(row: MessageRow): Message {
@@ -32,7 +36,7 @@ export function mapMessageRow(row: MessageRow): Message {
   const senderRole = (row.sender_role ?? row.senderRole ?? 'system') as UserRole;
   const senderLang = row.sender_lang ?? row.senderLang ?? 'en';
 
-  let reactions = {};
+  let reactions: Record<string, string[]> = {};
   try {
     const rawReactions = row.reactions || '{}';
     reactions = typeof rawReactions === 'string' ? JSON.parse(rawReactions) : rawReactions;
@@ -58,6 +62,8 @@ export function mapMessageRow(row: MessageRow): Message {
     fallback: 0,
     timestamp: createdAt,
     createdAt: createdAt, // Alias for backward compatibility
-    reactions: JSON.stringify(reactions),
+    editedAt: row.edited_at ?? row.editedAt ?? undefined,
+    deletedAt: row.deleted_at ?? row.deletedAt ?? undefined,
+    reactions,
   };
 }

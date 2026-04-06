@@ -7,7 +7,7 @@ import MessageBubble from './MessageBubble';
 import { Ticket, Message } from '../types';
 import type { ChatWindowHandle } from '../types/command';
 import { trpc } from '../utils/trpc';
-import { LANG_FLAG } from '../constants';
+
 import { isSupportLike } from '../utils/roles';
 import { usePartner } from '../hooks/usePartner';
 import { Eye } from 'lucide-react';
@@ -39,6 +39,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const { role: activeRole, manifest } = usePartner();
   const [text, setText] = useState('');
   const [closing, setClosing] = useState(false);
+  const [copiedRef, setCopiedRef] = useState<number | null>(null);
   const [whisperMode, setWhisperMode] = useState(false);
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
@@ -54,6 +55,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const [_unreadCount, setUnreadCount] = useState(0);
   // DISABLED_FEATURE: const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [transferNote, setTransferNote] = useState('');
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
@@ -430,7 +432,12 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   /** Core send logic — emits socket event with the given text. */
   function doSend(finalText: string) {
-    const display = finalText || '📎';
+    // Capture mediaUrl before clearing — must be in scope for both optimistic + socket emit
+    const currentMediaUrl = mediaUrl;
+    const display = finalText || (currentMediaUrl ? '[attachment]' : '');
+
+    // Don't send completely empty messages (no text, no media)
+    if (!display && !currentMediaUrl) return;
 
     const optimisticMsg: Message = {
       id: `pending-${ticket!.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -443,7 +450,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       improvedText: display,
       processedText: display,
       text: display,
-      mediaUrl: mediaUrl || undefined,
+      mediaUrl: currentMediaUrl || undefined,
       whisper: whisperMode,
       system: 0,
       translationSkipped: 1,
@@ -459,7 +466,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       ticketId: ticket!.id,
       senderLang: user?.lang,
       text: display,
-      mediaUrl,
+      mediaUrl: currentMediaUrl,
       whisper: whisperMode,
     });
     setText('');
@@ -471,8 +478,12 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   function sendMessage(e?: React.FormEvent) {
     if (e) e.preventDefault();
+    if (uploading) return; // Wait for upload to finish
     const trimmed = text.trim();
     if (!trimmed && !mediaUrl) return;
+
+    // Prevent double-send: capture and clear media immediately
+    const hasMedia = !!mediaUrl;
 
     // In 'forced' mode, auto-improve before sending
     if (improvementMode === 'forced' && trimmed.length >= 10 && originalText === null) {
@@ -481,6 +492,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     }
 
     doSend(trimmed);
+    // Guard: if we had no text and no media was captured, something went wrong
+    if (!trimmed && !hasMedia) return;
   }
 
   function closeTicket() {
@@ -491,6 +504,16 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       ticketId: ticket!.id,
       closingNotes: '',
     });
+
+    // Optimistically update ticket status so UI reacts immediately
+    // (agent may not be in the socket room to receive ticket:closed broadcast)
+    useStore.getState().updateTicket(ticket!.id, { status: 'closed' });
+
+    // For agents: immediately navigate away so they can create a new ticket
+    if (isOwnTicket && onClose) {
+      onClose();
+      return;
+    }
 
     setTimeout(() => {
       setClosing(false);
@@ -512,57 +535,106 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     (d: { id: string; name: string }) => d.id !== ticket?.dept
   );
 
-  const canClose = isSupportLike(activeRole);
+  const isOwnTicket = ticket?.agentId === user?.id;
+  const canClose = isSupportLike(activeRole) || isOwnTicket;
   const isClosed = ticket.status === 'closed' || ticket.status === 'resolved';
 
   return (
     <div className={`relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden`}>
       {/* Header */}
-      <div className="relative z-50 border-b-2 border-border-heavy bg-bg-elevated">
-        <div className={`flex items-center justify-between px-4 ${(focusMode || compact) ? 'py-2' : 'py-3'}`}>
-        <div className="min-w-0 pr-4">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${(focusMode || compact) ? 'text-sm opacity-80' : 'text-base'}`}>
-              {ticket.agentName}
-              {isSupport && !isClosed && (
-                <span
-                  title={agentIsOnline ? 'Agent online' : 'Agent offline'}
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${agentIsOnline ? 'bg-text-primary' : 'border border-border'}`}
-                />
-              )}
+      <div className="relative border-b-2 border-border-heavy bg-bg-elevated">
+        <div className={`flex items-center justify-between gap-3 px-4 ${(focusMode || compact) ? 'py-2' : 'py-2.5'}`}>
+        {/* Left: identity + metadata */}
+        <div className="flex items-center gap-2.5 min-w-0 flex-wrap select-text">
+          {/* Department badge */}
+          {!focusMode && !compact && (
+            <span className="text-[9px] font-mono font-bold px-2 py-0.5 shrink-0 uppercase tracking-widest bg-accent-blue/15 text-accent-blue border border-accent-blue/30">
+              {ticket.dept}
             </span>
-            
-            {!focusMode && !compact && ticket.agentLang && (
-              <span className="text-xs cursor-default" title={ticket.agentLang.toUpperCase()}>
-                {LANG_FLAG[ticket.agentLang as keyof typeof LANG_FLAG]}
-              </span>
-            )}
-            
-            {/* Active Labels Display */}
-            {!focusMode && !compact && liveTicket.labels && liveTicket.labels.length > 0 && (
-              <div className="flex flex-wrap gap-1 ml-2">
-                {liveTicket.labels.map(id => {
-                  const info = getLabelInfo(id);
-                  if (!info) return null;
-                  return (
-                    <span
-                      key={id}
-                      className={`text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-widest bg-bg-elevated text-text-primary border border-border-heavy`}
-                    >
-                      {info.name}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
+          )}
 
-            {/* SLA Indicator — only for support, open tickets without support response */}
-            {!focusMode && !compact && isSupport && !isClosed && !liveTicket.supportJoinedAt && liveTicket.slaResponseDueAt && (
-              <SlaIndicator dueAt={liveTicket.slaResponseDueAt} breached={liveTicket.slaBreached} />
+          {/* Name + online indicator */}
+          <span className={`font-bold text-text-primary truncate flex items-center gap-2 min-w-0 ${(focusMode || compact) ? 'text-sm opacity-80' : 'text-[15px]'}`}>
+            {ticket.agentName}
+            {isSupport && !isClosed && (
+              <span
+                title={agentIsOnline ? 'Agent online' : 'Agent offline'}
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${agentIsOnline ? 'bg-text-primary' : 'border border-border'}`}
+              />
             )}
-          </div>
+          </span>
+
+          {!focusMode && !compact && ticket.agentLang && (
+            <span className="text-[9px] font-mono font-bold px-1 py-px border border-border text-text-muted cursor-default shrink-0" title={`Language: ${ticket.agentLang.toUpperCase()}`}>
+              {ticket.agentLang.toUpperCase()}
+            </span>
+          )}
+
+          {/* Separator dot */}
+          {!focusMode && !compact && <span className="text-border text-[8px]">&bull;</span>}
+
+          {/* Support agents — headset icon */}
+          {!focusMode && !compact && (() => {
+            const supportParticipants = (liveTicket.participants || []).filter(
+              (p: { role?: string }) => p.role === 'support' || p.role === 'admin'
+            );
+            if (supportParticipants.length === 0) {
+              return !isClosed ? (
+                <span className="flex items-center gap-1.5 shrink-0 text-text-muted">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 opacity-40 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-[10px] font-mono font-bold opacity-40 italic">
+                    {t('waiting_for_support') || 'Waiting for support'}
+                  </span>
+                </span>
+              ) : null;
+            }
+            return (
+              <span className="flex items-center gap-1.5 shrink-0" title={supportParticipants.map((p: { name: string }) => p.name).join(', ')}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-accent-blue shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-[10px] font-mono font-bold text-accent-blue">
+                  {supportParticipants.map((p: { name: string }) => p.name).join(', ')}
+                </span>
+              </span>
+            );
+          })()}
+
+          {/* Ticket status badge — only show resolved/closed */}
+          {!focusMode && !compact && (ticket.status === 'resolved' || ticket.status === 'closed') && (
+            <span className={`text-[8px] font-mono font-bold uppercase tracking-widest px-1.5 py-px border shrink-0 ${
+              ticket.status === 'resolved' ? 'border-accent-blue text-accent-blue' :
+              'border-border text-text-muted'
+            }`}>
+              {t(`status_${ticket.status}`) || ticket.status}
+            </span>
+          )}
+
+          {/* Labels */}
+          {!focusMode && !compact && liveTicket.labels && liveTicket.labels.length > 0 &&
+            liveTicket.labels.map(id => {
+              const info = getLabelInfo(id);
+              if (!info) return null;
+              return (
+                <span
+                  key={id}
+                  className="text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-widest bg-bg-surface text-text-muted border border-border"
+                >
+                  {info.name}
+                </span>
+              );
+            })
+          }
+
+          {/* SLA Indicator */}
+          {!focusMode && !compact && isSupport && !isClosed && !liveTicket.supportJoinedAt && liveTicket.slaResponseDueAt && (
+            <SlaIndicator dueAt={liveTicket.slaResponseDueAt} breached={liveTicket.slaBreached} />
+          )}
         </div>
 
+        {/* Right: actions */}
         <div className={`flex items-center gap-2 shrink-0 ${(focusMode || compact) ? 'opacity-60 hover:opacity-100' : ''}`}>
           {/* Summarize button (support/admin only) */}
           {canSummarize && !isClosed && (
@@ -571,7 +643,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
               disabled={summarizing}
               aria-label="Summarize conversation"
               title="AI: Summarize conversation"
-              className={`text-[10px] font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy hidden sm:flex items-center gap-1.5 ${(focusMode || compact) ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}
+              className={`text-[10px] font-bold bg-bg-surface text-text-primary hover:bg-bg-elevated border border-border hidden sm:flex items-center gap-1.5 ${(focusMode || compact) ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}
             >
               {summarizing ? (
                 <span className="text-[10px] font-bold opacity-40">...</span>
@@ -584,15 +656,15 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
             </button>
           )}
 
-          {/* Secondary actions: Transfer + Leave */}
-          {canClose && !isClosed && (
+          {/* Secondary actions: Transfer + Leave (support/admin only) */}
+          {isSupport && !isClosed && (
             <div className="flex items-center gap-2">
               <div className="relative">
                 <button
                   onClick={() => setShowTransferMenu(!showTransferMenu)}
                   aria-label={t('transfer') || 'Transfer'}
                   title={t('transfer') || 'Transfer'}
-                  className={`text-[10px] font-bold bg-bg-elevated text-text-primary hover:bg-bg-elevated border border-border-heavy ${(focusMode || compact) ? 'px-2 py-1' : 'px-3 py-1.5'}`}
+                  className={`text-[10px] font-bold bg-bg-surface text-text-primary hover:bg-bg-elevated border border-border ${(focusMode || compact) ? 'px-2 py-1' : 'px-3 py-1.5'}`}
                 >
                   {t('transfer') || 'Transfer'}
                 </button>
@@ -637,7 +709,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
             </div>
           )}
 
-          {/* Primary action: Close Ticket — visually separated */}
+          {/* Primary action: Close Ticket */}
           {canClose && !isClosed && (
             <div className="border-l-2 border-border-heavy pl-2">
               <button
@@ -659,6 +731,28 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
               </button>
             </div>
           )}
+          {/* References — right-aligned before close */}
+          {!focusMode && !compact && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
+            <div className="flex items-center gap-3 select-text">
+              {(ticket.references as Array<{label: string; value: string}>).map((ref, i) => (
+                <span
+                  key={i}
+                  role="button"
+                  tabIndex={0}
+                  title={`Click to copy ${ref.value}`}
+                  onClick={() => { navigator.clipboard.writeText(ref.value); setCopiedRef(i); setTimeout(() => setCopiedRef(null), 1500); }}
+                  className="flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  <span className="text-[8px] font-mono font-bold uppercase tracking-wider text-text-muted opacity-50">{ref.label}</span>
+                  {copiedRef === i ? (
+                    <span className="text-[10px] font-mono font-bold text-accent-green">Copied!</span>
+                  ) : (
+                    <span className="text-[11px] font-mono font-bold text-text-muted hover:text-accent-blue hover:underline underline-offset-2">{ref.value}</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
           {onClose && (
             <button
               onClick={(e) => {
@@ -678,35 +772,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
           )}
         </div>
         </div>
-
-        {/* Info bar: department + references (click to copy) */}
-        {!focusMode && (
-          <div className="flex items-center gap-3 px-4 py-1.5 border-t border-border select-text">
-            <span
-              role="button"
-              tabIndex={0}
-              title="Click to copy department"
-              onClick={() => { navigator.clipboard.writeText(ticket.dept); }}
-              className="text-[9px] font-bold px-2 py-0.5 shrink-0 uppercase tracking-widest bg-bg-surface text-text-primary border border-border-heavy cursor-pointer hover:border-accent-blue"
-            >
-              {ticket.dept}
-            </span>
-            {(ticket.references as Array<{label: string; value: string}> || []).map((ref, i) => (
-              <span
-                key={i}
-                role="button"
-                tabIndex={0}
-                title={`Click to copy ${ref.value}`}
-                onClick={() => { navigator.clipboard.writeText(ref.value); }}
-                className="text-[10px] text-text-muted cursor-pointer hover:text-text-primary"
-              >
-                <span className="text-[9px] font-bold uppercase tracking-wider opacity-40">{ref.label}</span>
-                {' '}
-                <span className="font-bold text-text-primary">{ref.value}</span>
-              </span>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* AI Summary Card */}
@@ -875,6 +940,56 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
               </div>
             )}
 
+            {/* Media preview strip */}
+            {mediaPreview && (() => {
+              const isImagePreview = mediaPreview.startsWith('blob:') || mediaPreview.startsWith('data:image');
+              const fileName = fileRef.current?.files?.[0]?.name;
+              const ext = fileName?.split('.').pop()?.toLowerCase() || '';
+              const fileLabel = ext === 'pdf' ? 'PDF' : ext === 'docx' || ext === 'doc' ? 'Word' : ext === 'xlsx' || ext === 'xls' ? 'Excel' : ext === 'csv' ? 'CSV' : ext === 'txt' ? 'Text' : 'File';
+              return (
+              <div className="flex items-center gap-3 mb-2 p-2 bg-bg-elevated border border-border">
+                <div className="relative shrink-0">
+                  {isImagePreview ? (
+                    <img src={mediaPreview} alt="Preview" className="h-16 w-16 object-cover border border-border" />
+                  ) : (
+                    <div className="h-16 w-16 flex flex-col items-center justify-center border border-border bg-bg-surface">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      <span className="text-[8px] font-mono font-bold text-text-muted mt-0.5">{ext.toUpperCase()}</span>
+                    </div>
+                  )}
+                  {uploading && (
+                    <div className="absolute inset-0 bg-bg-base/70 flex items-center justify-center">
+                      <svg className="animate-spin h-4 w-4 text-text-primary" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={clearMedia}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
+                    title="Remove"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
+                    {uploading ? 'Uploading...' : fileName ? `${fileLabel} attached` : 'File attached'}
+                  </span>
+                  {fileName && <span className="text-[9px] font-mono text-text-muted opacity-60 truncate">{fileName}</span>}
+                  <span className="text-[9px] text-text-muted opacity-40">
+                    Add a message or press Enter to send
+                  </span>
+                </div>
+              </div>);
+            })()}
+
             <div className={`flex items-center gap-3 p-1.5 border-2 ${
               whisperMode
                 ? 'bg-bg-surface border-border-heavy'
@@ -905,12 +1020,55 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
                   aria-label="Attach file"
                   className="hidden"
                   onChange={handleFileChange}
                 />
               </label>
+
+              {/* Emoji picker */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100"
+                  title="Emoji"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" />
+                  </svg>
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute bottom-full left-0 mb-2 bg-bg-surface border-2 border-border-heavy z-50 p-2 w-[280px]">
+                    <div className="grid grid-cols-8 gap-0.5">
+                      {['😀','😂','🙂','😊','😍','😎','🤔','😅','😢','😤','👋','🙏','👍','👎','👏','❤️','🔥','⭐','✅','🎉','💡','⚠️','💬','📎'].map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => {
+                            const ta = textareaRef.current;
+                            if (ta) {
+                              const start = ta.selectionStart;
+                              const end = ta.selectionEnd;
+                              const newText = text.slice(0, start) + emoji + text.slice(end);
+                              setText(newText);
+                              setShowEmojiPicker(false);
+                              setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + emoji.length; }, 0);
+                            } else {
+                              setText(text + emoji);
+                              setShowEmojiPicker(false);
+                            }
+                          }}
+                          className="w-8 h-8 flex items-center justify-center text-lg hover:bg-bg-elevated"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="relative flex-1">
@@ -931,7 +1089,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
                 }}
                 onPaste={handlePaste}
-                placeholder={t('type_message')}
+                placeholder={uploading ? 'Uploading image...' : mediaUrl ? 'Add a message or press Enter to send' : t('type_message')}
                 rows={1}
                 className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 scrollbar-none overflow-hidden"
               />
