@@ -52,6 +52,8 @@ export interface Message {
   fallback: number; // 0 or 1
   timestamp: string;
   createdAt?: string; // Alias for backward compatibility
+  deliveredAt?: string;
+  readAt?: string;
   editedAt?: string;
   deletedAt?: string;
   reactions: Record<string, string[]>;

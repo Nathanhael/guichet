@@ -25,8 +25,13 @@ interface MessageRow {
   sender_lang?: string | null;
   media_url?: string | null;
   created_at?: string | null;
+  delivered_at?: string | null;
+  read_at?: string | null;
   edited_at?: string | null;
   deleted_at?: string | null;
+  // camelCase (Drizzle) — delivery status
+  deliveredAt?: string | null;
+  readAt?: string | null;
 }
 
 export function mapMessageRow(row: MessageRow): Message {
@@ -62,6 +67,8 @@ export function mapMessageRow(row: MessageRow): Message {
     fallback: 0,
     timestamp: createdAt,
     createdAt: createdAt, // Alias for backward compatibility
+    deliveredAt: row.delivered_at ?? row.deliveredAt ?? undefined,
+    readAt: row.read_at ?? row.readAt ?? undefined,
     editedAt: row.edited_at ?? row.editedAt ?? undefined,
     deletedAt: row.deleted_at ?? row.deletedAt ?? undefined,
     reactions,

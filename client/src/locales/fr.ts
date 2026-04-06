@@ -586,5 +586,10 @@ const fr: Record<string, string> = {
     admin: 'Admin',
     support: 'Support',
     agent: 'Agent',
+
+    // Delivery status
+    status_sent: 'Envoyé',
+    status_delivered: 'Livré',
+    status_read: 'Lu',
 };
 export default fr;

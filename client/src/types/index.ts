@@ -164,6 +164,7 @@ export interface Message {
   fallback: boolean | number;
   timestamp: string;
   createdAt?: string; // alias/legacy
+  deliveredAt?: string | null;
   readAt?: string | null;
   editedAt?: string | null;
   deletedAt?: string | null;

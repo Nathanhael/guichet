@@ -600,5 +600,10 @@ const en: Record<string, string> = {
     admin: 'Admin',
     support: 'Support',
     agent: 'Agent',
+
+    // Delivery status
+    status_sent: 'Sent',
+    status_delivered: 'Delivered',
+    status_read: 'Read',
 };
 export default en;
