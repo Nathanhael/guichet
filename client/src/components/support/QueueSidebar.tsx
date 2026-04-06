@@ -89,13 +89,14 @@ export default function QueueSidebar({
     }
   }, [archiveQuery.data, archiveCursor]);
 
-  // Reset archived tickets when switching dept filter while on archive tab
+  // Reset archived tickets and search when switching dept filter or tab
   useEffect(() => {
     if (sidebarTab === 'archive') {
       setArchivedTickets([]);
       setArchiveCursor(undefined);
       setHasMoreArchive(false);
     }
+    setSearchQuery('');
   }, [filterDept, sidebarTab]);
 
   // Per-department open ticket counts (for pill badges)
@@ -171,7 +172,7 @@ export default function QueueSidebar({
             }`}
           >
             {t('all')}
-            <span className="text-[8px] tabular-nums text-[var(--color-accent-blue)]">{deptCounts.all || 0}</span>
+            {sidebarTab === 'queue' && <span className="text-[8px] tabular-nums text-[var(--color-accent-blue)]">{deptCounts.all || 0}</span>}
           </button>
           {visibleDepartments.map((dept) => (
             <button
@@ -184,7 +185,7 @@ export default function QueueSidebar({
               }`}
             >
               {dept.name}
-              <span className="text-[8px] tabular-nums text-[var(--color-accent-blue)]">{deptCounts[dept.id] || 0}</span>
+              {sidebarTab === 'queue' && <span className="text-[8px] tabular-nums text-[var(--color-accent-blue)]">{deptCounts[dept.id] || 0}</span>}
             </button>
           ))}
         </div>
