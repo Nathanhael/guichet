@@ -5,10 +5,10 @@ import { LANG_LABEL } from '../../constants';
 import { getRoleDisplayName } from '../../utils/roles';
 import type { User, Membership, UserRole } from '../../types';
 
-type DemoUser = { id: string; name: string; email?: string; role?: string; lang?: string; isPlatformOperator?: boolean };
+type DemoUser = { id: string; name: string; email?: string; role?: string; lang?: string; isPlatformOperator?: boolean; membershipId?: string | null; partnerId?: string | null; partnerName?: string | null };
 
 interface DemoUserPickerProps {
-  onLoginSuccess: (user: User, memberships: Membership[]) => void;
+  onLoginSuccess: (user: User, memberships: Membership[], preferredMembershipId?: string) => void;
   onMfaRequired: (endpoint: string, body: Record<string, unknown>, passwordRef: string) => void;
 }
 
@@ -46,7 +46,9 @@ export default function DemoUserPicker({ onLoginSuccess, onMfaRequired }: DemoUs
         if (data.mfaRequired) {
           onMfaRequired('/api/v1/auth/login', { id: u.id }, demoPassword);
         } else {
-          onLoginSuccess(data.user, data.memberships || []);
+          // Pass the membershipId from the clicked entry to auto-select the correct role
+          const preferredId = u.membershipId ?? undefined;
+          onLoginSuccess(data.user, data.memberships || [], preferredId);
         }
       } else {
          const errData = await res.json();
@@ -88,6 +90,7 @@ export default function DemoUserPicker({ onLoginSuccess, onMfaRequired }: DemoUs
                 </div>
                 <div className="flex flex-col items-end gap-1.5">
                   <span className="badge">{u.isPlatformOperator ? getRoleDisplayName('platform_operator', true) : getRoleDisplayName(u.role as UserRole)}</span>
+                  {u.partnerName && <span className="mono-label text-[var(--color-text-secondary)]">{u.partnerName}</span>}
                   <span className="mono-label text-[var(--color-text-muted)]">{(u.lang && LANG_LABEL[u.lang]) || u.lang}</span>
                 </div>
               </button>

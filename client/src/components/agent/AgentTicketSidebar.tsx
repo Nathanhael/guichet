@@ -1,3 +1,4 @@
+import { ChevronLeft } from 'lucide-react';
 import useStore from '../../store/useStore';
 import { useT } from '../../i18n';
 import { getTicketTime } from '../../utils/dateUtils';
@@ -13,14 +14,14 @@ const STATUS_DOT: Record<string, string> = {
 interface AgentTicketSidebarProps {
   tickets: Ticket[];
   unreadCount: number;
-  isOpen: boolean;
+  onToggle: () => void;
 }
 
 /**
- * Collapsible sidebar listing the agent's open tickets.
+ * Sidebar listing the agent's open ticket(s).
  * Shows department badge, status dot, references, lang flag, time, and unread indicator.
  */
-export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: AgentTicketSidebarProps) {
+export default function AgentTicketSidebar({ tickets, unreadCount, onToggle }: AgentTicketSidebarProps) {
   const activeTicketId = useStore((s) => s.activeTicketId);
   const setActiveTicketId = useStore((s) => s.setActiveTicketId);
   const clearUnread = useStore((s) => s.clearUnread);
@@ -33,11 +34,7 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
   }
 
   return (
-    <aside
-      className={`${
-        isOpen ? 'w-80 border-r border-[var(--color-border)] max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:bg-[var(--color-bg-surface)]' : 'w-0 border-r-0'
-      } shrink-0 overflow-hidden bg-[var(--color-bg-surface)] flex flex-col`}
-    >
+    <>
       {/* Header */}
       <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
@@ -48,11 +45,8 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
             </span>
           )}
         </div>
-        <button
-          onClick={() => setActiveTicketId(null)}
-          className="mono-label border border-[var(--color-border)] px-3 py-1 hover:bg-[var(--color-accent-blue)] hover:text-white"
-        >
-          {t('new_ticket')}
+        <button onClick={onToggle} className="opacity-30 hover:opacity-100" title="Collapse">
+          <ChevronLeft className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -110,6 +104,6 @@ export default function AgentTicketSidebar({ tickets, unreadCount, isOpen }: Age
           );
         })}
       </div>
-    </aside>
+    </>
   );
 }

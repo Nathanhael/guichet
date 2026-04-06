@@ -69,14 +69,14 @@ export default function LoginView() {
 
   const [isSsoVerifying, setIsSsoVerifying] = useState(false);
 
-  const handleLoginSuccess = useCallback((user: User, memberships: Membership[]) => {
-    if (memberships.length > 1 && !user.isPlatformOperator) {
+  const handleLoginSuccess = useCallback((user: User, memberships: Membership[], preferredMembershipId?: string) => {
+    if (memberships.length > 1 && !user.isPlatformOperator && !preferredMembershipId) {
       setSelectingPartner({ user, memberships });
     } else {
       setUser(user);
       setMemberships(memberships);
       if (memberships.length > 0 && !user.isPlatformOperator) {
-        setActiveMembershipId(memberships[0].id);
+        setActiveMembershipId(preferredMembershipId || memberships[0].id);
       }
     }
   }, [setUser, setMemberships, setActiveMembershipId]);

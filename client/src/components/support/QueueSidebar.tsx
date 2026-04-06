@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Shield } from 'lucide-react';
+import { Shield, ChevronLeft } from 'lucide-react';
 import { useT } from '../../i18n';
 import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
@@ -15,7 +15,7 @@ interface QueueSidebarProps {
   activeTab: string | null;
   previewTicketId: string | null;
   atMaxChats: boolean;
-  isOpen: boolean;
+  onToggle: () => void;
   onSelectTicket: (ticket: Ticket) => void;
   onPreviewArchived: (ticket: Ticket) => void;
 }
@@ -30,7 +30,7 @@ export default function QueueSidebar({
   activeTab,
   previewTicketId,
   atMaxChats,
-  isOpen,
+  onToggle,
   onSelectTicket,
   onPreviewArchived,
 }: QueueSidebarProps) {
@@ -40,11 +40,6 @@ export default function QueueSidebar({
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
   const user = useStore((s) => s.user);
   const t = useT();
-
-  // Batch sentiment scores for open tickets
-  const { data: sentimentMap } = trpc.ai.getTicketSentiments.useQuery(undefined, {
-    refetchInterval: 60000,
-  });
 
   const [sidebarTab, setSidebarTab] = useState<'queue' | 'archive'>('queue');
   const [filterDept, setFilterDept] = useState('all');
@@ -126,9 +121,7 @@ export default function QueueSidebar({
   );
 
   return (
-    <aside className={`${
-      isOpen ? 'w-80 border-r border-[var(--color-border)] max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40' : 'w-0 border-r-0'
-    } shrink-0 overflow-hidden bg-[var(--color-bg-surface)] flex flex-col`}>
+    <>
       {hasNoDepartments ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <Shield className="h-8 w-8 text-text-muted opacity-30 mb-4" />
@@ -143,6 +136,9 @@ export default function QueueSidebar({
           <h2 className="mono-label">
             {sidebarTab === 'queue' ? t('queue') : t('archive')}
           </h2>
+          <button onClick={onToggle} className="opacity-30 hover:opacity-100" title="Ctrl+B">
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
         </div>
 
         <div className="flex gap-1 mb-2">
@@ -236,7 +232,6 @@ export default function QueueSidebar({
                     isActive={activeTab === ticket.id}
                     unreadCount={unreadCount}
                     currentUserId={user?.id || ''}
-                    sentimentScore={sentimentMap?.[ticket.id]}
                     onClick={() => (!atMaxChats || isOpen ? onSelectTicket(ticket) : undefined)}
                     disabled={atMaxChats && !isOpen}
                   />
@@ -330,6 +325,6 @@ export default function QueueSidebar({
       />
       </>
       )}
-    </aside>
+    </>
   );
 }

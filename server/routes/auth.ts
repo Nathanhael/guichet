@@ -484,8 +484,8 @@ router.post('/login', loginRateLimit, validateBody(z.object({
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Local login is only available for platform operators
-        if (!user.isPlatformOperator) {
+        // Local login is only available for platform operators (unless DEMO_MODE is enabled)
+        if (!user.isPlatformOperator && !config.DEMO_MODE) {
             logger.warn({ id }, '[Auth] Local login rejected: non-platform user must use SSO');
             return res.status(403).json({ error: 'Local login is not available. Please use SSO to sign in.' });
         }

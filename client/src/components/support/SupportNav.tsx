@@ -8,10 +8,9 @@ import { OnlineSupport } from '../../types';
 interface SupportNavProps {
   partnerName: string;
   logoUrl?: string;
-  onToggleSidebar: () => void;
 }
 
-export default function SupportNav({ partnerName, onToggleSidebar }: SupportNavProps) {
+export default function SupportNav({ partnerName }: SupportNavProps) {
   const user = useStore((s) => s.user);
   const focusMode = useStore((s) => s.focusMode);
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
@@ -29,17 +28,6 @@ export default function SupportNav({ partnerName, onToggleSidebar }: SupportNavP
     >
       {/* Left side: hamburger + TESSERA + SUPPORT + partner name */}
       <div className="flex items-center gap-4">
-        {!focusMode && (
-          <button
-            onClick={onToggleSidebar}
-            className="p-1.5 hover:bg-[var(--color-accent-blue)] hover:text-white"
-            aria-label={t('queue')}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-        )}
         <span className="font-bold text-2xl uppercase tracking-tighter">TESSERA</span>
         {!focusMode && (
           <>

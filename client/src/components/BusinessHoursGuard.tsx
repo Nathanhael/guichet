@@ -9,11 +9,12 @@ interface BusinessHoursGuardProps {
 }
 
 export default function BusinessHoursGuard({ children, mode = 'block' }: BusinessHoursGuardProps) {
-  const { businessHoursStatus, user, memberships, activeMembershipId } = useStoreShallow(s => ({
+  const { businessHoursStatus, user, memberships, activeMembershipId, logout } = useStoreShallow(s => ({
     businessHoursStatus: s.businessHoursStatus,
     user: s.user,
     memberships: s.memberships,
-    activeMembershipId: s.activeMembershipId
+    activeMembershipId: s.activeMembershipId,
+    logout: s.logout
   }));
   const t = useT();
   const activeMembership = memberships.find((membership) => membership.id === activeMembershipId);
@@ -31,8 +32,16 @@ export default function BusinessHoursGuard({ children, mode = 'block' }: Busines
             <div className="h-6 w-px bg-[var(--color-border)]" />
             <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
           </div>
-          <div className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
-            {t('support_chat_closed')}
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)]">
+              {t('support_chat_closed')}
+            </span>
+            <button
+              onClick={logout}
+              className="text-[10px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] border border-[var(--color-border)] px-3 py-1.5 transition-colors duration-150"
+            >
+              {t('sign_out')}
+            </button>
           </div>
         </div>
         <div className="flex-1 grid grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] overflow-hidden">

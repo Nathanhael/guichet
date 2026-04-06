@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, adminProcedure, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { partners, users, memberships, auditLog } from '../../db/schema.js';
-import { eq, and, or, ilike, sql } from 'drizzle-orm';
+import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { randomBytes } from 'crypto';
@@ -447,6 +447,7 @@ export const partnerRouter = router({
       offset: z.number().min(0).default(0),
       search: z.string().optional(),
       role: z.enum(['agent', 'support']).optional(),
+      excludeAdmin: z.boolean().optional().default(true),
     }))
     .query(async ({ input, ctx }) => {
       try {
@@ -456,6 +457,8 @@ export const partnerRouter = router({
         const filters = [eq(memberships.partnerId, partnerId)];
         if (input.role) {
           filters.push(eq(memberships.role, input.role));
+        } else if (input.excludeAdmin) {
+          filters.push(ne(memberships.role, 'admin'));
         }
         if (input.search?.trim()) {
           const rawSearch = input.search.trim();

@@ -2,11 +2,8 @@ import { useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { Ticket } from '../../types';
-import useStore from '../../store/useStore';
 import {
   ChevronRight,
-  ChevronLeft,
-  Clock,
   RefreshCw,
   Brain,
 } from 'lucide-react';
@@ -14,12 +11,11 @@ import {
 interface TicketSidebarProps {
   ticket: Ticket;
   onPreviewTicket?: (ticket: Ticket) => void;
+  onToggle: () => void;
 }
 
-export default function TicketSidebar({ ticket, onPreviewTicket }: TicketSidebarProps) {
+export default function TicketSidebar({ ticket, onPreviewTicket, onToggle }: TicketSidebarProps) {
   const t = useT();
-  const rightSidebarExpanded = useStore((s) => s.rightSidebarExpanded);
-  const toggleRightSidebar = useStore((s) => s.toggleRightSidebar);
 
   // ── Past Tickets ──
   const { data: pastTickets } = trpc.ticket.list.useQuery(
@@ -45,32 +41,15 @@ export default function TicketSidebar({ ticket, onPreviewTicket }: TicketSidebar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticket.id, aiConfig?.chatSummarization]);
 
-  // ── Collapsed State ──
-  if (!rightSidebarExpanded) {
-    return (
-      <div role="complementary" aria-expanded="false" className="w-10 border-l border-[var(--color-border)] flex flex-col items-center pt-3 bg-[var(--color-bg-surface)]">
-        <button
-          onClick={toggleRightSidebar}
-          className="p-1.5 hover:bg-[var(--color-accent-blue)] hover:text-white"
-          title={t('expand_sidebar') || 'Expand sidebar'}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
-        <Clock className="h-4 w-4 opacity-40 mt-3" />
-      </div>
-    );
-  }
-
-  // ── Expanded State ──
   const aiEnabled = aiConfig?.chatSummarization === true;
 
   return (
-    <aside role="complementary" aria-expanded="true" className="w-72 border-l border-[var(--color-border)] flex flex-col overflow-hidden bg-[var(--color-bg-surface)]">
+    <>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-bg-base)]">
         <span className="mono-label">{t('ticket_context') || 'CONTEXT'}</span>
         <button
-          onClick={toggleRightSidebar}
+          onClick={onToggle}
           className="p-1 hover:bg-[var(--color-accent-blue)] hover:text-white"
           title={t('collapse_sidebar') || 'Collapse'}
         >
@@ -142,6 +121,6 @@ export default function TicketSidebar({ ticket, onPreviewTicket }: TicketSidebar
           </section>
         )}
       </div>
-    </aside>
+    </>
   );
 }

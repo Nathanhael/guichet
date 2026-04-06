@@ -13,6 +13,7 @@ import SupportNav from '../components/support/SupportNav';
 import QueueSidebar from '../components/support/QueueSidebar';
 import ChatTabBar from '../components/support/ChatTabBar';
 import TicketSidebar from '../components/support/TicketSidebar';
+import ResizablePanel from '../components/ResizablePanel';
 import SplitChatLayout from '../components/support/SplitChatLayout';
 import { requestNotificationPermission } from '../utils/notifications';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
@@ -22,6 +23,7 @@ import { trpc } from '../utils/trpc';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import CommandPalette from '../components/support/CommandPalette';
 import { useIdleStatus } from '../hooks/useIdleStatus';
+import { Clock } from 'lucide-react';
 
 export default function SupportView() {
   const {
@@ -38,6 +40,8 @@ export default function SupportView() {
     memberships,
     activeMembershipId,
     notificationsEnabled,
+    rightSidebarExpanded,
+    toggleRightSidebar,
   } = useStore(
     useShallow((s) => ({
       user: s.user,
@@ -53,6 +57,8 @@ export default function SupportView() {
       memberships: s.memberships,
       activeMembershipId: s.activeMembershipId,
       notificationsEnabled: s.notificationsEnabled,
+      rightSidebarExpanded: s.rightSidebarExpanded,
+      toggleRightSidebar: s.toggleRightSidebar,
     }))
   );
   const { status: businessHoursStatus } = useBusinessHours();
@@ -61,7 +67,13 @@ export default function SupportView() {
 
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('queueSidebarOpen') !== 'false');
+  const toggleSidebar = useCallback(() => {
+    setSidebarOpen((v) => {
+      localStorage.setItem('queueSidebarOpen', String(!v));
+      return !v;
+    });
+  }, []);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   const chatWindowRef = useRef<ChatWindowHandle>(null);
@@ -93,6 +105,21 @@ export default function SupportView() {
   );
   const showPreview = !!previewTicket && !supportOpenTickets.includes(previewTicket.id);
   const atMaxChats = openTabTickets.length >= MAX_OPEN_CHATS;
+
+  // Queue count for collapsed sidebar badge
+  const queueCount = useMemo(() => {
+    if (!activeMembership) return 0;
+    const assignedDepts = activeMembership.departments || [];
+    return tickets.filter(
+      (tk) => tk.status !== 'closed' && tk.status !== 'resolved' && assignedDepts.includes(tk.dept),
+    ).length;
+  }, [tickets, activeMembership]);
+
+  // Active ticket for the right sidebar
+  const activeTicket = useMemo(
+    () => (activeTab ? tickets.find((tk) => tk.id === activeTab) ?? null : null),
+    [activeTab, tickets],
+  );
 
   // Keep activeTab in sync with open tabs
   useEffect(() => {
@@ -137,12 +164,7 @@ export default function SupportView() {
       clearUnread(ticket.id);
       setPreviewTicket(null);
     } else if (!atMaxChats) {
-      // In split view, join directly — TicketPreview is not rendered
-      if (isSplitView) {
-        joinTicket(ticket);
-      } else {
-        setPreviewTicket(ticket);
-      }
+      setPreviewTicket(ticket);
     }
   }
 
@@ -191,8 +213,8 @@ export default function SupportView() {
     { id: 'focus-message', labelKey: 'cmd_focus_message', groupKey: 'cmd_group_navigation', shortcutHint: '/', execute: () => chatWindowRef.current?.focusTextarea(), keywords: ['type', 'input', 'chat'] },
     { id: 'next-tab', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2193', execute: () => navigateTab(1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
     { id: 'prev-tab', labelKey: 'cmd_prev_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2191', execute: () => navigateTab(-1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
-    { id: 'toggle-sidebar', labelKey: 'cmd_toggle_sidebar', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+B', execute: () => setSidebarOpen((v) => !v), keywords: ['queue', 'sidebar', 'hide', 'show'] },
-    { id: 'search-tickets', labelKey: 'cmd_search_tickets', groupKey: 'cmd_group_navigation', execute: () => { setSidebarOpen(true); setTimeout(() => { const el = document.querySelector<HTMLInputElement>('[data-queue-search]'); el?.focus(); }, 50); }, keywords: ['find', 'search', 'filter'] },
+    { id: 'toggle-sidebar', labelKey: 'cmd_toggle_sidebar', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+B', execute: toggleSidebar, keywords: ['queue', 'sidebar', 'hide', 'show'] },
+    { id: 'search-tickets', labelKey: 'cmd_search_tickets', groupKey: 'cmd_group_navigation', execute: () => { setSidebarOpen(true); localStorage.setItem('queueSidebarOpen', 'true'); setTimeout(() => { const el = document.querySelector<HTMLInputElement>('[data-queue-search]'); el?.focus(); }, 50); }, keywords: ['find', 'search', 'filter'] },
     // Actions
     { id: 'toggle-whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.toggleWhisper(), enabled: !!activeTab, keywords: ['whisper', 'internal', 'private'] },
     { id: 'transfer-ticket', labelKey: 'cmd_transfer_ticket', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.openTransferMenu(), enabled: !!activeTab, keywords: ['transfer', 'hand off', 'department'] },
@@ -213,7 +235,7 @@ export default function SupportView() {
     onFocusMessage: () => chatWindowRef.current?.focusTextarea(),
     onNextTab: () => navigateTab(1),
     onPrevTab: () => navigateTab(-1),
-    onToggleSidebar: () => setSidebarOpen((v) => !v),
+    onToggleSidebar: toggleSidebar,
   });
 
   // ── Guards ──
@@ -243,19 +265,32 @@ export default function SupportView() {
         </div>
       )}
 
-      <SupportNav partnerName={partnerName} logoUrl={logoUrl} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
+      <SupportNav partnerName={partnerName} logoUrl={logoUrl} />
 
       <div className="flex flex-1 overflow-hidden relative">
-        {activeMembership && (
-          <QueueSidebar
-            activeMembership={activeMembership}
-            activeTab={activeTab}
-            previewTicketId={previewTicket?.id || null}
-            atMaxChats={atMaxChats}
-            isOpen={viewMode !== 'focus' && sidebarOpen}
-            onSelectTicket={handleSelectTicket}
-            onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
-          />
+        {activeMembership && viewMode !== 'focus' && (
+          <ResizablePanel
+            side="left"
+            storageKey="queueSidebarWidth"
+            defaultWidth={320}
+            minWidth={200}
+            maxWidth={480}
+            isOpen={sidebarOpen}
+            onToggle={toggleSidebar}
+            collapsedLabel={t('queue')}
+            collapsedBadge={queueCount}
+            toggleTitle="Ctrl+B"
+          >
+            <QueueSidebar
+              activeMembership={activeMembership}
+              activeTab={activeTab}
+              previewTicketId={previewTicket?.id || null}
+              atMaxChats={atMaxChats}
+              onToggle={toggleSidebar}
+              onSelectTicket={handleSelectTicket}
+              onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
+            />
+          </ResizablePanel>
         )}
 
         <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
@@ -299,10 +334,25 @@ export default function SupportView() {
             </div>
 
             {/* Ticket context sidebar (only in normal mode) */}
-            {activeTab && !showPreview && !focusMode && viewMode === 'normal' && (() => {
-              const activeTicket = tickets.find((tk) => tk.id === activeTab);
-              return activeTicket ? <TicketSidebar ticket={activeTicket} onPreviewTicket={setPreviewTicket} /> : null;
-            })()}
+            {activeTicket && !showPreview && !focusMode && viewMode === 'normal' && (
+              <ResizablePanel
+                side="right"
+                storageKey="ticketSidebarWidth"
+                defaultWidth={288}
+                minWidth={200}
+                maxWidth={420}
+                isOpen={rightSidebarExpanded}
+                onToggle={toggleRightSidebar}
+                collapsedLabel={t('ticket_context') || 'CONTEXT'}
+                collapsedIcon={<Clock className="h-4 w-4 opacity-40" />}
+              >
+                <TicketSidebar
+                  ticket={activeTicket}
+                  onPreviewTicket={setPreviewTicket}
+                  onToggle={toggleRightSidebar}
+                />
+              </ResizablePanel>
+            )}
           </div>
         </main>
       </div>

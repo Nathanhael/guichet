@@ -48,7 +48,7 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
   zenSettings: { autoBionic: false, notificationShield: false },
   darkMode: localStorage.getItem('darkMode') === 'true',
   selectedLang: localStorage.getItem('selectedLang') || null,
-  notificationsEnabled: localStorage.getItem('notificationsEnabled') !== 'false',
+  notificationsEnabled: localStorage.getItem('notificationsEnabled') === 'true',
   connectionStatus: 'disconnected',
   agentStatus: 'online',
   rightSidebarExpanded: localStorage.getItem('rightSidebarExpanded') === 'true',
