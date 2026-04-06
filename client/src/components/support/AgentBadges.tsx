@@ -6,11 +6,6 @@ interface AgentBadgesProps {
   maxVisible?: number;
 }
 
-/** Returns true for roles that represent support staff. */
-function isSupportRole(role?: string): boolean {
-  return role === 'support' || role === 'admin' || role === 'platform_operator';
-}
-
 /** Extract up to 2 initials from a name. */
 function getInitials(name: string): string {
   return name
@@ -28,11 +23,13 @@ function getInitials(name: string): string {
  * - Overflow: "+N" badge with remaining names on hover
  */
 export default function AgentBadges({ participants, currentUserId, maxVisible = 4 }: AgentBadgesProps) {
-  const supportAgents = participants.filter((p) => isSupportRole(p.role));
-  if (supportAgents.length === 0) return null;
+  // ticket.participants only contains support staff who joined — the end-user
+  // is tracked separately via ticket.agentId/agentName, never in this array.
+  // No role filtering needed.
+  if (participants.length === 0) return null;
 
   // Current user first, then alphabetical
-  const sorted = [...supportAgents].sort((a, b) => {
+  const sorted = [...participants].sort((a, b) => {
     if (a.id === currentUserId) return -1;
     if (b.id === currentUserId) return 1;
     return a.name.localeCompare(b.name);
