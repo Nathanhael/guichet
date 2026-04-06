@@ -19,8 +19,6 @@ interface MessageListProps {
   messages: Message[];
   cursorInfo?: CursorInfo;
   onLoadOlder: () => void;
-  focusMode: boolean;
-  compact?: boolean;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
   bottomRef: React.RefObject<HTMLDivElement | null>;
   onScroll: () => void;
@@ -32,8 +30,6 @@ export default function MessageList({
   messages: ticketMessages,
   cursorInfo,
   onLoadOlder,
-  focusMode,
-  compact,
   scrollContainerRef,
   bottomRef,
   onScroll,
