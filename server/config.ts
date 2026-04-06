@@ -23,9 +23,17 @@ const configSchema = z.object({
     UPLOAD_ALLOWED_TYPES: z.preprocess(
       (val) => (typeof val === 'string' ? val.split(',').map(s => s.trim()) : val),
       z.array(z.string().regex(
-        /^(image\/[a-z0-9.+-]+|application\/pdf)$/,
-        'Only image/* and application/pdf MIME types are allowed'
-      )).default(['image/png', 'image/jpeg', 'image/webp'])
+        /^(image\/[a-z0-9.+-]+|application\/(pdf|vnd\.openxmlformats-officedocument\.[a-z.]+|vnd\.ms-excel|msword|csv)|text\/(plain|csv))$/,
+        'Only image/*, PDF, Office, CSV and text MIME types are allowed'
+      )).default([
+        'image/png', 'image/jpeg', 'image/webp',
+        'application/pdf',
+        'text/plain', 'text/csv', 'application/csv',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ])
     ),
     OLLAMA_MODEL: z.string().default('translategemma:4b'),
     METRICS_TOKEN: z.preprocess(

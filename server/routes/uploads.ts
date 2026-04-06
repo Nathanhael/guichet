@@ -33,7 +33,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFil
   if (config.UPLOAD_ALLOWED_TYPES.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Alleen PNG, JPG en WEBP zijn toegestaan'));
+    cb(new Error('Only images, PDF, Word, Excel, CSV and text files are allowed'));
   }
 };
 

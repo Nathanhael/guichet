@@ -31,33 +31,34 @@ export default function AdminTeam() {
       limit: LIMIT,
       offset: page * LIMIT,
       search: search.trim() || undefined,
+      role: roleFilter || undefined,
+      excludeAdmin: true,
     },
     { enabled: !!activeMembershipId }
   );
 
-  // Exclude admins — they always have all departments and are managed automatically
-  const nonAdminData = useMemo(() => {
-    if (!data) return [];
-    return data.filter(m => m.role !== 'admin');
-  }, [data]);
+  // Data comes pre-filtered from server (admins excluded, role filter applied)
+  const filteredData = data ?? [];
 
-  // Summary logic (admins excluded)
+  // Summary counts — uses full unfiltered (but admin-excluded) query for card stats
+  const { data: allData } = trpc.partner.listMembers.useQuery(
+    { limit: 100, offset: 0, excludeAdmin: true },
+    { enabled: !!activeMembershipId }
+  );
   const stats = useMemo(() => {
-    if (!nonAdminData.length) return { total: 0, agents: 0, support: 0, unconfigured: 0, online: 0 };
+    const all = allData ?? [];
+    if (!all.length) return { total: 0, agents: 0, support: 0, unconfigured: 0, online: 0 };
     return {
-      total: nonAdminData.length,
-      agents: nonAdminData.filter(m => m.role === 'agent').length,
-      support: nonAdminData.filter(m => m.role === 'support').length,
-      unconfigured: nonAdminData.filter(m => !m.departments || !Array.isArray(m.departments) || m.departments.length === 0).length,
-      online: nonAdminData.filter(m => onlineStatusMap.has(m.userId)).length,
+      total: all.length,
+      agents: all.filter(m => m.role === 'agent').length,
+      support: all.filter(m => m.role === 'support').length,
+      unconfigured: all.filter(m => !m.departments || !Array.isArray(m.departments) || m.departments.length === 0).length,
+      online: all.filter(m => onlineStatusMap.has(m.userId)).length,
     };
-  }, [nonAdminData, onlineStatusMap]);
+  }, [allData, onlineStatusMap]);
 
   const displayData = useMemo(() => {
-    let result = nonAdminData;
-    if (roleFilter) {
-      result = result.filter(m => m.role === roleFilter);
-    }
+    let result = filteredData;
     if (onlineOnly) {
       result = result.filter(m => onlineStatusMap.has(m.userId));
     }
@@ -65,7 +66,7 @@ export default function AdminTeam() {
       result = result.filter(m => !m.departments || !Array.isArray(m.departments) || m.departments.length === 0);
     }
     return result;
-  }, [nonAdminData, roleFilter, onlineOnly, unconfiguredOnly, onlineStatusMap]);
+  }, [filteredData, onlineOnly, unconfiguredOnly, onlineStatusMap]);
 
   const removeMutation = trpc.partner.removeMember.useMutation({
     onSuccess: () => refetch(),

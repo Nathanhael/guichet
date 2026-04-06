@@ -47,7 +47,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
 
-  const isDeleted = !!message.deletedAt;
+  const isDeleted = !!message.deletedAt || (!message.text && !message.originalText && !message.mediaUrl);
   const isEdited = !!message.editedAt;
 
   if (message.system) {
@@ -74,7 +74,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
 
   // Check if message is within edit window (15 min)
   const ageMs = msgDate ? Date.now() - msgDate.getTime() : Infinity;
-  const canEdit = isMine && !message.system && !isDeleted && ageMs < 15 * 60 * 1000;
+  const canEdit = isMine && !message.system && !isDeleted && !message.mediaUrl && ageMs < 15 * 60 * 1000;
   const canDelete = (isMine || user?.role === 'admin' || user?.isPlatformOperator) && !message.system && !isDeleted;
 
   function startEdit() {
@@ -94,20 +94,24 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
     setShowActions(false);
   }
 
-  const bubbleClasses = isMine
-    ? 'bubble-sent'
-    : isWhisper
-      ? 'bubble-whisper'
-      : 'bubble-received';
+  const bubbleClasses = isDeleted
+    ? 'bg-bg-elevated border-l-2 border-border'
+    : isMine
+      ? 'bubble-sent'
+      : isWhisper
+        ? 'bubble-whisper'
+        : 'bubble-received';
+
+  const isSupport = !isMine && (message.senderRole === 'support' || message.senderRole === 'admin');
 
   return (
     <div
-      className={`group flex w-full ${isGroupEnd ? 'mb-4' : 'mb-1'} px-4 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}
+      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row`}
       onMouseEnter={() => !isDeleted && setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); }}
     >
-      <div className={`flex flex-col justify-end w-6 shrink-0 ${isMine ? 'ml-3' : 'mr-3'}`}>
-        {!isMine && isGroupStart && !isWhisper && (
+      <div className="flex flex-col justify-end w-7 shrink-0 mr-3">
+        {isGroupStart && !isWhisper && (
           <UserAvatar
             userId={message.senderId}
             name={message.senderName || 'User'}
@@ -116,11 +120,18 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
         )}
       </div>
 
-      <div className={`relative max-w-[75%] min-w-[60px] px-4 py-2.5 ${bubbleClasses} ${isDeleted ? 'opacity-50 italic' : ''}`}>
+      <div className={`relative max-w-[75%] min-w-[60px] px-3 py-2 ${bubbleClasses}`}>
 
         {!isMine && !isWhisper && isGroupStart && (
-          <div className="text-[11px] font-mono font-bold mb-1 uppercase tracking-tight text-text-muted">
-            {message.senderName}
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-[11px] font-mono font-bold uppercase tracking-tight text-text-muted">
+              {message.senderName}
+            </span>
+            {isSupport && (
+              <span className="text-[8px] font-mono font-bold uppercase tracking-wider px-1 py-px border border-accent-blue text-accent-blue leading-none">
+                {t('support') || 'SUPPORT'}
+              </span>
+            )}
           </div>
         )}
 
@@ -153,26 +164,55 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="text-[15px] break-words whitespace-pre-wrap leading-normal font-medium tracking-tight uppercase">
-              {bionicReading && !isDeleted ? (
+          ) : isDeleted ? (
+            <div className="flex items-center gap-1.5 text-[12px] text-text-muted italic opacity-60">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+              {t('message_deleted') || 'This message was deleted'}
+            </div>
+          ) : displayText.trim() && displayText.trim() !== '[attachment]' ? (
+            <div className="text-[14px] break-words whitespace-pre-wrap leading-snug text-left max-h-60 overflow-y-auto">
+              {bionicReading ? (
                 <BionicText text={displayText} />
               ) : (
                 displayText
               )}
             </div>
-          )}
+          ) : null}
 
-          {message.mediaUrl && !isDeleted && message.mediaUrl.startsWith('/api/v1/uploads/') && (
-            <div className="mt-3 border border-border">
-              <img
-                src={message.mediaUrl}
-                alt="attachment"
-                className="w-full h-auto object-cover max-h-96"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          )}
+          {message.mediaUrl && !isDeleted && (message.mediaUrl.startsWith('/uploads/') || message.mediaUrl.startsWith('/api/v1/uploads/')) && (() => {
+            const url = message.mediaUrl!;
+            const filename = url.split('/').pop() || 'file';
+            const ext = filename.split('.').pop()?.toLowerCase() || '';
+            const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext);
+
+            if (isImage) {
+              return (
+                <div className="mt-2 border border-border">
+                  <img src={url} alt="attachment" className="w-full h-auto object-cover max-h-96" referrerPolicy="no-referrer" />
+                </div>
+              );
+            }
+
+            const fileLabel = ext === 'pdf' ? 'PDF' : ext === 'docx' || ext === 'doc' ? 'Word' : ext === 'xlsx' || ext === 'xls' ? 'Excel' : ext === 'csv' ? 'CSV' : ext === 'txt' ? 'Text' : ext.toUpperCase();
+            return (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 flex items-center gap-2.5 px-3 py-2 border border-border bg-bg-surface hover:bg-bg-elevated"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-accent-blue shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-[12px] font-mono font-bold text-text-primary truncate">{filename}</span>
+                  <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-text-muted">{fileLabel}</span>
+                </div>
+              </a>
+            );
+          })()}
         </div>
 
         {/* Translation indicator */}
@@ -197,22 +237,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           </div>
         )}
 
-        <div className={`flex items-center justify-end gap-2 mt-2 -mr-1 opacity-40`}>
-          {isEdited && !isDeleted && (
-            <span className="text-[9px] font-bold italic">{t('edited') || 'edited'}</span>
-          )}
-          <span className="mono-timestamp">
-            {time}
-          </span>
-          {isMine && !isDeleted && (
-            <span className="text-[10px] font-bold">{message.readAt ? 'R' : 'D'}</span>
-          )}
-        </div>
-
-        {/* Reaction pills */}
-        {Object.keys(message.reactions || {}).length > 0 && (
-          <div className={`flex flex-wrap gap-1 mt-1.5 ${isMine ? 'justify-end' : 'justify-start'}`}>
-            {Object.entries(message.reactions).map(([emoji, userIds]) => {
+        {/* Metadata row: timestamp + status + reactions inline */}
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
+          {/* Reaction pills — inline with metadata */}
+          {Object.keys(message.reactions || {}).length > 0 &&
+            Object.entries(message.reactions).map(([emoji, userIds]) => {
               const count = userIds.length;
               if (count === 0) return null;
               const iReacted = userIds.includes(user?.id || '');
@@ -222,7 +251,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                   onClick={() => getSocket().emit('message:react', { ticketId, messageId: message.id, emoji })}
                   disabled={isDeleted}
                   aria-label={`${emoji}, ${count} reaction${count !== 1 ? 's' : ''}${iReacted ? ', you reacted' : ''}`}
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] font-bold border ${
+                  className={`inline-flex items-center gap-0.5 px-1 py-px font-mono text-[10px] font-bold border ${
                     iReacted
                       ? 'border-accent-blue text-accent-blue bg-bg-elevated'
                       : 'border-border text-text-muted hover:border-text-muted'
@@ -233,53 +262,66 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                 </button>
               );
             })}
-          </div>
-        )}
 
-        {/* Action buttons (hover) */}
-        {showActions && !editing && (
-          <div className={`absolute top-0 ${isMine ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} flex flex-col gap-0.5 opacity-0 group-hover:opacity-100`}>
-            {/* Edit/Delete row */}
-            {(canEdit || canDelete) && (
-              <div className="flex gap-0.5">
-                {canEdit && (
-                  <button
-                    onClick={startEdit}
-                    title={t('edit') || 'Edit'}
-                    className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                  </button>
-                )}
-                {canDelete && (
-                  <button
-                    onClick={deleteMessage}
-                    title={t('delete') || 'Delete'}
-                    className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-                )}
-              </div>
+          {/* Spacer pushes timestamp to right */}
+          <span className="ml-auto" />
+
+          <span className="flex items-center gap-1.5 opacity-40 shrink-0">
+            {isEdited && !isDeleted && (
+              <span className="text-[9px] font-bold italic">{t('edited') || 'edited'}</span>
             )}
-            {/* Quick-react row */}
-            <div className="flex gap-0.5">
-              {REACTION_EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  onClick={() => getSocket().emit('message:react', { ticketId, messageId: message.id, emoji })}
-                  disabled={isDeleted}
-                  title={`React with ${emoji}`}
-                  aria-label={`React with ${emoji}`}
-                  className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-[11px] hover:bg-bg-elevated"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+            <span className="mono-timestamp">{time}</span>
+            {isMine && !isDeleted && (
+              message.readAt ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-accent-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-label="Read">
+                  <path d="M1.5 12.5l5 5L17 7" /><path d="M7.5 12.5l5 5L23 7" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-label="Delivered">
+                  <path d="M4.5 12.5l5 5L20 7" />
+                </svg>
+              )
+            )}
+          </span>
+        </div>
+
       </div>
+
+      {/* Action buttons — sibling in flex row, to the right of bubble */}
+      {showActions && !editing && (
+        <div className="flex items-start gap-0.5 ml-1 shrink-0 self-start pt-1">
+          {REACTION_EMOJIS.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => getSocket().emit('message:react', { ticketId, messageId: message.id, emoji })}
+              disabled={isDeleted}
+              title={`React with ${emoji}`}
+              aria-label={`React with ${emoji}`}
+              className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-[11px] hover:bg-bg-elevated"
+            >
+              {emoji}
+            </button>
+          ))}
+          {canEdit && (
+            <button
+              onClick={startEdit}
+              title={t('edit') || 'Edit'}
+              className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            </button>
+          )}
+          {canDelete && (
+            <button
+              onClick={deleteMessage}
+              title={t('delete') || 'Delete'}
+              className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

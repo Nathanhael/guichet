@@ -1,15 +1,12 @@
 import type { Ticket } from '../../types';
 import { getSmartTimestamp } from '../../utils/dateUtils';
 import AgentBadges from './AgentBadges';
-import SentimentDot from '../SentimentDot';
-import SlaIndicator from '../SlaIndicator';
 
 interface QueueTicketRowProps {
   ticket: Ticket;
   isActive: boolean;
   unreadCount: number;
   currentUserId: string;
-  sentimentScore?: number | null;
   onClick: () => void;
   disabled?: boolean;
 }
@@ -24,7 +21,6 @@ export default function QueueTicketRow({
   isActive,
   unreadCount,
   currentUserId,
-  sentimentScore,
   onClick,
   disabled = false,
 }: QueueTicketRowProps) {
@@ -63,18 +59,12 @@ export default function QueueTicketRow({
         </span>
       </div>
 
-      {/* Row 2: agent badges + sentiment + SLA + unread count */}
+      {/* Row 2: agent badges + unread count */}
       <div className="flex items-center gap-1.5">
         <AgentBadges
           participants={ticket.participants}
           currentUserId={currentUserId}
         />
-        {sentimentScore != null && (
-          <SentimentDot score={sentimentScore} compact />
-        )}
-        {ticket.slaResponseDueAt && !ticket.supportJoinedAt && (
-          <SlaIndicator dueAt={ticket.slaResponseDueAt} breached={ticket.slaBreached} compact />
-        )}
         {isUnread && (
           <span className="font-mono text-[8px] font-bold bg-[var(--color-accent-blue)] text-white min-w-[16px] h-4 flex items-center justify-center px-1 shrink-0 ml-auto">
             {unreadCount}

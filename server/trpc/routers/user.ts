@@ -4,7 +4,7 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { revokeUserSessions } from '../../services/sessionRevocation.js';
 import { db } from '../../db.js';
-import { auditLog, users, memberships } from '../../db/schema.js';
+import { auditLog, users, memberships, partners } from '../../db/schema.js';
 import { eq, and, isNull, desc, asc, sql, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { verifyPassword, hashPassword, validatePasswordStrength, isPasswordReused, PASSWORD_HISTORY_LIMIT } from '../../utils/passwords.js';
@@ -53,7 +53,30 @@ export const userRouter = router({
       }
       try {
         // IM-04: Only return minimum fields for demo login UI — no privilege exposure
-        const rows = await db
+        // Return per-membership entries so each role+partner combo is distinct.
+        // This prevents the old bug where Map() non-deterministically picked a role
+        // for multi-membership users, causing role mismatch between picker and routing.
+        const membershipRows = await db
+          .select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            lang: users.lang,
+            isPlatformOperator: users.isPlatformOperator,
+            membershipId: memberships.id,
+            role: memberships.role,
+            partnerId: memberships.partnerId,
+            partnerName: partners.name,
+          })
+          .from(users)
+          .innerJoin(memberships, eq(users.id, memberships.userId))
+          .innerJoin(partners, and(eq(memberships.partnerId, partners.id), eq(partners.status, 'active')))
+          .where(isNull(users.deletedAt))
+          .orderBy(asc(users.name), asc(partners.name));
+
+        // Platform operators may have no memberships — include them as standalone entries
+        const membershipUserIds = new Set(membershipRows.map(r => r.id));
+        const platformRows = await db
           .select({
             id: users.id,
             name: users.name,
@@ -62,20 +85,19 @@ export const userRouter = router({
             isPlatformOperator: users.isPlatformOperator,
           })
           .from(users)
-          .where(isNull(users.deletedAt))
-          .orderBy(asc(users.name));
+          .where(and(isNull(users.deletedAt), eq(users.isPlatformOperator, true)));
 
-        // Fetch first membership role per user (avoids duplicate rows from multi-partner users)
-        const roleRows = await db
-          .select({ userId: memberships.userId, role: memberships.role })
-          .from(memberships);
-        const roleMap = new Map(roleRows.map(r => [r.userId, r.role]));
+        const standaloneOperators = platformRows
+          .filter(p => !membershipUserIds.has(p.id))
+          .map(p => ({
+            ...p,
+            membershipId: null as string | null,
+            role: null as string | null,
+            partnerId: null as string | null,
+            partnerName: null as string | null,
+          }));
 
-        const demoUsers = rows.map(u => ({
-          ...u,
-          role: roleMap.get(u.id) ?? null,
-        }));
-        return demoUsers;
+        return [...membershipRows, ...standaloneOperators];
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
         if (err instanceof TRPCError) throw err;

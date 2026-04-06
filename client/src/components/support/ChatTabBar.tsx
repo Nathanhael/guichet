@@ -2,6 +2,7 @@ import { useT } from '../../i18n';
 import useStore from '../../store/useStore';
 import { Ticket } from '../../types';
 import { MAX_OPEN_CHATS } from '../../config';
+import ViewModeDropdown from './ViewModeDropdown';
 
 interface ChatTabBarProps {
   tabs: Ticket[];
@@ -61,10 +62,13 @@ export default function ChatTabBar({ tabs, activeTab, onSelectTab, onCloseTab }:
           </div>
         );
       })}
-      {/* Tab capacity indicator */}
-      <span className="ml-auto px-4 text-[9px] font-bold uppercase tracking-wide opacity-30 shrink-0">
-        {tabs.length}/{MAX_OPEN_CHATS}
-      </span>
+      {/* View mode + tab capacity */}
+      <div className="ml-auto flex items-center gap-2 px-4 shrink-0">
+        <ViewModeDropdown />
+        <span className="text-[9px] font-bold uppercase tracking-wide opacity-30">
+          {tabs.length}/{MAX_OPEN_CHATS}
+        </span>
+      </div>
     </div>
   );
 }

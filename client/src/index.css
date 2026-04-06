@@ -238,22 +238,20 @@
 
 @utility bubble-received {
   background-color: var(--color-bg-elevated);
+  border-left: 2px solid var(--color-border);
   border-radius: 0;
-  padding: 10px;
 }
 
 @utility bubble-sent {
   background-color: var(--color-own-msg-bg);
   border-left: 2px solid var(--color-accent-blue);
   border-radius: 0;
-  padding: 10px;
 }
 
 @utility bubble-whisper {
   background-color: var(--color-whisper-bg);
   border-left: 2px solid var(--color-accent-purple);
   border-radius: 0;
-  padding: 10px;
 }
 
 @utility section-header {
