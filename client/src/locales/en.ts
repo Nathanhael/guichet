@@ -605,5 +605,9 @@ const en: Record<string, string> = {
     status_sent: 'Sent',
     status_delivered: 'Delivered',
     status_read: 'Read',
+
+    // Unread / scroll
+    new_messages: 'NEW MESSAGES',
+    scroll_to_bottom: 'Scroll to bottom',
 };
 export default en;

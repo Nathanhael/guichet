@@ -591,5 +591,9 @@ const fr: Record<string, string> = {
     status_sent: 'Envoyé',
     status_delivered: 'Livré',
     status_read: 'Lu',
+
+    // Unread / scroll
+    new_messages: 'NOUVEAUX MESSAGES',
+    scroll_to_bottom: 'Défiler vers le bas',
 };
 export default fr;
