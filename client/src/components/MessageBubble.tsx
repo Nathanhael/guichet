@@ -6,6 +6,7 @@ import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import { Message } from '../types';
 import { safeDate } from '../utils/dateUtils';
+import { REACTION_EMOJIS } from '../constants';
 import { useAutoTranslation } from '../hooks/useTranslation';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '../../../server/trpc/router';
@@ -208,27 +209,74 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           )}
         </div>
 
+        {/* Reaction pills */}
+        {Object.keys(message.reactions || {}).length > 0 && (
+          <div className={`flex flex-wrap gap-1 mt-1.5 ${isMine ? 'justify-end' : 'justify-start'}`}>
+            {Object.entries(message.reactions).map(([emoji, userIds]) => {
+              const count = userIds.length;
+              if (count === 0) return null;
+              const iReacted = userIds.includes(user?.id || '');
+              return (
+                <button
+                  key={emoji}
+                  onClick={() => getSocket().emit('message:react', { ticketId, messageId: message.id, emoji })}
+                  disabled={isDeleted}
+                  aria-label={`${emoji}, ${count} reaction${count !== 1 ? 's' : ''}${iReacted ? ', you reacted' : ''}`}
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 font-mono text-[10px] font-bold border ${
+                    iReacted
+                      ? 'border-accent-blue text-accent-blue bg-bg-elevated'
+                      : 'border-border text-text-muted hover:border-text-muted'
+                  } ${isDeleted ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
+                >
+                  <span>{emoji}</span>
+                  <span>{count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Action buttons (hover) */}
-        {showActions && !editing && (canEdit || canDelete) && (
-          <div className={`absolute top-0 ${isMine ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} flex gap-0.5 opacity-0 group-hover:opacity-100`}>
-            {canEdit && (
-              <button
-                onClick={startEdit}
-                title={t('edit') || 'Edit'}
-                className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-              </button>
+        {showActions && !editing && (
+          <div className={`absolute top-0 ${isMine ? 'left-0 -translate-x-full pl-1' : 'right-0 translate-x-full pr-1'} flex flex-col gap-0.5 opacity-0 group-hover:opacity-100`}>
+            {/* Edit/Delete row */}
+            {(canEdit || canDelete) && (
+              <div className="flex gap-0.5">
+                {canEdit && (
+                  <button
+                    onClick={startEdit}
+                    title={t('edit') || 'Edit'}
+                    className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    onClick={deleteMessage}
+                    title={t('delete') || 'Delete'}
+                    className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                )}
+              </div>
             )}
-            {canDelete && (
-              <button
-                onClick={deleteMessage}
-                title={t('delete') || 'Delete'}
-                className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              </button>
-            )}
+            {/* Quick-react row */}
+            <div className="flex gap-0.5">
+              {REACTION_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => getSocket().emit('message:react', { ticketId, messageId: message.id, emoji })}
+                  disabled={isDeleted}
+                  title={`React with ${emoji}`}
+                  aria-label={`React with ${emoji}`}
+                  className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-[11px] hover:bg-bg-elevated"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
