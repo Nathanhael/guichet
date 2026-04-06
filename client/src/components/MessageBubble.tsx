@@ -5,6 +5,7 @@ import BionicText from './BionicText';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import { Message } from '../types';
+import { DeliveryStatus } from './chat';
 import { safeDate } from '../utils/dateUtils';
 import { REACTION_EMOJIS } from '../constants';
 import { useAutoTranslation } from '../hooks/useTranslation';
@@ -271,16 +272,8 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               <span className="text-[9px] font-bold italic">{t('edited') || 'edited'}</span>
             )}
             <span className="mono-timestamp">{time}</span>
-            {isMine && !isDeleted && (
-              message.readAt ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-accent-blue" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-label="Read">
-                  <path d="M1.5 12.5l5 5L17 7" /><path d="M7.5 12.5l5 5L23 7" />
-                </svg>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-label="Delivered">
-                  <path d="M4.5 12.5l5 5L20 7" />
-                </svg>
-              )
+            {isMine && !isDeleted && !message.system && (
+              <DeliveryStatus deliveredAt={message.deliveredAt} readAt={message.readAt} />
             )}
           </span>
         </div>

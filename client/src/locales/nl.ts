@@ -586,5 +586,10 @@ const nl: Record<string, string> = {
     admin: 'Admin',
     support: 'Support',
     agent: 'Agent',
+
+    // Delivery status
+    status_sent: 'Verzonden',
+    status_delivered: 'Afgeleverd',
+    status_read: 'Gelezen',
 };
 export default nl;
