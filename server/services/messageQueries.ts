@@ -3,6 +3,8 @@ import { eq, and, asc, isNull, inArray, lt, or } from 'drizzle-orm';
 import { db } from '../db/postgres.js';
 import { messages, ticketLabels } from '../db/schema.js';
 
+import type { LinkPreview } from './linkPreview.js';
+
 export interface InsertMessageData {
   ticketId: string;
   senderId: string;
@@ -11,8 +13,10 @@ export interface InsertMessageData {
   senderLang: string;
   text: string;
   mediaUrl?: string | null;
+  attachments?: Array<{ url: string; name: string; mimeType: string; size: number }> | null;
   whisper?: boolean;
   system?: boolean;
+  replyToId?: string | null;
 }
 
 /** Socket-ready message shape returned by insertMessage. */
@@ -35,10 +39,12 @@ export async function insertMessage(data: InsertMessageData) {
     senderLang: data.senderLang,
     text: data.text,
     mediaUrl: data.mediaUrl || null,
+    attachments: data.attachments || null,
     whisper: data.whisper ? 1 : 0,
     system: data.system ? 1 : 0,
     createdAt: now,
     reactions: {},
+    replyToId: data.replyToId || null,
   });
 
   return {
@@ -52,11 +58,13 @@ export async function insertMessage(data: InsertMessageData) {
     // Client uses originalText for "revert AI improvement" — set to input text at creation time
     originalText: data.text,
     mediaUrl: data.mediaUrl || undefined,
+    attachments: data.attachments || undefined,
     whisper: !!data.whisper,
     system: !!data.system,
     timestamp: now,
     createdAt: now,
     reactions: {},
+    replyToId: data.replyToId || null,
   };
 }
 
@@ -233,4 +241,32 @@ export async function markRead(messageIds: string[], ticketId: string) {
     .set({ readAt: now })
     .where(and(eq(messages.ticketId, ticketId), inArray(messages.id, messageIds), isNull(messages.readAt)));
   return now;
+}
+
+/**
+ * Resolves a reply snippet for inline quote blocks.
+ * Returns sender name + truncated text (100 chars) for the referenced message.
+ * Used by: message.list (tRPC), message:send (socket)
+ */
+export async function resolveReplySnippet(replyToId: string) {
+  const row = await db
+    .select({ id: messages.id, senderName: messages.senderName, text: messages.text, mediaUrl: messages.mediaUrl, deletedAt: messages.deletedAt })
+    .from(messages)
+    .where(eq(messages.id, replyToId))
+    .limit(1);
+  if (!row.length) return null;
+  const r = row[0];
+  return {
+    id: r.id,
+    senderName: r.senderName || 'Unknown',
+    text: r.deletedAt ? '' : (r.text || '[Attachment]').slice(0, 100),
+    mediaUrl: r.mediaUrl || null,
+  };
+}
+
+/**
+ * Update link previews for a message (fire-and-forget after OG unfurling).
+ */
+export async function updateMessageLinkPreviews(messageId: string, linkPreviews: LinkPreview[]): Promise<void> {
+  await db.update(messages).set({ linkPreviews }).where(eq(messages.id, messageId));
 }

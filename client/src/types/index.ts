@@ -158,6 +158,7 @@ export interface Message {
   processedText: string;
   text?: string;
   mediaUrl?: string | null;
+  attachments?: Array<{ url: string; name: string; mimeType: string; size: number }> | null;
   whisper: boolean | number;
   system: boolean | number;
   translationSkipped: boolean | number;
@@ -168,7 +169,10 @@ export interface Message {
   readAt?: string | null;
   editedAt?: string | null;
   deletedAt?: string | null;
+  replyToId?: string | null;
+  replyTo?: { id: string; senderName: string; text: string; mediaUrl?: string | null } | null;
   reactions: Record<string, string[]>;
+  linkPreviews?: Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }> | null;
   pending?: boolean;
 }
 

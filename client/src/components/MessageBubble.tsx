@@ -5,7 +5,7 @@ import BionicText from './BionicText';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
 import { Message } from '../types';
-import { DeliveryStatus, QuoteBlock } from './chat';
+import { AttachmentGrid, DeliveryStatus, QuoteBlock, LinkPreviewCard } from './chat';
 import { safeDate } from '../utils/dateUtils';
 import { hasMarkdownSyntax, renderMarkdown } from '../utils/markdown';
 import { REACTION_EMOJIS } from '../constants';
@@ -51,7 +51,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
 
-  const isDeleted = !!message.deletedAt || (!message.text && !message.originalText && !message.mediaUrl);
+  const isDeleted = !!message.deletedAt || (!message.text && !message.originalText && !message.mediaUrl && (!message.attachments || message.attachments.length === 0));
   const isEdited = !!message.editedAt;
 
   if (message.system) {
@@ -209,13 +209,19 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             )
           ) : null}
 
-          {message.mediaUrl && !isDeleted && (message.mediaUrl.startsWith('/uploads/') || message.mediaUrl.startsWith('/api/v1/uploads/')) && (() => {
+          {/* Multi-file attachments */}
+          {!isDeleted && message.attachments && message.attachments.length > 0 && (
+            <AttachmentGrid attachments={message.attachments} />
+          )}
+
+          {/* Legacy single image — backward compat */}
+          {!isDeleted && !message.attachments && message.mediaUrl && (message.mediaUrl.startsWith('/uploads/') || message.mediaUrl.startsWith('/api/v1/uploads/')) && (() => {
             const url = message.mediaUrl!;
             const filename = url.split('/').pop() || 'file';
             const ext = filename.split('.').pop()?.toLowerCase() || '';
-            const isImage = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext);
+            const isImageExt = ['png', 'jpg', 'jpeg', 'webp', 'gif'].includes(ext);
 
-            if (isImage) {
+            if (isImageExt) {
               return (
                 <div className="mt-2 border border-border">
                   <img src={url} alt="attachment" className="w-full h-auto object-cover max-h-96" referrerPolicy="no-referrer" />
@@ -241,6 +247,14 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               </a>
             );
           })()}
+
+          {!isDeleted && message.linkPreviews && message.linkPreviews.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {message.linkPreviews.map((preview) => (
+                <LinkPreviewCard key={preview.url} {...preview} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Translation indicator */}

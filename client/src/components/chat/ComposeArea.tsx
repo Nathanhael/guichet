@@ -4,6 +4,7 @@ import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
+import { X } from 'lucide-react';
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
@@ -14,6 +15,8 @@ interface ComposeAreaProps {
   isClosed: boolean;
   isSupport: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  replyingTo?: Message | null;
+  onClearReply?: () => void;
 }
 
 const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function ComposeArea({
@@ -21,6 +24,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   isClosed,
   isSupport,
   textareaRef,
+  replyingTo,
+  onClearReply,
 }, ref) {
   const { user } = useStoreShallow(s => ({
     user: s.user,
@@ -29,8 +34,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const [text, setText] = useState('');
   const [whisperMode, setWhisperMode] = useState(false);
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
-  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
+  const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; preview: string }>>([]);
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [originalText, setOriginalText] = useState<string | null>(null);
@@ -44,12 +48,12 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     toggleWhisper: () => setWhisperMode((v) => !v),
   }), []);
 
-  // CR-10: Revoke Object URL to prevent memory leaks
+  // CR-10: Revoke Object URLs to prevent memory leaks
   useEffect(() => {
     return () => {
-      if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+      pendingFiles.forEach(pf => URL.revokeObjectURL(pf.preview));
     };
-  }, [mediaPreview]);
+  }, [pendingFiles]);
 
   // tRPC: AI Config (to show/hide Improve button)
   const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
@@ -89,65 +93,93 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     }
   }
 
-  async function uploadFile(file: File) {
-    setMediaPreview(URL.createObjectURL(file));
+  function addFiles(files: File[]) {
+    const remaining = 5 - pendingFiles.length;
+    if (remaining <= 0) return;
+    const toAdd = files.slice(0, remaining).map(file => ({
+      file,
+      preview: URL.createObjectURL(file),
+    }));
+    setPendingFiles(prev => [...prev, ...toAdd]);
+  }
+
+  function removeFile(index: number) {
+    setPendingFiles(prev => {
+      const removed = prev[index];
+      if (removed) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  async function uploadFiles(): Promise<Array<{ url: string; name: string; mimeType: string; size: number }>> {
+    if (pendingFiles.length === 0) return [];
     setUploading(true);
     try {
       const form = new FormData();
-      form.append('file', file);
-      const res = await fetch('/api/v1/uploads', {
+      for (const pf of pendingFiles) {
+        form.append('files', pf.file);
+      }
+      const res = await fetch('/api/v1/uploads/multi', {
         method: 'POST',
         credentials: 'include',
-        body: form
+        body: form,
       });
       const data = await res.json();
       if (!res.ok) {
         console.error('Upload failed:', data.error || 'Unknown error');
-        clearMedia();
-        return;
+        return [];
       }
-      setMediaUrl(data.url);
+      return data as Array<{ url: string; name: string; mimeType: string; size: number }>;
     } catch {
-      clearMedia();
+      return [];
     } finally {
       setUploading(false);
     }
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    uploadFile(file);
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    addFiles(files);
+    if (fileRef.current) fileRef.current.value = '';
   }
 
   function handlePaste(e: React.ClipboardEvent) {
     const items = e.clipboardData?.items;
     if (!items) return;
+    const pastedFiles: File[] = [];
     for (const item of items) {
       if (item.type.startsWith('image/')) {
-        e.preventDefault();
         const file = item.getAsFile();
-        if (file) uploadFile(file);
-        break;
+        if (file) pastedFiles.push(file);
       }
+    }
+    if (pastedFiles.length > 0) {
+      e.preventDefault();
+      addFiles(pastedFiles);
     }
   }
 
   function clearMedia() {
-    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
-    setMediaUrl(null);
-    setMediaPreview(null);
+    pendingFiles.forEach(pf => URL.revokeObjectURL(pf.preview));
+    setPendingFiles([]);
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  /** Core send logic -- emits socket event with the given text. */
-  function doSend(finalText: string) {
-    // Capture mediaUrl before clearing -- must be in scope for both optimistic + socket emit
-    const currentMediaUrl = mediaUrl;
-    const display = finalText || (currentMediaUrl ? '[attachment]' : '');
+  /** Core send logic -- uploads pending files, then emits socket event with the given text. */
+  async function doSend(finalText: string) {
+    const hasPending = pendingFiles.length > 0;
+    const display = finalText || (hasPending ? '[attachment]' : '');
 
-    // Don't send completely empty messages (no text, no media)
-    if (!display && !currentMediaUrl) return;
+    // Don't send completely empty messages (no text, no files)
+    if (!display && !hasPending) return;
+
+    // Upload files first
+    let attachments: Array<{ url: string; name: string; mimeType: string; size: number }> | undefined;
+    if (hasPending) {
+      attachments = await uploadFiles();
+      if (attachments.length === 0 && !finalText) return; // upload failed, no text
+    }
 
     const optimisticMsg: Message = {
       id: `pending-${ticket.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
@@ -160,7 +192,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       improvedText: display,
       processedText: display,
       text: display,
-      mediaUrl: currentMediaUrl || undefined,
+      attachments: attachments && attachments.length > 0 ? attachments : undefined,
       whisper: whisperMode,
       system: 0,
       translationSkipped: 1,
@@ -176,13 +208,15 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       ticketId: ticket.id,
       senderLang: user?.lang,
       text: display,
-      mediaUrl: currentMediaUrl,
+      attachments: attachments && attachments.length > 0 ? attachments : undefined,
       whisper: whisperMode,
+      replyToId: replyingTo?.id,
     });
     setText('');
     setOriginalText(null);
     clearMedia();
     stopTyping();
+    if (onClearReply) onClearReply();
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }
 
@@ -190,10 +224,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     if (e) e.preventDefault();
     if (uploading) return; // Wait for upload to finish
     const trimmed = text.trim();
-    if (!trimmed && !mediaUrl) return;
-
-    // Prevent double-send: capture and clear media immediately
-    const hasMedia = !!mediaUrl;
+    if (!trimmed && pendingFiles.length === 0) return;
 
     // In 'forced' mode, auto-improve before sending
     if (improvementMode === 'forced' && trimmed.length >= 10 && originalText === null) {
@@ -202,8 +233,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     }
 
     doSend(trimmed);
-    // Guard: if we had no text and no media was captured, something went wrong
-    if (!trimmed && !hasMedia) return;
   }
 
   async function handleImprove() {
@@ -235,7 +264,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   async function improveAndSend() {
     if (improving) return;
     const trimmed = text.trim();
-    if (!trimmed && !mediaUrl) return;
+    if (!trimmed && pendingFiles.length === 0) return;
 
     // Only improve if text is long enough and not already improved
     if (trimmed.length >= 10 && originalText === null) {
@@ -266,6 +295,18 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       : 'bg-bg-surface border-border-heavy'
       }`}>
       <div className="w-full">
+        {replyingTo && (
+          <div className="flex items-start gap-2 px-4 py-2 bg-bg-elevated border-l-[3px] border-accent-blue">
+            <div className="flex-1 min-w-0">
+              <div className="font-mono text-[9px] font-bold text-accent-blue truncate">
+                {t('replying_to') || 'Replying to'} {replyingTo.senderName}
+              </div>
+              <div className="text-[11px] text-text-secondary truncate">{replyingTo.text || '[Attachment]'}</div>
+            </div>
+            <button onClick={onClearReply} className="text-text-secondary hover:text-text-primary p-1 shrink-0"><X size={14} /></button>
+          </div>
+        )}
+
         {whisperMode && (
         <div className="flex items-center gap-2 mb-3">
           <div className="px-2 py-0.5 bg-accent-blue text-[var(--color-btn-text-inverse)] text-[9px] font-bold uppercase tracking-widest">Whisper</div>
@@ -294,55 +335,46 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           </div>
         )}
 
-        {/* Media preview strip */}
-        {mediaPreview && (() => {
-          const isImagePreview = mediaPreview.startsWith('blob:') || mediaPreview.startsWith('data:image');
-          const fileName = fileRef.current?.files?.[0]?.name;
-          const ext = fileName?.split('.').pop()?.toLowerCase() || '';
-          const fileLabel = ext === 'pdf' ? 'PDF' : ext === 'docx' || ext === 'doc' ? 'Word' : ext === 'xlsx' || ext === 'xls' ? 'Excel' : ext === 'csv' ? 'CSV' : ext === 'txt' ? 'Text' : 'File';
-          return (
-          <div className="flex items-center gap-3 mb-2 p-2 bg-bg-elevated border border-border">
-            <div className="relative shrink-0">
-              {isImagePreview ? (
-                <img src={mediaPreview} alt="Preview" className="h-16 w-16 object-cover border border-border" />
-              ) : (
-                <div className="h-16 w-16 flex flex-col items-center justify-center border border-border bg-bg-surface">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                  </svg>
-                  <span className="text-[8px] font-mono font-bold text-text-muted mt-0.5">{ext.toUpperCase()}</span>
+        {/* Multi-file preview strip */}
+        {pendingFiles.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 mb-2 p-2 bg-bg-elevated border border-border">
+            {pendingFiles.map((pf, idx) => {
+              const isImg = pf.file.type.startsWith('image/');
+              const ext = pf.file.name.split('.').pop()?.toLowerCase() || '';
+              const label = ext === 'pdf' ? 'PDF' : ext === 'docx' || ext === 'doc' ? 'Word' : ext === 'xlsx' || ext === 'xls' ? 'Excel' : ext === 'csv' ? 'CSV' : ext === 'txt' ? 'Text' : 'File';
+              return (
+                <div key={idx} className="relative shrink-0">
+                  {isImg ? (
+                    <img src={pf.preview} alt={pf.file.name} className="h-16 w-16 object-cover border border-border" />
+                  ) : (
+                    <div className="h-16 w-16 flex flex-col items-center justify-center border border-border bg-bg-surface">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 text-accent-blue" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      <span className="text-[8px] font-mono font-bold text-text-muted mt-0.5">{label}</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeFile(idx)}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
+                    title="Remove"
+                  >
+                    <X size={10} />
+                  </button>
                 </div>
-              )}
-              {uploading && (
-                <div className="absolute inset-0 bg-bg-base/70 flex items-center justify-center">
-                  <svg className="animate-spin h-4 w-4 text-text-primary" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={clearMedia}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
-                title="Remove"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex flex-col gap-0.5 min-w-0">
+              );
+            })}
+            <div className="flex flex-col gap-0.5 min-w-0 ml-1">
               <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
-                {uploading ? 'Uploading...' : fileName ? `${fileLabel} attached` : 'File attached'}
+                {pendingFiles.length} file{pendingFiles.length > 1 ? 's' : ''} selected {pendingFiles.length < 5 && `(max 5)`}
               </span>
-              {fileName && <span className="text-[9px] font-mono text-text-muted opacity-60 truncate">{fileName}</span>}
               <span className="text-[9px] text-text-muted opacity-40">
                 Add a message or press Enter to send
               </span>
             </div>
-          </div>);
-        })()}
+          </div>
+        )}
 
         <div className={`flex items-center gap-3 p-1.5 border-2 ${
           whisperMode
@@ -374,8 +406,9 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             <input
               ref={fileRef}
               type="file"
+              multiple
               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
-              aria-label="Attach file"
+              aria-label="Attach files"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -441,9 +474,10 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             onKeyDown={(e) => {
               // DISABLED_FEATURE: canned picker key guard removed until production-ready
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+              if (e.key === 'Escape' && replyingTo && onClearReply) { onClearReply(); }
             }}
             onPaste={handlePaste}
-            placeholder={uploading ? 'Uploading image...' : mediaUrl ? 'Add a message or press Enter to send' : t('type_message')}
+            placeholder={uploading ? 'Uploading...' : pendingFiles.length > 0 ? 'Add a message or press Enter to send' : t('type_message')}
             rows={1}
             className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 scrollbar-none overflow-hidden"
           />
@@ -471,7 +505,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
         <button
           type="submit"
-          disabled={uploading || improving || (!text.trim() && !mediaUrl)}
+          disabled={uploading || improving || (!text.trim() && pendingFiles.length === 0)}
           className="bg-accent-blue text-[var(--color-btn-text-inverse)] w-10 h-10 flex items-center justify-center disabled:opacity-30"
           title={improvementMode === 'forced' ? 'AI will improve before sending' : undefined}
         >
