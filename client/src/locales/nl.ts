@@ -405,7 +405,7 @@ const nl: Record<string, string> = {
     label_name: 'Naam',
     label_color: 'Kleur',
     label_name_placeholder: 'bijv. Bug Report',
-    add_label: 'Toevoegen',
+    add_label: 'Label toevoegen',
     adding_label: 'Toevoegen...',
     no_labels: 'Nog geen labels aangemaakt',
     delete_label_title: 'Label verwijderen',

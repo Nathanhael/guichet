@@ -405,7 +405,7 @@ const fr: Record<string, string> = {
     label_name: 'Nom',
     label_color: 'Couleur',
     label_name_placeholder: 'ex. Rapport de bug',
-    add_label: 'Ajouter',
+    add_label: 'Ajouter un label',
     adding_label: 'Ajout...',
     no_labels: 'Aucun label cr\u00e9\u00e9',
     delete_label_title: 'Supprimer le label',

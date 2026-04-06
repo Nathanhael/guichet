@@ -6,6 +6,8 @@ import { usePartner } from '../../hooks/usePartner';
 import { getSocket } from '../../hooks/useSocket';
 import { Eye } from 'lucide-react';
 import SlaIndicator from '../SlaIndicator';
+import { COLOR_BG_MAP } from '../../utils/labelColors';
+import LabelPicker from './LabelPicker';
 
 interface ChatHeaderProps {
   ticket: Ticket;
@@ -149,20 +151,29 @@ export default function ChatHeader({
           )}
 
           {/* Labels */}
-          {!focusMode && !compact && liveTicket.labels && liveTicket.labels.length > 0 &&
-            liveTicket.labels.map(id => {
-              const info = getLabelInfo(id);
-              if (!info) return null;
-              return (
-                <span
-                  key={id}
-                  className="text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-widest bg-bg-surface text-text-muted border border-border"
-                >
-                  {info.name}
-                </span>
-              );
-            })
-          }
+          {!focusMode && !compact && (
+            <>
+              {(liveTicket.labels || []).map(id => {
+                const info = getLabelInfo(id);
+                if (!info) return null;
+                return (
+                  <span
+                    key={id}
+                    className={`text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-widest ${
+                      info.color && COLOR_BG_MAP[info.color]
+                        ? `${COLOR_BG_MAP[info.color]} text-white`
+                        : 'bg-bg-elevated text-text-primary border border-border-heavy'
+                    }`}
+                  >
+                    {info.name}
+                  </span>
+                );
+              })}
+              {isSupport && (
+                <LabelPicker ticketId={ticket.id} currentLabels={liveTicket.labels || []} allLabels={allLabels || []} />
+              )}
+            </>
+          )}
 
           {/* SLA Indicator */}
           {!focusMode && !compact && isSupport && !isClosed && !liveTicket.supportJoinedAt && liveTicket.slaResponseDueAt && (
