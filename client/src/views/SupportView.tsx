@@ -279,9 +279,10 @@ export default function SupportView() {
               ) : showPreview ? (
                 <TicketPreview
                   ticket={previewTicket!}
-                  onJoin={() => joinTicket(previewTicket!)}
+                  onJoin={previewTicket!.status === 'closed' || previewTicket!.status === 'resolved' ? undefined : () => joinTicket(previewTicket!)}
                   onClose={() => setPreviewTicket(null)}
                   joinDisabled={atMaxChats}
+                  readOnly={previewTicket!.status === 'closed' || previewTicket!.status === 'resolved'}
                 />
               ) : activeTab ? (
                 <ChatWindow
@@ -300,7 +301,7 @@ export default function SupportView() {
             {/* Ticket context sidebar (only in normal mode) */}
             {activeTab && !showPreview && !focusMode && viewMode === 'normal' && (() => {
               const activeTicket = tickets.find((tk) => tk.id === activeTab);
-              return activeTicket ? <TicketSidebar ticket={activeTicket} /> : null;
+              return activeTicket ? <TicketSidebar ticket={activeTicket} onPreviewTicket={setPreviewTicket} /> : null;
             })()}
           </div>
         </main>
