@@ -32,8 +32,9 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   }));
   const { role: activeRole } = usePartner();
   const [closing, setClosing] = useState(false);
-  // Tracks unread message count — setUnreadCount is active, value reserved for future unread badge UI
-  const [_unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [firstUnreadIndex, setFirstUnreadIndex] = useState<number | null>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   // DISABLED_FEATURE: const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
@@ -164,6 +165,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     initialScrollDoneRef.current = null;
     prevMessageCountRef.current = 0;
     setUnreadCount(0);
+    setFirstUnreadIndex(null);
+    setShowScrollButton(false);
   }, [ticketId]);
 
   useEffect(() => {
@@ -190,6 +193,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     if (isNearBottomRef.current || lastMsg?.senderId === user?.id) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
       setUnreadCount(0);
+      setFirstUnreadIndex(null);
 
       const unreadIds = ticketMessages
         .filter(m => m.senderId !== user?.id && !m.readAt)
@@ -200,6 +204,11 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       }
     } else {
       setUnreadCount((prev) => prev + newMessages);
+      setFirstUnreadIndex((prev) => {
+        if (prev !== null) return prev; // keep the first boundary
+        const msgs = useStore.getState().messages[ticketId] || [];
+        return msgs.length - newMessages; // index where new messages start
+      });
     }
   }, [ticketMessages.length, ticketId, user?.id]);
 
@@ -234,6 +243,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       if (unreadIds.length > 0) {
         getSocket().emit('message:read', { ticketId, messageIds: unreadIds });
         setUnreadCount(0);
+        setFirstUnreadIndex(null);
       }
     }
     window.addEventListener('focus', onFocus);
@@ -260,13 +270,26 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   function handleScroll() {
     const el = scrollContainerRef.current;
     if (!el) return;
-    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (isNearBottomRef.current) setUnreadCount(0);
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    isNearBottomRef.current = nearBottom;
+    setShowScrollButton(!nearBottom);
+    if (nearBottom) {
+      setUnreadCount(0);
+      setFirstUnreadIndex(null);
+    }
 
     // Load older messages when scrolled to top
     if (el.scrollTop < 50) {
       loadOlderMessages();
     }
+  }
+
+  function scrollToBottom() {
+    const el = scrollContainerRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    setUnreadCount(0);
+    setFirstUnreadIndex(null);
+    setShowScrollButton(false);
   }
 
   function closeTicket() {
@@ -343,6 +366,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         bottomRef={bottomRef}
         onScroll={handleScroll}
         aiConfig={aiConfig}
+        unreadCount={unreadCount}
+        firstUnreadIndex={firstUnreadIndex}
+        showScrollButton={showScrollButton}
+        onScrollToBottom={scrollToBottom}
       />
 
       {/* Input */}

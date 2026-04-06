@@ -591,5 +591,9 @@ const nl: Record<string, string> = {
     status_sent: 'Verzonden',
     status_delivered: 'Afgeleverd',
     status_read: 'Gelezen',
+
+    // Unread / scroll
+    new_messages: 'NIEUWE BERICHTEN',
+    scroll_to_bottom: 'Scroll naar beneden',
 };
 export default nl;
