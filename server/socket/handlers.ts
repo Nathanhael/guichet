@@ -672,13 +672,13 @@ export function registerSocketHandlers(io: Server) {
         const senderName = socket.data.name;
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
 
-        // Authorization: only support/admin roles can close tickets
-        if (!socket.data.isSupport) {
-          return socket.emit('error', { message: 'Only support staff can close tickets' });
-        }
-
         const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForClose);
         if (!ticket) return;
+
+        // Authorization: support/admin can close any ticket; agents can close their own
+        if (!socket.data.isSupport && ticket.agentId !== senderId) {
+          return socket.emit('error', { message: 'Only support staff can close tickets' });
+        }
 
         if (ticket.status === 'closed') {
           return; // Already closed
@@ -769,9 +769,10 @@ export function registerSocketHandlers(io: Server) {
           logger.warn({ senderId, role: sender.role }, '[message:send] Non-support user attempted whisper');
         }
 
-        // CR-02: Run content moderation guards (skip for whispers — internal staff notes)
+        // CR-02: Run content moderation guards (skip for whispers and attachment-only messages)
         let guardedText = text;
-        if (!isWhisper) {
+        const isAttachmentOnly = !!mediaUrl && (!text || text === '[attachment]');
+        if (!isWhisper && !isAttachmentOnly) {
           // Synchronous guards always run (fail closed — no try/catch bypass)
           const syncResult = runSyncGuards(text);
           if (!syncResult.ok) {
@@ -965,11 +966,12 @@ export function registerSocketHandlers(io: Server) {
 
     // ── Message Reactions ─────────────────────────────────────────────────────
     socket.on('message:react', async ({ ticketId, messageId, emoji }: { ticketId: string; messageId: string; emoji: string }) => {
-      if (!requireIdentified(socket)) return;
+      logger.info({ ticketId, messageId, emoji }, '[message:react] Received');
+      if (!requireIdentified(socket)) { logger.warn('[message:react] Not identified'); return; }
       socketioEventsTotal.inc({ event: 'message:react' });
       try {
         const userId = socket.data.userId;
-        if (!userId || !ticketId || !messageId || !emoji) return;
+        if (!userId || !ticketId || !messageId || !emoji) { logger.warn({ userId, ticketId, messageId, emoji }, '[message:react] Missing fields'); return; }
 
         // Validate emoji is in the allowed set
         if (!REACTION_EMOJIS.includes(emoji as typeof REACTION_EMOJIS[number])) {
@@ -978,11 +980,11 @@ export function registerSocketHandlers(io: Server) {
 
         // Tenant isolation
         const ticket = await requirePartnerScope(socket, ticketId);
-        if (!ticket) return;
+        if (!ticket) { logger.warn({ ticketId }, '[message:react] Partner scope failed'); return; }
 
         // Fetch message and validate
         const msg = await findMessageForReact(messageId, ticketId);
-        if (!msg) return;
+        if (!msg) { logger.warn({ messageId, ticketId }, '[message:react] Message not found'); return; }
         if (msg.system) return socket.emit('error', { message: 'Cannot react to system messages' });
         if (msg.deletedAt) return socket.emit('error', { message: 'Cannot react to deleted messages' });
 

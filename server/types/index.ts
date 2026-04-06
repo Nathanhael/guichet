@@ -52,7 +52,9 @@ export interface Message {
   fallback: number; // 0 or 1
   timestamp: string;
   createdAt?: string; // Alias for backward compatibility
-  reactions: string; // JSON string
+  editedAt?: string;
+  deletedAt?: string;
+  reactions: Record<string, string[]>;
 }
 
 export interface Rating {
