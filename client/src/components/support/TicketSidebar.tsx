@@ -13,9 +13,10 @@ import {
 
 interface TicketSidebarProps {
   ticket: Ticket;
+  onPreviewTicket?: (ticket: Ticket) => void;
 }
 
-export default function TicketSidebar({ ticket }: TicketSidebarProps) {
+export default function TicketSidebar({ ticket, onPreviewTicket }: TicketSidebarProps) {
   const t = useT();
   const rightSidebarExpanded = useStore((s) => s.rightSidebarExpanded);
   const toggleRightSidebar = useStore((s) => s.toggleRightSidebar);
@@ -90,7 +91,11 @@ export default function TicketSidebar({ ticket }: TicketSidebarProps) {
           ) : (
             <div className="space-y-2">
               {pastList.slice(0, 5).map((tk) => (
-                <div key={tk.id} className="surface-card">
+                <div
+                  key={tk.id}
+                  className={`surface-card ${onPreviewTicket ? 'cursor-pointer hover:bg-[var(--color-bg-elevated)]' : ''}`}
+                  onClick={() => onPreviewTicket?.(tk as Ticket)}
+                >
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase">
                       {tk.dept}
