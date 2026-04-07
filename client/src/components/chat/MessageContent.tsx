@@ -12,13 +12,7 @@ interface MessageContentProps {
   message: Message;
   displayText: string;
   isDeleted: boolean;
-  isMine: boolean;
-  isWhisper: boolean;
   bionicReading: boolean;
-  translationEnabled: boolean;
-  translated: string | null;
-  showOriginal: boolean;
-  setShowOriginal: (v: boolean) => void;
   highlightQuery?: string;
 }
 
