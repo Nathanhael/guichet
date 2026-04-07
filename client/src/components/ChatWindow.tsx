@@ -17,7 +17,7 @@ interface ChatWindowProps {
 }
 
 const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWindow({ ticket, onClose, compact }, ref) {
-  const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, setMessages, activePartnerId, focusMode, setRatingPrompt } = useStoreShallow(s => ({
+  const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, setMessages, activePartnerId, focusMode } = useStoreShallow(s => ({
     user: s.user,
     messages: s.messages,
     messageCursors: s.messageCursors,
@@ -28,7 +28,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     setMessages: s.setMessages,
     activePartnerId: s.activePartnerId,
     focusMode: s.focusMode,
-    setRatingPrompt: s.setRatingPrompt,
   }));
   const { role: activeRole } = usePartner();
   const [closing, setClosing] = useState(false);
@@ -65,6 +64,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const prevMessageCountRef = useRef(0);
   const initialScrollDoneRef = useRef<string | null>(null);
   const loadingRef = useRef(false);
+  const prevScrollHeightRef = useRef<number | null>(null);
 
   const isSupport = isSupportLike(activeRole);
   const ticketId = ticket?.id ?? '';
@@ -133,10 +133,23 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     const socket = getSocket();
     if (!socket) return;
 
-    socket.emit('ticket:viewing', { ticketId });
+    // Only emit once socket is connected (identified), otherwise collision
+    // detection silently fails because the server drops unidentified events.
+    function emitViewing() {
+      socket!.emit('ticket:viewing', { ticketId });
+    }
+
+    if (socket.connected) {
+      emitViewing();
+    } else {
+      socket.once('connect', emitViewing);
+    }
 
     return () => {
-      socket.emit('ticket:left', { ticketId });
+      socket.off('connect', emitViewing);
+      if (ticketId) {
+        socket.emit('ticket:left', { ticketId });
+      }
     };
   }, [ticketId]);
 
@@ -239,18 +252,12 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         return count - newMessages;
       });
     }
-  }, [ticketMessages.length, ticketId, user?.id]);
+  }, [ticketMessages.length, ticketMessages[ticketMessages.length - 1]?.id, ticketId, user?.id]);
 
   useEffect(() => {
     if (ticket?.status === 'closed') {
-      // Auto-prompt rating for agents (not support) when ticket is closed
-      if (!isSupport && ticket.supportId && ticket.supportName) {
-        setRatingPrompt({
-          ticketId: ticket.id,
-          supportId: ticket.supportId,
-          supportName: ticket.supportName,
-        });
-      }
+      // Rating prompt is handled centrally by useSocket.ts handleTicketClosed —
+      // emitting it here as well caused double-triggers of the rating modal.
       if (onClose) {
         const timer = setTimeout(() => {
           onClose();
@@ -258,7 +265,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         return () => clearTimeout(timer);
       }
     }
-  }, [ticket?.status, onClose, isSupport, ticket?.id, ticket?.supportId, ticket?.supportName, setRatingPrompt]);
+  }, [ticket?.status, onClose, ticket?.id]);
 
   useEffect(() => {
     if (!ticketId) return;
@@ -288,25 +295,26 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   // Pagination cursor for the current ticket
   const cursorInfo = ticket ? messageCursors[ticket.id] : undefined;
 
-  const prevScrollHeightRef = useRef<number | null>(null);
-
   const loadOlderMessages = useCallback(() => {
-    const cursor = useStore.getState().messageCursors[ticket?.id || ''];
-    if (!ticket || !cursor?.hasMore || loadingRef.current || !cursor?.nextCursor) return;
+    // Derive ticketId from store to avoid stale closure when ticket prop
+    // changes faster than React can rebuild this callback.
+    const currentTicketId = ticket?.id || '';
+    const cursor = useStore.getState().messageCursors[currentTicketId];
+    if (!currentTicketId || !cursor?.hasMore || loadingRef.current || !cursor?.nextCursor) return;
     const socket = getSocket();
     if (!socket) return;
     loadingRef.current = true;
-    setMessageLoading(ticket.id, true);
+    setMessageLoading(currentTicketId, true);
 
     // Record scroll height before prepend so we can preserve position
     const el = scrollContainerRef.current;
     if (el) prevScrollHeightRef.current = el.scrollHeight;
 
     socket.emit('message:loadMore', {
-      ticketId: ticket.id,
+      ticketId: currentTicketId,
       cursor: cursor.nextCursor,
     });
-  }, [ticket, setMessageLoading]);
+  }, [ticket?.id, setMessageLoading]);
 
   // Reset loading ref when server responds and preserve scroll position
   useEffect(() => {
@@ -351,6 +359,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     setShowScrollButton(false);
   }
 
+  const isOwnTicket = ticket?.agentId === user?.id;
+  const canClose = isSupportLike(activeRole) || isOwnTicket;
+  const isClosed = ticket.status === 'closed' || ticket.status === 'resolved';
+
   function closeTicket() {
     if (closing) return;
     const socket = getSocket();
@@ -388,10 +400,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     setShowTransferMenu(false);
     if (onClose) onClose();
   }
-
-  const isOwnTicket = ticket?.agentId === user?.id;
-  const canClose = isSupportLike(activeRole) || isOwnTicket;
-  const isClosed = ticket.status === 'closed' || ticket.status === 'resolved';
 
   return (
     <div className="relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden">
