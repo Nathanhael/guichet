@@ -4,6 +4,7 @@ import AttachmentGrid from './AttachmentGrid';
 import QuoteBlock from './QuoteBlock';
 import LinkPreviewCard from './LinkPreviewCard';
 import { hasMarkdownSyntax, renderMarkdown } from '../../utils/markdown';
+import { highlightText } from '../../utils/highlightText';
 
 interface MessageContentProps {
   message: Message;
@@ -16,6 +17,7 @@ interface MessageContentProps {
   translated: string | null;
   showOriginal: boolean;
   setShowOriginal: (v: boolean) => void;
+  highlightQuery?: string;
 }
 
 export default function MessageContent({
@@ -23,6 +25,7 @@ export default function MessageContent({
   displayText,
   isDeleted,
   bionicReading,
+  highlightQuery,
 }: MessageContentProps) {
   return (
     <>
@@ -54,6 +57,8 @@ export default function MessageContent({
           <div className="text-[14px] break-words whitespace-pre-wrap leading-snug text-left max-h-60 overflow-y-auto">
             {bionicReading ? (
               <BionicText text={displayText} />
+            ) : highlightQuery ? (
+              highlightText(displayText, highlightQuery)
             ) : (
               displayText
             )}

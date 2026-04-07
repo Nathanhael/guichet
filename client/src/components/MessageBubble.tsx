@@ -21,9 +21,12 @@ interface MessageBubbleProps {
   isGroupEnd?: boolean;
   aiConfig?: AiConfig;
   onReply?: (message: Message) => void;
+  highlightQuery?: string;
+  isSearchMatch?: boolean;
+  isCurrentSearchMatch?: boolean;
 }
 
-export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig, onReply }: MessageBubbleProps) {
+export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig, onReply, highlightQuery, isSearchMatch, isCurrentSearchMatch }: MessageBubbleProps) {
   const { user, bionicReading } = useStoreShallow(s => ({
     user: s.user,
     bionicReading: s.bionicReading,
@@ -109,7 +112,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   return (
     <div
       id={`msg-${message.id}`}
-      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row transition-colors duration-150`}
+      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row transition-colors duration-150${isCurrentSearchMatch ? ' bg-accent-amber/25' : isSearchMatch ? ' bg-accent-amber/10' : ''}`}
       onMouseEnter={() => !isDeleted && setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); }}
     >
@@ -186,6 +189,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               translated={translated}
               showOriginal={showOriginal}
               setShowOriginal={setShowOriginal}
+              highlightQuery={highlightQuery}
             />
           )}
         </div>

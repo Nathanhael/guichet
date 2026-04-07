@@ -602,5 +602,8 @@ const fr: Record<string, string> = {
     // Unread / scroll
     new_messages: 'NOUVEAUX MESSAGES',
     scroll_to_bottom: 'Défiler vers le bas',
+
+    // Chat search
+    search_in_conversation: 'Rechercher dans la conversation',
 };
 export default fr;

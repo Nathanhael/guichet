@@ -4,7 +4,7 @@ import { useT } from '../../i18n';
 import { Ticket } from '../../types';
 import { usePartner } from '../../hooks/usePartner';
 import { getSocket } from '../../hooks/useSocket';
-import { Eye } from 'lucide-react';
+import { Eye, Search } from 'lucide-react';
 import SlaIndicator from '../SlaIndicator';
 import { COLOR_BG_MAP } from '../../utils/labelColors';
 import LabelPicker from './LabelPicker';
@@ -31,6 +31,7 @@ interface ChatHeaderProps {
   canSummarize: boolean;
   agentIsOnline: boolean;
   onCloseTicket: () => void;
+  onOpenSearch?: () => void;
 }
 
 export default function ChatHeader({
@@ -55,6 +56,7 @@ export default function ChatHeader({
   canSummarize,
   agentIsOnline,
   onCloseTicket,
+  onOpenSearch,
 }: ChatHeaderProps) {
   const { user, allLabels } = useStoreShallow(s => ({
     user: s.user,
@@ -183,6 +185,18 @@ export default function ChatHeader({
 
         {/* Right: actions */}
         <div className={`flex items-center gap-2 shrink-0 ${(focusMode || compact) ? 'opacity-60 hover:opacity-100' : ''}`}>
+          {/* Search in conversation */}
+          {onOpenSearch && (
+            <button
+              onClick={onOpenSearch}
+              aria-label={t('search_in_conversation') || 'Search in conversation'}
+              title={t('search_in_conversation') || 'Search in conversation'}
+              className={`text-text-secondary hover:text-text-primary bg-bg-surface border border-border hidden sm:flex items-center justify-center ${(focusMode || compact) ? 'w-7 h-7' : 'w-8 h-8'}`}
+            >
+              <Search size={14} />
+            </button>
+          )}
+
           {/* Summarize button (support/admin only) */}
           {canSummarize && !isClosed && (
             <button
