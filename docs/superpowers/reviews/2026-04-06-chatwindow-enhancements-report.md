@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-07
 **Tracks delivered:** 8 (0, A, B, C, D, E, F, G)
-**Commits:** 10 (9 feature + 1 fix)
+**Commits:** 13 (9 feature + 2 fix + 1 missed-staging + 1 docs)
 
 ---
 
@@ -57,16 +57,16 @@ Full review at: `docs/superpowers/reviews/2026-04-06-chatwindow-enhancements-rev
 2. ~~**N+1 query in reply snippets**~~ — **FIXED.** New `resolveReplySnippetsBatch()` fetches all reply snippets in one `WHERE id IN (...)` query.
 3. ~~**`shadow-xl` on transfer dropdown**~~ — **FIXED.** Removed from ChatHeader.
 
-### Important — Open
+### Important — FIXED (`329607b`)
 
-4. **Optimistic message missing `replyTo`** — ComposeArea's optimistic message doesn't include `replyToId`/`replyTo`, so the quote block only appears after server broadcast.
-5. **Borderline motion** — `transition-colors` on LinkPreviewCard and some MessageList elements is decorative.
+4. ~~**Optimistic message missing `replyTo`**~~ — **FIXED.** `replyToId`/`replyTo` now included in optimistic message in ComposeArea.
+5. ~~**Borderline motion**~~ — **FIXED.** Removed `transition-colors` from LinkPreviewCard and MessageList load-older button.
 
-### Minor — Open
+### Minor — FIXED (`329607b`)
 
-6. QuoteBlock should handle Space key (not just Enter) for accessibility
-7. LabelPicker should enforce `MAX_LABELS_PER_TICKET` client-side
-8. Label badges in ChatHeader may be missing `font-mono` class
+6. ~~QuoteBlock Space key~~ — **FIXED.** Added Space key alongside Enter for accessibility.
+7. ~~LabelPicker MAX_LABELS~~ — **FIXED.** Client-side enforcement at 50, disabled state on excess.
+8. ~~Label badges font-mono~~ — **FIXED.** Added `font-mono` to ChatHeader label badges.
 
 ## Advice
 
@@ -75,15 +75,14 @@ Full review at: `docs/superpowers/reviews/2026-04-06-chatwindow-enhancements-rev
 1. ~~**Fix the SSRF bypass**~~ — **DONE** (`9f5b456`)
 2. ~~**Fix the N+1 reply query**~~ — **DONE** (`9f5b456`)
 3. ~~**Remove `shadow-xl`**~~ — **DONE** (`9f5b456`)
-4. **Manual smoke test all 7 features** — Before shipping, test each feature end-to-end in the browser. The subagents typechecked but couldn't visually verify.
-5. **Run the full CI pipeline** — `powershell -File scripts/ci.ps1` to catch anything the typechecks missed.
-6. **Fix optimistic reply** — Add `replyToId`/`replyTo` to the optimistic message in ComposeArea so the quote block appears instantly.
-7. **Remove `transition-colors`** from LinkPreviewCard and MessageList FAB if strict brutalist motion compliance is desired.
+4. ~~**Fix optimistic reply**~~ — **DONE** (`329607b`)
+5. ~~**Remove `transition-colors`**~~ — **DONE** (`329607b`)
+6. ~~**Fix QuoteBlock/LabelPicker/font-mono**~~ — **DONE** (`329607b`)
+7. **Manual smoke test all 7 features** — Before shipping, test each feature end-to-end in the browser. The subagents typechecked but couldn't visually verify.
+8. **Run the full CI pipeline** — `powershell -File scripts/ci.ps1` (note: typecheck, audit, migrate steps have pre-existing failures unrelated to our work)
 
 ### What NOT to do
 
-- Don't try to ship all 7 features at once to users. Enable them gradually.
-- Don't skip the SSRF fix — link previews fetch arbitrary URLs from the internet.
 - Don't add more features to MessageBubble without extracting it first — it's getting heavy.
 
 ### Future considerations
