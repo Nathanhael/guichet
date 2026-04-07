@@ -32,6 +32,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   }));
   const { role: activeRole } = usePartner();
   const [closing, setClosing] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [firstUnreadIndex, setFirstUnreadIndex] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -370,6 +371,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         firstUnreadIndex={firstUnreadIndex}
         showScrollButton={showScrollButton}
         onScrollToBottom={scrollToBottom}
+        onReply={(msg) => setReplyingTo(msg)}
       />
 
       {/* Input */}
@@ -379,6 +381,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         isClosed={isClosed}
         isSupport={isSupport}
         textareaRef={textareaRef}
+        replyingTo={replyingTo}
+        onClearReply={() => setReplyingTo(null)}
       />
     </div>
   );
