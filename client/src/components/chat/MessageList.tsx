@@ -231,9 +231,9 @@ export default function MessageList({
           <div className="px-6 py-1.5 text-[11px] font-bold text-text-primary opacity-40 bg-bg-surface border-t border-border">
             <span className="inline-flex items-center gap-1.5">
               <span className="flex gap-0.5">
-                <span className="w-1 h-1 bg-text-primary rounded-full" style={{ animationDelay: '0ms' }} />
-                <span className="w-1 h-1 bg-text-primary rounded-full" style={{ animationDelay: '150ms' }} />
-                <span className="w-1 h-1 bg-text-primary rounded-full" style={{ animationDelay: '300ms' }} />
+                <span className="w-1 h-1 bg-text-primary" />
+                <span className="w-1 h-1 bg-text-primary" />
+                <span className="w-1 h-1 bg-text-primary" />
               </span>
               {typers.length === 1
                 ? `${typers[0]} ${t('is_typing') || 'is typing...'}`

@@ -64,6 +64,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const isNearBottomRef = useRef(true);
   const prevMessageCountRef = useRef(0);
   const initialScrollDoneRef = useRef<string | null>(null);
+  const loadingRef = useRef(false);
 
   const isSupport = isSupportLike(activeRole);
   const ticketId = ticket?.id ?? '';
@@ -78,9 +79,9 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   useEffect(() => {
     if (messageQuery.data && ticketId) {
-      // tRPC infers server mapMessageRow return type which differs slightly from client Message interface
-      // (e.g. optional text field presence). Runtime data is compatible.
-      setMessages(ticketId, messageQuery.data.messages as unknown as Message[]);
+      // Server mapMessageRow type has minor structural diffs (e.g. nullable vs optional).
+      // Single-cast boundary — fix here if types diverge.
+      setMessages(ticketId, messageQuery.data.messages as Message[]);
     }
   }, [messageQuery.data, ticketId, setMessages]);
 
@@ -223,14 +224,14 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         .map(m => m.id);
 
       if (unreadIds.length > 0 && document.hasFocus()) {
-        getSocket().emit('message:read', { ticketId, messageIds: unreadIds });
+        const socket = getSocket();
+        if (socket) socket.emit('message:read', { ticketId, messageIds: unreadIds });
       }
     } else {
       setUnreadCount((prev) => prev + newMessages);
       setFirstUnreadIndex((prev) => {
-        if (prev !== null) return prev; // keep the first boundary
-        const msgs = useStore.getState().messages[ticketId] || [];
-        return msgs.length - newMessages; // index where new messages start
+        if (prev !== null) return prev;
+        return count - newMessages;
       });
     }
   }, [ticketMessages.length, ticketId, user?.id]);
@@ -257,6 +258,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   useEffect(() => {
     if (!ticketId) return;
     function onFocus() {
+      const socket = getSocket();
+      if (!socket) return;
       const currentMessages = useStore.getState().messages[ticketId] || [];
       const currentUserId = useStore.getState().user?.id;
       const unreadIds = currentMessages
@@ -264,7 +267,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         .map(m => m.id);
 
       if (unreadIds.length > 0) {
-        getSocket().emit('message:read', { ticketId, messageIds: unreadIds });
+        socket.emit('message:read', { ticketId, messageIds: unreadIds });
         setUnreadCount(0);
         setFirstUnreadIndex(null);
       }
@@ -281,13 +284,23 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const cursorInfo = ticket ? messageCursors[ticket.id] : undefined;
 
   function loadOlderMessages() {
-    if (!ticket || !cursorInfo?.hasMore || cursorInfo?.loading || !cursorInfo?.nextCursor) return;
+    if (!ticket || !cursorInfo?.hasMore || loadingRef.current || !cursorInfo?.nextCursor) return;
+    const socket = getSocket();
+    if (!socket) return;
+    loadingRef.current = true;
     setMessageLoading(ticket.id, true);
-    getSocket().emit('message:loadMore', {
+    socket.emit('message:loadMore', {
       ticketId: ticket.id,
       cursor: cursorInfo.nextCursor,
     });
   }
+
+  // Reset loading ref when server responds (cursorInfo.loading goes false)
+  useEffect(() => {
+    if (!cursorInfo?.loading) {
+      loadingRef.current = false;
+    }
+  }, [cursorInfo?.loading]);
 
   // Track scroll position
   function handleScroll() {
@@ -317,9 +330,11 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   function closeTicket() {
     if (closing) return;
+    const socket = getSocket();
+    if (!socket) return;
     setClosing(true);
 
-    getSocket().emit('ticket:close', {
+    socket.emit('ticket:close', {
       ticketId: ticket!.id,
       closingNotes: '',
     });
@@ -340,7 +355,9 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   }
 
   function transferTicket(departmentId?: string, note?: string) {
-    getSocket().emit('ticket:transfer', {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('ticket:transfer', {
       ticketId: ticket!.id,
       departmentId: departmentId || undefined,
       note: note || undefined,
@@ -354,7 +371,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const isClosed = ticket.status === 'closed' || ticket.status === 'resolved';
 
   return (
-    <div className={`relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden`}>
+    <div className="relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden">
       <ChatHeader
         ticket={ticket}
         liveTicket={liveTicket}

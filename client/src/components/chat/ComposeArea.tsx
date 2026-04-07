@@ -44,17 +44,19 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const fileRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
+  const pendingFilesRef = useRef(pendingFiles);
+  pendingFilesRef.current = pendingFiles;
 
   useImperativeHandle(ref, () => ({
     toggleWhisper: () => setWhisperMode((v) => !v),
   }), []);
 
-  // CR-10: Revoke Object URLs to prevent memory leaks
+  // Revoke Object URLs on unmount only (individual removals handled by removeFile/clearMedia)
   useEffect(() => {
     return () => {
-      pendingFiles.forEach(pf => URL.revokeObjectURL(pf.preview));
+      pendingFilesRef.current.forEach(pf => URL.revokeObjectURL(pf.preview));
     };
-  }, [pendingFiles]);
+  }, []);
 
   // tRPC: AI Config (to show/hide Improve button)
   const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
@@ -75,14 +77,18 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   };
 
   function emitTyping() {
+    const socket = getSocket();
+    if (!socket) return;
     if (!isTypingRef.current) {
       isTypingRef.current = true;
-      getSocket().emit('typing:start', { ticketId: ticket.id, senderName: user?.name });
+      // Server derives senderName from socket.data — don't send client identity
+      socket.emit('typing:start', { ticketId: ticket.id });
     }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       isTypingRef.current = false;
-      getSocket().emit('typing:stop', { ticketId: ticket.id, senderName: user?.name });
+      const s = getSocket();
+      if (s) s.emit('typing:stop', { ticketId: ticket.id });
     }, 2000);
   }
 
@@ -90,7 +96,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (isTypingRef.current) {
       isTypingRef.current = false;
-      getSocket().emit('typing:stop', { ticketId: ticket.id, senderName: user?.name });
+      const socket = getSocket();
+      if (socket) socket.emit('typing:stop', { ticketId: ticket.id });
     }
   }
 
@@ -169,6 +176,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   /** Core send logic -- uploads pending files, then emits socket event with the given text. */
   async function doSend(finalText: string) {
+    if (!user?.id) return;
+
     const hasPending = pendingFiles.length > 0;
     const display = finalText || (hasPending ? '[attachment]' : '');
 
@@ -212,7 +221,9 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     };
     useStore.getState().addMessage(ticket.id, optimisticMsg);
 
-    getSocket().emit('message:send', {
+    const socket = getSocket();
+    if (!socket) return;
+    socket.emit('message:send', {
       ticketId: ticket.id,
       senderLang: user?.lang,
       text: display,
