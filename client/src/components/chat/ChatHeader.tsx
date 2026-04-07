@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { Ticket } from '../../types';
@@ -58,8 +58,7 @@ export default function ChatHeader({
   onCloseTicket,
   onOpenSearch,
 }: ChatHeaderProps) {
-  const { user, allLabels } = useStoreShallow(s => ({
-    user: s.user,
+  const { allLabels } = useStoreShallow(s => ({
     allLabels: s.allLabels,
   }));
   const t = useT();
@@ -67,6 +66,26 @@ export default function ChatHeader({
 
   const [transferNote, setTransferNote] = useState('');
   const [copiedRef, setCopiedRef] = useState<number | null>(null);
+  const transferMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close transfer menu on outside click or Escape
+  useEffect(() => {
+    if (!showTransferMenu) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (transferMenuRef.current && !transferMenuRef.current.contains(e.target as Node)) {
+        setShowTransferMenu(false);
+      }
+    }
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowTransferMenu(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showTransferMenu, setShowTransferMenu]);
 
   const getLabelInfo = (id: string) => (allLabels || []).find((l) => l.id === id);
 
@@ -99,7 +118,7 @@ export default function ChatHeader({
             {isSupport && !isClosed && (
               <span
                 title={agentIsOnline ? 'Agent online' : 'Agent offline'}
-                className={`w-1.5 h-1.5 rounded-full shrink-0 ${agentIsOnline ? 'bg-text-primary' : 'border border-border'}`}
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${agentIsOnline ? 'bg-accent-green' : 'border border-border'}`}
               />
             )}
           </span>
@@ -220,7 +239,7 @@ export default function ChatHeader({
           {/* Secondary actions: Transfer + Leave (support/admin only) */}
           {isSupport && !isClosed && (
             <div className="flex items-center gap-2">
-              <div className="relative">
+              <div ref={transferMenuRef} className="relative">
                 <button
                   onClick={() => setShowTransferMenu(!showTransferMenu)}
                   aria-label={t('transfer') || 'Transfer'}
@@ -319,7 +338,8 @@ export default function ChatHeader({
               onClick={(e) => {
                 e.stopPropagation();
                 if (isSupport && ticket) {
-                  getSocket().emit('support:leave', { ticketId: ticket.id, supportId: user?.id, supportName: user?.name });
+                  const socket = getSocket();
+                  if (socket) socket.emit('support:leave', { ticketId: ticket.id });
                 }
                 onClose();
               }}
