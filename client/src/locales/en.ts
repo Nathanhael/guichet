@@ -55,6 +55,16 @@ const en: Record<string, string> = {
     type_message: 'Type a message... (Ctrl+V to paste screenshot)',
     send: 'Send',
     uploading: 'Uploading\u2026',
+    upload_failed: 'Upload failed. Please try again.',
+    file_too_large: 'File exceeds 10MB limit',
+    attach_file: 'Attach file',
+    emoji: 'Emoji',
+    improve_message: 'Improve message',
+    ai_improved: 'AI improved',
+    ai_will_improve: 'AI will improve before sending',
+    revert_to_original: 'Revert to original',
+    add_message_or_send: 'Add a message or press Enter to send',
+    confirm_delete_message: 'Delete this message? This cannot be undone.',
 
     // Message bubble
     translation: 'Translation',
