@@ -7,7 +7,7 @@ import { Message } from '../types';
 import { DeliveryStatus, MessageContent } from './chat';
 import { safeDate } from '../utils/dateUtils';
 import { REACTION_EMOJIS } from '../constants';
-import { CornerUpLeft } from 'lucide-react';
+import { CornerUpLeft, Pencil, Trash2, Loader2, Ban } from 'lucide-react';
 import { useAutoTranslation } from '../hooks/useTranslation';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '../../../server/trpc/router';
@@ -52,7 +52,8 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
 
-  const isDeleted = !!message.deletedAt || (!message.text && !message.originalText && !message.mediaUrl && (!message.attachments || message.attachments.length === 0));
+  const hasContent = message.text || message.originalText || message.mediaUrl || (message.attachments && message.attachments.length > 0);
+  const isDeleted = !!message.deletedAt || !hasContent;
   const isEdited = !!message.editedAt;
 
   if (message.system) {
@@ -180,9 +181,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             </div>
           ) : isDeleted ? (
             <div className="flex items-center gap-1.5 text-[12px] text-text-muted italic opacity-60">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-              </svg>
+              <Ban size={14} strokeWidth={1.5} className="shrink-0" />
               {t('message_deleted') || 'This message was deleted'}
             </div>
           ) : (
@@ -207,10 +206,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           <div className="flex items-center gap-2 mt-1.5 -mb-0.5">
             {translating ? (
               <span className="text-[9px] font-bold opacity-40 italic flex items-center gap-1">
-                <svg className="animate-spin h-2.5 w-2.5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+                <Loader2 className="animate-spin" size={10} />
                 translating...
               </span>
             ) : translated ? (
@@ -227,8 +223,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
         {/* Metadata row: timestamp + status + reactions inline */}
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           {/* Reaction pills — inline with metadata */}
-          {Object.keys(message.reactions || {}).length > 0 &&
-            Object.entries(message.reactions).map(([emoji, userIds]) => {
+          {Object.entries(message.reactions || {}).map(([emoji, userIds]) => {
               const count = userIds.length;
               if (count === 0) return null;
               const iReacted = userIds.includes(user?.id || '');
@@ -296,7 +291,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               title={t('edit') || 'Edit'}
               className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+              <Pencil size={12} />
             </button>
           )}
           {canDelete && (
@@ -305,7 +300,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               title={t('delete') || 'Delete'}
               className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              <Trash2 size={12} />
             </button>
           )}
         </div>
