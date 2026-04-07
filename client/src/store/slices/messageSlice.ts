@@ -19,6 +19,13 @@ export interface MessageSlice {
   setTyping: (ticketId: string, name: string, isTyping: boolean) => void;
 }
 
+/** Safely extract a numeric timestamp from a message, returning 0 for invalid/missing dates */
+function safeTimestamp(m: { createdAt?: string; timestamp?: string }): number {
+  const d = new Date(m.createdAt || m.timestamp || 0);
+  const t = d.getTime();
+  return Number.isNaN(t) ? 0 : t;
+}
+
 export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> = (set) => ({
   messages: {},
   messageCursors: {},
@@ -37,7 +44,7 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       
       // Sort by creation time to maintain order
       const merged = Array.from(msgMap.values()).sort((a, b) =>
-        (new Date(a.createdAt || a.timestamp || 0).getTime() || 0) - (new Date(b.createdAt || b.timestamp || 0).getTime() || 0)
+        safeTimestamp(a) - safeTimestamp(b)
       );
 
       return { messages: { ...state.messages, [ticketId]: merged } };
@@ -72,7 +79,7 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       newMessages.forEach(m => msgMap.set(m.id, m));
       existing.forEach(m => msgMap.set(m.id, m)); // existing wins on conflict
       const merged = Array.from(msgMap.values()).sort((a, b) =>
-        (new Date(a.createdAt || a.timestamp || 0).getTime() || 0) - (new Date(b.createdAt || b.timestamp || 0).getTime() || 0)
+        safeTimestamp(a) - safeTimestamp(b)
       );
       return { messages: { ...state.messages, [ticketId]: merged } };
     }),

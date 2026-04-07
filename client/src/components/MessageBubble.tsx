@@ -56,10 +56,14 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const isEdited = !!message.editedAt;
 
   if (message.system) {
+    // Resolve i18n: prefixed keys to localized text at render time
+    const systemText = message.text?.startsWith('i18n:')
+      ? t(message.text.slice(5)) || message.text
+      : message.text;
     return (
       <div className="flex justify-center py-2">
         <span className="text-[10px] uppercase tracking-widest px-4 py-1 font-bold bg-bg-elevated text-text-muted border border-border">
-          {message.text}
+          {systemText}
         </span>
       </div>
     );
@@ -80,7 +84,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   // Check if message is within edit window (15 min)
   const ageMs = msgDate ? Date.now() - msgDate.getTime() : Infinity;
   const canEdit = isMine && !message.system && !isDeleted && !message.mediaUrl && ageMs < 15 * 60 * 1000;
-  const canDelete = (isMine || user?.role === 'admin' || user?.isPlatformOperator) && !message.system && !isDeleted;
+  const canDelete = (isMine || user?.role === 'admin' || user?.role === 'support' || user?.isPlatformOperator) && !message.system && !isDeleted;
 
   function startEdit() {
     setEditText(message.text || message.originalText || '');
@@ -90,12 +94,16 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
 
   function submitEdit() {
     if (!editText.trim()) return;
-    getSocket().emit('message:edit', { ticketId, messageId: message.id, text: editText.trim() });
+    const socket = getSocket();
+    if (!socket?.connected) return;
+    socket.emit('message:edit', { ticketId, messageId: message.id, text: editText.trim() });
     setEditing(false);
   }
 
   function deleteMessage() {
-    getSocket().emit('message:delete', { ticketId, messageId: message.id });
+    const socket = getSocket();
+    if (!socket?.connected) return;
+    socket.emit('message:delete', { ticketId, messageId: message.id });
     setShowActions(false);
   }
 

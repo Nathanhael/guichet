@@ -619,5 +619,9 @@ const en: Record<string, string> = {
 
     // Chat search
     search_in_conversation: 'Search in conversation',
+
+    // System messages
+    agent_disconnected: 'Agent has disconnected.',
+    agent_reconnected: 'Agent has reconnected.',
 };
 export default en;

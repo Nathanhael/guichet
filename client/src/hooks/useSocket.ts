@@ -172,6 +172,7 @@ export function useSocket(): Socket {
       const state = useStore.getState();
       state.setParticipantOnline(ticketId, online);
       if (!online) {
+        const i18nKey = 'i18n:agent_disconnected';
         state.addMessage(ticketId, {
           id: `system-offline-${Date.now()}`,
           ticketId,
@@ -179,10 +180,10 @@ export function useSocket(): Socket {
           senderName: 'System',
           senderRole: 'admin',
           senderLang: 'en',
-          originalText: 'Agent has disconnected.',
-          improvedText: 'Agent has disconnected.',
-          processedText: 'Agent has disconnected.',
-          text: 'Agent has disconnected.',
+          originalText: i18nKey,
+          improvedText: i18nKey,
+          processedText: i18nKey,
+          text: i18nKey,
           timestamp: new Date().toISOString(),
           createdAt: new Date().toISOString(),
           system: 1,
