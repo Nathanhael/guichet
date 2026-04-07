@@ -85,9 +85,15 @@ Full review at: `docs/superpowers/reviews/2026-04-06-chatwindow-enhancements-rev
 
 - Don't add more features to MessageBubble without extracting it first — it's getting heavy.
 
-### Future considerations
+### Future considerations — ALL DONE
 
-- **MessageBubble is next for decomposition** — It now handles: text, markdown, quote blocks, reactions, edit/delete, delivery status, link previews, attachments, translations, bionic text. Consider extracting `MessageContent` (text + markdown + translations) as a sub-component.
-- **Redis cache for link previews** — The spec noted this as future work. Worth adding once you see repeat URLs in production.
-- **E2E tests** — None of the new features have Playwright coverage. Add tests for: reply flow, file upload, scroll-to-bottom.
-- **Date separators in MessageList** — Noted as future enhancement in the spec. Low effort, high readability improvement.
+- ~~**MessageBubble decomposition**~~ — **DONE.** Extracted `MessageContent.tsx` (113 lines) handling quote block, text/markdown, attachments, link previews. MessageBubble reduced from 371 to 303 lines.
+- ~~**Redis cache for link previews**~~ — **DONE** (`5cc5527`). `og:` prefixed cache with 24h TTL in `linkPreview.ts`. Best-effort, graceful on Redis unavailability.
+- ~~**E2E tests**~~ — **DONE** (`a9c76e8`). 7 Playwright tests in `testing/e2e/chat-enhancements.spec.ts`: delivery checkmarks, markdown, reply/quote, FAB, label picker, date separators, multi-file upload.
+- ~~**Date separators**~~ — **DONE** (`0f848bd`). Today/Yesterday/formatted-date dividers in MessageList. i18n for en/nl/fr.
+
+### Remaining future work
+
+- **E2E test execution** — The 7 new E2E tests are written but need a running seeded app to execute. Run: `npx playwright test testing/e2e/chat-enhancements.spec.ts`
+- **Link preview Redis cache warming** — Currently only caches on first fetch. Could pre-warm for frequently shared URLs.
+- **MessageBubble further decomposition** — Still 303 lines. Reactions section (~40 lines) and action bar (~30 lines) could become sub-components if the file grows again.
