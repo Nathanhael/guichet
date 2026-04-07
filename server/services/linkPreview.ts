@@ -2,6 +2,7 @@
 import { resolve4, resolve6 } from 'dns/promises';
 import { isIP } from 'net';
 import logger from '../utils/logger.js';
+import { getRedisClients } from '../utils/redis.js';
 
 export interface LinkPreview {
   url: string;
@@ -15,6 +16,31 @@ const URL_REGEX = /https?:\/\/[^\s<>"')\]]+/gi;
 const MAX_URLS = 3;
 const FETCH_TIMEOUT_MS = 2000;
 const MAX_HTML_BYTES = 50 * 1024; // 50 KB
+
+const CACHE_PREFIX = 'og:';
+const CACHE_TTL_SECONDS = 86400; // 24 hours
+
+async function getCachedPreview(url: string): Promise<LinkPreview | null> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return null;
+    const cached = await pubClient.get(`${CACHE_PREFIX}${url}`);
+    if (cached) return JSON.parse(cached) as LinkPreview;
+    return null;
+  } catch {
+    return null; // cache miss on error
+  }
+}
+
+async function setCachedPreview(url: string, preview: LinkPreview): Promise<void> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return;
+    await pubClient.set(`${CACHE_PREFIX}${url}`, JSON.stringify(preview), { EX: CACHE_TTL_SECONDS });
+  } catch {
+    // fire-and-forget, cache write failure is not critical
+  }
+}
 
 /**
  * Normalize an IP address to a canonical IPv4 form for SSRF checking.
@@ -152,6 +178,10 @@ export function parseOgTags(html: string): Omit<LinkPreview, 'url'> {
  */
 export async function fetchOgData(url: string): Promise<LinkPreview | null> {
   try {
+    // Check Redis cache first
+    const cached = await getCachedPreview(url);
+    if (cached) return cached;
+
     const safe = await isSafeUrl(url);
     if (!safe) return null;
 
@@ -196,7 +226,12 @@ export async function fetchOgData(url: string): Promise<LinkPreview | null> {
       const tags = parseOgTags(html);
       if (!tags.title && !tags.description) return null;
 
-      return { url, ...tags };
+      const result: LinkPreview = { url, ...tags };
+
+      // Cache the result for future requests
+      await setCachedPreview(url, result);
+
+      return result;
     } catch {
       clearTimeout(timeout);
       return null;
