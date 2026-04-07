@@ -61,7 +61,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 **API Layer**:
 - **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 19 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `savedView`, `stats`, `status`, `ticket`, `user`, `webhook`. Input validation via Zod.
 - **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`), Push (`server/routes/push.ts`).
-- **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference` (98 procedures).
+- **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference`.
 
 **tRPC Middleware** (`server/trpc/trpc.ts`):
 - `publicProcedure` → `protectedProcedure` → `adminProcedure` / `platformProcedure`
@@ -90,6 +90,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `encryption.ts` — Field-level encryption utilities
 - `pushNotification.ts` — Web push notification dispatch (VAPID-based)
 - `systemMessage.ts` — System/whisper message insertion (used by transfers, auto-actions)
+- `linkPreview.ts` — URL metadata extraction for link preview cards
 - `messageQueries.ts` / `partnerQueries.ts` / `ticketQueries.ts` / `userQueries.ts` — Data-access query helpers (shared by tRPC routers and services)
 
 **AI Service Layer** (`server/services/ai/`):
@@ -181,7 +182,8 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `components/admin/` — AdminView panels: AdminAlerts, AdminArchive, AdminBusinessHours, AdminCannedResponses, AdminDepartments, AdminFeedback, AdminKnowledgeBase, AdminLabels, AdminSatisfaction, AdminStats, AdminTeam, AdminTickets, AdminWebhooks, AgentStatusStats, DashboardHelpers, ErrorBox, PlatformAuditLog, PlatformArchiveViewer, PlatformSecurityOps, PlatformSystemHealth, PlatformSystemSettings
 - `components/agent/` — AgentNav, AgentTicketSidebar, TicketForm
 - `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
-- `utils/` — `statusColors.ts` (getStatusColors, getStatusI18nKey for consistent status dot rendering)
+- `components/chat/` — Decomposed chat sub-components: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LabelPicker, LinkPreviewCard, QuoteBlock, SearchBar
+- `utils/` — `statusColors.ts`, `dateUtils.ts`, `markdown.ts`, `fileUtils.ts`, `exportDashboard.ts`, `labelColors.ts`, `highlightText.tsx`, `businessHours.ts`, `notifications.ts`, `notificationSound.ts`, `roles.ts`, `uploadLogo.ts`, `trpc.ts`
 - Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, NotificationToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu, UserSecurityModal
 
 **Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
@@ -291,7 +293,9 @@ tessera/
 │   │   ├── encryption.ts          # Field-level encryption
 │   │   ├── pushNotification.ts    # Web push dispatch (VAPID)
 │   │   ├── systemMessage.ts       # System/whisper message insertion
+│   │   ├── linkPreview.ts         # URL metadata extraction for link previews
 │   │   └── *Queries.ts            # Data-access helpers (message, partner, ticket, user)
+│   ├── scripts/                   # backup.sh, baseline_drizzle.ts, purge_local_passwords.ts
 │   ├── middleware/                 # Express middleware (auth, validator, metrics)
 │   ├── utils/                     # Logger, Redis, metrics, security
 │   ├── types/                     # TypeScript types (index.ts, web-push.d.ts)
@@ -308,6 +312,7 @@ tessera/
 │   │   │   ├── admin/             # AdminView panels (21 components)
 │   │   │   ├── agent/             # AgentView components (AgentNav, TicketForm, sidebar)
 │   │   │   ├── support/           # SupportView components (queue, chat tabs, AI copilot)
+│   │   │   ├── chat/              # Decomposed chat sub-components (ChatHeader, ComposeArea, MessageList, etc.)
 │   │   │   └── *.tsx              # Shared: ChatWindow, MessageBubble, ConfirmDialog, Toast, etc.
 │   │   ├── views/                 # PlatformView, AdminView, SupportView, AgentView, LoginView
 │   │   │   └── __tests__/         # Vitest tests for views
@@ -319,7 +324,7 @@ tessera/
 │   │   ├── test/
 │   │   │   ├── setup.ts           # Vitest setup (cleanup, jest-dom)
 │   │   │   └── helpers.tsx        # Test factories and mock builders
-│   │   └── utils/trpc.ts          # tRPC client setup
+│   │   └── utils/                 # trpc.ts, dateUtils.ts, markdown.ts, fileUtils.ts, statusColors.ts, etc.
 │   └── Dockerfile
 ├── docs/
 │   ├── BREAK_GLASS_RUNBOOK.md     # Emergency operations runbook
@@ -327,6 +332,7 @@ tessera/
 │   ├── TECHNICAL.md               # Technical architecture deep-dive
 │   ├── TENANT_IDENTITY_SPEC.md    # Multi-tenant identity specification
 │   ├── USER_GUIDE.md              # End-user guide (roles, auth, features)
+│   └── superpowers/               # Plans, specs, and reviews from development sessions
 ├── conductor/
 │   ├── index.md                   # Conductor overview
 │   ├── product.md                 # Product definition
@@ -336,10 +342,10 @@ tessera/
 │   └── workflow.md                # Workflow documentation
 ├── testing/
 │   ├── nginx.conf                 # Reverse proxy config for load testing
-│   ├── load/                      # k6 load test scripts (smoke.js, load.js, refresh.js, ws.js)
+│   ├── load/                      # k6 load test scripts (smoke.js, load.js, refresh.js, ws.js, ws-500.js, debug.js)
 │   └── e2e/                       # Playwright E2E specs
 ├── playwright.config.ts           # Playwright E2E config
-├── CHANGELOG.md                   # Project changelog (v1.0.0, v2.0.0)
+├── CHANGELOG.md                   # Project changelog (v1.0.0 → v4.0.0)
 ├── SECURITY.md                    # Security policy and vulnerability reporting
 ├── scripts/ci.ps1                 # Local CI: typecheck, tests, migrations, e2e
 ├── docker-compose.yml             # Dev: db, server, client, redis, lb, prometheus, grafana
@@ -380,6 +386,9 @@ MSYS_NO_PATHCONV=1 docker run --rm -e K6_BASE_URL=http://host.docker.internal:30
 | `smoke.js` | 1 | 30s | health, login, ticket.list, refresh |
 | `load.js` | 50 | 3m | random mix of endpoints under sustained load |
 | `refresh.js` | 5 | 30s | login once per VU, then continuous refresh token rotation |
+| `ws.js` | 10 | 1m | WebSocket/Socket.io connections with Engine.IO framing |
+| `ws-500.js` | 500 | — | Ramp to 500 concurrent WebSocket connections |
+| `debug.js` | 1 | — | Quick single-request debugging helper |
 
 ## Debugging
 
