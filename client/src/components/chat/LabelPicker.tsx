@@ -37,13 +37,19 @@ export default function LabelPicker({ ticketId, currentLabels, allLabels }: Labe
     return () => document.removeEventListener('keydown', handleKey);
   }, [open]);
 
+  const MAX_LABELS = 50;
+
   function toggleLabel(labelId: string) {
-    const newLabels = optimisticLabels.includes(labelId)
+    const isRemoving = optimisticLabels.includes(labelId);
+    if (!isRemoving && optimisticLabels.length >= MAX_LABELS) return;
+    const newLabels = isRemoving
       ? optimisticLabels.filter((id) => id !== labelId)
       : [...optimisticLabels, labelId];
     setOptimisticLabels(newLabels);
     getSocket().emit('ticket:labels:update', { ticketId, labels: newLabels });
   }
+
+  const atLimit = optimisticLabels.length >= MAX_LABELS;
 
   if (allLabels.length === 0) return null;
 
@@ -65,7 +71,8 @@ export default function LabelPicker({ ticketId, currentLabels, allLabels }: Labe
               <button
                 key={label.id}
                 onClick={() => toggleLabel(label.id)}
-                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-bg-elevated text-left"
+                disabled={atLimit && !isActive}
+                className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${atLimit && !isActive ? 'opacity-30 cursor-not-allowed' : 'hover:bg-bg-elevated'}`}
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 ${bgClass}`} />
                 <span className="font-mono text-[10px] text-text-primary flex-1 truncate">{label.name}</span>

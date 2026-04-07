@@ -193,6 +193,13 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       processedText: display,
       text: display,
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
+      replyToId: replyingTo?.id || null,
+      replyTo: replyingTo ? {
+        id: replyingTo.id,
+        senderName: replyingTo.senderName,
+        text: (replyingTo.text || '[Attachment]').slice(0, 100),
+        mediaUrl: replyingTo.mediaUrl || null,
+      } : null,
       whisper: whisperMode,
       system: 0,
       translationSkipped: 1,

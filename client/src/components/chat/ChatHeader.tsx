@@ -159,7 +159,7 @@ export default function ChatHeader({
                 return (
                   <span
                     key={id}
-                    className={`text-[8px] font-bold px-1.5 py-0.5 uppercase tracking-widest ${
+                    className={`text-[8px] font-mono font-bold px-1.5 py-0.5 uppercase tracking-widest ${
                       info.color && COLOR_BG_MAP[info.color]
                         ? `${COLOR_BG_MAP[info.color]} text-white`
                         : 'bg-bg-elevated text-text-primary border border-border-heavy'

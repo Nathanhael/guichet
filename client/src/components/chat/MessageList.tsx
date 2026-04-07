@@ -28,6 +28,7 @@ interface MessageListProps {
   firstUnreadIndex: number | null;
   showScrollButton: boolean;
   onScrollToBottom: () => void;
+  onReply?: (message: Message) => void;
 }
 
 export default function MessageList({
@@ -43,6 +44,7 @@ export default function MessageList({
   firstUnreadIndex,
   showScrollButton,
   onScrollToBottom,
+  onReply,
 }: MessageListProps) {
   const { user, typingUsers } = useStoreShallow(s => ({
     user: s.user,
@@ -66,7 +68,7 @@ export default function MessageList({
                 ) : (
                   <button
                     onClick={onLoadOlder}
-                    className="text-xs font-mono text-text-secondary hover:text-text-primary transition-colors"
+                    className="text-xs font-mono text-text-secondary hover:text-text-primary"
                   >
                     Load older messages
                   </button>
@@ -114,6 +116,7 @@ export default function MessageList({
                     isGroupStart={isGroupStart}
                     isGroupEnd={isGroupEnd}
                     aiConfig={aiConfig}
+                    onReply={onReply}
                   />
                 </React.Fragment>
               );
