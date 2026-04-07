@@ -309,7 +309,6 @@ export default function SupportView() {
                   activeTab={activeTab}
                   onSelectTab={(id) => setActiveTab(id)}
                   onCloseTab={closeTab}
-                  mode={viewMode as 'split-grid' | 'split-stack'}
                 />
               ) : showPreview ? (
                 <TicketPreview

@@ -71,14 +71,14 @@ describe('QueueTicketRow', () => {
     const { container } = render(
       <QueueTicketRow ticket={baseTicket} isActive={true} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
     );
-    expect(container.firstChild?.className).toContain('border-l-[var(--color-accent-blue)]');
+    expect((container.firstChild as HTMLElement)?.className).toContain('border-l-[var(--color-accent-blue)]');
   });
 
   it('applies unread tint when unreadCount > 0', () => {
     const { container } = render(
       <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={2} currentUserId="support-1" onClick={() => {}} />
     );
-    expect(container.firstChild?.className).toContain('bg-[rgba(59,130,246,0.04)]');
+    expect((container.firstChild as HTMLElement)?.className).toContain('bg-[rgba(59,130,246,0.04)]');
   });
 
   it('calls onClick when clicked', () => {
@@ -94,7 +94,7 @@ describe('QueueTicketRow', () => {
     const { container } = render(
       <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} disabled={true} />
     );
-    expect(container.firstChild?.className).toContain('opacity-40');
+    expect((container.firstChild as HTMLElement)?.className).toContain('opacity-40');
   });
 
   it('renders agent badges for support participants', () => {
