@@ -216,7 +216,7 @@ export default function ChatHeader({
                   {t('transfer') || 'Transfer'}
                 </button>
                 {showTransferMenu && (
-                  <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[200px] z-50 overflow-hidden shadow-xl">
+                  <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[200px] z-50 overflow-hidden">
                     <button
                       onClick={() => handleTransfer()}
                       className="w-full text-left px-4 py-2.5 text-[11px] font-bold hover:bg-bg-elevated border-b border-border"

@@ -7,6 +7,7 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
+import { resolveReplySnippetsBatch } from '../../services/messageQueries.js';
 
 /**
  * Convert a user search string into a PostgreSQL tsquery with prefix matching.
@@ -87,7 +88,20 @@ export const messageRouter = router({
           ? `${items[items.length - 1].createdAt}|${items[items.length - 1].id}`
           : undefined;
 
-        return { messages: items.map(mapMessageRow), hasMore, nextCursor };
+        const mappedMessages = items.map(mapMessageRow);
+
+        // Batch-resolve reply snippets in one query (avoids N+1)
+        const replyIds = mappedMessages
+          .map((m) => m.replyToId)
+          .filter((id): id is string => !!id);
+        const snippetMap = await resolveReplySnippetsBatch(replyIds);
+
+        const withReplies = mappedMessages.map((msg) => {
+          if (!msg.replyToId) return msg;
+          const snippet = snippetMap.get(msg.replyToId) || null;
+          return { ...msg, replyTo: snippet };
+        });
+        return { messages: withReplies, hasMore, nextCursor };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         const message = err instanceof Error ? err.message : String(err);

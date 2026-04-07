@@ -265,6 +265,30 @@ export async function resolveReplySnippet(replyToId: string) {
 }
 
 /**
+ * Batch-resolve reply snippets for multiple replyToIds in a single query.
+ * Returns a Map keyed by message ID → snippet (or null if not found/deleted).
+ */
+export async function resolveReplySnippetsBatch(replyToIds: string[]): Promise<Map<string, { id: string; senderName: string; text: string; mediaUrl: string | null }>> {
+  if (replyToIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({ id: messages.id, senderName: messages.senderName, text: messages.text, mediaUrl: messages.mediaUrl, deletedAt: messages.deletedAt })
+    .from(messages)
+    .where(inArray(messages.id, replyToIds));
+
+  const map = new Map<string, { id: string; senderName: string; text: string; mediaUrl: string | null }>();
+  for (const r of rows) {
+    map.set(r.id, {
+      id: r.id,
+      senderName: r.senderName || 'Unknown',
+      text: r.deletedAt ? '' : (r.text || '[Attachment]').slice(0, 100),
+      mediaUrl: r.mediaUrl || null,
+    });
+  }
+  return map;
+}
+
+/**
  * Update link previews for a message (fire-and-forget after OG unfurling).
  */
 export async function updateMessageLinkPreviews(messageId: string, linkPreviews: LinkPreview[]): Promise<void> {
