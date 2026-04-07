@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { notify, updateTitleBadge } from '../utils/notifications';
+import { playNotificationSound } from '../utils/notificationSound';
 import { io, Socket } from 'socket.io-client';
 import useStore, { useStoreShallow } from '../store/useStore';
 import { SOCKET_URL } from '../config';
@@ -145,6 +146,9 @@ export function useSocket(): Socket {
             body: message.text || message.originalText || '',
             tag: `msg-${message.ticketId}`,
           });
+        }
+        if (!document.hasFocus() && !message.system) {
+          playNotificationSound();
         }
         updateTitleBadge();
         s.emit('message:delivered', { ticketId: message.ticketId, messageId: message.id });
