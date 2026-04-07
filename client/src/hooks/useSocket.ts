@@ -202,6 +202,10 @@ export function useSocket(): Socket {
       useStore.getState().updateMessageReaction(ticketId, messageId, reactions);
     };
 
+    const handleLinkPreview = ({ ticketId, messageId, linkPreviews }: { ticketId: string; messageId: string; linkPreviews: Message['linkPreviews'] }) => {
+      useStore.getState().updateMessagePreviews(ticketId, messageId, linkPreviews);
+    };
+
     const handleRatingSaved = () => {
       useStore.getState().clearRatingPrompt();
     };
@@ -359,6 +363,7 @@ export function useSocket(): Socket {
     s.on('message:edited', handleMessageEdited);
     s.on('message:deleted', handleMessageDeleted);
     s.on('reaction:updated', handleReactionUpdated);
+    s.on('message:linkPreview', handleLinkPreview);
     s.on('rating:saved', handleRatingSaved);
     s.on('queue:position', handleQueuePosition);
     s.on('ticket:closed', handleTicketClosed);
@@ -394,6 +399,7 @@ export function useSocket(): Socket {
       s.off('message:edited', handleMessageEdited);
       s.off('message:deleted', handleMessageDeleted);
       s.off('reaction:updated', handleReactionUpdated);
+      s.off('message:linkPreview', handleLinkPreview);
       s.off('rating:saved', handleRatingSaved);
       s.off('queue:position', handleQueuePosition);
       s.off('ticket:closed', handleTicketClosed);

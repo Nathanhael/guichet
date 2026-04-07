@@ -14,6 +14,7 @@ export interface MessageSlice {
   setMessageLoading: (ticketId: string, loading: boolean) => void;
   updateMessageState: (ticketId: string, messageId: string, updates: Partial<Message>) => void;
   updateMessageReaction: (ticketId: string, messageId: string, reactions: Record<string, string[]>) => void;
+  updateMessagePreviews: (ticketId: string, messageId: string, linkPreviews: Message['linkPreviews']) => void;
   setOnlineSupportUsers: (list: OnlineSupport[]) => void;
   setTyping: (ticketId: string, name: string, isTyping: boolean) => void;
 }
@@ -110,6 +111,17 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
         messages: {
           ...state.messages,
           [ticketId]: msgs.map((m) => (m.id === messageId ? { ...m, reactions } : m)),
+        },
+      };
+    }),
+  updateMessagePreviews: (ticketId, messageId, linkPreviews) =>
+    set((state) => {
+      const msgs = state.messages[ticketId];
+      if (!msgs) return state;
+      return {
+        messages: {
+          ...state.messages,
+          [ticketId]: msgs.map((m) => (m.id === messageId ? { ...m, linkPreviews } : m)),
         },
       };
     }),
