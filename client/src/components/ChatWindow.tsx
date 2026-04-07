@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import useStore, { useStoreShallow } from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { Ticket, Message } from '../types';
@@ -103,8 +103,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       const result = await summarizeMutation.mutateAsync({ ticketId, refresh });
       setSummary(result.summary);
       setShowSummary(true);
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[ChatWindow] Summarization failed:', err);
+      setSummary(null);
+      setShowSummary(false);
     } finally {
       setSummarizing(false);
     }
@@ -195,7 +197,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   useEffect(() => {
     if (!ticketId) return;
-    const count = ticketMessages.length;
+    // Read fresh state from store to avoid stale closure over ticketMessages/user
+    const currentMessages = useStore.getState().messages[ticketId] || [];
+    const currentUserId = useStore.getState().user?.id;
+    const count = currentMessages.length;
     if (count === 0) return;
 
     if (initialScrollDoneRef.current !== ticketId) {
@@ -213,14 +218,14 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
     if (newMessages <= 0) return;
 
-    const lastMsg = ticketMessages[count - 1];
-    if (isNearBottomRef.current || lastMsg?.senderId === user?.id) {
+    const lastMsg = currentMessages[count - 1];
+    if (isNearBottomRef.current || lastMsg?.senderId === currentUserId) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
       setUnreadCount(0);
       setFirstUnreadIndex(null);
 
-      const unreadIds = ticketMessages
-        .filter(m => m.senderId !== user?.id && !m.readAt)
+      const unreadIds = currentMessages
+        .filter(m => m.senderId !== currentUserId && !m.readAt)
         .map(m => m.id);
 
       if (unreadIds.length > 0 && document.hasFocus()) {
@@ -283,27 +288,45 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   // Pagination cursor for the current ticket
   const cursorInfo = ticket ? messageCursors[ticket.id] : undefined;
 
-  function loadOlderMessages() {
-    if (!ticket || !cursorInfo?.hasMore || loadingRef.current || !cursorInfo?.nextCursor) return;
+  const prevScrollHeightRef = useRef<number | null>(null);
+
+  const loadOlderMessages = useCallback(() => {
+    const cursor = useStore.getState().messageCursors[ticket?.id || ''];
+    if (!ticket || !cursor?.hasMore || loadingRef.current || !cursor?.nextCursor) return;
     const socket = getSocket();
     if (!socket) return;
     loadingRef.current = true;
     setMessageLoading(ticket.id, true);
+
+    // Record scroll height before prepend so we can preserve position
+    const el = scrollContainerRef.current;
+    if (el) prevScrollHeightRef.current = el.scrollHeight;
+
     socket.emit('message:loadMore', {
       ticketId: ticket.id,
-      cursor: cursorInfo.nextCursor,
+      cursor: cursor.nextCursor,
     });
-  }
+  }, [ticket, setMessageLoading]);
 
-  // Reset loading ref when server responds (cursorInfo.loading goes false)
+  // Reset loading ref when server responds and preserve scroll position
   useEffect(() => {
     if (!cursorInfo?.loading) {
       loadingRef.current = false;
+
+      // Restore scroll position after older messages are prepended
+      if (prevScrollHeightRef.current !== null) {
+        const el = scrollContainerRef.current;
+        if (el) {
+          const newScrollHeight = el.scrollHeight;
+          el.scrollTop += newScrollHeight - prevScrollHeightRef.current;
+        }
+        prevScrollHeightRef.current = null;
+      }
     }
   }, [cursorInfo?.loading]);
 
   // Track scroll position
-  function handleScroll() {
+  const handleScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -318,7 +341,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     if (el.scrollTop < 50) {
       loadOlderMessages();
     }
-  }
+  }, [loadOlderMessages]);
 
   function scrollToBottom() {
     const el = scrollContainerRef.current;

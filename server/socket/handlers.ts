@@ -747,7 +747,7 @@ export function registerSocketHandlers(io: Server) {
         const senderId = socket.data.userId;
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
         logger.info({ ticketId, senderId }, '[message:send] Received');
-        if (!ticketId || !text) return;
+        if (!ticketId || (!text && !mediaUrl && (!attachments || attachments.length === 0))) return;
         if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
         const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForMessage);
         logger.info({ ticketFound: !!ticket, status: ticket?.status }, '[message:send] Ticket lookup');

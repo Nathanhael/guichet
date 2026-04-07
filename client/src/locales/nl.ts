@@ -605,5 +605,9 @@ const nl: Record<string, string> = {
 
     // Chat search
     search_in_conversation: 'Zoeken in gesprek',
+
+    // System messages
+    agent_disconnected: 'Agent is losgekoppeld.',
+    agent_reconnected: 'Agent is opnieuw verbonden.',
 };
 export default nl;
