@@ -7,3 +7,4 @@ export { default as DeliveryStatus } from './DeliveryStatus';
 export { default as LabelPicker } from './LabelPicker';
 export { default as QuoteBlock } from './QuoteBlock';
 export { default as LinkPreviewCard } from './LinkPreviewCard';
+export { default as MessageContent } from './MessageContent';
