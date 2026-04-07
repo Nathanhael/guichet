@@ -31,6 +31,18 @@ interface MessageListProps {
   onReply?: (message: Message) => void;
 }
 
+function getDateLabel(dateStr: string, t: (key: string) => string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.floor((today.getTime() - msgDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return t('today') || 'Today';
+  if (diffDays === 1) return t('yesterday') || 'Yesterday';
+  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export default function MessageList({
   ticket,
   messages: ticketMessages,
@@ -97,10 +109,24 @@ export default function MessageList({
               const isGroupStart = !isSameSenderAsPrev || timeDiffPrev > 120000;
               const isGroupEnd = !isSameSenderAsNext || timeDiffNext > 120000;
 
+              // Date separator: show when day changes between messages
+              const msgDate = new Date(msg.timestamp).toDateString();
+              const prevDate = prevMsg ? new Date(prevMsg.timestamp).toDateString() : null;
+              const showDateSeparator = idx === 0 || msgDate !== prevDate;
+
               const showDivider = firstUnreadIndex !== null && idx === firstUnreadIndex;
 
               return (
                 <React.Fragment key={msg.id}>
+                  {showDateSeparator && (
+                    <div className="flex items-center gap-3 my-4 px-4">
+                      <div className="flex-1 border-t border-border" />
+                      <span className="font-mono text-[8px] uppercase tracking-widest text-text-secondary bg-bg-surface px-2 shrink-0">
+                        {getDateLabel(msg.timestamp, t)}
+                      </span>
+                      <div className="flex-1 border-t border-border" />
+                    </div>
+                  )}
                   {showDivider && (
                     <div className="flex items-center gap-3 my-3 px-4">
                       <div className="flex-1 border-t border-accent-blue" />

@@ -595,6 +595,10 @@ const fr: Record<string, string> = {
     status_delivered: 'Livré',
     status_read: 'Lu',
 
+    // Date separators
+    today: 'Aujourd\'hui',
+    yesterday: 'Hier',
+
     // Unread / scroll
     new_messages: 'NOUVEAUX MESSAGES',
     scroll_to_bottom: 'Défiler vers le bas',
