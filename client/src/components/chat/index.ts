@@ -8,3 +8,4 @@ export { default as LabelPicker } from './LabelPicker';
 export { default as QuoteBlock } from './QuoteBlock';
 export { default as LinkPreviewCard } from './LinkPreviewCard';
 export { default as MessageContent } from './MessageContent';
+export { default as SearchBar } from './SearchBar';

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { ArrowDown } from 'lucide-react';
 import MessageBubble from '../MessageBubble';
+import SearchBar from './SearchBar';
 import { Ticket, Message } from '../../types';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '../../../../server/trpc/router';
@@ -29,6 +30,10 @@ interface MessageListProps {
   showScrollButton: boolean;
   onScrollToBottom: () => void;
   onReply?: (message: Message) => void;
+  searchOpen?: boolean;
+  searchQuery?: string;
+  onSearchQueryChange?: (q: string) => void;
+  onSearchClose?: () => void;
 }
 
 function getDateLabel(dateStr: string, t: (key: string) => string): string {
@@ -57,6 +62,10 @@ export default function MessageList({
   showScrollButton,
   onScrollToBottom,
   onReply,
+  searchOpen,
+  searchQuery,
+  onSearchQueryChange,
+  onSearchClose,
 }: MessageListProps) {
   const { user, typingUsers } = useStoreShallow(s => ({
     user: s.user,
@@ -64,9 +73,50 @@ export default function MessageList({
   }));
   const t = useT();
 
+  // ── Search: compute matched message IDs ──────────────────────────
+  const matchedMessageIds = useMemo(() => {
+    if (!searchQuery?.trim()) return [] as string[];
+    const q = searchQuery.toLowerCase();
+    return ticketMessages
+      .filter(m => !m.system && !m.deletedAt && m.text && m.text.toLowerCase().includes(q))
+      .map(m => m.id);
+  }, [ticketMessages, searchQuery]);
+
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+
+  // Reset match index when query or matches change
+  useEffect(() => {
+    setCurrentMatchIndex(0);
+  }, [searchQuery, matchedMessageIds.length]);
+
+  const navigateMatch = useCallback((direction: 'next' | 'prev') => {
+    if (matchedMessageIds.length === 0) return;
+    const newIndex = direction === 'next'
+      ? (currentMatchIndex + 1) % matchedMessageIds.length
+      : (currentMatchIndex - 1 + matchedMessageIds.length) % matchedMessageIds.length;
+    setCurrentMatchIndex(newIndex);
+    const targetId = matchedMessageIds[newIndex];
+    const el = document.getElementById(`msg-${targetId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [matchedMessageIds, currentMatchIndex]);
+
+  const matchedSet = useMemo(() => new Set(matchedMessageIds), [matchedMessageIds]);
+  const currentMatchId = matchedMessageIds[currentMatchIndex] ?? null;
+
   return (
     <>
       <div className="relative flex-1 min-h-0 flex flex-col">
+        {searchOpen && onSearchQueryChange && onSearchClose && (
+          <SearchBar
+            query={searchQuery || ''}
+            onQueryChange={onSearchQueryChange}
+            matchCount={matchedMessageIds.length}
+            currentMatchIndex={currentMatchIndex}
+            onNext={() => navigateMatch('next')}
+            onPrev={() => navigateMatch('prev')}
+            onClose={onSearchClose}
+          />
+        )}
         <div
           ref={scrollContainerRef}
           onScroll={onScroll}
@@ -143,6 +193,9 @@ export default function MessageList({
                     isGroupEnd={isGroupEnd}
                     aiConfig={aiConfig}
                     onReply={onReply}
+                    highlightQuery={searchOpen && searchQuery ? searchQuery : undefined}
+                    isSearchMatch={matchedSet.has(msg.id)}
+                    isCurrentSearchMatch={msg.id === currentMatchId}
                   />
                 </React.Fragment>
               );

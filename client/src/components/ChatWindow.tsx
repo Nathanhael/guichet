@@ -42,6 +42,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const [summarizing, setSummarizing] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [viewers, setViewers] = useState<Array<{ userId: string; userName: string }>>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composeRef = useRef<ComposeAreaHandle>(null);
@@ -157,6 +159,24 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     };
   }, [ticketId, user?.id]);
 
+  // Ctrl+F to open in-conversation search
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  function closeSearch() {
+    setSearchOpen(false);
+    setSearchQuery('');
+    textareaRef.current?.focus();
+  }
+
   const ticketMessages = ticket ? (messages[ticket.id] || []) : [];
   const agentIsOnline = ticket ? (participantsOnline[ticket.id] ?? true) : true;
 
@@ -168,6 +188,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     setUnreadCount(0);
     setFirstUnreadIndex(null);
     setShowScrollButton(false);
+    setSearchOpen(false);
+    setSearchQuery('');
   }, [ticketId]);
 
   useEffect(() => {
@@ -355,6 +377,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         canSummarize={canSummarize}
         agentIsOnline={agentIsOnline}
         onCloseTicket={closeTicket}
+        onOpenSearch={() => setSearchOpen(true)}
       />
 
       {/* Messages */}
@@ -372,6 +395,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         showScrollButton={showScrollButton}
         onScrollToBottom={scrollToBottom}
         onReply={(msg) => setReplyingTo(msg)}
+        searchOpen={searchOpen}
+        searchQuery={searchQuery}
+        onSearchQueryChange={setSearchQuery}
+        onSearchClose={closeSearch}
       />
 
       {/* Input */}

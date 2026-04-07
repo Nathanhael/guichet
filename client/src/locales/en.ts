@@ -616,5 +616,8 @@ const en: Record<string, string> = {
     // Unread / scroll
     new_messages: 'NEW MESSAGES',
     scroll_to_bottom: 'Scroll to bottom',
+
+    // Chat search
+    search_in_conversation: 'Search in conversation',
 };
 export default en;

@@ -602,5 +602,8 @@ const nl: Record<string, string> = {
     // Unread / scroll
     new_messages: 'NIEUWE BERICHTEN',
     scroll_to_bottom: 'Scroll naar beneden',
+
+    // Chat search
+    search_in_conversation: 'Zoeken in gesprek',
 };
 export default nl;
