@@ -79,9 +79,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   // Show translated text if available and user hasn't toggled to original
   const displayText = (!isDeleted && translated && !showOriginal) ? translated : originalDisplayText;
 
+  const langToLocale: Record<string, string> = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
+  const timeLocale = langToLocale[user?.lang || 'en'] || 'en-GB';
   const msgDate = safeDate(message.timestamp || message.createdAt);
   const time = msgDate
-    ? msgDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    ? msgDate.toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' })
     : '—';
 
   // Check if message is within edit window (15 min)
@@ -124,7 +126,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   return (
     <div
       id={`msg-${message.id}`}
-      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row transition-colors duration-150${isCurrentSearchMatch ? ' bg-accent-amber/25' : isSearchMatch ? ' bg-accent-amber/10' : ''}`}
+      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row${isCurrentSearchMatch ? ' bg-accent-amber/25' : isSearchMatch ? ' bg-accent-amber/10' : ''}`}
       onMouseEnter={() => !isDeleted && setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); }}
     >
@@ -192,13 +194,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               message={message}
               displayText={displayText}
               isDeleted={isDeleted}
-              isMine={isMine}
-              isWhisper={isWhisper}
               bionicReading={bionicReading}
-              translationEnabled={translationEnabled}
-              translated={translated}
-              showOriginal={showOriginal}
-              setShowOriginal={setShowOriginal}
               highlightQuery={highlightQuery}
             />
           )}
@@ -210,14 +206,14 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             {translating ? (
               <span className="text-[9px] font-bold opacity-40 italic flex items-center gap-1">
                 <Loader2 className="animate-spin" size={10} />
-                translating...
+                {t('translating') || 'translating...'}
               </span>
             ) : translated ? (
               <button
                 onClick={() => setShowOriginal(!showOriginal)}
                 className="text-[9px] font-bold text-text-muted hover:text-text-secondary underline underline-offset-2"
               >
-                {showOriginal ? 'Show translation' : `Show original (${message.senderLang})`}
+                {showOriginal ? (t('show_translation') || 'Show translation') : (t('show_original', { lang: message.senderLang }) || `Show original (${message.senderLang})`)}
               </button>
             ) : null}
           </div>
