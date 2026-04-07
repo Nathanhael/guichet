@@ -326,3 +326,10 @@ body {
 .msg-markdown li { margin-bottom: 0.25rem; }
 .msg-markdown a { color: var(--color-accent-blue); text-underline-offset: 2px; }
 .msg-markdown a:hover { text-decoration: underline; }
+
+/* ── In-conversation search highlights ────────────────────────────── */
+mark {
+  background: var(--color-accent-amber, #f59e0b);
+  color: var(--color-text-primary);
+  padding: 0 1px;
+}
