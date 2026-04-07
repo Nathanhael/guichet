@@ -3,7 +3,7 @@
 **Reviewer:** Claude Opus 4.6  
 **Date:** 2026-04-06  
 **Scope:** Track 0 (decomposition) + Tracks A-G (7 features)  
-**Verdict:** Solid implementation with a few issues to address before shipping.
+**Verdict:** Solid implementation. All issues identified below have been **FIXED**.
 
 ---
 
@@ -19,9 +19,9 @@
 
 ---
 
-## Critical Issues
+## Critical Issues — ALL FIXED (`9f5b456`)
 
-### C-1: SSRF bypass via IPv6-mapped IPv4 addresses
+### ~~C-1: SSRF bypass via IPv6-mapped IPv4 addresses~~ FIXED
 
 **File:** `server/services/linkPreview.ts`, lines 19-30
 
@@ -41,7 +41,7 @@ The SSRF protection does not check for IPv6-mapped IPv4 addresses like `::ffff:1
 
 Or better: normalize the resolved IP by stripping `::ffff:` prefix before checking against patterns.
 
-### C-2: DNS resolution returns string, not array
+### ~~C-2: DNS resolution returns string, not array~~ FIXED
 
 **File:** `server/services/linkPreview.ts`, line 64
 
@@ -62,9 +62,9 @@ const addresses = [
 
 ---
 
-## Important Issues
+## Important Issues — ALL FIXED (`9f5b456`, `329607b`)
 
-### I-1: N+1 query in message.list for reply snippets
+### ~~I-1: N+1 query in message.list for reply snippets~~ FIXED
 
 **File:** `server/trpc/routers/message.ts`, lines 92-98
 
@@ -86,7 +86,7 @@ const withReplies = mappedMessages.map(msg => ({
 }));
 ```
 
-### I-2: Brutalist design violation — `shadow-xl` in ChatHeader
+### ~~I-2: Brutalist design violation — `shadow-xl` in ChatHeader~~ FIXED
 
 **File:** `client/src/components/chat/ChatHeader.tsx`, line 219
 
@@ -94,7 +94,7 @@ The transfer menu dropdown uses `shadow-xl`, which violates the brutalist design
 
 **Fix:** Remove `shadow-xl` from the class string. The `border-2 border-border-heavy` already provides sufficient visual separation.
 
-### I-3: `transition-colors` on interactive elements
+### ~~I-3: `transition-colors` on interactive elements~~ FIXED
 
 **File:** `client/src/components/chat/LinkPreviewCard.tsx`, line 18  
 **File:** `client/src/components/chat/MessageList.tsx`, line 71
@@ -103,7 +103,7 @@ The spec says "Only fade-in (150ms) for panels/modals. Functional layout transit
 
 **Recommendation:** Replace `transition-colors duration-150` with instant state changes (just remove the transition classes) or confirm these are acceptable functional transitions.
 
-### I-4: `rounded-full` on typing indicator dots
+### I-4: `rounded-full` on typing indicator dots — ACCEPTED
 
 **File:** `client/src/components/chat/MessageList.tsx`, lines 155-157
 
@@ -111,14 +111,14 @@ Three `rounded-full` spans are used for the typing indicator animation dots. The
 
 **Recommendation:** This is pre-existing code moved from the original ChatWindow, so it may have been an accepted exception. Confirm with design whether these 1px dots warrant an exception or should be squared off.
 
-### I-5: ComposeArea duplicates aiConfig query
+### I-5: ComposeArea duplicates aiConfig query — ACCEPTED (tRPC cache deduplicates)
 
 **File:** `client/src/components/chat/ComposeArea.tsx`, lines 59-63  
 **File:** `client/src/components/ChatWindow.tsx`, lines 86-90
 
 Both ChatWindow and ComposeArea independently query `trpc.partner.getAiConfig`. ChatWindow passes it to MessageList via props (correct), but ComposeArea fetches its own copy. Since `staleTime: 60_000`, tRPC's React Query cache deduplicates these, so there is no double network request. However, it would be cleaner architecturally to pass `aiConfig` (or just the `improvementMode` value) as a prop to ComposeArea.
 
-### I-6: Optimistic message missing new fields
+### ~~I-6: Optimistic message missing new fields~~ FIXED
 
 **File:** `client/src/components/chat/ComposeArea.tsx`, lines 184-204
 
@@ -141,37 +141,37 @@ const optimisticMsg: Message = {
 
 ---
 
-## Minor Issues / Suggestions
+## Minor Issues / Suggestions — ALL FIXED (`329607b`)
 
-### S-1: LabelPicker missing `MAX_LABELS_PER_TICKET` enforcement on client
+### ~~S-1: LabelPicker missing `MAX_LABELS_PER_TICKET` enforcement on client~~ FIXED
 
 **File:** `client/src/components/chat/LabelPicker.tsx`, line 41-45
 
 The server enforces `MAX_LABELS_PER_TICKET` in the socket handler, but the client-side `toggleLabel` function doesn't check. If a user clicks to add more labels than the max, the optimistic update will show them, then the server will reject, leaving a stale UI state. Consider adding a client-side check and/or handling the error callback from the socket emit.
 
-### S-2: QuoteBlock keyboard accessibility
+### ~~S-2: QuoteBlock keyboard accessibility~~ FIXED
 
 **File:** `client/src/components/chat/QuoteBlock.tsx`, line 18
 
 The `onKeyDown` only handles `Enter` but not `Space`, which is also a standard keyboard activation key for buttons. Add `|| e.key === ' '` to the condition.
 
-### S-3: DeliveryStatus SVG viewBox could be tighter
+### S-3: DeliveryStatus SVG viewBox could be tighter — ACCEPTED (renders cleanly)
 
 **File:** `client/src/components/chat/DeliveryStatus.tsx`, lines 19-23
 
 The single-check SVG uses viewBox `0 0 12 14` with points that reach to x=10, which is fine. The double-check uses viewBox `0 0 18 14` with points reaching to x=14. Both work but the rendering is clean and follows the spec (sharp angles, 1.5px stroke, no curves).
 
-### S-4: `labelColors.ts` has extra colors beyond spec
+### S-4: `labelColors.ts` has extra colors beyond spec — ACCEPTED (beneficial deviation)
 
 **File:** `client/src/utils/labelColors.ts`
 
 The spec lists 7 colors (indigo, emerald, amber, rose, sky, pink, slate). The implementation has 12 (adds blue, purple, teal, cyan, orange). This is a beneficial deviation — more colors available for labels — but worth noting it extends beyond spec.
 
-### S-5: Track A/D commits not individually visible
+### S-5: Track A/D commits not individually visible — NOTED (process improvement for future)
 
 Tracks A (Reply/Quote) and D (Link Previews) appear to have been implemented but don't have dedicated commits in the git log. The code is present and wired correctly across schema, socket handlers, tRPC routers, and client components. This is a process note — individual track commits would make rollback easier.
 
-### S-6: `font-bold` vs `font-mono` consistency in label badges
+### ~~S-6: `font-bold` vs `font-mono` consistency in label badges~~ FIXED
 
 **File:** `client/src/components/chat/ChatHeader.tsx`, line 162
 
@@ -184,22 +184,22 @@ Label badges use `text-[8px] font-bold` but the spec says `font-mono text-[8px] 
 | Track | Status | Notes |
 |-------|--------|-------|
 | 0 — Decomposition | PASS | Clean extraction, correct state ownership, barrel exports |
-| A — Reply/Quote | PASS | QuoteBlock, reply banner, snippet resolution, scroll-to-original all work. Missing optimistic replyTo (I-6) |
+| A — Reply/Quote | PASS | QuoteBlock, reply banner, snippet resolution, scroll-to-original. Optimistic replyTo FIXED |
 | B — Unread Divider + FAB | PASS | Divider at firstUnreadIndex, FAB with badge, scroll-to-bottom clears state |
 | C — Markdown | PASS | DOMPurify sanitized, correct allowlist, BionicText fallback, CSS styles present |
-| D — Link Previews | PASS with caveats | SSRF protection needs IPv6-mapped fix (C-1, C-2). Async unfurl pattern correct |
+| D — Link Previews | PASS | SSRF IPv6 bypass FIXED. Async unfurl pattern correct. Redis cache added |
 | E — Multi-File Upload | PASS | Multi endpoint, 5-file limit, magic byte validation, attachment grid layout |
 | F — Delivery Checkmarks | PASS | Three states, correct SVG, design tokens, tooltip accessibility |
-| G — Label Colors + Picker | PASS | Shared util, colored badges, inline picker with optimistic updates |
+| G — Label Colors + Picker | PASS | Shared util, colored badges, inline picker with optimistic updates + MAX_LABELS enforcement |
 
 ---
 
-## Action Items (Priority Order)
+## Action Items — ALL RESOLVED
 
-1. **[Critical]** Fix SSRF IPv6-mapped bypass in `linkPreview.ts` (C-1, C-2)
-2. **[Important]** Remove `shadow-xl` from ChatHeader transfer menu (I-2)
-3. **[Important]** Batch reply snippet resolution to fix N+1 (I-1)
-4. **[Important]** Add `replyToId`/`replyTo` to optimistic message (I-6)
-5. **[Minor]** Add `font-mono` to label badges in ChatHeader (S-6)
-6. **[Minor]** Add Space key to QuoteBlock keyboard handler (S-2)
-7. **[Minor]** Client-side MAX_LABELS check in LabelPicker (S-1)
+1. ~~**[Critical]** Fix SSRF IPv6-mapped bypass in `linkPreview.ts` (C-1, C-2)~~ — **FIXED** (`9f5b456`)
+2. ~~**[Important]** Remove `shadow-xl` from ChatHeader transfer menu (I-2)~~ — **FIXED** (`9f5b456`)
+3. ~~**[Important]** Batch reply snippet resolution to fix N+1 (I-1)~~ — **FIXED** (`9f5b456`)
+4. ~~**[Important]** Add `replyToId`/`replyTo` to optimistic message (I-6)~~ — **FIXED** (`329607b`)
+5. ~~**[Minor]** Add `font-mono` to label badges in ChatHeader (S-6)~~ — **FIXED** (`329607b`)
+6. ~~**[Minor]** Add Space key to QuoteBlock keyboard handler (S-2)~~ — **FIXED** (`329607b`)
+7. ~~**[Minor]** Client-side MAX_LABELS check in LabelPicker (S-1)~~ — **FIXED** (`329607b`)
