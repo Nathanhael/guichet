@@ -3,8 +3,9 @@ import fs from 'fs';
 import path from 'path';
 
 describe('mediaUrl origin validation (#19)', () => {
+  // Media rendering was extracted from MessageBubble into MessageContent (Track 0 decomposition)
   const bubbleSource = fs.readFileSync(
-    path.resolve(__dirname, '../components/MessageBubble.tsx'), 'utf-8'
+    path.resolve(__dirname, '../components/chat/MessageContent.tsx'), 'utf-8'
   );
 
   it('validates mediaUrl starts with /api/v1/uploads/', () => {
