@@ -8,6 +8,7 @@ import { DeliveryStatus, MessageContent } from './chat';
 import { safeDate } from '../utils/dateUtils';
 import { REACTION_EMOJIS } from '../constants';
 import { CornerUpLeft, Pencil, Trash2, Loader2, Ban } from 'lucide-react';
+import ConfirmDialog from './ConfirmDialog';
 import { useAutoTranslation } from '../hooks/useTranslation';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '../../../server/trpc/router';
@@ -51,6 +52,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const [showActions, setShowActions] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const hasContent = message.text || message.originalText || message.mediaUrl || (message.attachments && message.attachments.length > 0);
   const isDeleted = !!message.deletedAt || !hasContent;
@@ -106,6 +108,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
     if (!socket?.connected) return;
     socket.emit('message:delete', { ticketId, messageId: message.id });
     setShowActions(false);
+    setConfirmDelete(false);
   }
 
   const bubbleClasses = isDeleted
@@ -230,7 +233,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
               return (
                 <button
                   key={emoji}
-                  onClick={() => getSocket().emit('message:react', { ticketId, messageId: message.id, emoji })}
+                  onClick={() => { const s = getSocket(); if (s?.connected) s.emit('message:react', { ticketId, messageId: message.id, emoji }); }}
                   disabled={isDeleted}
                   aria-label={`${emoji}, ${count} reaction${count !== 1 ? 's' : ''}${iReacted ? ', you reacted' : ''}`}
                   className={`inline-flex items-center gap-0.5 px-1 py-px font-mono text-[10px] font-bold border ${
@@ -267,7 +270,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           {REACTION_EMOJIS.map((emoji) => (
             <button
               key={emoji}
-              onClick={() => getSocket().emit('message:react', { ticketId, messageId: message.id, emoji })}
+              onClick={() => { const s = getSocket(); if (s?.connected) s.emit('message:react', { ticketId, messageId: message.id, emoji }); }}
               disabled={isDeleted}
               title={`React with ${emoji}`}
               aria-label={`React with ${emoji}`}
@@ -296,7 +299,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           )}
           {canDelete && (
             <button
-              onClick={deleteMessage}
+              onClick={() => { setConfirmDelete(true); setShowActions(false); }}
               title={t('delete') || 'Delete'}
               className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
             >
@@ -304,6 +307,15 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             </button>
           )}
         </div>
+      )}
+      {confirmDelete && (
+        <ConfirmDialog
+          title={t('delete') || 'Delete'}
+          message={t('confirm_delete_message') || 'Delete this message? This cannot be undone.'}
+          confirmLabel={t('delete') || 'Delete'}
+          onConfirm={deleteMessage}
+          onCancel={() => setConfirmDelete(false)}
+        />
       )}
     </div>
   );

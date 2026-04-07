@@ -6,7 +6,10 @@ import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
 import { X, EyeOff, ImageIcon, Smile, Sparkles, FileText } from 'lucide-react';
 import FormatToolbar from './FormatToolbar';
+import Toast from '../Toast';
 import { getFileTypeLabel } from '../../utils/fileUtils';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
@@ -41,8 +44,10 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
 
   const fileRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
   const pendingFilesRef = useRef(pendingFiles);
@@ -52,12 +57,32 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     toggleWhisper: () => setWhisperMode((v) => !v),
   }), []);
 
-  // Revoke Object URLs on unmount only (individual removals handled by removeFile/clearMedia)
+  // Cleanup on unmount: revoke Object URLs + stop typing indicator
   useEffect(() => {
     return () => {
       pendingFilesRef.current.forEach(pf => URL.revokeObjectURL(pf.preview));
+      // Clear typing timeout and emit typing:stop so server doesn't show phantom indicator
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (isTypingRef.current) {
+        isTypingRef.current = false;
+        const socket = getSocket();
+        if (socket) socket.emit('typing:stop', { ticketId: ticket.id });
+      }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Close emoji picker on outside click
+  useEffect(() => {
+    if (!showEmojiPicker) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiPicker]);
 
   // tRPC: AI Config (to show/hide Improve button)
   const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
@@ -105,7 +130,12 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   function addFiles(files: File[]) {
     const remaining = 5 - pendingFiles.length;
     if (remaining <= 0) return;
-    const toAdd = files.slice(0, remaining).map(file => ({
+    const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      setToast({ message: t('file_too_large') || `File exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit`, type: 'error' });
+    }
+    const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
+    const toAdd = valid.slice(0, remaining).map(file => ({
       file,
       preview: URL.createObjectURL(file),
     }));
@@ -136,11 +166,14 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       });
       const data = await res.json();
       if (!res.ok) {
-        console.error('Upload failed:', data.error || 'Unknown error');
+        const errorMsg = data.error || 'Unknown error';
+        console.error('Upload failed:', errorMsg);
+        setToast({ message: t('upload_failed') || `Upload failed: ${errorMsg}`, type: 'error' });
         return [];
       }
       return data as Array<{ url: string; name: string; mimeType: string; size: number }>;
     } catch {
+      setToast({ message: t('upload_failed') || 'Upload failed. Please try again.', type: 'error' });
       return [];
     } finally {
       setUploading(false);
@@ -342,14 +375,14 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           <div className="flex items-center justify-between mb-2 px-3 py-1.5 bg-bg-elevated border border-border-heavy">
             <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles size={12} />
-              AI improved
+              {t('ai_improved') || 'AI improved'}
             </span>
             <button
               type="button"
               onClick={revertImprove}
               className="text-[10px] font-bold text-text-primary hover:opacity-60 underline underline-offset-2"
             >
-              Revert to original
+              {t('revert_to_original') || 'Revert to original'}
             </button>
           </div>
         )}
@@ -375,7 +408,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                     type="button"
                     onClick={() => removeFile(idx)}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
-                    title="Remove"
+                    title={t('remove') || 'Remove'}
                   >
                     <X size={10} />
                   </button>
@@ -416,36 +449,56 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             </button>
           )}
 
-          <label className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 cursor-pointer" title="Attach file">
+          <label className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 cursor-pointer" title={t('attach_file') || 'Attach file'}>
             <ImageIcon size={20} strokeWidth={2.5} />
             <input
               ref={fileRef}
               type="file"
               multiple
               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
-              aria-label="Attach files"
+              aria-label={t('attach_file') || 'Attach files'}
               className="hidden"
               onChange={handleFileChange}
             />
           </label>
 
           {/* Emoji picker */}
-          <div className="relative">
+          <div className="relative" ref={emojiPickerRef}>
             <button
               type="button"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              aria-label={t('emoji') || 'Emoji'}
+              aria-expanded={showEmojiPicker}
               className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100"
-              title="Emoji"
+              title={t('emoji') || 'Emoji'}
             >
               <Smile size={20} />
             </button>
             {showEmojiPicker && (
-              <div className="absolute bottom-full left-0 mb-2 bg-bg-surface border-2 border-border-heavy z-50 p-2 w-[280px]">
+              <div
+                role="grid"
+                aria-label={t('emoji') || 'Emoji'}
+                className="absolute bottom-full left-0 mb-2 bg-bg-surface border-2 border-border-heavy z-50 p-2 w-[280px]"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { setShowEmojiPicker(false); return; }
+                  const btns = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
+                  const idx = btns.indexOf(e.target as HTMLButtonElement);
+                  if (idx < 0) return;
+                  const cols = 8;
+                  let next = -1;
+                  if (e.key === 'ArrowRight') next = (idx + 1) % btns.length;
+                  else if (e.key === 'ArrowLeft') next = (idx - 1 + btns.length) % btns.length;
+                  else if (e.key === 'ArrowDown') next = Math.min(idx + cols, btns.length - 1);
+                  else if (e.key === 'ArrowUp') next = Math.max(idx - cols, 0);
+                  if (next >= 0) { e.preventDefault(); btns[next].focus(); }
+                }}
+              >
                 <div className="grid grid-cols-8 gap-0.5">
                   {['😀','😂','🙂','😊','😍','😎','🤔','😅','😢','😤','👋','🙏','👍','👎','👏','❤️','🔥','⭐','✅','🎉','💡','⚠️','💬','📎'].map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
+                      aria-label={emoji}
                       onClick={() => {
                         const ta = textareaRef.current;
                         if (ta) {
@@ -490,7 +543,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               if (e.key === 'Escape' && replyingTo && onClearReply) { onClearReply(); }
             }}
             onPaste={handlePaste}
-            placeholder={uploading ? 'Uploading...' : pendingFiles.length > 0 ? 'Add a message or press Enter to send' : t('type_message')}
+            placeholder={uploading ? (t('uploading') || 'Uploading\u2026') : pendingFiles.length > 0 ? (t('add_message_or_send') || 'Add a message or press Enter to send') : t('type_message')}
             rows={1}
             className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 scrollbar-none overflow-hidden"
           />
@@ -502,8 +555,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             type="button"
             onClick={handleImprove}
             disabled={improving}
-            aria-label="Improve message"
-            title="AI: Improve message"
+            aria-label={t('improve_message') || 'Improve message'}
+            title={t('improve_message') || 'Improve message'}
             className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 disabled:opacity-30"
           >
             {improving ? (
@@ -517,8 +570,9 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         <button
           type="submit"
           disabled={uploading || improving || (!text.trim() && pendingFiles.length === 0)}
+          aria-label={t('send') || 'Send'}
           className="bg-accent-blue text-[var(--color-btn-text-inverse)] w-10 h-10 flex items-center justify-center disabled:opacity-30"
-          title={improvementMode === 'forced' ? 'AI will improve before sending' : undefined}
+          title={improvementMode === 'forced' ? (t('ai_will_improve') || 'AI will improve before sending') : (t('send') || 'Send')}
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 rotate-90" viewBox="0 0 20 20" fill="currentColor">
             <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
@@ -526,6 +580,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         </button>
         </div>
       </div>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </form>
   );
 });
