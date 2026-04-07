@@ -5,6 +5,7 @@ import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
 import { X } from 'lucide-react';
+import FormatToolbar from './FormatToolbar';
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
@@ -382,6 +383,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             </div>
           </div>
         )}
+
+        <FormatToolbar textareaRef={textareaRef} onTextChange={setText} getText={() => text} />
 
         <div className={`flex items-center gap-3 p-1.5 border-2 ${
           whisperMode
