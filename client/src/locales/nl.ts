@@ -595,6 +595,10 @@ const nl: Record<string, string> = {
     status_delivered: 'Afgeleverd',
     status_read: 'Gelezen',
 
+    // Date separators
+    today: 'Vandaag',
+    yesterday: 'Gisteren',
+
     // Unread / scroll
     new_messages: 'NIEUWE BERICHTEN',
     scroll_to_bottom: 'Scroll naar beneden',

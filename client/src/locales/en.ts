@@ -609,6 +609,10 @@ const en: Record<string, string> = {
     status_delivered: 'Delivered',
     status_read: 'Read',
 
+    // Date separators
+    today: 'Today',
+    yesterday: 'Yesterday',
+
     // Unread / scroll
     new_messages: 'NEW MESSAGES',
     scroll_to_bottom: 'Scroll to bottom',
