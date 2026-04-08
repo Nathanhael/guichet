@@ -66,6 +66,8 @@ const nl: Record<string, string> = {
     translation: 'Vertaling',
     original: 'Origineel',
     translated_for_recipient: 'vertaald naar ontvanger',
+    show_translation: 'Toon vertaling',
+    show_original: 'Toon origineel',
 
     no_tickets: 'Geen tickets gevonden.',
 

@@ -66,6 +66,8 @@ const fr: Record<string, string> = {
     translation: 'Traduction',
     original: 'Original',
     translated_for_recipient: 'traduit pour le destinataire',
+    show_translation: 'Afficher la traduction',
+    show_original: 'Afficher l\'original',
 
     no_tickets: 'Aucun ticket trouv\u00e9.',
 

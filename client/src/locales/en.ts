@@ -70,6 +70,8 @@ const en: Record<string, string> = {
     translation: 'Translation',
     original: 'Original',
     translated_for_recipient: 'translated for recipient',
+    show_translation: 'Show translation',
+    show_original: 'Show original',
 
     // Ticket list
     no_tickets: 'No tickets found.',
