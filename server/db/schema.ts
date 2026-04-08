@@ -1,6 +1,11 @@
 import crypto from 'crypto';
-import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date, jsonb, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, real, primaryKey, index, boolean, timestamp, date, jsonb, pgEnum, uniqueIndex, customType } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+
+/** PostgreSQL tsvector column type for full-text search */
+const tsvector = customType<{ data: string }>({
+  dataType() { return 'tsvector'; },
+});
 
 // Enums
 export const roleEnum = pgEnum('user_role', ['agent', 'support', 'admin', 'platform_operator']);
@@ -150,12 +155,15 @@ export const messages = pgTable('messages', {
   attachments: jsonb('attachments').$type<Array<{ url: string; name: string; mimeType: string; size: number }>>(),
   // Self-referencing FK applied at DB level (ALTER TABLE); omit .references() to avoid circular type inference
   replyToId: text('reply_to_id'),
+  /** Full-text search vector — populated by DB trigger on INSERT/UPDATE */
+  searchVector: tsvector('search_vector'),
 }, (table) => ({
   ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
   senderIdIdx: index('idx_messages_sender_id').on(table.senderId),
   ticketDeletedIdx: index('idx_messages_ticket_deleted').on(table.ticketId, table.deletedAt),
   ticketCreatedIdx: index('idx_messages_ticket_created').on(table.ticketId, table.createdAt),
   replyToIdx: index('idx_messages_reply_to_id').on(table.replyToId),
+  searchVectorIdx: index('idx_messages_search_vector').using('gin', table.searchVector),
 }));
 
 export const ratings = pgTable('ratings', {
