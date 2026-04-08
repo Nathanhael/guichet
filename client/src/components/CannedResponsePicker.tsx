@@ -103,7 +103,7 @@ export default function CannedResponsePicker({ inputText, dept, onSelect, onClos
 
   if (filtered.length === 0 && query) {
     return (
-      <div ref={wrapperRef}>
+      <div ref={wrapperRef} className="relative">
         <div className="absolute bottom-full left-0 right-0 mb-1 bg-bg-surface border border-border-heavy p-4 z-50">
           <p className="text-xs text-text-muted italic">{t('no_canned_responses') || 'No matching responses'}</p>
         </div>
@@ -114,7 +114,7 @@ export default function CannedResponsePicker({ inputText, dept, onSelect, onClos
   if (filtered.length === 0) return null;
 
   return (
-    <div ref={wrapperRef}>
+    <div ref={wrapperRef} className="relative">
       <div
         ref={listRef}
         className="absolute bottom-full left-0 right-0 mb-1 bg-bg-surface border border-border-heavy max-h-64 overflow-y-auto z-50"
