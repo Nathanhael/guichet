@@ -3,7 +3,7 @@ import { jwtVerify } from 'jose';
 import { parse as parseCookie } from 'cookie';
 import config from '../../config.js';
 import logger from '../../utils/logger.js';
-import { socketioConnectionsActive } from '../../utils/metrics.js';
+
 import { Rooms } from '../../utils/rooms.js';
 import { getRedisClients } from '../../utils/redis.js';
 import * as presenceService from '../../services/presence.js';
@@ -116,7 +116,7 @@ export function setupJwtMiddleware(io: Server): void {
  * looks up the user/membership, joins the appropriate rooms, restores presence
  * and status, and re-joins active ticket rooms.
  */
-export function register(socket: Socket, ctx: HandlerContext): void {
+export function register(socket: Socket, _ctx: HandlerContext): void {
   socket.on('socket:identify', async ({ userId: clientUserId, partnerId }: { userId?: string, role?: string, name?: string, partnerId: string }) => {
     // Use the verified identity from JWT middleware — never trust client-supplied userId
     const userId = socket.data.authedUserId as string;

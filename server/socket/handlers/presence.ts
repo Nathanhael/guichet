@@ -4,7 +4,7 @@ import { Rooms } from '../../utils/rooms.js';
 import * as presenceService from '../../services/presence.js';
 import * as statusTracking from '../../services/statusTracking.js';
 import { requirePartnerScopeWith } from '../partnerScope.js';
-import { canUseSupportWorkflows } from '../../services/roles.js';
+
 import {
   findTicketForJoin,
   findTicketParticipants,
