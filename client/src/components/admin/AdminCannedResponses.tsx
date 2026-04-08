@@ -5,6 +5,7 @@ import { Plus, Trash2, RefreshCw, Pencil, X, Check, MessageSquareText } from 'lu
 import ErrorBox from './ErrorBox';
 import BionicText from '../BionicText';
 import { useStoreShallow } from '../../store/useStore';
+import { usePartner } from '../../hooks/usePartner';
 
 interface CannedResponse {
   id: string;
@@ -18,6 +19,9 @@ interface CannedResponse {
 export default function AdminCannedResponses() {
   const t = useT();
   const { bionicReading } = useStoreShallow(s => ({ bionicReading: s.bionicReading }));
+  const { manifest } = usePartner();
+  const departments = manifest.departments || [];
+  const utils = trpc.useUtils();
 
   // Create form state
   const [newTitle, setNewTitle] = useState('');
@@ -37,25 +41,27 @@ export default function AdminCannedResponses() {
 
   const { data: responses, isLoading, error: fetchError, refetch } = trpc.cannedResponse.list.useQuery();
 
+  const invalidate = () => utils.cannedResponse.list.invalidate();
+
   const createMutation = trpc.cannedResponse.create.useMutation({
     onSuccess: () => {
       setNewTitle('');
       setNewBody('');
       setNewDept('');
       setNewShortcut('');
-      refetch();
+      invalidate();
     },
   });
 
   const updateMutation = trpc.cannedResponse.update.useMutation({
     onSuccess: () => {
       setEditingId(null);
-      refetch();
+      invalidate();
     },
   });
 
   const deleteMutation = trpc.cannedResponse.delete.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: () => invalidate(),
   });
 
   const addResponse = () => {
@@ -130,13 +136,16 @@ export default function AdminCannedResponses() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="mono-label mb-1.5 block">Department</label>
-              <input
-                type="text"
+              <select
                 value={newDept}
                 onChange={(e) => setNewDept(e.target.value)}
-                placeholder="e.g. DSC (optional)"
                 className="input-field w-full"
-              />
+              >
+                <option value="">{t('global') || 'Global (all depts)'}</option>
+                {departments.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="mono-label mb-1.5 block">Shortcut</label>
@@ -210,13 +219,16 @@ export default function AdminCannedResponses() {
                     </div>
                     <div>
                       <label className="block text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-1">Dept</label>
-                      <input
-                        type="text"
+                      <select
                         value={editDept}
                         onChange={(e) => setEditDept(e.target.value)}
-                        placeholder="(global)"
                         className="input-field w-full"
-                      />
+                      >
+                        <option value="">{t('global') || 'Global (all depts)'}</option>
+                        {departments.map((d) => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-1">Shortcut</label>
@@ -266,7 +278,7 @@ export default function AdminCannedResponses() {
                       {r.title}
                     </div>
                     <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)] flex items-center">
-                      {r.dept || <span className="italic text-[var(--color-text-muted)]">global</span>}
+                      {r.dept ? (departments.find(d => d.id === r.dept)?.name || r.dept) : <span className="italic text-[var(--color-text-muted)]">global</span>}
                     </div>
                     <div className="px-4 py-3 text-xs font-mono text-[var(--color-text-secondary)] flex items-center">
                       {r.shortcut || <span className="italic text-[var(--color-text-muted)]">—</span>}

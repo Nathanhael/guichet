@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { notify, updateTitleBadge } from '../utils/notifications';
 import { playNotificationSound } from '../utils/notificationSound';
 import { io, Socket } from 'socket.io-client';
@@ -8,6 +8,8 @@ import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, TopicAlert,
 import { isTenantAdmin } from '../utils/roles';
 
 let socket: Socket | null = null;
+/** Module-level guard so listeners are attached exactly once for the singleton socket */
+let listenersAttached = false;
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -24,7 +26,6 @@ export function getSocket(): Socket {
 }
 
 export function useSocket(): Socket {
-  const listenersAttachedRef = useRef(false);
   const {
     user, 
     activePartnerId,
@@ -55,31 +56,23 @@ export function useSocket(): Socket {
   useEffect(() => {
     if (!user || !activePartnerId) return;
     const s = getSocket();
-    s.emit('socket:identify', { 
-      userId: user.id, 
-      role: user.role, 
-      name: user.name,
-      partnerId: activePartnerId
-    });
+    // Server derives userId/role/name from JWT — only partnerId is needed
+    s.emit('socket:identify', { partnerId: activePartnerId });
   }, [user, activePartnerId]);
 
   useEffect(() => {
     const s = getSocket();
 
-    if (listenersAttachedRef.current) return;
-    listenersAttachedRef.current = true;
+    if (listenersAttached) return;
+    listenersAttached = true;
 
     // Named handlers — passed to both s.on() and s.off() so cleanup only removes our listeners
     const handleConnect = () => {
       useStore.getState().setConnectionStatus('connected');
       const state = useStore.getState();
       if (state.user && state.activePartnerId) {
-        s.emit('socket:identify', {
-          userId: state.user.id,
-          role: state.user.role,
-          name: state.user.name,
-          partnerId: state.activePartnerId
-        });
+        // Server derives userId/role/name from JWT — only partnerId is needed
+        s.emit('socket:identify', { partnerId: state.activePartnerId });
       }
     };
 
@@ -420,7 +413,7 @@ export function useSocket(): Socket {
       s.off('partner:deactivated', handlePartnerDeactivated);
       s.off('user:deactivated', handleUserDeactivated);
       s.off('auth:expired', handleAuthExpired);
-      listenersAttachedRef.current = false;
+      listenersAttached = false;
     };
   }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus, addTopicAlert, setActiveTicketId]);
 

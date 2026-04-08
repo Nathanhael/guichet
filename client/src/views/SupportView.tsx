@@ -318,11 +318,11 @@ export default function SupportView() {
                   joinDisabled={atMaxChats}
                   readOnly={previewTicket!.status === 'closed' || previewTicket!.status === 'resolved'}
                 />
-              ) : activeTab ? (
+              ) : activeTab && tickets.find((tk) => tk.id === activeTab) ? (
                 <ChatWindow
                   ref={chatWindowRef}
                   key={activeTab}
-                  ticket={tickets.find((tk) => tk.id === activeTab)}
+                  ticket={tickets.find((tk) => tk.id === activeTab)!}
                   onClose={() => closeTab(activeTab)}
                 />
               ) : (

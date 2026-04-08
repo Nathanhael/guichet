@@ -174,6 +174,8 @@ export interface Message {
   reactions: Record<string, string[]>;
   linkPreviews?: Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }> | null;
   pending?: boolean;
+  /** Client-generated ID echoed back by server for optimistic reconciliation */
+  localId?: string;
 }
 
 export interface OnlineSupport {

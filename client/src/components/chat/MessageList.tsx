@@ -36,7 +36,9 @@ interface MessageListProps {
   onSearchClose?: () => void;
 }
 
-function getDateLabel(dateStr: string, t: (key: string) => string): string {
+const langToLocale: Record<string, string> = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
+
+function getDateLabel(dateStr: string, t: (key: string) => string, userLang?: string): string {
   const date = new Date(dateStr);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -45,7 +47,8 @@ function getDateLabel(dateStr: string, t: (key: string) => string): string {
 
   if (diffDays === 0) return t('today') || 'Today';
   if (diffDays === 1) return t('yesterday') || 'Yesterday';
-  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+  const locale = langToLocale[userLang || 'en'] || 'en-GB';
+  return date.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export default function MessageList({
@@ -172,7 +175,7 @@ export default function MessageList({
                     <div className="flex items-center gap-3 my-4 px-4">
                       <div className="flex-1 border-t border-border" />
                       <span className="font-mono text-[8px] uppercase tracking-widest text-text-secondary bg-bg-surface px-2 shrink-0">
-                        {getDateLabel(msg.timestamp, t)}
+                        {getDateLabel(msg.timestamp, t, user?.lang)}
                       </span>
                       <div className="flex-1 border-t border-border" />
                     </div>

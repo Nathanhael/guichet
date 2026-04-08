@@ -53,6 +53,7 @@ const nl: Record<string, string> = {
     send: 'Stuur',
     uploading: 'Uploaden\u2026',
     upload_failed: 'Upload mislukt. Probeer het opnieuw.',
+    not_connected: 'Niet verbonden. Wacht even en probeer het opnieuw.',
     file_too_large: 'Bestand overschrijdt de limiet van 10MB',
     attach_file: 'Bestand bijvoegen',
     emoji: 'Emoji',
