@@ -213,7 +213,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                 onClick={() => setShowOriginal(!showOriginal)}
                 className="text-[9px] font-bold text-text-muted hover:text-text-secondary underline underline-offset-2"
               >
-                {showOriginal ? (t('show_translation') || 'Show translation') : (t('show_original', { lang: message.senderLang }) || `Show original (${message.senderLang})`)}
+                {showOriginal ? (t('show_translation') || 'Show translation') : (t('show_original') || `Show original (${message.senderLang})`)}
               </button>
             ) : null}
           </div>
