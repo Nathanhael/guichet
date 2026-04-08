@@ -77,6 +77,24 @@ async function wipeDatabase() {
       users, partners
     CASCADE
   `);
+  // Ensure full-text search trigger exists (survives TRUNCATE but not drizzle-kit push on fresh DB)
+  await db.execute(sql`
+    CREATE OR REPLACE FUNCTION messages_search_vector_update() RETURNS trigger AS $$
+    BEGIN
+      NEW.search_vector := to_tsvector('simple', COALESCE(NEW.text, ''));
+      RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql
+  `);
+  await db.execute(sql`
+    DROP TRIGGER IF EXISTS trg_messages_search_vector ON messages
+  `);
+  await db.execute(sql`
+    CREATE TRIGGER trg_messages_search_vector
+      BEFORE INSERT OR UPDATE OF text ON messages
+      FOR EACH ROW
+      EXECUTE FUNCTION messages_search_vector_update()
+  `);
 }
 
 async function seedFull() {
