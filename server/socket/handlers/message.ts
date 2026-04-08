@@ -19,7 +19,6 @@ import {
   markRead,
   resolveReplySnippet,
   updateMessageLinkPreviews,
-  type SocketMessage,
 } from '../../services/messageQueries.js';
 import { runSyncGuards, guardRepetition } from '../../services/guards.js';
 import { invalidateSummary, scoreSentiment } from '../../services/ai/index.js';
