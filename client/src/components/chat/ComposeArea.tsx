@@ -535,7 +535,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                 setText(body);
                 setShowCannedPicker(false);
                 textareaRef.current?.focus();
-                autoResize();
+                requestAnimationFrame(() => autoResize());
               }}
               onClose={() => setShowCannedPicker(false)}
             />
