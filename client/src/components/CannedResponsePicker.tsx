@@ -33,17 +33,19 @@ export default function CannedResponsePicker({ inputText, dept, onSelect, onClos
   const listRef = useRef<HTMLDivElement>(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
-  // Close on click outside
+  // Close on click outside (stable ref avoids listener churn from inline callbacks)
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-        onClose();
+        onCloseRef.current();
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
+  }, []);
 
   const { data: responses } = trpc.cannedResponse.list.useQuery(
     { dept },

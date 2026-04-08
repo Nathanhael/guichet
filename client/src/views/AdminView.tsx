@@ -9,8 +9,8 @@ import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
 import AdminLabels from '../components/admin/AdminLabels';
-// DISABLED_FEATURE: Canned Responses, Knowledge Base, Webhooks — hidden until production-ready
-// import AdminCannedResponses from '../components/admin/AdminCannedResponses';
+import AdminCannedResponses from '../components/admin/AdminCannedResponses';
+// DISABLED_FEATURE: Knowledge Base, Webhooks — hidden until production-ready
 // import AdminKnowledgeBase from '../components/admin/AdminKnowledgeBase';
 // import AdminWebhooks from '../components/admin/AdminWebhooks';
 import AdminBusinessHours from '../components/admin/AdminBusinessHours';
@@ -28,7 +28,7 @@ const LoadingFallback = () => (
   <div className="p-8 mono-label text-[10px]">Loading</div>
 );
 
-type AdminTab = 'dashboard' | 'satisfaction' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels'; // DISABLED_FEATURE: removed 'canned_responses' | 'knowledge_base' | 'webhooks'
+type AdminTab = 'dashboard' | 'satisfaction' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'feedback' | 'labels' | 'canned_responses'; // DISABLED_FEATURE: removed 'knowledge_base' | 'webhooks'
 
 export default function AdminView() {
   const { user, memberships, activeMembershipId } = useStoreShallow(s => ({
@@ -122,7 +122,8 @@ export default function AdminView() {
           {sidebarOpen ? <div className="font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] px-4 pt-6 pb-2 select-none">Configuration</div> : <div className="pt-4 border-t border-[var(--color-border)] mt-2" />}
           <NavButton id="business_hours" label="Business Hours" icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
           <NavButton id="labels" label={t('labels')} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>} />
-          {/* DISABLED_FEATURE: Canned Responses, Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
+          <NavButton id="canned_responses" label={t('canned_responses') || 'Quick Replies'} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" /></svg>} />
+          {/* DISABLED_FEATURE: Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
         </aside>
 
         {/* Content */}
@@ -139,7 +140,8 @@ export default function AdminView() {
           {view === 'archive' && <AdminArchive />}
           {view === 'feedback' && <AdminFeedback />}
           {view === 'labels' && <AdminLabels />}
-          {/* DISABLED_FEATURE: Canned Responses, Knowledge Base, Webhooks — tab panels hidden until production-ready */}
+          {view === 'canned_responses' && <AdminCannedResponses />}
+          {/* DISABLED_FEATURE: Knowledge Base, Webhooks — tab panels hidden until production-ready */}
         </main>
       </div>
     </div>
