@@ -78,8 +78,9 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
     // Use capture phase on the wrapper's parent (compose area) so we intercept
-    // before the textarea's own keydown. Fall back to document with capture.
-    const target = wrapper.closest('form') || document;
+    // before the textarea's own keydown.
+    const target = wrapper.closest('form');
+    if (!target) return;
     function handleKeyDown(e: Event) {
       const ke = e as KeyboardEvent;
       if (ke.key === 'ArrowDown') {
