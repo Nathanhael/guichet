@@ -7,6 +7,7 @@ import { trpc } from '../../utils/trpc';
 import { X, EyeOff, ImageIcon, Smile, Sparkles, FileText } from 'lucide-react';
 import FormatToolbar from './FormatToolbar';
 import Toast from '../Toast';
+import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -42,6 +43,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; preview: string }>>([]);
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
@@ -525,7 +527,19 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         </div>
 
         <div className="relative flex-1">
-          {/* DISABLED_FEATURE: CannedResponsePicker removed until production-ready */}
+          {isSupport && showCannedPicker && (
+            <CannedResponsePicker
+              inputText={text}
+              dept={ticket.dept}
+              onSelect={(body) => {
+                setText(body);
+                setShowCannedPicker(false);
+                textareaRef.current?.focus();
+                autoResize();
+              }}
+              onClose={() => setShowCannedPicker(false)}
+            />
+          )}
           <textarea
             ref={textareaRef}
             aria-label="Type a message"
@@ -533,12 +547,27 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             onChange={(e) => {
               const val = e.target.value;
               setText(val);
-              // DISABLED_FEATURE: canned picker "/" trigger removed until production-ready
+              if (isSupport) {
+                if (val.startsWith('/')) {
+                  setShowCannedPicker(true);
+                } else if (showCannedPicker) {
+                  setShowCannedPicker(false);
+                }
+              }
               emitTyping();
               autoResize();
             }}
             onKeyDown={(e) => {
-              // DISABLED_FEATURE: canned picker key guard removed until production-ready
+              if (showCannedPicker) {
+                if (['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
+                  return; // CannedResponsePicker handles these via global keydown listener
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  setShowCannedPicker(false);
+                  return;
+                }
+              }
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
               if (e.key === 'Escape' && replyingTo && onClearReply) { onClearReply(); }
             }}
