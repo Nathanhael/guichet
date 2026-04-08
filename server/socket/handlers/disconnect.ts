@@ -1,0 +1,49 @@
+import { Socket } from 'socket.io';
+import logger from '../../utils/logger.js';
+import * as presenceService from '../../services/presence.js';
+import * as statusTracking from '../../services/statusTracking.js';
+import { broadcastAgentStatus } from '../../services/businessHours.js';
+import { socketioConnectionsActive } from '../../utils/metrics.js';
+import { removeViewerFromAll, broadcastViewers } from './collision.js';
+import { type HandlerContext } from './types.js';
+
+export function register(socket: Socket, ctx: HandlerContext) {
+  socket.on('disconnect', async () => {
+    socketioConnectionsActive.dec();
+    const userId = socket.data.userId;
+    const partnerId = socket.data.partnerId;
+    const userName = socket.data.name;
+
+    // Clear typing indicators for all ticket rooms this socket was in
+    if (userId && userName) {
+      for (const room of socket.rooms) {
+        if (room.startsWith('ticket:')) {
+          const ticketId = room.replace('ticket:', '');
+          socket.to(room).emit('typing:update', { ticketId, senderName: userName, typing: false });
+        }
+      }
+    }
+
+    // Clear viewer tracking for this socket and broadcast updates
+    const affectedTickets = await removeViewerFromAll(ctx.viewerKeyPrefix, ctx.socketTickets, socket.id);
+    for (const ticketId of affectedTickets) {
+      await broadcastViewers(ctx.viewerKeyPrefix, ctx.io, ticketId);
+    }
+
+    if (userId && partnerId) {
+      try {
+        const result = await presenceService.decrementUserCount(userId, partnerId);
+        if (result && result.removed) {
+          if (result.role === 'agent') {
+            broadcastAgentStatus(userId, false);
+          }
+          // Close status tracking row when user fully disconnects (all roles)
+          await statusTracking.closeOpenRow(userId, partnerId);
+        }
+      } catch (err) {
+        // M-06: Don't let presence errors crash the disconnect handler
+        logger.error({ err: err instanceof Error ? err.message : String(err), userId }, '[socket] Presence decrement error on disconnect');
+      }
+    }
+  });
+}
