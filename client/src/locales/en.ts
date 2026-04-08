@@ -56,6 +56,7 @@ const en: Record<string, string> = {
     send: 'Send',
     uploading: 'Uploading\u2026',
     upload_failed: 'Upload failed. Please try again.',
+    not_connected: 'Not connected. Please wait and try again.',
     file_too_large: 'File exceeds 10MB limit',
     attach_file: 'Attach file',
     emoji: 'Emoji',

@@ -228,8 +228,16 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       if (attachments.length === 0 && !finalText) return; // upload failed, no text
     }
 
+    // Check socket availability BEFORE adding optimistic message to avoid orphans
+    const socket = getSocket();
+    if (!socket?.connected) {
+      setToast({ message: t('not_connected') || 'Not connected. Please wait and try again.', type: 'error' });
+      return;
+    }
+
+    const localId = `pending-${ticket.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     const optimisticMsg: Message = {
-      id: `pending-${ticket.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: localId,
       ticketId: ticket.id,
       senderId: user?.id || '',
       senderName: user?.name || '',
@@ -258,12 +266,11 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     };
     useStore.getState().addMessage(ticket.id, optimisticMsg);
 
-    const socket = getSocket();
-    if (!socket) return;
     socket.emit('message:send', {
       ticketId: ticket.id,
       senderLang: user?.lang,
       text: display,
+      localId,
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
       whisper: whisperMode,
       replyToId: replyingTo?.id,
@@ -531,6 +538,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             <CannedResponsePicker
               inputText={text}
               dept={ticket.dept}
+              ticketId={ticket.id}
               onSelect={(body) => {
                 setText(body);
                 setShowCannedPicker(false);

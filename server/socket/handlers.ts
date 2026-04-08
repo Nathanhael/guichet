@@ -108,6 +108,8 @@ interface MessageSendPayload {
   attachments?: Array<{ url: string; name: string; mimeType: string; size: number }>;
   whisper?: boolean;
   replyToId?: string;
+  /** Client-generated ID echoed back in message:new for optimistic reconciliation */
+  localId?: string;
 }
 
 interface Participant {
@@ -740,7 +742,7 @@ export function registerSocketHandlers(io: Server) {
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[rating:submit] error'); }
     });
 
-    socket.on('message:send', async ({ ticketId, text, mediaUrl, attachments, whisper, replyToId }: Omit<MessageSendPayload, 'senderId'>) => {
+    socket.on('message:send', async ({ ticketId, text, mediaUrl, attachments, whisper, replyToId, localId }: Omit<MessageSendPayload, 'senderId'>) => {
       if (!requireIdentified(socket)) return;
       socketioEventsTotal.inc({ event: 'message:send' });
       try {
@@ -820,10 +822,10 @@ export function registerSocketHandlers(io: Server) {
         const messageId = msgPayload.id;
 
         // Resolve reply snippet for broadcast (if replying to a message)
-        let broadcastPayload: typeof msgPayload & { replyTo?: { id: string; senderName: string; text: string; mediaUrl: string | null } | null } = msgPayload;
+        let broadcastPayload: typeof msgPayload & { localId?: string; replyTo?: { id: string; senderName: string; text: string; mediaUrl: string | null } | null } = localId ? { ...msgPayload, localId } : msgPayload;
         if (replyToId) {
           const snippet = await resolveReplySnippet(replyToId);
-          broadcastPayload = { ...msgPayload, replyTo: snippet };
+          broadcastPayload = { ...broadcastPayload, replyTo: snippet };
         }
 
         if (isWhisper) {

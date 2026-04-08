@@ -16,6 +16,8 @@ interface CannedResponsePickerProps {
   inputText: string;
   /** Department of the current ticket */
   dept?: string;
+  /** Ticket ID for {{ticketId}} variable expansion */
+  ticketId?: string;
   /** Called when a response is selected */
   onSelect: (body: string) => void;
   /** Called to close the picker */
@@ -27,7 +29,7 @@ interface CannedResponsePickerProps {
  * Shows when user types "/" at the start of input.
  * Filters by search query after the slash.
  */
-export default function CannedResponsePicker({ inputText, dept, onSelect, onClose }: CannedResponsePickerProps) {
+export default function CannedResponsePicker({ inputText, dept, ticketId, onSelect, onClose }: CannedResponsePickerProps) {
   const t = useT();
   const user = useStore((s) => s.user);
   const listRef = useRef<HTMLDivElement>(null);
@@ -70,24 +72,31 @@ export default function CannedResponsePicker({ inputText, dept, onSelect, onClos
     setSelectedIndex(0);
   }, [query]);
 
-  // Keyboard navigation
+  // Keyboard navigation — scoped to wrapper container to avoid capturing
+  // keystrokes from other focused elements (modals, dialogs, etc.)
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
+    // Use capture phase on the wrapper's parent (compose area) so we intercept
+    // before the textarea's own keydown. Fall back to document with capture.
+    const target = wrapper.closest('form') || document;
+    function handleKeyDown(e: Event) {
+      const ke = e as KeyboardEvent;
+      if (ke.key === 'ArrowDown') {
+        ke.preventDefault();
         setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault();
+      } else if (ke.key === 'ArrowUp') {
+        ke.preventDefault();
         setSelectedIndex((i) => Math.max(i - 1, 0));
-      } else if (e.key === 'Enter' && filtered.length > 0) {
-        e.preventDefault();
+      } else if (ke.key === 'Enter' && filtered.length > 0) {
+        ke.preventDefault();
         onSelect(expandVariables(filtered[selectedIndex].body));
-      } else if (e.key === 'Escape') {
+      } else if (ke.key === 'Escape') {
         onClose();
       }
     }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    target.addEventListener('keydown', handleKeyDown, true);
+    return () => target.removeEventListener('keydown', handleKeyDown, true);
   }, [filtered, selectedIndex, onSelect, onClose]);
 
   // Scroll selected item into view
@@ -100,7 +109,8 @@ export default function CannedResponsePicker({ inputText, dept, onSelect, onClos
     const state = useStore.getState();
     return body
       .replace(/\{\{agentName\}\}/g, state.user?.name || '')
-      .replace(/\{\{supportName\}\}/g, state.user?.name || '');
+      .replace(/\{\{supportName\}\}/g, state.user?.name || '')
+      .replace(/\{\{ticketId\}\}/g, ticketId || '');
   }
 
   if (filtered.length === 0 && query) {
