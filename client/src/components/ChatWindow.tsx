@@ -35,7 +35,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const [unreadCount, setUnreadCount] = useState(0);
   const [firstUnreadIndex, setFirstUnreadIndex] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  // DISABLED_FEATURE: const [showCannedPicker, setShowCannedPicker] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
   const [summary, setSummary] = useState<string | null>(null);
   const [summarizing, setSummarizing] = useState(false);
