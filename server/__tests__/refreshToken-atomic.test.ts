@@ -11,47 +11,28 @@ const src = readFileSync(
 const rotateMatch = src.match(/export async function rotateRefreshToken[\s\S]*?^}/m);
 const rotateFnBody = rotateMatch ? rotateMatch[0] : '';
 
-/**
- * Extract the full body of the transaction() callback by counting braces,
- * rather than relying on a regex that can stop at a nested closing brace.
- */
-function extractTransactionBody(fnBody: string): string {
-  const start = fnBody.indexOf('transaction(async (tx) => {');
-  if (start === -1) return '';
-  const braceStart = fnBody.indexOf('{', start + 'transaction(async (tx) => '.length);
-  if (braceStart === -1) return '';
-
-  let depth = 0;
-  let i = braceStart;
-  for (; i < fnBody.length; i++) {
-    if (fnBody[i] === '{') depth++;
-    else if (fnBody[i] === '}') {
-      depth--;
-      if (depth === 0) break;
-    }
-  }
-  return fnBody.slice(braceStart + 1, i);
-}
-
 describe('rotateRefreshToken atomicity contract', () => {
-  it('uses transaction() inside rotateRefreshToken', () => {
-    expect(rotateFnBody).toContain('transaction(');
+  it('uses a raw sql UPDATE...RETURNING to atomically claim the token', () => {
+    // The atomic claim must use db.execute(sql`UPDATE ... RETURNING ...`)
+    expect(rotateFnBody).toContain('db.execute(sql`');
+    expect(rotateFnBody).toContain('UPDATE refresh_tokens');
+    expect(rotateFnBody).toContain('RETURNING');
   });
 
-  it('revokes old token via tx.update inside the transaction', () => {
-    const txBody = extractTransactionBody(rotateFnBody);
-    expect(txBody).toContain('tx.update(refreshTokens)');
+  it('sets revoked_at in the UPDATE (not in a separate step)', () => {
+    expect(rotateFnBody).toContain('SET revoked_at = NOW()');
   });
 
-  it('inserts new token via tx.insert inside the transaction', () => {
-    const txBody = extractTransactionBody(rotateFnBody);
-    expect(txBody).toContain('tx.insert(refreshTokens)');
+  it('filters on revoked_at IS NULL in the UPDATE', () => {
+    expect(rotateFnBody).toContain('AND revoked_at IS NULL');
   });
 
-  it('does not use db.update or db.insert for the rotation steps', () => {
-    const txBody = extractTransactionBody(rotateFnBody);
-    // The atomic update and insert must go through tx, not the bare db handle
-    expect(txBody).not.toContain('db.update(refreshTokens)');
-    expect(txBody).not.toContain('db.insert(refreshTokens)');
+  it('inserts the new token via db.insert after the atomic claim', () => {
+    expect(rotateFnBody).toContain('db.insert(refreshTokens)');
+  });
+
+  it('does not use a transaction() block', () => {
+    // The new design replaces the tx with a single atomic UPDATE, no transaction needed
+    expect(rotateFnBody).not.toContain('db.transaction(');
   });
 });
