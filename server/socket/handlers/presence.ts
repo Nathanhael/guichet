@@ -19,15 +19,21 @@ import { sendPush } from '../../services/pushNotification.js';
 import {
   requireIdentified,
   socketioEventsTotal,
+  validatePayload,
+  supportJoinSchema,
+  supportLeaveSchema,
+  typingSchema,
+  statusSetSchema,
   type HandlerContext,
-  type SupportJoinPayload,
-  type SupportLeavePayload,
   type Participant,
 } from './types.js';
 
 export function register(socket: Socket, ctx: HandlerContext): void {
-  socket.on('support:join', async ({ ticketId, supportLang }: SupportJoinPayload) => {
+  socket.on('support:join', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
+    const parsed = validatePayload(socket, supportJoinSchema, data);
+    if (!parsed) return;
+    const { ticketId, supportLang } = parsed;
     socketioEventsTotal.inc({ event: 'support:join' });
     try {
       // Use verified identity from socket.data — never trust client-supplied supportId/supportName
@@ -71,10 +77,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
   });
 
-  socket.on('status:set', async ({ status }: { status: string }) => {
+  socket.on('status:set', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
-    const VALID_STATUSES = ['online', 'away'] as const;
-    if (!VALID_STATUSES.includes(status as typeof VALID_STATUSES[number])) return;
+    const statusParsed = validatePayload(socket, statusSetSchema, data);
+    if (!statusParsed) return;
+    const { status } = statusParsed;
     const userId = socket.data.userId;
     const partnerId = socket.data.partnerId;
     if (userId && partnerId) {
@@ -83,8 +90,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     }
   });
 
-  socket.on('support:leave', async ({ ticketId }: SupportLeavePayload) => {
+  socket.on('support:leave', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
+    const leaveParsed = validatePayload(socket, supportLeaveSchema, data);
+    if (!leaveParsed) return;
+    const { ticketId } = leaveParsed;
     socketioEventsTotal.inc({ event: 'support:leave' });
     try {
       // Use verified identity — never trust client-supplied supportId/supportName
@@ -108,16 +118,22 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:leave] error'); }
   });
 
-  socket.on('typing:start', ({ ticketId }: { ticketId: string, senderName?: string }) => {
+  socket.on('typing:start', (data: unknown) => {
     if (!requireIdentified(socket)) return;
+    const typingParsed = validatePayload(socket, typingSchema, data);
+    if (!typingParsed) return;
+    const { ticketId } = typingParsed;
     // Only emit if socket is actually in the ticket room (i.e., is a participant)
-    if (!ticketId || !socket.rooms.has(Rooms.ticket(ticketId))) return;
+    if (!socket.rooms.has(Rooms.ticket(ticketId))) return;
     socket.to(Rooms.ticket(ticketId)).emit('typing:update', { ticketId, senderName: socket.data.name, typing: true });
   });
 
-  socket.on('typing:stop', ({ ticketId }: { ticketId: string, senderName?: string }) => {
+  socket.on('typing:stop', (data: unknown) => {
     if (!requireIdentified(socket)) return;
-    if (!ticketId || !socket.rooms.has(Rooms.ticket(ticketId))) return;
+    const typingStopParsed = validatePayload(socket, typingSchema, data);
+    if (!typingStopParsed) return;
+    const { ticketId } = typingStopParsed;
+    if (!socket.rooms.has(Rooms.ticket(ticketId))) return;
     socket.to(Rooms.ticket(ticketId)).emit('typing:update', { ticketId, senderName: socket.data.name, typing: false });
   });
 }

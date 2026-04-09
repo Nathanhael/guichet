@@ -1,4 +1,5 @@
 import { Socket } from 'socket.io';
+import { z } from 'zod';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
 import { isValidMediaUrl } from '../../utils/security.js';
@@ -31,17 +32,21 @@ import {
 import {
   requireIdentified,
   socketioEventsTotal,
-  HandlerContext,
-  TicketNewPayload,
-  TicketClosePayload,
+  validatePayload,
+  ticketNewSchema,
+  ticketCloseSchema,
+  ticketTransferSchema,
+  type HandlerContext,
 } from './types.js';
 import { Ticket } from '../../types/index.js';
 
 export function register(socket: Socket, ctx: HandlerContext): void {
   const { io } = ctx;
 
-    socket.on('ticket:new', async (data: TicketNewPayload) => {
+    socket.on('ticket:new', async (data: unknown) => {
       if (!requireIdentified(socket)) return;
+      const parsed = validatePayload(socket, ticketNewSchema, data);
+      if (!parsed) return;
       if (socket.data.role !== 'agent') return socket.emit('error', { message: 'Only agents can create tickets' });
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
@@ -69,7 +74,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           });
         }
 
-        const { agentLang, dept, references = [], text, mediaUrl } = data;
+        const { agentLang, dept, references = [], text, mediaUrl } = parsed;
         const agentId = socket.data.userId; // Server-side identity — never trust client-supplied agentId
         if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
         if (!partnerId) return socket.emit('error', { message: 'No partner context' });
@@ -134,8 +139,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       }
     });
 
-    socket.on('ticket:close', async ({ ticketId, closingNotes }: Omit<TicketClosePayload, 'closedBy'>) => {
+    socket.on('ticket:close', async (data: unknown) => {
       if (!requireIdentified(socket)) return;
+      const closeParsed = validatePayload(socket, ticketCloseSchema, data);
+      if (!closeParsed) return;
+      const { ticketId, closingNotes } = closeParsed;
       socketioEventsTotal.inc({ event: 'ticket:close' });
       try {
         const senderId = socket.data.userId;
@@ -175,8 +183,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     });
 
     // ── Ticket Transfer ──────────────────────────────────────────────────────
-    socket.on('ticket:transfer', async ({ ticketId, departmentId, note }: { ticketId: string; departmentId?: string; note?: string }) => {
+    socket.on('ticket:transfer', async (data: unknown) => {
       if (!requireIdentified(socket)) return;
+      const transferParsed = validatePayload(socket, ticketTransferSchema, data);
+      if (!transferParsed) return;
+      const { ticketId, departmentId, note } = transferParsed;
       socketioEventsTotal.inc({ event: 'ticket:transfer' });
       try {
         const senderId = socket.data.userId;
@@ -261,15 +272,20 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       }
     });
 
-    socket.on('ticket:labels:update', async ({ ticketId, labels }: { ticketId: string, labels: string[] }) => {
+    socket.on('ticket:labels:update', async (data: unknown) => {
       if (!requireIdentified(socket)) return;
+      const labelsParsed = validatePayload(socket, z.object({
+        ticketId: z.string().min(1),
+        labels: z.array(z.string().min(1)).max(MAX_LABELS_PER_TICKET),
+      }), data);
+      if (!labelsParsed) return;
+      const { ticketId, labels } = labelsParsed;
       const role = socket.data.role as string;
       const LABEL_ROLES = ['support', 'admin', 'platform_operator'];
       if (!LABEL_ROLES.includes(role)) {
         return socket.emit('error', { message: 'Not authorized to update labels' });
       }
       try {
-        if (!ticketId || !Array.isArray(labels)) return;
         const senderId = socket.data.userId;
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
 

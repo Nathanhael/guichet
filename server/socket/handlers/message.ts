@@ -34,8 +34,15 @@ import {
 import {
   requireIdentified,
   socketioEventsTotal,
+  validatePayload,
+  checkSocketRateLimit,
+  messageSendSchema,
+  messageEditSchema,
+  messageDeleteSchema,
+  messageDeliveredSchema,
+  messageReadSchema,
+  messageReactSchema,
   type HandlerContext,
-  type MessageSendPayload,
   type SenderInfo,
 } from './types.js';
 
@@ -66,8 +73,12 @@ export function register(socket: Socket, ctx: HandlerContext): void {
   });
 
   // ── message:send ────────────────────────────────────────────────────────────
-  socket.on('message:send', async ({ ticketId, text, mediaUrl, attachments, whisper, replyToId, localId }: Omit<MessageSendPayload, 'senderId'>) => {
+  socket.on('message:send', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
+    const parsed = validatePayload(socket, messageSendSchema, data);
+    if (!parsed) return;
+    if (!checkSocketRateLimit(socket, 'message:send')) return;
+    const { ticketId, text, mediaUrl, attachments, whisper, replyToId, localId } = parsed;
     socketioEventsTotal.inc({ event: 'message:send' });
     try {
       const senderId = socket.data.userId;
@@ -193,9 +204,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
   });
 
   // ── message:delivered ───────────────────────────────────────────────────────
-  socket.on('message:delivered', async ({ ticketId, messageId }: { ticketId: string, messageId: string }) => {
+  socket.on('message:delivered', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
-    if (!ticketId || !messageId) return;
+    const parsed = validatePayload(socket, messageDeliveredSchema, data);
+    if (!parsed) return;
+    const { ticketId, messageId } = parsed;
     try {
       // Tenant isolation: verify ticket belongs to caller's partner
       const ticket = await requirePartnerScope(socket, ticketId);
@@ -208,9 +221,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
   });
 
   // ── message:read ────────────────────────────────────────────────────────────
-  socket.on('message:read', async ({ ticketId, messageIds }: { ticketId: string, messageIds: string[] }) => {
+  socket.on('message:read', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
-    if (!ticketId || !messageIds?.length) return;
+    const parsed = validatePayload(socket, messageReadSchema, data);
+    if (!parsed) return;
+    const { ticketId, messageIds } = parsed;
     try {
       // Tenant isolation: verify ticket belongs to caller's partner
       const ticket = await requirePartnerScope(socket, ticketId);
@@ -230,12 +245,16 @@ export function register(socket: Socket, ctx: HandlerContext): void {
   });
 
   // ── Message Edit ─────────────────────────────────────────────────────────
-  socket.on('message:edit', async ({ ticketId, messageId, text: newText }: { ticketId: string; messageId: string; text: string }) => {
+  socket.on('message:edit', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
+    const parsed = validatePayload(socket, messageEditSchema, data);
+    if (!parsed) return;
+    if (!checkSocketRateLimit(socket, 'message:edit')) return;
+    const { ticketId, messageId, text: newText } = parsed;
     socketioEventsTotal.inc({ event: 'message:edit' });
     try {
       const senderId = socket.data.userId;
-      if (!senderId || !ticketId || !messageId || !newText?.trim()) return;
+      if (!senderId) return;
       if (newText.trim().length > MAX_MESSAGE_LENGTH) return socket.emit('error', { message: 'Message too long' });
 
       // Verify ticket belongs to caller's partner
@@ -280,12 +299,15 @@ export function register(socket: Socket, ctx: HandlerContext): void {
   });
 
   // ── Message Delete ────────────────────────────────────────────────────────────
-  socket.on('message:delete', async ({ ticketId, messageId }: { ticketId: string; messageId: string }) => {
+  socket.on('message:delete', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
+    const parsed = validatePayload(socket, messageDeleteSchema, data);
+    if (!parsed) return;
+    const { ticketId, messageId } = parsed;
     socketioEventsTotal.inc({ event: 'message:delete' });
     try {
       const senderId = socket.data.userId;
-      if (!senderId || !ticketId || !messageId) return;
+      if (!senderId) return;
 
       const ticket = await requirePartnerScope(socket, ticketId);
       if (!ticket) return;
@@ -307,13 +329,17 @@ export function register(socket: Socket, ctx: HandlerContext): void {
   });
 
   // ── Message Reactions ─────────────────────────────────────────────────────
-  socket.on('message:react', async ({ ticketId, messageId, emoji }: { ticketId: string; messageId: string; emoji: string }) => {
-    logger.info({ ticketId, messageId, emoji }, '[message:react] Received');
+  socket.on('message:react', async (data: unknown) => {
     if (!requireIdentified(socket)) { logger.warn('[message:react] Not identified'); return; }
+    const parsed = validatePayload(socket, messageReactSchema, data);
+    if (!parsed) return;
+    if (!checkSocketRateLimit(socket, 'message:react')) return;
+    const { ticketId, messageId, emoji } = parsed;
+    logger.info({ ticketId, messageId, emoji }, '[message:react] Received');
     socketioEventsTotal.inc({ event: 'message:react' });
     try {
       const userId = socket.data.userId;
-      if (!userId || !ticketId || !messageId || !emoji) { logger.warn({ userId, ticketId, messageId, emoji }, '[message:react] Missing fields'); return; }
+      if (!userId) { logger.warn({ userId, ticketId, messageId, emoji }, '[message:react] Missing userId'); return; }
 
       // Validate emoji is in the allowed set
       if (!REACTION_EMOJIS.includes(emoji as typeof REACTION_EMOJIS[number])) {
