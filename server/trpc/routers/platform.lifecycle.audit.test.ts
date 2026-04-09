@@ -75,7 +75,7 @@ describe('platform router tenant and sso audit logging', () => {
   });
 
   it('writes an audit record when creating a tenant', async () => {
-    const { platformRouter } = await import('./platform.js');
+    const { platformRouter } = await import('./platform/index.js');
     const caller = platformRouter.createCaller({
       user: {
         id: 'platform-1',
@@ -114,7 +114,7 @@ describe('platform router tenant and sso audit logging', () => {
   });
 
   it('writes an audit record when deactivating a tenant', async () => {
-    const { platformRouter } = await import('./platform.js');
+    const { platformRouter } = await import('./platform/index.js');
     const caller = platformRouter.createCaller({
       user: {
         id: 'platform-1',
@@ -139,7 +139,7 @@ describe('platform router tenant and sso audit logging', () => {
   it('writes an audit record when adding an SSO group mapping', async () => {
     selectQueue.push([{ authMethod: 'sso' }]);
 
-    const { platformRouter } = await import('./platform.js');
+    const { platformRouter } = await import('./platform/index.js');
     const caller = platformRouter.createCaller({
       user: {
         id: 'platform-1',
