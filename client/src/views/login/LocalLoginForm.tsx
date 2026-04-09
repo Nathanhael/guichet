@@ -32,15 +32,13 @@ export default function LocalLoginForm({ onLoginSuccess, onMfaRequired, onForgot
         body: JSON.stringify({ email, password, rememberMe })
       });
       const data = await res.json();
-      if (res.ok) {
-        if (data.mfaRequired) {
+      if (data.mfaRequired) {
           onMfaRequired('/api/v1/auth/login-local', { email, rememberMe }, password);
-        } else {
+      } else if (res.ok) {
           setPassword('');
           onLoginSuccess(data.user, data.memberships || []);
-        }
       } else {
-        setError(data.error || t('login_failed'));
+          setError(data.error || t('login_failed'));
       }
     } catch (err) {
       setError(t('network_error'));

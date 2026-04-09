@@ -41,18 +41,15 @@ export default function DemoUserPicker({ onLoginSuccess, onMfaRequired }: DemoUs
         credentials: 'include',
         body: JSON.stringify({ id: u.id, password: demoPassword })
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.mfaRequired) {
-          onMfaRequired('/api/v1/auth/login', { id: u.id }, demoPassword);
-        } else {
-          // Pass the membershipId from the clicked entry to auto-select the correct role
-          const preferredId = u.membershipId ?? undefined;
-          onLoginSuccess(data.user, data.memberships || [], preferredId);
-        }
+      const data = await res.json();
+      if (data.mfaRequired) {
+        onMfaRequired('/api/v1/auth/login', { id: u.id }, demoPassword);
+      } else if (res.ok) {
+        // Pass the membershipId from the clicked entry to auto-select the correct role
+        const preferredId = u.membershipId ?? undefined;
+        onLoginSuccess(data.user, data.memberships || [], preferredId);
       } else {
-         const errData = await res.json();
-         setError(errData.error || t('login_failed'));
+        setError(data.error || t('login_failed'));
       }
     } catch (err) {
       console.error(err);

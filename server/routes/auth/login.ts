@@ -87,7 +87,7 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
             const { totpCode } = req.body;
             if (!totpCode) {
                 // Return MFA challenge — client must re-submit with email+password+totpCode
-                return res.status(200).json({ mfaRequired: true });
+                return res.status(401).json({ mfaRequired: true });
             }
             // Verify TOTP code (import inline to avoid circular deps)
             const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../../services/platformStepUp.js');
@@ -221,7 +221,7 @@ router.post('/login', loginRateLimit, validateBody(z.object({
             const { totpCode } = req.body;
             if (!totpCode) {
                 // Return MFA challenge — client must re-submit with id+password+totpCode
-                return res.status(200).json({ mfaRequired: true });
+                return res.status(401).json({ mfaRequired: true });
             }
             const { verifyTotpToken, isTotpTokenUsed, markTotpTokenUsed } = await import('../../services/platformStepUp.js');
             const totpAlreadyUsed = await isTotpTokenUsed(user.id, totpCode);
