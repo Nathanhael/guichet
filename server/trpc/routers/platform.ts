@@ -14,6 +14,7 @@ import { hashPassword } from '../../utils/passwords.js';
 import { validateWebhookUrl } from '../../services/webhookDispatch.js';
 import { encrypt } from '../../services/encryption.js';
 import config from '../../config.js';
+import { revokeUserSessions } from '../../services/sessionRevocation.js';
 
 export const platformRouter = router({
   // --- System Health ---
@@ -880,6 +881,10 @@ export const platformRouter = router({
         mfaRecoveryCodes: [],
         updatedAt: new Date().toISOString(),
       }).where(eq(users.id, targetUserId));
+
+      // Revoke all active sessions — disabling MFA is a security-level change.
+      // An attacker with a stolen session must not survive admin MFA disable.
+      await revokeUserSessions(targetUserId);
 
       await db.insert(auditLog).values({
         id: randomUUID(),
