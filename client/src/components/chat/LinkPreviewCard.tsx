@@ -8,19 +8,30 @@ interface LinkPreviewCardProps {
   siteName?: string;
 }
 
+function isSafeUrl(u: string): boolean {
+  try {
+    const parsed = new URL(u, window.location.origin);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 export default function LinkPreviewCard({ url, title, description, image, siteName }: LinkPreviewCardProps) {
   if (!title && !description) return null;
+  const safeHref = isSafeUrl(url) ? url : undefined;
+  const safeImage = image && isSafeUrl(image) ? image : undefined;
   return (
     <a
-      href={url}
+      href={safeHref}
       target="_blank"
       rel="noopener noreferrer"
       className="flex gap-3 bg-bg-elevated border border-border p-2 mt-1.5 hover:bg-bg-surface no-underline"
     >
       <div className="w-[60px] h-[60px] shrink-0 bg-bg-surface border border-border flex items-center justify-center overflow-hidden">
-        {image ? (
+        {safeImage ? (
           <img
-            src={image}
+            src={safeImage}
             alt=""
             className="w-full h-full object-cover"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
