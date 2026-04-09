@@ -47,6 +47,37 @@ interface RateLimitResult {
   limitHit?: 'minute' | 'day';
 }
 
+// ─── In-Memory Fallback (when Redis is unavailable) ─────────────────────────
+// Per-process counters — not multi-instance safe, but prevents unlimited AI
+// calls during a Redis outage (which would cause unexpected provider costs).
+const memoryCounters = new Map<string, { count: number; expiresAt: number }>();
+const MEMORY_CLEANUP_INTERVAL = 60_000;
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, val] of memoryCounters) {
+    if (val.expiresAt <= now) memoryCounters.delete(key);
+  }
+}, MEMORY_CLEANUP_INTERVAL);
+
+function memoryRateLimit(partnerId: string, perMinute: number): RateLimitResult {
+  const key = `ai:${partnerId}:minute`;
+  const now = Date.now();
+  const entry = memoryCounters.get(key);
+
+  if (entry && entry.expiresAt > now) {
+    entry.count++;
+    if (entry.count > perMinute) {
+      const retryAfterSeconds = Math.ceil((entry.expiresAt - now) / 1000);
+      return { allowed: false, retryAfterSeconds, limitHit: 'minute' };
+    }
+    return { allowed: true };
+  }
+
+  memoryCounters.set(key, { count: 1, expiresAt: now + 60_000 });
+  return { allowed: true };
+}
+
 /**
  * Check and increment the rate limit for a partner's AI usage.
  * Uses a Lua script for atomic INCR + EXPIRE to prevent TTL race conditions.
@@ -62,8 +93,8 @@ export async function checkRateLimit(
   try {
     const { redis: r, logger } = getAiContext();
     if (!r) {
-      logger.warn({ partnerId }, 'Redis not available, allowing AI request');
-      return { allowed: true };
+      logger.warn({ partnerId }, 'Redis not available, using in-memory rate limit fallback');
+      return memoryRateLimit(partnerId, perMinute);
     }
     const minuteKey = `ai:rate:${partnerId}:minute`;
     const dayKey = `ai:rate:${partnerId}:day`;
@@ -88,9 +119,9 @@ export async function checkRateLimit(
     return { allowed: true };
   } catch (err) {
     const { logger } = getAiContext();
-    // If Redis is down, allow the request but log a warning
-    logger.warn({ err, partnerId }, 'AI rate-limit check failed — allowing request');
-    return { allowed: true };
+    // If Redis is down, fall back to in-memory rate limiting (per-process, not multi-instance safe)
+    logger.warn({ err, partnerId }, 'AI rate-limit check failed — using in-memory fallback');
+    return memoryRateLimit(partnerId, perMinute);
   }
 }
 
