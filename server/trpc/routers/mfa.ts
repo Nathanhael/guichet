@@ -172,7 +172,7 @@ export const mfaRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot verify password for SSO-only account' });
       }
       const { verifyPassword } = await import('../../utils/passwords.js');
-      const passwordValid = await verifyPassword(input.password, user.password);
+      const passwordValid = await verifyPassword(user.password, input.password);
       if (!passwordValid) {
         await recordFailedLogin(ctx.user.id);
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid password' });
