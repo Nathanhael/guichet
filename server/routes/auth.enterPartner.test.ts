@@ -91,7 +91,7 @@ describe('auth enter-partner route', () => {
       next();
     });
 
-    const { default: authRoutes } = await import('./auth.js');
+    const { default: authRoutes } = await import('./auth/index.js');
     const app = express();
     app.use(express.json());
     app.use(authRoutes);
@@ -113,7 +113,7 @@ describe('auth enter-partner route', () => {
       next();
     });
 
-    const { default: authRoutes } = await import('./auth.js');
+    const { default: authRoutes } = await import('./auth/index.js');
     const app = express();
     app.use(express.json());
     app.use(authRoutes);
@@ -127,7 +127,7 @@ describe('auth enter-partner route', () => {
   it('returns not found when the tenant does not exist', async () => {
     getEnterPartnerContextMock.mockResolvedValue(undefined);
 
-    const { default: authRoutes } = await import('./auth.js');
+    const { default: authRoutes } = await import('./auth/index.js');
     const app = express();
     app.use(express.json());
     app.use(authRoutes);
@@ -149,7 +149,7 @@ describe('auth enter-partner route', () => {
       partnerDepartments: [{ id: 'billing', name: 'Billing' }],
     });
 
-    const { default: authRoutes } = await import('./auth.js');
+    const { default: authRoutes } = await import('./auth/index.js');
     const app = express();
     app.use(express.json());
     app.use(authRoutes);

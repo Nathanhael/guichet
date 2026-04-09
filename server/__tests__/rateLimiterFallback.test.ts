@@ -4,7 +4,7 @@ import path from 'path';
 
 describe('Rate limiter fallback (#9)', () => {
   const authSource = fs.readFileSync(
-    path.resolve(__dirname, '../routes/auth.ts'), 'utf-8'
+    path.resolve(__dirname, '../routes/auth/rateLimit.ts'), 'utf-8'
   );
 
   it('has an in-memory fallback Map for rate limiting', () => {
