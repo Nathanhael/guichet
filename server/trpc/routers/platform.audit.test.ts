@@ -77,7 +77,7 @@ describe('platform router audit logging', () => {
       },
     ]);
 
-    const { platformRouter } = await import('./platform.js');
+    const { platformRouter } = await import('./platform/index.js');
     const caller = platformRouter.createCaller({
       user: {
         id: 'platform-1',
@@ -122,7 +122,7 @@ describe('platform router audit logging', () => {
       []
     );
 
-    const { platformRouter } = await import('./platform.js');
+    const { platformRouter } = await import('./platform/index.js');
     const caller = platformRouter.createCaller({
       user: {
         id: 'platform-1',

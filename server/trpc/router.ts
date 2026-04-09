@@ -8,7 +8,7 @@ import { ratingRouter } from './routers/rating.js';
 import { savedViewRouter } from './routers/savedView.js';
 import { statsRouter } from './routers/stats.js';
 import { userRouter } from './routers/user.js';
-import { platformRouter } from './routers/platform.js';
+import { platformRouter } from './routers/platform/index.js';
 import { platformSecurityRouter } from './routers/platformSecurity.js';
 import { partnerRouter } from './routers/partner.js';
 import { alertsRouter } from './routers/alerts.js';
