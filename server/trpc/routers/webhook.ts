@@ -6,6 +6,7 @@ import { webhooks, webhookLogs } from '../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
 import { notFound } from '../../utils/trpcErrors.js';
 import { validateWebhookUrl } from '../../services/webhookDispatch.js';
+import { encrypt } from '../../services/encryption.js';
 
 const WEBHOOK_EVENTS = [
   'ticket.created',
@@ -65,14 +66,14 @@ export const webhookRouter = router({
       await validateWebhookUrl(input.url);
 
       const id = crypto.randomUUID();
-      const secret = randomBytes(32).toString('hex');
+      const rawSecret = randomBytes(32).toString('hex');
       const now = new Date().toISOString();
 
       await db.insert(webhooks).values({
         id,
         partnerId: ctx.user.partnerId,
         url: input.url,
-        secret,
+        secret: encrypt(rawSecret),
         events: input.events,
         description: input.description || null,
         active: true,
@@ -81,7 +82,7 @@ export const webhookRouter = router({
         updatedAt: now,
       });
 
-      return { id, secret };
+      return { id, secret: rawSecret };
     }),
 
   /** Update a webhook */

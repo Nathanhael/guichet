@@ -5,7 +5,7 @@ import logger from '../utils/logger.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
-import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog } from '../db/schema.js';
+import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, appFeedback as appFeedbackTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog, pushSubscriptions } from '../db/schema.js';
 
 export async function runDailyPurge() {
   // Step 0: Archive before purging (uses AUDIT_ARCHIVE_DELAY_DAYS, default 2 days)
@@ -19,10 +19,14 @@ export async function runDailyPurge() {
   // Step 0.5: Verify audit chain integrity after archival.
   // Must remain OUTSIDE the try/catch — a broken chain must abort the entire purge,
   // not be silently swallowed by the general error handler.
-  const chainResult = await verifyAuditChain();
+  const chainResult = await verifyAuditChain() as { valid: boolean; checked: number; brokenAt?: string; error?: string };
   if (!chainResult.valid) {
-    logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked }, '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken');
-    throw new Error('GDPR purge aborted: audit chain integrity violation detected');
+    const isInfraError = chainResult.checked === 0 && chainResult.error === 'verification_failed';
+    const message = isInfraError
+      ? '[purge] Audit chain verification failed due to infrastructure error — aborting purge as precaution'
+      : '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken';
+    logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked, isInfraError }, message);
+    throw new Error('GDPR purge aborted: audit chain verification failed');
   } else if (chainResult.checked > 0) {
     logger.info({ checked: chainResult.checked }, '[purge] Audit chain integrity verified');
   }
@@ -187,6 +191,17 @@ export async function runDailyPurge() {
       .delete(agentStatusLog)
       .where(lt(agentStatusLog.startedAt, statusCutoff));
     logger.info({ cutoff: statusCutoff }, '[gdpr] Purged old agent_status_log entries');
+
+    // Purge stale push subscriptions for users with no activity beyond retention window
+    await db.execute(sql`
+      DELETE FROM ${pushSubscriptions}
+      WHERE ${pushSubscriptions.createdAt} < ${cutoffDate}
+      AND ${pushSubscriptions.userId} NOT IN (
+        SELECT DISTINCT u.id FROM users u
+        WHERE u.last_active_at >= ${cutoffDate} OR u.last_active_at IS NULL
+      )
+    `);
+    logger.info({ cutoff: cutoffDate }, '[gdpr] Purged stale push_subscriptions');
 
     // Log the successful purge in audit_log
     await db.insert(auditLogTable).values({

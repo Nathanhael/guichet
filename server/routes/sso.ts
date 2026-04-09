@@ -7,6 +7,8 @@ import { eq, and, inArray, or } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { buildAuthResponse, buildAuthToken, listUserMemberships, setAuthCookie, parseExpiryToSeconds } from '../services/authSession.js';
+import { createRefreshToken } from '../services/refreshToken.js';
+import { setRefreshCookie } from './auth/rateLimit.js';
 import { isPlatformAdmin } from '../services/roles.js';
 import { getRedisClients } from '../utils/redis.js';
 import { auth } from '../middleware/auth.js';
@@ -475,6 +477,9 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     logger.info({ userId: user.id, memberships: activeMemberships.length }, '[SSO] Login complete, redirecting');
 
     setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
+    // Issue refresh token (mirrors local login flow)
+    const refreshResult = await createRefreshToken(user.id, defaultMembership?.partnerId);
+    setRefreshCookie(res, refreshResult.token, parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY));
     // Redirect with only the opaque token — no user data in the URL
     res.redirect(`${clientOrigin}/#sso_token=${opaqueToken}`);
   } catch (err: unknown) {

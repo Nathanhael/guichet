@@ -19,6 +19,7 @@ import { db } from '../db.js';
 import { webhooks, webhookLogs } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import logger from '../utils/logger.js';
+import { decrypt } from './encryption.js';
 
 /**
  * Check whether an IP address falls in private, reserved, or loopback ranges.
@@ -96,7 +97,8 @@ export type WebhookEvent =
   | 'user.deleted'
   | '*';
 
-function signPayload(body: string, secret: string): string {
+function signPayload(body: string, encryptedSecret: string): string {
+  const secret = decrypt(encryptedSecret);
   return createHmac('sha256', secret).update(body).digest('hex');
 }
 

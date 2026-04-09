@@ -131,9 +131,15 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
   socket.on('ticket:left', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
+    if (!socket.data.isSupport) return;
     const leftParsed = validatePayload(socket, ticketViewingSchema, data);
     if (!leftParsed) return;
     const { ticketId } = leftParsed;
+
+    // Tenant isolation: verify ticket belongs to caller's partner
+    const ticket = await requirePartnerScope(socket, ticketId);
+    if (!ticket) return;
+
     await removeViewer(ctx.viewerKeyPrefix, ctx.socketTickets, ticketId, socket.id);
     await broadcastViewers(ctx.viewerKeyPrefix, ctx.io, ticketId);
   });

@@ -1,4 +1,4 @@
-import { router, roleProcedure, adminProcedure } from '../trpc.js';
+import { router, roleProcedure, partnerAdminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { ratings, tickets, users } from '../../db/schema.js';
 import { desc, eq, inArray, sql, and, gte, lt } from 'drizzle-orm';
@@ -65,17 +65,13 @@ export const ratingRouter = router({
     }
   }),
 
-  getStaffRatings: adminProcedure
+  getStaffRatings: partnerAdminProcedure
     .input(z.object({
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
     }))
     .query(async ({ input, ctx }) => {
       try {
-        // Tenant isolation: always scope to a partner
-        if (!ctx.user.partnerId) {
-          return [];
-        }
 
         // Build conditions for the ratings query
         const conditions = [];
@@ -119,7 +115,7 @@ export const ratingRouter = router({
       }
     }),
 
-  getAnalytics: adminProcedure
+  getAnalytics: partnerAdminProcedure
     .input(z.object({
       dateFrom: z.string().refine(s => !isNaN(Date.parse(s)), { message: 'Invalid date' }).optional(),
       dateTo: z.string().refine(s => !isNaN(Date.parse(s)), { message: 'Invalid date' }).optional(),
@@ -127,16 +123,6 @@ export const ratingRouter = router({
     }))
     .query(async ({ input, ctx }) => {
       try {
-        if (!ctx.user.partnerId) {
-          return {
-            trend: [],
-            distribution: [],
-            byDept: [],
-            byStaff: [],
-            summary: { avg: 0, total: 0, withComment: 0 },
-          };
-        }
-
         const partnerId = ctx.user.partnerId;
 
         // Build dynamic WHERE fragments using Drizzle sql operator
