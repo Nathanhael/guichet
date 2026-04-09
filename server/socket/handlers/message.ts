@@ -42,15 +42,18 @@ import {
   messageDeliveredSchema,
   messageReadSchema,
   messageReactSchema,
+  messageLoadMoreSchema,
   type HandlerContext,
   type SenderInfo,
 } from './types.js';
 
 export function register(socket: Socket, ctx: HandlerContext): void {
   // ── message:loadMore ────────────────────────────────────────────────────────
-  socket.on('message:loadMore', async ({ ticketId, cursor }: { ticketId: string; cursor: string }) => {
+  socket.on('message:loadMore', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
-    if (!ticketId || !cursor) return;
+    const parsed = validatePayload(socket, messageLoadMoreSchema, data);
+    if (!parsed) return;
+    const { ticketId, cursor } = parsed;
 
     try {
       const ticket = await requirePartnerScope(socket, ticketId);
