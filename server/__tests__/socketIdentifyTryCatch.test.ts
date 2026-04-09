@@ -4,7 +4,7 @@ import path from 'path';
 
 describe('socket:identify try/catch (#46)', () => {
   const handlersSource = fs.readFileSync(
-    path.resolve(__dirname, '../socket/handlers.ts'), 'utf-8'
+    path.resolve(__dirname, '../socket/handlers/auth.ts'), 'utf-8'
   );
 
   it('wraps socket:identify DB queries in try/catch', () => {
