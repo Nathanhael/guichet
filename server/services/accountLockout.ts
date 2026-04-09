@@ -43,8 +43,14 @@ export async function recordFailedLogin(userId: string, isPlatformOperator: bool
   // Atomic increment + conditional lock in a single UPDATE to prevent TOCTOU race
   const result = await db.execute(sql`
     UPDATE users SET
-      failed_login_attempts = COALESCE(failed_login_attempts, 0) + 1,
+      failed_login_attempts = CASE
+        WHEN locked_until IS NOT NULL AND locked_until <= NOW()
+        THEN 1
+        ELSE COALESCE(failed_login_attempts, 0) + 1
+      END,
       locked_until = CASE
+        WHEN locked_until IS NOT NULL AND locked_until <= NOW()
+        THEN NULL
         WHEN COALESCE(failed_login_attempts, 0) + 1 >= ${MAX_ATTEMPTS}
         THEN NOW() + INTERVAL '1 minute' * ${LOCKOUT_MINUTES}
         ELSE locked_until
@@ -61,7 +67,9 @@ export async function recordFailedLogin(userId: string, isPlatformOperator: bool
   const newCount = row.failed_login_attempts;
   const isLocked = newCount >= MAX_ATTEMPTS;
 
-  if (isLocked) {
+  // Only send notifications and audit log at the exact lockout threshold,
+  // not on every subsequent attempt (prevents email spam and audit log flooding).
+  if (newCount === MAX_ATTEMPTS) {
     // Audit log
     await db.insert(auditLog).values({
       action: 'security.account_locked',
@@ -81,7 +89,9 @@ export async function recordFailedLogin(userId: string, isPlatformOperator: bool
         MailService.sendAccountLocked(userRow[0].email, userRow[0].name, LOCKOUT_MINUTES, userId).catch(() => {});
       }
     } catch { /* best-effort */ }
+  }
 
+  if (isLocked) {
     return { locked: true, attemptsLeft: 0 };
   }
 

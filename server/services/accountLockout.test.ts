@@ -137,6 +137,33 @@ describe('recordFailedLogin', () => {
 
     expect(result).toEqual({ locked: false, attemptsLeft: 5 }); // no row found
   });
+
+  it('resets counter before incrementing when prior lock has expired', async () => {
+    // The atomic SQL should detect the expired lock and reset to count=1
+    executeMock.mockResolvedValue({
+      rows: [{ failed_login_attempts: 1, locked_until: null }],
+    });
+
+    const { recordFailedLogin } = await import('./accountLockout.js');
+    const result = await recordFailedLogin('user-1');
+
+    expect(result).toEqual({ locked: false, attemptsLeft: 4 });
+    expect(executeMock).toHaveBeenCalled();
+  });
+
+  it('sends lockout email only at exactly MAX_ATTEMPTS, not on subsequent attempts', async () => {
+    const lockedUntil = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    executeMock.mockResolvedValue({
+      rows: [{ failed_login_attempts: 6, locked_until: lockedUntil }],
+    });
+
+    const { recordFailedLogin } = await import('./accountLockout.js');
+    const result = await recordFailedLogin('user-1');
+
+    expect(result).toEqual({ locked: true, attemptsLeft: 0 });
+    // Should NOT have inserted an audit log for attempt #6
+    expect(insertValuesMock).not.toHaveBeenCalled();
+  });
 });
 
 describe('resetFailedLogins', () => {
