@@ -287,7 +287,7 @@ router.post('/reset-password', resetPasswordRateLimit, validateBody(z.object({
                 const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
                 const recoveryIdx = findRecoveryCodeIndex(recoveryCodes, codeHash);
                 if (recoveryIdx === -1) {
-                    await recordFailedLogin(user.id);
+                    await recordFailedLogin(user.id, !!user.isPlatformOperator);
                     return res.status(401).json({ error: 'Invalid MFA code' });
                 }
                 // Consume the recovery code
@@ -373,7 +373,7 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
         const isMatch = await verifyPassword(user.password, password);
 
         if (!isMatch) {
-            const result = await recordFailedLogin(user.id);
+            const result = await recordFailedLogin(user.id, !!user.isPlatformOperator);
             logger.warn({ email: maskEmail(email), attemptsLeft: result.attemptsLeft }, '[Auth] Local login failed: Password mismatch');
             if (result.locked) {
                 return res.status(423).json({ error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' });
@@ -421,7 +421,7 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
                 const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
                 const recoveryIdx = findRecoveryCodeIndex(recoveryCodes, codeHash);
                 if (recoveryIdx === -1) {
-                    const mfaFailResult = await recordFailedLogin(user.id);
+                    const mfaFailResult = await recordFailedLogin(user.id, !!user.isPlatformOperator);
                     logger.warn({ email: maskEmail(email), attemptsLeft: mfaFailResult.attemptsLeft }, '[Auth] Local login failed: Invalid MFA code');
                     if (mfaFailResult.locked) {
                         return res.status(423).json({ error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' });
@@ -512,7 +512,7 @@ router.post('/login', loginRateLimit, validateBody(z.object({
 
         const isMatch = await verifyPassword(user.password, password);
         if (!isMatch) {
-            const result = await recordFailedLogin(user.id);
+            const result = await recordFailedLogin(user.id, !!user.isPlatformOperator);
             logger.warn({ id, attemptsLeft: result.attemptsLeft }, '[Auth] Login failed: Password mismatch');
             if (result.locked) {
                 return res.status(423).json({ error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' });
@@ -553,7 +553,7 @@ router.post('/login', loginRateLimit, validateBody(z.object({
                 const codeHash = crypto.createHash('sha256').update(totpCode).digest('hex');
                 const recoveryIdx = findRecoveryCodeIndex(recoveryCodes, codeHash);
                 if (recoveryIdx === -1) {
-                    const mfaFailResult = await recordFailedLogin(user.id);
+                    const mfaFailResult = await recordFailedLogin(user.id, !!user.isPlatformOperator);
                     logger.warn({ id, attemptsLeft: mfaFailResult.attemptsLeft }, '[Auth] Login failed: Invalid MFA code');
                     if (mfaFailResult.locked) {
                         return res.status(423).json({ error: 'Account locked due to too many failed attempts. Try again in 15 minutes.' });
