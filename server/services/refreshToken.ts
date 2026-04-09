@@ -108,10 +108,11 @@ export async function revokeAllUserRefreshTokens(userId: string): Promise<void> 
 export async function cleanupExpiredTokens(): Promise<number> {
   // Grace period: keep expired tokens for 7 days after their expiry
   // to allow reuse detection to function. Then delete.
+  // expiresAt already stores the absolute expiry timestamp, so we only need
+  // to subtract the grace period from now — not the token TTL (which was double-counted).
   const graceDays = 7;
-  const expirySeconds = parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY);
-  const cutoffMs = (expirySeconds * 1000) + (graceDays * 24 * 60 * 60 * 1000);
-  const cutoff = new Date(Date.now() - cutoffMs).toISOString();
+  const graceMs = graceDays * 24 * 60 * 60 * 1000;
+  const cutoff = new Date(Date.now() - graceMs).toISOString();
 
   const result = await db.delete(refreshTokens)
     .where(lt(refreshTokens.expiresAt, cutoff));
