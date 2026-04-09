@@ -205,8 +205,13 @@ The codebase demonstrates **strong security fundamentals** across all four revie
 **Detail**: The `listenersAttached` module-level flag ensures listeners are added once, but the useEffect cleanup function doesn't detach them (it only runs on unmount of the top-level component). Since the socket is a singleton that outlives component lifecycles, this is intentional — but it means stale closure references in handlers could theoretically reference old store state. The code mitigates this by using `useStore.getState()` (direct store access) inside handlers instead of closure variables.
 **Recommendation**: The pattern is correct for a singleton socket. The use of `useStore.getState()` avoids stale closures. No action needed.
 
-#### INFO: No XSS concerns found in reviewed code
-**Detail**: The client uses React's JSX (which auto-escapes by default). Message rendering would need separate review in the chat components (e.g., markdown rendering, link previews).
+#### FIXED: XSS — LinkPreviewCard `javascript:` protocol injection
+**File**: `client/src/components/chat/LinkPreviewCard.tsx`
+**Detail**: Link preview `href` and `<img src>` accepted arbitrary URLs from server-side unfurl data. A malicious `javascript:` URI could execute code on click.
+**Resolution**: Added `isSafeUrl()` guard that validates `http(s):` protocol only. Applied to both `href` and image `src`.
+
+#### INFO: No other XSS concerns found
+**Detail**: Markdown rendering uses `DOMPurify.sanitize()` with strict `ALLOWED_TAGS`/`ALLOWED_ATTR` allowlist. All other user content rendered via JSX (auto-escaped). Media URLs validated server-side to `/uploads/` paths only.
 
 ---
 
@@ -242,31 +247,40 @@ The codebase demonstrates **strong security fundamentals** across all four revie
 
 ## Complete Summary of All Findings
 
-| # | Area | Severity | Finding |
-|---|------|----------|---------|
-| 1 | Auth | LOW | Rate limiter in-memory fallback per-process in multi-instance |
-| 2 | Auth | LOW | MFA challenge returns 200 instead of 401 |
-| 3 | Auth | LOW | Verify refresh cookie path restriction |
-| 4 | Tenancy | LOW | Platform operator global role bypass could surprise future devs |
-| 5 | Socket | LOW | Socket event payloads lack Zod validation |
-| 6 | Socket | LOW | No socket-level rate limiting for message:send |
-| 7 | AI | LOW | Rate limit allows all requests when Redis is down |
-| 8 | AI | LOW | validateAiBaseUrl doesn't check DNS rebinding |
-| 9 | AI | LOW | Streaming responses don't track token usage |
-| 10 | tRPC | LOW | Alerts router uses manual partnerId check instead of middleware |
-| 11 | tRPC | LOW | Stats router is oversized (~32KB), consider splitting |
-| 12 | Client | LOW | User data in sessionStorage survives page refresh on shared devices |
-| 13 | Infra | LOW | No encryption key rotation mechanism |
-| 14 | Infra | LOW | Dev Docker compose has hardcoded DB credentials |
+| # | Area | Severity | Status | Finding |
+|---|------|----------|--------|---------|
+| 1 | Auth | LOW | Acceptable | Rate limiter in-memory fallback per-process in multi-instance (DB lockout still works) |
+| 2 | Auth | LOW | **FIXED** | MFA challenge returns 401 instead of 200; client updated |
+| 3 | Auth | LOW | Acceptable | Refresh cookie path restriction verified |
+| 4 | Tenancy | LOW | Acceptable | Platform operator global role bypass — by design, documented |
+| 5 | Socket | LOW | **FIXED** | Zod validation on all 15 socket event payloads |
+| 6 | Socket | LOW | **FIXED** | Per-socket sliding-window rate limiting (send/edit/react) |
+| 7 | AI | LOW | **FIXED** | In-memory rate limit fallback when Redis is unavailable |
+| 8 | AI | LOW | **FIXED** | DNS rebinding check via `validateResolvedAiUrl` at provider creation |
+| 9 | AI | LOW | Acceptable | Streaming token tracking — cost visibility only, no security impact |
+| 10 | tRPC | LOW | **FIXED** | Alerts router migrated to `partnerAdminProcedure` |
+| 11 | tRPC | LOW | **Deferred** | Stats router is 508-line single procedure — needs test coverage before refactoring |
+| 12 | Client | LOW | Acceptable | sessionStorage mitigated by `isSessionExpired()` check |
+| 13 | Infra | LOW | **FIXED** | Encryption key rotation script added (`scripts/rotate_encryption_key.ts`) |
+| 14 | Infra | LOW | Acceptable | Dev Docker hardcoded creds — dev only, prod compose uses env vars |
+| 15 | Client | LOW | **FIXED** | XSS — LinkPreviewCard `javascript:` protocol injection blocked |
 
-**No HIGH or CRITICAL findings across all 7 review areas.** The codebase demonstrates mature, security-conscious engineering throughout.
+**8 fixed, 6 acceptable, 1 deferred. No HIGH or CRITICAL findings.**
 
 ---
 
-## Top Recommendations (Priority Order)
+## Remaining: #11 Stats Router Refactor
 
-1. **Add Zod validation to socket event payloads** (#5) — low effort, high consistency
-2. **Add socket-level rate limiting for message:send** (#6) — prevents message flooding
-3. **Split stats router into sub-modules** (#11) — maintainability win
-4. **Migrate alerts router to partnerAdminProcedure** (#10) — 5-minute consistency fix
-5. **Add encryption key rotation script** (#13) — operational resilience
+The stats router (`server/trpc/routers/stats.ts`) is a single 508-line `getGlobalStats` procedure
+containing ~15 SQL queries, aggregation logic, and response assembly. It's the largest file in the
+tRPC layer but is functionally correct and partner-scoped.
+
+**Why it was deferred**: Splitting requires extracting query helpers into `server/services/statsQueries.ts`,
+which touches deeply intertwined data flow. Without test coverage for the endpoint's output shape,
+a refactor risks subtle regressions in dashboard data.
+
+**Recommended approach**:
+1. Add integration test for `trpc.stats.getGlobalStats` — snapshot the response shape with known seed data
+2. Extract SQL queries into `server/services/statsQueries.ts` (ticket stats, sentiment, ratings, SLA, historical)
+3. Keep the single `getGlobalStats` procedure as an orchestrator that calls the extracted helpers
+4. Verify the snapshot test still passes after refactoring
