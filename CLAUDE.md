@@ -252,6 +252,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **MULTI-TENANCY**: Every query must filter by `partner_id`.
 - **DYNAMIC DEPT**: Never hardcode department IDs.
 - **AUDIT LOGGING**: Log all security-relevant actions.
+- **TESTING**: No render-only smoke tests. Every test must assert real behavior (interactions, validation, state changes, error handling, security boundaries). If a component test only checks that text appears after mocking everything, delete it — E2E covers that. Server tests should focus on security boundaries, data integrity, and multi-tenant isolation. New features get E2E specs before component unit tests.
 
 ## Project Structure
 
