@@ -266,15 +266,21 @@ tessera/
 │   │   ├── trpc.ts                # Procedure middleware (auth, roles)
 │   │   ├── context.ts             # JWT → tRPC context
 │   │   └── routers/               # ai, alerts, cannedResponse, feedback, kb, label, message,
-│   │       │                      # mfa, partner, platform/, platformSecurity, presence,
+│   │       │                      # mfa, partner/, platform/, platformSecurity, presence,
 │   │       │                      # rating, savedView, stats, ticket, user, webhook
+│   │       ├── partner/           # Split: config, members + barrel index
 │   │       └── platform/          # Split: partners, users, audit, sso, system + barrel index
 │   ├── socket/
 │   │   ├── handlers.ts            # Orchestrator — registers domain handler modules
 │   │   ├── handlers/              # Domain handler modules (auth, message, ticket, presence, collision, rating, disconnect, types)
 │   │   └── partnerScope.ts        # Partner-scoped room helpers
 │   ├── routes/
-│   │   ├── auth.ts                # /api/auth/* (login, switch-partner, enter-partner, refresh, logout)
+│   │   ├── auth/                  # /api/auth/* — split into domain modules
+│   │   │   ├── index.ts           # Barrel mounting sub-routers
+│   │   │   ├── rateLimit.ts       # Redis-backed rate limiters + shared helpers
+│   │   │   ├── login.ts           # /login, /login-local
+│   │   │   ├── password.ts        # /forgot-password, /reset-password
+│   │   │   └── session.ts         # /refresh, /logout, /switch-partner, /enter-partner
 │   │   ├── sso.ts                 # /api/auth/sso/* (SAML/OIDC flows)
 │   │   ├── logos.ts               # /api/v1/logos
 │   │   ├── uploads.ts             # /api/v1/uploads (file attachments)

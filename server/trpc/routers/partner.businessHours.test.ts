@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validatedBusinessHoursScheduleSchema } from './partner.js';
+import { validatedBusinessHoursScheduleSchema } from './partner/index.js';
 
 function buildSchedule() {
   return {

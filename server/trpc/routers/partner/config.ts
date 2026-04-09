@@ -1,16 +1,13 @@
 import { z } from 'zod';
-import { router, adminProcedure, protectedProcedure } from '../trpc.js';
-import { db } from '../../db.js';
-import { partners, users, memberships, auditLog } from '../../db/schema.js';
-import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
+import { router, adminProcedure, protectedProcedure } from '../../trpc.js';
+import { db } from '../../../db.js';
+import { partners, memberships, auditLog } from '../../../db/schema.js';
+import { eq, and } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import logger from '../../utils/logger.js';
-import { randomBytes } from 'crypto';
-import { getBusinessHoursStatus, type BusinessHoursSchedule } from '../../services/businessHours.js';
-import { hashPassword } from '../../utils/passwords.js';
-import { canAssignTenantRole } from '../../services/roles.js';
-import { getPartnerAiConfig } from '../../services/ai/index.js';
-import config from '../../config.js';
+import logger from '../../../utils/logger.js';
+import { getBusinessHoursStatus, type BusinessHoursSchedule } from '../../../services/businessHours.js';
+import { getPartnerAiConfig } from '../../../services/ai/index.js';
+import config from '../../../config.js';
 
 // simple slugify helper
 function makeSlug(text: string) {
@@ -207,7 +204,7 @@ const slaByDepartmentSchema = z.record(z.string(), z.object({
   resolutionMs: z.number().int().positive(),
 }));
 
-export const partnerRouter = router({
+export const partnerConfigRouter = router({
   getManifest: adminProcedure.query(async ({ ctx }) => {
     try {
       const partnerId = ctx.user.partnerId;
@@ -246,7 +243,7 @@ export const partnerRouter = router({
     const result = await db.select({ slaConfig: partners.slaConfig }).from(partners).where(eq(partners.id, partnerId)).limit(1);
     if (result.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
 
-    const { parseSlaConfig } = await import('../../services/sla.js');
+    const { parseSlaConfig } = await import('../../../services/sla.js');
     const parsed = parseSlaConfig(result[0].slaConfig);
 
     return {
@@ -272,7 +269,7 @@ export const partnerRouter = router({
       const existing = await db.select({ slaConfig: partners.slaConfig }).from(partners).where(eq(partners.id, partnerId)).limit(1);
       if (existing.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
 
-      const { parseSlaConfig } = await import('../../services/sla.js');
+      const { parseSlaConfig } = await import('../../../services/sla.js');
       const current = parseSlaConfig(existing[0].slaConfig);
 
       const newConfig = {
@@ -356,7 +353,7 @@ export const partnerRouter = router({
           .find(Boolean);
 
         await db.update(partners)
-          .set({ 
+          .set({
             businessHoursSchedule: schedule,
             businessHoursStart: primaryWindow?.start ?? null,
             businessHoursEnd: primaryWindow?.end ?? null,
@@ -437,335 +434,6 @@ export const partnerRouter = router({
         logger.info({ partnerId, count: mappedDepartments.length }, 'Departments updated by Partner Admin');
         return { success: true, departments: mappedDepartments };
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
-    }),
-
-  listMembers: adminProcedure
-    .input(z.object({
-      limit: z.number().min(1).max(100).default(50),
-      offset: z.number().min(0).default(0),
-      search: z.string().optional(),
-      role: z.enum(['agent', 'support']).optional(),
-      excludeAdmin: z.boolean().optional().default(true),
-    }))
-    .query(async ({ input, ctx }) => {
-      try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-
-        const filters = [eq(memberships.partnerId, partnerId)];
-        if (input.role) {
-          filters.push(eq(memberships.role, input.role));
-        } else if (input.excludeAdmin) {
-          filters.push(ne(memberships.role, 'admin'));
-        }
-        if (input.search?.trim()) {
-          const rawSearch = input.search.trim();
-          const s = `%${rawSearch}%`;
-          
-          // ME-07 fix: Allow filtering by department name (access grants)
-          // Only match department names for non-agent roles — agents show "Selects per ticket"
-          // and shouldn't appear when searching department names like "Technical Support"
-          const matchesDept = sql`(${memberships.role} != 'agent' AND EXISTS (
-            SELECT 1 FROM jsonb_array_elements(${partners.departments}) d
-            JOIN jsonb_array_elements_text(${memberships.departments}) md(id) ON d->>'id' = md.id
-            WHERE d->>'name' ILIKE ${s}
-          ))`;
-
-          filters.push(or(
-            ilike(users.name, s),
-            ilike(users.email, s),
-            sql`${memberships.role}::text ILIKE ${s}`,
-            sql`${rawSearch} ILIKE CONCAT(${memberships.role}::text, 's')`,
-            matchesDept,
-            sql`CASE
-              WHEN ${memberships.role} = 'support' AND jsonb_array_length(${memberships.departments}) = 0
-              THEN 'Unconfigured' ILIKE ${s}
-              ELSE FALSE
-            END`,
-            sql`CASE
-              WHEN ${memberships.source} = 'manual'
-              THEN 'Manual' ILIKE ${s}
-              ELSE FALSE
-            END`
-          )!);
-        }
-
-        const result = await db
-          .select({
-            membershipId: memberships.id,
-            userId: users.id,
-            name: users.name,
-            email: users.email,
-            role: memberships.role,
-            departments: memberships.departments,
-            source: memberships.source,
-            createdAt: memberships.createdAt,
-            externalId: users.externalId,
-            lastActiveAt: users.lastActiveAt,
-          })
-          .from(memberships)
-          .innerJoin(users, eq(memberships.userId, users.id))
-          .innerJoin(partners, eq(memberships.partnerId, partners.id))
-          .where(and(...filters))
-          .limit(input.limit)
-          .offset(input.offset);
-
-        return result;
-      } catch (err: unknown) {
-        logger.error({ err, search: input.search }, 'listMembers error');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
-    }),
-
-  addMemberByEmail: adminProcedure
-    .input(z.object({
-      email: z.string().email(),
-      role: z.enum(['agent', 'support']),
-      departments: z.array(z.string()).optional()
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-        if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins can only assign agent or support roles' });
-        }
-
-        if (input.role === 'support' && (!input.departments || input.departments.length === 0)) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department' });
-        }
-
-        const targetUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
-        if (targetUser.length === 0) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-        }
-
-        const userId = targetUser[0].id;
-
-        const existingMembership = await db.select().from(memberships)
-          .where(and(eq(memberships.userId, userId), eq(memberships.partnerId, partnerId))).limit(1);
-
-        if (existingMembership.length > 0) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'User already on this partner' });
-        }
-
-        const newMembershipId = crypto.randomUUID();
-
-        await db.insert(memberships).values({
-          id: newMembershipId,
-          userId: userId,
-          partnerId: partnerId,
-          role: input.role,
-          departments: input.role === 'agent' ? [] : (input.departments || []),
-          source: 'manual'
-        });
-
-        await db.insert(auditLog).values({
-          action: 'member.added',
-          actorId: ctx.user.id,
-          partnerId: partnerId,
-          targetType: 'user',
-          targetId: userId,
-          metadata: { role: input.role, departments: input.departments }
-        });
-
-        return { success: true };
-      } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
-    }),
-
-  inviteExternalUser: adminProcedure
-    .input(z.object({
-      email: z.string().email(),
-      name: z.string().min(1),
-      role: z.enum(['agent', 'support']),
-      departments: z.array(z.string()).optional(),
-      authMethod: z.enum(['local', 'sso']).optional(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-        if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins can only assign agent or support roles' });
-        }
-
-        if (input.role === 'support' && (!input.departments || input.departments.length === 0)) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department' });
-        }
-
-        // 1. Look up partner auth method
-        const partner = await db.select({ authMethod: partners.authMethod })
-          .from(partners)
-          .where(eq(partners.id, partnerId))
-          .limit(1);
-
-        if (partner.length === 0) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
-        }
-
-        // Determine effective auth method for this user:
-        // - If caller specified per-user authMethod, use that (only meaningful when partner is 'both')
-        // - If partner is 'both', default to 'local' unless caller specified 'sso'
-        // - Otherwise use partner's authMethod
-        const userAuthMethod = input.authMethod ?? (partner[0].authMethod === 'both' ? 'local' : partner[0].authMethod);
-        const isLocal = userAuthMethod === 'local';
-
-        // IM-09: Wrap check-then-insert in a transaction to prevent race conditions
-        let tempPassword: string | null = null;
-        let newUserId: string = '';
-        let newMembershipId: string = '';
-
-        await db.transaction(async (tx) => {
-          // 2. Check for existing user (inside transaction for atomicity)
-          const existingUser = await tx.select().from(users).where(eq(users.email, input.email)).limit(1);
-          if (existingUser.length > 0) {
-            throw new TRPCError({ code: 'CONFLICT', message: 'Email already in use' });
-          }
-
-          // 3. Create user — with or without password based on auth method
-          newUserId = crypto.randomUUID();
-
-          let hashedPassword: string | undefined;
-          if (isLocal) {
-            tempPassword = randomBytes(12).toString('base64url');
-            hashedPassword = await hashPassword(tempPassword);
-          }
-
-          await tx.insert(users).values({
-            id: newUserId,
-            email: input.email,
-            name: input.name,
-            password: hashedPassword,
-            authMethod: partner[0].authMethod === 'both' ? userAuthMethod : undefined,
-          });
-
-          // 4. Create membership
-          newMembershipId = crypto.randomUUID();
-          await tx.insert(memberships).values({
-            id: newMembershipId,
-            userId: newUserId,
-            partnerId: partnerId,
-            role: input.role,
-            departments: input.role === 'agent' ? [] : (input.departments || []),
-            source: 'manual'
-          });
-
-          // 5. Audit log
-          await tx.insert(auditLog).values({
-            action: 'member.invited',
-            actorId: ctx.user.id,
-            partnerId: partnerId,
-            targetType: 'user',
-            targetId: newUserId,
-            metadata: { role: input.role, departments: input.departments, email: input.email, authMethod: userAuthMethod }
-          });
-        });
-
-        // Never log plaintext passwords
-        logger.info({ userId: newUserId, authMethod: userAuthMethod }, '[inviteExternalUser] User created');
-        return { success: true, userId: newUserId, tempPassword: tempPassword ?? '' };
-      } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
-    }),
-
-  updateMember: adminProcedure
-    .input(z.object({
-      membershipId: z.string(),
-      departments: z.array(z.string()).optional()
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-
-        const membership = await db.select().from(memberships)
-          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, partnerId))).limit(1);
-
-        if (membership.length === 0) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
-        }
-
-        if (membership[0].role === 'admin') {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Admin departments are managed automatically' });
-        }
-
-        const isSupport = membership[0].role === 'support';
-        const depts = membership[0].role === 'agent' ? [] : (input.departments || []);
-
-        if (isSupport && depts.length === 0) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department' });
-        }
-
-        await db.update(memberships)
-          .set({ departments: depts })
-          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, partnerId)));
-
-        await db.insert(auditLog).values({
-          action: 'member.updated',
-          actorId: ctx.user.id,
-          partnerId: partnerId,
-          targetType: 'user',
-          targetId: membership[0].userId,
-          metadata: { departments: input.departments }
-        });
-
-        return { success: true };
-      } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
-    }),
-
-  removeMember: adminProcedure
-    .input(z.object({
-      membershipId: z.string(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-
-        const membership = await db.select().from(memberships)
-          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, partnerId))).limit(1);
-
-        if (membership.length === 0) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
-        }
-
-        if (membership[0].userId === ctx.user.id) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove yourself' });
-        }
-
-        await db.transaction(async (tx) => {
-          const userMemberships = await tx.select().from(memberships)
-            .where(eq(memberships.userId, membership[0].userId));
-
-          if (userMemberships.length <= 1) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove user\'s last membership. Platform Operator must handle this.' });
-          }
-
-          await tx.delete(memberships).where(eq(memberships.id, input.membershipId));
-        });
-
-        await db.insert(auditLog).values({
-          action: 'member.removed',
-          actorId: ctx.user.id,
-          partnerId: partnerId,
-          targetType: 'user',
-          targetId: membership[0].userId,
-          metadata: {}
-        });
-
-        return { success: true };
-      } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
     }),
