@@ -3,7 +3,7 @@ import logger from '../../utils/logger.js';
 import { getRedisClients } from '../../utils/redis.js';
 import { VIEWER_TTL_SECONDS } from '../../constants.js';
 import { Rooms } from '../../utils/rooms.js';
-import { requireIdentified, type HandlerContext } from './types.js';
+import { requireIdentified, validatePayload, ticketViewingSchema, type HandlerContext } from './types.js';
 import { requirePartnerScope } from '../partnerScope.js';
 
 export async function addViewer(
@@ -106,10 +106,12 @@ export async function broadcastViewers(
 
 export function register(socket: Socket, ctx: HandlerContext): void {
   // ── Collision Detection: ticket viewing ───────────────────────────────────
-  socket.on('ticket:viewing', async ({ ticketId }: { ticketId: string }) => {
+  socket.on('ticket:viewing', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
     if (!socket.data.isSupport) return;
-    if (!ticketId) return;
+    const parsed = validatePayload(socket, ticketViewingSchema, data);
+    if (!parsed) return;
+    const { ticketId } = parsed;
 
     // Tenant isolation: verify ticket belongs to caller's partner
     const ticket = await requirePartnerScope(socket, ticketId);
@@ -127,9 +129,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     await broadcastViewers(ctx.viewerKeyPrefix, ctx.io, ticketId);
   });
 
-  socket.on('ticket:left', async ({ ticketId }: { ticketId: string }) => {
+  socket.on('ticket:left', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
-    if (!ticketId) return;
+    const leftParsed = validatePayload(socket, ticketViewingSchema, data);
+    if (!leftParsed) return;
+    const { ticketId } = leftParsed;
     await removeViewer(ctx.viewerKeyPrefix, ctx.socketTickets, ticketId, socket.id);
     await broadcastViewers(ctx.viewerKeyPrefix, ctx.io, ticketId);
   });
