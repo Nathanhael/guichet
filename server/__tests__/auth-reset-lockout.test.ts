@@ -7,7 +7,7 @@ import { join } from 'path';
  * before the MFA verification block (SEC-1 fix).
  */
 describe('reset-password lockout guard (SEC-1)', () => {
-    const source = readFileSync(join(__dirname, '../routes/auth.ts'), 'utf-8');
+    const source = readFileSync(join(__dirname, '../routes/auth/password.ts'), 'utf-8');
 
     // Narrow to just the reset-password route handler
     const routeStart = source.indexOf("router.post('/reset-password'");

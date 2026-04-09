@@ -10,7 +10,7 @@ import { statsRouter } from './routers/stats.js';
 import { userRouter } from './routers/user.js';
 import { platformRouter } from './routers/platform/index.js';
 import { platformSecurityRouter } from './routers/platformSecurity.js';
-import { partnerRouter } from './routers/partner.js';
+import { partnerRouter } from './routers/partner/index.js';
 import { alertsRouter } from './routers/alerts.js';
 import { mfaRouter } from './routers/mfa.js';
 import { cannedResponseRouter } from './routers/cannedResponse.js';

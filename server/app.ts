@@ -15,7 +15,7 @@ import { appRouter } from './trpc/router.js';
 
 import uploadRoutes from './routes/uploads.js';
 import logoRoutes from './routes/logos.js';
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/auth/index.js';
 import ssoRoutes from './routes/sso.js';
 import ticketRoutes from './routes/tickets.js'; // Kept for export route support
 import pushRoutes from './routes/push.js';
