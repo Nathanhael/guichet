@@ -4,7 +4,7 @@ import path from 'path';
 
 describe('switch-partner step-up freshness (#10)', () => {
   const authSource = fs.readFileSync(
-    path.resolve(__dirname, '../routes/auth.ts'), 'utf-8'
+    path.resolve(__dirname, '../routes/auth/session.ts'), 'utf-8'
   );
 
   it('checks isPlatformStepUpSatisfied during switch-partner', () => {
