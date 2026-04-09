@@ -111,7 +111,15 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `validateUrl.ts` — AI endpoint URL validation
 
 **Socket.io** (`server/socket/`):
-- `handlers.ts` — All real-time event handlers. Uses Redis adapter for horizontal scaling.
+- `handlers.ts` — Orchestrator that registers domain handler modules. Uses Redis adapter for horizontal scaling.
+- `handlers/auth.ts` — `socket:identify` and auth/expiry handlers
+- `handlers/message.ts` — `message:send`, `message:read`, `message:edit`, `message:delete`, `message:delivered`, `message:react`
+- `handlers/ticket.ts` — `ticket:new`, `ticket:close`, `ticket:transfer`, `ticket:labels:update`
+- `handlers/presence.ts` — `typing:start`, `typing:stop`, `status:set`, `support:join`, `support:leave`
+- `handlers/collision.ts` — `ticket:viewing`, `ticket:left` (collision detection)
+- `handlers/rating.ts` — `rating:submit`
+- `handlers/disconnect.ts` — Cleanup on socket disconnect
+- `handlers/types.ts` — Shared types and guards (`requireIdentified`, `requirePartnerScope`)
 - `partnerScope.ts` — Partner-scoped room helpers and authorization guards for socket events.
 - Identity enforced server-side via `socket.data.userId` — never trust client-supplied identity fields.
 - Key events: `socket:identify`, `message:send`, `message:read`, `message:edit`, `message:delete`, `message:delivered`, `ticket:new`, `ticket:close`, `ticket:transfer`, `ticket:labels:update`, `ticket:viewing`, `ticket:left`, `support:join`, `support:leave`, `typing:start`, `typing:stop`, `status:set`, `rating:submit`
@@ -258,10 +266,12 @@ tessera/
 │   │   ├── trpc.ts                # Procedure middleware (auth, roles)
 │   │   ├── context.ts             # JWT → tRPC context
 │   │   └── routers/               # ai, alerts, cannedResponse, feedback, kb, label, message,
-│   │                              # mfa, partner, platform, platformSecurity, presence,
-│   │                              # rating, savedView, stats, ticket, user, webhook
+│   │       │                      # mfa, partner, platform/, platformSecurity, presence,
+│   │       │                      # rating, savedView, stats, ticket, user, webhook
+│   │       └── platform/          # Split: partners, users, audit, sso, system + barrel index
 │   ├── socket/
-│   │   ├── handlers.ts            # Socket.io event handlers
+│   │   ├── handlers.ts            # Orchestrator — registers domain handler modules
+│   │   ├── handlers/              # Domain handler modules (auth, message, ticket, presence, collision, rating, disconnect, types)
 │   │   └── partnerScope.ts        # Partner-scoped room helpers
 │   ├── routes/
 │   │   ├── auth.ts                # /api/auth/* (login, switch-partner, enter-partner, refresh, logout)
@@ -333,19 +343,12 @@ tessera/
 │   ├── TENANT_IDENTITY_SPEC.md    # Multi-tenant identity specification
 │   ├── USER_GUIDE.md              # End-user guide (roles, auth, features)
 │   └── superpowers/               # Plans, specs, and reviews from development sessions
-├── conductor/
-│   ├── index.md                   # Conductor overview
-│   ├── product.md                 # Product definition
-│   ├── product-guidelines.md      # Product guidelines
-│   ├── tech-stack.md              # Technology stack
-│   ├── tracks.md                  # Development tracks
-│   └── workflow.md                # Workflow documentation
 ├── testing/
 │   ├── nginx.conf                 # Reverse proxy config for load testing
 │   ├── load/                      # k6 load test scripts (smoke.js, load.js, refresh.js, ws.js, ws-500.js, debug.js)
 │   └── e2e/                       # Playwright E2E specs
 ├── playwright.config.ts           # Playwright E2E config
-├── CHANGELOG.md                   # Project changelog (v1.0.0 → v4.0.0)
+├── CHANGELOG.md                   # Project changelog (v1.0.0 → v4.1.0)
 ├── SECURITY.md                    # Security policy and vulnerability reporting
 ├── scripts/ci.ps1                 # Local CI: typecheck, tests, migrations, e2e
 ├── docker-compose.yml             # Dev: db, server, client, redis, lb, prometheus, grafana
