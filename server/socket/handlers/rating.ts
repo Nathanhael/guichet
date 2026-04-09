@@ -10,7 +10,7 @@ import {
   type HandlerContext,
 } from './types.js';
 
-export function register(socket: Socket, ctx: HandlerContext) {
+export function register(socket: Socket, ctx: HandlerContext): void {
   // ── Rating Submit ──────────────────────────────────────────────────────────
   socket.on('rating:submit', async ({ ticketId, rating, comment }: { ticketId: string; rating: number; comment: string | null }) => {
     if (!requireIdentified(socket)) return;

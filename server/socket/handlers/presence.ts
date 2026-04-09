@@ -25,7 +25,7 @@ import {
   type Participant,
 } from './types.js';
 
-export function register(socket: Socket, ctx: HandlerContext) {
+export function register(socket: Socket, ctx: HandlerContext): void {
   socket.on('support:join', async ({ ticketId, supportLang }: SupportJoinPayload) => {
     if (!requireIdentified(socket)) return;
     socketioEventsTotal.inc({ event: 'support:join' });

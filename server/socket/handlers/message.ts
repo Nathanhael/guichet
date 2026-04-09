@@ -39,7 +39,7 @@ import {
   type SenderInfo,
 } from './types.js';
 
-export function register(socket: Socket, ctx: HandlerContext) {
+export function register(socket: Socket, ctx: HandlerContext): void {
   // ── message:loadMore ────────────────────────────────────────────────────────
   socket.on('message:loadMore', async ({ ticketId, cursor }: { ticketId: string; cursor: string }) => {
     if (!requireIdentified(socket)) return;

@@ -7,7 +7,7 @@ import { socketioConnectionsActive } from '../../utils/metrics.js';
 import { removeViewerFromAll, broadcastViewers } from './collision.js';
 import { type HandlerContext } from './types.js';
 
-export function register(socket: Socket, ctx: HandlerContext) {
+export function register(socket: Socket, ctx: HandlerContext): void {
   socket.on('disconnect', async () => {
     socketioConnectionsActive.dec();
     const userId = socket.data.userId;
