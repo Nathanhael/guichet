@@ -49,7 +49,7 @@ const configSchema = z.object({
     AI_API_KEY: z.string().optional(),
     AZURE_OPENAI_DEPLOYMENT: z.string().optional(),
     AI_KEY_ENCRYPTION_SECRET: z.string().length(64).regex(/^[0-9a-f]+$/i, 'Must be 64-character hex string').optional(),
-    FIELD_ENCRYPTION_SECRET: z.string().min(64).optional(),
+    FIELD_ENCRYPTION_SECRET: z.string().length(64).regex(/^[0-9a-f]+$/i, 'Must be 64-character hex string').optional(),
     PLATFORM_ADMIN_EMAIL: z.preprocess(v => v === '' ? undefined : v, z.string().email().optional()),
     PLATFORM_ADMIN_PASSWORD: z.preprocess(v => v === '' ? undefined : v, z.string().min(10).optional()),
     REQUIRE_PLATFORM_STEP_UP: z.preprocess(v => v === 'true' || v === '1' || v === true, z.boolean()).default(false),

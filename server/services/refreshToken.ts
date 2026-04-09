@@ -32,6 +32,12 @@ export async function rotateRefreshToken(oldToken: string): Promise<{ token: str
   // Atomic claim: revoke the old token and return its data in a single statement.
   // If two concurrent requests race, only the first gets a row back.
   // The second sees zero rows and enters the reuse-detection path.
+  // TRADEOFF: The old design wrapped revoke+insert in a transaction to prevent
+  // crash-between-ops lockout. This atomic UPDATE trades that crash-recovery
+  // guarantee for race-condition safety — if the process crashes between the
+  // UPDATE and the INSERT below, the user loses their refresh family and must
+  // re-login. This is acceptable: the crash window is microseconds, while the
+  // race condition was hit routinely by multi-tab browsers.
   const claimed = await db.execute(sql`
     UPDATE refresh_tokens
     SET revoked_at = NOW()
