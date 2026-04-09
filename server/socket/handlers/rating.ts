@@ -7,19 +7,20 @@ import { MAX_NOTE_LENGTH } from '../../constants.js';
 import {
   requireIdentified,
   socketioEventsTotal,
+  validatePayload,
+  ratingSubmitSchema,
   type HandlerContext,
 } from './types.js';
 
 export function register(socket: Socket, ctx: HandlerContext): void {
   // ── Rating Submit ──────────────────────────────────────────────────────────
-  socket.on('rating:submit', async ({ ticketId, rating, comment }: { ticketId: string; rating: number; comment: string | null }) => {
+  socket.on('rating:submit', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
+    const parsed = validatePayload(socket, ratingSubmitSchema, data);
+    if (!parsed) return;
+    const { ticketId, rating, comment } = parsed;
     socketioEventsTotal.inc({ event: 'rating:submit' });
     try {
-      if (!ticketId || typeof rating !== 'number' || rating < 1 || rating > 5) {
-        logger.warn('[rating:submit] invalid payload');
-        return;
-      }
       const intRating = Math.round(rating);
       const agentId = socket.data.userId; // Server-side identity — never trust client-supplied agentId
 
