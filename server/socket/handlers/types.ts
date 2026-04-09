@@ -49,7 +49,7 @@ export type TicketClosePayload = z.infer<typeof ticketCloseSchema>;
 
 export const messageSendSchema = z.object({
   ticketId: z.string().min(1),
-  senderId: z.string().min(1),
+  senderId: z.string().optional(), // Ignored — server uses socket.data.userId
   text: z.string().max(5000),
   mediaUrl: z.string().max(2048).optional(),
   attachments: z.array(z.object({
