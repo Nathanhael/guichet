@@ -18,6 +18,10 @@ import { revokeToken, revokeUserSessions } from '../services/sessionRevocation.j
 import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
 import { createRefreshToken, rotateRefreshToken, revokeAllUserRefreshTokens } from '../services/refreshToken.js';
 
+// Constant-time login: pre-computed Argon2 hash for timing-safe rejection of unknown users.
+// This ensures "user not found" takes the same time as "wrong password".
+const DUMMY_ARGON2_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgt3ub+b+daw';
+
 const router = express.Router();
 logger.info('[Auth] Routes file loaded');
 
@@ -341,6 +345,8 @@ router.post('/login-local', loginRateLimit, validateBody(z.object({
         const user = await findUserByEmail(email);
 
         if (!user || !user.password) {
+            // Constant-time: always run Argon2 to prevent timing-based user enumeration
+            await verifyPassword(DUMMY_ARGON2_HASH, password);
             logger.warn({ email: maskEmail(email) }, '[Auth] Local login failed: User not found or no password');
             return res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -480,6 +486,8 @@ router.post('/login', loginRateLimit, validateBody(z.object({
         const user = userResults[0];
 
         if (!user || !user.password) {
+            // Constant-time: always run Argon2 to prevent timing-based user enumeration
+            await verifyPassword(DUMMY_ARGON2_HASH, password);
             logger.warn({ id, found: !!user, hasPassword: !!user?.password }, '[Auth] Login failed: User not found or no password');
             return res.status(401).json({ error: 'Invalid credentials' });
         }
