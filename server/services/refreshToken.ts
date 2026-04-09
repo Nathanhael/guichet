@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { eq, and, isNull, lt } from 'drizzle-orm';
+import { eq, and, isNull, lt, sql } from 'drizzle-orm';
 import { db } from '../db.js';
 import { refreshTokens } from '../db/schema.js';
 import config from '../config.js';
@@ -29,56 +29,62 @@ export async function createRefreshToken(userId: string, partnerId?: string): Pr
 export async function rotateRefreshToken(oldToken: string): Promise<{ token: string; userId: string; family: string; partnerId: string | null; expiresAt: string } | null> {
   const oldHash = hashToken(oldToken);
 
-  const rows = await db.select()
-    .from(refreshTokens)
-    .where(and(
-      eq(refreshTokens.tokenHash, oldHash),
-      isNull(refreshTokens.revokedAt),
-    ))
-    .limit(1);
+  // Atomic claim: revoke the old token and return its data in a single statement.
+  // If two concurrent requests race, only the first gets a row back.
+  // The second sees zero rows and enters the reuse-detection path.
+  const claimed = await db.execute(sql`
+    UPDATE refresh_tokens
+    SET revoked_at = NOW()
+    WHERE token_hash = ${oldHash}
+      AND revoked_at IS NULL
+    RETURNING id, user_id, token_hash, family, partner_id, expires_at, created_at
+  `);
 
-  const existing = rows[0];
+  const existing = (claimed.rows as Array<{
+    id: string; user_id: string; token_hash: string; family: string;
+    partner_id: string | null; expires_at: string; created_at: string;
+  }>)[0];
+
   if (!existing) {
-    // Token not found or already revoked — possible replay attack
-    // Check if this hash was ever used (reuse detection)
+    // Token not found or already revoked — check for replay attack
     const usedRows = await db.select({ family: refreshTokens.family })
       .from(refreshTokens)
       .where(eq(refreshTokens.tokenHash, oldHash))
       .limit(1);
 
     if (usedRows[0]) {
-      // Reuse detected — revoke entire family
+      // Reuse detected — an already-consumed token was replayed. Revoke the entire family.
       logger.warn({ family: usedRows[0].family }, '[refresh] Token reuse detected, revoking family');
       await revokeFamily(usedRows[0].family);
     }
     return null;
   }
 
-  // Check expiry
-  if (new Date(existing.expiresAt) < new Date()) {
+  // Check expiry (token was already atomically revoked above, so no race window)
+  if (new Date(existing.expires_at) < new Date()) {
+    // Expired — leave it revoked (which just happened), return null
     return null;
   }
 
-  // Generate new token values before entering the transaction (no DB access needed)
+  // Issue the new token (insert only — old token already revoked above)
   const newToken = crypto.randomBytes(32).toString('hex');
   const expiresAt = new Date(Date.now() + parseExpiryToSeconds(config.REFRESH_TOKEN_EXPIRY) * 1000).toISOString();
 
-  // Atomically revoke old token and issue new one — prevents crash-between-ops lockout
-  await db.transaction(async (tx) => {
-    await tx.update(refreshTokens)
-      .set({ revokedAt: new Date().toISOString() })
-      .where(eq(refreshTokens.id, existing.id));
-
-    await tx.insert(refreshTokens).values({
-      userId: existing.userId,
-      tokenHash: hashToken(newToken),
-      family: existing.family,
-      partnerId: existing.partnerId,
-      expiresAt,
-    });
+  await db.insert(refreshTokens).values({
+    userId: existing.user_id,
+    tokenHash: hashToken(newToken),
+    family: existing.family,
+    partnerId: existing.partner_id,
+    expiresAt,
   });
 
-  return { token: newToken, userId: existing.userId, family: existing.family, partnerId: existing.partnerId, expiresAt };
+  return {
+    token: newToken,
+    userId: existing.user_id,
+    family: existing.family,
+    partnerId: existing.partner_id,
+    expiresAt,
+  };
 }
 
 export async function revokeFamily(family: string): Promise<void> {
