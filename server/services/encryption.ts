@@ -14,10 +14,10 @@ let _cachedKey: Buffer | null = null;
 
 function getKey(): Buffer {
   if (_cachedKey) return _cachedKey;
-  const hex = config.AI_KEY_ENCRYPTION_SECRET;
+  const hex = config.FIELD_ENCRYPTION_SECRET || config.AI_KEY_ENCRYPTION_SECRET;
   if (!hex) {
     throw new Error(
-      'AI_KEY_ENCRYPTION_SECRET is not set. ' +
+      'FIELD_ENCRYPTION_SECRET (or AI_KEY_ENCRYPTION_SECRET) is not set. ' +
       'Generate one with: openssl rand -hex 32'
     );
   }
