@@ -132,6 +132,12 @@ export const ticketViewingSchema = z.object({
 });
 export type TicketViewingPayload = z.infer<typeof ticketViewingSchema>;
 
+export const messageLoadMoreSchema = z.object({
+  ticketId: z.string().min(1),
+  cursor: z.string().min(1),
+});
+export type MessageLoadMorePayload = z.infer<typeof messageLoadMoreSchema>;
+
 /**
  * Validate a socket event payload against a Zod schema.
  * Emits an error event and returns null on validation failure.
