@@ -3,6 +3,8 @@ import config from '../../config.js';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { revokeUserSessions } from '../../services/sessionRevocation.js';
+import { clearAuthCookie } from '../../services/authSession.js';
+import { resetFailedLogins } from '../../services/accountLockout.js';
 import { db } from '../../db.js';
 import { auditLog, users, memberships, partners } from '../../db/schema.js';
 import { eq, and, isNull, desc, asc, sql, count } from 'drizzle-orm';
@@ -210,6 +212,13 @@ export const userRouter = router({
 
       // Revoke all sessions so user must re-login with new password
       await revokeUserSessions(ctx.user.id);
+
+      // Clear the access token cookie so the client gets a clean logout signal
+      // instead of a confusing 200-then-401 sequence.
+      if (ctx.res) clearAuthCookie(ctx.res);
+
+      // Reset lockout counter — password change should clear any prior lockout
+      await resetFailedLogins(ctx.user.id);
 
       await db.insert(auditLog).values({
         action: 'security.password_changed',
