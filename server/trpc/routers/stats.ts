@@ -1,55 +1,17 @@
 import { z } from 'zod';
 import { router, partnerScopedProcedure } from '../trpc.js';
-import { db } from '../../db.js';
-import { eq, inArray, sql } from 'drizzle-orm';
 import { computeLiveDayStats, calculatePercentile } from '../../services/stats.js';
 import { parseSlaConfig } from '../../services/sla.js';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { Ticket, UserRole } from '../../types/index.js';
 import { isPlatformAdmin } from '../../services/roles.js';
-
-/** Sentiment aggregate per ticket from SQL AVG query */
-interface TicketSentimentAvg {
-  ticketId: string;
-  sentimentAvg: number | null;
-  sentimentCount: number;
-}
-
-/** Sentiment aggregate per dept from SQL AVG+JOIN query */
-interface DeptSentimentAvg {
-  dept: string;
-  sentimentAvg: number | null;
-  sentimentCount: number;
-}
-
-interface HistoricalStatRow {
-  date: string;
-  total: number;
-  closed: number;
-  abandoned: number;
-  avgResponseMs: number;
-  avgDurationMs: number;
-  avgRating: number | null;
-  ratingCount: number;
-  slaResolved: number;
-  slaCompliant: number;
-  p95ResponseMs: number;
-  reopened: number;
-  sentimentSum: number;
-  sentimentCount: number;
-  deptCounts: string;
-  ratingsByDept: string;
-  hourly: string;
-}
-
-interface RatingRow {
-  id: string;
-  ticketId: string;
-  supportId: string;
-  rating: number;
-  createdAt: string;
-}
+import {
+  fetchPartnerSlaConfig, fetchHistoricalStats, fetchLiveTickets, fetchRatings,
+  fetchTicketSentiment, fetchDeptSentiment, fetchWaitingTickets,
+  fetchPreviousPeriodStats, fetchLabelSummary, fetchSupportUserNames,
+  type HistoricalStatRow,
+} from '../../services/statsQueries.js';
 
 interface DayData {
   total: number;
@@ -124,21 +86,6 @@ interface AgentMapEntry {
   trendMap: Record<string, number>;
 }
 
-interface PrevHistRow {
-  total: number | null;
-  avgresp: number | null;
-  avgdur: number | null;
-  abandoned: number | null;
-  slares: number | null;
-  slacomp: number | null;
-}
-
-interface LabelCountRow {
-  name: string;
-  dept: string;
-  count: number;
-}
-
 // Partner-scoped + role check for admin/support (platform operators bypass role gate)
 const allowedStatsRoles: UserRole[] = ['admin', 'support'];
 const partnerStatsProcedure = partnerScopedProcedure.use(({ ctx, next }) => {
@@ -174,10 +121,7 @@ export const statsRouter = router({
         const partnerId = ctx.user.partnerId;
 
         // Fetch partner SLA config for per-partner compliance thresholds (#29)
-        const { partners: partnersTable } = await import('../../db/schema.js');
-        const partnerRows = await db.select({ slaConfig: partnersTable.slaConfig }).from(partnersTable).where(
-          eq(partnersTable.id, partnerId!)
-        );
+        const partnerRows = await fetchPartnerSlaConfig(partnerId!);
         const partnerSlaConfig = parseSlaConfig(partnerRows[0]?.slaConfig ?? null);
 
         const now = new Date();
@@ -209,9 +153,9 @@ export const statsRouter = router({
           }
         }
 
-        const historicalStats = ((await db.execute(sql`SELECT date, total, closed, abandoned, avg_response_ms, avg_duration_ms, avg_rating, rating_count, sla_resolved, sla_compliant, p95_response_ms, reopened, sentiment_sum, sentiment_count, dept_counts, ratings_by_dept, hourly FROM daily_stats WHERE date >= ${rangeStart} AND date <= ${rangeEnd} AND partner_id = ${partnerId}`)).rows ?? []) as unknown as HistoricalStatRow[];
+        const historicalStats = await fetchHistoricalStats(partnerId!, rangeStart, rangeEnd);
         const historicalStatsMap = new Map<string, HistoricalStatRow>(historicalStats.map(s => [s.date, s]));
-        const allLiveTicketsRaw = (await db.execute(sql`SELECT id, created_at, status, closed_at, dept, agent_id, agent_name, support_id, support_name, support_joined_at, sla_breached, sla_response_due_at, sla_resolution_due_at, reopened, closing_notes, closed_by, partner_id FROM tickets WHERE created_at::date >= ${rangeStart} AND created_at::date <= ${rangeEnd} AND partner_id = ${partnerId}`)).rows as unknown as Ticket[];
+        const allLiveTicketsRaw = await fetchLiveTickets(partnerId!, rangeStart, rangeEnd);
         const allLiveTickets = (excludeWeekends)
           ? allLiveTicketsRaw.filter(t => {
             if (!t.createdAt) return false;
@@ -226,41 +170,12 @@ export const statsRouter = router({
         const ticketMap = new Map<string, Ticket>(allLiveTickets.map(t => [t.id, t]));
 
         // JOIN-based queries — avoids unbounded IN clause with large ticket ID lists (#14)
-        let liveRatings: RatingRow[] = [];
-        {
-          const ratingRows = dept && dept !== 'all'
-            ? await db.execute(sql`SELECT r.ticket_id AS "ticketId", r.rating, r.comment, r.created_at AS "createdAt"
-               FROM ratings r JOIN tickets t ON r.ticket_id = t.id
-               WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND t.dept = ${dept}`)
-            : await db.execute(sql`SELECT r.ticket_id AS "ticketId", r.rating, r.comment, r.created_at AS "createdAt"
-               FROM ratings r JOIN tickets t ON r.ticket_id = t.id
-               WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}`);
-          liveRatings = ratingRows.rows as unknown as RatingRow[];
-        }
+        const liveRatings = await fetchRatings(partnerId!, rangeStart, rangeEnd, dept);
 
         // SQL AVG aggregates — avoids loading all message rows into memory (#13)
-        let ticketSentimentAvgs: TicketSentimentAvg[] = [];
-        {
-          const ticketRows = dept && dept !== 'all'
-            ? await db.execute(sql`SELECT m.ticket_id AS "ticketId", AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
-               FROM messages m JOIN tickets t ON m.ticket_id = t.id
-               WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND t.dept = ${dept} AND m.sentiment IS NOT NULL
-               GROUP BY m.ticket_id`)
-            : await db.execute(sql`SELECT m.ticket_id AS "ticketId", AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
-               FROM messages m JOIN tickets t ON m.ticket_id = t.id
-               WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND m.sentiment IS NOT NULL
-               GROUP BY m.ticket_id`);
-          ticketSentimentAvgs = ticketRows.rows as unknown as TicketSentimentAvg[];
-        }
+        const ticketSentimentAvgs = await fetchTicketSentiment(partnerId!, rangeStart, rangeEnd, dept);
 
-        let deptSentimentAvgs: DeptSentimentAvg[] = [];
-        {
-          const deptRows = await db.execute(sql`SELECT t.dept, AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
-             FROM messages m JOIN tickets t ON m.ticket_id = t.id
-             WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND m.sentiment IS NOT NULL
-             GROUP BY t.dept`);
-          deptSentimentAvgs = deptRows.rows as unknown as DeptSentimentAvg[];
-        }
+        const deptSentimentAvgs = await fetchDeptSentiment(partnerId!, rangeStart, rangeEnd);
 
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0, totalReopened = 0;
         const totalDeptCounts: Record<string, number> = {};
@@ -472,7 +387,7 @@ export const statsRouter = router({
         }
 
         const thirtyMinsAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
-        const waitingTickets = (await db.execute(sql`SELECT created_at FROM tickets WHERE status = 'open' AND support_id IS NULL AND created_at >= ${thirtyMinsAgo} AND partner_id = ${partnerId}`)).rows as unknown as { createdAt: string }[];
+        const waitingTickets = await fetchWaitingTickets(partnerId!, thirtyMinsAgo);
         let oldest = 0;
         waitingTickets.forEach(t => {
           if (t.createdAt) {
@@ -528,10 +443,7 @@ export const statsRouter = router({
         const missingSupportIds = [...new Set(liveRatings.map(r => r.supportId).filter(id => id && !supportMap[id]))];
         const supportUserMap = new Map<string, string>();
         if (missingSupportIds.length > 0) {
-          const { users: usersTable } = await import('../../db/schema.js');
-          const userRows = await db.select({ id: usersTable.id, name: usersTable.name })
-            .from(usersTable)
-            .where(inArray(usersTable.id, missingSupportIds));
+          const userRows = await fetchSupportUserNames(missingSupportIds);
           userRows.forEach(u => supportUserMap.set(u.id, u.name));
         }
 
@@ -586,11 +498,7 @@ export const statsRouter = router({
         const prevStartStr = prevStart.toISOString().slice(0, 10);
         const prevEndStr = prevEnd.toISOString().slice(0, 10);
 
-        const prevHist = excludeWeekends
-          ? (await db.execute(sql`SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(sla_resolved) as slares, AVG(sla_compliant) as slacomp, AVG(avg_rating) as avgrat
-             FROM daily_stats WHERE date >= ${prevStartStr} AND date <= ${prevEndStr} AND partner_id = ${partnerId} AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)`)).rows as unknown as (PrevHistRow & { avgrat: number | null })[]
-          : (await db.execute(sql`SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(sla_resolved) as slares, AVG(sla_compliant) as slacomp, AVG(avg_rating) as avgrat
-             FROM daily_stats WHERE date >= ${prevStartStr} AND date <= ${prevEndStr} AND partner_id = ${partnerId}`)).rows as unknown as (PrevHistRow & { avgrat: number | null })[];
+        const prevHist = await fetchPreviousPeriodStats(partnerId!, prevStartStr, prevEndStr, excludeWeekends);
 
         const prevSlares = prevHist[0]?.slares ?? 0;
         const prevSlacomp = prevHist[0]?.slacomp ?? 0;
@@ -632,13 +540,7 @@ export const statsRouter = router({
             ])
           ),
           daySummary: await (async () => {
-            const labelCounts = (await db.execute(sql`SELECT l.name, t.dept, COUNT(*) as count
-                               FROM ticket_labels tl
-                               JOIN labels l ON tl.label_id = l.id
-                               JOIN tickets t ON tl.ticket_id = t.id
-                               WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}
-                               GROUP BY l.name, t.dept
-                               ORDER BY t.dept, count DESC`)).rows as unknown as LabelCountRow[];
+            const labelCounts = await fetchLabelSummary(partnerId!, rangeStart, rangeEnd);
             const summary: Record<string, string[]> = {};
             labelCounts.forEach(lc => {
               if (!summary[lc.dept]) summary[lc.dept] = [];

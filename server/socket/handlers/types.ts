@@ -96,7 +96,7 @@ export const messageEditSchema = z.object({
 export type MessageEditPayload = z.infer<typeof messageEditSchema>;
 
 export const messageDeleteSchema = z.object({
-  messageId: z.union([z.string().min(1), z.array(z.string().min(1)).min(1).max(50)]),
+  messageId: z.string().min(1),
   ticketId: z.string().min(1),
 });
 export type MessageDeletePayload = z.infer<typeof messageDeleteSchema>;
