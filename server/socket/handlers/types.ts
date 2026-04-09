@@ -49,7 +49,7 @@ export type TicketClosePayload = z.infer<typeof ticketCloseSchema>;
 
 export const messageSendSchema = z.object({
   ticketId: z.string().min(1),
-  senderId: z.string().min(1),
+  senderId: z.string().optional(), // Ignored — server uses socket.data.userId
   text: z.string().max(5000),
   mediaUrl: z.string().max(2048).optional(),
   attachments: z.array(z.object({
@@ -131,6 +131,12 @@ export const ticketViewingSchema = z.object({
   ticketId: z.string().min(1),
 });
 export type TicketViewingPayload = z.infer<typeof ticketViewingSchema>;
+
+export const messageLoadMoreSchema = z.object({
+  ticketId: z.string().min(1),
+  cursor: z.string().min(1),
+});
+export type MessageLoadMorePayload = z.infer<typeof messageLoadMoreSchema>;
 
 /**
  * Validate a socket event payload against a Zod schema.
