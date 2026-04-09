@@ -1,14 +1,8 @@
 import { z } from 'zod';
-import { router, roleProcedure } from '../trpc.js';
+import { router, partnerAdminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { topicAlerts } from '../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
-import { TRPCError } from '@trpc/server';
-
-function requirePartnerId(ctx: { user: { partnerId?: string } }): string {
-  if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
-  return ctx.user.partnerId;
-}
 
 type AlertStatus = 'active' | 'acknowledged' | 'resolved';
 
@@ -21,14 +15,13 @@ async function setAlertStatus(alertId: string, partnerId: string, fields: { stat
 }
 
 export const alertsRouter = router({
-  list: roleProcedure(['admin'])
+  list: partnerAdminProcedure
     .input(z.object({
       status: z.enum(['active', 'acknowledged', 'resolved']).optional(),
       limit: z.number().min(1).max(100).default(50),
     }))
     .query(async ({ input, ctx }) => {
-      const partnerId = requirePartnerId(ctx);
-      const filters = [eq(topicAlerts.partnerId, partnerId)];
+      const filters = [eq(topicAlerts.partnerId, ctx.user.partnerId)];
       if (input.status) {
         filters.push(eq(topicAlerts.status, input.status));
       }
@@ -41,16 +34,16 @@ export const alertsRouter = router({
         .limit(input.limit);
     }),
 
-  acknowledge: roleProcedure(['admin'])
+  acknowledge: partnerAdminProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
-      return setAlertStatus(input, requirePartnerId(ctx), { status: 'acknowledged' });
+      return setAlertStatus(input, ctx.user.partnerId, { status: 'acknowledged' });
     }),
 
-  resolve: roleProcedure(['admin'])
+  resolve: partnerAdminProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
-      return setAlertStatus(input, requirePartnerId(ctx), {
+      return setAlertStatus(input, ctx.user.partnerId, {
         status: 'resolved',
         resolvedAt: new Date().toISOString(),
       });
