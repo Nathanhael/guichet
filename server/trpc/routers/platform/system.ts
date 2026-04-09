@@ -9,7 +9,6 @@ import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
 import { MailService } from '../../../services/mail.js';
 import { renderTestEmail } from '../../../services/mailTemplates.js';
-import config from '../../../config.js';
 
 export const platformSystemRouter = router({
   getSystemHealth: platformProcedure.query(async () => {
