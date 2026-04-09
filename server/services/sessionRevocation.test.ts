@@ -81,4 +81,14 @@ describe('session revocation helpers', () => {
 
     expect(result).toBe(false);
   });
+
+  it('allows tokens issued at the exact revokedAfter timestamp (boundary)', async () => {
+    const cutoff = 1000;
+    getMock.mockResolvedValue(String(cutoff));
+
+    const { isRevoked } = await import('./sessionRevocation.js');
+    const result = await isRevoked({ userId: 'user-1', jti: 'jti-1', iat: cutoff });
+
+    expect(result).toBe(false);
+  });
 });

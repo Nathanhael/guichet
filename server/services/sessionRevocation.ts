@@ -107,7 +107,7 @@ export async function isRevoked(payload: RevocationPayload): Promise<boolean> {
     }
 
     const revokedAfter = parseInt(revokedAfterRaw, 10);
-    return Number.isFinite(revokedAfter) && !!payload.iat && payload.iat <= revokedAfter;
+    return Number.isFinite(revokedAfter) && !!payload.iat && payload.iat < revokedAfter;
   } catch (err) {
     logger.error({ err, userId: payload.userId }, 'Failed to check token revocation — failing closed');
     // Fail closed on errors too
