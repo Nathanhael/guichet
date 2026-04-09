@@ -2,7 +2,7 @@ import { createHash } from 'crypto';
 import { eq } from 'drizzle-orm';
 import type { AiProvider } from './types.js';
 import { getAiContext } from './context.js';
-import { validateAiBaseUrl } from './validateUrl.js';
+import { validateAiBaseUrl, validateResolvedAiUrl } from './validateUrl.js';
 import { OllamaProvider } from './ollama.js';
 import { AzureOpenAiProvider } from './azure-openai.js';
 import { OpenAiCompatibleProvider } from './openai-compatible.js';
@@ -121,6 +121,7 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
         logger.info({ partnerId, provider: partner.aiProvider }, 'Creating per-partner AI provider');
         const isDev = config.NODE_ENV === 'development';
         validateAiBaseUrl(aiConfig.baseUrl as string | undefined, isDev);
+        await validateResolvedAiUrl(aiConfig.baseUrl as string | undefined, isDev);
         providerCache.set(
           key,
           buildProvider(partner.aiProvider, {
