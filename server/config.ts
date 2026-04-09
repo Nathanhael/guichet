@@ -49,6 +49,7 @@ const configSchema = z.object({
     AI_API_KEY: z.string().optional(),
     AZURE_OPENAI_DEPLOYMENT: z.string().optional(),
     AI_KEY_ENCRYPTION_SECRET: z.string().length(64).regex(/^[0-9a-f]+$/i, 'Must be 64-character hex string').optional(),
+    FIELD_ENCRYPTION_SECRET: z.string().min(64).optional(),
     PLATFORM_ADMIN_EMAIL: z.preprocess(v => v === '' ? undefined : v, z.string().email().optional()),
     PLATFORM_ADMIN_PASSWORD: z.preprocess(v => v === '' ? undefined : v, z.string().min(10).optional()),
     REQUIRE_PLATFORM_STEP_UP: z.preprocess(v => v === 'true' || v === '1' || v === true, z.boolean()).default(false),
@@ -100,6 +101,7 @@ const parseResult = configSchema.safeParse({
     AI_API_KEY: process.env.AI_API_KEY,
     AZURE_OPENAI_DEPLOYMENT: process.env.AZURE_OPENAI_DEPLOYMENT,
     AI_KEY_ENCRYPTION_SECRET: process.env.AI_KEY_ENCRYPTION_SECRET,
+    FIELD_ENCRYPTION_SECRET: process.env.FIELD_ENCRYPTION_SECRET,
     PLATFORM_ADMIN_EMAIL: process.env.PLATFORM_ADMIN_EMAIL,
     PLATFORM_ADMIN_PASSWORD: process.env.PLATFORM_ADMIN_PASSWORD,
     REQUIRE_PLATFORM_STEP_UP: process.env.REQUIRE_PLATFORM_STEP_UP,
@@ -144,10 +146,10 @@ if (config.NODE_ENV === 'production') {
         warn.push('REQUIRE_PLATFORM_STEP_UP is false — platform admin has no MFA step-up');
     if (!config.COOKIE_DOMAIN)
         warn.push('COOKIE_DOMAIN is not set — cookies will be scoped to the exact hostname, which may cause issues with subdomains. Set to your root domain (e.g., "example.com")');
-    if (!config.AI_KEY_ENCRYPTION_SECRET && config.AI_ENABLED)
-        fatal.push('AI_KEY_ENCRYPTION_SECRET is not set but AI_ENABLED is true — partner API keys would be stored unencrypted. Generate one with: openssl rand -hex 32');
-    if (!config.AI_KEY_ENCRYPTION_SECRET && !config.AI_ENABLED)
-        warn.push('AI_KEY_ENCRYPTION_SECRET is not set — if AI is enabled later, partner API keys will not be encrypted at rest');
+    if (!config.FIELD_ENCRYPTION_SECRET && !config.AI_KEY_ENCRYPTION_SECRET && config.AI_ENABLED)
+        fatal.push('FIELD_ENCRYPTION_SECRET (or AI_KEY_ENCRYPTION_SECRET) is not set but AI_ENABLED is true — partner API keys would be stored unencrypted. Generate one with: openssl rand -hex 32');
+    if (!config.FIELD_ENCRYPTION_SECRET && !config.AI_KEY_ENCRYPTION_SECRET && !config.AI_ENABLED)
+        warn.push('FIELD_ENCRYPTION_SECRET (or AI_KEY_ENCRYPTION_SECRET) is not set — if AI is enabled later, partner API keys will not be encrypted at rest');
     if (!config.COOKIE_SECURE)
         fatal.push('COOKIE_SECURE is false — cookies will not be sent over HTTPS');
     if (config.DEMO_MODE)
