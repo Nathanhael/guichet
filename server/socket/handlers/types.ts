@@ -35,8 +35,7 @@ export type SupportJoinPayload = z.infer<typeof supportJoinSchema>;
 
 export const supportLeaveSchema = z.object({
   ticketId: z.string().min(1),
-  supportId: z.string().min(1),
-  supportName: z.string().min(1).max(200),
+  // supportId and supportName intentionally omitted — server uses socket.data.userId/name
 });
 export type SupportLeavePayload = z.infer<typeof supportLeaveSchema>;
 

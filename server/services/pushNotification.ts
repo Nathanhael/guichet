@@ -1,5 +1,5 @@
 import webpush from 'web-push';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../db/postgres.js';
 import { pushSubscriptions } from '../db/schema.js';
 import config from '../config.js';
@@ -48,7 +48,9 @@ export async function subscribe(userId: string, subscription: { endpoint: string
 
 export async function unsubscribe(userId: string, endpoint: string): Promise<void> {
   try {
-    await db.delete(pushSubscriptions).where(eq(pushSubscriptions.endpoint, endpoint));
+    await db.delete(pushSubscriptions).where(
+      and(eq(pushSubscriptions.endpoint, endpoint), eq(pushSubscriptions.userId, userId))
+    );
     logger.info({ userId }, '[push] Subscription removed');
   } catch (err) {
     logger.error({ err: err instanceof Error ? err.message : String(err), userId }, '[push] Failed to remove subscription');

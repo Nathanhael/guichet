@@ -34,8 +34,8 @@ services:
       - PLATFORM_ADMIN_EMAIL=${PLATFORM_ADMIN_EMAIL:-}
       - PLATFORM_ADMIN_PASSWORD=${PLATFORM_ADMIN_PASSWORD:-}
       - AI_ENABLED=${AI_ENABLED:-false}
-      # Dev-only encryption key — DO NOT use in production
-      - AI_KEY_ENCRYPTION_SECRET=0000000000000000000000000000000000000000000000000000000000000000
+      # AI encryption key loaded from .env — DO NOT hardcode
+      - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:?AI_KEY_ENCRYPTION_SECRET must be set in .env}
       - AI_PROVIDER=${AI_PROVIDER:-ollama}
       - AI_TIMEOUT_MS=${AI_TIMEOUT_MS:-60000}
       - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
@@ -69,7 +69,7 @@ services:
     image: redis:8-alpine
     restart: always
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: ["redis-server", "--requirepass", "devpassword"]
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=devpassword redis-cli ping"]

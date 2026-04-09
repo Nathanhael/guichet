@@ -1,6 +1,7 @@
 import crypto, { createHash, timingSafeEqual } from 'crypto';
 import config from '../config.js';
 import { getRedisClients } from '../utils/redis.js';
+import logger from '../utils/logger.js';
 
 const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const TOTP_DIGITS = 6;
@@ -140,8 +141,8 @@ export async function markTotpTokenUsed(userId: string, token: string): Promise<
     const hashedToken = createHash('sha256').update(token).digest('hex');
     const key = `totp:used:${userId}:${hashedToken}`;
     await pubClient.set(key, '1', { EX: TOTP_USED_TTL });
-  } catch {
-    // fire-and-forget — log nothing to avoid noise
+  } catch (err) {
+    logger.warn({ err: err instanceof Error ? err.message : String(err), userId }, '[TOTP] Failed to mark token as used — replay possible within 90s window');
   }
 }
 

@@ -1,20 +1,30 @@
-import { resolve4 } from 'dns/promises';
+import { resolve4, resolve6 } from 'dns/promises';
 
 /**
- * Check if an IPv4 address is in a private/reserved range.
+ * Check if an IP address (IPv4 or IPv6) is in a private/reserved range.
  */
 function isPrivateIp(ip: string): boolean {
+  // IPv4
   const parts = ip.split('.').map(Number);
-  if (parts.length !== 4) return false;
-  const [a, b] = parts;
-  return (
-    a === 0 ||
-    a === 10 ||
-    a === 127 ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && b === 168) ||
-    (a === 169 && b === 254)
-  );
+  if (parts.length === 4) {
+    const [a, b] = parts;
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 169 && b === 254)
+    );
+  }
+
+  // IPv6 private/reserved ranges
+  if (/^::1$/i.test(ip)) return true;           // loopback
+  if (/^fe80:/i.test(ip)) return true;           // link-local
+  if (/^fc00:/i.test(ip)) return true;           // unique local
+  if (/^fd[0-9a-f]{2}:/i.test(ip)) return true;  // unique local
+
+  return false;
 }
 
 /**
@@ -37,7 +47,7 @@ export function validateAiBaseUrl(url: string | undefined, isDev: boolean): void
 
   const hostname = parsed.hostname.toLowerCase();
 
-  if (hostname === 'localhost' || hostname === '::1') {
+  if (hostname === 'localhost' || hostname === '::1' || hostname === '[::1]') {
     throw new Error(`AI base URL must not point to a private or reserved address: ${hostname}`);
   }
 
@@ -66,8 +76,18 @@ export async function validateResolvedAiUrl(url: string | undefined, isDev: bool
   if (/^\d+\.\d+\.\d+\.\d+$/.test(hostname)) return;
 
   try {
-    const addresses = await resolve4(hostname);
-    for (const ip of addresses) {
+    // Resolve both IPv4 and IPv6 to prevent bypass via AAAA-only records
+    const allAddresses: string[] = [];
+    try {
+      const v4 = await resolve4(hostname);
+      allAddresses.push(...v4);
+    } catch { /* no A records — ok */ }
+    try {
+      const v6 = await resolve6(hostname);
+      allAddresses.push(...v6);
+    } catch { /* no AAAA records — ok */ }
+
+    for (const ip of allAddresses) {
       if (isPrivateIp(ip)) {
         throw new Error(
           `AI base URL hostname "${hostname}" resolves to private IP ${ip} — possible DNS rebinding attack`

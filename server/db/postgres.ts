@@ -14,12 +14,16 @@ if (!process.env.DATABASE_URL) {
   throw new Error('FATAL: DATABASE_URL environment variable is required');
 }
 
+const poolMax = parseInt(process.env.DB_POOL_MAX || '30');
+const poolMin = parseInt(process.env.DB_POOL_MIN || '5');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  max: parseInt(process.env.DB_POOL_MAX || '30'),
-  min: parseInt(process.env.DB_POOL_MIN || '5'),
+  max: Number.isNaN(poolMax) ? 30 : poolMax,
+  min: Number.isNaN(poolMin) ? 5 : poolMin,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000,
+  ssl: process.env.DB_SSL === 'false' ? false : (process.env.DB_SSL ? { rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false' } : undefined),
 });
 
 pool.on('error', (err) => {

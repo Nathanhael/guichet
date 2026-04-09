@@ -165,7 +165,7 @@ export function parseOgTags(html: string): Omit<LinkPreview, 'url'> {
   return {
     title: title ? title.slice(0, 120) : undefined,
     description: description ? description.slice(0, 200) : undefined,
-    image: image || undefined,
+    image: (image && image.startsWith('https://')) ? image : undefined,
     siteName: siteName || undefined,
   };
 }
@@ -195,7 +195,7 @@ export async function fetchOgData(url: string): Promise<LinkPreview | null> {
           'Accept': 'text/html',
           'User-Agent': 'TesseraBot/1.0 (+link-preview)',
         },
-        redirect: 'follow',
+        redirect: 'error', // SSRF: prevent redirects to internal IPs (mirrors webhookDispatch.ts)
       });
 
       clearTimeout(timeout);

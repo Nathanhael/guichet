@@ -46,7 +46,7 @@ export const partnerMembersRouter = router({
             ilike(users.name, s),
             ilike(users.email, s),
             sql`${memberships.role}::text ILIKE ${s}`,
-            sql`${rawSearch} ILIKE CONCAT(${memberships.role}::text, 's')`,
+            sql`CONCAT(${memberships.role}::text, 's') ILIKE ${s}`,
             matchesDept,
             sql`CASE
               WHEN ${memberships.role} = 'support' AND jsonb_array_length(${memberships.departments}) = 0

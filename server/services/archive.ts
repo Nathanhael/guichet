@@ -127,7 +127,7 @@ export async function archiveAuditLog(archiveDelayDays?: number): Promise<number
  */
 const VERIFY_BATCH_SIZE = 10_000;
 
-export async function verifyAuditChain(): Promise<{ valid: boolean; checked: number; brokenAt?: string }> {
+export async function verifyAuditChain(): Promise<{ valid: boolean; checked: number; brokenAt?: string; error?: string }> {
   try {
     let prevHash = '0'.repeat(64);
     let checked = 0;
@@ -172,8 +172,8 @@ export async function verifyAuditChain(): Promise<{ valid: boolean; checked: num
     logger.info({ checked }, '[archive] Hash chain verified OK');
     return { valid: true, checked };
   } catch (err) {
-    logger.error({ err }, '[archive] Failed to verify audit chain');
-    return { valid: false, checked: 0 };
+    logger.error({ err }, '[archive] Failed to verify audit chain (infrastructure error, not a tamper event)');
+    return { valid: false, checked: 0, error: 'verification_failed' };
   }
 }
 
