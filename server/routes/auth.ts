@@ -31,6 +31,7 @@ logger.info('[Auth] Routes file loaded');
 const AUTH_RATE_WINDOW_SECS = 15 * 60; // 15 minutes
 const AUTH_RATE_MAX_LOGIN = 20; // max login attempts per IP per window
 const AUTH_RATE_MAX_RESET = 10; // max reset-password attempts per IP per window
+const AUTH_RATE_MAX_REFRESH = 30; // max refresh attempts per IP per window
 
 // In-memory fallback rate limiter when Redis is unavailable
 const memoryLimiter = new Map<string, { count: number; expiresAt: number }>();
@@ -123,6 +124,10 @@ function loginRateLimit(req: Request, res: Response, next: () => void): void {
 
 function resetPasswordRateLimit(req: Request, res: Response, next: () => void): void {
   redisRateLimit(req, res, next, 'reset-pw', AUTH_RATE_MAX_RESET);
+}
+
+function refreshRateLimit(req: Request, res: Response, next: () => void): void {
+  redisRateLimit(req, res, next, 'refresh', AUTH_RATE_MAX_REFRESH);
 }
 
 function setRefreshCookie(res: Response, token: string, maxAgeSecs: number): void {
@@ -671,7 +676,7 @@ router.post('/switch-partner', (await import('../middleware/auth.js')).auth, asy
     }
 });
 
-router.post('/refresh', async (req: Request, res: Response) => {
+router.post('/refresh', refreshRateLimit, async (req: Request, res: Response) => {
     try {
         const refreshTokenCookie = req.cookies?.tessera_refresh;
         if (!refreshTokenCookie) {
