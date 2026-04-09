@@ -1,11 +1,10 @@
 import { z } from 'zod';
 import { router, platformProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
-import { partners, auditLog, tickets, systemSettings } from '../../../db/schema.js';
-import { eq, asc, desc, sql, isNull, and, inArray } from 'drizzle-orm';
+import { partners, auditLog, tickets } from '../../../db/schema.js';
+import { eq, asc, isNull, and, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { randomUUID } from 'crypto';
-import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
 import { broadcastPartnerDeactivation } from '../../../socket/handlers.js';
 import { validateWebhookUrl } from '../../../services/webhookDispatch.js';
