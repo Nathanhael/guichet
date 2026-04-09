@@ -104,7 +104,7 @@ export async function broadcastViewers(
   io.to(Rooms.ticket(ticketId)).emit('ticket:viewers', { ticketId, viewers });
 }
 
-export function register(socket: Socket, ctx: HandlerContext) {
+export function register(socket: Socket, ctx: HandlerContext): void {
   // ── Collision Detection: ticket viewing ───────────────────────────────────
   socket.on('ticket:viewing', async ({ ticketId }: { ticketId: string }) => {
     if (!requireIdentified(socket)) return;
