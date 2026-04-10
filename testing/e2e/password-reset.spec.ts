@@ -18,31 +18,57 @@ const TEST_EMAIL = 'alice@acme.com';
 const ORIGINAL_PASSWORD = 'password123';
 const NEW_PASSWORD = 'NewSecure!Pass1';
 
-/** Wait for the React app to mount (login form visible) */
+/** Wait for the React app (LoginView) to mount. The initial AuthViewMode is
+ *  'sso-selection' which doesn't render a <form>, so we wait for the h1
+ *  heading that is always present. */
 async function waitForLoginForm(page: Page) {
   await page.goto(BASE);
   await page.waitForLoadState('load');
-  // Wait for React to mount — look for the login form
-  await page.waitForSelector('form', { timeout: 15000 });
+  await page.waitForSelector('h1', { timeout: 15000 });
+}
+
+/** Navigate from 'sso-selection' → 'platform-login' → 'forgot' view.
+ *  The platform-admin link is hidden behind a 3-click logo Easter egg
+ *  (see LoginView.tsx:42 handleLogoClick). */
+async function gotoForgotPassword(page: Page) {
+  await waitForLoginForm(page);
+  // Triple-click the TESSERA logo to reveal the platform admin link
+  const logo = page.getByRole('button', { name: /^tessera$/i });
+  await logo.waitFor({ state: 'visible', timeout: 5000 });
+  await logo.click();
+  await logo.click();
+  await logo.click();
+  // Click the now-visible platform admin button to enter the LocalLoginForm
+  const platformLink = page.getByRole('button', { name: /platform administrator login|platform admin|administrator/i }).first();
+  await platformLink.waitFor({ state: 'visible', timeout: 3000 });
+  await platformLink.click();
+  // Wait for the local form to mount
+  await page.locator('input[type="email"]').first().waitFor({ state: 'visible', timeout: 5000 });
+  // Click the forgot-password link inside the local form
+  const forgotLink = page.getByText(/forgot|vergeten|oubli/i).first();
+  await forgotLink.waitFor({ state: 'visible', timeout: 5000 });
+  await forgotLink.click();
+  // ForgotPasswordForm should now be mounted — its email input is still present
+  await page.locator('input[type="email"]').first().waitFor({ state: 'visible', timeout: 5000 });
 }
 
 test.describe('Password Reset Flow', () => {
   test('forgot password form shows success message', async ({ page }) => {
-    await waitForLoginForm(page);
+    await gotoForgotPassword(page);
 
-    // Find and click the "Forgot Password" link
-    await expect(page.getByText(/forgot/i).first()).toBeVisible({ timeout: 5000 });
-    await page.getByText(/forgot/i).click();
+    // Fill email and submit. Alice is an admin user (not a platform operator),
+    // so the server returns the enumeration-safe message:
+    //   "If an account exists with this email, a reset link has been sent."
+    // The ForgotPasswordForm then switches to its success state (the whole
+    // component re-renders with a ✓ icon + the server's message + "back to login").
+    await page.locator('input[type="email"]').first().fill(TEST_EMAIL);
+    await page.getByRole('button', { name: /send reset|send|stuur|envoyer/i }).first().click();
 
-    // Should now be in forgot mode
-    await expect(page.getByText(/send you a link|reset your password/i).first()).toBeVisible({ timeout: 5000 });
-
-    // Fill email and submit
-    await page.getByPlaceholder('name@company.com').fill(TEST_EMAIL);
-    await page.getByRole('button', { name: /send reset/i }).click();
-
-    // Should show success message (enumeration-safe — always succeeds)
+    // The success state renders the server-returned message via
+    // ForgotPasswordForm.tsx:46. Assert the text appears and the submit
+    // button is gone (proving the success branch rendered).
     await expect(page.getByText(/if an account exists/i)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('button', { name: /send reset/i })).toBeHidden();
   });
 
   test('reset password page accepts new password', async ({ page, request }) => {

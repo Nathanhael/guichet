@@ -12,78 +12,108 @@ import { test, expect } from '@playwright/test';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 
-/** Wait for the React app to mount (login form or app content visible) */
+/** Wait for the React app (LoginView) to mount. The initial AuthViewMode is
+ *  'sso-selection' which doesn't render a <form>, so we wait for the TESSERA
+ *  heading that is always present in the LoginView. */
 async function waitForApp(page: import('@playwright/test').Page) {
   await page.goto(BASE);
   await page.waitForLoadState('load');
-  // Wait for React to mount — look for the login form OR the app shell
-  await page.waitForSelector('form, [data-testid="app-shell"]', { timeout: 15000 });
+  // The LoginView always renders the "TESSERA" branding heading in any
+  // AuthViewMode ('sso-selection', 'platform-login', 'forgot', etc.).
+  await page.waitForSelector('h1', { timeout: 15000 });
+  // Extra safety: wait until at least one button (SSO, demo, or platform-login link) is visible.
+  await page.locator('button').first().waitFor({ state: 'visible', timeout: 10000 });
+}
+
+/** Navigate from the default 'sso-selection' view to 'platform-login' where
+ *  LocalLoginForm (with email + password fields) is rendered.
+ *
+ *  The platform-admin link is hidden behind an Easter egg: clicking the
+ *  TESSERA logo (h1 with role="button", aria-label="Tessera") 3 times within
+ *  500ms reveals it (see LoginView.tsx:42 handleLogoClick). */
+async function gotoPlatformLogin(page: import('@playwright/test').Page) {
+  await waitForApp(page);
+  // If the local login form is already visible (state was preserved), nothing to do.
+  const emailInput = page.locator('input[type="email"]').first();
+  if (await emailInput.isVisible({ timeout: 500 }).catch(() => false)) return;
+
+  // Triple-click the Tessera logo to reveal the platform-admin link.
+  const logo = page.getByRole('button', { name: /^tessera$/i });
+  await logo.waitFor({ state: 'visible', timeout: 5000 });
+  await logo.click();
+  await logo.click();
+  await logo.click();
+
+  // Click the now-visible platform admin login button
+  const platformLink = page.getByRole('button', { name: /platform administrator login|platform admin|administrator/i }).first();
+  await platformLink.waitFor({ state: 'visible', timeout: 3000 });
+  await platformLink.click();
+
+  // Now the LocalLoginForm should be mounted
+  await emailInput.waitFor({ state: 'visible', timeout: 5000 });
 }
 
 test.describe('Authentication', () => {
   test('login page renders with email and password fields', async ({ page }) => {
-    await waitForApp(page);
-    await expect(page.getByPlaceholder('name@company.com')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByPlaceholder('••••••••')).toBeVisible();
-    await expect(page.getByRole('button', { name: /log in/i })).toBeVisible();
+    await gotoPlatformLogin(page);
+    // The email field uses placeholder from t('placeholder_email') which equals
+    // 'name@company.com' in English (see client/src/locales/en.ts:90).
+    await expect(page.locator('input[type="email"]').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('input[type="password"]').first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /log in|inloggen|se connecter/i }).first()).toBeVisible();
   });
 
   test('SSO button is visible on login page', async ({ page }) => {
     await waitForApp(page);
-    // SSO button should be visible (partner authMethod = 'both' or 'sso')
-    const ssoButton = page.getByText(/microsoft|sso/i).first();
-    // May or may not be visible depending on partner config — just check page loads
-    await expect(page.getByRole('button', { name: /log in/i })).toBeVisible();
+    // In 'sso-selection' mode the SSO button should be the primary CTA. We don't
+    // require specific text (Microsoft/SSO) because it's configurable — just
+    // assert that some button exists on the initial page.
+    await expect(page.locator('button').first()).toBeVisible();
   });
 
-  test('demo login tab shows demo users', async ({ page }) => {
+  test('platform login link navigates to LocalLoginForm', async ({ page }) => {
+    // Replaces the deprecated 'demo login tab' test: the 'demo' tab was removed
+    // in favour of a platform-administrator link from the SSO selection screen.
     await waitForApp(page);
-    // Click on demo tab
-    const demoTab = page.getByText(/demo/i).first();
-    if (await demoTab.isVisible()) {
-      await demoTab.click();
-      // Should show demo user cards
-      await expect(page.getByText(/Bart Operator/i).first()).toBeVisible({ timeout: 5000 });
-    }
+    await gotoPlatformLogin(page);
+    await expect(page.locator('input[type="email"]').first()).toBeVisible();
   });
 
-  test('demo user can log in and see the app', async ({ page }) => {
-    await waitForApp(page);
-    // Switch to demo tab
-    const demoTab = page.getByText(/demo/i).first();
-    if (await demoTab.isVisible()) {
-      await demoTab.click();
-      await page.waitForTimeout(500);
-      // Click on an agent user
-      const agentCard = page.getByText(/Jan Peeters/i).first();
-      if (await agentCard.isVisible()) {
-        await agentCard.click();
-        // Should redirect to the app (agent view or partner selection)
-        await page.waitForTimeout(3000);
-        const url = page.url();
-        // Should no longer be on login page or should show app content
-        const isLoggedIn = !url.includes('/login') || await page.getByText(/queue|ticket|support|new ticket/i).first().isVisible().catch(() => false);
-        expect(isLoggedIn).toBeTruthy();
-      }
-    }
+  test('platform operator can log in via the local form', async ({ page }) => {
+    // Replaces the deprecated 'demo user can log in' test which relied on a
+    // demo user picker UI that no longer exists. We exercise the real flow:
+    // SSO selection → platform login → fill credentials → assert navigated out.
+    await gotoPlatformLogin(page);
+    await page.locator('input[type="email"]').first().fill('bart@tessera.io');
+    await page.locator('input[type="password"]').first().fill('password123');
+    await page.getByRole('button', { name: /log in|inloggen|se connecter/i }).first().click();
+    // After successful login, the LoginView unmounts and the app shell appears.
+    // We don't know the exact app chrome selector, but the email input from the
+    // login form should disappear — that's a reliable signal of login success.
+    await expect(page.locator('input[type="email"]').first()).toBeHidden({ timeout: 10000 });
   });
 
   test('invalid login shows error', async ({ page }) => {
-    await waitForApp(page);
-    await page.getByPlaceholder('name@company.com').fill('nonexistent@test.com');
-    await page.getByPlaceholder('••••••••').fill('wrongpassword');
-    await page.getByRole('button', { name: /log in/i }).click();
-    // Should show error message (may be "invalid credentials" or "too many attempts" from rate limiter)
-    await expect(page.getByText(/invalid|failed|error|incorrect|too many/i).first()).toBeVisible({ timeout: 10000 });
+    await gotoPlatformLogin(page);
+    await page.locator('input[type="email"]').first().fill('nonexistent@test.com');
+    await page.locator('input[type="password"]').first().fill('wrongpassword');
+    await page.getByRole('button', { name: /log in|inloggen|se connecter/i }).first().click();
+    // Should show some error message
+    await expect(
+      page.getByText(/invalid|failed|error|incorrect|too many|ongeldig|fout/i).first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
   test('forgot password link works', async ({ page }) => {
-    await waitForApp(page);
-    const forgotLink = page.getByText(/forgot/i).first();
-    if (await forgotLink.isVisible()) {
-      await forgotLink.click();
-      await expect(page.getByText(/reset/i).first()).toBeVisible();
-    }
+    await gotoPlatformLogin(page);
+    const forgotLink = page.getByText(/forgot|vergeten|oubli/i).first();
+    await expect(forgotLink).toBeVisible({ timeout: 5000 });
+    await forgotLink.click();
+    // The ForgotPasswordForm uses the same email input with same placeholder,
+    // but the submit button text changes to something like "Send reset link".
+    await expect(
+      page.getByText(/reset|link|stuur|envoyer/i).first()
+    ).toBeVisible({ timeout: 5000 });
   });
 });
 
@@ -96,7 +126,7 @@ test.describe('Refresh Token Flow', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'dirk@tessera.demo', password: 'password123' }),
+        body: JSON.stringify({ email: 'bart@tessera.io', password: 'password123' }),
       });
       return { status: res.status };
     });
