@@ -771,6 +771,14 @@ async function seedE2E() {
     { id: 'e2e-support-a', name: 'E2E Support A', role: 'support', partnerId: 'test-partner-a', lang: 'en' },
     { id: 'e2e-admin-a', name: 'E2E Admin A', role: 'admin', partnerId: 'test-partner-a', lang: 'en' },
     { id: 'agent_jan', name: 'Agent Jan', role: 'agent', partnerId: 'tessera-main', lang: 'nl' },
+    // Additional named users referenced by older E2E specs — kept here so existing
+    // specs (status-and-transfer, support-view, collision-detection, view-modes,
+    // push-and-idle, admin-view, ai-features) can log in without modification.
+    { id: 'expert_alex', name: 'Expert Alex', role: 'support', partnerId: 'test-partner-a', lang: 'en' },
+    { id: 'expert_piet', name: 'Expert Piet', role: 'support', partnerId: 'test-partner-a', lang: 'nl' },
+    { id: 'support_jan', name: 'Support Jan', role: 'support', partnerId: 'test-partner-a', lang: 'nl' },
+    { id: 'support_thomas', name: 'Support Thomas', role: 'support', partnerId: 'test-partner-a', lang: 'en' },
+    { id: 'admin_dirk', name: 'Admin Dirk', role: 'admin', partnerId: 'test-partner-a', lang: 'nl' },
   ];
 
   for (const u of testUsers) {
