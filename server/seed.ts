@@ -7,8 +7,8 @@
  * 
  * Usage:
  *   - npx tsx seed.ts --wipe    (Clean all tables)
- *   - npx tsx seed.ts --e2e     (Quick test data for Playwright)
- *   - npx tsx seed.ts --full    (Massive, realistic dataset for development/demo)
+ *   - npx tsx seed.ts --e2e     (Quick test data for Playwright only)
+ *   - npx tsx seed.ts --full    (Demo dataset + E2E fixtures — superset of --e2e)
  */
 import { db } from './db.js';
 import * as schema from './db/schema.js';
@@ -813,8 +813,14 @@ async function main() {
       process.exit(0);
     }
     if (isWipe) await wipeDatabase();
-    if (isFull) await seedFull();
-    else if (isE2E) await seedE2E();
+    // --full is a superset of --e2e: seeds demo partners/users AND e2e test fixtures.
+    // --e2e alone seeds only the Playwright test fixtures.
+    if (isFull) {
+      await seedFull();
+      await seedE2E();
+    } else if (isE2E) {
+      await seedE2E();
+    }
     console.log('\n✨ Database operations finished successfully.');
   } catch (err) {
     console.error('\n❌ Fatal error during seeding:', err);
