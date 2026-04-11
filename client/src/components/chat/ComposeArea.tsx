@@ -7,6 +7,7 @@ import { trpc } from '../../utils/trpc';
 import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send } from 'lucide-react';
 import { EditorContent } from '@tiptap/react';
 import FormatToolbar from './FormatToolbar';
+import LinkPreviewCard from './LinkPreviewCard';
 import Toast from '../Toast';
 import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
@@ -51,6 +52,13 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [improving, setImproving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  // Debounced copy of `text` for the link-preview query. Updating it on
+  // every keystroke would spam the server; we wait 800ms after the last
+  // input before unfurling the first URL in the compose buffer.
+  const [debouncedText, setDebouncedText] = useState('');
+  // User-dismissed previews — URLs in this set are hidden until the
+  // user clears them from the text buffer.
+  const [dismissedPreviews, setDismissedPreviews] = useState<Set<string>>(new Set());
 
   // Draft persistence — one key per (user, ticket, mode). Each support agent
   // keeps their own in-progress reply across reloads, and whisper vs regular
@@ -129,6 +137,44 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     // by setContent is suppressed, but future real keystrokes are not.
     queueMicrotask(() => { isProgrammaticUpdateRef.current = false; });
   }, [editor, text]);
+
+  // Debounce the compose text for the link-preview query. 800ms after
+  // the last keystroke we ping the server to unfurl the first URL in
+  // the buffer. Avoids flooding the endpoint while the user is still
+  // typing the URL character by character.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedText(text), 800);
+    return () => clearTimeout(timer);
+  }, [text]);
+
+  const linkPreviewQuery = trpc.linkPreview.fetchForCompose.useQuery(
+    { text: debouncedText },
+    {
+      // Only fire when the buffer contains something that looks like a URL.
+      // Regex is deliberately loose; the server applies the authoritative
+      // URL_REGEX + SSRF guards.
+      enabled: /https?:\/\//i.test(debouncedText) && debouncedText.length >= 10,
+      staleTime: 60_000,
+      retry: 0,
+    },
+  );
+  const livePreview = linkPreviewQuery.data && !dismissedPreviews.has(linkPreviewQuery.data.url) ? linkPreviewQuery.data : null;
+
+  // Clear the dismissed-previews set when the text no longer contains the
+  // dismissed URL — if the user retypes or pastes it later, the preview
+  // should come back.
+  useEffect(() => {
+    if (dismissedPreviews.size === 0) return;
+    let changed = false;
+    const next = new Set(dismissedPreviews);
+    for (const url of dismissedPreviews) {
+      if (!text.includes(url)) {
+        next.delete(url);
+        changed = true;
+      }
+    }
+    if (changed) setDismissedPreviews(next);
+  }, [text, dismissedPreviews]);
 
   // Dynamic placeholder — Tiptap's Placeholder extension stores the value
   // at editor construction time and doesn't reactively pick up prop
@@ -550,6 +596,30 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           </div>
         )}
 
+        {/* Live link preview — one card per detected URL, shown above the
+            compose box as soon as the debounced text parses a valid URL.
+            Dismissible via the X; reappears if the same URL is retyped. */}
+        {livePreview && (
+          <div className="relative mb-2">
+            <LinkPreviewCard
+              url={livePreview.url}
+              title={livePreview.title}
+              description={livePreview.description}
+              image={livePreview.image}
+              siteName={livePreview.siteName}
+            />
+            <button
+              type="button"
+              onClick={() => setDismissedPreviews((prev) => new Set(prev).add(livePreview.url))}
+              aria-label={t('dismiss_preview') || 'Dismiss preview'}
+              title={t('dismiss_preview') || 'Dismiss preview'}
+              className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-bg-surface border border-border-heavy text-text-muted hover:text-text-primary"
+            >
+              <X size={10} strokeWidth={3} />
+            </button>
+          </div>
+        )}
+
         {/* Unified compose box — format strip + optional whisper banner + row
             all inside a single bordered container. Accepts drag & drop for
             files. Purple border when whisper mode is active so the private
@@ -746,17 +816,26 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
         </div>{/* /unified compose box */}
 
-        {/* Character counter — appears only when text is getting close to
-            the 5000-char server limit. Amber at 90%, red at 100%. */}
-        {text.length > 3500 && (
-          <div className="flex justify-end mt-1 pr-1">
-            <span className={`font-mono text-[9px] font-bold tabular-nums ${
-              text.length >= 5000 ? 'text-accent-red' : text.length >= 4500 ? 'text-accent-amber' : 'text-text-muted'
-            }`}>
-              {text.length} / 5000
-            </span>
-          </div>
-        )}
+        {/* Character counter — reads visual characters from the Tiptap
+            CharacterCount extension (not markdown-source bytes), so the
+            UI number matches the server-side validation cap.
+            `text.length` would count "**" wrapper characters as real
+            content, which doesn't match what the user perceives. */}
+        {(() => {
+          if (!editor) return null;
+          const extStorage = editor.storage as unknown as { characterCount?: { characters(): number } };
+          const count = extStorage.characterCount?.characters() ?? text.length;
+          if (count <= 3500) return null;
+          return (
+            <div className="flex justify-end mt-1 pr-1">
+              <span className={`font-mono text-[9px] font-bold tabular-nums ${
+                count >= 5000 ? 'text-accent-red' : count >= 4500 ? 'text-accent-amber' : 'text-text-muted'
+              }`}>
+                {count} / 5000
+              </span>
+            </div>
+          );
+        })()}
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </form>

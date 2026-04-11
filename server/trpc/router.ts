@@ -18,6 +18,7 @@ import { kbRouter } from './routers/kb.js';
 import { webhookRouter } from './routers/webhook.js';
 import { aiRouter } from './routers/ai.js';
 import { statusRouter } from './routers/status.js';
+import { linkPreviewRouter } from './routers/linkPreview.js';
 
 export const appRouter = router({
   status: statusRouter,
@@ -39,6 +40,7 @@ export const appRouter = router({
   alerts: alertsRouter,
   mfa: mfaRouter,
   webhook: webhookRouter,
+  linkPreview: linkPreviewRouter,
 });
 
 export type AppRouter = typeof appRouter;
