@@ -31,6 +31,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Minimal seed** — replaced the `--wipe/--e2e/--full` flag matrix and full faker demo dataset with a single minimal seed: one partner (`acme`), 6 named users, 6 hand-written tickets. Easier to reason about locally.
 - **`SidebarFooter` + `QueueSidebar`** — missing `queued` / `archived` / `toggle_team_panel` i18n keys added (the old `t('in_queue') || 'in queue'` fallback never fired because `useT` returns the key itself on miss).
 - **Client bundle code-split** — Vite `manualChunks` now isolates Tiptap+ProseMirror+markdown-it (`vendor-editor`), `marked`+DOMPurify (`vendor-markdown`), `@trpc`+`@tanstack/react-query` (`vendor-trpc`) and `socket.io-client` (`vendor-socket`). `ComposeArea` is lazy-loaded via `React.lazy` + `Suspense` in `ChatWindow`. Initial `vendor.js` drops from **883 KB → 345 KB** (gzip 289 → 113 KB); the editor stack (~462 KB) is fetched only when a chat actually opens, so `LoginView`, `PlatformView`, and admin tabs without chat never download it. Vite no longer warns about chunks over 500 KB.
+- **`QueueTicketRow` warms the lazy editor chunk on hover** — `onMouseEnter` and `onFocus` fire `import('../chat/ComposeArea')` so the `vendor-editor` chunk is in the browser's module cache by the time the user actually clicks. Module resolution dedupes repeated calls so it's a no-op after the first hover. Cuts ~50–100 ms off perceived first-chat-open latency without delaying initial paint.
 
 ### Fixed
 - **`user.role` permanently undefined** — server login response omits the top-level `role` field (role lives on `memberships[]`), so every client check `state.user?.role === 'agent'` was silently wrong. Broke the rating modal, `useIdleStatus` auto-away, notification filtering, message-delete permissions, and several socket handlers. Root-fixed by deriving `user.role` from the active membership in `authSlice` on every mutation + initial hydration from `sessionStorage`. Learning at `[[learnings/tessera-user-role-login-response-gap]]`.
@@ -52,6 +53,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - `SidebarFooter.test.tsx` updated to match the renamed `queued` i18n key.
   - `UserMenu.test.tsx` updated to match the full-name button (was checking for `AR` initials).
   - `socket/__tests__/auth.test.ts` + `__tests__/isolation.test.ts` updated to match the new `auth:expired` event (was `error`) and the new `identifyUser(…, socketId)` / `decrementUserCount(…, socketId)` signatures.
+- **`chat-enhancements.spec.ts` `openFirstTicket` helper** — dropped the fixed 500 ms `waitForTimeout` (the queue is hydrated via WebSocket so the right gate is the first row becoming visible, which `waitFor` already enforces). Added a 150 ms post-wait settle so Playwright's click doesn't race a queue re-render. Raised the `.ProseMirror` visible timeout from 15 s to 25 s to absorb the cold-cache `vendor-editor` chunk fetch on the first chat open in a fresh browser context. Suite is now deterministic — full E2E sweep passes 51/51 with `retries: 0`.
 
 ## [4.0.0] - 2026-04-05
 
