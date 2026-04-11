@@ -125,41 +125,47 @@ export function register(socket: Socket, ctx: HandlerContext): void {
    * routes only to staff sockets in the room (support/admin/platform
    * operator) and explicitly excludes the ticket's agent — whisper typing
    * is an internal staff signal and must not leak to the customer.
+   *
+   * We iterate ctx.io.sockets.sockets directly (the local-node socket map)
+   * instead of io.in(room).fetchSockets(). fetchSockets() goes through the
+   * adapter and returns RemoteSocket stubs whose .data.role is not reliably
+   * set across the Redis adapter, so the role-based filter silently failed.
+   * Local iteration gives us the real Socket objects with live socket.data.
    */
-  async function broadcastTyping(ticketId: string, typing: boolean, whisper: boolean) {
+  function broadcastTyping(ticketId: string, typing: boolean, whisper: boolean) {
     const room = Rooms.ticket(ticketId);
     if (!whisper) {
       socket.to(room).emit('typing:update', { ticketId, senderName: socket.data.name, typing });
       return;
     }
-    try {
-      const sockets = await ctx.io.in(room).fetchSockets();
-      for (const peer of sockets) {
-        if (peer.id === socket.id) continue;
-        if (peer.data?.role === 'agent') continue;
-        peer.emit('typing:update', { ticketId, senderName: socket.data.name, typing });
-      }
-    } catch (err: unknown) {
-      logger.error({ err: err instanceof Error ? err.message : String(err), ticketId }, '[typing whisper] failed to broadcast');
+    let routed = 0;
+    let skippedAgents = 0;
+    for (const peer of ctx.io.sockets.sockets.values()) {
+      if (peer.id === socket.id) continue;
+      if (!peer.rooms.has(room)) continue;
+      if (peer.data?.role === 'agent') { skippedAgents += 1; continue; }
+      peer.emit('typing:update', { ticketId, senderName: socket.data.name, typing });
+      routed += 1;
     }
+    logger.debug({ ticketId, typing, routed, skippedAgents }, '[typing whisper] broadcast');
   }
 
-  socket.on('typing:start', async (data: unknown) => {
+  socket.on('typing:start', (data: unknown) => {
     if (!requireIdentified(socket)) return;
     const typingParsed = validatePayload(socket, typingSchema, data);
     if (!typingParsed) return;
     const { ticketId, whisper } = typingParsed;
     // Only emit if socket is actually in the ticket room (i.e., is a participant)
     if (!socket.rooms.has(Rooms.ticket(ticketId))) return;
-    await broadcastTyping(ticketId, true, !!whisper);
+    broadcastTyping(ticketId, true, !!whisper);
   });
 
-  socket.on('typing:stop', async (data: unknown) => {
+  socket.on('typing:stop', (data: unknown) => {
     if (!requireIdentified(socket)) return;
     const typingStopParsed = validatePayload(socket, typingSchema, data);
     if (!typingStopParsed) return;
     const { ticketId, whisper } = typingStopParsed;
     if (!socket.rooms.has(Rooms.ticket(ticketId))) return;
-    await broadcastTyping(ticketId, false, !!whisper);
+    broadcastTyping(ticketId, false, !!whisper);
   });
 }
