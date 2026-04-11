@@ -34,7 +34,7 @@ export default function DemoUserPicker({ onLoginSuccess, onMfaRequired }: DemoUs
     setError('');
     setIsDemoLoading(true);
     try {
-      const { password: demoPassword } = await demoLoginMutation.mutateAsync({ email: u.email! });
+      const { password: demoPassword } = await demoLoginMutation.mutateAsync({ userId: u.id });
       const res = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

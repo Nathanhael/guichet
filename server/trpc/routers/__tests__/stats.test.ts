@@ -106,7 +106,7 @@ describe('statsRouter.getGlobalStats', () => {
         isPlatformOperator: false,
         departments: [],
       },
-    } as Parameters<typeof statsRouter.createCaller>[0]);
+    } as unknown as Parameters<typeof statsRouter.createCaller>[0]);
 
     const result = await caller.getGlobalStats({
       dateFrom: '2026-01-01',
@@ -141,7 +141,7 @@ describe('statsRouter.getGlobalStats', () => {
         isPlatformOperator: false,
         departments: [],
       },
-    } as Parameters<typeof statsRouter.createCaller>[0]);
+    } as unknown as Parameters<typeof statsRouter.createCaller>[0]);
 
     const result = await caller.getGlobalStats({
       dateFrom: '2026-01-01',
@@ -160,7 +160,7 @@ describe('statsRouter.getGlobalStats', () => {
         isPlatformOperator: false,
         departments: [],
       },
-    } as Parameters<typeof statsRouter.createCaller>[0]);
+    } as unknown as Parameters<typeof statsRouter.createCaller>[0]);
 
     const result = await caller.getGlobalStats({
       dateFrom: '2026-01-01',
@@ -182,7 +182,7 @@ describe('statsRouter.getGlobalStats', () => {
         isPlatformOperator: false,
         departments: [],
       },
-    } as Parameters<typeof statsRouter.createCaller>[0]);
+    } as unknown as Parameters<typeof statsRouter.createCaller>[0]);
 
     await expect(caller.getGlobalStats({
       dateFrom: '2026-01-01',
@@ -199,7 +199,7 @@ describe('statsRouter.getGlobalStats', () => {
         isPlatformOperator: false,
         departments: [],
       },
-    } as Parameters<typeof statsRouter.createCaller>[0]);
+    } as unknown as Parameters<typeof statsRouter.createCaller>[0]);
 
     // The catch-all in getGlobalStats wraps all errors as INTERNAL_SERVER_ERROR
     await expect(caller.getGlobalStats({
