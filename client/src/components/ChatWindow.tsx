@@ -36,7 +36,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const [firstUnreadIndex, setFirstUnreadIndex] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
-  const [viewers, setViewers] = useState<Array<{ userId: string; userName: string }>>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -128,28 +127,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       }
     };
   }, [ticketId]);
-
-  // ── Collision Detection: listen for viewer updates ────────────────────────
-  useEffect(() => {
-    if (!ticketId) return;
-    const socket = getSocket();
-    if (!socket) return;
-
-    const currentUserId = user?.id;
-
-    function handleViewers({ ticketId: tid, viewers: v }: { ticketId: string; viewers: Array<{ userId: string; userName: string }> }) {
-      if (tid === ticketId) {
-        const others = v.filter((viewer) => viewer.userId !== currentUserId);
-        setViewers(others);
-      }
-    }
-
-    socket.on('ticket:viewers', handleViewers);
-    return () => {
-      socket.off('ticket:viewers', handleViewers);
-      setViewers([]);
-    };
-  }, [ticketId, user?.id]);
 
   // Ctrl+F to open in-conversation search
   useEffect(() => {
@@ -390,7 +367,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         showTransferMenu={showTransferMenu}
         setShowTransferMenu={setShowTransferMenu}
         onTransfer={transferTicket}
-        viewers={viewers}
         closing={closing}
         canClose={canClose}
         agentIsOnline={agentIsOnline}

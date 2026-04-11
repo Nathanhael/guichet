@@ -387,12 +387,12 @@ export default function ChatHeader({
           )}
 
           {/* Soft separator before primary action */}
-          {isSupport && canClose && !isClosed && (
+          {canClose && !isClosed && (
             <span className="w-px h-[18px] bg-border-heavy mx-1" aria-hidden="true" />
           )}
 
-          {/* Primary action: Close Ticket — support/admin only */}
-          {isSupport && canClose && !isClosed && (
+          {/* Primary action: Close Ticket — support/admin or ticket owner (agent) */}
+          {canClose && !isClosed && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
