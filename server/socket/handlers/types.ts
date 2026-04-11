@@ -29,7 +29,9 @@ export type TicketNewPayload = z.infer<typeof ticketNewSchema>;
 
 export const supportJoinSchema = z.object({
   ticketId: z.string().min(1),
-  supportLang: z.string().min(1).max(10),
+  // Language is optional — falls back to 'en' server-side if missing/empty/null.
+  // Accepting undefined/null prevents silent validation rejection when user.lang is not set.
+  supportLang: z.string().max(10).optional().nullable().transform((v) => (v && v.length > 0 ? v : 'en')),
 });
 export type SupportJoinPayload = z.infer<typeof supportJoinSchema>;
 

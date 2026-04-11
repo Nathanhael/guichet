@@ -110,6 +110,10 @@ export function useSocket(): Socket {
       updateTicket(ticketId, { ...(supportId && { supportId }), supportName, status: 'open', participants: participants || [] });
     };
 
+    const handleSupportLeft = ({ ticketId, participants }: { ticketId: string; supportId?: string; supportName?: string; participants: Participant[] }) => {
+      updateTicket(ticketId, { participants: participants || [] });
+    };
+
     const handleTicketHistory = ({ ticketId, messages, labels, hasMore, nextCursor }: {
       ticketId: string; messages: Message[]; labels: string[]; hasMore?: boolean; nextCursor?: string;
     }) => {
@@ -158,6 +162,7 @@ export function useSocket(): Socket {
     };
 
     const handleSupportOnline = (list: OnlineSupport[]) => {
+      console.debug('[socket] support:online', list);
       setOnlineSupportUsers(list);
     };
 
@@ -351,6 +356,7 @@ export function useSocket(): Socket {
     s.on('ticket:created', handleTicketCreated);
     s.on('ticket:created:self', handleTicketCreatedSelf);
     s.on('support:joined', handleSupportJoined);
+    s.on('support:left', handleSupportLeft);
     s.on('ticket:history', handleTicketHistory);
     s.on('message:morePage', handleMorePage);
     s.on('message:new', handleMessageNew);
@@ -387,6 +393,7 @@ export function useSocket(): Socket {
       s.off('ticket:created', handleTicketCreated);
       s.off('ticket:created:self', handleTicketCreatedSelf);
       s.off('support:joined', handleSupportJoined);
+      s.off('support:left', handleSupportLeft);
       s.off('ticket:history', handleTicketHistory);
       s.off('message:morePage', handleMorePage);
       s.off('message:new', handleMessageNew);
