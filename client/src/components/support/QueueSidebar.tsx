@@ -134,18 +134,11 @@ export default function QueueSidebar({
         </div>
       ) : (
       <>
-      {/* Header: tabs + dept chips */}
+      {/* Header: tabs (with inline collapse) + dept chips.
+          Dropped the redundant h2 "QUEUE/ARCHIVE" — the tab label already says it.
+          Collapse chevron rides on the right edge of the tab row. */}
       <div className="px-4 py-3 border-b border-[var(--color-border)]">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="mono-label">
-            {sidebarTab === 'queue' ? t('queue') : t('archive')}
-          </h2>
-          <button onClick={onToggle} className="opacity-30 hover:opacity-100" title="Ctrl+B">
-            <ChevronLeft className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        <div className="flex gap-1 mb-2">
+        <div className="flex items-center gap-1 mb-2">
           {(['queue', 'archive'] as const).map((tab) => (
             <button
               key={tab}
@@ -159,13 +152,22 @@ export default function QueueSidebar({
               {t(tab)}
             </button>
           ))}
+          <button
+            onClick={onToggle}
+            title="Ctrl+B"
+            aria-label="Collapse sidebar"
+            className="shrink-0 w-7 h-[26px] flex items-center justify-center border border-[var(--color-border)] opacity-40 hover:opacity-100"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
         </div>
 
-        {/* Department filter chips */}
-        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-1">
+        {/* Department filter chips — 3-char dept codes (DSC/FOT/TEC)
+            instead of full names, flex-wrap so no horizontal scrollbar. */}
+        <div className="flex items-center gap-1 flex-wrap py-1">
           <button
             onClick={() => setFilterDept('all')}
-            className={`shrink-0 px-3 py-1 text-[9px] font-bold uppercase border flex items-center gap-1.5 ${
+            className={`shrink-0 px-2.5 py-1 text-[9px] font-bold uppercase border flex items-center gap-1.5 tracking-[0.1em] ${
               filterDept === 'all'
                 ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
                 : 'border-[var(--color-border)] opacity-50 hover:opacity-100'
@@ -178,13 +180,14 @@ export default function QueueSidebar({
             <button
               key={dept.id}
               onClick={() => setFilterDept(dept.id)}
-              className={`shrink-0 px-3 py-1 text-[9px] font-bold uppercase border flex items-center gap-1.5 ${
+              title={dept.name}
+              className={`shrink-0 px-2.5 py-1 text-[9px] font-bold uppercase border flex items-center gap-1.5 tracking-[0.1em] ${
                 filterDept === dept.id
                   ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
                   : 'border-[var(--color-border)] opacity-50 hover:opacity-100'
               }`}
             >
-              {dept.name}
+              {dept.id}
               {sidebarTab === 'queue' && <span className="text-[8px] tabular-nums text-[var(--color-accent-blue)]">{deptCounts[dept.id] || 0}</span>}
             </button>
           ))}
