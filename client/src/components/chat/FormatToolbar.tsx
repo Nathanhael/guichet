@@ -1,10 +1,12 @@
 import React from 'react';
+import type { Editor } from '@tiptap/react';
 import { Bold, Italic, Strikethrough, Code, Quote, List } from 'lucide-react';
 
 interface FormatToolbarProps {
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
-  onTextChange: (newText: string) => void;
-  getText: () => string;
+  /** Tiptap editor instance. Each format button drives an editor command
+   *  via chain().focus().toggle…().run(), with the button's active state
+   *  reflecting editor.isActive(mark). */
+  editor: Editor | null;
 }
 
 type IconComponent = React.ComponentType<{ className?: string; strokeWidth?: number }>;
@@ -12,122 +14,71 @@ type IconComponent = React.ComponentType<{ className?: string; strokeWidth?: num
 interface FormatAction {
   title: string;
   Icon: IconComponent;
-  apply: (text: string, start: number, end: number) => { newText: string; cursorStart: number; cursorEnd: number };
+  /** Tiptap mark/node name to check for active state. */
+  activeKey: string;
+  /** Toggle command to run when the button is clicked. */
+  run: (editor: Editor) => void;
 }
 
 const FORMAT_ACTIONS: FormatAction[] = [
   {
     title: 'Bold',
     Icon: Bold,
-    apply: (text, start, end) => {
-      const selected = text.slice(start, end);
-      const wrapped = `**${selected}**`;
-      const newText = text.slice(0, start) + wrapped + text.slice(end);
-      return {
-        newText,
-        cursorStart: selected ? start : start + 2,
-        cursorEnd: selected ? start + wrapped.length : start + 2,
-      };
-    },
+    activeKey: 'bold',
+    run: (editor) => { editor.chain().focus().toggleBold().run(); },
   },
   {
     title: 'Italic',
     Icon: Italic,
-    apply: (text, start, end) => {
-      const selected = text.slice(start, end);
-      const wrapped = `*${selected}*`;
-      const newText = text.slice(0, start) + wrapped + text.slice(end);
-      return {
-        newText,
-        cursorStart: selected ? start : start + 1,
-        cursorEnd: selected ? start + wrapped.length : start + 1,
-      };
-    },
+    activeKey: 'italic',
+    run: (editor) => { editor.chain().focus().toggleItalic().run(); },
   },
   {
     title: 'Strikethrough',
     Icon: Strikethrough,
-    apply: (text, start, end) => {
-      const selected = text.slice(start, end);
-      const wrapped = `~~${selected}~~`;
-      const newText = text.slice(0, start) + wrapped + text.slice(end);
-      return {
-        newText,
-        cursorStart: selected ? start : start + 2,
-        cursorEnd: selected ? start + wrapped.length : start + 2,
-      };
-    },
+    activeKey: 'strike',
+    run: (editor) => { editor.chain().focus().toggleStrike().run(); },
   },
   {
     title: 'Code',
     Icon: Code,
-    apply: (text, start, end) => {
-      const selected = text.slice(start, end);
-      const wrapped = `\`${selected}\``;
-      const newText = text.slice(0, start) + wrapped + text.slice(end);
-      return {
-        newText,
-        cursorStart: selected ? start : start + 1,
-        cursorEnd: selected ? start + wrapped.length : start + 1,
-      };
-    },
+    activeKey: 'code',
+    run: (editor) => { editor.chain().focus().toggleCode().run(); },
   },
   {
     title: 'Blockquote',
     Icon: Quote,
-    apply: (text, start, _end) => {
-      const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-      const newText = text.slice(0, lineStart) + '> ' + text.slice(lineStart);
-      return {
-        newText,
-        cursorStart: start + 2,
-        cursorEnd: start + 2,
-      };
-    },
+    activeKey: 'blockquote',
+    run: (editor) => { editor.chain().focus().toggleBlockquote().run(); },
   },
   {
     title: 'List',
     Icon: List,
-    apply: (text, start, _end) => {
-      const lineStart = text.lastIndexOf('\n', start - 1) + 1;
-      const newText = text.slice(0, lineStart) + '- ' + text.slice(lineStart);
-      return {
-        newText,
-        cursorStart: start + 2,
-        cursorEnd: start + 2,
-      };
-    },
+    activeKey: 'bulletList',
+    run: (editor) => { editor.chain().focus().toggleBulletList().run(); },
   },
 ];
 
-export default function FormatToolbar({ textareaRef, onTextChange, getText }: FormatToolbarProps) {
-  function handleAction(action: FormatAction) {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const text = getText();
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
-    const result = action.apply(text, start, end);
-    onTextChange(result.newText);
-    requestAnimationFrame(() => {
-      ta.focus();
-      ta.selectionStart = result.cursorStart;
-      ta.selectionEnd = result.cursorEnd;
-    });
-  }
-
+export default function FormatToolbar({ editor }: FormatToolbarProps) {
   return (
     <div className="flex items-center gap-0.5 px-1.5 py-1 border-b border-border">
       {FORMAT_ACTIONS.map((action) => {
         const { Icon } = action;
+        const isActive = editor?.isActive(action.activeKey) ?? false;
         return (
           <button
             key={action.title}
             type="button"
             title={action.title}
             aria-label={action.title}
-            onClick={() => handleAction(action)}
-            className="w-7 h-7 flex items-center justify-center text-text-muted hover:text-text-primary hover:bg-bg-surface border border-transparent hover:border-border-heavy"
+            aria-pressed={isActive}
+            disabled={!editor}
+            onClick={() => editor && action.run(editor)}
+            className={`w-7 h-7 flex items-center justify-center border ${
+              isActive
+                ? 'text-text-primary bg-bg-surface border-border-heavy'
+                : 'text-text-muted border-transparent hover:text-text-primary hover:bg-bg-surface hover:border-border-heavy'
+            } disabled:opacity-30`}
           >
             <Icon className="w-3.5 h-3.5" strokeWidth={2.5} />
           </button>
