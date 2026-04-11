@@ -10,7 +10,7 @@ import FormatToolbar from './FormatToolbar';
 import Toast from '../Toast';
 import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
-import { useComposeEditor } from '../../hooks/useComposeEditor';
+import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEditor';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -87,6 +87,13 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
       : (t('type_message') || 'Type a message\u2026'),
     onUpdate: (markdown) => {
+      // Short-circuit the write-back when the update was triggered by
+      // our own programmatic setContent (draft hydrate / AI improve /
+      // canned pick / clear-on-send). Without this guard the markdown
+      // round-trip could ping-pong between text state and editor state
+      // on lossy serializations (trailing newlines, list marker
+      // normalization, etc.).
+      if (isProgrammaticUpdateRef.current) return;
       setText(markdown);
       // Canned-response trigger — only when message starts with "/".
       if (isSupport) {
@@ -102,17 +109,45 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     },
   });
 
+  // Guard flag: when we programmatically call setContent below, Tiptap's
+  // onUpdate may still fire (some versions of tiptap-markdown hook it
+  // internally regardless of emitUpdate). The flag lets the onUpdate
+  // callback short-circuit and not write back into `text`, preventing a
+  // potential ping-pong loop when the markdown round-trip isn't lossless.
+  const isProgrammaticUpdateRef = useRef(false);
+
   // Push text state into the editor when it was set programmatically
   // (draft hydrate, AI improve/revert, canned pick, clear-on-send). We
   // avoid re-setting content that already matches the editor's current
   // markdown, otherwise onUpdate would re-fire and bounce the value.
   useEffect(() => {
     if (!editor) return;
-    const storage = editor.storage as unknown as { markdown?: { getMarkdown(): string } };
-    const current = storage.markdown?.getMarkdown() ?? editor.getText();
-    if (current === text) return;
+    if (getEditorMarkdown(editor) === text) return;
+    isProgrammaticUpdateRef.current = true;
     editor.commands.setContent(text, { emitUpdate: false });
+    // Clear on the next microtask so any synchronous onUpdate triggered
+    // by setContent is suppressed, but future real keystrokes are not.
+    queueMicrotask(() => { isProgrammaticUpdateRef.current = false; });
   }, [editor, text]);
+
+  // Dynamic placeholder — Tiptap's Placeholder extension stores the value
+  // at editor construction time and doesn't reactively pick up prop
+  // changes on re-render. Imperatively update the ProseMirror root's
+  // data-placeholder attribute when whisperMode toggles so the empty-state
+  // pseudo-element CSS rule reads the new text.
+  useEffect(() => {
+    if (!editor) return;
+    const next = whisperMode
+      ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
+      : (t('type_message') || 'Type a message\u2026');
+    editor.view.dom.setAttribute('data-placeholder', next);
+    // Also patch the Placeholder extension's stored options so empty-state
+    // renders on initial mount before the first keystroke.
+    const placeholderExt = editor.extensionManager.extensions.find((ext: { name: string }) => ext.name === 'placeholder') as { options: { placeholder: string } } | undefined;
+    if (placeholderExt) {
+      placeholderExt.options.placeholder = next;
+    }
+  }, [editor, whisperMode, t]);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -124,7 +159,11 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   useImperativeHandle(ref, () => ({
     toggleWhisper: () => setWhisperMode((v) => !v),
     focus: () => editor?.commands.focus(),
-  }), []);
+    // Re-runs when the editor instance resolves (useEditor is async on
+    // first mount, so `editor` is null on render 1 and non-null soon
+    // after). Without editor in the dep array, focus() would capture
+    // the initial null and silently no-op forever.
+  }), [editor]);
 
   // Cleanup on unmount: revoke Object URLs + stop typing indicator
   useEffect(() => {
