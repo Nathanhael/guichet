@@ -33,12 +33,15 @@ export default function AgentStatusStats({ userId }: AgentStatusStatsProps) {
     ? trpc.status.getAgentStats.useQuery({ userId, fromDate, toDate })
     : trpc.status.getTeamStats.useQuery({ fromDate, toDate });
 
-  const chartData = ((teamStats || []) as DailyStatusRow[]).map((row) => ({
-    name: row.userId.slice(0, 8),
-    date: row.date,
-    Online: row.onlineSeconds,
-    Away: row.awaySeconds,
-  }));
+  const rows = Array.isArray(teamStats) ? (teamStats as DailyStatusRow[]) : [];
+  const chartData = rows
+    .filter((row) => row && typeof row.userId === 'string')
+    .map((row) => ({
+      name: row.userId.slice(0, 8),
+      date: row.date,
+      Online: row.onlineSeconds,
+      Away: row.awaySeconds,
+    }));
 
   return (
     <div className="border border-border bg-bg-surface p-4">

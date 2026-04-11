@@ -42,6 +42,6 @@ describe('GDPR chain integrity abort (SEC-2)', () => {
   });
 
   it('throw statement for chain integrity violation is present', () => {
-    expect(gdprSource).toContain('GDPR purge aborted: audit chain integrity violation detected');
+    expect(gdprSource).toContain('GDPR purge aborted: audit chain verification failed');
   });
 });

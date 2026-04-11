@@ -29,6 +29,11 @@ vi.mock('../utils/logger.js', () => ({
   },
 }));
 
+vi.mock('./encryption.js', () => ({
+  decrypt: vi.fn((s: string) => s),
+  encrypt: vi.fn((s: string) => s),
+}));
+
 /* ── DNS mock ────────────────────────────────────────────────────────── */
 
 vi.mock('dns', () => ({
