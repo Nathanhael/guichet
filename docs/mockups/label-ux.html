@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tessera — Label UX Mockups</title>
+<style>
+  :root {
+    --bg: #09090b;
+    --bg-surface: #18181b;
+    --bg-elevated: #27272a;
+    --border: #3f3f46;
+    --border-heavy: #52525b;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-blue: #3b82f6;
+    --accent-green: #22c55e;
+    --accent-red: #ef4444;
+    --accent-amber: #f59e0b;
+    --accent-purple: #a855f7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 20px;
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+  h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 48px 0 12px 0;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    max-width: 600px;
+    line-height: 1.5;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+
+  /* Chat header shell */
+  .chat {
+    background: var(--bg-surface);
+    border: 2px solid var(--border-heavy);
+    margin-bottom: 8px;
+  }
+  .chat-header {
+    background: var(--bg-elevated);
+    border-bottom: 2px solid var(--border-heavy);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+  .right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+  .dept-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  .customer-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .online-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-green);
+  }
+  .lang-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+  .sep {
+    color: var(--border);
+    font-size: 8px;
+  }
+  .support-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .support-tag svg { width: 14px; height: 14px; color: var(--accent-blue); }
+  .support-tag span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-blue);
+  }
+
+  /* Buttons — right cluster */
+  .ref {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .ref-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.5;
+  }
+  .ref-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .btn-icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .btn-icon:hover { color: var(--text-primary); }
+  .btn-icon svg { width: 14px; height: 14px; }
+  .btn-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 6px 12px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .btn-primary {
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    background: var(--accent-blue);
+    color: #fff;
+    border: 2px solid var(--accent-blue);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-primary svg { width: 14px; height: 14px; }
+  .divider { border-left: 2px solid var(--border-heavy); padding-left: 8px; display: flex; align-items: center; }
+  .btn-close-x {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  .btn-close-x:hover { opacity: 1; background: var(--bg-elevated); }
+  .btn-close-x svg { width: 16px; height: 16px; }
+
+  /* Label pills */
+  .label-row {
+    background: var(--bg-surface);
+    border-bottom: 2px solid var(--border-heavy);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .label-row-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.4;
+    margin-right: 4px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    color: #fff;
+    cursor: default;
+    position: relative;
+  }
+  .pill.bug { background: var(--accent-red); }
+  .pill.urgent { background: var(--accent-amber); color: #18181b; }
+  .pill.billing { background: var(--accent-purple); }
+  .pill.feature { background: var(--accent-blue); }
+  .pill.vip { background: var(--accent-green); color: #18181b; }
+
+  .pill-removable:hover .pill-x { opacity: 1; }
+  .pill-x {
+    opacity: 0;
+    transition: opacity 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    margin: -2px -4px -2px 2px;
+    cursor: pointer;
+  }
+  .pill-x:hover { background: rgba(0,0,0,0.25); }
+  .pill-x svg { width: 10px; height: 10px; }
+
+  .btn-add-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 1px dashed var(--border-heavy);
+    cursor: pointer;
+  }
+  .btn-add-label:hover {
+    color: var(--text-primary);
+    border-style: solid;
+    border-color: var(--accent-blue);
+  }
+  .btn-add-label svg { width: 10px; height: 10px; }
+
+  /* Option B button */
+  .label-count-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 6px 12px;
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 16px;
+    height: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 800;
+    background: var(--accent-blue);
+    color: #fff;
+    padding: 0 4px;
+  }
+
+  /* Chat body filler */
+  .chat-body {
+    padding: 24px 16px;
+    min-height: 80px;
+    color: var(--text-muted);
+    font-size: 12px;
+    text-align: center;
+    font-style: italic;
+  }
+
+  .toggle-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .toggle-row button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .toggle-row button.active {
+    background: var(--accent-blue);
+    color: #fff;
+    border-color: var(--accent-blue);
+  }
+
+  .notes {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-surface);
+    border-left: 2px solid var(--accent-blue);
+    line-height: 1.6;
+  }
+  .notes strong { color: var(--text-primary); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>TESSERA — LABEL UX MOCKUPS</h1>
+  <p class="desc">Three proposals for labeling support tickets in ChatWindow header. All assume secondary-row or inline-pill patterns. Brutalist tokens only: no gradients, no shadows, no border-radius.</p>
+
+  <!-- OPTION A — Secondary row -->
+  <h2>OPTION A — Secondary row below header (recommended)</h2>
+  <p class="desc">Labels render in a dedicated slim strip under the main header. Pills are always visible. Hover a pill → X fades in to remove. `+ LABEL` button at end opens dropdown picker.</p>
+
+  <div class="chat">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">Marie Dupont <span class="online-dot"></span></span>
+        <span class="lang-badge">FR</span>
+        <span class="sep">●</span>
+        <span class="support-tag">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>bart.v</span>
+        </span>
+      </div>
+      <div class="right">
+        <span class="ref">
+          <span class="ref-label">REF</span>
+          <span class="ref-value">#T-4821</span>
+        </span>
+        <button class="btn-icon" title="Search">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </button>
+        <button class="btn-text">Transfer</button>
+        <div class="divider">
+          <button class="btn-primary">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            CLOSE
+          </button>
+        </div>
+        <button class="btn-close-x" title="Leave">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="label-row">
+      <span class="label-row-title">LABELS</span>
+      <span class="pill bug pill-removable">
+        BUG
+        <span class="pill-x"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></span>
+      </span>
+      <span class="pill urgent pill-removable">
+        URGENT
+        <span class="pill-x"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></span>
+      </span>
+      <span class="pill billing pill-removable">
+        BILLING
+        <span class="pill-x"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></span>
+      </span>
+      <button class="btn-add-label">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        LABEL
+      </button>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <!-- Empty state -->
+  <p class="desc" style="margin-top: 16px;">Empty state (support view, no labels yet):</p>
+  <div class="chat">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">John Smith <span class="online-dot"></span></span>
+        <span class="lang-badge">EN</span>
+      </div>
+      <div class="right">
+        <span class="ref">
+          <span class="ref-label">ORDER</span>
+          <span class="ref-value">ORD-99214</span>
+        </span>
+        <button class="btn-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>
+        <button class="btn-text">Transfer</button>
+        <div class="divider"><button class="btn-primary"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>CLOSE</button></div>
+        <button class="btn-close-x"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="label-row">
+      <span class="label-row-title">LABELS</span>
+      <button class="btn-add-label">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        LABEL
+      </button>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <div class="notes">
+    <strong>A pros:</strong> Labels always visible · clean main header · room for 5-6 labels without crowding · hover-to-remove is discoverable <br>
+    <strong>A cons:</strong> +1 row of vertical chrome (~32px) · label row hides in focus/compact mode
+  </div>
+
+  <!-- OPTION B — Single header button -->
+  <h2>OPTION B — Single button with count in header</h2>
+  <p class="desc">One `LABELS (3)` button in right cluster. Click → dropdown shows pills + picker combined. Saves vertical space but labels hidden until clicked.</p>
+
+  <div class="chat">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">Marie Dupont <span class="online-dot"></span></span>
+        <span class="lang-badge">FR</span>
+        <span class="sep">●</span>
+        <span class="support-tag">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>bart.v</span>
+        </span>
+      </div>
+      <div class="right">
+        <span class="ref">
+          <span class="ref-label">REF</span>
+          <span class="ref-value">#T-4821</span>
+        </span>
+        <button class="label-count-btn">LABELS <span class="count-badge">3</span></button>
+        <button class="btn-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>
+        <button class="btn-text">Transfer</button>
+        <div class="divider"><button class="btn-primary"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>CLOSE</button></div>
+        <button class="btn-close-x"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <div class="notes">
+    <strong>B pros:</strong> Zero extra vertical space · consistent with Transfer button pattern<br>
+    <strong>B cons:</strong> Labels invisible at-a-glance · defeats triage use case · count badge competes with Transfer visually
+  </div>
+
+  <!-- OPTION C — Inline pills in header right -->
+  <h2>OPTION C — Inline pills in header (right cluster)</h2>
+  <p class="desc">Pills render inline with action buttons. Compact but crowds quickly with 3+ labels or references.</p>
+
+  <div class="chat">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">Marie Dupont <span class="online-dot"></span></span>
+        <span class="lang-badge">FR</span>
+      </div>
+      <div class="right">
+        <span class="ref"><span class="ref-label">REF</span><span class="ref-value">#T-4821</span></span>
+        <span class="pill bug">BUG</span>
+        <span class="pill urgent">URGENT</span>
+        <span class="pill billing">BILLING</span>
+        <button class="btn-add-label"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg></button>
+        <button class="btn-icon"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>
+        <button class="btn-text">Transfer</button>
+        <div class="divider"><button class="btn-primary"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>CLOSE</button></div>
+        <button class="btn-close-x"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <div class="notes">
+    <strong>C pros:</strong> Zero extra vertical space · labels visible at-a-glance<br>
+    <strong>C cons:</strong> Crowds with 3+ labels · wraps on narrow screens · references get pushed · pill removal UX harder to reach
+  </div>
+
+  <h2>LABEL ROW — TOGGLE BEHAVIOR</h2>
+  <p class="desc">Four toggle strategies. Pick one or combine. Goal: at-a-glance for triage, but dismissable when screen real-estate matters.</p>
+
+  <style>
+    .toggle-bar {
+      background: var(--bg-surface);
+      border-bottom: 2px solid var(--border-heavy);
+      padding: 6px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+    }
+    .toggle-bar:hover { background: var(--bg-elevated); }
+    .toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .toggle-left .count {
+      background: var(--accent-blue);
+      color: #fff;
+      padding: 1px 6px;
+      font-size: 9px;
+    }
+    .chevron {
+      color: var(--text-muted);
+      font-size: 10px;
+      transition: transform 0.15s;
+    }
+    .chevron.open { transform: rotate(90deg); }
+
+    .mini-pills {
+      display: inline-flex;
+      gap: 4px;
+      margin-left: 8px;
+    }
+    .mini-pill {
+      display: inline-block;
+      width: 24px;
+      height: 4px;
+    }
+    .mini-pill.bug { background: var(--accent-red); }
+    .mini-pill.urgent { background: var(--accent-amber); }
+    .mini-pill.billing { background: var(--accent-purple); }
+  </style>
+
+  <p class="desc" style="margin-top: 24px;"><strong style="color:#fafafa;">T1 — Chevron click to collapse/expand (per-ticket, localStorage)</strong></p>
+  <p class="desc">Default: expanded when labels exist. User clicks row title to collapse. State persisted per-ticket.</p>
+
+  <div class="chat">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">Marie Dupont <span class="online-dot"></span></span>
+      </div>
+      <div class="right" style="gap:6px;">
+        <span class="ref"><span class="ref-label">REF</span><span class="ref-value">#T-4821</span></span>
+      </div>
+    </div>
+    <div class="toggle-bar">
+      <div class="toggle-left">
+        <span class="chevron open">▸</span>
+        <span>LABELS</span>
+        <span class="count">3</span>
+      </div>
+    </div>
+    <div class="label-row" style="border-top: 1px solid var(--border);">
+      <span class="pill bug">BUG</span>
+      <span class="pill urgent">URGENT</span>
+      <span class="pill billing">BILLING</span>
+      <button class="btn-add-label"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>LABEL</button>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <p class="desc" style="margin-top: 12px;">Collapsed state — mini color bars show labels exist without the full pills:</p>
+  <div class="chat">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">Marie Dupont <span class="online-dot"></span></span>
+      </div>
+      <div class="right" style="gap:6px;">
+        <span class="ref"><span class="ref-label">REF</span><span class="ref-value">#T-4821</span></span>
+      </div>
+    </div>
+    <div class="toggle-bar">
+      <div class="toggle-left">
+        <span class="chevron">▸</span>
+        <span>LABELS</span>
+        <span class="count">3</span>
+        <span class="mini-pills">
+          <span class="mini-pill bug"></span>
+          <span class="mini-pill urgent"></span>
+          <span class="mini-pill billing"></span>
+        </span>
+      </div>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <p class="desc" style="margin-top: 24px;"><strong style="color:#fafafa;">T2 — Global setting in SettingsPopover (per-user)</strong></p>
+  <p class="desc">"Show label row" toggle in the gear popover. On/off affects all tickets. Most consistent with existing pref pattern.</p>
+
+  <div style="display: flex; gap: 16px; align-items: flex-start;">
+    <div class="chat" style="flex: 1;">
+      <div class="chat-header">
+        <div class="left">
+          <span class="dept-badge">SUPPORT</span>
+          <span class="customer-name">Marie Dupont</span>
+        </div>
+        <div class="right" style="gap:6px;">
+          <span class="ref"><span class="ref-label">REF</span><span class="ref-value">#T-4821</span></span>
+        </div>
+      </div>
+      <div class="label-row">
+        <span class="label-row-title">LABELS</span>
+        <span class="pill bug">BUG</span>
+        <span class="pill urgent">URGENT</span>
+        <button class="btn-add-label"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>LABEL</button>
+      </div>
+      <div class="chat-body">— enabled —</div>
+    </div>
+
+    <div style="width: 220px; background: var(--bg-surface); border: 2px solid var(--border-heavy); padding: 12px;">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);">SETTINGS</div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 6px 0;">
+        <span>Focus mode</span>
+        <span style="font-family: monospace; color: var(--text-muted);">◯</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 6px 0;">
+        <span>Compact mode</span>
+        <span style="font-family: monospace; color: var(--text-muted);">◯</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 6px 0; background: rgba(59,130,246,0.1); margin: 0 -12px; padding-left: 12px; padding-right: 12px;">
+        <span style="color: var(--accent-blue); font-weight: 700;">Show labels row</span>
+        <span style="font-family: monospace; color: var(--accent-blue);">●</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 6px 0;">
+        <span>Notifications</span>
+        <span style="font-family: monospace; color: var(--accent-blue);">●</span>
+      </div>
+    </div>
+  </div>
+
+  <p class="desc" style="margin-top: 24px;"><strong style="color:#fafafa;">T3 — Smart auto-hide (no toggle)</strong></p>
+  <p class="desc">Row shows when labels exist. Hidden when empty for end-users (agents). Support/admin always see empty state with `+ LABEL` button to enable quick-add. No user control needed.</p>
+
+  <div style="display: flex; gap: 8px;">
+    <div class="chat" style="flex: 1;">
+      <div class="chat-header" style="padding: 8px 12px;">
+        <div class="left"><span class="customer-name" style="font-size: 13px;">End-user · no labels</span></div>
+      </div>
+      <div class="chat-body">— no label row rendered —</div>
+    </div>
+    <div class="chat" style="flex: 1;">
+      <div class="chat-header" style="padding: 8px 12px;">
+        <div class="left"><span class="customer-name" style="font-size: 13px;">Support · no labels</span></div>
+      </div>
+      <div class="label-row">
+        <span class="label-row-title">LABELS</span>
+        <button class="btn-add-label"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>LABEL</button>
+      </div>
+      <div class="chat-body">— support sees add button —</div>
+    </div>
+  </div>
+
+  <p class="desc" style="margin-top: 24px;"><strong style="color:#fafafa;">T4 — Hybrid (recommended)</strong></p>
+  <p class="desc">Combines T1 + T3. Auto-hide empty rows for end-users, per-ticket collapse for support. Best of both: zero chrome when not needed, quick access when it is.</p>
+
+  <div class="notes">
+    <strong>Rules for T4 (recommended):</strong><br>
+    • End-user (agent view): row never shown — they don't manage labels<br>
+    • Support/admin, ticket has labels: row expanded by default, chevron collapses to compact strip (T1 style)<br>
+    • Support/admin, ticket empty: row shown expanded with `+ LABEL` button only<br>
+    • Collapse state persisted per-ticket in localStorage (key: `tessera.labelRow.collapsed.${ticketId}`)<br>
+    • Auto-hide in focus/compact mode (inherited from existing header rules)<br>
+    <br>
+    <strong>No global setting needed</strong> — the toggle lives on the row itself and is cheaper to discover than a SettingsPopover entry.
+  </div>
+
+  <h2>RIGHT-CLUSTER BUTTON SIZING</h2>
+  <p class="desc">Current cluster mixes heights (28/32/34px), icon sizes (14/16px), and padding. Here are 3 refinements — all unified to a single button height. Pick one.</p>
+
+  <style>
+    /* Unified v1: 28px compact */
+    .u1 .btn { height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 12px; cursor: pointer; }
+    .u1 .btn:hover { background: var(--bg-elevated); }
+    .u1 .btn-icon { width: 28px; padding: 0; }
+    .u1 .btn svg { width: 13px; height: 13px; }
+    .u1 .btn-primary { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; gap: 6px; }
+    .u1 .btn-primary:hover { background: #2563eb; }
+
+    /* Unified v2: 32px standard */
+    .u2 .btn { height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 0 14px; cursor: pointer; }
+    .u2 .btn:hover { background: var(--bg-elevated); }
+    .u2 .btn-icon { width: 32px; padding: 0; }
+    .u2 .btn svg { width: 14px; height: 14px; }
+    .u2 .btn-primary { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
+    .u2 .btn-primary:hover { background: #2563eb; }
+    .u2 .sep-v { width: 1px; height: 18px; background: var(--border-heavy); margin: 0 2px; }
+
+    /* Unified v3: 32px icon-led */
+    .u3 .btn { height: 32px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 700; padding: 0 12px; cursor: pointer; }
+    .u3 .btn:hover { background: var(--bg-elevated); }
+    .u3 .btn-icon { width: 32px; padding: 0; }
+    .u3 .btn svg { width: 14px; height: 14px; stroke-width: 2; }
+    .u3 .btn-primary { background: var(--accent-blue); border-color: var(--accent-blue); color: #fff; }
+    .u3 .btn-primary:hover { background: #2563eb; }
+    .u3 .sep-v { width: 1px; height: 18px; background: var(--border-heavy); margin: 0 2px; }
+  </style>
+
+  <p class="desc" style="margin-top: 24px;"><strong style="color:#fafafa;">V1 — Compact 28px, all mono uppercase</strong></p>
+  <div class="chat u1">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">Marie Dupont <span class="online-dot"></span></span>
+        <span class="lang-badge">FR</span>
+      </div>
+      <div class="right" style="gap:6px;">
+        <span class="ref"><span class="ref-label">REF</span><span class="ref-value">#T-4821</span></span>
+        <button class="btn btn-icon" title="Search"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>
+        <button class="btn">TRANSFER</button>
+        <button class="btn btn-primary">CLOSE</button>
+        <button class="btn btn-icon" title="Leave"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="label-row">
+      <span class="label-row-title">LABELS</span>
+      <span class="pill bug">BUG</span>
+      <span class="pill urgent">URGENT</span>
+      <button class="btn-add-label"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>LABEL</button>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <p class="desc" style="margin-top: 24px;"><strong style="color:#fafafa;">V2 — Standard 32px, mono uppercase, soft separator before Close</strong> (recommended)</p>
+  <div class="chat u2">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">Marie Dupont <span class="online-dot"></span></span>
+        <span class="lang-badge">FR</span>
+      </div>
+      <div class="right" style="gap:6px;">
+        <span class="ref"><span class="ref-label">REF</span><span class="ref-value">#T-4821</span></span>
+        <button class="btn btn-icon" title="Search"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>
+        <button class="btn">TRANSFER</button>
+        <span class="sep-v"></span>
+        <button class="btn btn-primary"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>CLOSE</button>
+        <button class="btn btn-icon" title="Leave"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="label-row">
+      <span class="label-row-title">LABELS</span>
+      <span class="pill bug">BUG</span>
+      <span class="pill urgent">URGENT</span>
+      <span class="pill billing">BILLING</span>
+      <button class="btn-add-label"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>LABEL</button>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <p class="desc" style="margin-top: 24px;"><strong style="color:#fafafa;">V3 — Standard 32px, Inter sentence-case, icons on Transfer too</strong></p>
+  <div class="chat u3">
+    <div class="chat-header">
+      <div class="left">
+        <span class="dept-badge">SUPPORT</span>
+        <span class="customer-name">Marie Dupont <span class="online-dot"></span></span>
+        <span class="lang-badge">FR</span>
+      </div>
+      <div class="right" style="gap:6px;">
+        <span class="ref"><span class="ref-label">REF</span><span class="ref-value">#T-4821</span></span>
+        <button class="btn btn-icon" title="Search"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg></button>
+        <button class="btn"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Transfer</button>
+        <span class="sep-v"></span>
+        <button class="btn btn-primary"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>Close</button>
+        <button class="btn btn-icon" title="Leave"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button>
+      </div>
+    </div>
+    <div class="label-row">
+      <span class="label-row-title">LABELS</span>
+      <span class="pill bug">BUG</span>
+      <span class="pill urgent">URGENT</span>
+      <button class="btn-add-label"><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>LABEL</button>
+    </div>
+    <div class="chat-body">— message list —</div>
+  </div>
+
+  <div class="notes">
+    <strong>Fixes applied to all 3 variants:</strong><br>
+    • Unified button height (no more 28/32/34 mix)<br>
+    • Consistent icon size (14px)<br>
+    • Consistent border + padding<br>
+    • Soft vertical separator (V2/V3) instead of aggressive border-l-2 wrapper<br>
+    • Leave (X) button now matches other icon buttons — same border, same size<br>
+    <br>
+    <strong>V2 recommended:</strong> 32px is comfortable touch target, mono uppercase matches brutalist typography rules, soft separator groups the primary action without dominating.
+  </div>
+
+  <h2>VERDICT</h2>
+  <div class="notes">
+    <strong>Option A wins</strong> for Tessera's triage-heavy support workflow. Labels are metadata agents need at-a-glance (priority, category, customer tier). The secondary row adds 32px of chrome but matches the brutalist pattern already used for AI summary + collision viewers below the header.
+    <br><br>
+    Config: row visible only for support/admin OR when labels exist. Hides in focus/compact mode (same rule as existing header items).
+  </div>
+</div>
+</body>
+</html>

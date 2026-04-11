@@ -36,9 +36,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const [firstUnreadIndex, setFirstUnreadIndex] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
-  const [summary, setSummary] = useState<string | null>(null);
-  const [summarizing, setSummarizing] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
   const [viewers, setViewers] = useState<Array<{ userId: string; userName: string }>>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,26 +87,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     staleTime: 60_000,
   });
   const aiConfig = aiConfigQuery.data;
-
-  // tRPC: Chat Summarization
-  const summarizeMutation = trpc.ai.summarizeChat.useMutation();
-  const canSummarize = isSupport && aiConfig?.chatSummarization === true;
-
-  async function handleSummarize(refresh = false) {
-    if (summarizing || !ticketId) return;
-    setSummarizing(true);
-    try {
-      const result = await summarizeMutation.mutateAsync({ ticketId, refresh });
-      setSummary(result.summary);
-      setShowSummary(true);
-    } catch (err) {
-      console.error('[ChatWindow] Summarization failed:', err);
-      setSummary(null);
-      setShowSummary(false);
-    } finally {
-      setSummarizing(false);
-    }
-  }
 
   // tRPC: Agent Presence
   const presenceQuery = trpc.presence.getOnlineStatus.useQuery(
@@ -413,15 +390,9 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         showTransferMenu={showTransferMenu}
         setShowTransferMenu={setShowTransferMenu}
         onTransfer={transferTicket}
-        summary={summary}
-        showSummary={showSummary}
-        summarizing={summarizing}
-        onSummarize={handleSummarize}
-        onDismissSummary={() => setShowSummary(false)}
         viewers={viewers}
         closing={closing}
         canClose={canClose}
-        canSummarize={canSummarize}
         agentIsOnline={agentIsOnline}
         onCloseTicket={closeTicket}
         onOpenSearch={() => setSearchOpen(true)}
