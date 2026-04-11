@@ -44,8 +44,14 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     socket.on('ticket:new', async (data: unknown) => {
       if (!requireIdentified(socket)) return;
       const parsed = validatePayload(socket, ticketNewSchema, data);
-      if (!parsed) return;
-      if (socket.data.role !== 'agent') return socket.emit('error', { message: 'Only agents can create tickets' });
+      if (!parsed) {
+        logger.warn({ socketId: socket.id, userId: socket.data.userId }, '[ticket:new] payload validation failed');
+        return;
+      }
+      if (socket.data.role !== 'agent') {
+        logger.warn({ socketId: socket.id, userId: socket.data.userId, role: socket.data.role }, '[ticket:new] rejected — not an agent');
+        return socket.emit('error', { message: 'Only agents can create tickets' });
+      }
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       try {
@@ -53,6 +59,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         const partnerRow = partnerId ? await findPartnerConfig(partnerId) : null;
 
         if (partnerRow && partnerRow.status !== 'active') {
+          logger.warn({ partnerId, status: partnerRow.status }, '[ticket:new] rejected — partner inactive');
           return socket.emit('error', { message: 'Partner is currently inactive.' });
         }
 
@@ -65,6 +72,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
         const businessHoursStatus = getBusinessHoursStatus(partnerHours);
         if (!businessHoursStatus.isOpen) {
+          logger.warn({ partnerId, nextOpen: businessHoursStatus.nextOpenAt }, '[ticket:new] rejected — business hours closed');
           return socket.emit('hours:closed', {
             code: 'BUSINESS_HOURS_CLOSED',
             message: businessHoursStatus.message,
@@ -74,9 +82,19 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
         const { agentLang, dept, references = [], text, mediaUrl } = parsed;
         const agentId = socket.data.userId; // Server-side identity — never trust client-supplied agentId
-        if (!agentId || !agentLang || !dept) return socket.emit('error', { message: 'Missing required fields' });
-        if (!partnerId) return socket.emit('error', { message: 'No partner context' });
-        if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
+        if (!agentId || !agentLang || !dept) {
+          logger.warn({ agentId: !!agentId, agentLang: !!agentLang, dept: !!dept }, '[ticket:new] rejected — missing required fields');
+          return socket.emit('error', { message: 'Missing required fields' });
+        }
+        if (!partnerId) {
+          logger.warn({ socketId: socket.id }, '[ticket:new] rejected — no partner context');
+          return socket.emit('error', { message: 'No partner context' });
+        }
+        if (mediaUrl && !isValidMediaUrl(mediaUrl)) {
+          logger.warn({ mediaUrl }, '[ticket:new] rejected — invalid media URL');
+          return socket.emit('error', { message: 'Invalid media URL' });
+        }
+        logger.debug({ partnerId, agentId, dept }, '[ticket:new] accepted — creating ticket');
 
         // Re-open detection — JS-side exact value match
         let reopened = false;
