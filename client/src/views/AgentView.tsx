@@ -137,13 +137,19 @@ export default function AgentView() {
                 </div>
               </div>
             )}
-            {activeTicket ? (
+            {activeTicket && activeTicket.status !== 'closed' && activeTicket.status !== 'resolved' ? (
               <div className="flex-1 min-h-0 w-full">
                 <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
                   <ChatWindow key={activeTicket.id} ticket={activeTicket} />
                 </div>
               </div>
             ) : (
+              // Closed/resolved → fall through to the new-ticket form. The agent's
+              // 1-ticket limit is already enforced by the agentTicket memo, so as
+              // soon as their open ticket is closed (by them or by support), the
+              // ticket row is filtered out and they can submit a new one. The
+              // RatingModal (driven by ratingPrompt in the store) overlays this
+              // view when a support agent had joined.
               <TicketForm manifest={manifest} />
             )}
           </div>
