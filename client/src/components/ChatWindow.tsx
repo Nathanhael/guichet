@@ -48,7 +48,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   // Expose minimal imperative handle for command palette actions
   useImperativeHandle(ref, () => ({
-    focusTextarea: () => textareaRef.current?.focus(),
+    focusTextarea: () => composeRef.current?.focus(),
     toggleWhisper: () => composeRef.current?.toggleWhisper(),
     openTransferMenu: () => setShowTransferMenu(true),
     triggerCloseTicket: () => {

@@ -1,19 +1,22 @@
-import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
 import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send } from 'lucide-react';
+import { EditorContent } from '@tiptap/react';
 import FormatToolbar from './FormatToolbar';
 import Toast from '../Toast';
 import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
+import { useComposeEditor } from '../../hooks/useComposeEditor';
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
+  focus: () => void;
 }
 
 interface ComposeAreaProps {
@@ -29,7 +32,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   ticket,
   isClosed,
   isSupport,
-  textareaRef,
+  textareaRef: _unusedTextareaRef, // kept for ChatWindow API compat; editor focus goes through the ComposeAreaHandle.focus() method now
   replyingTo,
   onClearReply,
 }, ref) {
@@ -55,10 +58,11 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const draftKey = `tessera:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
 
   // Hydrate draft once per key change (ticket switch, whisper toggle).
+  // The editor reference is captured via ref in a downstream effect
+  // below so we can push the markdown into setContent too.
   useEffect(() => {
     const saved = sessionStorage.getItem(draftKey);
-    if (saved) setText(saved);
-    else setText('');
+    setText(saved || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
 
@@ -71,6 +75,45 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     return () => clearTimeout(timer);
   }, [text, draftKey]);
 
+  // Tiptap editor — the actual interactive surface. text/setText remains
+  // the authoritative store for draft persistence, character counter,
+  // canned-response trigger, and doSend; the editor's onUpdate callback
+  // keeps `text` in lockstep with the markdown representation. All
+  // programmatic content changes (drafts hydrate, AI improve, canned,
+  // emoji, send-clear) must call BOTH setText(...) AND
+  // editor?.commands.setContent(...) so the two stay in sync.
+  const editor = useComposeEditor({
+    placeholder: whisperMode
+      ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
+      : (t('type_message') || 'Type a message\u2026'),
+    onUpdate: (markdown) => {
+      setText(markdown);
+      // Canned-response trigger — only when message starts with "/".
+      if (isSupport) {
+        if (markdown.startsWith('/')) setShowCannedPicker(true);
+        else if (showCannedPicker) setShowCannedPicker(false);
+      }
+      emitTyping();
+    },
+    onSubmit: () => sendMessage(),
+    onEscape: () => {
+      if (showCannedPicker) setShowCannedPicker(false);
+      else if (replyingTo && onClearReply) onClearReply();
+    },
+  });
+
+  // Push text state into the editor when it was set programmatically
+  // (draft hydrate, AI improve/revert, canned pick, clear-on-send). We
+  // avoid re-setting content that already matches the editor's current
+  // markdown, otherwise onUpdate would re-fire and bounce the value.
+  useEffect(() => {
+    if (!editor) return;
+    const storage = editor.storage as unknown as { markdown?: { getMarkdown(): string } };
+    const current = storage.markdown?.getMarkdown() ?? editor.getText();
+    if (current === text) return;
+    editor.commands.setContent(text, { emitUpdate: false });
+  }, [editor, text]);
+
   const fileRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -80,6 +123,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   useImperativeHandle(ref, () => ({
     toggleWhisper: () => setWhisperMode((v) => !v),
+    focus: () => editor?.commands.focus(),
   }), []);
 
   // Cleanup on unmount: revoke Object URLs + stop typing indicator
@@ -118,14 +162,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const improveMutation = trpc.ai.improveMessage.useMutation();
   const improvementMode = aiConfig?.messageImprovement ?? 'off';
-
-  const autoResize = useCallback(() => {
-    const el = textareaRef.current;
-    if (el) {
-      el.style.height = 'auto';
-      el.style.height = `${el.scrollHeight}px`;
-    }
-  }, [textareaRef]);
 
   function emitTyping() {
     const socket = getSocket();
@@ -330,7 +366,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     // is now sent, the half-written state is no longer relevant.
     sessionStorage.removeItem(draftKey);
     if (onClearReply) onClearReply();
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }
 
   function sendMessage(e?: React.FormEvent) {
@@ -496,7 +531,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             if (files.length > 0) addFiles(files);
           }}
           className={`relative border-2 ${
-            whisperMode ? 'border-accent-purple' : 'border-border-heavy'
+            whisperMode ? 'border-accent-purple compose-whisper' : 'border-border-heavy'
           } ${isDragOver ? 'outline outline-2 outline-accent-blue outline-offset-0' : ''}`}
         >
           {whisperMode && (
@@ -507,7 +542,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             </div>
           )}
 
-          <FormatToolbar textareaRef={textareaRef} onTextChange={setText} getText={() => text} />
+          <FormatToolbar editor={editor} />
 
         <div className={`flex items-center gap-3 p-1.5 ${
           whisperMode
@@ -581,18 +616,10 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                       type="button"
                       aria-label={emoji}
                       onClick={() => {
-                        const ta = textareaRef.current;
-                        if (ta) {
-                          const start = ta.selectionStart;
-                          const end = ta.selectionEnd;
-                          const newText = text.slice(0, start) + emoji + text.slice(end);
-                          setText(newText);
-                          setShowEmojiPicker(false);
-                          setTimeout(() => { ta.focus(); ta.selectionStart = ta.selectionEnd = start + emoji.length; }, 0);
-                        } else {
-                          setText(text + emoji);
-                          setShowEmojiPicker(false);
-                        }
+                        // Insert at current selection via the editor chain —
+                        // Tiptap handles the cursor position update for us.
+                        editor?.chain().focus().insertContent(emoji).run();
+                        setShowEmojiPicker(false);
                       }}
                       className="w-8 h-8 flex items-center justify-center text-lg hover:bg-bg-elevated"
                     >
@@ -614,45 +641,19 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               onSelect={(body) => {
                 setText(body);
                 setShowCannedPicker(false);
-                textareaRef.current?.focus();
-                requestAnimationFrame(() => autoResize());
+                editor?.chain().focus().run();
               }}
               onClose={() => setShowCannedPicker(false)}
             />
           )}
-          <textarea
-            ref={textareaRef}
-            aria-label="Type a message"
-            value={text}
-            onChange={(e) => {
-              const val = e.target.value;
-              setText(val);
-              if (isSupport) {
-                if (val.startsWith('/')) {
-                  setShowCannedPicker(true);
-                } else if (showCannedPicker) {
-                  setShowCannedPicker(false);
-                }
-              }
-              emitTyping();
-              autoResize();
-            }}
-            onKeyDown={(e) => {
-              if (showCannedPicker) {
-                if (['ArrowUp', 'ArrowDown', 'Enter'].includes(e.key)) {
-                  return; // CannedResponsePicker handles these via global keydown listener
-                }
-                if (e.key === 'Escape') {
-                  e.preventDefault();
-                  setShowCannedPicker(false);
-                  return;
-                }
-              }
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-              if (e.key === 'Escape' && replyingTo && onClearReply) { onClearReply(); }
-            }}
-            onPaste={handlePaste}
-            placeholder={
+          {/* Tiptap WYSIWYG editor — replaces the plain textarea. Onkeydown
+              for Enter=send / Escape=dismiss is handled inside
+              useComposeEditor via editorProps.handleKeyDown; paste/drop
+              events still bubble to the outer wrapper's handlePaste/onDrop. */}
+          <div onPaste={handlePaste} aria-label="Type a message">
+            <EditorContent
+              editor={editor}
+              data-placeholder={
               uploading
                 ? (t('uploading') || 'Uploading\u2026')
                 : pendingFiles.length > 0
@@ -661,9 +662,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                     ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
                     : (t('type_message') || 'Type a message\u2026')
             }
-            rows={1}
-            className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 scrollbar-none overflow-hidden"
-          />
+            />
+          </div>
         </div>
 
         {/* AI Improve button -- only in 'optional' mode */}
