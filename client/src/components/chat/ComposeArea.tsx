@@ -181,18 +181,45 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // changes on re-render. Imperatively update the ProseMirror root's
   // data-placeholder attribute when whisperMode toggles so the empty-state
   // pseudo-element CSS rule reads the new text.
+  //
+  // Subtle Tiptap quirk: `editor.view` is a Proxy (see @tiptap/core
+  // Editor.ts ~L320-L350). It's always truthy — optional chaining does NOT
+  // short-circuit it — and accessing any key besides a small stub set
+  // (`composing`, `dragging`, `editable`, `isDestroyed`, `state`) THROWS
+  // "[tiptap error]: The editor view is not available" until the underlying
+  // view is mounted. With ComposeArea now lazy-loaded under a Suspense
+  // boundary, the gap between `useEditor()` returning the instance and
+  // EditorContent committing its ref is wide enough to consistently hit this
+  // throw. Wrap the access in a try-catch and re-run on the editor's
+  // `create` event so the placeholder lands as soon as the view exists.
   useEffect(() => {
     if (!editor) return;
-    const next = whisperMode
-      ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
-      : (t('type_message') || 'Type a message\u2026');
-    editor.view.dom.setAttribute('data-placeholder', next);
-    // Also patch the Placeholder extension's stored options so empty-state
-    // renders on initial mount before the first keystroke.
-    const placeholderExt = editor.extensionManager.extensions.find((ext: { name: string }) => ext.name === 'placeholder') as { options: { placeholder: string } } | undefined;
-    if (placeholderExt) {
-      placeholderExt.options.placeholder = next;
-    }
+    const apply = () => {
+      if (editor.isDestroyed) return;
+      const next = whisperMode
+        ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
+        : (t('type_message') || 'Type a message\u2026');
+      try {
+        editor.view.dom.setAttribute('data-placeholder', next);
+      } catch {
+        // View not yet mounted — Tiptap's Proxy throws synchronously here.
+        // The 'create' listener below will re-invoke apply() once it is.
+        return;
+      }
+      // Also patch the Placeholder extension's stored options so empty-state
+      // renders on initial mount before the first keystroke.
+      const placeholderExt = editor.extensionManager.extensions.find(
+        (ext: { name: string }) => ext.name === 'placeholder',
+      ) as { options: { placeholder: string } } | undefined;
+      if (placeholderExt) {
+        placeholderExt.options.placeholder = next;
+      }
+    };
+    apply();
+    editor.on('create', apply);
+    return () => {
+      editor.off('create', apply);
+    };
   }, [editor, whisperMode, t]);
 
   const fileRef = useRef<HTMLInputElement>(null);
