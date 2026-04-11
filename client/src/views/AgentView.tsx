@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useRef } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useBusinessHours } from '../hooks/useBusinessHours';
@@ -77,17 +77,11 @@ export default function AgentView() {
     [tickets, user?.id],
   );
 
-  // Track when user explicitly dismisses the chat panel
-  const dismissedRef = useRef(false);
-
-  // Auto-route to active ticket (skip if user explicitly dismissed)
+  // Auto-route to the agent's open ticket. Agents have a 1-ticket limit and
+  // cannot "leave" the chat panel — the only way out is to close the ticket.
   useEffect(() => {
-    if (agentTicket && !activeTicketId && !dismissedRef.current) {
+    if (agentTicket && !activeTicketId) {
       setActiveTicketId(agentTicket.id);
-    }
-    // Reset dismissed flag when the ticket changes (e.g. closed and new one created)
-    if (!agentTicket) {
-      dismissedRef.current = false;
     }
   }, [agentTicket, activeTicketId, setActiveTicketId]);
 
@@ -146,20 +140,11 @@ export default function AgentView() {
             {activeTicket ? (
               <div className="flex-1 min-h-0 w-full">
                 <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
-                  <ChatWindow key={activeTicket.id} ticket={activeTicket} onClose={() => { dismissedRef.current = true; setActiveTicketId(null); }} />
+                  <ChatWindow key={activeTicket.id} ticket={activeTicket} />
                 </div>
               </div>
-            ) : !agentTicket ? (
-              <TicketForm manifest={manifest} />
             ) : (
-              <div className="flex-1 flex items-center justify-center">
-                <button
-                  onClick={() => { dismissedRef.current = false; setActiveTicketId(agentTicket.id); }}
-                  className="text-[11px] font-mono font-bold uppercase tracking-widest px-6 py-3 border-2 border-border-heavy text-text-primary hover:bg-bg-elevated"
-                >
-                  {t('return_to_chat') || 'Return to chat'}
-                </button>
-              </div>
+              <TicketForm manifest={manifest} />
             )}
           </div>
         </div>
