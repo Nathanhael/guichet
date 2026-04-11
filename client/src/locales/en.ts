@@ -328,6 +328,10 @@ const en: Record<string, string> = {
 
     // Support view
     queue: 'Queue',
+    queued: 'Queued',
+    archived: 'Archived',
+    toggle_team_panel: 'Toggle team panel',
+    team_offline: 'Offline',
     waiting: 'waiting',
     active: 'active',
     no_open_tickets: 'No open tickets',

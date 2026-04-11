@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useT } from '../../i18n';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import type { OnlineSupport } from '../../types';
@@ -64,15 +65,16 @@ export default function SidebarFooter({ sidebarTab, queueCount, onlineSupportUse
       {/* Collapsed footer bar */}
       <button
         onClick={() => setExpanded((v) => !v)}
-        aria-label={t('toggle_team_panel') || 'Toggle team panel'}
+        aria-label={t('toggle_team_panel')}
         className="w-full px-4 py-2 flex items-center justify-between hover:bg-[var(--color-bg-elevated)]"
       >
         <span className="font-mono text-[9px] font-medium uppercase tracking-[1px] text-[var(--color-text-muted)]">
-          {queueCount} {sidebarTab === 'queue' ? t('in_queue') || 'in queue' : t('archived') || 'archived'}
+          <span className="tabular-nums text-[var(--color-text-secondary)]">{queueCount}</span>{' '}
+          {sidebarTab === 'queue' ? t('queued') : t('archived')}
         </span>
 
         <div className="flex items-center gap-2">
-          {/* Agent badges */}
+          {/* Agent badges — only when someone is actually online */}
           {totalOnline > 0 && (
             <div className="flex items-center">
               {visible.map((agent) => (
@@ -95,13 +97,38 @@ export default function SidebarFooter({ sidebarTab, queueCount, onlineSupportUse
             </div>
           )}
 
-          {/* Capacity */}
-          <div className="flex items-center gap-1">
-            <span className="w-[5px] h-[5px] rounded-full bg-[var(--color-accent-green)]" />
-            <span className="font-mono text-[9px] font-bold text-[var(--color-accent-green)]">
-              {availableCount} / {totalOnline}
+          {/* Capacity — color by actual team state:
+              - 0 online → muted "OFFLINE" chip (no misleading count)
+              - all away → amber dot + count
+              - any available → green dot + count */}
+          {totalOnline === 0 ? (
+            <span className="flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+              <span className="w-[5px] h-[5px] rounded-full bg-[var(--color-text-muted)] opacity-60" />
+              {t('team_offline')}
             </span>
-          </div>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span
+                className={`w-[5px] h-[5px] rounded-full ${
+                  availableCount > 0 ? 'bg-[var(--color-accent-green)]' : 'bg-[var(--color-accent-amber)]'
+                }`}
+              />
+              <span
+                className={`font-mono text-[9px] font-bold tabular-nums ${
+                  availableCount > 0 ? 'text-[var(--color-accent-green)]' : 'text-[var(--color-accent-amber)]'
+                }`}
+              >
+                {availableCount} / {totalOnline}
+              </span>
+            </div>
+          )}
+
+          {/* Chevron — make the expand/collapse affordance visible */}
+          {expanded ? (
+            <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)] opacity-50 shrink-0" />
+          ) : (
+            <ChevronUp className="w-3 h-3 text-[var(--color-text-muted)] opacity-50 shrink-0" />
+          )}
         </div>
       </button>
     </div>
