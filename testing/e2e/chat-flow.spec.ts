@@ -69,7 +69,7 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
       const uniqueMsg = `E2E chat flow test ${Date.now()}`;
 
       // Check if we're already in a chat (retry scenario) or on the ticket form
-      const composeArea = agentPage.locator('textarea[aria-label="Type a message"]');
+      const composeArea = agentPage.locator('.ProseMirror');
       const alreadyInChat = await composeArea.isVisible({ timeout: 3000 }).catch(() => false);
 
       if (!alreadyInChat) {
@@ -111,7 +111,7 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
       }
 
       // Support should now see the chat compose area
-      const supportTextarea = supportPage.locator('textarea[aria-label="Type a message"]');
+      const supportTextarea = supportPage.locator('.ProseMirror');
       await expect(supportTextarea).toBeVisible({ timeout: 15000 });
 
       // ── Phase 4: Bidirectional message exchange ────────────────────────
@@ -122,7 +122,7 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
       await agentPage.waitForTimeout(5000);
 
       // After reload, the agent should still be in the chat (ticket was created by this user)
-      const agentComposeAfterReload = agentPage.locator('textarea[aria-label="Type a message"]');
+      const agentComposeAfterReload = agentPage.locator('.ProseMirror');
       await expect(agentComposeAfterReload).toBeVisible({ timeout: 15000 });
 
       // Wait for socket rooms to settle
@@ -140,7 +140,7 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
       await expect(agentPage.getByText(supportMessage).first()).toBeVisible({ timeout: 20000 });
 
       // 4b: Agent replies back
-      const agentTextarea = agentPage.locator('textarea[aria-label="Type a message"]');
+      const agentTextarea = agentPage.locator('.ProseMirror');
       const agentMessage = `Agent reply ${Date.now()}`;
       await agentTextarea.fill(agentMessage);
       await agentPage.keyboard.press('Enter');
