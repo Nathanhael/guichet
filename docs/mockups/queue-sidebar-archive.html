@@ -1,0 +1,701 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tessera — Queue sidebar: demote Archive</title>
+<style>
+  :root {
+    --bg-base: #09090b;
+    --bg-surface: #111113;
+    --bg-elevated: #18181b;
+    --border: #27272a;
+    --border-heavy: #3f3f46;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-blue: #3b82f6;
+    --accent-green: #22c55e;
+    --accent-amber: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px 32px;
+    font-family: 'JetBrains Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 12px;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+  h1 {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  h2 {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--text-secondary);
+    margin: 24px 0 4px;
+  }
+  .caption {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin: 0 0 12px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-style: italic;
+    max-width: 560px;
+    line-height: 1.5;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 32px;
+    max-width: 1400px;
+  }
+
+  /* ─── Sidebar shell ─── */
+  .sidebar {
+    width: 280px;
+    background: var(--bg-surface);
+    border: 2px solid var(--border-heavy);
+    display: flex;
+    flex-direction: column;
+    height: 520px;
+  }
+  .sb-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sb-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .sb-title {
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-primary);
+    margin: 0;
+  }
+  .sb-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    text-align: center;
+  }
+  .sb-empty {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    opacity: 0.3;
+  }
+  .sb-footer {
+    padding: 8px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .sb-footer-count {
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .sb-footer-count .num { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .sb-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .capacity {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--accent-green);
+    font-variant-numeric: tabular-nums;
+  }
+  .capacity::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--accent-green);
+  }
+  .chevron {
+    font-size: 10px;
+    color: var(--text-muted);
+    opacity: 0.5;
+  }
+
+  /* ─── Tab pills (current / variant C current-queue) ─── */
+  .tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .tab {
+    flex: 1;
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-primary);
+    opacity: 0.5;
+    cursor: pointer;
+  }
+  .tab.active {
+    background: var(--text-primary);
+    color: var(--bg-base);
+    opacity: 1;
+    border-color: var(--border);
+  }
+  .collapse-btn {
+    width: 28px;
+    height: 26px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    background: transparent;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* ─── Dept chips ─── */
+  .dept-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .dept {
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    opacity: 0.5;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+  .dept.active {
+    opacity: 1;
+    background: var(--text-primary);
+    color: var(--bg-base);
+  }
+  .dept .count {
+    color: var(--accent-blue);
+    font-variant-numeric: tabular-nums;
+    font-size: 8px;
+  }
+  .dept.active .count {
+    color: var(--accent-blue);
+  }
+
+  /* ─── Variant B: title + small toggle link ─── */
+  .archive-link {
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    opacity: 0.6;
+    background: transparent;
+    border: none;
+    padding: 2px 4px;
+    cursor: pointer;
+  }
+  .archive-link:hover { color: var(--text-primary); opacity: 1; }
+  .archive-link .arrow { color: var(--accent-blue); margin-left: 4px; }
+
+  /* ─── Variant A: archive in footer — color options ─── */
+  .footer-archive-link {
+    font-family: inherit;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 2px 6px;
+    cursor: pointer;
+  }
+  /* A1 — current: muted outline */
+  .archive-muted {
+    color: var(--text-muted);
+    opacity: 0.5;
+    background: transparent;
+    border: 1px solid var(--border);
+  }
+  .archive-muted:hover { opacity: 1; color: var(--text-primary); }
+  /* A2 — accent-blue outline */
+  .archive-blue-outline {
+    color: var(--accent-blue);
+    background: transparent;
+    border: 1px solid var(--accent-blue);
+  }
+  .archive-blue-outline:hover { background: var(--accent-blue); color: #fff; }
+  /* A3 — accent-blue filled */
+  .archive-blue-filled {
+    color: #fff;
+    background: var(--accent-blue);
+    border: 1px solid var(--accent-blue);
+  }
+  .archive-blue-filled:hover { filter: brightness(0.85); }
+  /* A4 — text-only with blue dot */
+  .archive-text {
+    color: var(--accent-blue);
+    background: transparent;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .archive-text::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--accent-blue);
+  }
+  .archive-text:hover { text-decoration: underline; }
+  /* A5 — zinc filled (quiet neutral) */
+  .archive-zinc {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-heavy);
+  }
+  .archive-zinc:hover { background: var(--border-heavy); }
+
+  /* ─── Variant C: icon toggle ─── */
+  .archive-icon-btn {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    opacity: 0.6;
+    cursor: pointer;
+  }
+  .archive-icon-btn:hover { color: var(--text-primary); opacity: 1; }
+  .archive-icon-btn svg { width: 11px; height: 11px; fill: currentColor; }
+
+  .legend {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    line-height: 1.6;
+    max-width: 900px;
+  }
+  .legend strong { color: var(--text-primary); }
+  .legend code {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-blue);
+    font-size: 10px;
+  }
+
+  .label-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .mode-pill {
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    background: var(--accent-blue);
+    color: #fff;
+  }
+  .mode-pill.archive { background: var(--text-primary); color: var(--bg-base); }
+</style>
+</head>
+<body>
+
+  <h1>Tessera — Queue sidebar: demote the Archive tab</h1>
+  <p class="caption">Archive is rarely used but currently eats 50% of the sidebar header as a full tab. Three variants to try.</p>
+
+  <!-- ─────────────────────────────────────────────── -->
+  <div>
+    <h2>Before — tabs take full width, Archive equal weight to Queue</h2>
+    <div class="grid">
+      <div>
+        <div class="label-row"><span class="mode-pill">QUEUE</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="tabs" style="margin-bottom:10px">
+              <button class="tab active">QUEUE</button>
+              <button class="tab">ARCHIVE</button>
+              <button class="collapse-btn">‹</button>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">0</span></button>
+              <button class="dept">DSC <span class="count">0</span></button>
+              <button class="dept">FOT <span class="count">0</span></button>
+              <button class="dept">TEC <span class="count">0</span></button>
+            </div>
+          </div>
+          <div class="sb-body">
+            <span class="sb-empty">Queue empty</span>
+          </div>
+          <div class="sb-footer">
+            <span class="sb-footer-count"><span class="num">0</span> Queued</span>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Variant A — 5 color swatches ─── -->
+  <div>
+    <h2>Variant A — Archive button color swatches</h2>
+    <p class="caption">Same footer-demoted layout, five color treatments for the archive button. Pick one — the switcher is the same in all variants, only the visual weight changes.</p>
+    <div class="grid">
+
+      <div>
+        <div class="label-row"><span class="mode-pill">A1 — Muted outline (original)</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Queue</h3>
+              <button class="collapse-btn">‹</button>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">0</span></button>
+              <button class="dept">DSC <span class="count">0</span></button>
+              <button class="dept">FOT <span class="count">0</span></button>
+              <button class="dept">TEC <span class="count">0</span></button>
+            </div>
+          </div>
+          <div class="sb-body"><span class="sb-empty">Queue empty</span></div>
+          <div class="sb-footer">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="sb-footer-count"><span class="num">0</span> Queued</span>
+              <button class="footer-archive-link archive-muted">Archive</button>
+            </div>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label-row"><span class="mode-pill">A2 — Accent blue outline</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Queue</h3>
+              <button class="collapse-btn">‹</button>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">0</span></button>
+              <button class="dept">DSC <span class="count">0</span></button>
+              <button class="dept">FOT <span class="count">0</span></button>
+              <button class="dept">TEC <span class="count">0</span></button>
+            </div>
+          </div>
+          <div class="sb-body"><span class="sb-empty">Queue empty</span></div>
+          <div class="sb-footer">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="sb-footer-count"><span class="num">0</span> Queued</span>
+              <button class="footer-archive-link archive-blue-outline">Archive</button>
+            </div>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label-row"><span class="mode-pill">A3 — Accent blue filled</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Queue</h3>
+              <button class="collapse-btn">‹</button>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">0</span></button>
+              <button class="dept">DSC <span class="count">0</span></button>
+              <button class="dept">FOT <span class="count">0</span></button>
+              <button class="dept">TEC <span class="count">0</span></button>
+            </div>
+          </div>
+          <div class="sb-body"><span class="sb-empty">Queue empty</span></div>
+          <div class="sb-footer">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="sb-footer-count"><span class="num">0</span> Queued</span>
+              <button class="footer-archive-link archive-blue-filled">Archive</button>
+            </div>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label-row"><span class="mode-pill">A4 — Text link + blue dot</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Queue</h3>
+              <button class="collapse-btn">‹</button>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">0</span></button>
+              <button class="dept">DSC <span class="count">0</span></button>
+              <button class="dept">FOT <span class="count">0</span></button>
+              <button class="dept">TEC <span class="count">0</span></button>
+            </div>
+          </div>
+          <div class="sb-body"><span class="sb-empty">Queue empty</span></div>
+          <div class="sb-footer">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="sb-footer-count"><span class="num">0</span> Queued</span>
+              <button class="footer-archive-link archive-text">Archive</button>
+            </div>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label-row"><span class="mode-pill">A5 — Zinc filled (quiet)</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Queue</h3>
+              <button class="collapse-btn">‹</button>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">0</span></button>
+              <button class="dept">DSC <span class="count">0</span></button>
+              <button class="dept">FOT <span class="count">0</span></button>
+              <button class="dept">TEC <span class="count">0</span></button>
+            </div>
+          </div>
+          <div class="sb-body"><span class="sb-empty">Queue empty</span></div>
+          <div class="sb-footer">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="sb-footer-count"><span class="num">0</span> Queued</span>
+              <button class="footer-archive-link archive-zinc">Archive</button>
+            </div>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── Variant B ─── -->
+  <div>
+    <h2>Variant B — Title label + small toggle link (recommended)</h2>
+    <p class="caption">Drop the tab pills entirely. The sidebar header shows a single mode label (<code>QUEUE</code> or <code>ARCHIVE</code>), and a compact dimmed link on the right edge toggles the other mode. The label IS the mode, the link is the toggle. Zero wasted pill real estate.</p>
+    <div class="grid">
+      <div>
+        <div class="label-row"><span class="mode-pill">QUEUE MODE</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Queue</h3>
+              <div style="display:flex;align-items:center;gap:4px">
+                <button class="archive-link">Archive <span class="arrow">›</span></button>
+                <button class="collapse-btn">‹</button>
+              </div>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">0</span></button>
+              <button class="dept">DSC <span class="count">0</span></button>
+              <button class="dept">FOT <span class="count">0</span></button>
+              <button class="dept">TEC <span class="count">0</span></button>
+            </div>
+          </div>
+          <div class="sb-body">
+            <span class="sb-empty">Queue empty</span>
+          </div>
+          <div class="sb-footer">
+            <span class="sb-footer-count"><span class="num">0</span> Queued</span>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label-row"><span class="mode-pill archive">ARCHIVE MODE</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Archive</h3>
+              <div style="display:flex;align-items:center;gap:4px">
+                <button class="archive-link"><span class="arrow" style="margin-left:0;margin-right:4px">‹</span>Queue</button>
+                <button class="collapse-btn">‹</button>
+              </div>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">17</span></button>
+              <button class="dept">DSC <span class="count">13</span></button>
+              <button class="dept">FOT <span class="count">2</span></button>
+              <button class="dept">TEC <span class="count">2</span></button>
+            </div>
+          </div>
+          <div class="sb-body">
+            <span class="sb-empty" style="opacity:0.4">Search messages…</span>
+          </div>
+          <div class="sb-footer">
+            <span class="sb-footer-count"><span class="num">17</span> Archived</span>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Variant C ─── -->
+  <div>
+    <h2>Variant C — Icon-only toggle</h2>
+    <p class="caption">Smallest footprint. Title stays as <code>QUEUE</code>, a 22×22 archive icon sits on the right of the title row next to the collapse chevron. Click the icon → title flips to <code>ARCHIVE</code>, icon flips to a back-arrow. No text label, no extra row.</p>
+    <div class="grid">
+      <div>
+        <div class="label-row"><span class="mode-pill">QUEUE MODE</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Queue</h3>
+              <div style="display:flex;align-items:center;gap:4px">
+                <button class="archive-icon-btn" title="View archive">
+                  <svg viewBox="0 0 24 24"><path d="M3 3h18v4H3V3zm1 6h16v12H4V9zm5 3v2h6v-2H9z"/></svg>
+                </button>
+                <button class="collapse-btn">‹</button>
+              </div>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">0</span></button>
+              <button class="dept">DSC <span class="count">0</span></button>
+              <button class="dept">FOT <span class="count">0</span></button>
+              <button class="dept">TEC <span class="count">0</span></button>
+            </div>
+          </div>
+          <div class="sb-body">
+            <span class="sb-empty">Queue empty</span>
+          </div>
+          <div class="sb-footer">
+            <span class="sb-footer-count"><span class="num">0</span> Queued</span>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="label-row"><span class="mode-pill archive">ARCHIVE MODE</span></div>
+        <div class="sidebar">
+          <div class="sb-header">
+            <div class="sb-title-row">
+              <h3 class="sb-title">Archive</h3>
+              <div style="display:flex;align-items:center;gap:4px">
+                <button class="archive-icon-btn" title="Back to queue" style="color:var(--text-primary);opacity:1;border-color:var(--accent-blue)">
+                  <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                </button>
+                <button class="collapse-btn">‹</button>
+              </div>
+            </div>
+            <div class="dept-row">
+              <button class="dept active">ALL <span class="count">17</span></button>
+              <button class="dept">DSC <span class="count">13</span></button>
+              <button class="dept">FOT <span class="count">2</span></button>
+              <button class="dept">TEC <span class="count">2</span></button>
+            </div>
+          </div>
+          <div class="sb-body">
+            <span class="sb-empty" style="opacity:0.4">Search messages…</span>
+          </div>
+          <div class="sb-footer">
+            <span class="sb-footer-count"><span class="num">17</span> Archived</span>
+            <div class="sb-footer-right">
+              <div class="capacity">1 / 1</div>
+              <span class="chevron">⌃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <strong>Trade-offs</strong><br/>
+    · <strong>A — Footer link:</strong> discovery OK (archive is near the team count), zero header space cost. Slightly mixes "team panel" and "mode switch" semantics in the footer bar.<br/>
+    · <strong>B — Title toggle link:</strong> smallest diff, mode label is single source of truth, archive stays 1 click away. No semantic mixing. My pick.<br/>
+    · <strong>C — Icon-only:</strong> most compact. Loses the text label, relies on tooltip for discoverability. Harder for new support agents to find archive.<br/>
+    <br/>
+    All three remove the redundant equal-weight tab row, keep the dept chips in the same spot, and have no functional effect on the queue list or footer.
+  </div>
+
+</body>
+</html>
