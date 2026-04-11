@@ -9,15 +9,6 @@ const UserSecurityModal = lazy(() => import('./UserSecurityModal'));
 /*  Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((part) => part.charAt(0))
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-}
-
 /* ------------------------------------------------------------------ */
 /*  Props                                                               */
 /* ------------------------------------------------------------------ */
@@ -68,8 +59,6 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
 
   if (!user) return null;
 
-  const initials = getInitials(user.name);
-
   function handleFeedback() {
     setOpen(false);
     onFeedback?.();
@@ -82,15 +71,16 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Avatar button */}
+      {/* Name button — full user name in mono, replaces the old initials square. */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={t('user_menu')}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="w-8 h-8 flex items-center justify-center bg-[var(--color-accent-blue)] text-[var(--color-btn-text-inverse)] text-[10px] font-bold font-mono"
+        title={user.name}
+        className="h-8 px-3 flex items-center justify-center bg-[var(--color-accent-blue)] text-[var(--color-btn-text-inverse)] text-[10px] font-bold font-mono uppercase tracking-[0.12em] whitespace-nowrap max-w-[220px] truncate"
       >
-        {initials}
+        {user.name}
       </button>
 
       {/* Dropdown */}
