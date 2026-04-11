@@ -3,6 +3,54 @@
 All notable changes to Tessera are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [4.1.0] - 2026-04-11
+
+### Added
+- **Tiptap WYSIWYG compose editor** — `<textarea>` replaced with a `@tiptap/react` editor that renders bold/italic/strikethrough/code/blockquote/bullet list inline as you type. Markdown input rules preserved (typing `**bold**` still auto-converts). Serialized via `tiptap-markdown` so the on-disk format is unchanged. New `useComposeEditor` hook centralizes Tiptap setup. New `useComposeEditor.ts`, reworked `FormatToolbar.tsx` + `ComposeArea.tsx`, `.ProseMirror` styles in `index.css`. Plan at `docs/superpowers/plans/compose-wysiwyg-tiptap-migration.md`.
+- **Strikethrough formatting** — 6th format toolbar button (`~~text~~`), already supported by the existing markdown sanitizer's `del` tag.
+- **Drag & drop file upload** — compose box accepts dragged files; drop overlay shows during active drag; pipes into the same `addFiles()` pipeline as the file input and paste.
+- **Drafts auto-save** — 400ms-debounced `sessionStorage` per `(user, ticket, mode)` tuple. Whisper drafts stay separate from regular drafts. Cleared on successful send.
+- **Character counter** — appears past 3500 chars, muted → amber at 4500 → red at 5000 (server Zod cap).
+- **Reconnect queue for compose** — sending during a transient socket disconnect no longer hard-rejects. The emit is queued and fires when the socket reconnects; only after 10s does a hard error surface. Clients pick up normal HMR reload blips silently.
+- **Confirmation dialog on ticket close** — reused `ConfirmDialog` with existing i18n keys. Prevents accidental closes from both agent and support side.
+- **Agent-side ticket close** — ticket owners can now close their own tickets. Post-close the agent transitions to the new-ticket form; rating modal overlays if support had joined.
+- **Whisper run separators** — consecutive whispers are bracketed by dashed purple rules labelled `Whisper` / `End whisper` in `MessageList`, read as an aside from the main conversation.
+- **`Ghost` icon as whisper visual vocabulary** — used on the compose toggle, whisper bubble label, and matches across all three places. Replaces the indirect `EyeOff` and `Lock` icons from earlier iterations.
+- **i18n keys** — `whisper_run_start`, `whisper_run_end`, `whisper_placeholder`, `drop_files_to_attach`, `reconnecting_queue`, `reconnect_failed`, `queued`, `archived`, `toggle_team_panel`, `team_offline`, `view_archive`, `view_queue`.
+- **Docs** — four mockup files under `docs/mockups/` (`chat-header-labels.html`, `queue-sidebar-archive.html`, `whisper-bubble.html`, `compose-area.html`) covering design iterations behind the user-facing changes.
+
+### Changed
+- **Queue sidebar redesign** — dropped the redundant `QUEUE`/`ARCHIVE` h2; dept filter chips now render 3-char dept codes (`DSC`/`FOT`/`TEC`) with `flex-wrap` instead of horizontal scroll; archive demoted from an equal-weight tab to a compact accent-blue outline toggle button in the footer (`[Archive]`); sidebar footer shows honest team state (green/amber/offline instead of always-green `0 / 0`); added expand/collapse chevron; mode title doubles as the current-mode indicator.
+- **Whisper visual overhaul** — label renamed `internal_note` → `whisper_label` → `Whisper` (the old key was missing from `en.ts`, leaking `INTERNAL_NOTE` raw). Sender name now shown on whispers (previous render actively hid it, so you couldn't tell Lucas from Sophie). Whisper body text uses JetBrains Mono 12px in `text-secondary` — matches the brutalist chrome/content typography split. Lock icon next to label, then switched to Ghost for consistency with the compose toggle.
+- **Whisper typing privacy** — when composing a whisper, the typing indicator is routed only to staff sockets in the ticket room, never the ticket's agent. `typingSchema` gains `whisper: boolean`; `broadcastTyping` iterates `ctx.io.sockets.sockets` locally and filters agents out. Dropped `fetchSockets()` because RemoteSocket.data.role isn't reliably set across the Redis adapter.
+- **`ChatHeader` unified label slot** — dropped the detached `+ LABEL` button; format toolbar uses Lucide icons; chips cap at 3 + `+N` overflow; dept prefix stripped from visible chip text (kept in popover). Variant B from the label-redesign mockup.
+- **Live presence avatars in ChatHeader** — support participants render as live `UserAvatar`s from the `onlineSupportUsers` store with synced status dots. Self status dot suppressed (already shown in `StatusPicker`). Generalist dept access: empty `memberships.departments` now means "sees all" instead of "sees nothing".
+- **Compose area visual rework** — format toolbar and compose row unified inside a single bordered container; Lucide icons for format buttons; clean placeholder (`Type a message…`); `Ctrl+V paste · ⏎ send` kbd hint rail; whisper mode gets a purple banner, purple border around the whole box, purple send button labelled `Whisper`, and a mono body via `.compose-whisper .ProseMirror`. Send button redesigned to `[Send ⏎]` / `[Whisper ⏎]`.
+- **`UserMenu` shows full name** — top-right button is now an auto-width `LUCAS SUPPORT` label (accent-blue mono uppercase) instead of a 32×32 `LS` initials square. Applies to every view via the shared `UserMenu` component.
+- **`AgentView` close transition** — when the active ticket is closed (by agent or support), the ticket row is filtered out of `agentTicket` and the view drops to `TicketForm`. Leave button removed (was a dead affordance given the 1-ticket limit).
+- **Minimal seed** — replaced the `--wipe/--e2e/--full` flag matrix and full faker demo dataset with a single minimal seed: one partner (`acme`), 6 named users, 6 hand-written tickets. Easier to reason about locally.
+- **`SidebarFooter` + `QueueSidebar`** — missing `queued` / `archived` / `toggle_team_panel` i18n keys added (the old `t('in_queue') || 'in queue'` fallback never fired because `useT` returns the key itself on miss).
+
+### Fixed
+- **`user.role` permanently undefined** — server login response omits the top-level `role` field (role lives on `memberships[]`), so every client check `state.user?.role === 'agent'` was silently wrong. Broke the rating modal, `useIdleStatus` auto-away, notification filtering, message-delete permissions, and several socket handlers. Root-fixed by deriving `user.role` from the active membership in `authSlice` on every mutation + initial hydration from `sessionStorage`. Learning at `[[learnings/tessera-user-role-login-response-gap]]`.
+- **Presence counter drift** — two overlapping bugs. First, `presenceService.setIo(io)` was exported but never called from the server bootstrap, so `broadcastOnlineSupport` silently short-circuited (no `io`) and support clients always saw `OFFLINE`. Second, the presence hash's `count` field was `HINCRBY`'d on every `socket:identify` (HMR, reconnects, tab focus), but decrements only fired on clean disconnects — counts drifted upward monotonically and 24h TTLs held ghosts for a full day. Fix: wire `setPresenceIo(io)` in `server/app.ts` next to `setBusinessHoursIo(io)`; replace the scalar `count` with a Redis set of socket IDs (`presence:{partnerId}:{userId}:sockets`). `SADD` is idempotent, `SCARD > 0` means online, atomic cleanup via Lua. Learning at `[[learnings/tessera-presence-drift-set-based]]`.
+- **Postgres 18 alpine PGDATA trap** — `postgres:18-alpine` moved the default `PGDATA` to `/var/lib/postgresql/18/docker` (from `/var/lib/postgresql/data`). Our volume mount at `/var/lib/postgresql/data` was silently unused — every `docker compose down` + `up` wiped the database via the writable layer. Pin `PGDATA=/var/lib/postgresql/data/pgdata` explicitly in both `docker-compose.yml` and `docker-compose.prod.yml`. Decision at `[[decisions/tessera-postgres18-pgdata]]`.
+- **Archive dept re-click clears ticket list** — clicking `DSC → FOT → DSC` wiped the list and never repopulated. Root cause: two `useEffect`s in `QueueSidebar` declared in the wrong order. The populate effect ran before the reset effect, so React Query's cached data filled the list, then the reset effect clobbered it to `[]`. Fix: swap declaration order so wipe runs first.
+- **`ticket:new` silent early returns** — the handler had 7 silent early returns (validation, role, partner inactive, business hours, etc.) with no log output. Added `logger.warn` on every rejection path + a `logger.debug` on the accepted path so future regressions leave a trail.
+- **Socket `supportJoinSchema` required `supportLang`** — non-empty string rejection silently dropped joins when `user.lang` was null. Made the field optional+nullable with an `'en'` fallback transform.
+- **`ticketQueries.assignSupport` JSONB CASE** — the participants CASE expression mixed `text` and `jsonb` types, hitting Postgres' `CASE types text and jsonb cannot be matched` runtime error. All branches now use `'[]'::jsonb`.
+- **Rating modal never popped after ticket close** — scoped on `state.user.role === 'agent'` which was always undefined (see above). Fixed by scoping on `ticket.agentId === state.user.id` (stricter, ownership-based). Support staff never match since they can't own the ticket.
+- **Agent stranding after close** — when the agent closed their own ticket, they stayed on a read-only `ChatWindow` view with no way back to the new-ticket form. Render-branch check added on `activeTicket.status !== 'closed'`. Also removed the `Leave` button and the dead `Return to chat` fallback.
+
+### Security
+- **Whisper typing indicator stays staff-only** — agents (customers) never see "Lucas is typing…" for a private note. The socket broadcast is filtered server-side by iterating local `ctx.io.sockets.sockets` and dropping peers whose `data.role === 'agent'`.
+
+### Tests
+- Server suite at **466 / 466**. Client suite at **172 / 172**. Three stale tests fixed as part of the feature work:
+  - `SidebarFooter.test.tsx` updated to match the renamed `queued` i18n key.
+  - `UserMenu.test.tsx` updated to match the full-name button (was checking for `AR` initials).
+  - `socket/__tests__/auth.test.ts` + `__tests__/isolation.test.ts` updated to match the new `auth:expired` event (was `error`) and the new `identifyUser(…, socketId)` / `decrementUserCount(…, socketId)` signatures.
+
 ## [4.0.0] - 2026-04-05
 
 ### Added

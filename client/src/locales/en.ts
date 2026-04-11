@@ -52,7 +52,7 @@ const en: Record<string, string> = {
     yes_close: 'Yes, close',
     closing_notes_label: 'Closing Notes (Optional)',
     summarize_resolution: 'Summarize the resolution...',
-    type_message: 'Type a message... (Ctrl+V to paste screenshot)',
+    type_message: 'Type a message…',
     send: 'Send',
     uploading: 'Uploading\u2026',
     upload_failed: 'Upload failed. Please try again.',

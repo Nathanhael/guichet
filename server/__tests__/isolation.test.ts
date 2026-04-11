@@ -379,7 +379,15 @@ describe('multi-tenant isolation — socket handlers', () => {
 
     await identifyHandler({ partnerId: 'partner-X' });
 
-    expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Not authorized for this partner' });
+    // Security assertion: must not join the partner room + must
+    // disconnect. The event name changed from 'error' to 'auth:expired'
+    // so the client auto-refreshes rather than showing a generic red
+    // toast. The cross-tenant protection itself is unchanged.
+    expect(socket.emit).toHaveBeenCalledWith(
+      'auth:expired',
+      expect.objectContaining({ message: expect.any(String) }),
+    );
     expect(socket.disconnect).toHaveBeenCalled();
+    expect(socket.join).not.toHaveBeenCalledWith('partner:partner-X');
   });
 });

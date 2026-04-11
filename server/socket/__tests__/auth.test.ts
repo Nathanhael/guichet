@@ -221,24 +221,36 @@ describe('socket:identify', () => {
     return { socket, io, identifyHandler: identifyCall?.[1] };
   }
 
-  it('emits error and disconnects when user not found in DB', async () => {
+  it('emits auth:expired and disconnects when user not found in DB', async () => {
+    // Updated 2026-04-11: the handler now emits 'auth:expired' (not a
+    // generic 'error' event) when the JWT references a deleted user,
+    // so the client auto-reconnects through the refresh flow rather
+    // than surfacing a generic red error toast.
     findUserByIdMock.mockResolvedValueOnce(undefined);
 
     const { socket, identifyHandler } = await setupIdentify();
     await identifyHandler({ partnerId: 'partner-1' });
 
-    expect(socket.emit).toHaveBeenCalledWith('error', { message: 'User not found' });
+    expect(socket.emit).toHaveBeenCalledWith(
+      'auth:expired',
+      expect.objectContaining({ message: expect.any(String) }),
+    );
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
-  it('emits error when non-platform user lacks membership', async () => {
+  it('emits auth:expired when non-platform user lacks membership', async () => {
+    // Same reasoning as above — membership revocation (e.g. after a
+    // reseed) goes through the auth:expired path.
     findUserByIdMock.mockResolvedValueOnce({ name: 'Test User', isPlatformOperator: false });
     findMembershipMock.mockResolvedValueOnce(undefined);
 
     const { socket, identifyHandler } = await setupIdentify();
     await identifyHandler({ partnerId: 'partner-1' });
 
-    expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Not authorized for this partner' });
+    expect(socket.emit).toHaveBeenCalledWith(
+      'auth:expired',
+      expect.objectContaining({ message: expect.any(String) }),
+    );
     expect(socket.disconnect).toHaveBeenCalled();
   });
 
@@ -253,7 +265,16 @@ describe('socket:identify', () => {
     expect(socket.data.userId).toBe('u1');
     expect(socket.data.role).toBe('support');
     expect(socket.data.partnerId).toBe('partner-1');
-    expect(identifyUserMock).toHaveBeenCalledWith('u1', 'support', 'Test User', 'partner-1', false);
+    // identifyUser signature gained a 6th `socketId` arg — the handler
+    // now passes socket.id through so presence can track per-socket.
+    expect(identifyUserMock).toHaveBeenCalledWith(
+      'u1',
+      'support',
+      'Test User',
+      'partner-1',
+      false,
+      expect.any(String),
+    );
     expect(socket.join).toHaveBeenCalledWith('partner:partner-1');
     expect(socket.join).toHaveBeenCalledWith('user:u1');
   });

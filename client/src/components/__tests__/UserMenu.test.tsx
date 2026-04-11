@@ -41,17 +41,21 @@ beforeEach(() => {
 });
 
 describe('UserMenu', () => {
-  it('renders avatar button with "AR" initials', () => {
+  it('renders name button with full user name', () => {
+    // UserMenu was refactored to show the full user name instead of
+    // initials — matches the rest of the nav chrome. See commit 367aa61.
     render(<UserMenu />);
     const btn = screen.getByRole('button', { name: 'user_menu' });
     expect(btn).toBeInTheDocument();
-    expect(btn).toHaveTextContent('AR');
+    expect(btn).toHaveTextContent('Amelie Rousseau');
   });
 
   it('opens dropdown showing name, email, and sign_out', () => {
     render(<UserMenu />);
     fireEvent.click(screen.getByRole('button', { name: 'user_menu' }));
-    expect(screen.getByText('Amelie Rousseau')).toBeInTheDocument();
+    // Name appears twice now — once on the trigger button, once in the
+    // dropdown header. getAllByText covers both occurrences.
+    expect(screen.getAllByText('Amelie Rousseau').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('amelie@acme.com')).toBeInTheDocument();
     expect(screen.getByText('sign_out')).toBeInTheDocument();
   });

@@ -18,7 +18,10 @@ describe('SidebarFooter', () => {
   it('shows queue count on queue tab', () => {
     render(<SidebarFooter sidebarTab="queue" queueCount={9} onlineSupportUsers={agents} />);
     expect(screen.getByText(/9/)).toBeInTheDocument();
-    expect(screen.getByText(/in_queue/i)).toBeInTheDocument();
+    // Sidebar footer now uses the 'queued' i18n key (renamed from the
+    // missing 'in_queue' key). Matches either the translated string or
+    // the raw key fallback.
+    expect(screen.getByText(/queued/i)).toBeInTheDocument();
   });
 
   it('shows archive count on archive tab', () => {
