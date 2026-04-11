@@ -74,7 +74,7 @@ export default function TicketForm({ manifest }: TicketFormProps) {
     setReferences((prev) => prev.map((r) => (r.label === label ? { ...r, value } : r)));
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!user || !text.trim() || !allRefsFilledIn || !canCreateTicket) return;
     setLoading(true);

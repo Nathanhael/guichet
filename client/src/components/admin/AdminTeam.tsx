@@ -400,7 +400,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
     onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     addMutation.mutate({ email, role, departments: selectedDepts });
   };
@@ -510,7 +510,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
     onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     inviteMutation.mutate({
       email, name, role, departments: selectedDepts,

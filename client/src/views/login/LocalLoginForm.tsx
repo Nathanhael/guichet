@@ -19,7 +19,7 @@ export default function LocalLoginForm({ onLoginSuccess, onMfaRequired, onForgot
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLocalLogin = async (e: React.FormEvent) => {
+  const handleLocalLogin = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isLoginLoading) return;
     setError('');
