@@ -53,7 +53,7 @@ export default function MessageContent({
             dangerouslySetInnerHTML={{ __html: renderMarkdown(displayText) }}
           />
         ) : (
-          <div className="text-[14px] break-words whitespace-pre-wrap leading-snug text-left max-h-60 overflow-y-auto">
+          <div className="msg-body text-[14px] break-words whitespace-pre-wrap leading-snug text-left max-h-60 overflow-y-auto">
             {bionicReading ? (
               <BionicText text={displayText} />
             ) : highlightQuery ? (
