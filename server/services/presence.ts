@@ -67,6 +67,7 @@ export async function broadcastOnlineSupport(partnerId: string) {
       }
     }
 
+    logger.debug({ partnerId, count: list.length, users: list.map((u) => `${u.userId}:${u.status}`) }, '[presence] broadcastOnlineSupport');
     io.to(`partner:${partnerId}`).emit('support:online', list);
   } catch (err) {
     logger.error({ err }, 'Failed to broadcast online support from Redis');
