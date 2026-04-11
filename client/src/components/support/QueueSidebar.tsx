@@ -76,34 +76,32 @@ export default function QueueSidebar({
     { enabled: sidebarTab === 'archive' },
   );
 
-  // IMPORTANT: the reset effect must be DECLARED BEFORE the populate effect.
-  // React runs effects in declaration order, and when tRPC returns cached data
-  // after a dept-chip click (e.g. DSC → FOT → DSC), archiveQuery.data flips to
-  // the cached value in the same commit as filterDept. If populate ran first,
-  // it would fill the list with the correct rows, and this wipe would then
-  // immediately clobber them back to []. Declaring reset first makes wipe run
-  // first, then populate runs with the new cached/fresh data and the list
-  // ends up correct.
-  useEffect(() => {
-    if (sidebarTab === 'archive') {
-      setArchivedTickets([]);
-      setArchiveCursor(undefined);
-      setHasMoreArchive(false);
-    }
-    setSearchQuery('');
-  }, [filterDept, sidebarTab]);
+  // Reset accumulated archive state. Called inline from filter-chip handlers
+  // and the sidebar-tab toggle. NOT placed in a useEffect because effect-based
+  // resets race the populate effect: when tRPC returns cached data with an
+  // unchanged reference (e.g. toggling queue→archive→queue→archive), the
+  // populate effect's deps don't change so it never re-fires, and a reset
+  // effect would clear the list with no follow-up populate to refill it.
+  function resetArchive() {
+    setArchivedTickets([]);
+    setArchiveCursor(undefined);
+    setHasMoreArchive(false);
+  }
 
+  // Populate from query data. Depends on sidebarTab so that toggling back to
+  // archive re-runs the effect and fills from the cached query data even when
+  // the data reference itself hasn't changed since last visit.
   useEffect(() => {
-    if (archiveQuery.data) {
-      const data = archiveQuery.data as { tickets?: Ticket[]; nextCursor?: string };
-      if (data.tickets) {
-        setArchivedTickets((prev) =>
-          archiveCursor ? [...prev, ...data.tickets!] : data.tickets!
-        );
-        setHasMoreArchive(!!data.nextCursor);
-      }
+    if (sidebarTab !== 'archive') return;
+    if (!archiveQuery.data) return;
+    const data = archiveQuery.data as { tickets?: Ticket[]; nextCursor?: string };
+    if (data.tickets) {
+      setArchivedTickets((prev) =>
+        archiveCursor ? [...prev, ...data.tickets!] : data.tickets!
+      );
+      setHasMoreArchive(!!data.nextCursor);
     }
-  }, [archiveQuery.data, archiveCursor]);
+  }, [archiveQuery.data, archiveCursor, sidebarTab]);
 
   // Per-department open ticket counts (for pill badges)
   const deptCounts = useMemo(() => {
@@ -164,7 +162,7 @@ export default function QueueSidebar({
             instead of full names, flex-wrap so no horizontal scrollbar. */}
         <div className="flex items-center gap-1 flex-wrap py-1">
           <button
-            onClick={() => setFilterDept('all')}
+            onClick={() => { setFilterDept('all'); setSearchQuery(''); resetArchive(); }}
             className={`shrink-0 px-2.5 py-1 text-[9px] font-bold uppercase border flex items-center gap-1.5 tracking-[0.1em] ${
               filterDept === 'all'
                 ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
@@ -177,7 +175,7 @@ export default function QueueSidebar({
           {visibleDepartments.map((dept) => (
             <button
               key={dept.id}
-              onClick={() => setFilterDept(dept.id)}
+              onClick={() => { setFilterDept(dept.id); setSearchQuery(''); resetArchive(); }}
               title={dept.name}
               className={`shrink-0 px-2.5 py-1 text-[9px] font-bold uppercase border flex items-center gap-1.5 tracking-[0.1em] ${
                 filterDept === dept.id
