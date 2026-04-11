@@ -111,8 +111,6 @@ function makeFakeStats(overrides: Record<string, unknown> = {}) {
     durationCount: 2,
     ratingSum: 8,
     ratingCount: 2,
-    slaResolved: 2,
-    slaCompliant: 1,
     p95ResponseMs: 9000,
     sentimentSum: 3,
     sentimentCount: 2,

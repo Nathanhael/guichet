@@ -1,5 +1,4 @@
 import { Ticket, Rating, Message } from '../types/index.js';
-import { getEffectiveSla, SlaConfig } from './sla.js';
 
 /** Extended ticket with DB columns not on the base Ticket interface */
 interface TicketWithReopened extends Ticket {
@@ -18,7 +17,7 @@ export function calculatePercentile(values: number[], percentile: number): numbe
   return sorted[index];
 }
 
-export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings: Rating[], deptFilter?: string, dayMessages: MessageWithSentiment[] = [], slaConfig: SlaConfig | null = null) {
+export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings: Rating[], deptFilter?: string, dayMessages: MessageWithSentiment[] = []) {
   let tickets = dayTickets;
   let ratings = dayRatings;
   let messages = dayMessages;
@@ -33,14 +32,12 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
   const deptCounts: Record<string, number> = {};
   const hourly = Array(24).fill(0);
   const hourlySupport: Record<string, number>[] = Array.from({ length: 24 }, () => ({}));
-  const hourlySla = Array.from({ length: 24 }, () => ({ resolved: 0, compliant: 0 }));
   let closed = 0, abandoned = 0, reopened = 0;
   let responseSum = 0, responseCount = 0;
   let durationSum = 0, durationCount = 0;
   const responseTimes: number[] = [];
   const ratingsByDept: Record<string, { sum: number; count: number }> = {};
   const deptResolved: Record<string, number> = {};
-  const deptCompliant: Record<string, number> = {};
   const supportIds = new Set<string>();
 
   tickets.forEach(t => {
@@ -67,12 +64,6 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
       responseCount++;
       responseTimes.push(responseTime);
       deptResolved[t.dept] = (deptResolved[t.dept] || 0) + 1;
-
-      const isCompliant = responseTime <= getEffectiveSla(slaConfig, t.dept).responseMs;
-      if (isCompliant) deptCompliant[t.dept] = (deptCompliant[t.dept] || 0) + 1;
-
-      hourlySla[hour].resolved++;
-      if (isCompliant) hourlySla[hour].compliant++;
     }
 
     if (t.status === 'closed' && t.closedAt) {
@@ -92,9 +83,6 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
   const sentimentSum = messages.reduce((s, m) => s + (m.sentiment || 0), 0);
   const sentimentCount = messages.filter(m => m.sentiment !== undefined && m.sentiment !== null).length;
 
-  const resolved = tickets.filter(t => t.supportJoinedAt);
-  const compliant = resolved.filter(t => (new Date(t.supportJoinedAt!).getTime() - new Date(t.createdAt).getTime()) <= getEffectiveSla(slaConfig, t.dept).responseMs).length;
-
   return {
     total: tickets.length,
     deptCounts,
@@ -111,10 +99,7 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
     ratingsByDept,
     sentimentSum,
     sentimentCount,
-    slaResolved: resolved.length,
-    slaCompliant: compliant,
     deptResolved,
-    deptCompliant,
     supportIds: Array.from(supportIds),
     hourly,
     hourlyStaffing: hourly.map((count, h) => {
@@ -130,8 +115,6 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
         support: supportInHour.length,
         topSupportId,
         topSupportCount: topSupportId ? hourlySupport[h][topSupportId] : 0,
-        slaResolved: hourlySla[h].resolved,
-        slaCompliant: hourlySla[h].compliant
       };
     })
   };

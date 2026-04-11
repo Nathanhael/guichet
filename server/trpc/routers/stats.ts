@@ -1,13 +1,12 @@
 import { z } from 'zod';
 import { router, partnerScopedProcedure } from '../trpc.js';
 import { computeLiveDayStats, calculatePercentile } from '../../services/stats.js';
-import { parseSlaConfig } from '../../services/sla.js';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { Ticket, UserRole } from '../../types/index.js';
 import { isPlatformAdmin } from '../../services/roles.js';
 import {
-  fetchPartnerSlaConfig, fetchHistoricalStats, fetchLiveTickets, fetchRatings,
+  fetchHistoricalStats, fetchLiveTickets, fetchRatings,
   fetchTicketSentiment, fetchDeptSentiment, fetchWaitingTickets,
   fetchPreviousPeriodStats, fetchLabelSummary, fetchSupportUserNames,
   type HistoricalStatRow,
@@ -29,10 +28,7 @@ interface DayData {
   ratingsByDept: Record<string, { sum: number; count: number }>;
   sentimentSum: number;
   sentimentCount: number;
-  slaResolved: number;
-  slaCompliant: number;
   deptResolved: Record<string, number>;
-  deptCompliant: Record<string, number>;
   hourly: number[];
   hourlyStaffing?: HourlyStaffingItem[];
   supportIds?: Set<string> | string[];
@@ -42,8 +38,6 @@ interface HourlyStaffingItem {
   hour: number;
   tickets: number;
   support: number;
-  slaResolved?: number;
-  slaCompliant?: number;
 }
 
 interface HourlyStaffingAccumulator {
@@ -51,8 +45,6 @@ interface HourlyStaffingAccumulator {
   tickets: number;
   support: number;
   dayCount: number;
-  slaResolved: number;
-  slaCompliant: number;
 }
 
 interface PerDayEntry {
@@ -120,10 +112,6 @@ export const statsRouter = router({
         }
         const partnerId = ctx.user.partnerId;
 
-        // Fetch partner SLA config for per-partner compliance thresholds (#29)
-        const partnerRows = await fetchPartnerSlaConfig(partnerId!);
-        const partnerSlaConfig = parseSlaConfig(partnerRows[0]?.slaConfig ?? null);
-
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
 
@@ -183,13 +171,10 @@ export const statsRouter = router({
         let totalDurationSum = 0, totalDurationCount = 0;
         let totalRatingSum = 0, totalRatingCount = 0;
         let totalSentimentSum = 0, totalSentimentCount = 0;
-        let totalSlaResolved = 0, totalSlaCompliant = 0;
         const allResponseTimes: number[] = [];
         const hourlyMap = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
         const hourlyStaffingMap: Record<number, HourlyStaffingAccumulator> = {};
         const ratingsByDeptAgg: Record<string, RatingsByDeptAccumulator> = {};
-        const deptResolvedAgg: Record<string, number> = {};
-        const deptCompliantAgg: Record<string, number> = {};
         const supportIdsAgg = new Set<string>();
         const perDayData: PerDayEntry[] = [];
 
@@ -212,8 +197,8 @@ export const statsRouter = router({
                 closed: hist.closed * deptRatio,
                 abandoned: hist.abandoned * deptRatio,
                 reopened: hist.reopened * deptRatio,
-                responseSum: hist.avgResponseMs * (deptRatio * (hist.slaResolved || 0)),
-                responseCount: deptRatio * (hist.slaResolved || 0),
+                responseSum: hist.avgResponseMs * (deptRatio * (hist.responseCount || 0)),
+                responseCount: deptRatio * (hist.responseCount || 0),
                 p95ResponseMs: hist.p95ResponseMs,
                 durationSum: hist.avgDurationMs * (hist.closed * deptRatio),
                 durationCount: hist.closed * deptRatio,
@@ -222,10 +207,7 @@ export const statsRouter = router({
                 ratingsByDept: deptRating ? { [dept]: deptRating } : {},
                 sentimentSum: hist.sentimentSum * deptRatio,
                 sentimentCount: hist.sentimentCount * deptRatio,
-                slaResolved: deptRatio * (hist.slaResolved || 0),
-                slaCompliant: deptRatio * (hist.slaCompliant || 0),
-                deptResolved: { [dept]: deptRatio * (hist.slaResolved || 0) },
-                deptCompliant: { [dept]: deptRatio * (hist.slaCompliant || 0) },
+                deptResolved: { [dept]: deptRatio * (hist.responseCount || 0) },
                 hourly: histHourly.map((h: number) => h * deptRatio),
               } as DayData;
             } else {
@@ -235,8 +217,8 @@ export const statsRouter = router({
                 closed: hist.closed,
                 abandoned: hist.abandoned,
                 reopened: hist.reopened,
-                responseSum: hist.avgResponseMs * (hist.slaResolved || 0),
-                responseCount: hist.slaResolved || 0,
+                responseSum: hist.avgResponseMs * (hist.responseCount || 0),
+                responseCount: hist.responseCount || 0,
                 p95ResponseMs: hist.p95ResponseMs,
                 durationSum: hist.avgDurationMs * hist.closed,
                 durationCount: hist.closed,
@@ -245,16 +227,9 @@ export const statsRouter = router({
                 ratingsByDept: histRatingsByDept,
                 sentimentSum: hist.sentimentSum,
                 sentimentCount: hist.sentimentCount,
-                slaResolved: hist.slaResolved || 0,
-                slaCompliant: hist.slaCompliant || 0,
                 deptResolved: Object.fromEntries(
                   Object.entries(histDeptCounts).map(([d, count]) => [
-                    d, (hist.total > 0 ? (count as number) / hist.total : 0) * (hist.slaResolved || 0)
-                  ])
-                ),
-                deptCompliant: Object.fromEntries(
-                  Object.entries(histDeptCounts).map(([d, count]) => [
-                    d, (hist.total > 0 ? (count as number) / hist.total : 0) * (hist.slaCompliant || 0)
+                    d, (hist.total > 0 ? (count as number) / hist.total : 0) * (hist.responseCount || 0)
                   ])
                 ),
                 hourly: histHourly,
@@ -273,7 +248,7 @@ export const statsRouter = router({
                 ticketId: row.ticketId,
                 sentiment: row.sentimentAvg as number,
               }));
-            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, daySentimentMessages as unknown[] as Parameters<typeof computeLiveDayStats>[3], partnerSlaConfig) as unknown as DayData;
+            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, daySentimentMessages as unknown[] as Parameters<typeof computeLiveDayStats>[3]) as unknown as DayData;
           }
 
           perDayData.push({
@@ -296,8 +271,6 @@ export const statsRouter = router({
           totalRatingCount += dayData.ratingCount;
           totalSentimentSum += dayData.sentimentSum;
           totalSentimentCount += dayData.sentimentCount;
-          totalSlaResolved += dayData.slaResolved;
-          totalSlaCompliant += dayData.slaCompliant;
 
           // Collect response times for global p95
           if (!hist) {
@@ -319,12 +292,10 @@ export const statsRouter = router({
               if (slot) {
                 slot.count += item.tickets;
                 if (!hourlyStaffingMap[item.hour]) {
-                  hourlyStaffingMap[item.hour] = { hour: item.hour, tickets: 0, support: 0, dayCount: 0, slaResolved: 0, slaCompliant: 0 };
+                  hourlyStaffingMap[item.hour] = { hour: item.hour, tickets: 0, support: 0, dayCount: 0 };
                 }
                 hourlyStaffingMap[item.hour].tickets += item.tickets;
                 hourlyStaffingMap[item.hour].support += item.support;
-                hourlyStaffingMap[item.hour].slaResolved += (item.slaResolved || 0);
-                hourlyStaffingMap[item.hour].slaCompliant += (item.slaCompliant || 0);
                 hourlyStaffingMap[item.hour].dayCount++;
               }
             });
@@ -332,7 +303,7 @@ export const statsRouter = router({
             dayData.hourly.forEach((count: number, h: number) => {
               hourlyMap[h].count += count;
               if (!hourlyStaffingMap[h]) {
-                hourlyStaffingMap[h] = { hour: h, tickets: 0, support: 0, dayCount: 0, slaResolved: 0, slaCompliant: 0 };
+                hourlyStaffingMap[h] = { hour: h, tickets: 0, support: 0, dayCount: 0 };
               }
               hourlyStaffingMap[h].tickets += count;
               hourlyStaffingMap[h].dayCount++;
@@ -340,13 +311,6 @@ export const statsRouter = router({
           }
 
           if (dayData.supportIds) (dayData.supportIds as string[]).forEach((id: string) => supportIdsAgg.add(id));
-
-          Object.entries(dayData.deptResolved || {}).forEach(([d, count]) => {
-            deptResolvedAgg[d] = (deptResolvedAgg[d] || 0) + (count as number);
-          });
-          Object.entries(dayData.deptCompliant || {}).forEach(([d, count]) => {
-            deptCompliantAgg[d] = (deptCompliantAgg[d] || 0) + (count as number);
-          });
 
           Object.entries(dayData.ratingsByDept).forEach(([d, stats]: [string, { sum: number; count: number }]) => {
             if (!ratingsByDeptAgg[d]) ratingsByDeptAgg[d] = { sum: 0, count: 0 };
@@ -398,8 +362,7 @@ export const statsRouter = router({
         const avgResponseMs = totalResponseCount > 0 ? totalResponseSum / totalResponseCount : 0;
         const avgDurationMs = totalDurationCount > 0 ? totalDurationSum / totalDurationCount : 0;
         const avgRating = totalRatingCount > 0 ? Math.round((totalRatingSum / totalRatingCount) * 10) / 10 : null;
-        const slaHealth = totalSlaResolved > 0 ? Math.round((totalSlaCompliant / totalSlaResolved) * 100) : 100;
-        
+
         // p95 calculation
         let globalP95 = 0;
         if (allResponseTimes.length > 0) {
@@ -500,15 +463,11 @@ export const statsRouter = router({
 
         const prevHist = await fetchPreviousPeriodStats(partnerId!, prevStartStr, prevEndStr, excludeWeekends);
 
-        const prevSlares = prevHist[0]?.slares ?? 0;
-        const prevSlacomp = prevHist[0]?.slacomp ?? 0;
-
         const previousPeriod = {
           total: prevHist[0]?.total || 0,
           avgResponseMinutes: Math.round((prevHist[0]?.avgresp || 0) / 60000),
           avgDurationMinutes: Math.round((prevHist[0]?.avgdur || 0) / 60000),
           abandonedCount: prevHist[0]?.abandoned || 0,
-          slaHealth: prevSlares > 0 ? Math.round((prevSlacomp / prevSlares) * 100) : 100,
           avgRating: prevHist[0]?.avgrat ? Math.round(prevHist[0].avgrat * 10) / 10 : null,
         };
 
@@ -528,17 +487,11 @@ export const statsRouter = router({
             hour: h.hour,
             tickets: h.dayCount > 0 ? Math.round((h.tickets / h.dayCount) * 10) / 10 : 0,
             support: h.dayCount > 0 ? Math.round((h.support / h.dayCount) * 10) / 10 : 0,
-            slaHealth: h.slaResolved > 0 ? Math.round((h.slaCompliant / h.slaResolved) * 100) : 100
           })).sort((a, b) => a.hour - b.hour),
-          dailyTrend, trendGranularity, supportStats, agentStats, slaHealth, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, sentimentByDept: sentimentByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
+          dailyTrend, trendGranularity, supportStats, agentStats, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, sentimentByDept: sentimentByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
           waitingOver3: waitingTickets.filter(t => t.createdAt && (now.getTime() - new Date(t.createdAt).getTime()) > 3 * 60 * 1000).length,
           deptCounts: totalDeptCounts, resolutionRate: totalCount > 0 ? Math.round((totalClosed / totalCount) * 100) : 0,
           avgConcurrency: supportIdsAgg.size > 0 ? Math.round((totalCount / supportIdsAgg.size) * 10) / 10 : 0,
-          deptSla: Object.fromEntries(
-            Object.entries(deptResolvedAgg).map(([d, resolved]) => [
-              d, resolved > 0 ? Math.round((deptCompliantAgg[d] || 0) / resolved * 100) : 0
-            ])
-          ),
           daySummary: await (async () => {
             const labelCounts = await fetchLabelSummary(partnerId!, rangeStart, rangeEnd);
             const summary: Record<string, string[]> = {};

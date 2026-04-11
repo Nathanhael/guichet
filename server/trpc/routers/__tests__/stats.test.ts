@@ -13,7 +13,7 @@ const { emptyRows, dbExecuteMock, dbSelectMock, whereMock, mockDayData } = vi.ho
   dbSelectMock.mockReturnValue({ from: fromMock });
   fromMock.mockReturnValue({ where: whereMock });
   whereMock.mockReturnValue({ limit: limitMock });
-  whereMock.mockResolvedValue([{ slaConfig: null }]);
+  whereMock.mockResolvedValue([]);
   limitMock.mockResolvedValue([]);
 
   const mockDayData = {
@@ -32,10 +32,7 @@ const { emptyRows, dbExecuteMock, dbSelectMock, whereMock, mockDayData } = vi.ho
     ratingsByDept: {},
     sentimentSum: 0,
     sentimentCount: 0,
-    slaResolved: 0,
-    slaCompliant: 0,
     deptResolved: {},
-    deptCompliant: {},
     hourly: Array(24).fill(0),
     supportIds: [],
   };
@@ -53,17 +50,13 @@ vi.mock('../../../db.js', () => ({
 }));
 
 vi.mock('../../../db/schema.js', () => ({
-  partners: { id: 'id', slaConfig: 'sla_config' },
+  partners: { id: 'id' },
   users: { id: 'id', name: 'name' },
 }));
 
 vi.mock('../../../services/stats.js', () => ({
   computeLiveDayStats: vi.fn().mockReturnValue(mockDayData),
   calculatePercentile: vi.fn().mockReturnValue(0),
-}));
-
-vi.mock('../../../services/sla.js', () => ({
-  parseSlaConfig: vi.fn().mockReturnValue(null),
 }));
 
 vi.mock('../../../services/roles.js', () => ({
@@ -101,7 +94,7 @@ describe('statsRouter.getGlobalStats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dbExecuteMock.mockResolvedValue(emptyRows);
-    whereMock.mockResolvedValue([{ slaConfig: null }]);
+    whereMock.mockResolvedValue([]);
   });
 
   it('returns expected response shape with all top-level keys', async () => {
@@ -127,10 +120,10 @@ describe('statsRouter.getGlobalStats', () => {
       'abandonedCount', 'reopenRate', 'sentimentScore',
       'total', 'avgRating', 'totalRatings', 'resolutionRate',
       'hourlyDistribution', 'hourlyStaffing',
-      'dailyTrend', 'deptCounts', 'deptSla',
+      'dailyTrend', 'deptCounts',
       'ratingsByDept', 'sentimentByDept',
       'supportStats', 'agentStats',
-      'slaHealth', 'oldestWaitMinutes', 'waitingOver3',
+      'oldestWaitMinutes', 'waitingOver3',
       'daySummary', 'previousPeriod', 'trendGranularity', 'avgConcurrency',
     ];
 
@@ -174,7 +167,7 @@ describe('statsRouter.getGlobalStats', () => {
       dateTo: '2026-01-02',
     });
 
-    const prevKeys = ['total', 'avgResponseMinutes', 'avgDurationMinutes', 'abandonedCount', 'slaHealth', 'avgRating'];
+    const prevKeys = ['total', 'avgResponseMinutes', 'avgDurationMinutes', 'abandonedCount', 'avgRating'];
     for (const key of prevKeys) {
       expect(result.previousPeriod).toHaveProperty(key);
     }

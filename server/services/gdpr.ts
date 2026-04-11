@@ -118,7 +118,7 @@ export async function runDailyPurge() {
           date, partnerId,
           total: stats.total, closed: stats.closed, abandoned: stats.abandoned, reopened: stats.reopened,
           avgResponseMs, avgDurationMs, avgRating,
-          ratingCount: stats.ratingCount, slaResolved: stats.slaResolved, slaCompliant: stats.slaCompliant,
+          ratingCount: stats.ratingCount,
           p95ResponseMs: stats.p95ResponseMs, sentimentSum: stats.sentimentSum, sentimentCount: stats.sentimentCount,
           deptCounts: stats.deptCounts, ratingsByDept: stats.ratingsByDept, hourly: stats.hourly,
         };
@@ -130,7 +130,6 @@ export async function runDailyPurge() {
             abandoned: sql`EXCLUDED.abandoned`, reopened: sql`EXCLUDED.reopened`,
             avgResponseMs: sql`EXCLUDED.avg_response_ms`, avgDurationMs: sql`EXCLUDED.avg_duration_ms`,
             avgRating: sql`EXCLUDED.avg_rating`, ratingCount: sql`EXCLUDED.rating_count`,
-            slaResolved: sql`EXCLUDED.sla_resolved`, slaCompliant: sql`EXCLUDED.sla_compliant`,
             p95ResponseMs: sql`EXCLUDED.p95_response_ms`, sentimentSum: sql`EXCLUDED.sentiment_sum`,
             sentimentCount: sql`EXCLUDED.sentiment_count`, deptCounts: sql`EXCLUDED.dept_counts`,
             ratingsByDept: sql`EXCLUDED.ratings_by_dept`, hourly: sql`EXCLUDED.hourly`,

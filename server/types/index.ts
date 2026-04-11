@@ -29,9 +29,6 @@ export interface Ticket {
   closingNotes?: string | null;
   closedBy?: string | null;
   participants: string; // JSON string
-  slaResponseDueAt?: string | null;
-  slaResolutionDueAt?: string | null;
-  slaBreached?: boolean;
 }
 
 export interface Message {

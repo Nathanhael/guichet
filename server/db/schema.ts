@@ -27,8 +27,6 @@ export const partners = pgTable('partners', {
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   status: text('status').notNull().default('active'),
   authMethod: authMethodEnum('auth_method').notNull().default('sso'),
-  // SLA configuration
-  slaConfig: jsonb('sla_config').default({}),
   // AI configuration
   aiEnabled: boolean('ai_enabled').default(false),
   aiProvider: text('ai_provider').default('ollama'),
@@ -116,9 +114,6 @@ export const tickets = pgTable('tickets', {
   participants: jsonb('participants').$type<Array<{ id: string; name: string; role?: string; lang?: string }>>().default([]),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
-  slaResponseDueAt: timestamp('sla_response_due_at', { mode: 'string' }),
-  slaResolutionDueAt: timestamp('sla_resolution_due_at', { mode: 'string' }),
-  slaBreached: boolean('sla_breached').default(false),
 }, (table) => ({
   partnerIdIdx: index('idx_tickets_partner_id').on(table.partnerId),
   agentIdIdx: index('idx_tickets_agent_id').on(table.agentId),
@@ -223,8 +218,7 @@ export const dailyStats = pgTable('daily_stats', {
   avgDurationMs: integer('avg_duration_ms').default(0),
   avgRating: real('avg_rating'),
   ratingCount: integer('rating_count').default(0),
-  slaResolved: integer('sla_resolved').default(0),
-  slaCompliant: integer('sla_compliant').default(0),
+  responseCount: integer('response_count').default(0),
   p95ResponseMs: integer('p95_response_ms').default(0),
   reopened: integer('reopened').default(0),
   sentimentSum: real('sentiment_sum').default(0),

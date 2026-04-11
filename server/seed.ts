@@ -150,7 +150,6 @@ async function seedFull() {
     aiProvider: 'ollama',
     aiModel: 'llama3.2',
     aiFeatures: { improve: true, summarize: true, translate: true, sentiment: true },
-    slaConfig: { DSC: { response: 30, resolution: 240 }, FOT: { response: 15, resolution: 120 }, TEC: { response: 60, resolution: 480 } },
   });
   await db.insert(schema.partners).values({
     id: PARTNER_B,
@@ -167,7 +166,6 @@ async function seedFull() {
     aiProvider: 'ollama',
     aiModel: 'llama3.2',
     aiFeatures: { improve: true, summarize: true, translate: true, sentiment: true },
-    slaConfig: { DSC: { response: 20, resolution: 180 }, FOT: { response: 10, resolution: 90 } },
   });
   const partnerIds = [PARTNER_A, PARTNER_B];
 
@@ -430,7 +428,6 @@ async function seedFull() {
           ],
           reopened: round === 4 && status === 'open',
           reopenCount: round === 4 && status === 'open' ? 1 : 0,
-          slaBreached: Math.random() < 0.1,
         });
 
         // Messages
@@ -532,8 +529,7 @@ async function seedFull() {
         avgDurationMs: faker.number.int({ min: 600000, max: 3600000 }),
         avgRating: faker.number.float({ min: 3.0, max: 5.0, fractionDigits: 2 }),
         ratingCount: faker.number.int({ min: 2, max: closed }),
-        slaResolved: faker.number.int({ min: Math.floor(closed * 0.7), max: closed }),
-        slaCompliant: faker.number.int({ min: Math.floor(closed * 0.6), max: closed }),
+        responseCount: faker.number.int({ min: Math.floor(closed * 0.7), max: closed }),
         p95ResponseMs: faker.number.int({ min: 120000, max: 600000 }),
         reopened: faker.number.int({ min: 0, max: 2 }),
         sentimentSum: faker.number.float({ min: total * 0.2, max: total * 0.8, fractionDigits: 1 }),
@@ -584,7 +580,6 @@ async function seedFull() {
     { name: 'Closed This Week',    filters: { status: ['closed','resolved'], dateRange: 'this_week' } },
     { name: 'Tech Support Queue',  filters: { dept: 'TEC', status: ['open','pending'] } },
     { name: 'Billing Issues',      filters: { dept: 'BIL', status: ['open','pending'] } },
-    { name: 'SLA Breached',        filters: { slaBreached: true, status: ['open','pending'] } },
   ];
   for (const mem of supportMembers.slice(0, 8)) {
     const views = faker.helpers.arrayElements(viewDefs, { min: 1, max: 3 });

@@ -10,7 +10,6 @@ const ACTION_OPTIONS = [
   'partner.deactivated',
   'partner.reactivated',
   'partner.deleted',
-  'partner.sla_config_updated',
   // Platform
   'platform.enter_partner',
   'platform_operator_bootstrap',
@@ -64,8 +63,6 @@ function formatAuditDetails(log: { action: string; metadata?: unknown; targetId:
       return 'Tenant reactivated';
     case 'partner.deleted':
       return 'Tenant deleted';
-    case 'partner.sla_config_updated':
-      return 'SLA configuration updated';
     // Platform
     case 'platform.enter_partner':
       return `Platform entry into tenant ${log.targetId || '-'}`;

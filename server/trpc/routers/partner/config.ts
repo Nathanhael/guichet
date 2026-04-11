@@ -199,11 +199,6 @@ export const validatedBusinessHoursScheduleSchema = businessHoursScheduleSchema.
   });
 });
 
-const slaByDepartmentSchema = z.record(z.string(), z.object({
-  responseMs: z.number().int().positive(),
-  resolutionMs: z.number().int().positive(),
-}));
-
 export const partnerConfigRouter = router({
   getManifest: adminProcedure.query(async ({ ctx }) => {
     try {
@@ -235,66 +230,6 @@ export const partnerConfigRouter = router({
       ...aiConfig,
     };
   }),
-
-  getSlaConfig: adminProcedure.query(async ({ ctx }) => {
-    const partnerId = ctx.user.partnerId;
-    if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-
-    const result = await db.select({ slaConfig: partners.slaConfig }).from(partners).where(eq(partners.id, partnerId)).limit(1);
-    if (result.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
-
-    const { parseSlaConfig } = await import('../../../services/sla.js');
-    const parsed = parseSlaConfig(result[0].slaConfig);
-
-    return {
-      defaultResponseMs: parsed?.defaultResponseMs ?? config.SLA_THRESHOLD_MS,
-      defaultResolutionMs: parsed?.defaultResolutionMs ?? 24 * 60 * 60 * 1000,
-      byDepartment: parsed?.byDepartment ?? {},
-      businessHoursOnly: parsed?.businessHoursOnly ?? false,
-    };
-  }),
-
-  updateSlaConfig: adminProcedure
-    .input(z.object({
-      defaultResponseMs: z.number().int().positive().optional(),
-      defaultResolutionMs: z.number().int().positive().optional(),
-      byDepartment: slaByDepartmentSchema.optional(),
-      businessHoursOnly: z.boolean().optional(),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-
-      // Build the new SLA config, merging with existing
-      const existing = await db.select({ slaConfig: partners.slaConfig }).from(partners).where(eq(partners.id, partnerId)).limit(1);
-      if (existing.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
-
-      const { parseSlaConfig } = await import('../../../services/sla.js');
-      const current = parseSlaConfig(existing[0].slaConfig);
-
-      const newConfig = {
-        defaultResponseMs: input.defaultResponseMs ?? current?.defaultResponseMs ?? config.SLA_THRESHOLD_MS,
-        defaultResolutionMs: input.defaultResolutionMs ?? current?.defaultResolutionMs ?? 24 * 60 * 60 * 1000,
-        byDepartment: input.byDepartment ?? current?.byDepartment ?? {},
-        businessHoursOnly: input.businessHoursOnly ?? current?.businessHoursOnly ?? false,
-      };
-
-      await db.update(partners)
-        .set({ slaConfig: newConfig })
-        .where(eq(partners.id, partnerId));
-
-      await db.insert(auditLog).values({
-        action: 'partner.sla_config_updated',
-        actorId: ctx.user.id,
-        partnerId,
-        targetType: 'partner',
-        targetId: partnerId,
-        metadata: { slaConfig: newConfig },
-      });
-
-      logger.info({ partnerId }, 'SLA config updated by Partner Admin');
-      return { success: true, slaConfig: newConfig };
-    }),
 
   getBusinessHours: protectedProcedure.query(async ({ ctx }) => {
     try {
