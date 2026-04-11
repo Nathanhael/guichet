@@ -55,17 +55,16 @@ export const ticketRouter = router({
           conditions.push(eq(tickets.agentId, input.agentId));
         }
 
-        // H-6: Department isolation for support users with assigned departments
-        // Empty departments = unconfigured (sees nothing). Admin and platform_operator are not restricted.
+        // H-6: Department isolation for support users with explicitly assigned departments.
+        // Per CLAUDE.md contract: empty/null departments = generalist (sees all partner tickets).
+        // Admin and platform_operator are never restricted.
         // Departments sourced from JWT context (refreshed on token rotation, max staleness = ACCESS_TOKEN_EXPIRY).
         if (!ctx.user.isPlatformOperator && ctx.user.role === 'support') {
           const depts = ctx.user.departments;
           if (depts.length > 0) {
             conditions.push(inArray(tickets.dept, depts));
-          } else {
-            // No departments assigned — return nothing (unconfigured support user)
-            conditions.push(sql`1 = 0`);
           }
+          // else: generalist — no additional dept filter
         }
         // Normalize status filter (single value or array)
         const statusArr = input.status

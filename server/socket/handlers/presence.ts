@@ -87,6 +87,8 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     if (userId && partnerId) {
       await presenceService.setUserStatus(userId, partnerId, status);
       await statusTracking.logTransition(userId, partnerId, status);
+      // Re-broadcast online support list so viewer UIs (chat header avatars, queue sidebar) reflect the new status immediately.
+      await presenceService.broadcastOnlineSupport(partnerId);
     }
   });
 

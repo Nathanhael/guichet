@@ -50,10 +50,14 @@ export default function QueueSidebar({
 
   const departments = (activeMembership.manifest?.departments || []) as { id: string; name: string }[];
   const assignedDepartmentIds = activeMembership.departments || [];
-  const hasNoDepartments = assignedDepartmentIds.length === 0;
-  const visibleDepartments = hasNoDepartments
-    ? []
+  // Per spec (CLAUDE.md): empty/null memberships.departments = generalist (sees all partner depts).
+  const isGeneralist = assignedDepartmentIds.length === 0;
+  const visibleDepartments = isGeneralist
+    ? departments
     : departments.filter((d) => assignedDepartmentIds.includes(d.id));
+  // Ticket-level dept gate: generalist → always true, scoped → only assigned depts
+  const ticketDeptAllowed = (deptId: string) =>
+    isGeneralist || assignedDepartmentIds.includes(deptId);
 
   // Search query
   const searchResults = trpc.message.search.useQuery(
@@ -99,14 +103,14 @@ export default function QueueSidebar({
     const open = tickets.filter(
       (tk) =>
         tk.status !== 'closed' && tk.status !== 'resolved' &&
-        assignedDepartmentIds.includes(tk.dept),
+        ticketDeptAllowed(tk.dept),
     );
     const counts: Record<string, number> = { all: open.length };
     for (const tk of open) {
       counts[tk.dept] = (counts[tk.dept] || 0) + 1;
     }
     return counts;
-  }, [tickets, assignedDepartmentIds]);
+  }, [tickets, ticketDeptAllowed]);
 
   // Filter queue tickets
   const queueFiltered = useMemo(
@@ -115,18 +119,18 @@ export default function QueueSidebar({
         (tk) =>
           tk.status !== 'closed' && tk.status !== 'resolved' &&
           (filterDept === 'all' || tk.dept === filterDept) &&
-          assignedDepartmentIds.includes(tk.dept),
+          ticketDeptAllowed(tk.dept),
       ),
-    [tickets, filterDept, assignedDepartmentIds],
+    [tickets, filterDept, ticketDeptAllowed],
   );
 
   return (
     <>
-      {hasNoDepartments ? (
+      {departments.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <Shield className="h-8 w-8 text-text-muted opacity-30 mb-4" />
-          <p className="text-sm font-bold uppercase tracking-tight mb-2">No departments assigned</p>
-          <p className="text-[10px] uppercase tracking-widest text-text-muted opacity-60">Contact your administrator to configure department access.</p>
+          <p className="text-sm font-bold uppercase tracking-tight mb-2">No departments configured</p>
+          <p className="text-[10px] uppercase tracking-widest text-text-muted opacity-60">Contact your administrator to configure partner departments.</p>
         </div>
       ) : (
       <>

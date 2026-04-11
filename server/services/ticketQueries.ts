@@ -197,10 +197,10 @@ export async function createTicket(data: CreateTicketData) {
 }
 
 /**
- * Assigns support to a ticket using COALESCE for idempotency + JSONB participant update.
- * Uses Drizzle `sql` tag for the complex JSONB conditional append.
- * NOTE: The `::text` cast after JSONB manipulation is required because the `participants`
- * column stores JSONB as text — PostgreSQL's text representation of JSONB is valid JSON.
+ * Assigns support to a ticket using COALESCE for idempotency + JSONB participant append.
+ * Uses Drizzle `sql` tag for the JSONB conditional append. Both CASE branches return jsonb
+ * (the column type), so no cast to text is needed — and mixing text/jsonb branches in the
+ * same CASE fails at runtime with "CASE types text and jsonb cannot be matched".
  * Used by: support:join
  */
 export async function assignSupport(
@@ -216,8 +216,8 @@ export async function assignSupport(
     support_lang = COALESCE(support_lang, ${supportLang}),
     support_joined_at = COALESCE(support_joined_at, ${new Date().toISOString()}),
     participants = CASE
-      WHEN NOT (COALESCE(participants, '[]')::jsonb @> ${`[${participantJson}]`}::jsonb)
-      THEN (COALESCE(participants, '[]')::jsonb || ${participantJson}::jsonb)::text
+      WHEN NOT (COALESCE(participants, '[]'::jsonb) @> ${`[${participantJson}]`}::jsonb)
+      THEN COALESCE(participants, '[]'::jsonb) || ${participantJson}::jsonb
       ELSE participants
     END,
     status = 'open'

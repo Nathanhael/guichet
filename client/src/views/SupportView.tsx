@@ -42,6 +42,7 @@ export default function SupportView() {
     notificationsEnabled,
     rightSidebarExpanded,
     toggleRightSidebar,
+    setAllLabels,
   } = useStore(
     useShallow((s) => ({
       user: s.user,
@@ -59,6 +60,7 @@ export default function SupportView() {
       notificationsEnabled: s.notificationsEnabled,
       rightSidebarExpanded: s.rightSidebarExpanded,
       toggleRightSidebar: s.toggleRightSidebar,
+      setAllLabels: s.setAllLabels,
     }))
   );
   const { status: businessHoursStatus } = useBusinessHours();
@@ -97,6 +99,12 @@ export default function SupportView() {
       setTickets(ticketsQuery.data as unknown as Ticket[]);
     }
   }, [ticketsQuery.data, setTickets]);
+
+  // Populate label store so ChatHeader's label picker has data in support views
+  const labelsQuery = trpc.label.list.useQuery();
+  useEffect(() => {
+    if (labelsQuery.data) setAllLabels(labelsQuery.data);
+  }, [labelsQuery.data, setAllLabels]);
 
   // Derived state
   const openTabTickets = useMemo(
@@ -178,7 +186,7 @@ export default function SupportView() {
       ticketId: ticket.id,
       supportId: user.id,
       supportName: user.name,
-      supportLang: user.lang,
+      supportLang: user.lang || 'en',
     });
     addSupportOpenTicket(ticket.id);
     setActiveTab(ticket.id);

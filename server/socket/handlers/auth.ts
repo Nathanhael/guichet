@@ -149,7 +149,9 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
       // Look up the user's name from the DB (don't trust client-supplied name)
       const userRow = await findUserById(userId);
       if (!userRow) {
-        socket.emit('error', { message: 'User not found' });
+        // JWT references a deleted user (e.g. after DB reseed) — force client to log out
+        logger.warn({ socketId: socket.id, userId }, '[socket] JWT user no longer exists — forcing re-auth');
+        socket.emit('auth:expired', { message: 'Account no longer exists — please sign in again' });
         socket.disconnect();
         return;
       }
@@ -161,7 +163,9 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
       if (!membership) {
         // No membership — check if user is a platform operator
         if (!isPlatformAdmin(isPlatformOp)) {
-          socket.emit('error', { message: 'Not authorized for this partner' });
+          // JWT references a partner the user no longer belongs to (e.g. after reseed / membership removal)
+          logger.warn({ socketId: socket.id, userId, partnerId }, '[socket] JWT partner membership missing — forcing re-auth');
+          socket.emit('auth:expired', { message: 'Partner access revoked — please sign in again' });
           socket.disconnect();
           return;
         }
