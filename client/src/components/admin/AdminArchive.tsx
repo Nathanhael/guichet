@@ -51,7 +51,11 @@ export default function AdminArchive() {
     if (messagesQuery.data) setPreviewMessages(messagesQuery.data.messages as unknown as Message[]);
   }, [messagesQuery.data]);
 
-  useEffect(() => { setCursor(undefined); setTickets([]); setHasMore(false); }, [search, dept, dateFrom, dateTo]);
+  function resetPagination() {
+    setCursor(undefined);
+    setTickets([]);
+    setHasMore(false);
+  }
 
   function duration(tk: Ticket) {
     if (!tk.closedAt || !tk.createdAt) return '—';
@@ -97,7 +101,7 @@ export default function AdminArchive() {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); resetPagination(); }}
               placeholder="Search..."
               className="bg-bg-elevated border-2 border-border-heavy px-3 py-1.5 text-xs font-bold uppercase placeholder:opacity-30 w-44 focus:border-accent-blue outline-none"
             />
@@ -106,7 +110,7 @@ export default function AdminArchive() {
                 type="date"
                 aria-label="Start date"
                 value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
+                onChange={(e) => { setDateFrom(e.target.value); resetPagination(); }}
                 className="bg-transparent text-[10px] font-bold uppercase outline-none"
               />
               <span className="text-[10px] opacity-30">→</span>
@@ -114,12 +118,12 @@ export default function AdminArchive() {
                 type="date"
                 aria-label="End date"
                 value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
+                onChange={(e) => { setDateTo(e.target.value); resetPagination(); }}
                 className="bg-transparent text-[10px] font-bold uppercase outline-none"
               />
             </div>
             {(dateFrom || dateTo) && (
-              <button onClick={() => { setDateFrom(''); setDateTo(''); }} className="text-[10px] font-bold uppercase text-accent-blue hover:underline px-1">
+              <button onClick={() => { setDateFrom(''); setDateTo(''); resetPagination(); }} className="text-[10px] font-bold uppercase text-accent-blue hover:underline px-1">
                 ✕ Clear
               </button>
             )}
