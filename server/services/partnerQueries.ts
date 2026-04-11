@@ -3,7 +3,7 @@ import { db } from '../db/postgres.js';
 import { partners } from '../db/schema.js';
 
 /**
- * Fetches partner configuration for business hours, SLA, and status checks.
+ * Fetches partner configuration for business hours and status checks.
  * Used by: socket:identify, ticket:new
  */
 export async function findPartnerConfig(partnerId: string) {
@@ -14,7 +14,6 @@ export async function findPartnerConfig(partnerId: string) {
       businessHoursStart: partners.businessHoursStart,
       businessHoursEnd: partners.businessHoursEnd,
       businessHoursTimezone: partners.businessHoursTimezone,
-      slaConfig: partners.slaConfig,
     })
     .from(partners)
     .where(eq(partners.id, partnerId));

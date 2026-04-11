@@ -10,7 +10,6 @@ import {
   findPartnerLabels,
   createTicket,
   closeTicket,
-  updateTicketSla,
   returnTicketToQueue,
   replaceTicketLabels,
   findRecentClosedTickets,
@@ -19,7 +18,6 @@ import { getBusinessHoursStatus, broadcastQueuePositions, BusinessHoursSchedule 
 import { findPartnerConfig } from '../../services/partnerQueries.js';
 import { findUserName, findSenderInfo } from '../../services/userQueries.js';
 import { insertMessage } from '../../services/messageQueries.js';
-import { parseSlaConfig, getEffectiveSla, calculateSlaDueDate } from '../../services/sla.js';
 import { autoSummarizeOnClose } from '../../services/ai/index.js';
 import { insertSystemMessage, insertWhisperMessage } from '../../services/systemMessage.js';
 import { findPartnerDepartments, transferTicketToDepartment } from '../../services/transferService.js';
@@ -115,23 +113,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
             mediaUrl: mediaUrl,
           });
         }
-        // Calculate SLA due dates based on partner config (respects business hours if enabled)
-        const slaConfig = parseSlaConfig(partnerRow?.slaConfig);
-        const sla = getEffectiveSla(slaConfig, dept);
-        const createdDate = new Date(ticket.createdAt);
-        const slaOpts = {
-          businessHoursOnly: slaConfig?.businessHoursOnly,
-          partnerHours: partnerHours,
-        };
-        const slaResponseDueAt = calculateSlaDueDate(createdDate, sla.responseMs, slaOpts).toISOString();
-        const slaResolutionDueAt = calculateSlaDueDate(createdDate, sla.resolutionMs, slaOpts).toISOString();
-        await updateTicketSla(ticket.id, slaResponseDueAt, slaResolutionDueAt);
-        const ticketWithSla = { ...ticket, slaResponseDueAt, slaResolutionDueAt, slaBreached: false };
-
         socket.join(Rooms.ticket(ticket.id));
-        socket.emit('ticket:created:self', { ticket: { ...ticketWithSla, participants: [], labels: [] }, message });
+        socket.emit('ticket:created:self', { ticket: { ...ticket, participants: [], labels: [] }, message });
         // Broadcast to staff only — agents must not see other users' tickets (CR-04 socket-layer fix)
-        ctx.io.to(Rooms.staff(partnerId)).emit('ticket:created', { ticket: { ...ticketWithSla, participants: [], labels: [] }, firstMessage: message });
+        ctx.io.to(Rooms.staff(partnerId)).emit('ticket:created', { ticket: { ...ticket, participants: [], labels: [] }, firstMessage: message });
         await broadcastQueuePositions(partnerId);
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:new] error');

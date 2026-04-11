@@ -1,8 +1,8 @@
 /**
- * E2E: Support View — Queue, Chat, SLA, Summarization, Collision Detection
+ * E2E: Support View — Queue, Chat, Summarization, Collision Detection
  *
  * Tests the support staff experience: queue sidebar, chat window,
- * SLA indicators, AI summarization, and collision detection banner.
+ * AI summarization, and collision detection banner.
  *
  * Prerequisites:
  *   - Server running at E2E_BASE_URL
@@ -75,13 +75,6 @@ test.describe('Support View', () => {
       const chatArea = page.locator('[class*="overflow-y-auto"]').first();
       await expect(chatArea).toBeVisible({ timeout: 5000 });
     }
-  });
-
-  test('SLA indicator shows on tickets', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const slaIndicator = page.getByText(/sla/i).first();
-    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-    expect(errorVisible).toBeFalsy();
   });
 
   test('chat header shows ticket info', async ({ page }) => {

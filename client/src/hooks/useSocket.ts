@@ -228,7 +228,7 @@ export function useSocket(): Socket {
     };
 
     const handleTicketUpdated = ({ ticketId, ...updates }: { ticketId: string; [key: string]: unknown }) => {
-      const allowed: (keyof Ticket)[] = ['status', 'agentId', 'dept', 'closedAt', 'participants', 'slaBreached', 'supportId', 'supportName'];
+      const allowed: (keyof Ticket)[] = ['status', 'agentId', 'dept', 'closedAt', 'participants', 'supportId', 'supportName'];
       const safeUpdates: Partial<Ticket> = {};
       for (const key of allowed) {
         if (key in updates) {

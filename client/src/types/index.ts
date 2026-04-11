@@ -139,9 +139,6 @@ export interface Ticket {
   participants: Participant[];
   labels: string[];
   summary?: string | null;
-  slaResponseDueAt?: string | null;
-  slaResolutionDueAt?: string | null;
-  slaBreached?: boolean;
   reopened?: boolean;
   reopenCount?: number;
 }
@@ -214,7 +211,6 @@ export interface SupportStat {
   trend?: StatsTrend[];
   sentiment?: string;
   load?: number;
-  slaAdherence?: number;
 }
 
 export interface AgentStat {
@@ -227,7 +223,6 @@ export interface HourlyStat {
   hour: number;
   tickets: number;
   support: number;
-  slaHealth: number;
   staffing?: number;
   demand?: number;
   count?: number; // for distribution
@@ -274,18 +269,16 @@ export interface AdminStats {
   sentimentByDept?: Record<string, { avg: number | null; count: number }>;
   avgRating: number;
   abandonedCount: number;
-  slaHealth: number;
   oldestWaitMinutes: number;
   waitingOver3: number;
   deptCounts: Record<string, number>;
-  deptSla?: Record<string, number>;
   trendGranularity: 'daily' | 'weekly' | 'monthly';
   dailyTrend: { date: string; total: number; deptCounts: Record<string, number> }[];
   ratingsByDept?: Record<string, DeptRating>;
   supportStats: { name: string; total: number; today: number }[];
   agentStats: { name: string; total: number; today: number }[];
   hourlyDistribution: { hour: number; count: number }[];
-  hourlyStaffing?: { hour: number; tickets: number; support: number; slaHealth: number }[];
+  hourlyStaffing?: { hour: number; tickets: number; support: number }[];
   daySummary?: Record<string, string[]>;
   previousPeriod?: Partial<AdminStats>;
 }

@@ -1,7 +1,7 @@
 /**
- * E2E: Admin View — Dashboard, Stats, SLA Config, Team Satisfaction
+ * E2E: Admin View — Dashboard, Stats, Team Satisfaction
  *
- * Tests the admin experience: dashboard stats, SLA configuration,
+ * Tests the admin experience: dashboard stats,
  * CSAT/team satisfaction, and responsive layout.
  *
  * Prerequisites:
@@ -58,20 +58,9 @@ test.describe('Admin Dashboard', () => {
   test('dashboard loads with stat cards', async ({ page }) => {
     // Admin dashboard should show stat cards
     await page.waitForTimeout(2000);
-    // Look for common stat labels
-    const hasStats = await page.getByText(/total tickets|sla|satisfaction|response time/i).first().isVisible().catch(() => false);
     // Dashboard should at minimum render without errors
     const errorVisible = await page.getByText(/error|crash|500/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
-  });
-
-  test('SLA Health card displays', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const slaCard = page.getByText(/sla/i).first();
-    // SLA metric should be present on dashboard
-    if (await slaCard.isVisible()) {
-      await expect(slaCard).toBeVisible();
-    }
   });
 
   test('sidebar navigation works', async ({ page }) => {

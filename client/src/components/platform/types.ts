@@ -31,7 +31,6 @@ export interface Partner {
   updatedAt: string;
   businessHoursStart?: string | null;
   businessHoursEnd?: string | null;
-  slaConfig?: unknown;
   aiEnabled?: boolean | null;
   aiFeatures?: AiFeatures | unknown;
   [key: string]: unknown;

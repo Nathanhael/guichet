@@ -35,7 +35,6 @@ import {
   findActiveTicketsForSupport,
   createTicket,
   closeTicket,
-  updateTicketSla,
   returnTicketToQueue,
   replaceTicketLabels,
   findPartnerLabels,
@@ -147,15 +146,6 @@ describe('ticketQueries', () => {
       const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(undefined) };
       vi.mocked(db.update).mockReturnValue(chain as never);
       await closeTicket('t1', 'Bob', 'resolved now');
-      expect(db.update).toHaveBeenCalled();
-    });
-  });
-
-  describe('updateTicketSla', () => {
-    it('updates SLA due dates', async () => {
-      const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(undefined) };
-      vi.mocked(db.update).mockReturnValue(chain as never);
-      await updateTicketSla('t1', '2026-01-01T10:00:00Z', '2026-01-02T10:00:00Z');
       expect(db.update).toHaveBeenCalled();
     });
   });

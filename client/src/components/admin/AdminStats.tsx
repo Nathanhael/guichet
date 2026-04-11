@@ -40,7 +40,6 @@ interface DashboardData {
   avgRating: number | null;
   totalRatings: number;
   abandonedCount: number;
-  slaHealth: number;
   oldestWaitMinutes: number;
   waitingOver3: number;
   resolutionRate: number;
@@ -56,7 +55,6 @@ interface DashboardData {
     avgResponseMinutes?: number;
     avgRating?: number;
     abandonedCount?: number;
-    slaHealth?: number;
   };
 }
 
@@ -256,12 +254,6 @@ export default function AdminStats() {
         />
         <StatCard label="Satisfaction" value={(stats.avgRating ?? 0) > 0 ? `${stats.avgRating}` : '—'} color="yellow" prev={stats.previousPeriod?.avgRating ?? undefined} />
         <StatCard label="Abandoned" value={stats.abandonedCount} color="red" prev={stats.previousPeriod?.abandonedCount} invertTrend />
-        <StatCard
-          label="SLA Health"
-          value={`${stats.slaHealth}%`}
-          color={stats.slaHealth >= 90 ? 'teal' : stats.slaHealth >= 70 ? 'yellow' : 'red'}
-          prev={stats.previousPeriod?.slaHealth != null ? `${stats.previousPeriod.slaHealth}%` : undefined}
-        />
       </div>
 
       <div className="grid grid-cols-12 gap-4">

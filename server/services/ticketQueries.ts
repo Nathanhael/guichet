@@ -261,17 +261,6 @@ export async function closeTicket(ticketId: string, closedBy: string, closingNot
 }
 
 /**
- * Updates SLA due dates on a ticket.
- * Used by: ticket:new
- */
-export async function updateTicketSla(ticketId: string, slaResponseDueAt: string, slaResolutionDueAt: string) {
-  await db
-    .update(tickets)
-    .set({ slaResponseDueAt, slaResolutionDueAt })
-    .where(eq(tickets.id, ticketId));
-}
-
-/**
  * Transfers ticket to a new support agent using JSONB participant manipulation.
  * Uses raw SQL for the complex JSONB filter + append.
  * Used by: ticket:transfer (to specific agent)

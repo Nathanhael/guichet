@@ -26,7 +26,6 @@ describe('partnerQueries', () => {
         businessHoursStart: '09:00',
         businessHoursEnd: '17:00',
         businessHoursTimezone: 'Europe/Brussels',
-        slaConfig: null,
       };
       const selectResult = { from: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue([mockPartner]) };
       vi.mocked(db.select).mockReturnValue(selectResult as never);

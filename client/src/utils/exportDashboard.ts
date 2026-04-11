@@ -43,7 +43,6 @@ export interface DashboardStats {
   avgRating: number | null;
   totalRatings: number;
   abandonedCount: number;
-  slaHealth: number;
   oldestWaitMinutes: number;
   waitingOver3: number;
   resolutionRate: number;
@@ -77,7 +76,6 @@ export function exportDashboardCSV(stats: DashboardStats, staffRatings?: StaffRa
       ['Avg Rating', stats.avgRating],
       ['Total Ratings', stats.totalRatings],
       ['Abandoned', stats.abandonedCount],
-      ['SLA Health %', stats.slaHealth],
       ['Resolution Rate %', stats.resolutionRate],
       ['Oldest Waiting (min)', stats.oldestWaitMinutes],
       ['Waiting >3min', stats.waitingOver3],
@@ -166,7 +164,6 @@ export function exportDashboardPDF(stats: DashboardStats, staffRatings?: StaffRa
   <div class="card"><div class="card-label">Total Tickets</div><div class="card-value">${stats.total}</div></div>
   <div class="card"><div class="card-label">Avg Response</div><div class="card-value">${stats.avgResponseMinutes}m</div></div>
   <div class="card"><div class="card-label">p95 Response</div><div class="card-value">${stats.p95ResponseMinutes}m</div></div>
-  <div class="card"><div class="card-label">SLA Health</div><div class="card-value">${stats.slaHealth}%</div></div>
   <div class="card"><div class="card-label">Avg Rating</div><div class="card-value">${stats.avgRating ?? '—'}</div></div>
   <div class="card"><div class="card-label">Abandoned</div><div class="card-value">${stats.abandonedCount}</div></div>
   <div class="card"><div class="card-label">Resolution Rate</div><div class="card-value">${stats.resolutionRate}%</div></div>
