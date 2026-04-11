@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tessera — Compose area redesign</title>
+<style>
+  :root {
+    --bg-base: #09090b;
+    --bg-surface: #111113;
+    --bg-elevated: #18181b;
+    --border: #27272a;
+    --border-heavy: #3f3f46;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-blue: #3b82f6;
+    --accent-purple: #a855f7;
+    --whisper-bg: #1a1520;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px 32px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+  h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--text-secondary);
+    margin: 0 0 8px;
+  }
+  .caption {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 0 0 14px;
+    font-style: italic;
+    max-width: 760px;
+    line-height: 1.5;
+  }
+  .shell {
+    background: var(--bg-surface);
+    border-top: 2px solid var(--border-heavy);
+    padding: 16px 16px 24px;
+    max-width: 960px;
+  }
+  .whisper-shell { background: var(--bg-elevated); }
+
+  /* ─── BEFORE ─── */
+  .before-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-bottom: 8px;
+    padding: 0 4px;
+  }
+  .before-toolbar button {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    padding: 4px 6px;
+    cursor: pointer;
+  }
+  .before-toolbar button:hover { color: var(--accent-blue); }
+
+  .before-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px;
+    border: 2px solid var(--border-heavy);
+    background: var(--bg-elevated);
+  }
+  .before-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    opacity: 0.4;
+  }
+  .before-icon:hover { opacity: 1; }
+  .before-textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 10px 6px;
+    outline: none;
+  }
+  .before-textarea::placeholder { color: var(--text-muted); }
+  .send-btn {
+    width: 44px;
+    height: 44px;
+    background: var(--accent-blue);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+  }
+  .send-btn svg { width: 20px; height: 20px; }
+
+  /* ─── AFTER: unified compose box ─── */
+  .compose-box {
+    border: 2px solid var(--border-heavy);
+    background: var(--bg-elevated);
+    display: flex;
+    flex-direction: column;
+  }
+  .compose-box.whisper-active {
+    border-color: var(--accent-purple);
+    background: var(--whisper-bg);
+  }
+
+  /* Format toolbar strip — lives inside compose box */
+  .format-strip {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .fmt-btn {
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .fmt-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    border-color: var(--border-heavy);
+  }
+  .fmt-btn svg { width: 14px; height: 14px; }
+  .fmt-spacer { flex: 1; }
+  .hint-row {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    opacity: 0.5;
+    display: flex;
+    gap: 10px;
+    padding: 0 4px;
+  }
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 4px;
+    border: 1px solid var(--border);
+    font-size: 8px;
+    color: var(--text-muted);
+  }
+
+  /* Main compose row */
+  .compose-row {
+    display: flex;
+    align-items: stretch;
+    min-height: 52px;
+  }
+  .left-cluster {
+    display: flex;
+    align-items: center;
+    padding: 0 2px 0 6px;
+    border-right: 1px solid var(--border);
+  }
+  .action-btn {
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .action-btn:hover { color: var(--text-primary); }
+  .action-btn svg { width: 18px; height: 18px; }
+  .action-btn.whisper-on {
+    color: var(--accent-purple);
+  }
+  .action-btn.whisper-on-active {
+    background: var(--accent-purple);
+    color: white;
+  }
+
+  .textarea {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 14px 10px;
+    outline: none;
+  }
+  .textarea::placeholder { color: var(--text-muted); opacity: 0.7; }
+
+  .send-slot {
+    display: flex;
+    align-items: center;
+    padding: 4px 6px 4px 0;
+  }
+  .send-button-v2 {
+    height: 40px;
+    padding: 0 14px;
+    background: var(--accent-blue);
+    color: white;
+    border: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .send-button-v2 svg { width: 14px; height: 14px; }
+  .send-button-v2.whisper { background: var(--accent-purple); }
+  .send-button-v2 .enter-hint {
+    font-size: 8px;
+    padding: 1px 4px;
+    border: 1px solid rgba(255,255,255,0.4);
+    opacity: 0.7;
+  }
+
+  /* Whisper banner */
+  .whisper-banner {
+    background: var(--accent-purple);
+    color: white;
+    padding: 4px 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+  .whisper-banner svg { width: 10px; height: 10px; }
+  .whisper-banner .banner-hint {
+    font-weight: 600;
+    opacity: 0.85;
+    letter-spacing: 0.08em;
+  }
+
+  .legend {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    line-height: 1.6;
+    max-width: 960px;
+  }
+  .legend strong { color: var(--text-primary); }
+  .legend code {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-purple);
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Tessera — Compose area redesign</h1>
+  <p class="caption">Unify the format toolbar and compose row into one bordered box, swap text labels for Lucide icons, clean the placeholder, and make whisper mode visually load-bearing.</p>
+
+  <!-- ─── BEFORE ─── -->
+  <div>
+    <h2>Before — detached toolbar, text-label format buttons, placeholder hint</h2>
+    <div class="shell">
+      <div class="before-toolbar">
+        <button title="Bold">B</button>
+        <button title="Italic"><em>I</em></button>
+        <button title="Code">&lt;/&gt;</button>
+        <button title="Blockquote">""</button>
+        <button title="List">•</button>
+      </div>
+      <div class="before-row">
+        <span class="before-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></span>
+        <span class="before-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></span>
+        <input class="before-textarea" placeholder="Type a message... (Ctrl+V to paste screenshot)" />
+        <button class="send-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── AFTER: normal mode ─── -->
+  <div>
+    <h2>After — unified box, icon format strip, clean placeholder, send with ⏎ hint</h2>
+    <p class="caption">Format strip is now part of the compose box (thin divider separates it from the main row). Format buttons use Lucide icons (Bold, Italic, Code, Quote, List). The attach tip moved from the placeholder to a dimmed hint row on the right of the format strip. Send button gained an <code>⏎</code> kbd mark so first-time users know Enter sends.</p>
+    <div class="shell">
+      <div class="compose-box">
+        <div class="format-strip">
+          <button class="fmt-btn" title="Bold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"/><path d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"/></svg></button>
+          <button class="fmt-btn" title="Italic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg></button>
+          <button class="fmt-btn" title="Code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+          <button class="fmt-btn" title="Quote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-.5 1.5-1.5 1.5S2 17 2 18s1 3 1 3z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3z"/></svg></button>
+          <button class="fmt-btn" title="List"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+          <div class="fmt-spacer"></div>
+          <div class="hint-row">
+            <span><span class="kbd">Ctrl+V</span> paste</span>
+            <span><span class="kbd">⏎</span> send</span>
+          </div>
+        </div>
+        <div class="compose-row">
+          <div class="left-cluster">
+            <button class="action-btn whisper-on" title="Whisper mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></button>
+            <button class="action-btn" title="Attach (Ctrl+V to paste screenshot)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></button>
+            <button class="action-btn" title="Emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+          </div>
+          <input class="textarea" placeholder="Type a message…" />
+          <div class="send-slot">
+            <button class="send-button-v2">Send<span class="enter-hint">⏎</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── AFTER: whisper mode ─── -->
+  <div>
+    <h2>After — whisper mode active</h2>
+    <p class="caption">Purple border around the entire compose box (not just a background tint), a slim purple banner above with Lock icon + "Whisper · only visible to support staff", the whisper toggle button flipped to the filled purple state, and the send button also turns purple so you can't accidentally send a whisper thinking it's going to the customer.</p>
+    <div class="shell whisper-shell">
+      <div class="compose-box whisper-active">
+        <div class="whisper-banner">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+          Whisper
+          <span class="banner-hint">· only visible to support staff</span>
+        </div>
+        <div class="format-strip">
+          <button class="fmt-btn" title="Bold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 014 4 4 4 0 01-4 4H6z"/><path d="M6 12h9a4 4 0 014 4 4 4 0 01-4 4H6z"/></svg></button>
+          <button class="fmt-btn" title="Italic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg></button>
+          <button class="fmt-btn" title="Code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg></button>
+          <button class="fmt-btn" title="Quote"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-.5 1.5-1.5 1.5S2 17 2 18s1 3 1 3z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3z"/></svg></button>
+          <button class="fmt-btn" title="List"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg></button>
+          <div class="fmt-spacer"></div>
+          <div class="hint-row">
+            <span><span class="kbd">Ctrl+V</span> paste</span>
+            <span><span class="kbd">⏎</span> send</span>
+          </div>
+        </div>
+        <div class="compose-row">
+          <div class="left-cluster" style="border-right-color:var(--accent-purple);opacity:0.9">
+            <button class="action-btn whisper-on-active" title="Exit whisper mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg></button>
+            <button class="action-btn" title="Attach (Ctrl+V to paste screenshot)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></button>
+            <button class="action-btn" title="Emoji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+          </div>
+          <input class="textarea" placeholder="Type a private note for support staff…" />
+          <div class="send-slot">
+            <button class="send-button-v2 whisper">Whisper<span class="enter-hint">⏎</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Whisper icon comparison row ─── -->
+  <div>
+    <h2>Whisper toggle — icon alternatives</h2>
+    <p class="caption">Same compose box in whisper-mode state, six different Lucide icons on the whisper toggle button. Pick one. (All six also get used for the matching whisper bubble label + the run separators — keep them in visual sync.)</p>
+    <div class="shell whisper-shell">
+
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;max-width:900px">
+
+        <!-- EyeOff -->
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-muted);margin-bottom:6px">EyeOff (current)</div>
+          <div class="compose-box whisper-active" style="min-width:0">
+            <div class="compose-row">
+              <div class="left-cluster" style="border-right-color:var(--accent-purple);opacity:0.9">
+                <button class="action-btn whisper-on-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+              </div>
+              <input class="textarea" placeholder="Private note for support staff…" />
+              <div class="send-slot"><button class="send-button-v2 whisper">Whisper<span class="enter-hint">⏎</span></button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MessageSquareLock -->
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-muted);margin-bottom:6px">MessageSquareLock</div>
+          <div class="compose-box whisper-active" style="min-width:0">
+            <div class="compose-row">
+              <div class="left-cluster" style="border-right-color:var(--accent-purple);opacity:0.9">
+                <button class="action-btn whisper-on-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 15V9a7 7 0 00-14 0v6"/><path d="M4 15h16v6H4z"/><path d="M12 11v4"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+              </div>
+              <input class="textarea" placeholder="Private note for support staff…" />
+              <div class="send-slot"><button class="send-button-v2 whisper">Whisper<span class="enter-hint">⏎</span></button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users -->
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-muted);margin-bottom:6px">Users</div>
+          <div class="compose-box whisper-active" style="min-width:0">
+            <div class="compose-row">
+              <div class="left-cluster" style="border-right-color:var(--accent-purple);opacity:0.9">
+                <button class="action-btn whisper-on-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+              </div>
+              <input class="textarea" placeholder="Private note for support staff…" />
+              <div class="send-slot"><button class="send-button-v2 whisper">Whisper<span class="enter-hint">⏎</span></button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ghost -->
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-muted);margin-bottom:6px">Ghost</div>
+          <div class="compose-box whisper-active" style="min-width:0">
+            <div class="compose-row">
+              <div class="left-cluster" style="border-right-color:var(--accent-purple);opacity:0.9">
+                <button class="action-btn whisper-on-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 10h.01"/><path d="M15 10h.01"/><path d="M12 2a8 8 0 00-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 00-8-8z"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+              </div>
+              <input class="textarea" placeholder="Private note for support staff…" />
+              <div class="send-slot"><button class="send-button-v2 whisper">Whisper<span class="enter-hint">⏎</span></button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VolumeX -->
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-muted);margin-bottom:6px">VolumeX</div>
+          <div class="compose-box whisper-active" style="min-width:0">
+            <div class="compose-row">
+              <div class="left-cluster" style="border-right-color:var(--accent-purple);opacity:0.9">
+                <button class="action-btn whisper-on-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+              </div>
+              <input class="textarea" placeholder="Private note for support staff…" />
+              <div class="send-slot"><button class="send-button-v2 whisper">Whisper<span class="enter-hint">⏎</span></button></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shield -->
+        <div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.14em;color:var(--text-muted);margin-bottom:6px">Shield</div>
+          <div class="compose-box whisper-active" style="min-width:0">
+            <div class="compose-row">
+              <div class="left-cluster" style="border-right-color:var(--accent-purple);opacity:0.9">
+                <button class="action-btn whisper-on-active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="1"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg></button>
+                <button class="action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg></button>
+              </div>
+              <input class="textarea" placeholder="Private note for support staff…" />
+              <div class="send-slot"><button class="send-button-v2 whisper">Whisper<span class="enter-hint">⏎</span></button></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <p class="caption" style="margin-top:12px">My gut ranking: <strong>MessageSquareLock</strong> reads "locked message" most literally, <strong>Users</strong> says "between us staff" most accurately, and <strong>EyeOff</strong> is the safest "not visible to the customer". <strong>Ghost</strong> is playful but a touch too cute for a brutalist tool. <strong>VolumeX</strong> and <strong>Shield</strong> are available but less precise.</p>
+  </div>
+
+  <div class="legend">
+    <strong>Summary of deltas</strong><br/>
+    · <strong>Unified compose box.</strong> Format toolbar, action buttons, textarea, and send are one bordered unit with internal dividers, not three detached pieces.<br/>
+    · <strong>Lucide icons for format.</strong> Bold / Italic / Code / Quote / List as real icons, 28×28 buttons with hover state. Text labels (<code>B I &lt;/&gt; "" •</code>) are gone.<br/>
+    · <strong>Clean placeholder.</strong> <code>Type a message…</code> (or <code>Type a private note for support staff…</code> in whisper mode). The "Ctrl+V paste" hint moved to the right side of the format strip as a dimmed kbd-style mark.<br/>
+    · <strong>Send button with ⏎ hint.</strong> Label + a faint <code>⏎</code> kbd mark. First-time users learn Enter-to-send by osmosis.<br/>
+    · <strong>Lock icon</strong> for the whisper toggle (replaces <code>EyeOff</code>). Matches the icon on the whisper bubble label from the previous pass — one visual vocabulary for "private".<br/>
+    · <strong>Whisper mode is unmissable.</strong> Purple border around the whole compose box, purple banner row above the format strip with <code>Whisper · only visible to support staff</code>, purple send button labelled <code>Whisper</code>. You cannot accidentally ship a whisper thinking it's a reply.<br/>
+    <br/>
+    <strong>Out of scope for this mockup</strong> (but adjacent): the AI improve revert bar, the reply-to preview, the file-attachment preview strip, and the canned-response picker all sit above the compose box and are unchanged.
+  </div>
+
+</body>
+</html>

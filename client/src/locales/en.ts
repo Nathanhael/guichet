@@ -334,6 +334,8 @@ const en: Record<string, string> = {
     view_queue: 'Back to queue',
     whisper_run_start: 'Whisper',
     whisper_run_end: 'End whisper',
+    whisper_placeholder: 'Private note for support staff…',
+    drop_files_to_attach: 'Drop files to attach',
     toggle_team_panel: 'Toggle team panel',
     team_offline: 'Offline',
     waiting: 'waiting',
