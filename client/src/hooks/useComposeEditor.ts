@@ -6,6 +6,14 @@ import { Markdown } from 'tiptap-markdown';
 
 const MAX_MESSAGE_CHARS = 5000;
 
+/** Shape that tiptap-markdown contributes to editor.storage. If the
+ *  upstream extension ever renames its storage key, the guarded access
+ *  below returns undefined and we fall back to editor.getText() instead
+ *  of silently returning the wrong type. */
+interface EditorStorageWithMarkdown {
+  markdown?: { getMarkdown(): string };
+}
+
 interface UseComposeEditorArgs {
   /** Placeholder text shown when the editor is empty. */
   placeholder: string;
@@ -102,8 +110,10 @@ export function useComposeEditor({
     },
     onUpdate({ editor }) {
       if (!onUpdate) return;
-      // tiptap-markdown exposes getMarkdown() via editor.storage.markdown
-      const storage = editor.storage as unknown as { markdown?: { getMarkdown(): string } };
+      // tiptap-markdown exposes getMarkdown() via editor.storage.markdown.
+      // Guarded access: if the storage key ever changes, fall back to
+      // plain text instead of crashing.
+      const storage = editor.storage as unknown as EditorStorageWithMarkdown;
       const md = storage.markdown?.getMarkdown() ?? editor.getText();
       onUpdate(md);
     },
@@ -114,6 +124,6 @@ export function useComposeEditor({
  *  outside of the onUpdate callback (e.g. inside an event handler). */
 export function getEditorMarkdown(editor: Editor | null): string {
   if (!editor) return '';
-  const storage = editor.storage as unknown as { markdown?: { getMarkdown(): string } };
+  const storage = editor.storage as unknown as EditorStorageWithMarkdown;
   return storage.markdown?.getMarkdown() ?? editor.getText();
 }
