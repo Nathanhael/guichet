@@ -220,15 +220,18 @@ export function useSocket(): Socket {
     const handleTicketClosed = ({ ticketId, supportId: eventSupportId, supportName: eventSupportName }: { ticketId: string; supportId?: string; supportName?: string }) => {
       updateTicket(ticketId, { status: 'closed' });
       const state = useStore.getState();
-      if (state.user?.role === 'agent') {
-        const ticket = state.tickets.find((t) => t.id === ticketId);
-        if (ticket && ticket.agentId === state.user.id) {
-          const supportId = eventSupportId || ticket.supportId;
-          const supportName = eventSupportName || ticket.supportName;
-          if (supportId && supportName) {
-            state.setRatingPrompt({ ticketId, supportId, supportName });
-          }
-        }
+      if (!state.user) return;
+      // Rating prompt fires only for the ticket owner (the customer/agent).
+      // We scope by ticket.agentId === user.id, which is stricter and more
+      // reliable than state.user.role — the login response does not populate
+      // user.role at the top level (role lives on memberships), so a role
+      // check here fails silently for every user.
+      const ticket = state.tickets.find((t) => t.id === ticketId);
+      if (!ticket || ticket.agentId !== state.user.id) return;
+      const supportId = eventSupportId || ticket.supportId;
+      const supportName = eventSupportName || ticket.supportName;
+      if (supportId && supportName) {
+        state.setRatingPrompt({ ticketId, supportId, supportName });
       }
     };
 
