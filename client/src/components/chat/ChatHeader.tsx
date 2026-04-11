@@ -4,10 +4,8 @@ import { useT } from '../../i18n';
 import { Ticket } from '../../types';
 import { usePartner } from '../../hooks/usePartner';
 import { getSocket } from '../../hooks/useSocket';
-import { Eye, Search } from 'lucide-react';
-import SlaIndicator from '../SlaIndicator';
+import { Eye, Search, X, Check } from 'lucide-react';
 import { COLOR_BG_MAP } from '../../utils/labelColors';
-import LabelPicker from './LabelPicker';
 
 interface ChatHeaderProps {
   ticket: Ticket;
@@ -20,15 +18,9 @@ interface ChatHeaderProps {
   showTransferMenu: boolean;
   setShowTransferMenu: (v: boolean) => void;
   onTransfer: (departmentId?: string, note?: string) => void;
-  summary: string | null;
-  showSummary: boolean;
-  summarizing: boolean;
-  onSummarize: (refresh?: boolean) => void;
-  onDismissSummary: () => void;
   viewers: Array<{ userId: string; userName: string }>;
   closing: boolean;
   canClose: boolean;
-  canSummarize: boolean;
   agentIsOnline: boolean;
   onCloseTicket: () => void;
   onOpenSearch?: () => void;
@@ -45,15 +37,9 @@ export default function ChatHeader({
   showTransferMenu,
   setShowTransferMenu,
   onTransfer,
-  summary,
-  showSummary,
-  summarizing,
-  onSummarize,
-  onDismissSummary,
   viewers,
   closing,
   canClose,
-  canSummarize,
   agentIsOnline,
   onCloseTicket,
   onOpenSearch,
@@ -66,7 +52,51 @@ export default function ChatHeader({
 
   const [transferNote, setTransferNote] = useState('');
   const [copiedRef, setCopiedRef] = useState<number | null>(null);
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
+  const [optimisticLabels, setOptimisticLabels] = useState<string[]>(liveTicket.labels || []);
   const transferMenuRef = useRef<HTMLDivElement>(null);
+  const labelPickerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setOptimisticLabels(liveTicket.labels || []);
+  }, [liveTicket.labels]);
+
+  // Close label picker on outside click or Escape
+  useEffect(() => {
+    if (!showLabelPicker) return;
+    function handleClick(e: MouseEvent) {
+      if (labelPickerRef.current && !labelPickerRef.current.contains(e.target as Node)) {
+        setShowLabelPicker(false);
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setShowLabelPicker(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [showLabelPicker]);
+
+  const MAX_LABELS = 50;
+
+  function toggleLabel(labelId: string) {
+    const isRemoving = optimisticLabels.includes(labelId);
+    if (!isRemoving && optimisticLabels.length >= MAX_LABELS) return;
+    const newLabels = isRemoving
+      ? optimisticLabels.filter((id) => id !== labelId)
+      : [...optimisticLabels, labelId];
+    setOptimisticLabels(newLabels);
+    getSocket().emit('ticket:labels:update', { ticketId: ticket.id, labels: newLabels });
+  }
+
+  function removeLabel(labelId: string) {
+    const newLabels = optimisticLabels.filter((id) => id !== labelId);
+    setOptimisticLabels(newLabels);
+    getSocket().emit('ticket:labels:update', { ticketId: ticket.id, labels: newLabels });
+  }
 
   // Close transfer menu on outside click or Escape
   useEffect(() => {
@@ -171,149 +201,13 @@ export default function ChatHeader({
             </span>
           )}
 
-          {/* Labels */}
-          {!focusMode && !compact && (
-            <>
-              {(liveTicket.labels || []).map(id => {
-                const info = getLabelInfo(id);
-                if (!info) return null;
-                return (
-                  <span
-                    key={id}
-                    className={`text-[8px] font-mono font-bold px-1.5 py-0.5 uppercase tracking-widest ${
-                      info.color && COLOR_BG_MAP[info.color]
-                        ? `${COLOR_BG_MAP[info.color]} text-white`
-                        : 'bg-bg-elevated text-text-primary border border-border-heavy'
-                    }`}
-                  >
-                    {info.name}
-                  </span>
-                );
-              })}
-              {isSupport && (
-                <LabelPicker ticketId={ticket.id} currentLabels={liveTicket.labels || []} allLabels={allLabels || []} />
-              )}
-            </>
-          )}
-
-          {/* SLA Indicator */}
-          {!focusMode && !compact && isSupport && !isClosed && !liveTicket.supportJoinedAt && liveTicket.slaResponseDueAt && (
-            <SlaIndicator dueAt={liveTicket.slaResponseDueAt} breached={liveTicket.slaBreached} />
-          )}
         </div>
 
-        {/* Right: actions */}
-        <div className={`flex items-center gap-2 shrink-0 ${(focusMode || compact) ? 'opacity-60 hover:opacity-100' : ''}`}>
-          {/* Search in conversation */}
-          {onOpenSearch && (
-            <button
-              onClick={onOpenSearch}
-              aria-label={t('search_in_conversation') || 'Search in conversation'}
-              title={t('search_in_conversation') || 'Search in conversation'}
-              className={`text-text-secondary hover:text-text-primary bg-bg-surface border border-border hidden sm:flex items-center justify-center ${(focusMode || compact) ? 'w-7 h-7' : 'w-8 h-8'}`}
-            >
-              <Search size={14} />
-            </button>
-          )}
-
-          {/* Summarize button (support/admin only) */}
-          {canSummarize && !isClosed && (
-            <button
-              onClick={() => onSummarize()}
-              disabled={summarizing}
-              aria-label="Summarize conversation"
-              title="AI: Summarize conversation"
-              className={`text-[10px] font-bold bg-bg-surface text-text-primary hover:bg-bg-elevated border border-border hidden sm:flex items-center gap-1.5 ${(focusMode || compact) ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}
-            >
-              {summarizing ? (
-                <span className="text-[10px] font-bold opacity-40">...</span>
-              ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              )}
-              {!focusMode && !compact && 'Summarize'}
-            </button>
-          )}
-
-          {/* Secondary actions: Transfer + Leave (support/admin only) */}
-          {isSupport && !isClosed && (
-            <div className="flex items-center gap-2">
-              <div ref={transferMenuRef} className="relative">
-                <button
-                  onClick={() => setShowTransferMenu(!showTransferMenu)}
-                  aria-label={t('transfer') || 'Transfer'}
-                  title={t('transfer') || 'Transfer'}
-                  className={`text-[10px] font-bold bg-bg-surface text-text-primary hover:bg-bg-elevated border border-border ${(focusMode || compact) ? 'px-2 py-1' : 'px-3 py-1.5'}`}
-                >
-                  {t('transfer') || 'Transfer'}
-                </button>
-                {showTransferMenu && (
-                  <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[200px] z-50 overflow-hidden">
-                    <button
-                      onClick={() => handleTransfer()}
-                      className="w-full text-left px-4 py-2.5 text-[11px] font-bold hover:bg-bg-elevated border-b border-border"
-                    >
-                      {t('return_to_queue') || 'Return to queue'}
-                    </button>
-                    {transferDepartments.length > 0 && (
-                      <>
-                        <div className="px-3 py-1.5">
-                          <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-text-primary opacity-40">
-                            {t('transfer_to_department') || 'Transfer to department'}
-                          </span>
-                        </div>
-                        <div className="px-3 pb-2">
-                          <input
-                            type="text"
-                            value={transferNote}
-                            onChange={(e) => setTransferNote(e.target.value)}
-                            placeholder={t('transfer_note_placeholder') || 'Add context...'}
-                            className="w-full text-[10px] bg-bg-elevated border border-border px-2 py-1 text-text-primary placeholder:text-text-muted placeholder:opacity-40"
-                          />
-                        </div>
-                      </>
-                    )}
-                    {transferDepartments.map((d: { id: string; name: string }) => (
-                      <button
-                        key={d.id}
-                        onClick={() => handleTransfer(d.id)}
-                        className="w-full text-left px-4 py-2 text-[11px] font-mono font-bold hover:bg-bg-elevated"
-                      >
-                        {d.name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Primary action: Close Ticket */}
-          {canClose && !isClosed && (
-            <div className="border-l-2 border-border-heavy pl-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onCloseTicket();
-                }}
-                disabled={closing}
-                className={`text-[11px] font-bold uppercase tracking-widest bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/80 border-2 border-accent-blue flex items-center gap-2 ${(focusMode || compact) ? 'px-2.5 py-1' : 'px-4 py-2'}`}
-              >
-                {closing ? (
-                  <span className="text-[10px] font-bold opacity-40 shrink-0">...</span>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-                {t('close') || 'Close'}
-              </button>
-            </div>
-          )}
-          {/* References — right-aligned before close */}
+        {/* Right: actions (V2 — 32px unified, mono uppercase) */}
+        <div className={`flex items-center gap-1.5 shrink-0 ${(focusMode || compact) ? 'opacity-60 hover:opacity-100' : ''}`}>
+          {/* References — first item */}
           {!focusMode && !compact && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
-            <div className="flex items-center gap-3 select-text">
+            <div className="flex items-center gap-3 select-text mr-1">
               {(ticket.references as Array<{label: string; value: string}>).map((ref, i) => (
                 <span
                   key={i}
@@ -333,6 +227,97 @@ export default function ChatHeader({
               ))}
             </div>
           )}
+
+          {/* Search in conversation */}
+          {onOpenSearch && (
+            <button
+              onClick={onOpenSearch}
+              aria-label={t('search_in_conversation') || 'Search in conversation'}
+              title={t('search_in_conversation') || 'Search in conversation'}
+              className="h-8 w-8 flex items-center justify-center bg-bg-surface border border-border text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
+            >
+              <Search size={14} />
+            </button>
+          )}
+
+          {/* Transfer (support/admin only) */}
+          {isSupport && !isClosed && (
+            <div ref={transferMenuRef} className="relative">
+              <button
+                onClick={() => setShowTransferMenu(!showTransferMenu)}
+                aria-label={t('transfer') || 'Transfer'}
+                title={t('transfer') || 'Transfer'}
+                className="h-8 px-3.5 flex items-center font-mono text-[10px] font-bold uppercase tracking-[0.12em] bg-bg-surface text-text-primary hover:bg-bg-elevated border border-border"
+              >
+                {t('transfer') || 'Transfer'}
+              </button>
+              {showTransferMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy min-w-[200px] z-50 overflow-hidden">
+                  <button
+                    onClick={() => handleTransfer()}
+                    className="w-full text-left px-4 py-2.5 text-[11px] font-bold hover:bg-bg-elevated border-b border-border"
+                  >
+                    {t('return_to_queue') || 'Return to queue'}
+                  </button>
+                  {transferDepartments.length > 0 && (
+                    <>
+                      <div className="px-3 py-1.5">
+                        <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-text-primary opacity-40">
+                          {t('transfer_to_department') || 'Transfer to department'}
+                        </span>
+                      </div>
+                      <div className="px-3 pb-2">
+                        <input
+                          type="text"
+                          value={transferNote}
+                          onChange={(e) => setTransferNote(e.target.value)}
+                          placeholder={t('transfer_note_placeholder') || 'Add context...'}
+                          className="w-full text-[10px] bg-bg-elevated border border-border px-2 py-1 text-text-primary placeholder:text-text-muted placeholder:opacity-40"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {transferDepartments.map((d: { id: string; name: string }) => (
+                    <button
+                      key={d.id}
+                      onClick={() => handleTransfer(d.id)}
+                      className="w-full text-left px-4 py-2 text-[11px] font-mono font-bold hover:bg-bg-elevated"
+                    >
+                      {d.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Soft separator before primary action */}
+          {canClose && !isClosed && (
+            <span className="w-px h-[18px] bg-border-heavy mx-1" aria-hidden="true" />
+          )}
+
+          {/* Primary action: Close Ticket */}
+          {canClose && !isClosed && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseTicket();
+              }}
+              disabled={closing}
+              className="h-8 px-3.5 flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.12em] bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/80 border border-accent-blue"
+            >
+              {closing ? (
+                <span className="opacity-40 shrink-0">...</span>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              {t('close') || 'Close'}
+            </button>
+          )}
+
+          {/* Leave (X) — unified icon button */}
           {onClose && (
             <button
               onClick={(e) => {
@@ -343,55 +328,82 @@ export default function ChatHeader({
                 }
                 onClose();
               }}
-              aria-label="Close"
-              className="w-7 h-7 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
+              aria-label={t('leave') || 'Leave'}
+              title={t('leave') || 'Leave'}
+              className="h-8 w-8 flex items-center justify-center bg-bg-surface border border-border text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X size={14} strokeWidth={2.5} />
             </button>
           )}
         </div>
         </div>
       </div>
 
-      {/* AI Summary Card */}
-      {showSummary && summary && (
-        <div className="px-6 py-3 bg-bg-elevated border-b-2 border-border-heavy">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 text-text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-text-primary">AI Summary</span>
-              </div>
-              <p className="text-sm text-text-primary leading-relaxed">{summary}</p>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={() => onSummarize(true)}
-                disabled={summarizing}
-                aria-label="Refresh summary"
-                title="Refresh summary"
-                className="w-7 h-7 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
+      {/* Label Row — support/admin only (T3) */}
+      {!focusMode && !compact && isSupport && (allLabels || []).length > 0 && (
+        <div className="bg-bg-surface border-b-2 border-border-heavy px-4 py-2 flex items-center gap-2 flex-wrap">
+          <span className="text-[8px] font-mono font-bold uppercase tracking-[0.15em] text-text-muted opacity-40 mr-1">
+            {t('labels') || 'Labels'}
+          </span>
+          {optimisticLabels.map((id) => {
+            const info = getLabelInfo(id);
+            if (!info) return null;
+            const bgClass = (info.color && COLOR_BG_MAP[info.color]) || 'bg-bg-elevated';
+            return (
+              <span
+                key={id}
+                className={`group relative inline-flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.1em] px-2.5 py-1 ${bgClass} ${info.color ? 'text-white' : 'text-text-primary border border-border-heavy'}`}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-3.5 w-3.5 ${summarizing ? 'opacity-40' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-              </button>
+                {info.name}
+                {!isClosed && (
+                  <button
+                    onClick={() => removeLabel(id)}
+                    aria-label={`Remove ${info.name}`}
+                    title={`Remove ${info.name}`}
+                    className="inline-flex items-center justify-center w-3.5 h-3.5 -my-0.5 -mr-1 opacity-0 group-hover:opacity-100 hover:bg-black/25"
+                  >
+                    <X size={10} strokeWidth={3} />
+                  </button>
+                )}
+              </span>
+            );
+          })}
+          {!isClosed && (
+            <div ref={labelPickerRef} className="relative">
               <button
-                onClick={onDismissSummary}
-                aria-label="Dismiss summary"
-                title="Dismiss"
-                className="w-7 h-7 flex items-center justify-center hover:bg-bg-elevated text-text-primary opacity-60 hover:opacity-100"
+                onClick={() => setShowLabelPicker(!showLabelPicker)}
+                aria-label={t('add_label') || 'Add label'}
+                title={t('add_label') || 'Add label'}
+                className="inline-flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 bg-bg-elevated text-text-secondary border border-dashed border-border-heavy hover:text-text-primary hover:border-solid hover:border-accent-blue"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
+                {t('label') || 'Label'}
               </button>
+              {showLabelPicker && (
+                <div className="absolute left-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy z-50 min-w-[180px] max-h-[240px] overflow-y-auto animate-fade-in">
+                  {(allLabels || []).map((label) => {
+                    const isActive = optimisticLabels.includes(label.id);
+                    const atLimit = optimisticLabels.length >= MAX_LABELS;
+                    const dotClass = COLOR_BG_MAP[label.color] || 'bg-slate-500';
+                    return (
+                      <button
+                        key={label.id}
+                        onClick={() => toggleLabel(label.id)}
+                        disabled={atLimit && !isActive}
+                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${atLimit && !isActive ? 'opacity-30 cursor-not-allowed' : 'hover:bg-bg-elevated'}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
+                        <span className="font-mono text-[10px] text-text-primary flex-1 truncate">{label.name}</span>
+                        {isActive && <Check size={12} className="text-accent-blue shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
       )}
 

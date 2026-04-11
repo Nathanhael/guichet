@@ -3,7 +3,6 @@ import { Ticket } from '../../types';
 import { trpc } from '../../utils/trpc';
 import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
-import SlaIndicator from '../SlaIndicator';
 
 interface TicketPreviewCardProps {
   ticket: Ticket;
@@ -30,9 +29,6 @@ export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardP
             <span className="font-mono text-[9px] font-bold uppercase tracking-wide border border-accent-blue text-accent-blue px-2 py-0.5">
               {ticket.dept}
             </span>
-            {ticket.slaResponseDueAt && (
-              <SlaIndicator dueAt={ticket.slaResponseDueAt} breached={ticket.slaBreached} />
-            )}
           </div>
           <h3 className="text-sm font-bold text-text-primary">{ticket.agentName}</h3>
           <div className="flex items-center gap-3 mt-1 text-[9px] font-mono text-text-muted uppercase">
