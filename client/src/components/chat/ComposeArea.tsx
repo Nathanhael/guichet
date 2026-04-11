@@ -40,6 +40,13 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const { user } = useStoreShallow(s => ({
     user: s.user,
   }));
+  // Transient signal published by useSocket when the server rejects an
+  // outgoing message (content guard, repetition limit, …). The matching
+  // optimistic bubble is removed in the slice action; here we surface a
+  // localized toast for the active ticket and clear the signal so the
+  // next rejection can re-trigger the effect.
+  const lastRejection = useStore((s) => s.lastRejection);
+  const setLastRejection = useStore((s) => s.setLastRejection);
   const t = useT();
 
   const [text, setText] = useState('');
@@ -254,6 +261,21 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     // after). Without editor in the dep array, focus() would capture
     // the initial null and silently no-op forever.
   }), [editor]);
+
+  // Surface server-side rejection of outgoing messages as a localized toast
+  // for the currently-open ticket. The matching optimistic bubble is removed
+  // in the slice action triggered by useSocket — this effect only handles
+  // the user-facing notification. Clear the signal after consuming so a
+  // repeat rejection still trips the effect (Zustand only fires on
+  // referential change).
+  useEffect(() => {
+    if (!lastRejection || lastRejection.ticketId !== ticket.id) return;
+    setToast({
+      message: t(lastRejection.code) || t('guard_blocked_title') || 'Message blocked',
+      type: 'error',
+    });
+    setLastRejection(null);
+  }, [lastRejection, ticket.id, t, setLastRejection]);
 
   // Cleanup on unmount: revoke Object URLs + stop typing indicator
   useEffect(() => {

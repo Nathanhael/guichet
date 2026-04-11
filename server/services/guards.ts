@@ -18,12 +18,22 @@ function pass(): GuardResult {
 
 /**
  * Validates message length.
+ *
+ * Blocks empty / whitespace-only input and oversized input. Anything with
+ * at least one visible character (after trimming) is allowed — including
+ * single-grapheme messages like a single emoji ("😀"), a single letter
+ * ("k"), or a single grapheme cluster ("👨‍👩‍👧"). The previous rule
+ * required >= 3 UTF-16 code units, which silently rejected single-emoji
+ * messages because most emojis are surrogate pairs (length 2). The server
+ * still emits a rejection event so the client can clean up its optimistic
+ * bubble — but legitimate short messages should not be rejected at all.
+ *
  * @param {string} text - Raw input.
  * @returns {GuardResult}
  */
 export function guardLength(text: string): GuardResult {
   const trimmed = text?.trim() ?? '';
-  if (trimmed.length < 3) {
+  if (trimmed.length === 0) {
     return block('guard_too_short');
   }
   if (trimmed.length > 2000) {
