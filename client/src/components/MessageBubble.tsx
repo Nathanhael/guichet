@@ -113,12 +113,17 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
     setConfirmDelete(false);
   }
 
+  // Whisper styling must take precedence over the sent/received split:
+  // a whisper from the *current* user is still a whisper (purple bg, mono
+  // body, run separators) — not a regular sent bubble. The previous order
+  // checked `isMine` first, so own-whispers never reached the whisper
+  // branch and rendered with the blue sent-bubble style.
   const bubbleClasses = isDeleted
     ? 'bg-bg-elevated border-l-2 border-border'
-    : isMine
-      ? 'bubble-sent'
-      : isWhisper
-        ? 'bubble-whisper'
+    : isWhisper
+      ? 'bubble-whisper'
+      : isMine
+        ? 'bubble-sent'
         : 'bubble-received';
 
   const isSupport = !isMine && (message.senderRole === 'support' || message.senderRole === 'admin');
