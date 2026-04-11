@@ -62,7 +62,7 @@ async function openFirstTicket(page: Page) {
 }
 
 /**
- * Seed a fresh open ticket as e2e-agent-a so the support queue isn't empty.
+ * Seed a fresh open ticket as agent_julie so the support queue isn't empty.
  * Runs once before all tests in this file. Uses a throwaway browser context
  * so the support tests can login independently and see the ticket.
  */
@@ -70,7 +70,7 @@ async function seedOpenTicket(browser: import('@playwright/test').Browser) {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {
-    const login = await loginAsDemo(page, 'e2e-agent-a');
+    const login = await loginAsDemo(page, 'agent_julie');
     if (!login.ok) throw new Error(`Seed: agent login failed (status ${(login as { status?: number }).status})`);
 
     await page.waitForTimeout(2000);
@@ -79,8 +79,16 @@ async function seedOpenTicket(browser: import('@playwright/test').Browser) {
     const composeArea = page.locator('.ProseMirror');
     if (await composeArea.isVisible({ timeout: 3000 }).catch(() => false)) return;
 
-    // Fill reference fields (Dispatch department requires Carrier ID + Route Code)
+    // Pick the Dispatch department — minimal seed dept DSC, scoped to
+    // support_lucas so the queue shows the ticket to him.
+    const dispatchBtn = page.locator('button').filter({ hasText: /dispatch/i }).first();
+    await dispatchBtn.waitFor({ state: 'visible', timeout: 5000 });
+    await dispatchBtn.click();
+
+    // Fill reference fields (DSC dept declares one reference field
+    // "Order ID"; looping defensively in case the schema grows).
     const refInputs = page.locator('input[type="text"]');
+    await refInputs.first().waitFor({ state: 'visible', timeout: 5000 });
     const refCount = await refInputs.count();
     for (let i = 0; i < refCount; i++) {
       await refInputs.nth(i).fill(`CHAT-ENH-${i + 1}`);
@@ -91,7 +99,7 @@ async function seedOpenTicket(browser: import('@playwright/test').Browser) {
     await problemTextarea.waitFor({ state: 'visible', timeout: 5000 });
     await problemTextarea.fill('Seed ticket for chat-enhancements suite');
 
-    // Submit
+    // Submit — "Connect with support" button on the TicketForm.
     const submitBtn = page.locator('button').filter({ hasText: /connect|create|submit|aanmaken|verstuur/i }).first();
     await submitBtn.click();
 
@@ -110,7 +118,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('delivery checkmarks visible on sent messages', async ({ page }) => {
-    await loginAsDemo(page, 'e2e-support-a');
+    await loginAsDemo(page, 'support_lucas');
     await openFirstTicket(page);
 
     // Send a test message
@@ -131,25 +139,38 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('markdown renders in messages', async ({ page }) => {
-    await loginAsDemo(page, 'e2e-support-a');
+    await loginAsDemo(page, 'support_lucas');
     await openFirstTicket(page);
 
-    // Send a message with markdown bold syntax
+    // Send a message with markdown bold syntax. Playwright's .fill() on
+    // a contenteditable bypasses ProseMirror's input rule pipeline, so
+    // we focus the editor and type via page.keyboard instead — that
+    // fires real keystrokes which Tiptap sees and which will also
+    // trigger markdown input rules (** auto-converts to bold as you
+    // type the closing pair). We use a plain "Testing bold rendering"
+    // phrase and wrap only "bold" with the rules so the bubble's
+    // rendered HTML still contains <strong>bold</strong>.
     const textarea = page.locator('.ProseMirror');
-    await textarea.fill('Testing **bold text** rendering');
-    await textarea.press('Enter');
+    await textarea.click();
+    await page.keyboard.type('Testing ');
+    await page.keyboard.type('**bold**');
+    await page.keyboard.type(' rendering');
+    await page.keyboard.press('Enter');
 
-    // Wait for message to render
+    // Wait for message to render on the server round-trip
     await page.waitForTimeout(1500);
 
     // The MessageContent component renders markdown in a .msg-markdown div.
-    // **bold text** should become <strong>bold text</strong>
-    const strongEl = page.locator('.msg-markdown strong').filter({ hasText: 'bold text' });
+    // Either the Tiptap input rules already produced a <strong> in the
+    // compose buffer (serializing to **bold** markdown on send), or the
+    // receiver's marked pipeline produces it. Either way the bubble
+    // must contain a <strong>bold</strong>.
+    const strongEl = page.locator('.msg-markdown strong').filter({ hasText: /bold/i });
     await expect(strongEl.last()).toBeVisible({ timeout: 5000 });
   });
 
   test('reply to a message', async ({ page }) => {
-    await loginAsDemo(page, 'e2e-support-a');
+    await loginAsDemo(page, 'support_lucas');
     await openFirstTicket(page);
 
     // Wait for messages to load
@@ -192,7 +213,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('jump-to-bottom FAB', async ({ page }) => {
-    await loginAsDemo(page, 'e2e-support-a');
+    await loginAsDemo(page, 'support_lucas');
     await openFirstTicket(page);
 
     // Wait for messages to load
@@ -240,7 +261,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('label picker opens and shows labels', async ({ page }) => {
-    await loginAsDemo(page, 'e2e-support-a');
+    await loginAsDemo(page, 'support_lucas');
     await openFirstTicket(page);
 
     // Wait for labels to load from store (tRPC query)
@@ -257,8 +278,9 @@ test.describe('Chat Enhancements', () => {
     // Click to open the dropdown
     await addLabelBtn.click();
 
-    // The LabelPicker dropdown has min-w-[180px] class
-    const dropdown = page.locator('.min-w-\\[180px\\]');
+    // The LabelPicker dropdown has min-w-[220px] class (widened in the
+    // variant-B refactor that unified the label slot).
+    const dropdown = page.locator('.min-w-\\[220px\\]');
     await expect(dropdown).toBeVisible({ timeout: 3000 });
 
     // Verify it contains at least one label item (button with a colored dot and text)
@@ -272,7 +294,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('date separator renders', async ({ page }) => {
-    await loginAsDemo(page, 'e2e-support-a');
+    await loginAsDemo(page, 'support_lucas');
     await openFirstTicket(page);
 
     // Wait for messages to load
@@ -301,7 +323,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('multi-file upload input accepts multiple', async ({ page }) => {
-    await loginAsDemo(page, 'e2e-support-a');
+    await loginAsDemo(page, 'support_lucas');
     await openFirstTicket(page);
 
     // Wait for the compose area to mount (the textarea is already visible at this

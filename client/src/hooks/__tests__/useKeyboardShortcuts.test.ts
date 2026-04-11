@@ -73,6 +73,30 @@ describe('useKeyboardShortcuts', () => {
     input.remove();
   });
 
+  it('bare / does NOT fire when target is a contenteditable element', () => {
+    // Tiptap's compose editor renders a contenteditable div rather than
+    // a <textarea>, so the guard must skip the shortcut when the cursor
+    // is inside rich-text editable regions too. Regression coverage for
+    // the code-review finding that flagged this as an untested branch.
+    //
+    // jsdom doesn't compute `isContentEditable` from the contenteditable
+    // attribute the way real browsers do (it depends on layout + focus),
+    // so we force the property on the element before dispatch. The
+    // production guard reads `el.isContentEditable`; in real browsers a
+    // real contenteditable div exposes `true` automatically.
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    const editable = document.createElement('div');
+    editable.setAttribute('contenteditable', 'true');
+    Object.defineProperty(editable, 'isContentEditable', {
+      value: true,
+      configurable: true,
+    });
+    document.body.appendChild(editable);
+    fireOnElement(editable, '/');
+    expect(handlers.onFocusMessage).not.toHaveBeenCalled();
+    editable.remove();
+  });
+
   it('nothing fires when enabled is false', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: false, ...handlers }));
     fire('k', { ctrlKey: true });
