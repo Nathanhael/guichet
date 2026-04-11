@@ -96,6 +96,15 @@ export default function ChatHeader({
   }, [showLabelPicker]);
 
   const MAX_LABELS = 50;
+  const MAX_VISIBLE_LABELS = 3;
+
+  // Strip a leading "DEPT: " prefix from the visible chip text. The stored
+  // label.name is preserved in the picker popover so admins still recognize
+  // their full taxonomy; this only affects what renders in the header row.
+  function stripDeptPrefix(name: string): string {
+    const idx = name.indexOf(':');
+    return idx > 0 ? name.slice(idx + 1).trim() : name;
+  }
 
   function toggleLabel(labelId: string) {
     const isRemoving = optimisticLabels.includes(labelId);
@@ -219,72 +228,112 @@ export default function ChatHeader({
             );
           })()}
 
-          {/* Label picker — support/admin only, inline with identity */}
-          {isSupport && !focusMode && !compact && (allLabels || []).length > 0 && !isClosed && (
-            <div ref={labelPickerRef} className="relative shrink-0">
-              <button
-                onClick={() => setShowLabelPicker(!showLabelPicker)}
-                aria-label={t('add_label') || 'Add label'}
-                title={t('add_label') || 'Add label'}
-                className="inline-flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 bg-bg-elevated text-text-secondary border border-dashed border-border-heavy hover:text-text-primary hover:border-solid hover:border-accent-blue"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                </svg>
-                {t('label') || 'Label'}
-              </button>
-              {showLabelPicker && (
-                <div className="absolute left-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy z-50 min-w-[180px] max-h-[240px] overflow-y-auto animate-fade-in">
-                  {(allLabels || []).map((label) => {
-                    const isActive = optimisticLabels.includes(label.id);
-                    const atLimit = optimisticLabels.length >= MAX_LABELS;
-                    const dotClass = COLOR_BG_MAP[label.color] || 'bg-slate-500';
-                    return (
-                      <button
-                        key={label.id}
-                        onClick={() => toggleLabel(label.id)}
-                        disabled={atLimit && !isActive}
-                        className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${atLimit && !isActive ? 'opacity-30 cursor-not-allowed' : 'hover:bg-bg-elevated'}`}
-                      >
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
-                        <span className="font-mono text-[10px] text-text-primary flex-1 truncate">{label.name}</span>
-                        {isActive && <Check size={12} className="text-accent-blue shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Labels — unified slot: inline chips + overflow/add trigger sharing one popover. */}
+          {isSupport && !focusMode && !compact && (allLabels || []).length > 0 && (() => {
+            const visible = optimisticLabels.slice(0, MAX_VISIBLE_LABELS);
+            const overflow = optimisticLabels.length - visible.length;
+            const canAdd = !isClosed && optimisticLabels.length < MAX_LABELS;
+            const openPicker = () => setShowLabelPicker((v) => !v);
 
-          {/* Active label chips — inline, trailing the picker */}
-          {isSupport && !focusMode && !compact && optimisticLabels.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap min-w-0">
-              {optimisticLabels.map((id) => {
-                const info = getLabelInfo(id);
-                if (!info) return null;
-                const bgClass = (info.color && COLOR_BG_MAP[info.color]) || 'bg-bg-elevated';
-                return (
-                  <span
-                    key={id}
-                    className={`group relative inline-flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] px-1.5 py-0.5 ${bgClass} ${info.color ? 'text-white' : 'text-text-primary border border-border-heavy'}`}
+            return (
+              <div ref={labelPickerRef} className="relative flex items-center gap-1 shrink-0">
+                {/* Inline visible chips */}
+                {visible.map((id) => {
+                  const info = getLabelInfo(id);
+                  if (!info) return null;
+                  const bgClass = (info.color && COLOR_BG_MAP[info.color]) || 'bg-bg-elevated';
+                  const display = stripDeptPrefix(info.name);
+                  return (
+                    <span
+                      key={id}
+                      title={info.name}
+                      className={`group relative inline-flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] px-1.5 py-0.5 ${bgClass} ${info.color ? 'text-white' : 'text-text-primary border border-border-heavy'}`}
+                    >
+                      {display}
+                      {!isClosed && (
+                        <button
+                          onClick={() => removeLabel(id)}
+                          aria-label={`Remove ${info.name}`}
+                          title={`Remove ${info.name}`}
+                          className="inline-flex items-center justify-center w-3 h-3 -my-0.5 -mr-0.5 opacity-0 group-hover:opacity-100 hover:bg-black/25"
+                        >
+                          <X size={8} strokeWidth={3} />
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
+
+                {/* Unified trigger: morphs by state.
+                    0 labels         → ghost "+ LABEL" chip
+                    1..MAX_VISIBLE   → small "+" icon button (if canAdd)
+                    > MAX_VISIBLE    → "+N" overflow chip (doubles as add trigger) */}
+                {optimisticLabels.length === 0 && canAdd && (
+                  <button
+                    onClick={openPicker}
+                    aria-label={t('add_label') || 'Add label'}
+                    title={t('add_label') || 'Add label'}
+                    className="inline-flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-1 bg-transparent text-text-muted border border-dashed border-border-heavy hover:text-text-primary hover:border-solid hover:border-accent-blue"
                   >
-                    {info.name}
-                    {!isClosed && (
-                      <button
-                        onClick={() => removeLabel(id)}
-                        aria-label={`Remove ${info.name}`}
-                        title={`Remove ${info.name}`}
-                        className="inline-flex items-center justify-center w-3 h-3 -my-0.5 -mr-0.5 opacity-0 group-hover:opacity-100 hover:bg-black/25"
-                      >
-                        <X size={8} strokeWidth={3} />
-                      </button>
-                    )}
-                  </span>
-                );
-              })}
-            </div>
-          )}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    {t('label') || 'Label'}
+                  </button>
+                )}
+
+                {optimisticLabels.length > 0 && overflow === 0 && canAdd && (
+                  <button
+                    onClick={openPicker}
+                    aria-label={t('add_label') || 'Add label'}
+                    title={t('add_label') || 'Add label'}
+                    className="inline-flex items-center justify-center w-[22px] h-[22px] bg-bg-surface text-text-secondary border border-border-heavy hover:text-text-primary hover:border-accent-blue"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                )}
+
+                {overflow > 0 && (
+                  <button
+                    onClick={openPicker}
+                    aria-label={`${overflow} more labels`}
+                    title={`${overflow} more labels`}
+                    className="inline-flex items-center font-mono text-[9px] font-bold uppercase tracking-[0.1em] px-2 py-[3px] bg-bg-surface text-text-secondary border border-border-heavy hover:text-text-primary hover:border-accent-blue"
+                  >
+                    +{overflow}
+                  </button>
+                )}
+
+                {/* Shared popover — full taxonomy with add/remove */}
+                {showLabelPicker && (
+                  <div className="absolute left-0 top-full mt-1 bg-bg-surface border-2 border-border-heavy z-50 min-w-[220px] max-h-[280px] overflow-y-auto animate-fade-in">
+                    <div className="sticky top-0 bg-bg-surface border-b border-border px-3 py-1.5 font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-text-muted">
+                      {t('labels') || 'Labels'} · {optimisticLabels.length}
+                    </div>
+                    {(allLabels || []).map((label) => {
+                      const isActive = optimisticLabels.includes(label.id);
+                      const atLimit = optimisticLabels.length >= MAX_LABELS;
+                      const dotClass = COLOR_BG_MAP[label.color] || 'bg-slate-500';
+                      return (
+                        <button
+                          key={label.id}
+                          onClick={() => toggleLabel(label.id)}
+                          disabled={(atLimit && !isActive) || isClosed}
+                          className={`w-full flex items-center gap-2 px-3 py-1.5 text-left ${((atLimit && !isActive) || isClosed) ? 'opacity-30 cursor-not-allowed' : 'hover:bg-bg-elevated'}`}
+                        >
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass}`} />
+                          <span className="font-mono text-[10px] text-text-primary flex-1 truncate">{label.name}</span>
+                          {isActive && <Check size={12} className="text-accent-blue shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Ticket status badge — only show resolved/closed */}
           {!focusMode && !compact && (ticket.status === 'resolved' || ticket.status === 'closed') && (
