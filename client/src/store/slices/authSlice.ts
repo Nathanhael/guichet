@@ -51,6 +51,30 @@ function isSessionExpired(): boolean {
   }
 }
 
+/**
+ * Derive user.role from the active membership. The server /login and
+ * /session endpoints return user without a top-level role field (role lives
+ * only on memberships[]), so checks like `user.role === 'support'` would be
+ * permanently undefined unless we hydrate it client-side. Called from every
+ * setUser / setMemberships / setActiveMembershipId mutation so non-React
+ * callers (socket handlers via useStore.getState()) get a materialized
+ * user.role they can read synchronously.
+ */
+function syncUserRole(
+  set: (partial: Partial<StoreState>) => void,
+  get: () => StoreState,
+): void {
+  const { user, memberships, activeMembershipId } = get();
+  if (!user) return;
+  const active = memberships.find((m) => m.id === activeMembershipId);
+  const nextRole = (active?.role ?? (user.isPlatformOperator ? 'platform_operator' : user.role)) as User['role'];
+  if (nextRole && nextRole !== user.role) {
+    const updated = { ...user, role: nextRole };
+    sessionStorage.setItem('user', JSON.stringify(updated));
+    set({ user: updated });
+  }
+}
+
 export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set, get) => {
   const expired = isSessionExpired();
 
@@ -62,10 +86,25 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
     sessionStorage.removeItem('activePartnerId');
   }
 
+  // Hydrate initial user + derive role from active membership (same logic as
+  // syncUserRole, but applied before the slice is created so we don't need a
+  // post-mount side effect for page reloads).
+  const initialUser = expired ? null : safeJsonParse<User | null>('user', null);
+  const initialMemberships = expired ? [] : safeJsonParse<Membership[]>('memberships', []);
+  const initialActiveMembershipId = expired ? null : sessionStorage.getItem('activeMembershipId') || null;
+  if (initialUser && !initialUser.role) {
+    const active = initialMemberships.find((m) => m.id === initialActiveMembershipId);
+    const hydratedRole = active?.role ?? (initialUser.isPlatformOperator ? 'platform_operator' : undefined);
+    if (hydratedRole) {
+      initialUser.role = hydratedRole as User['role'];
+      sessionStorage.setItem('user', JSON.stringify(initialUser));
+    }
+  }
+
   return {
-    user: expired ? null : safeJsonParse('user', null),
-    memberships: expired ? [] : safeJsonParse('memberships', []),
-    activeMembershipId: expired ? null : sessionStorage.getItem('activeMembershipId') || null,
+    user: initialUser,
+    memberships: initialMemberships,
+    activeMembershipId: initialActiveMembershipId,
     activePartnerId: expired ? null : sessionStorage.getItem('activePartnerId') || null,
 
     setUser: (user) => {
@@ -78,11 +117,13 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
         sessionStorage.removeItem('user');
       }
       set({ user });
+      syncUserRole(set, get);
     },
     setMemberships: (memberships) => {
       if (memberships) sessionStorage.setItem('memberships', JSON.stringify(memberships));
       else sessionStorage.removeItem('memberships');
       set({ memberships });
+      syncUserRole(set, get);
     },
     setActiveMembershipId: (id) => {
       if (id) {
@@ -94,6 +135,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
         const filtered = get().memberships.filter(m => !m.id.startsWith('platform_'));
         sessionStorage.setItem('memberships', JSON.stringify(filtered));
         set({ activeMembershipId: null, activePartnerId: null, memberships: filtered });
+        syncUserRole(set, get);
         return;
       }
 
@@ -106,6 +148,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
         sessionStorage.setItem('activePartnerId', id);
         set({ activeMembershipId: id, activePartnerId: id });
       }
+      syncUserRole(set, get);
     },
     enterPartnerAsOperator: async (partnerId: string) => {
       const res = await fetch('/api/v1/auth/enter-partner', {

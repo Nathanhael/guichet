@@ -212,6 +212,11 @@ export default function ChatHeader({
                 title={sorted.map((p) => p.name).join(', ')}
               >
                 {sorted.map((p) => {
+                  // Self-status is already shown explicitly by StatusPicker in the
+                  // support nav, so suppress the redundant dot on the viewer's own
+                  // avatar. Teammate avatars keep the dot as the only at-a-glance
+                  // indicator of their availability.
+                  const isSelf = p.id === currentUserId;
                   const st = resolveStatus(p.id);
                   return (
                     <UserAvatar
@@ -219,7 +224,7 @@ export default function ChatHeader({
                       userId={p.id}
                       name={p.name}
                       size="xs"
-                      showStatus={st !== undefined}
+                      showStatus={!isSelf && st !== undefined}
                       isOnline={st === 'online'}
                     />
                   );
