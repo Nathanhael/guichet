@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle, lazy, Suspense } from 'react';
 import useStore, { useStoreShallow } from '../store/useStore';
 import { getSocket } from '../hooks/useSocket';
 import { Ticket, Message } from '../types';
@@ -7,8 +7,12 @@ import { trpc } from '../utils/trpc';
 
 import { isSupportLike } from '../utils/roles';
 import { usePartner } from '../hooks/usePartner';
-import { ChatHeader, MessageList, ComposeArea } from './chat';
+import { ChatHeader, MessageList } from './chat';
 import type { ComposeAreaHandle } from './chat';
+
+// Lazy-loaded: ComposeArea pulls in Tiptap (~250KB). Splitting it keeps the
+// initial bundle small for views that never render a chat (login, platform).
+const ComposeArea = lazy(() => import('./chat/ComposeArea'));
 import ConfirmDialog from './ConfirmDialog';
 import { useT } from '../i18n';
 
@@ -405,16 +409,26 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         onSearchClose={closeSearch}
       />
 
-      {/* Input */}
-      <ComposeArea
-        ref={composeRef}
-        ticket={ticket}
-        isClosed={isClosed}
-        isSupport={isSupport}
-        textareaRef={textareaRef}
-        replyingTo={replyingTo}
-        onClearReply={() => setReplyingTo(null)}
-      />
+      {/* Input — Suspense fallback matches ComposeArea height to prevent layout shift */}
+      <Suspense
+        fallback={
+          <div
+            className="border-t border-border-strong bg-bg-base px-4 py-3"
+            style={{ minHeight: '72px' }}
+            aria-hidden="true"
+          />
+        }
+      >
+        <ComposeArea
+          ref={composeRef}
+          ticket={ticket}
+          isClosed={isClosed}
+          isSupport={isSupport}
+          textareaRef={textareaRef}
+          replyingTo={replyingTo}
+          onClearReply={() => setReplyingTo(null)}
+        />
+      </Suspense>
 
       {showCloseConfirm && (
         <ConfirmDialog

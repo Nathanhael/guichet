@@ -81,6 +81,32 @@ export default defineConfig({
             if (id.includes('lucide-react')) {
               return 'vendor-ui-icons';
             }
+            // Editor stack: Tiptap + ProseMirror + tiptap-markdown (which pulls
+            // markdown-it). Loaded only via lazy ComposeArea.
+            if (
+              id.includes('@tiptap') ||
+              id.includes('tiptap-markdown') ||
+              id.includes('prosemirror') ||
+              id.includes('markdown-it') ||
+              id.includes('linkify-it') ||
+              id.includes('mdurl') ||
+              id.includes('uc.micro') ||
+              id.includes('entities')
+            ) {
+              return 'vendor-editor';
+            }
+            // Markdown rendering for messages (used everywhere chat renders).
+            if (id.includes('marked') || id.includes('dompurify')) {
+              return 'vendor-markdown';
+            }
+            // tRPC + react-query data layer.
+            if (id.includes('@trpc') || id.includes('@tanstack/react-query')) {
+              return 'vendor-trpc';
+            }
+            // Socket.io transport.
+            if (id.includes('socket.io-client') || id.includes('engine.io-client')) {
+              return 'vendor-socket';
+            }
             return 'vendor';
           }
         },
