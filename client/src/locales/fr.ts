@@ -49,7 +49,7 @@ const fr: Record<string, string> = {
     yes_close: 'Oui, fermer',
     closing_notes_label: 'Notes de clôture (optionnel)',
     summarize_resolution: 'Résumez la résolution...',
-    type_message: 'Tapez un message... (Ctrl+V pour coller une capture)',
+    type_message: 'Tapez un message…',
     send: 'Envoyer',
     uploading: 'T\u00e9l\u00e9chargement\u2026',
     upload_failed: 'Échec du téléchargement. Veuillez réessayer.',

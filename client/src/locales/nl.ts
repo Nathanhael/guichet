@@ -49,7 +49,7 @@ const nl: Record<string, string> = {
     yes_close: 'Ja, sluiten',
     closing_notes_label: 'Afsluitnotities (optioneel)',
     summarize_resolution: 'Vat de oplossing samen...',
-    type_message: 'Typ een bericht... (Ctrl+V voor screenshot)',
+    type_message: 'Typ een bericht…',
     send: 'Stuur',
     uploading: 'Uploaden\u2026',
     upload_failed: 'Upload mislukt. Probeer het opnieuw.',

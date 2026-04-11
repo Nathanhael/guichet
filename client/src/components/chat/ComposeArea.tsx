@@ -577,7 +577,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             <div className="flex items-center gap-2 px-3 py-1.5 bg-accent-purple text-white font-mono text-[9px] font-bold uppercase tracking-[0.14em]">
               <Ghost size={11} strokeWidth={2.5} />
               <span>{t('whisper_label') || 'Whisper'}</span>
-              <span className="opacity-80 font-medium normal-case tracking-tight">· {t('whisper_hint') || 'only visible to support staff'}</span>
             </div>
           )}
 

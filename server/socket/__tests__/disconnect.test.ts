@@ -124,8 +124,10 @@ describe('disconnect handler', () => {
     });
     expect(typingCalls.length).toBe(2);
 
-    // Should decrement presence
-    expect(decrementUserCountMock).toHaveBeenCalledWith('u1', 'partner-1');
+    // Should decrement presence — the third arg is socket.id, which the
+    // handler now passes through so the socket-set-based presence tracker
+    // can SREM the exact socket that's disconnecting.
+    expect(decrementUserCountMock).toHaveBeenCalledWith('u1', 'partner-1', expect.any(String));
 
     // Should broadcast agent offline status since role was 'agent'
     expect(broadcastAgentStatusMock).toHaveBeenCalledWith('u1', false);
