@@ -253,9 +253,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       if (attachments.length === 0 && !finalText) return; // upload failed, no text
     }
 
-    // Check socket availability BEFORE adding optimistic message to avoid orphans
     const socket = getSocket();
-    if (!socket?.connected) {
+    if (!socket) {
       setToast({ message: t('not_connected') || 'Not connected. Please wait and try again.', type: 'error' });
       return;
     }
@@ -291,7 +290,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     };
     useStore.getState().addMessage(ticket.id, optimisticMsg);
 
-    socket.emit('message:send', {
+    const sendPayload = {
       ticketId: ticket.id,
       senderLang: user?.lang,
       text: display,
@@ -299,7 +298,30 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
       whisper: whisperMode,
       replyToId: replyingTo?.id,
-    });
+    };
+
+    if (socket.connected) {
+      // Happy path — socket is up, fire immediately.
+      socket.emit('message:send', sendPayload);
+    } else {
+      // Reconnect queue — don't reject, hold the emit until the socket is
+      // back. Soft info toast tells the user their message will land shortly.
+      // If reconnect doesn't complete within 10s, surface the real error and
+      // mark the optimistic bubble as failed so they can retry manually.
+      setToast({ message: t('reconnecting_queue') || 'Reconnecting \u2014 your message will send in a moment\u2026', type: 'success' });
+      const timeoutHandle = setTimeout(() => {
+        socket.off('connect', onConnect);
+        useStore.getState().updateMessageState(ticket.id, localId, { pending: false });
+        setToast({ message: t('reconnect_failed') || 'Still disconnected. Message not sent.', type: 'error' });
+      }, 10000);
+      const onConnect = () => {
+        clearTimeout(timeoutHandle);
+        socket.off('connect', onConnect);
+        socket.emit('message:send', sendPayload);
+        setToast(null);
+      };
+      socket.on('connect', onConnect);
+    }
     setText('');
     setOriginalText(null);
     clearMedia();

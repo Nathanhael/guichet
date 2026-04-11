@@ -336,6 +336,8 @@ const en: Record<string, string> = {
     whisper_run_end: 'End whisper',
     whisper_placeholder: 'Private note for support staff…',
     drop_files_to_attach: 'Drop files to attach',
+    reconnecting_queue: 'Reconnecting — your message will send in a moment…',
+    reconnect_failed: 'Still disconnected. Message not sent.',
     toggle_team_panel: 'Toggle team panel',
     team_offline: 'Offline',
     waiting: 'waiting',
