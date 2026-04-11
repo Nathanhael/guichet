@@ -38,13 +38,16 @@ async function loginAsDemo(page: Page, userId: string) {
 
 /** Open the first available ticket in the sidebar (support view). */
 async function openFirstTicket(page: Page) {
-  // Give the queue a moment to hydrate after login.
-  await page.waitForTimeout(500);
-
   // QueueTicketRow renders as <li class="... cursor-pointer ..."> inside the
   // QueueSidebar (which is a <div>, not <aside>, so don't scope to aside).
+  // Wait for the queue to actually contain a row instead of using a fixed
+  // sleep — the queue is hydrated via WebSocket and timing varies.
   const ticket = page.locator('li.cursor-pointer').first();
   await ticket.waitFor({ state: 'visible', timeout: 20000 });
+
+  // Tiny settle so any in-flight queue re-render finishes before the click,
+  // preventing Playwright from racing against a DOM swap.
+  await page.waitForTimeout(150);
   await ticket.click();
 
   // SupportView shows a preview first — need to click "Join" to open the chat
@@ -56,9 +59,12 @@ async function openFirstTicket(page: Page) {
     // Already joined — ticket opened directly into chat (tab was already open)
   }
 
-  // Wait for the chat window to load (textarea becomes visible)
+  // Wait for the chat window to load (compose editor mounts).
+  // ComposeArea is lazy-loaded (vendor-editor chunk ~462 KB), so the first
+  // mount in a fresh browser context can be slower than later mounts — give
+  // it a generous timeout to absorb cold-cache chunk fetch + Suspense boot.
   await page.locator('.ProseMirror').first()
-    .waitFor({ state: 'visible', timeout: 15000 });
+    .waitFor({ state: 'visible', timeout: 25000 });
 }
 
 /**
