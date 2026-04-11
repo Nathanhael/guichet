@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Tessera — Whisper bubble full scene</title>
+<style>
+  :root {
+    --bg-base: #09090b;
+    --bg-surface: #111113;
+    --bg-elevated: #18181b;
+    --border: #27272a;
+    --border-heavy: #3f3f46;
+    --text-primary: #fafafa;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-blue: #3b82f6;
+    --accent-purple: #a855f7;
+    --whisper-bg: #1a1520;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px 32px;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-base);
+    color: var(--text-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 36px;
+  }
+  h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin: 0;
+  }
+  h2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--text-secondary);
+    margin: 0 0 6px;
+  }
+  .caption {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 0 0 14px;
+    font-style: italic;
+    max-width: 620px;
+    line-height: 1.5;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 24px;
+    max-width: 1500px;
+  }
+  .chat-shell {
+    background: var(--bg-surface);
+    border: 2px solid var(--border-heavy);
+    padding: 16px 16px 20px;
+  }
+  .chat-row {
+    display: flex;
+    padding: 0 8px;
+    margin-bottom: 4px;
+  }
+  .avatar-gutter {
+    width: 28px;
+    flex-shrink: 0;
+    margin-right: 12px;
+    display: flex;
+    align-items: flex-end;
+  }
+  .avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+  }
+
+  /* Regular received bubble */
+  .bubble {
+    position: relative;
+    max-width: 75%;
+    min-width: 60px;
+    padding: 8px 12px;
+    background: var(--bg-elevated);
+    border-left: 2px solid var(--border-heavy);
+    color: var(--text-primary);
+  }
+  .bubble .sender-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+  }
+  .sender-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+  }
+  .role-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 1px 4px;
+    border: 1px solid var(--accent-blue);
+    color: var(--accent-blue);
+    line-height: 1;
+  }
+  .body {
+    font-size: 14px;
+    line-height: 1.35;
+    word-break: break-word;
+  }
+  .time {
+    display: block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--text-muted);
+    opacity: 0.6;
+    margin-top: 4px;
+  }
+
+  /* Whisper bubble — purple border + bg */
+  .whisper {
+    background: var(--whisper-bg);
+    border-left-color: var(--accent-purple);
+  }
+  .whisper .body {
+    font-style: italic;
+    color: var(--text-secondary);
+  }
+  /* Font variants for the whisper body */
+  .font-a .body { font-family: 'Inter', sans-serif; font-style: italic; font-weight: 400; font-size: 14px; color: var(--text-secondary); }
+  .font-b .body { font-family: 'Inter', sans-serif; font-style: italic; font-weight: 300; font-size: 13.5px; color: var(--text-secondary); letter-spacing: 0.01em; }
+  .font-c .body { font-family: 'JetBrains Mono', monospace; font-style: normal; font-weight: 400; font-size: 12px; color: var(--text-secondary); letter-spacing: -0.01em; }
+  .font-d .body { font-family: 'JetBrains Mono', monospace; font-style: italic; font-weight: 400; font-size: 12px; color: var(--text-secondary); }
+  .font-e .body { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; font-size: 14px; color: var(--text-secondary); }
+  .font-f .body { font-family: 'Inter', sans-serif; font-style: normal; font-weight: 500; font-size: 13px; color: var(--text-secondary); text-transform: none; font-feature-settings: "smcp"; }
+  .whisper-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+  }
+  .whisper-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--accent-purple);
+  }
+  .whisper-label svg { width: 9px; height: 9px; }
+  .whisper-sender {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-muted);
+  }
+
+  /* Whisper run separators — thin purple rules that bracket a group of
+     consecutive whispers so they read as an aside from the main thread */
+  .whisper-sep {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 20px 2px 48px;
+    margin: 6px 0 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--accent-purple);
+    opacity: 0.55;
+  }
+  .whisper-sep::before,
+  .whisper-sep::after {
+    content: "";
+    flex: 1;
+    height: 0;
+    border-top: 1px dashed var(--accent-purple);
+    opacity: 0.5;
+  }
+  .whisper-sep.end { margin: 4px 0 8px; }
+
+  .legend {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    line-height: 1.6;
+    max-width: 900px;
+  }
+  .legend strong { color: var(--text-primary); }
+  .legend code {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--accent-purple);
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Tessera — Whisper font variants</h1>
+  <p class="caption">Six font treatments for the whisper body, each shown as a mini scene (regular support reply → whisper from Lucas → whisper reply from Sophie). The label, header, and bubble chrome are identical in all six. Only the body font/weight/size/style changes.</p>
+
+  <!-- ─── Full scene ─── -->
+  <div>
+    <h2>Reference scene (Font A — Inter italic 14px)</h2>
+    <p class="caption">This is the scene from the previous mockup iteration — it's also "Font A" below, shown once in full so the grouping / separator behaviour is visible. The six variants under it collapse the chrome to just show the typographic difference.</p>
+
+    <div class="chat-shell font-a" style="max-width:620px">
+
+      <!-- Agent -->
+      <div class="chat-row">
+        <div class="avatar-gutter"><div class="avatar">JA</div></div>
+        <div class="bubble">
+          <div class="sender-line">
+            <span class="sender-name">JULIE AGENT</span>
+          </div>
+          <div class="body">The dispatcher portal is giving me a 500 on every route lookup this morning.</div>
+          <span class="time">10:02</span>
+        </div>
+      </div>
+
+      <!-- Support reply -->
+      <div class="chat-row">
+        <div class="avatar-gutter"><div class="avatar" style="background:var(--accent-blue);color:#fff">LS</div></div>
+        <div class="bubble">
+          <div class="sender-line">
+            <span class="sender-name">LUCAS SUPPORT</span>
+            <span class="role-badge">Support</span>
+          </div>
+          <div class="body">Hi Julie — I'm pulling up the dispatcher logs now, give me one minute.</div>
+          <span class="time">10:03</span>
+        </div>
+      </div>
+
+      <!-- Whisper run starts -->
+      <div class="whisper-sep"><span>Whisper</span></div>
+
+      <!-- Whisper #1 Lucas — full header -->
+      <div class="chat-row">
+        <div class="avatar-gutter"></div>
+        <div class="bubble whisper">
+          <div class="whisper-head">
+            <span class="whisper-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+              Whisper
+            </span>
+            <span class="whisper-sender">Lucas</span>
+          </div>
+          <div class="body">@Sophie — this looks like the same 500 we saw in DSC yesterday. Was that ever hotfixed?</div>
+          <span class="time">10:03</span>
+        </div>
+      </div>
+
+      <!-- Whisper #2 Lucas — grouped (no header) -->
+      <div class="chat-row">
+        <div class="avatar-gutter"></div>
+        <div class="bubble whisper">
+          <div class="body">I'll keep Julie busy while you check the rollback window.</div>
+          <span class="time">10:03</span>
+        </div>
+      </div>
+
+      <!-- Whisper #3 Sophie — new sender header -->
+      <div class="chat-row">
+        <div class="avatar-gutter"></div>
+        <div class="bubble whisper">
+          <div class="whisper-head">
+            <span class="whisper-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+              Whisper
+            </span>
+            <span class="whisper-sender">Sophie</span>
+          </div>
+          <div class="body">Confirmed — same incident, hotfix went out 20 min ago. Ask her to hard refresh and try a new route lookup.</div>
+          <span class="time">10:04</span>
+        </div>
+      </div>
+
+      <!-- Whisper #4 Lucas — new sender header again -->
+      <div class="chat-row">
+        <div class="avatar-gutter"></div>
+        <div class="bubble whisper">
+          <div class="whisper-head">
+            <span class="whisper-label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+              Whisper
+            </span>
+            <span class="whisper-sender">Lucas</span>
+          </div>
+          <div class="body">Perfect, thanks. Closing the loop with her now.</div>
+          <span class="time">10:04</span>
+        </div>
+      </div>
+
+      <!-- Whisper run ends -->
+      <div class="whisper-sep end"><span>End whisper</span></div>
+
+      <!-- Support back to the thread -->
+      <div class="chat-row">
+        <div class="avatar-gutter"><div class="avatar" style="background:var(--accent-blue);color:#fff">LS</div></div>
+        <div class="bubble">
+          <div class="sender-line">
+            <span class="sender-name">LUCAS SUPPORT</span>
+            <span class="role-badge">Support</span>
+          </div>
+          <div class="body">Julie — this was a known incident that just got a hotfix 20 minutes ago. Hard-refresh your dispatcher tab and try the route lookup again, should work now.</div>
+          <span class="time">10:04</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── 6 font variants ─── -->
+  <div>
+    <h2>Font variants — pick one</h2>
+    <p class="caption">Same whisper run in each card, only the body typography differs.</p>
+    <div class="row">
+
+      <div>
+        <h2 style="color:var(--text-primary);margin-bottom:8px">A — Inter italic 14px (current)</h2>
+        <div class="chat-shell font-a">
+          <div class="chat-row"><div class="avatar-gutter"><div class="avatar" style="background:var(--accent-blue);color:#fff">LS</div></div><div class="bubble"><div class="sender-line"><span class="sender-name">LUCAS SUPPORT</span><span class="role-badge">Support</span></div><div class="body">Pulling dispatcher logs now.</div><span class="time">10:03</span></div></div>
+          <div class="whisper-sep"><span>Whisper</span></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Lucas</span></div><div class="body">@Sophie — same 500 we saw in DSC yesterday?</div><span class="time">10:03</span></div></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Sophie</span></div><div class="body">Confirmed — hotfix went out 20 min ago.</div><span class="time">10:04</span></div></div>
+          <div class="whisper-sep end"><span>End whisper</span></div>
+        </div>
+        <p class="caption" style="margin-top:6px">Sans-serif, familiar. Italic carries the aside. Reads quickly at conversation pace.</p>
+      </div>
+
+      <div>
+        <h2 style="color:var(--text-primary);margin-bottom:8px">B — Inter light italic 13.5px</h2>
+        <div class="chat-shell font-b">
+          <div class="chat-row"><div class="avatar-gutter"><div class="avatar" style="background:var(--accent-blue);color:#fff">LS</div></div><div class="bubble"><div class="sender-line"><span class="sender-name">LUCAS SUPPORT</span><span class="role-badge">Support</span></div><div class="body">Pulling dispatcher logs now.</div><span class="time">10:03</span></div></div>
+          <div class="whisper-sep"><span>Whisper</span></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Lucas</span></div><div class="body">@Sophie — same 500 we saw in DSC yesterday?</div><span class="time">10:03</span></div></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Sophie</span></div><div class="body">Confirmed — hotfix went out 20 min ago.</div><span class="time">10:04</span></div></div>
+          <div class="whisper-sep end"><span>End whisper</span></div>
+        </div>
+        <p class="caption" style="margin-top:6px">Thinner weight, slightly smaller, a hair of letter-spacing. Reads as a softer whisper, "overheard in the corner".</p>
+      </div>
+
+      <div>
+        <h2 style="color:var(--text-primary);margin-bottom:8px">C — JetBrains Mono 12px (upright)</h2>
+        <div class="chat-shell font-c">
+          <div class="chat-row"><div class="avatar-gutter"><div class="avatar" style="background:var(--accent-blue);color:#fff">LS</div></div><div class="bubble"><div class="sender-line"><span class="sender-name">LUCAS SUPPORT</span><span class="role-badge">Support</span></div><div class="body">Pulling dispatcher logs now.</div><span class="time">10:03</span></div></div>
+          <div class="whisper-sep"><span>Whisper</span></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Lucas</span></div><div class="body">@Sophie — same 500 we saw in DSC yesterday?</div><span class="time">10:03</span></div></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Sophie</span></div><div class="body">Confirmed — hotfix went out 20 min ago.</div><span class="time">10:04</span></div></div>
+          <div class="whisper-sep end"><span>End whisper</span></div>
+        </div>
+        <p class="caption" style="margin-top:6px">JetBrains Mono (brand font for chrome). Whispers look like "terminal comments" — very brutalist-consistent. Upright.</p>
+      </div>
+
+      <div>
+        <h2 style="color:var(--text-primary);margin-bottom:8px">D — JetBrains Mono italic 12px</h2>
+        <div class="chat-shell font-d">
+          <div class="chat-row"><div class="avatar-gutter"><div class="avatar" style="background:var(--accent-blue);color:#fff">LS</div></div><div class="bubble"><div class="sender-line"><span class="sender-name">LUCAS SUPPORT</span><span class="role-badge">Support</span></div><div class="body">Pulling dispatcher logs now.</div><span class="time">10:03</span></div></div>
+          <div class="whisper-sep"><span>Whisper</span></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Lucas</span></div><div class="body">@Sophie — same 500 we saw in DSC yesterday?</div><span class="time">10:03</span></div></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Sophie</span></div><div class="body">Confirmed — hotfix went out 20 min ago.</div><span class="time">10:04</span></div></div>
+          <div class="whisper-sep end"><span>End whisper</span></div>
+        </div>
+        <p class="caption" style="margin-top:6px">Monospace italic. JetBrains Mono has a beautiful true italic (not slanted). "Code comment" feel.</p>
+      </div>
+
+      <div>
+        <h2 style="color:var(--text-primary);margin-bottom:8px">E — Serif italic (Georgia 14px)</h2>
+        <div class="chat-shell font-e">
+          <div class="chat-row"><div class="avatar-gutter"><div class="avatar" style="background:var(--accent-blue);color:#fff">LS</div></div><div class="bubble"><div class="sender-line"><span class="sender-name">LUCAS SUPPORT</span><span class="role-badge">Support</span></div><div class="body">Pulling dispatcher logs now.</div><span class="time">10:03</span></div></div>
+          <div class="whisper-sep"><span>Whisper</span></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Lucas</span></div><div class="body">@Sophie — same 500 we saw in DSC yesterday?</div><span class="time">10:03</span></div></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Sophie</span></div><div class="body">Confirmed — hotfix went out 20 min ago.</div><span class="time">10:04</span></div></div>
+          <div class="whisper-sep end"><span>End whisper</span></div>
+        </div>
+        <p class="caption" style="margin-top:6px">Serif italic reads as a hand-written margin note. Breaks Tessera's sans/mono typography stack — probably too editorial for a live chat.</p>
+      </div>
+
+      <div>
+        <h2 style="color:var(--text-primary);margin-bottom:8px">F — Inter small-caps 13px upright</h2>
+        <div class="chat-shell font-f">
+          <div class="chat-row"><div class="avatar-gutter"><div class="avatar" style="background:var(--accent-blue);color:#fff">LS</div></div><div class="bubble"><div class="sender-line"><span class="sender-name">LUCAS SUPPORT</span><span class="role-badge">Support</span></div><div class="body">Pulling dispatcher logs now.</div><span class="time">10:03</span></div></div>
+          <div class="whisper-sep"><span>Whisper</span></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Lucas</span></div><div class="body">@Sophie — same 500 we saw in DSC yesterday?</div><span class="time">10:03</span></div></div>
+          <div class="chat-row"><div class="avatar-gutter"></div><div class="bubble whisper"><div class="whisper-head"><span class="whisper-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="11" width="14" height="10" rx="1"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>Whisper</span><span class="whisper-sender">Sophie</span></div><div class="body">Confirmed — hotfix went out 20 min ago.</div><span class="time">10:04</span></div></div>
+          <div class="whisper-sep end"><span>End whisper</span></div>
+        </div>
+        <p class="caption" style="margin-top:6px">Inter medium upright with small-caps feature. Reads as quiet, documentary. Only works if the user's system supports <code>font-feature-settings: "smcp"</code>.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="legend">
+    <strong>Deltas vs the current implementation</strong><br/>
+    · <strong>Label renamed</strong> to <code>Whisper</code> (matches <code>whisperMode</code> in ComposeArea; reads as "private between staff" rather than "unilateral note"). Missing <code>internal_note</code> i18n key replaced with <code>whisper_label</code>.<br/>
+    · <strong>Sender shown on whispers</strong>. The current MessageBubble branch <code>!isMine && !isWhisper && isGroupStart</code> actively hides the name for whispers — that's a bug. New render: when a whisper's sender differs from the previous whisper's sender (or it's the first in a run), show <code>Whisper · Lucas</code> in the header. Subsequent whispers from the same sender collapse to just the body (same as normal message grouping).<br/>
+    · <strong>Multi-sender runs</strong>. Consecutive whispers from different senders each get their own header row, so Sophie's reply is attributed distinctly inside the same run.<br/>
+    · <strong>Dashed purple separators</strong> bracket the whisper run: <code>— Whisper —</code> on the way in, <code>— End whisper —</code> on the way out. The run is visibly lifted out of the main agent↔support thread. Only emitted when the previous message wasn't also a whisper (start) and the next message isn't a whisper (end) — no separator between consecutive whispers inside a run.<br/>
+    · <strong>Italic + dimmed body</strong> (V3 from the earlier mockup). Italic = aside convention; dimmed = lower priority than the main thread.<br/>
+    · <strong>Lock icon</strong> next to the label reinforces "staff-only".
+  </div>
+
+</body>
+</html>

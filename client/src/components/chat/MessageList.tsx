@@ -162,6 +162,14 @@ export default function MessageList({
               const isGroupStart = !isSameSenderAsPrev || timeDiffPrev > 120000;
               const isGroupEnd = !isSameSenderAsNext || timeDiffNext > 120000;
 
+              // Whisper run boundaries: a whisper that immediately follows a
+              // non-whisper (or is the first message) starts a run. A whisper
+              // whose next message isn't a whisper (or is the last message)
+              // ends the run. Rendered as dashed purple rules to bracket the
+              // run as an aside from the main agent↔support conversation.
+              const isWhisperRunStart = !!msg.whisper && (!prevMsg || !prevMsg.whisper);
+              const isWhisperRunEnd = !!msg.whisper && (!nextMsg || !nextMsg.whisper);
+
               // Date separator: show when day changes between messages
               const msgDate = new Date(msg.timestamp).toDateString();
               const prevDate = prevMsg ? new Date(prevMsg.timestamp).toDateString() : null;
@@ -189,6 +197,15 @@ export default function MessageList({
                       <div className="flex-1 border-t border-accent-blue" />
                     </div>
                   )}
+                  {isWhisperRunStart && (
+                    <div className="flex items-center gap-3 mt-2 mb-1 px-14 opacity-55">
+                      <div className="flex-1 border-t border-dashed border-accent-purple/60" />
+                      <span className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-accent-purple shrink-0">
+                        {t('whisper_run_start') || 'Whisper'}
+                      </span>
+                      <div className="flex-1 border-t border-dashed border-accent-purple/60" />
+                    </div>
+                  )}
                   <MessageBubble
                     message={msg}
                     ticketId={ticket.id}
@@ -200,6 +217,15 @@ export default function MessageList({
                     isSearchMatch={matchedSet.has(msg.id)}
                     isCurrentSearchMatch={msg.id === currentMatchId}
                   />
+                  {isWhisperRunEnd && (
+                    <div className="flex items-center gap-3 mt-1 mb-2 px-14 opacity-55">
+                      <div className="flex-1 border-t border-dashed border-accent-purple/60" />
+                      <span className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-accent-purple shrink-0">
+                        {t('whisper_run_end') || 'End whisper'}
+                      </span>
+                      <div className="flex-1 border-t border-dashed border-accent-purple/60" />
+                    </div>
+                  )}
                 </React.Fragment>
               );
             })}

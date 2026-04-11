@@ -332,6 +332,8 @@ const en: Record<string, string> = {
     archived: 'Archived',
     view_archive: 'View archive',
     view_queue: 'Back to queue',
+    whisper_run_start: 'Whisper',
+    whisper_run_end: 'End whisper',
     toggle_team_panel: 'Toggle team panel',
     team_offline: 'Offline',
     waiting: 'waiting',
@@ -403,7 +405,7 @@ const en: Record<string, string> = {
     // Whisper / Internal
     whisper_mode: 'Internal mode',
     whisper_hint: 'Only visible to support & admins',
-    whisper_label: 'internal',
+    whisper_label: 'Whisper',
 
     // Admin view
     active_tickets: 'Active tickets',
