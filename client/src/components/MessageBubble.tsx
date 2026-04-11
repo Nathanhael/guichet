@@ -7,7 +7,7 @@ import { Message } from '../types';
 import { DeliveryStatus, MessageContent } from './chat';
 import { safeDate } from '../utils/dateUtils';
 import { REACTION_EMOJIS } from '../constants';
-import { CornerUpLeft, Pencil, Trash2, Loader2, Ban, Lock } from 'lucide-react';
+import { CornerUpLeft, Pencil, Trash2, Loader2, Ban, Ghost } from 'lucide-react';
 import ConfirmDialog from './ConfirmDialog';
 import { useAutoTranslation } from '../hooks/useTranslation';
 import type { inferRouterOutputs } from '@trpc/server';
@@ -158,7 +158,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
         {isWhisper && isGroupStart && (
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-[0.16em] text-accent-purple">
-              <Lock className="w-[9px] h-[9px]" strokeWidth={3} />
+              <Ghost className="w-[10px] h-[10px]" strokeWidth={2.5} />
               {t('whisper_label') || 'Whisper'}
             </span>
             <span className="text-[10px] font-mono font-bold uppercase tracking-tight text-text-muted">

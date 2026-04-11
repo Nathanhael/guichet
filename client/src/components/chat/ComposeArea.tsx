@@ -4,7 +4,7 @@ import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
-import { X, EyeOff, ImageIcon, Smile, Sparkles, FileText } from 'lucide-react';
+import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send } from 'lucide-react';
 import FormatToolbar from './FormatToolbar';
 import Toast from '../Toast';
 import CannedResponsePicker from '../CannedResponsePicker';
@@ -47,6 +47,29 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Draft persistence — one key per (user, ticket, mode). Each support agent
+  // keeps their own in-progress reply across reloads, and whisper vs regular
+  // mode stay separate so a private note can't leak into a public reply.
+  const draftKey = `tessera:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
+
+  // Hydrate draft once per key change (ticket switch, whisper toggle).
+  useEffect(() => {
+    const saved = sessionStorage.getItem(draftKey);
+    if (saved) setText(saved);
+    else setText('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
+
+  // Debounced save — 400ms after the last keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (text) sessionStorage.setItem(draftKey, text);
+      else sessionStorage.removeItem(draftKey);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [text, draftKey]);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
@@ -281,6 +304,9 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     setOriginalText(null);
     clearMedia();
     stopTyping();
+    // Clear any persisted draft for this (user, ticket, mode) — the message
+    // is now sent, the half-written state is no longer relevant.
+    sessionStorage.removeItem(draftKey);
     if (onClearReply) onClearReply();
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
   }
@@ -372,15 +398,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           </div>
         )}
 
-        {whisperMode && (
-        <div className="flex items-center gap-2 mb-3">
-          <div className="px-2 py-0.5 bg-accent-blue text-[var(--color-btn-text-inverse)] text-[9px] font-bold uppercase tracking-widest">Whisper</div>
-          <p className="text-[10px] text-text-primary font-bold uppercase tracking-tight opacity-80">
-            {t('whisper_hint')}
-          </p>
-        </div>
-        )}
-
         {/* AI improved -- revert bar */}
         {originalText !== null && (
           <div className="flex items-center justify-between mb-2 px-3 py-1.5 bg-bg-elevated border border-border-heavy">
@@ -437,12 +454,43 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           </div>
         )}
 
-        <FormatToolbar textareaRef={textareaRef} onTextChange={setText} getText={() => text} />
+        {/* Unified compose box — format strip + optional whisper banner + row
+            all inside a single bordered container. Accepts drag & drop for
+            files. Purple border when whisper mode is active so the private
+            state is unmissable. */}
+        <div
+          onDragEnter={(e) => { e.preventDefault(); setIsDragOver(true); }}
+          onDragOver={(e) => { e.preventDefault(); try { e.dataTransfer.dropEffect = 'copy'; } catch { /* some browsers throw on certain drag types */ } }}
+          onDragLeave={(e) => {
+            // Only clear when the drag actually leaves the outer box, not
+            // when it crosses into a child element.
+            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+            setIsDragOver(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragOver(false);
+            const files = Array.from(e.dataTransfer.files).filter(Boolean);
+            if (files.length > 0) addFiles(files);
+          }}
+          className={`relative border-2 ${
+            whisperMode ? 'border-accent-purple' : 'border-border-heavy'
+          } ${isDragOver ? 'outline outline-2 outline-accent-blue outline-offset-0' : ''}`}
+        >
+          {whisperMode && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-accent-purple text-white font-mono text-[9px] font-bold uppercase tracking-[0.14em]">
+              <Ghost size={11} strokeWidth={2.5} />
+              <span>{t('whisper_label') || 'Whisper'}</span>
+              <span className="opacity-80 font-medium normal-case tracking-tight">· {t('whisper_hint') || 'only visible to support staff'}</span>
+            </div>
+          )}
 
-        <div className={`flex items-center gap-3 p-1.5 border-2 ${
+          <FormatToolbar textareaRef={textareaRef} onTextChange={setText} getText={() => text} />
+
+        <div className={`flex items-center gap-3 p-1.5 ${
           whisperMode
-            ? 'bg-bg-surface border-border-heavy'
-            : 'bg-bg-elevated border-border-heavy'
+            ? 'bg-whisper-bg'
+            : 'bg-bg-elevated'
         }`}>
         <div className="flex items-center self-center px-1">
           {isSupport && (
@@ -456,7 +504,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                 : 'text-text-primary opacity-40 hover:opacity-100'
                 }`}
             >
-              <EyeOff size={20} strokeWidth={2.5} />
+              <Ghost size={20} strokeWidth={2.5} />
             </button>
           )}
 
@@ -582,7 +630,15 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               if (e.key === 'Escape' && replyingTo && onClearReply) { onClearReply(); }
             }}
             onPaste={handlePaste}
-            placeholder={uploading ? (t('uploading') || 'Uploading\u2026') : pendingFiles.length > 0 ? (t('add_message_or_send') || 'Add a message or press Enter to send') : t('type_message')}
+            placeholder={
+              uploading
+                ? (t('uploading') || 'Uploading\u2026')
+                : pendingFiles.length > 0
+                  ? (t('add_message_or_send') || 'Add a message or press Enter to send')
+                  : whisperMode
+                    ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
+                    : (t('type_message') || 'Type a message\u2026')
+            }
             rows={1}
             className="w-full resize-none bg-transparent border-none py-3 px-2 text-[15px] focus:ring-0 text-text-primary placeholder:opacity-30 scrollbar-none overflow-hidden"
           />
@@ -610,14 +666,37 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           type="submit"
           disabled={uploading || improving || (!text.trim() && pendingFiles.length === 0)}
           aria-label={t('send') || 'Send'}
-          className="bg-accent-blue text-[var(--color-btn-text-inverse)] w-10 h-10 flex items-center justify-center disabled:opacity-30"
+          className={`h-10 px-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-btn-text-inverse)] disabled:opacity-30 ${
+            whisperMode ? 'bg-accent-purple' : 'bg-accent-blue'
+          }`}
           title={improvementMode === 'forced' ? (t('ai_will_improve') || 'AI will improve before sending') : (t('send') || 'Send')}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 rotate-90" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
-          </svg>
+          <Send size={14} strokeWidth={2.5} />
+          <span>{whisperMode ? (t('whisper_label') || 'Whisper') : (t('send') || 'Send')}</span>
+          <span className="inline-flex items-center text-[8px] font-bold px-1 border border-white/40 opacity-70">⏎</span>
         </button>
         </div>
+
+        {/* Drag-drop overlay — visible only while a drag is active */}
+        {isDragOver && (
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-accent-blue/20 border-2 border-dashed border-accent-blue font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-accent-blue">
+            {t('drop_files_to_attach') || 'Drop files to attach'}
+          </div>
+        )}
+
+        </div>{/* /unified compose box */}
+
+        {/* Character counter — appears only when text is getting close to
+            the 5000-char server limit. Amber at 90%, red at 100%. */}
+        {text.length > 3500 && (
+          <div className="flex justify-end mt-1 pr-1">
+            <span className={`font-mono text-[9px] font-bold tabular-nums ${
+              text.length >= 5000 ? 'text-accent-red' : text.length >= 4500 ? 'text-accent-amber' : 'text-text-muted'
+            }`}>
+              {text.length} / 5000
+            </span>
+          </div>
+        )}
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </form>
