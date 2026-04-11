@@ -32,7 +32,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
     if (userId && partnerId) {
       try {
-        const result = await presenceService.decrementUserCount(userId, partnerId);
+        const result = await presenceService.decrementUserCount(userId, partnerId, socket.id);
         if (result && result.removed) {
           if (result.role === 'agent') {
             broadcastAgentStatus(userId, false);

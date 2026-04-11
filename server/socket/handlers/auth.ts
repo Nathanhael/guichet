@@ -184,7 +184,7 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
       socket.data.isSupport = isSupport;
       socket.data.identified = true;
 
-      await presenceService.identifyUser(userId, effectiveRole, name, partnerId, isPlatformOp);
+      await presenceService.identifyUser(userId, effectiveRole, name, partnerId, isPlatformOp, socket.id);
 
       // Join partner-wide room (for events all users need: partner:deactivated, hours:closed, etc.)
       socket.join(Rooms.partner(partnerId));

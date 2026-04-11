@@ -23,10 +23,15 @@ let io: Server | null = null;
 
 const HASH_PREFIX = 'presence:';
 const SET_PREFIX = 'partner:presence:';
+const SOCKETS_SUFFIX = ':sockets';
 const TTL_SECONDS = 86400;
 
 function hashKey(partnerId: string, userId: string): string {
   return `${HASH_PREFIX}${partnerId}:${userId}`;
+}
+
+function socketsKey(partnerId: string, userId: string): string {
+  return `${HASH_PREFIX}${partnerId}:${userId}${SOCKETS_SUFFIX}`;
 }
 
 function setKey(partnerId: string): string {
@@ -74,24 +79,35 @@ export async function broadcastOnlineSupport(partnerId: string) {
   }
 }
 
-export async function identifyUser(userId: string, role: string, name: string, partnerId: string, isPlatformOperator = false) {
+export async function identifyUser(userId: string, role: string, name: string, partnerId: string, isPlatformOperator = false, socketId?: string) {
   const { pubClient } = getRedisClients();
   if (!pubClient) return;
 
   const key = hashKey(partnerId, userId);
   const sKey = setKey(partnerId);
+  const sockKey = socketsKey(partnerId, userId);
   try {
-    // Atomic Lua script: check existence, set fields, manage count, refresh TTL,
-    // and update partner set — all in one Redis round-trip (no TOCTOU gap).
+    // Atomic Lua script: track this socket in a per-user socket set
+    // (SADD is idempotent), upsert user fields, refresh TTL, and update
+    // partner set — all in one round-trip. Online iff SCARD(sockets) > 0;
+    // no more HINCRBY drift from repeat identifies / HMR / reconnect.
     const luaScript = `
       local key = KEYS[1]
       local sKey = KEYS[2]
+      local sockKey = KEYS[3]
       local userId = ARGV[1]
       local name = ARGV[2]
       local role = ARGV[3]
       local partnerId = ARGV[4]
       local isPlatformOp = ARGV[5]
       local ttl = tonumber(ARGV[6])
+      local statusChangedAt = ARGV[7]
+      local socketId = ARGV[8]
+
+      if socketId and socketId ~= '' then
+        redis.call('SADD', sockKey, socketId)
+        redis.call('EXPIRE', sockKey, ttl)
+      end
 
       local exists = redis.call('EXISTS', key)
       if exists == 0 then
@@ -102,17 +118,15 @@ export async function identifyUser(userId: string, role: string, name: string, p
           'partnerId', partnerId,
           'isPlatformOperator', isPlatformOp,
           'status', 'online',
-          'statusChangedAt', ARGV[7],
-          'count', '1')
+          'statusChangedAt', statusChangedAt)
       else
-        -- Preserve existing status and statusChangedAt on reconnect
+        -- Preserve existing status/statusChangedAt on reconnect
         redis.call('HSET', key,
           'userId', userId,
           'name', name,
           'role', role,
           'partnerId', partnerId,
           'isPlatformOperator', isPlatformOp)
-        redis.call('HINCRBY', key, 'count', 1)
       end
       redis.call('EXPIRE', key, ttl)
       redis.call('SADD', sKey, userId)
@@ -121,7 +135,7 @@ export async function identifyUser(userId: string, role: string, name: string, p
     `;
 
     await pubClient.eval(luaScript, {
-      keys: [key, sKey],
+      keys: [key, sKey, sockKey],
       arguments: [
         userId,
         name,
@@ -130,6 +144,7 @@ export async function identifyUser(userId: string, role: string, name: string, p
         isPlatformOperator ? '1' : '0',
         String(TTL_SECONDS),
         new Date().toISOString(),
+        socketId || '',
       ],
     });
 
@@ -174,31 +189,40 @@ export async function getUserStatus(userId: string, partnerId: string): Promise<
   }
 }
 
-export async function decrementUserCount(userId: string, partnerId: string) {
+export async function decrementUserCount(userId: string, partnerId: string, socketId?: string) {
   const { pubClient } = getRedisClients();
   if (!pubClient) return null;
 
   const key = hashKey(partnerId, userId);
   const sKey = setKey(partnerId);
+  const sockKey = socketsKey(partnerId, userId);
   try {
-    // Atomic Lua: decrement count, read fields, and conditionally clean up in one round-trip.
-    // Returns: [removed (0/1), role, partnerId, isPlatformOperator] or nil if key missing.
+    // Atomic Lua: remove this socket from the per-user sockets set, read
+    // fields, and conditionally clean up when no sockets remain. Returns:
+    // [removed (0/1), role, partnerId, isPlatformOperator] or nil if the
+    // user hash is missing.
     const luaScript = `
       local key = KEYS[1]
       local sKey = KEYS[2]
+      local sockKey = KEYS[3]
       local userId = ARGV[1]
+      local socketId = ARGV[2]
 
       if redis.call('EXISTS', key) == 0 then
         return nil
       end
 
-      local newCount = redis.call('HINCRBY', key, 'count', -1)
+      if socketId and socketId ~= '' then
+        redis.call('SREM', sockKey, socketId)
+      end
+
+      local remaining = redis.call('SCARD', sockKey)
       local role = redis.call('HGET', key, 'role') or ''
       local pid = redis.call('HGET', key, 'partnerId') or ''
       local isPlatOp = redis.call('HGET', key, 'isPlatformOperator') or '0'
 
-      if newCount <= 0 then
-        redis.call('DEL', key)
+      if remaining <= 0 then
+        redis.call('DEL', key, sockKey)
         redis.call('SREM', sKey, userId)
         return {1, role, pid, isPlatOp}
       end
@@ -206,8 +230,8 @@ export async function decrementUserCount(userId: string, partnerId: string) {
     `;
 
     const result = await pubClient.eval(luaScript, {
-      keys: [key, sKey],
-      arguments: [userId],
+      keys: [key, sKey, sockKey],
+      arguments: [userId, socketId || ''],
     }) as [number, string, string, string] | null;
 
     if (!result) return null;
