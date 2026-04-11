@@ -54,12 +54,24 @@ describe('guardLength', () => {
     expectBlock(guardLength('   '), 'guard_too_short');
   });
 
-  it('blocks string shorter than 3 characters', () => {
-    expectBlock(guardLength('ab'), 'guard_too_short');
+  it('passes single-letter messages (1 visible character is enough)', () => {
+    expectPass(guardLength('k'));
+    expectPass(guardLength('ab'));
   });
 
-  it('passes string at minimum length (3 chars)', () => {
-    expectPass(guardLength('abc'));
+  it('passes single emoji (multi-byte surrogate pair counts as content)', () => {
+    // 😀 is U+1F600 — encoded as a UTF-16 surrogate pair so '😀'.length === 2.
+    // The previous "< 3 chars" rule silently rejected this entire class of
+    // messages and left the optimistic bubble stranded on the client.
+    expectPass(guardLength('😀'));
+    expectPass(guardLength('👍'));
+    expectPass(guardLength('❤️'));
+  });
+
+  it('passes grapheme cluster emoji (zero-width joiner sequences)', () => {
+    // 👨‍👩‍👧 is one user-perceived character but multiple code units; should
+    // also pass as long as there is any visible content after trimming.
+    expectPass(guardLength('👨‍👩‍👧'));
   });
 
   it('passes normal message', () => {
@@ -76,8 +88,8 @@ describe('guardLength', () => {
     expectPass(guardLength(text));
   });
 
-  it('trims before checking length', () => {
-    expectBlock(guardLength('  a  '), 'guard_too_short');
+  it('trims before checking content (whitespace-padded single char passes)', () => {
+    expectPass(guardLength('  a  '));
   });
 
   it('handles null-ish coercion gracefully via optional chaining', () => {
@@ -344,8 +356,8 @@ describe('runSyncGuards', () => {
     expect(result.text).toBe('Hello, I need help with my order');
   });
 
-  it('blocks on too-short text (length guard)', () => {
-    const result = runSyncGuards('ab');
+  it('blocks on empty text (length guard)', () => {
+    const result = runSyncGuards('   ');
     expect(result.ok).toBe(false);
     expect(result.code).toBe('guard_too_short');
   });
@@ -411,7 +423,7 @@ describe('runGuards', () => {
 
   it('blocks on sync guard failure before reaching repetition', async () => {
     // Should never call repetition check if sync guards fail
-    const result = await runGuards(null, 'ab', 'user-1');
+    const result = await runGuards(null, '   ', 'user-1');
     expect(result.ok).toBe(false);
     expect(result.code).toBe('guard_too_short');
     expect(mockedGetRepetitionCount).not.toHaveBeenCalled();

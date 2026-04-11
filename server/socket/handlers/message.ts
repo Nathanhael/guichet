@@ -122,7 +122,13 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         const syncResult = runSyncGuards(text);
         if (!syncResult.ok) {
           logger.warn({ senderId, code: syncResult.code }, '[message:send] Blocked by content guard');
-          return socket.emit('error', { message: `Message blocked: ${syncResult.code}` });
+          // Structured rejection event so the client can remove the matching
+          // optimistic message and surface a reason. The legacy 'error' emit
+          // is kept for backwards-compat with older clients that haven't
+          // wired up the message:rejected handler yet.
+          socket.emit('message:rejected', { ticketId, localId, code: syncResult.code });
+          socket.emit('error', { message: `Message blocked: ${syncResult.code}` });
+          return;
         }
         guardedText = syncResult.text;
 
@@ -132,7 +138,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           const repResult = await guardRepetition(pubClient as Parameters<typeof guardRepetition>[0], guardedText, senderId);
           if (!repResult.ok) {
             logger.warn({ senderId, code: repResult.code }, '[message:send] Blocked by content guard');
-            return socket.emit('error', { message: `Message blocked: ${repResult.code}` });
+            socket.emit('message:rejected', { ticketId, localId, code: repResult.code });
+            socket.emit('error', { message: `Message blocked: ${repResult.code}` });
+            return;
           }
         } catch (guardErr) {
           // Fail open for Redis-dependent guard only — sync guards already passed

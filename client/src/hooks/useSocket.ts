@@ -201,6 +201,18 @@ export function useSocket(): Socket {
       useStore.getState().updateMessageState(ticketId, messageId, { text: '', mediaUrl: null, deletedAt });
     };
 
+    const handleMessageRejected = ({ ticketId, localId, code }: { ticketId: string; localId: string; code: string }) => {
+      // Server rejected the outgoing message (content guard, repetition,
+      // etc.). Drop the matching optimistic bubble — leaving it visible was
+      // the source of the "I deleted but the smiley is still there" bug,
+      // since the user can't actually delete a message that has no real
+      // server-side row. Then publish a transient signal that ComposeArea
+      // consumes to show a localized toast for the active ticket.
+      const store = useStore.getState();
+      if (localId) store.removeMessage(ticketId, localId);
+      store.setLastRejection({ ticketId, localId, code });
+    };
+
     const handleReactionUpdated = ({ ticketId, messageId, reactions }: { ticketId: string; messageId: string; reactions: Record<string, string[]> }) => {
       useStore.getState().updateMessageReaction(ticketId, messageId, reactions);
     };
@@ -369,6 +381,7 @@ export function useSocket(): Socket {
     s.on('agent:status', handleAgentStatus);
     s.on('message:edited', handleMessageEdited);
     s.on('message:deleted', handleMessageDeleted);
+    s.on('message:rejected', handleMessageRejected);
     s.on('reaction:updated', handleReactionUpdated);
     s.on('message:linkPreview', handleLinkPreview);
     s.on('rating:saved', handleRatingSaved);
@@ -406,6 +419,7 @@ export function useSocket(): Socket {
       s.off('agent:status', handleAgentStatus);
       s.off('message:edited', handleMessageEdited);
       s.off('message:deleted', handleMessageDeleted);
+      s.off('message:rejected', handleMessageRejected);
       s.off('reaction:updated', handleReactionUpdated);
       s.off('message:linkPreview', handleLinkPreview);
       s.off('rating:saved', handleRatingSaved);

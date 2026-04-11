@@ -1,11 +1,27 @@
 import { StateCreator } from 'zustand';
 import { StoreState, Message, OnlineSupport } from '../../types';
 
+/**
+ * Transient signal published when the server rejects an outgoing message
+ * (content guard, repetition limit, etc.). The chat compose component
+ * subscribes to this and surfaces a localized toast for the active ticket,
+ * then clears the field by passing `null`. `at` is included so subsequent
+ * rejections with the same `(ticketId, localId, code)` triple still trip
+ * the React effect (Zustand only fires on referential change).
+ */
+export interface MessageRejection {
+  ticketId: string;
+  localId: string;
+  code: string;
+  at: number;
+}
+
 export interface MessageSlice {
   messages: Record<string, Message[]>;
   messageCursors: Record<string, { hasMore: boolean; nextCursor?: string; loading: boolean }>;
   onlineSupportUsers: OnlineSupport[];
   typingUsers: Record<string, Record<string, boolean>>;
+  lastRejection: MessageRejection | null;
 
   setMessages: (ticketId: string, messages: Message[]) => void;
   addMessage: (ticketId: string, message: Message) => void;
@@ -13,10 +29,12 @@ export interface MessageSlice {
   setMessageCursor: (ticketId: string, hasMore: boolean, nextCursor?: string) => void;
   setMessageLoading: (ticketId: string, loading: boolean) => void;
   updateMessageState: (ticketId: string, messageId: string, updates: Partial<Message>) => void;
+  removeMessage: (ticketId: string, messageId: string) => void;
   updateMessageReaction: (ticketId: string, messageId: string, reactions: Record<string, string[]>) => void;
   updateMessagePreviews: (ticketId: string, messageId: string, linkPreviews: Message['linkPreviews']) => void;
   setOnlineSupportUsers: (list: OnlineSupport[]) => void;
   setTyping: (ticketId: string, name: string, isTyping: boolean) => void;
+  setLastRejection: (rejection: Omit<MessageRejection, 'at'> | null) => void;
 }
 
 /** Safely extract a numeric timestamp from a message, returning 0 for invalid/missing dates */
@@ -31,6 +49,7 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
   messageCursors: {},
   onlineSupportUsers: [],
   typingUsers: {},
+  lastRejection: null,
 
   setMessages: (ticketId, newMessages) =>
     set((state) => {
@@ -119,6 +138,21 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       }
     };
   }),
+  removeMessage: (ticketId, messageId) => set((s) => {
+    const msgs = s.messages[ticketId];
+    if (!msgs) return s;
+    const filtered = msgs.filter((m) => m.id !== messageId);
+    if (filtered.length === msgs.length) return s; // no-op if id not found
+    return {
+      messages: {
+        ...s.messages,
+        [ticketId]: filtered,
+      },
+    };
+  }),
+  setLastRejection: (rejection) => set(() => ({
+    lastRejection: rejection ? { ...rejection, at: Date.now() } : null,
+  })),
   updateMessageReaction: (ticketId, messageId, reactions) =>
     set((state) => {
       const msgs = state.messages[ticketId];
