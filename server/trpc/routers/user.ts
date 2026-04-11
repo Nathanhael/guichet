@@ -109,7 +109,7 @@ export const userRouter = router({
 
   /** Public demo login — returns password only when DEMO_MODE=true */
   demoLogin: publicProcedure
-    .input(z.object({ email: z.string().email() }))
+    .input(z.object({ userId: z.string().min(1) }))
     .mutation(async ({ input }) => {
       if (!config.DEMO_MODE) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Demo mode is not enabled' });
@@ -118,7 +118,7 @@ export const userRouter = router({
         const rows = await db
           .select({ id: users.id })
           .from(users)
-          .where(and(eq(users.email, input.email), isNull(users.deletedAt)))
+          .where(and(eq(users.id, input.userId), isNull(users.deletedAt)))
           .limit(1);
         if (!rows || rows.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Demo user not found' });
