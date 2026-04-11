@@ -9,6 +9,8 @@ import { isSupportLike } from '../utils/roles';
 import { usePartner } from '../hooks/usePartner';
 import { ChatHeader, MessageList, ComposeArea } from './chat';
 import type { ComposeAreaHandle } from './chat';
+import ConfirmDialog from './ConfirmDialog';
+import { useT } from '../i18n';
 
 interface ChatWindowProps {
   ticket?: Ticket;
@@ -36,8 +38,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const [firstUnreadIndex, setFirstUnreadIndex] = useState<number | null>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showTransferMenu, setShowTransferMenu] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const t = useT();
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composeRef = useRef<ComposeAreaHandle>(null);
@@ -316,7 +320,13 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const canClose = isSupportLike(activeRole) || isOwnTicket;
   const isClosed = ticket.status === 'closed' || ticket.status === 'resolved';
 
-  function closeTicket() {
+  function requestCloseTicket() {
+    if (closing) return;
+    setShowCloseConfirm(true);
+  }
+
+  function confirmCloseTicket() {
+    setShowCloseConfirm(false);
     if (closing) return;
     const socket = getSocket();
     if (!socket) return;
@@ -370,7 +380,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         closing={closing}
         canClose={canClose}
         agentIsOnline={agentIsOnline}
-        onCloseTicket={closeTicket}
+        onCloseTicket={requestCloseTicket}
         onOpenSearch={() => setSearchOpen(true)}
       />
 
@@ -405,6 +415,17 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         replyingTo={replyingTo}
         onClearReply={() => setReplyingTo(null)}
       />
+
+      {showCloseConfirm && (
+        <ConfirmDialog
+          title={t('close_ticket_title') || 'Close ticket?'}
+          message={t('close_ticket_body') || 'The chat will be closed for both the agent and the support team. This cannot be undone.'}
+          confirmLabel={t('yes_close') || 'Yes, close'}
+          cancelLabel={t('cancel') || 'Cancel'}
+          onConfirm={confirmCloseTicket}
+          onCancel={() => setShowCloseConfirm(false)}
+        />
+      )}
     </div>
   );
 });
