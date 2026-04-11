@@ -128,11 +128,28 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // (draft hydrate, AI improve/revert, canned pick, clear-on-send). We
   // avoid re-setting content that already matches the editor's current
   // markdown, otherwise onUpdate would re-fire and bounce the value.
+  //
+  // Same Tiptap view-Proxy gotcha as the placeholder effect above:
+  // `commands.setContent` ultimately calls `view.dispatch`, which throws
+  // synchronously when the view isn't mounted yet. Currently masked because
+  // `text` is empty on first mount and the `getEditorMarkdown(...) === text`
+  // short-circuit fires — but a draft-hydrated mount during the lazy-load
+  // race window would land in the same trap. Wrap in try-catch and let the
+  // next text change retry once the view exists. See learning page
+  // `learnings/tessera-tiptap-view-proxy-throw` in the cross-project wiki.
   useEffect(() => {
     if (!editor) return;
     if (getEditorMarkdown(editor) === text) return;
     isProgrammaticUpdateRef.current = true;
-    editor.commands.setContent(text, { emitUpdate: false });
+    try {
+      editor.commands.setContent(text, { emitUpdate: false });
+    } catch {
+      // View not yet mounted — Tiptap's Proxy throws here. Reset the
+      // guard flag and bail out; the effect will re-run on the next
+      // `text` change once the view is up.
+      isProgrammaticUpdateRef.current = false;
+      return;
+    }
     // Clear on the next microtask so any synchronous onUpdate triggered
     // by setContent is suppressed, but future real keystrokes are not.
     queueMicrotask(() => { isProgrammaticUpdateRef.current = false; });
