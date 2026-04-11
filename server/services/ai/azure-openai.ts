@@ -10,7 +10,7 @@ export class AzureOpenAiProvider implements AiProvider {
   private baseUrl: string;
   private apiKey: string;
   private deployment: string;
-  private apiVersion = '2024-06-01';
+  private apiVersion = '2025-04-01-preview';
   private availableCache: { result: boolean; ts: number } | null = null;
   private static AVAILABILITY_CACHE_TTL = 60_000; // 1 minute
 
