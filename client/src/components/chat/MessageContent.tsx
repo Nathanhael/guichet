@@ -26,21 +26,24 @@ export default function MessageContent({
   return (
     <>
       {/* Quote block for replies */}
-      {message.replyTo && (
-        <QuoteBlock
-          senderName={message.replyTo.senderName}
-          text={message.replyTo.text}
-          isDeleted={!message.replyTo.text && !message.replyTo.mediaUrl}
-          onClick={() => {
-            const el = document.getElementById(`msg-${message.replyTo!.id}`);
-            if (el) {
-              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              el.classList.add('bg-accent-blue/10');
-              setTimeout(() => el.classList.remove('bg-accent-blue/10'), 1000);
-            }
-          }}
-        />
-      )}
+      {message.replyTo && (() => {
+        const reply = message.replyTo;
+        return (
+          <QuoteBlock
+            senderName={reply.senderName}
+            text={reply.text}
+            isDeleted={!reply.text && !reply.mediaUrl}
+            onClick={() => {
+              const el = document.getElementById(`msg-${reply.id}`);
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.classList.add('bg-accent-blue/10');
+                setTimeout(() => el.classList.remove('bg-accent-blue/10'), 1000);
+              }
+            }}
+          />
+        );
+      })()}
 
       {/* Text content: markdown / bionic / plain */}
       {!isDeleted && displayText.trim() && displayText.trim() !== '[attachment]' ? (

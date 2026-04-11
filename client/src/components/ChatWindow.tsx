@@ -169,8 +169,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     textareaRef.current?.focus();
   }
 
-  const ticketMessages = ticket ? (messages[ticket.id] || []) : [];
-  const agentIsOnline = ticket ? (participantsOnline[ticket.id] ?? true) : true;
+  const ticketMessages = ticket ? (messages[ticket!.id] || []) : [];
+  const agentIsOnline = ticket ? (participantsOnline[ticket!.id] ?? true) : true;
 
   // Reset initial-scroll tracker when switching tickets
   useEffect(() => {
@@ -266,10 +266,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   if (!ticket) return null;
 
-  const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
+  const liveTicket = tickets.find(t => t.id === ticket!.id) || ticket;
 
   // Pagination cursor for the current ticket
-  const cursorInfo = ticket ? messageCursors[ticket.id] : undefined;
+  const cursorInfo = ticket ? messageCursors[ticket!.id] : undefined;
 
   const loadOlderMessages = useCallback(() => {
     // Derive ticketId from store to avoid stale closure when ticket prop

@@ -310,15 +310,19 @@ export default function SupportView() {
                   onSelectTab={(id) => setActiveTab(id)}
                   onCloseTab={closeTab}
                 />
-              ) : showPreview ? (
-                <TicketPreview
-                  ticket={previewTicket!}
-                  onJoin={previewTicket!.status === 'closed' || previewTicket!.status === 'resolved' ? undefined : () => joinTicket(previewTicket!)}
-                  onClose={() => setPreviewTicket(null)}
-                  joinDisabled={atMaxChats}
-                  readOnly={previewTicket!.status === 'closed' || previewTicket!.status === 'resolved'}
-                />
-              ) : activeTab && tickets.find((tk) => tk.id === activeTab) ? (
+              ) : showPreview && previewTicket ? (() => {
+                const pt = previewTicket;
+                const isTerminal = pt.status === 'closed' || pt.status === 'resolved';
+                return (
+                  <TicketPreview
+                    ticket={pt}
+                    onJoin={isTerminal ? undefined : () => joinTicket(pt)}
+                    onClose={() => setPreviewTicket(null)}
+                    joinDisabled={atMaxChats}
+                    readOnly={isTerminal}
+                  />
+                );
+              })() : activeTab && tickets.find((tk) => tk.id === activeTab) ? (
                 <ChatWindow
                   ref={chatWindowRef}
                   key={activeTab}

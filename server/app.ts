@@ -7,7 +7,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import * as trpcExpress from '@trpc/server/adapters/express';
 import { createContext } from './trpc/context.js';
@@ -24,8 +23,7 @@ import { db } from './db.js';
 import { sql, eq } from 'drizzle-orm';
 import config from './config.js';
 import logger from './utils/logger.js';
-import { auth as authMiddleware, authorize, AuthRequest } from './middleware/auth.js';
-import * as presenceService from './services/presence.js';
+import { auth as authMiddleware, AuthRequest } from './middleware/auth.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
 import { rollupDay } from './services/statusTracking.js';
@@ -160,7 +158,7 @@ const trpcLimiter = rateLimit({
 });
 
 
-app.use((req: Request, res: Response, next: NextFunction) => {
+app.use((req: Request, _res: Response, next: NextFunction) => {
   logger.info({ method: req.method, path: req.path }, `Incoming ${req.method} request`);
   next();
 });

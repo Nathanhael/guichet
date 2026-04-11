@@ -8,6 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
+import { AUDIT_CHAIN_VERIFY_FAIL_MSG } from '../services/gdpr.js';
 
 const gdprSource = readFileSync(
   resolve(__dirname, '../services/gdpr.ts'),
@@ -42,6 +43,11 @@ describe('GDPR chain integrity abort (SEC-2)', () => {
   });
 
   it('throw statement for chain integrity violation is present', () => {
-    expect(gdprSource).toContain('GDPR purge aborted: audit chain verification failed');
+    // Import the constant and grep its value — any wording change updates
+    // both places automatically (prevents the drift that caused this bug
+    // in the first place).
+    expect(AUDIT_CHAIN_VERIFY_FAIL_MSG).toContain('audit chain');
+    expect(gdprSource).toContain(AUDIT_CHAIN_VERIFY_FAIL_MSG);
+    expect(gdprSource).toContain('throw new Error(AUDIT_CHAIN_VERIFY_FAIL_MSG)');
   });
 });
