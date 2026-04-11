@@ -75,7 +75,7 @@ test.describe('ViewModeDropdown', () => {
           await joinBtn.click();
         }
         // Wait for the chat textarea to appear — proxy for ChatTabBar being mounted
-        await page.locator('textarea[aria-label="Type a message"]').first()
+        await page.locator('.ProseMirror').first()
           .waitFor({ state: 'visible', timeout: 10000 }).catch(() => null);
       }
     }

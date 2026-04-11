@@ -57,7 +57,7 @@ async function openFirstTicket(page: Page) {
   }
 
   // Wait for the chat window to load (textarea becomes visible)
-  await page.locator('textarea[aria-label="Type a message"]').first()
+  await page.locator('.ProseMirror').first()
     .waitFor({ state: 'visible', timeout: 15000 });
 }
 
@@ -76,7 +76,7 @@ async function seedOpenTicket(browser: import('@playwright/test').Browser) {
     await page.waitForTimeout(2000);
 
     // If a chat window is already open (e.g. from a previous unclosed ticket), we're done.
-    const composeArea = page.locator('textarea[aria-label="Type a message"]');
+    const composeArea = page.locator('.ProseMirror');
     if (await composeArea.isVisible({ timeout: 3000 }).catch(() => false)) return;
 
     // Fill reference fields (Dispatch department requires Carrier ID + Route Code)
@@ -114,7 +114,7 @@ test.describe('Chat Enhancements', () => {
     await openFirstTicket(page);
 
     // Send a test message
-    const textarea = page.locator('textarea[aria-label="Type a message"]');
+    const textarea = page.locator('.ProseMirror');
     await textarea.fill('Checkmark test message ' + Date.now());
     await textarea.press('Enter');
 
@@ -135,7 +135,7 @@ test.describe('Chat Enhancements', () => {
     await openFirstTicket(page);
 
     // Send a message with markdown bold syntax
-    const textarea = page.locator('textarea[aria-label="Type a message"]');
+    const textarea = page.locator('.ProseMirror');
     await textarea.fill('Testing **bold text** rendering');
     await textarea.press('Enter');
 
@@ -178,7 +178,7 @@ test.describe('Chat Enhancements', () => {
     await expect(replyBanner.first()).toBeVisible({ timeout: 3000 });
 
     // Type and send a reply
-    const textarea = page.locator('textarea[aria-label="Type a message"]');
+    const textarea = page.locator('.ProseMirror');
     await textarea.fill('This is a reply message ' + Date.now());
     await textarea.press('Enter');
 
@@ -201,7 +201,7 @@ test.describe('Chat Enhancements', () => {
     // The FAB only appears when the message list is actually scrollable. On a
     // freshly-seeded ticket with one message the container may fit its content
     // exactly — send enough messages to guarantee scroll overflow.
-    const textarea = page.locator('textarea[aria-label="Type a message"]');
+    const textarea = page.locator('.ProseMirror');
     for (let i = 0; i < 12; i++) {
       await textarea.fill(`FAB seed message ${i + 1} — padding the scroll container so there is room to scroll back up`);
       await textarea.press('Enter');
