@@ -76,6 +76,23 @@ export default function QueueSidebar({
     { enabled: sidebarTab === 'archive' },
   );
 
+  // IMPORTANT: the reset effect must be DECLARED BEFORE the populate effect.
+  // React runs effects in declaration order, and when tRPC returns cached data
+  // after a dept-chip click (e.g. DSC → FOT → DSC), archiveQuery.data flips to
+  // the cached value in the same commit as filterDept. If populate ran first,
+  // it would fill the list with the correct rows, and this wipe would then
+  // immediately clobber them back to []. Declaring reset first makes wipe run
+  // first, then populate runs with the new cached/fresh data and the list
+  // ends up correct.
+  useEffect(() => {
+    if (sidebarTab === 'archive') {
+      setArchivedTickets([]);
+      setArchiveCursor(undefined);
+      setHasMoreArchive(false);
+    }
+    setSearchQuery('');
+  }, [filterDept, sidebarTab]);
+
   useEffect(() => {
     if (archiveQuery.data) {
       const data = archiveQuery.data as { tickets?: Ticket[]; nextCursor?: string };
@@ -87,16 +104,6 @@ export default function QueueSidebar({
       }
     }
   }, [archiveQuery.data, archiveCursor]);
-
-  // Reset archived tickets and search when switching dept filter or tab
-  useEffect(() => {
-    if (sidebarTab === 'archive') {
-      setArchivedTickets([]);
-      setArchiveCursor(undefined);
-      setHasMoreArchive(false);
-    }
-    setSearchQuery('');
-  }, [filterDept, sidebarTab]);
 
   // Per-department open ticket counts (for pill badges)
   const deptCounts = useMemo(() => {
