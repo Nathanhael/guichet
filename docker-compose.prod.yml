@@ -6,6 +6,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-tessera}
+      # Postgres 18 alpine image defaults PGDATA to /var/lib/postgresql/18/docker
+      # which lives in the container layer, not our mounted volume. Pin PGDATA
+      # into a subdirectory of the volume mount so data actually persists.
+      PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
