@@ -252,7 +252,16 @@
   background-color: var(--color-whisper-bg);
   border-left: 2px solid var(--color-accent-purple);
   border-radius: 0;
-  color: var(--color-accent-purple);
+}
+/* Whisper body: JetBrains Mono 12px secondary — matches the brutalist
+   chrome (mono for staff annotations) and reads as distinct from the
+   main Inter conversation. Applied to the MessageContent div descendant. */
+.bubble-whisper .msg-markdown,
+.bubble-whisper .msg-body {
+  font-family: 'JetBrains Mono', ui-monospace, 'Menlo', 'Consolas', monospace;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  letter-spacing: -0.01em;
 }
 
 @utility section-header {
