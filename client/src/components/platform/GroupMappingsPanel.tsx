@@ -149,7 +149,7 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     addMutation.mutate({
       partnerId,
@@ -282,7 +282,7 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     updateMutation.mutate({
       id: mapping.id,

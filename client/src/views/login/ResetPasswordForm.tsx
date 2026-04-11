@@ -15,7 +15,7 @@ export default function ResetPasswordForm({ resetToken, onSuccess, onBackClick }
   const [isResetLoading, setIsResetLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleResetPassword = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isResetLoading) return;
     setError('');

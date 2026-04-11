@@ -17,7 +17,7 @@ export default function MfaChallenge({ endpoint, body, passwordRef, onSuccess, o
   const [isLoginLoading, setIsLoginLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleMfaVerify = async (e: React.FormEvent) => {
+  const handleMfaVerify = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isLoginLoading) return;
     setError('');

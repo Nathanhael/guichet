@@ -12,7 +12,7 @@ export default function ForgotPasswordForm({ onBackClick }: ForgotPasswordFormPr
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  const handleForgotPassword = async (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (isForgotLoading) return;
     setError('');

@@ -20,7 +20,7 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
     }
   });
 
-  function submit(e: React.FormEvent) {
+  function submit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!text.trim() || !user) return;
     

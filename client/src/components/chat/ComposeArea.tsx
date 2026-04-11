@@ -519,7 +519,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     if (onClearReply) onClearReply();
   }
 
-  function sendMessage(e?: React.FormEvent) {
+  function sendMessage(e?: React.SyntheticEvent<HTMLFormElement>) {
     if (e) e.preventDefault();
     if (uploading) return; // Wait for upload to finish
     const trimmed = text.trim();
