@@ -3,7 +3,7 @@ import config from '../config.js';
 
 const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 import { Request, Response, NextFunction } from 'express';
-import { User, UserRole } from '../types/index.js';
+import { UserRole } from '../types/index.js';
 import { jwtPayloadSchema } from '../trpc/context.js';
 import logger from '../utils/logger.js';
 import { canManageTenant, canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';

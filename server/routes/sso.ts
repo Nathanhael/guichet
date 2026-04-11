@@ -104,7 +104,7 @@ async function getSsoState(state: string): Promise<{ nonce: string } | null> {
 }
 
 // ---- Step 1: Redirect to Microsoft ----
-router.get('/azure', async (req: Request, res: Response) => {
+router.get('/azure', async (_req: Request, res: Response) => {
   if (!ensureConfigured()) {
     return res.status(501).json({ error: 'Azure SSO is not configured' });
   }
@@ -323,7 +323,8 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         ));
 
       // Resolve best role per partner based on groups
-      const targetMemberships = new Map<string, { role: string, departments: string[] }>();
+      type MembershipRole = 'agent' | 'support' | 'admin' | 'platform_operator';
+      const targetMemberships = new Map<string, { role: MembershipRole, departments: string[] }>();
       for (const m of mappings) {
         const current = targetMemberships.get(m.partnerId);
         if (!current || (ROLE_PRIORITY[m.defaultRole] || 0) > (ROLE_PRIORITY[current.role] || 0)) {
@@ -356,7 +357,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
             id: mId,
             userId: user.id,
             partnerId: pId,
-            role: target.role as any,
+            role: target.role,
             departments: depts,
             source: 'sso',
           });
@@ -376,7 +377,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         } else if (existing[0].source === 'sso' && existing[0].role !== target.role) {
           // Force role update if it changed in Azure
           await db.update(memberships)
-            .set({ role: target.role as any, departments: depts })
+            .set({ role: target.role, departments: depts })
             .where(eq(memberships.id, existing[0].id));
 
           await db.insert(auditLog).values({

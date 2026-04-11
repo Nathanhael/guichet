@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { fileTypeFromFile } from 'file-type';
 import rateLimit from 'express-rate-limit';
 import config from '../config.js';
-import { auth, authorize, AuthRequest } from '../middleware/auth.js';
+import { auth, AuthRequest } from '../middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const logoDir = path.join(__dirname, '..', 'uploads', 'logos');

@@ -55,9 +55,6 @@ const DEPARTMENTS = [
   }
 ];
 
-const INDUSTRIES = ['Technology', 'Finance', 'Healthcare', 'Education', 'Telecommunications', 'Retail'];
-const LANGUAGES = ['en', 'nl', 'fr', 'de'];
-
 const LABEL_COLORS = ['blue', 'indigo', 'purple', 'emerald', 'teal', 'cyan', 'sky', 'amber', 'orange', 'rose', 'pink', 'slate'];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -222,7 +219,7 @@ async function seedFull() {
 
   for (const u of namedUsers) {
     await db.insert(schema.users).values({
-      id: u.id, name: u.name, email: u.email, lang: u.lang as any,
+      id: u.id, name: u.name, email: u.email, lang: u.lang,
       password: hash, isPlatformOperator: false, accessibilityPrefs: {},
     }).onConflictDoNothing();
     allUsers.push({ id: u.id, name: u.name, email: u.email, role: u.role, partner: u.partner });
@@ -761,7 +758,8 @@ async function seedE2E() {
   }).onConflictDoNothing();
 
   // Test Users
-  const testUsers = [
+  type TestUserRole = 'agent' | 'support' | 'admin';
+  const testUsers: Array<{ id: string; name: string; role: TestUserRole; partnerId: string; lang: string }> = [
     { id: 'e2e-agent-a', name: 'E2E Agent A', role: 'agent', partnerId: 'test-partner-a', lang: 'en' },
     { id: 'e2e-support-a', name: 'E2E Support A', role: 'support', partnerId: 'test-partner-a', lang: 'en' },
     { id: 'e2e-admin-a', name: 'E2E Admin A', role: 'admin', partnerId: 'test-partner-a', lang: 'en' },
@@ -780,7 +778,7 @@ async function seedE2E() {
     await db.insert(schema.users).values({
       id: u.id,
       name: u.name,
-      lang: u.lang as any,
+      lang: u.lang,
       password: hash,
       accessibilityPrefs: {},
     }).onConflictDoNothing();
@@ -789,7 +787,7 @@ async function seedE2E() {
       id: `mem_${u.id}`,
       userId: u.id,
       partnerId: u.partnerId,
-      role: u.role as any,
+      role: u.role,
       departments: ['DSC', 'FOT'],
     }).onConflictDoNothing();
   }
