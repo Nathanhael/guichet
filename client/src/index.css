@@ -252,6 +252,7 @@
   background-color: var(--color-whisper-bg);
   border-left: 2px solid var(--color-accent-purple);
   border-radius: 0;
+  color: var(--color-accent-purple);
 }
 
 @utility section-header {
