@@ -109,14 +109,16 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     if (!socket) return;
     if (!isTypingRef.current) {
       isTypingRef.current = true;
-      // Server derives senderName from socket.data — don't send client identity
-      socket.emit('typing:start', { ticketId: ticket.id });
+      // Server derives senderName from socket.data — don't send client identity.
+      // whisper flag tells the server to route the indicator only to staff
+      // sockets in the ticket room (never the agent) while we compose a note.
+      socket.emit('typing:start', { ticketId: ticket.id, whisper: whisperMode });
     }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     typingTimeoutRef.current = setTimeout(() => {
       isTypingRef.current = false;
       const s = getSocket();
-      if (s) s.emit('typing:stop', { ticketId: ticket.id });
+      if (s) s.emit('typing:stop', { ticketId: ticket.id, whisper: whisperMode });
     }, 2000);
   }
 
@@ -125,7 +127,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     if (isTypingRef.current) {
       isTypingRef.current = false;
       const socket = getSocket();
-      if (socket) socket.emit('typing:stop', { ticketId: ticket.id });
+      if (socket) socket.emit('typing:stop', { ticketId: ticket.id, whisper: whisperMode });
     }
   }
 

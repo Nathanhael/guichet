@@ -120,22 +120,46 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:leave] error'); }
   });
 
-  socket.on('typing:start', (data: unknown) => {
+  /**
+   * Broadcast a typing update to the ticket room. When `whisper` is true,
+   * routes only to staff sockets in the room (support/admin/platform
+   * operator) and explicitly excludes the ticket's agent — whisper typing
+   * is an internal staff signal and must not leak to the customer.
+   */
+  async function broadcastTyping(ticketId: string, typing: boolean, whisper: boolean) {
+    const room = Rooms.ticket(ticketId);
+    if (!whisper) {
+      socket.to(room).emit('typing:update', { ticketId, senderName: socket.data.name, typing });
+      return;
+    }
+    try {
+      const sockets = await ctx.io.in(room).fetchSockets();
+      for (const peer of sockets) {
+        if (peer.id === socket.id) continue;
+        if (peer.data?.role === 'agent') continue;
+        peer.emit('typing:update', { ticketId, senderName: socket.data.name, typing });
+      }
+    } catch (err: unknown) {
+      logger.error({ err: err instanceof Error ? err.message : String(err), ticketId }, '[typing whisper] failed to broadcast');
+    }
+  }
+
+  socket.on('typing:start', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
     const typingParsed = validatePayload(socket, typingSchema, data);
     if (!typingParsed) return;
-    const { ticketId } = typingParsed;
+    const { ticketId, whisper } = typingParsed;
     // Only emit if socket is actually in the ticket room (i.e., is a participant)
     if (!socket.rooms.has(Rooms.ticket(ticketId))) return;
-    socket.to(Rooms.ticket(ticketId)).emit('typing:update', { ticketId, senderName: socket.data.name, typing: true });
+    await broadcastTyping(ticketId, true, !!whisper);
   });
 
-  socket.on('typing:stop', (data: unknown) => {
+  socket.on('typing:stop', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
     const typingStopParsed = validatePayload(socket, typingSchema, data);
     if (!typingStopParsed) return;
-    const { ticketId } = typingStopParsed;
+    const { ticketId, whisper } = typingStopParsed;
     if (!socket.rooms.has(Rooms.ticket(ticketId))) return;
-    socket.to(Rooms.ticket(ticketId)).emit('typing:update', { ticketId, senderName: socket.data.name, typing: false });
+    await broadcastTyping(ticketId, false, !!whisper);
   });
 }

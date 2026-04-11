@@ -81,6 +81,10 @@ export type TicketLabelsUpdatePayload = z.infer<typeof ticketLabelsUpdateSchema>
 
 export const typingSchema = z.object({
   ticketId: z.string().min(1),
+  // When true, the typing indicator is for a whisper (internal staff note)
+  // and must be routed only to other staff in the ticket room, never the
+  // ticket's agent. Optional for backwards compatibility with older clients.
+  whisper: z.boolean().optional(),
 });
 export type TypingPayload = z.infer<typeof typingSchema>;
 
