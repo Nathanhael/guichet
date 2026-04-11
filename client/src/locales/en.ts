@@ -330,6 +330,8 @@ const en: Record<string, string> = {
     queue: 'Queue',
     queued: 'Queued',
     archived: 'Archived',
+    view_archive: 'View archive',
+    view_queue: 'Back to queue',
     toggle_team_panel: 'Toggle team panel',
     team_offline: 'Offline',
     waiting: 'waiting',

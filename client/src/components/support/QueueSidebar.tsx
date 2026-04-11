@@ -141,24 +141,15 @@ export default function QueueSidebar({
         </div>
       ) : (
       <>
-      {/* Header: tabs (with inline collapse) + dept chips.
-          Dropped the redundant h2 "QUEUE/ARCHIVE" — the tab label already says it.
-          Collapse chevron rides on the right edge of the tab row. */}
+      {/* Header: mode title + collapse chevron + dept chips.
+          Archive was demoted — tab pills are gone. The current mode is shown
+          as a title; the switcher now lives in the SidebarFooter as a
+          compact accent-blue outline button next to the count. */}
       <div className="px-4 py-3 border-b border-[var(--color-border)]">
-        <div className="flex items-center gap-1 mb-2">
-          {(['queue', 'archive'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setSidebarTab(tab)}
-              className={`flex-1 text-[9px] font-bold uppercase py-1 border ${
-                sidebarTab === tab
-                  ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                  : 'border-[var(--color-border)] opacity-50'
-              }`}
-            >
-              {t(tab)}
-            </button>
-          ))}
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="mono-label text-text-primary">
+            {sidebarTab === 'queue' ? t('queue') : t('archive')}
+          </h2>
           <button
             onClick={onToggle}
             title="Ctrl+B"
@@ -334,6 +325,7 @@ export default function QueueSidebar({
 
       <SidebarFooter
         sidebarTab={sidebarTab}
+        onToggleMode={() => setSidebarTab(sidebarTab === 'queue' ? 'archive' : 'queue')}
         queueCount={sidebarTab === 'queue' ? queueFiltered.length : archivedTickets.length}
         onlineSupportUsers={onlineSupportUsers}
       />

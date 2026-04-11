@@ -6,6 +6,9 @@ import type { OnlineSupport } from '../../types';
 
 interface SidebarFooterProps {
   sidebarTab: 'queue' | 'archive';
+  /** Flip between queue and archive mode. Optional for tests that only
+      render the component for layout/i18n assertions. */
+  onToggleMode?: () => void;
   queueCount: number;
   onlineSupportUsers: OnlineSupport[];
 }
@@ -21,7 +24,7 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export default function SidebarFooter({ sidebarTab, queueCount, onlineSupportUsers }: SidebarFooterProps) {
+export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, onlineSupportUsers }: SidebarFooterProps) {
   const t = useT();
   const [expanded, setExpanded] = useState(false);
 
@@ -62,16 +65,44 @@ export default function SidebarFooter({ sidebarTab, queueCount, onlineSupportUse
         </div>
       )}
 
-      {/* Collapsed footer bar */}
-      <button
+      {/* Collapsed footer bar. We wrap the expand/collapse trigger in a <div>
+          rather than a <button> so the archive-mode-toggle button inside can
+          live as a real <button> without nesting (which is invalid HTML and
+          fires both onClicks). The outer div handles click + keyboard +
+          aria for the team-panel toggle. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded((v) => !v)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExpanded((v) => !v);
+          }
+        }}
         aria-label={t('toggle_team_panel')}
-        className="w-full px-4 py-2 flex items-center justify-between hover:bg-[var(--color-bg-elevated)]"
+        aria-expanded={expanded}
+        className="w-full px-4 py-2 flex items-center justify-between hover:bg-[var(--color-bg-elevated)] cursor-pointer select-none"
       >
-        <span className="font-mono text-[9px] font-medium uppercase tracking-[1px] text-[var(--color-text-muted)]">
-          <span className="tabular-nums text-[var(--color-text-secondary)]">{queueCount}</span>{' '}
-          {sidebarTab === 'queue' ? t('queued') : t('archived')}
-        </span>
+        <div className="flex items-center gap-2.5">
+          <span className="font-mono text-[9px] font-medium uppercase tracking-[1px] text-[var(--color-text-muted)]">
+            <span className="tabular-nums text-[var(--color-text-secondary)]">{queueCount}</span>{' '}
+            {sidebarTab === 'queue' ? t('queued') : t('archived')}
+          </span>
+          {/* Archive mode toggle — A2 accent-blue outline. Click flips between
+              queue and archive views without collapsing the team panel. */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleMode?.();
+            }}
+            title={sidebarTab === 'queue' ? (t('view_archive') || 'View archive') : (t('view_queue') || 'Back to queue')}
+            className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-[2px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] hover:bg-[var(--color-accent-blue)] hover:text-white"
+          >
+            {sidebarTab === 'queue' ? t('archive') : t('queue')}
+          </button>
+        </div>
 
         <div className="flex items-center gap-2">
           {/* Agent badges — only when someone is actually online */}
@@ -130,7 +161,7 @@ export default function SidebarFooter({ sidebarTab, queueCount, onlineSupportUse
             <ChevronUp className="w-3 h-3 text-[var(--color-text-muted)] opacity-50 shrink-0" />
           )}
         </div>
-      </button>
+      </div>
     </div>
   );
 }
