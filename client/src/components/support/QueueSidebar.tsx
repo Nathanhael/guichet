@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Shield, ChevronLeft } from 'lucide-react';
 import { useT } from '../../i18n';
 import useStore from '../../store/useStore';
@@ -57,8 +57,10 @@ export default function QueueSidebar({
     ? departments
     : departments.filter((d) => assignedDepartmentIds.includes(d.id));
   // Ticket-level dept gate: generalist → always true, scoped → only assigned depts
-  const ticketDeptAllowed = (deptId: string) =>
-    isGeneralist || assignedDepartmentIds.includes(deptId);
+  const ticketDeptAllowed = useCallback(
+    (deptId: string) => isGeneralist || assignedDepartmentIds.includes(deptId),
+    [isGeneralist, assignedDepartmentIds],
+  );
 
   // Search query
   const searchResults = trpc.message.search.useQuery(
@@ -338,7 +340,7 @@ export default function QueueSidebar({
                       }
                     }
                   }}
-                  className="p-3 cursor-pointer hover:bg-[var(--color-accent-blue)] hover:text-white"
+                  className="p-3 cursor-pointer hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)]"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase">{result.ticketDept}</span>
@@ -382,7 +384,7 @@ export default function QueueSidebar({
                         if (data?.nextCursor) setArchiveCursor(data.nextCursor);
                       }}
                       disabled={archiveQuery.isFetching}
-                      className="w-full py-2 text-[9px] font-bold uppercase tracking-wide border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-30"
+                      className="w-full py-2 text-[9px] font-bold uppercase tracking-wide border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)] disabled:opacity-30"
                     >
                       {archiveQuery.isFetching ? (t('loading') || 'Loading...') : (t('load_more') || 'Load more')}
                     </button>

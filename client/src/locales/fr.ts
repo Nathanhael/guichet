@@ -327,6 +327,9 @@ const fr: Record<string, string> = {
 
     my_chats: 'Mes conversations',
     other_agents: 'Autres agents',
+    load_older: 'Charger les messages plus anciens',
+    is_typing: 'est en train d\u2019\u00e9crire...',
+    are_typing: 'sont en train d\u2019\u00e9crire...',
     queue: 'File d\u2019attente',
     waiting: 'en attente',
     active: 'actif',

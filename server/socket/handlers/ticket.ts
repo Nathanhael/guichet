@@ -13,6 +13,7 @@ import {
   returnTicketToQueue,
   replaceTicketLabels,
   findRecentClosedTickets,
+  findActiveTicketsForAgent,
 } from '../../services/ticketQueries.js';
 import { getBusinessHoursStatus, broadcastQueuePositions, BusinessHoursSchedule } from '../../services/businessHours.js';
 import { findPartnerConfig } from '../../services/partnerQueries.js';
@@ -94,6 +95,13 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           logger.warn({ mediaUrl }, '[ticket:new] rejected — invalid media URL');
           return socket.emit('error', { message: 'Invalid media URL' });
         }
+        // Server-side 1-ticket limit — agents may only have one non-closed ticket
+        const existingTickets = await findActiveTicketsForAgent(agentId, partnerId);
+        if (existingTickets.length > 0) {
+          logger.warn({ agentId, partnerId, existing: existingTickets[0].id }, '[ticket:new] rejected — agent already has an open ticket');
+          return socket.emit('error', { message: 'You already have an open ticket' });
+        }
+
         logger.debug({ partnerId, agentId, dept }, '[ticket:new] accepted — creating ticket');
 
         // Re-open detection — JS-side exact value match
@@ -291,11 +299,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       try {
         const senderId = socket.data.userId;
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
-
-        // ME-07 fix: Cap label array size to prevent oversized IN clause
-        if (labels.length > MAX_LABELS_PER_TICKET) {
-          return socket.emit('error', { message: `Too many labels (max ${MAX_LABELS_PER_TICKET})` });
-        }
 
         const ticket = await requirePartnerScope(socket, ticketId);
         if (!ticket) return;

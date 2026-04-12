@@ -109,7 +109,6 @@ export default function SupportView() {
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
   const partnerName = activeMembership?.partnerName || 'Tessera';
-  const logoUrl = activeMembership?.manifest?.logoUrl;
 
   // Request notification permission once when enabled
   useEffect(() => {
@@ -212,9 +211,13 @@ export default function SupportView() {
 
   // Auto-fallback from split views on narrow viewports
   useEffect(() => {
-    if (isSplitView && window.innerWidth < 768) {
-      setViewMode('normal');
-    }
+    if (!isSplitView) return;
+    const check = () => {
+      if (window.innerWidth < 768) setViewMode('normal');
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, [isSplitView, setViewMode]);
 
   // ── Actions ──
@@ -230,13 +233,9 @@ export default function SupportView() {
     }
   }
 
-  function handleSelectTicket(ticket: Ticket) {
-    selectTicket(ticket);
-  }
-
   function joinTicket(ticket: Ticket) {
     if (!user || atMaxChats) return;
-    getSocket().emit('support:join', {
+    getSocket()?.emit('support:join', {
       ticketId: ticket.id,
       supportId: user.id,
       supportName: user.name,
@@ -252,7 +251,7 @@ export default function SupportView() {
     // Notify server so it unassigns the agent from the ticket
     const ticket = tickets.find((tk) => tk.id === ticketId);
     if (ticket && ticket.status !== 'closed') {
-      getSocket().emit('support:leave', { ticketId });
+      getSocket()?.emit('support:leave', { ticketId });
     }
     removeSupportOpenTicket(ticketId);
     if (activeTab === ticketId) {
@@ -283,8 +282,8 @@ export default function SupportView() {
     { id: 'close-tab', labelKey: 'cmd_close_tab', groupKey: 'cmd_group_actions', execute: () => { if (activeTab) closeTab(activeTab); }, enabled: !!activeTab, keywords: ['close', 'tab'] },
     { id: 'close-ticket', labelKey: 'cmd_close_ticket', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.triggerCloseTicket(), enabled: !!activeTab, keywords: ['resolve', 'close', 'end'] },
     // Status
-    { id: 'status-online', labelKey: 'cmd_status_online', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'online' }), keywords: ['online', 'available'] },
-    { id: 'status-away', labelKey: 'cmd_status_away', groupKey: 'cmd_group_status', execute: () => getSocket().emit('status:set', { status: 'away' }), keywords: ['away', 'break', 'pause'] },
+    { id: 'status-online', labelKey: 'cmd_status_online', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'online' }), keywords: ['online', 'available'] },
+    { id: 'status-away', labelKey: 'cmd_status_away', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'away' }), keywords: ['away', 'break', 'pause'] },
     // View & Toggles
     { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
     { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
@@ -327,7 +326,7 @@ export default function SupportView() {
         </div>
       )}
 
-      <SupportNav partnerName={partnerName} logoUrl={logoUrl} />
+      <SupportNav partnerName={partnerName} />
 
       <div className="flex flex-1 overflow-hidden relative">
         {activeMembership && viewMode !== 'focus' && (
@@ -349,7 +348,7 @@ export default function SupportView() {
               previewTicketId={previewTicket?.id || null}
               atMaxChats={atMaxChats}
               onToggle={toggleSidebar}
-              onSelectTicket={handleSelectTicket}
+              onSelectTicket={selectTicket}
               onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
             />
           </ResizablePanel>

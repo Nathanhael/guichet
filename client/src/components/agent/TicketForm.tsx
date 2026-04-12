@@ -140,7 +140,7 @@ export default function TicketForm({ manifest }: TicketFormProps) {
                 className={`py-3 px-4 border mono-label ${
                   dept === d.id
                     ? 'border-[var(--color-border)] bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-                    : 'border-[var(--color-border)] opacity-60 hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white hover:border-[var(--color-accent-blue)]'
+                    : 'border-[var(--color-border)] opacity-60 hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)] hover:border-[var(--color-accent-blue)]'
                 }`}
               >
                 {d.name}

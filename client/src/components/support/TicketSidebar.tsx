@@ -1,12 +1,7 @@
-import { useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { Ticket } from '../../types';
-import {
-  ChevronRight,
-  RefreshCw,
-  Brain,
-} from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 
 interface TicketSidebarProps {
   ticket: Ticket;
@@ -28,21 +23,6 @@ export default function TicketSidebar({ ticket, onPreviewTicket, onToggle }: Tic
     ? pastTickets.filter((tk) => tk.id !== ticket.id)
     : ((pastTickets as TicketListResult | undefined)?.tickets || []).filter((tk) => tk.id !== ticket.id);
 
-  // ── AI Summary ──
-  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, { staleTime: 60000 });
-  const aiConfig = aiConfigQuery.data;
-  const summaryMutation = trpc.ai.summarizeChat.useMutation();
-
-  // Auto-summarize when ticket changes (if enabled)
-  useEffect(() => {
-    if (aiConfig?.chatSummarization) {
-      summaryMutation.mutate({ ticketId: ticket.id });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ticket.id, aiConfig?.chatSummarization]);
-
-  const aiEnabled = aiConfig?.chatSummarization === true;
-
   return (
     <>
       {/* Header */}
@@ -50,7 +30,7 @@ export default function TicketSidebar({ ticket, onPreviewTicket, onToggle }: Tic
         <span className="mono-label">{t('ticket_context') || 'CONTEXT'}</span>
         <button
           onClick={onToggle}
-          className="p-1 hover:bg-[var(--color-accent-blue)] hover:text-white"
+          className="p-1 hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)]"
           title={t('collapse_sidebar') || 'Collapse'}
         >
           <ChevronRight className="h-4 w-4" />
@@ -89,37 +69,6 @@ export default function TicketSidebar({ ticket, onPreviewTicket, onToggle }: Tic
             </div>
           )}
         </section>
-
-        {/* AI Summary (only when AI chat summarization is enabled) */}
-        {aiEnabled && (
-          <section>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="mono-label opacity-40">{t('ai_summary') || 'SUMMARY'}</h3>
-              <button
-                onClick={() => summaryMutation.mutate({ ticketId: ticket.id, refresh: true })}
-                disabled={summaryMutation.isPending}
-                className="p-1 hover:bg-[var(--color-accent-blue)] hover:text-white"
-                title={t('refresh_summary') || 'Refresh summary'}
-              >
-                <RefreshCw className={`h-3 w-3 ${summaryMutation.isPending ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-            <div className="border border-[var(--color-border)] p-2.5">
-              {summaryMutation.isPending ? (
-                <div className="flex items-center gap-2 text-xs opacity-40">
-                  <Brain className="h-3.5 w-3.5" />
-                  <span className="mono-label">{t('ai_analyzing') || 'Analyzing...'}</span>
-                </div>
-              ) : summaryMutation.data?.summary ? (
-                <p className="text-xs leading-relaxed opacity-80">{summaryMutation.data.summary}</p>
-              ) : summaryMutation.error ? (
-                <p className="text-xs opacity-40 italic">{t('ai_unavailable') || 'AI unavailable'}</p>
-              ) : (
-                <p className="text-xs opacity-40 italic">{t('ai_no_summary') || 'No summary yet'}</p>
-              )}
-            </div>
-          </section>
-        )}
       </div>
     </>
   );

@@ -38,12 +38,15 @@ export default function QueueTicketRow({
   const onlineAgentIds = useStore((s) => s.onlineAgentIds);
   const agentOnline = onlineAgentIds.includes(ticket.agentId);
 
-  // Tick timers every 30s so durations update while the sidebar is visible
+  // Tick timers every 30s so durations update while the sidebar is visible.
+  // Skip for "other agents" rows — those timestamps are low-value and the
+  // intervals add up on busy queues.
   const [, setTick] = useState(0);
   useEffect(() => {
+    if (variant === 'other') return;
     const timer = setInterval(() => setTick((t) => t + 1), 30000);
     return () => clearInterval(timer);
-  }, []);
+  }, [variant]);
 
   // Soft-filter participants by live presence: ticket.participants is sticky in
   // the DB (audit/history record) but the queue row should only show supports

@@ -129,13 +129,13 @@ export default function MessageList({
             {cursorInfo?.hasMore && (
               <div className="flex justify-center py-2">
                 {cursorInfo.loading ? (
-                  <span className="text-xs font-mono text-text-secondary">Loading...</span>
+                  <span className="text-xs font-mono text-text-secondary">{t('loading')}</span>
                 ) : (
                   <button
                     onClick={onLoadOlder}
                     className="text-xs font-mono text-text-secondary hover:text-text-primary"
                   >
-                    Load older messages
+                    {t('load_older')}
                   </button>
                 )}
               </div>
@@ -192,7 +192,7 @@ export default function MessageList({
                     <div className="flex items-center gap-3 my-3 px-4">
                       <div className="flex-1 border-t border-accent-blue" />
                       <span className="font-mono text-[8px] uppercase tracking-widest text-accent-blue bg-bg-surface px-2 shrink-0">
-                        {t('new_messages') || 'NEW MESSAGES'}
+                        {t('new_messages')}
                       </span>
                       <div className="flex-1 border-t border-accent-blue" />
                     </div>
@@ -201,7 +201,7 @@ export default function MessageList({
                     <div className="flex items-center gap-3 mt-2 mb-1 px-14 opacity-55">
                       <div className="flex-1 border-t border-dashed border-accent-purple/60" />
                       <span className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-accent-purple shrink-0">
-                        {t('whisper_run_start') || 'Whisper'}
+                        {t('whisper_run_start')}
                       </span>
                       <div className="flex-1 border-t border-dashed border-accent-purple/60" />
                     </div>
@@ -221,7 +221,7 @@ export default function MessageList({
                     <div className="flex items-center gap-3 mt-1 mb-2 px-14 opacity-55">
                       <div className="flex-1 border-t border-dashed border-accent-purple/60" />
                       <span className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-accent-purple shrink-0">
-                        {t('whisper_run_end') || 'End whisper'}
+                        {t('whisper_run_end')}
                       </span>
                       <div className="flex-1 border-t border-dashed border-accent-purple/60" />
                     </div>
@@ -239,7 +239,7 @@ export default function MessageList({
           <button
             onClick={onScrollToBottom}
             className="absolute bottom-20 right-4 z-40 flex items-center gap-1.5 bg-bg-elevated border border-border-heavy px-3 py-2 hover:bg-bg-surface transition-opacity duration-150"
-            aria-label={t('scroll_to_bottom') || 'Scroll to bottom'}
+            aria-label={t('scroll_to_bottom')}
           >
             <ArrowDown size={14} className="text-text-primary" />
             {unreadCount > 0 && (
@@ -265,8 +265,8 @@ export default function MessageList({
                 <span className="w-1 h-1 bg-text-primary" />
               </span>
               {typers.length === 1
-                ? `${typers[0]} ${t('is_typing') || 'is typing...'}`
-                : `${typers.join(', ')} ${t('are_typing') || 'are typing...'}`
+                ? `${typers[0]} ${t('is_typing')}`
+                : `${typers.join(', ')} ${t('are_typing')}`
               }
             </span>
           </div>

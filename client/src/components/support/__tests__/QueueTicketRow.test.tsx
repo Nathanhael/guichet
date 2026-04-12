@@ -29,21 +29,21 @@ beforeEach(() => {
 describe('QueueTicketRow', () => {
   it('renders agent name in normal case', () => {
     render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(screen.getByText('Kelvin Ferry-Okuneva')).toBeInTheDocument();
   });
 
   it('renders department badge', () => {
     render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(screen.getByText('BIL')).toBeInTheDocument();
   });
 
   it('does not render the row-level status dot', () => {
     const { container } = render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(container.querySelector('[data-status-dot]')).toBeNull();
   });
@@ -58,7 +58,7 @@ describe('QueueTicketRow', () => {
       ],
     };
     render(
-      <QueueTicketRow ticket={ticket} isActive={false} unreadCount={0} currentUserId="other-user" onClick={() => {}} />
+      <QueueTicketRow ticket={ticket} isActive={false} unreadCount={0} currentUserId="other-user" variant="queue" onClick={() => {}} />
     );
     expect(screen.queryByText('AR')).toBeNull();
     expect(screen.queryByText('BC')).toBeNull();
@@ -67,7 +67,7 @@ describe('QueueTicketRow', () => {
   it('always keeps the current user even when missing from onlineSupportUsers (race-safe)', () => {
     useStore.setState({ onlineSupportUsers: [] });
     render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(screen.getByText('AR')).toBeInTheDocument();
   });
@@ -82,7 +82,7 @@ describe('QueueTicketRow', () => {
       ],
     };
     render(
-      <QueueTicketRow ticket={ticket} isActive={false} unreadCount={0} currentUserId="other-user" onClick={() => {}} />
+      <QueueTicketRow ticket={ticket} isActive={false} unreadCount={0} currentUserId="other-user" variant="other" onClick={() => {}} />
     );
     expect(screen.getByText('AR')).toBeInTheDocument();
     expect(screen.queryByText('BC')).toBeNull();
@@ -90,28 +90,28 @@ describe('QueueTicketRow', () => {
 
   it('shows unread count badge when unreadCount > 0', () => {
     render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={3} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={3} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(screen.getByText('3')).toBeInTheDocument();
   });
 
   it('does not show unread badge when unreadCount is 0', () => {
     render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
   it('applies active styling when isActive', () => {
     const { container } = render(
-      <QueueTicketRow ticket={baseTicket} isActive={true} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={true} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect((container.firstChild as HTMLElement)?.className).toContain('border-l-[var(--color-accent-blue)]');
   });
 
   it('applies unread tint when unreadCount > 0', () => {
     const { container } = render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={2} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={2} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect((container.firstChild as HTMLElement)?.className).toContain('bg-[rgba(59,130,246,0.04)]');
   });
@@ -119,7 +119,7 @@ describe('QueueTicketRow', () => {
   it('calls onClick when clicked', () => {
     const onClick = vi.fn();
     render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={onClick} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={onClick} />
     );
     fireEvent.click(screen.getByText('Kelvin Ferry-Okuneva'));
     expect(onClick).toHaveBeenCalledOnce();
@@ -127,14 +127,14 @@ describe('QueueTicketRow', () => {
 
   it('shows disabled state when disabled', () => {
     const { container } = render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} disabled={true} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} disabled={true} />
     );
     expect((container.firstChild as HTMLElement)?.className).toContain('opacity-40');
   });
 
   it('renders agent badges for support participants', () => {
     render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(screen.getByText('AR')).toBeInTheDocument();
   });
@@ -142,7 +142,7 @@ describe('QueueTicketRow', () => {
   it('shows green dot when customer (agent) is online', () => {
     useStore.setState({ onlineAgentIds: ['agent-1'] });
     const { container } = render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     const dot = container.querySelector('[data-agent-online]');
     expect(dot).toBeInTheDocument();
@@ -152,7 +152,7 @@ describe('QueueTicketRow', () => {
   it('hides customer dot when agent is offline', () => {
     useStore.setState({ onlineAgentIds: [] });
     const { container } = render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(container.querySelector('[data-agent-online]')).toBeNull();
   });
@@ -160,7 +160,7 @@ describe('QueueTicketRow', () => {
   it('hides customer dot when a different agent is online', () => {
     useStore.setState({ onlineAgentIds: ['other-agent'] });
     const { container } = render(
-      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
     expect(container.querySelector('[data-agent-online]')).toBeNull();
   });

@@ -327,6 +327,9 @@ const nl: Record<string, string> = {
 
     my_chats: 'Mijn chats',
     other_agents: 'Andere agenten',
+    load_older: 'Oudere berichten laden',
+    is_typing: 'is aan het typen...',
+    are_typing: 'zijn aan het typen...',
     queue: 'Wachtrij',
     waiting: 'wachtend',
     active: 'actief',

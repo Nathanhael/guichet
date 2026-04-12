@@ -47,7 +47,6 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const [searchQuery, setSearchQuery] = useState('');
   const t = useT();
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const composeRef = useRef<ComposeAreaHandle>(null);
 
   // Expose minimal imperative handle for command palette actions
@@ -100,7 +99,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     { userId: ticket?.agentId || '', partnerId: activePartnerId || '' },
     {
       enabled: isSupport && !!ticket?.agentId && ticket?.status !== 'closed' && !!activePartnerId,
-      refetchInterval: 10000, // Check every 10s
+      refetchInterval: 10000 + Math.floor(Math.random() * 3000), // 10–13s with jitter
     }
   );
 
@@ -151,7 +150,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   function closeSearch() {
     setSearchOpen(false);
     setSearchQuery('');
-    textareaRef.current?.focus();
+    composeRef.current?.focus();
   }
 
   const ticketMessages = ticket ? (messages[ticket!.id] || []) : [];
@@ -425,7 +424,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
           isClosed={isClosed}
           isSupport={isSupport}
           compact={!!compact}
-          textareaRef={textareaRef}
+          aiConfig={aiConfig}
           replyingTo={replyingTo}
           onClearReply={() => setReplyingTo(null)}
         />

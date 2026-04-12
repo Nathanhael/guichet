@@ -3,11 +3,10 @@ import { useT } from '../../i18n';
 import StatusPicker from '../StatusPicker';
 import SettingsPopover from '../SettingsPopover';
 import UserMenu from '../UserMenu';
-import { OnlineSupport } from '../../types';
+import type { OnlineSupport } from '../../types';
 
 interface SupportNavProps {
   partnerName: string;
-  logoUrl?: string;
 }
 
 export default function SupportNav({ partnerName }: SupportNavProps) {
