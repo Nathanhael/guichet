@@ -13,6 +13,25 @@ import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
 import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEditor';
 
+// Purge expired drafts from localStorage on module load (once per session).
+// Drafts older than 24h are stale — the ticket is likely closed or reassigned.
+const DRAFT_TTL_MS_GLOBAL = 24 * 60 * 60 * 1000;
+(() => {
+  try {
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith('tessera:draft:'));
+    for (const key of keys) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      try {
+        const { ts } = JSON.parse(raw);
+        if (!ts || Date.now() - ts > DRAFT_TTL_MS_GLOBAL) localStorage.removeItem(key);
+      } catch {
+        localStorage.removeItem(key); // corrupt entry
+      }
+    }
+  } catch { /* localStorage unavailable */ }
+})();
+
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export interface ComposeAreaHandle {
@@ -73,22 +92,36 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // Draft persistence — one key per (user, ticket, mode). Each support agent
   // keeps their own in-progress reply across reloads, and whisper vs regular
   // mode stay separate so a private note can't leak into a public reply.
+  // Stored in localStorage (survives crashes) with a 24h TTL.
+  const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
   const draftKey = `tessera:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
 
   // Hydrate draft once per key change (ticket switch, whisper toggle).
   // The editor reference is captured via ref in a downstream effect
   // below so we can push the markdown into setContent too.
   useEffect(() => {
-    const saved = sessionStorage.getItem(draftKey);
-    setText(saved || '');
+    const raw = localStorage.getItem(draftKey);
+    if (raw) {
+      try {
+        const { text: saved, ts } = JSON.parse(raw);
+        if (Date.now() - ts < DRAFT_TTL_MS) {
+          setText(saved);
+          return;
+        }
+        localStorage.removeItem(draftKey); // expired
+      } catch {
+        localStorage.removeItem(draftKey); // corrupt
+      }
+    }
+    setText('');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
 
   // Debounced save — 400ms after the last keystroke.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (text) sessionStorage.setItem(draftKey, text);
-      else sessionStorage.removeItem(draftKey);
+      if (text) localStorage.setItem(draftKey, JSON.stringify({ text, ts: Date.now() }));
+      else localStorage.removeItem(draftKey);
     }, 400);
     return () => clearTimeout(timer);
   }, [text, draftKey]);
@@ -518,7 +551,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     stopTyping();
     // Clear any persisted draft for this (user, ticket, mode) — the message
     // is now sent, the half-written state is no longer relevant.
-    sessionStorage.removeItem(draftKey);
+    localStorage.removeItem(draftKey);
     if (onClearReply) onClearReply();
   }
 

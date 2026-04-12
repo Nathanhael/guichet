@@ -89,6 +89,39 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
   });
 
+  // Silent rejoin — reconnect to ticket rooms after a crash/refresh without
+  // inserting whisper messages or broadcasting join events. Only succeeds if
+  // the caller is already a participant of the ticket (i.e., they joined before
+  // the disconnect).
+  socket.on('support:rejoin', async (data: unknown) => {
+    if (!requireIdentified(socket)) return;
+    const parsed = validatePayload(socket, supportLeaveSchema, data); // same shape: { ticketId }
+    if (!parsed) return;
+    const { ticketId } = parsed;
+    socketioEventsTotal.inc({ event: 'support:rejoin' });
+    try {
+      const supportId = socket.data.userId;
+      if (!socket.data.isSupport) return;
+
+      const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketParticipants);
+      if (!ticket) return;
+
+      // Only rejoin if already a participant — prevents abuse
+      const participants: Participant[] = (ticket.participants as unknown as Participant[]) || [];
+      const isParticipant = participants.some((p: Participant) => p.id === supportId);
+      if (!isParticipant) {
+        socket.emit('support:rejoin:denied', { ticketId });
+        return;
+      }
+
+      socket.join(Rooms.ticket(ticketId));
+      const { messages: msgRows, hasMore, nextCursor } = await findTicketMessagesPaginated(ticketId, { limit: 100 });
+      const msgs = msgRows.map(mapMessageRow);
+      const labelIds = await findTicketLabelIds(ticketId);
+      socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
+    } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:rejoin] error'); }
+  });
+
   socket.on('status:set', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
     const statusParsed = validatePayload(socket, statusSetSchema, data);

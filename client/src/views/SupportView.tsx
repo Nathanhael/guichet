@@ -67,7 +67,15 @@ export default function SupportView() {
   const t = useT();
   useIdleStatus();
 
-  const [activeTab, setActiveTab] = useState<string | null>(null);
+  const [activeTab, setActiveTabRaw] = useState<string | null>(() => {
+    const saved = localStorage.getItem('tessera:activeTab');
+    return saved && supportOpenTickets.includes(saved) ? saved : null;
+  });
+  const setActiveTab = useCallback((id: string | null) => {
+    setActiveTabRaw(id);
+    if (id) localStorage.setItem('tessera:activeTab', id);
+    else localStorage.removeItem('tessera:activeTab');
+  }, []);
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('queueSidebarOpen') !== 'false');
   const toggleSidebar = useCallback(() => {
@@ -105,6 +113,33 @@ export default function SupportView() {
   useEffect(() => {
     if (labelsQuery.data) setAllLabels(labelsQuery.data);
   }, [labelsQuery.data, setAllLabels]);
+
+  // Silent rejoin — after a crash/refresh, restored tabs need to rejoin
+  // their socket rooms without inserting "joined" whispers. Runs once when
+  // tickets load and we have restored tabs from localStorage.
+  const hasRejoinedRef = useRef(false);
+  useEffect(() => {
+    if (hasRejoinedRef.current) return;
+    if (supportOpenTickets.length === 0 || tickets.length === 0) return;
+    hasRejoinedRef.current = true;
+    const socket = getSocket();
+    if (!socket) return;
+    // Listen for denied rejoins — remove stale tabs where we're no longer a participant
+    const onDenied = ({ ticketId }: { ticketId: string }) => {
+      removeSupportOpenTicket(ticketId);
+    };
+    socket.on('support:rejoin:denied', onDenied);
+    // Validate restored tabs against actual ticket list — remove stale ones
+    const validTicketIds = new Set(tickets.map((tk) => tk.id));
+    for (const ticketId of supportOpenTickets) {
+      if (validTicketIds.has(ticketId)) {
+        socket.emit('support:rejoin', { ticketId });
+      } else {
+        removeSupportOpenTicket(ticketId);
+      }
+    }
+    return () => { socket.off('support:rejoin:denied', onDenied); };
+  }, [supportOpenTickets, tickets, removeSupportOpenTicket]);
 
   // Derived state
   const openTabTickets = useMemo(

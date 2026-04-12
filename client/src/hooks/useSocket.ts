@@ -292,6 +292,16 @@ export function useSocket(): Socket {
       }
     };
 
+    const handleTicketReclaimed = ({ ticketId, previousSupportId }: { ticketId: string; previousSupportId: string; previousSupportName: string }) => {
+      // Unassign support locally so ticket appears back in queue
+      updateTicket(ticketId, { supportId: null, supportName: undefined, status: 'open' });
+      // If the current user was the abandoned agent, remove the tab
+      const state = useStore.getState();
+      if (previousSupportId === state.user?.id) {
+        state.removeSupportOpenTicket(ticketId);
+      }
+    };
+
     const handleTicketAssigned = ({ ticketId, supportId, supportName }: { ticketId: string; supportId: string; supportName: string }) => {
       updateTicket(ticketId, { supportId, supportName });
       const state = useStore.getState();
@@ -397,6 +407,7 @@ export function useSocket(): Socket {
     s.on('ticket:closed', handleTicketClosed);
     s.on('ticket:updated', handleTicketUpdated);
     s.on('ticket:transferred', handleTicketTransferred);
+    s.on('ticket:reclaimed', handleTicketReclaimed);
     s.on('ticket:assigned', handleTicketAssigned);
     s.on('ticket:labels:updated', handleTicketLabelsUpdated);
     s.on('label:deleted', handleLabelDeleted);
@@ -436,6 +447,7 @@ export function useSocket(): Socket {
       s.off('ticket:closed', handleTicketClosed);
       s.off('ticket:updated', handleTicketUpdated);
       s.off('ticket:transferred', handleTicketTransferred);
+      s.off('ticket:reclaimed', handleTicketReclaimed);
       s.off('ticket:assigned', handleTicketAssigned);
       s.off('ticket:labels:updated', handleTicketLabelsUpdated);
       s.off('label:deleted', handleLabelDeleted);
