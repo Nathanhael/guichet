@@ -20,6 +20,7 @@ export interface MessageSlice {
   messages: Record<string, Message[]>;
   messageCursors: Record<string, { hasMore: boolean; nextCursor?: string; loading: boolean }>;
   onlineSupportUsers: OnlineSupport[];
+  onlineAgentIds: string[];
   typingUsers: Record<string, Record<string, boolean>>;
   lastRejection: MessageRejection | null;
 
@@ -33,6 +34,7 @@ export interface MessageSlice {
   updateMessageReaction: (ticketId: string, messageId: string, reactions: Record<string, string[]>) => void;
   updateMessagePreviews: (ticketId: string, messageId: string, linkPreviews: Message['linkPreviews']) => void;
   setOnlineSupportUsers: (list: OnlineSupport[]) => void;
+  setOnlineAgentIds: (ids: string[]) => void;
   setTyping: (ticketId: string, name: string, isTyping: boolean) => void;
   setLastRejection: (rejection: Omit<MessageRejection, 'at'> | null) => void;
 }
@@ -48,6 +50,7 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
   messages: {},
   messageCursors: {},
   onlineSupportUsers: [],
+  onlineAgentIds: [],
   typingUsers: {},
   lastRejection: null,
 
@@ -176,6 +179,7 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       };
     }),
   setOnlineSupportUsers: (list) => set({ onlineSupportUsers: list }),
+  setOnlineAgentIds: (ids) => set({ onlineAgentIds: ids }),
   setTyping: (ticketId, name, isTyping) =>
     set((state) => {
       const ticketTyping = { ...(state.typingUsers[ticketId] || {}) };

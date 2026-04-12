@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Ticket, OnlineSupport } from '../../types';
+import type { Ticket } from '../../types';
 import { getSmartTimestamp } from '../../utils/dateUtils';
 import useStore from '../../store/useStore';
 import AgentBadges from './AgentBadges';
@@ -32,7 +32,9 @@ export default function QueueTicketRow({
   disabled = false,
 }: QueueTicketRowProps) {
   const isUnread = unreadCount > 0;
-  const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
+  const onlineSupportUsers = useStore((s) => s.onlineSupportUsers);
+  const onlineAgentIds = useStore((s) => s.onlineAgentIds);
+  const agentOnline = onlineAgentIds.includes(ticket.agentId);
 
   // Soft-filter participants by live presence: ticket.participants is sticky in
   // the DB (audit/history record) but the queue row should only show supports
@@ -62,11 +64,18 @@ export default function QueueTicketRow({
       onMouseEnter={disabled ? undefined : prefetchComposeArea}
       onFocus={disabled ? undefined : prefetchComposeArea}
     >
-      {/* Row 1: dept + name + time */}
+      {/* Row 1: dept + customer presence + name + time */}
       <div className="flex items-center gap-1.5 mb-1">
         <span className="font-mono text-[7px] font-bold uppercase tracking-[0.5px] px-[5px] py-px border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] shrink-0">
           {ticket.dept}
         </span>
+        {agentOnline && (
+          <span
+            data-agent-online
+            title="Customer is online"
+            className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--color-accent-green)]"
+          />
+        )}
         <span className="text-[13px] font-semibold text-[var(--color-text-primary)] truncate flex-1 min-w-0">
           {ticket.agentName}
         </span>

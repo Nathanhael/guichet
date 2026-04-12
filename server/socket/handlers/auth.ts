@@ -201,6 +201,7 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
 
       if (effectiveRole === 'agent') {
         broadcastAgentStatus(userId, true);
+        presenceService.broadcastOnlineAgents(partnerId);
       }
 
       // Restore persisted status to client and open status tracking row

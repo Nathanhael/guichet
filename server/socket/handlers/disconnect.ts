@@ -36,6 +36,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         if (result && result.removed) {
           if (result.role === 'agent') {
             broadcastAgentStatus(userId, false);
+            presenceService.broadcastOnlineAgents(partnerId);
           }
           // Close status tracking row when user fully disconnects (all roles)
           await statusTracking.closeOpenRow(userId, partnerId);
