@@ -325,6 +325,8 @@ const nl: Record<string, string> = {
     whisper_hint: 'Alleen zichtbaar voor support & admins',
     whisper_label: 'intern',
 
+    my_chats: 'Mijn chats',
+    other_agents: 'Andere agenten',
     queue: 'Wachtrij',
     waiting: 'wachtend',
     active: 'actief',

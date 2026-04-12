@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Queue Sidebar Mockup — Tessera</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #09090b; font-family: 'Inter', system-ui, sans-serif; display: flex; justify-content: center; padding: 40px; }
+  .sidebar { width: 320px; background: #18181b; border: 2px solid #3f3f46; }
+  .search { padding: 10px 12px; border-bottom: 2px solid #3f3f46; }
+  .search input {
+    width: 100%; background: #09090b; border: 1px solid #3f3f46; color: #a1a1aa;
+    padding: 6px 10px; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .section-header {
+    padding: 10px 12px 6px; font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.14em; display: flex; align-items: center; gap: 6px;
+  }
+  .section-header.mine { color: #3b82f6; }
+  .section-header.other { color: #8b5cf6; }
+  .section-header.queue { color: #71717a; }
+  .section-header .count {
+    background: currentColor; color: #09090b; padding: 1px 5px;
+    font-size: 9px; font-weight: 800;
+  }
+  .section-sep { height: 2px; margin: 0 12px; }
+  .section-sep.mine { background: #3b82f6; }
+  .section-sep.other { background: #8b5cf6; }
+  .section-sep.queue { background: #3f3f46; }
+  .ticket {
+    padding: 8px 12px; border-bottom: 1px solid #27272a;
+    cursor: pointer; position: relative; transition: background 0.1s;
+  }
+  .ticket:hover { background: #27272a; }
+  .ticket.active { border-left: 3px solid #3b82f6; background: #1e293b; }
+  .ticket .row1 {
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ticket .name {
+    font-size: 13px; font-weight: 600; color: #fafafa;
+  }
+  .ticket .dept {
+    background: #27272a; padding: 1px 5px; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    letter-spacing: 0.06em; color: #71717a;
+  }
+  .ticket .row2 {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 4px;
+  }
+  .ticket .row2-timer {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    font-weight: 700; letter-spacing: 0.06em;
+  }
+  .ticket .row2-timer.normal { color: #71717a; }
+  .ticket .row2-timer.long { color: #f59e0b; }
+  .ticket .row2-timer.chat { color: #52525b; }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
+  }
+  .dot.online { background: #22c55e; }
+  .dot.away { background: #f59e0b; }
+  .badge-unread {
+    background: #3b82f6; color: #09090b; font-family: 'JetBrains Mono', monospace;
+    font-size: 9px; font-weight: 800; padding: 1px 5px; min-width: 18px; text-align: center;
+    margin-left: auto;
+  }
+  .collab {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .collab .avatar {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #3f3f46; color: #a1a1aa;
+    font-family: 'JetBrains Mono', monospace; font-size: 8px;
+    font-weight: 800; display: flex; align-items: center; justify-content: center;
+    border: 1px solid #52525b;
+  }
+  .collab .avatar.you {
+    background: #1e3a5f; color: #4a9eed; border-color: #4a9eed;
+  }
+  .empty-queue {
+    padding: 20px 12px; text-align: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: #3f3f46; text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  h2 {
+    color: #fafafa; font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px;
+    text-align: center;
+  }
+  .label { display: flex; gap: 20px; margin-top: 30px; justify-content: center; }
+  .label > div { display: flex; align-items: center; gap: 6px; }
+  .label span {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: #71717a; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+<div>
+  <h2>Queue Sidebar — Sectioned</h2>
+  <div class="sidebar">
+    <div class="search">
+      <input type="text" placeholder="SEARCH TICKETS..." readonly />
+    </div>
+
+    <!-- MY CHATS section -->
+    <div class="section-header mine">
+      My Chats <span class="count">3</span>
+    </div>
+    <div class="section-sep mine"></div>
+
+    <div class="ticket active">
+      <div class="row1"><span class="dot online"></span> <span class="name">Julie Agent</span> <span class="dept">DSC</span> <span class="badge-unread">2</span></div>
+      <div class="row2"><div class="collab"><span class="avatar you">LS</span><span class="avatar">SS</span></div> <span class="row2-timer chat">02:14</span></div>
+    </div>
+
+    <div class="ticket">
+      <div class="row1"><span class="dot online"></span> <span class="name">Kevin Agent</span> <span class="dept">FOT</span></div>
+      <div class="row2"><div class="collab"><span class="avatar you">LS</span></div> <span class="row2-timer chat">08:32</span></div>
+    </div>
+
+    <div class="ticket">
+      <div class="row1"><span class="name">Julie Agent</span> <span class="dept">TEC</span></div>
+      <div class="row2"><div class="collab"><span class="avatar you">LS</span><span class="avatar">SS</span><span class="avatar">EA</span></div> <span class="row2-timer chat">25:07</span></div>
+    </div>
+
+    <!-- OTHER AGENTS section -->
+    <div class="section-header other">
+      Other Agents <span class="count">2</span>
+    </div>
+    <div class="section-sep other"></div>
+
+    <div class="ticket">
+      <div class="row1"><span class="dot online"></span> <span class="name">Julie Agent</span> <span class="dept">DSC</span></div>
+      <div class="row2"><div class="collab"><span class="avatar">SS</span></div> <span class="row2-timer chat">14:51</span></div>
+    </div>
+
+    <div class="ticket">
+      <div class="row1"><span class="dot away"></span> <span class="name">Kevin Agent</span> <span class="dept">TEC</span></div>
+      <div class="row2"><div class="collab"><span class="avatar">SS</span><span class="avatar">EA</span></div> <span class="row2-timer chat">42:08</span></div>
+    </div>
+
+    <!-- QUEUE section -->
+    <div class="section-header queue">
+      Queue <span class="count">4</span>
+    </div>
+    <div class="section-sep queue"></div>
+
+    <div class="ticket">
+      <div class="row1"><span class="dot online"></span> <span class="name">Kevin Agent</span> <span class="dept">DSC</span></div>
+      <div class="row2"><span class="row2-timer long">WAITING 1H 12M</span></div>
+    </div>
+
+    <div class="ticket">
+      <div class="row1"><span class="name">Julie Agent</span> <span class="dept">FOT</span></div>
+      <div class="row2"><span class="row2-timer long">WAITING 3H 05M</span></div>
+    </div>
+
+    <div class="ticket">
+      <div class="row1"><span class="dot online"></span> <span class="name">Kevin Agent</span> <span class="dept">TEC</span></div>
+      <div class="row2"><span class="row2-timer normal">WAITING 32M</span></div>
+    </div>
+
+    <div class="ticket">
+      <div class="row1"><span class="name">Julie Agent</span> <span class="dept">DSC</span></div>
+      <div class="row2"><span class="row2-timer long">WAITING 5H 20M</span></div>
+    </div>
+  </div>
+
+  <div class="label">
+    <div><span class="dot online"></span> <span>Online</span></div>
+    <div><span class="dot away"></span> <span>Away</span></div>
+  </div>
+</div>
+</body>
+</html>

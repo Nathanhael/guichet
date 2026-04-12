@@ -327,6 +327,8 @@ const en: Record<string, string> = {
     invite_resent_error: 'Failed to resend invite',
 
     // Support view
+    my_chats: 'My Chats',
+    other_agents: 'Other Agents',
     queue: 'Queue',
     queued: 'Queued',
     archived: 'Archived',

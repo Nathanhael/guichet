@@ -13,7 +13,7 @@ import {
   updateParticipants,
 } from '../../services/ticketQueries.js';
 import { broadcastQueuePositions } from '../../services/businessHours.js';
-import { insertWhisperMessage } from '../../services/systemMessage.js';
+import { insertSystemMessage } from '../../services/systemMessage.js';
 import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/messageQueries.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { sendPush } from '../../services/pushNotification.js';
@@ -69,11 +69,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       // updated participants list to BOTH the ticket room (chat header) AND
       // the staff room (queue rows of every other support). io.to().to() de-
       // duplicates by socket id so no one receives the event twice.
-      const joinWhisper = await insertWhisperMessage(
-        ticketId, supportId, supportName, 'support', supportLang || 'en',
+      const joinMsg = await insertSystemMessage(
+        ticketId,
         `${supportName} joined the conversation`,
       );
-      ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', joinWhisper);
+      ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', joinMsg);
       ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))
         .emit('support:joined', { ticketId, supportId, supportName, participants });
       await broadcastQueuePositions(callerPartnerId);
@@ -162,18 +162,27 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       let participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
       await updateParticipants(ticketId, participants);
 
-      // Insert the leave whisper BEFORE removing the socket from the ticket
+      // Return ticket to queue if the leaving agent is the primary support,
+      // or if no participants remain after removal.
+      let queueReturned = false;
+      if (ticket.supportId === supportId || participants.length === 0) {
+        const { returnTicketToQueue } = await import('../../services/ticketQueries.js');
+        await returnTicketToQueue(ticketId);
+        queueReturned = true;
+      }
+
+      // Insert the system message BEFORE removing the socket from the ticket
       // room so the leaver also receives the message:new event for their own
       // farewell line in their currently-open chat tab.
-      const leaveWhisper = await insertWhisperMessage(
-        ticketId, supportId, supportName, 'support', 'en',
+      const leaveMsg = await insertSystemMessage(
+        ticketId,
         `${supportName} left the conversation`,
       );
-      ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', leaveWhisper);
+      ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', leaveMsg);
 
       socket.leave(Rooms.ticket(ticketId));
       ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))
-        .emit('support:left', { ticketId, supportId, supportName, participants });
+        .emit('support:left', { ticketId, supportId, supportName, participants, queueReturned });
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:leave] error'); }
   });
 

@@ -47,6 +47,7 @@ export default function QueueSidebar({
   const [archiveCursor, setArchiveCursor] = useState<string | undefined>(undefined);
   const [hasMoreArchive, setHasMoreArchive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [otherAgentsExpanded, setOtherAgentsExpanded] = useState(false);
 
   const departments = (activeMembership.manifest?.departments || []) as { id: string; name: string }[];
   const assignedDepartmentIds = activeMembership.departments || [];
@@ -117,7 +118,7 @@ export default function QueueSidebar({
     return counts;
   }, [tickets, ticketDeptAllowed]);
 
-  // Filter queue tickets
+  // Filter queue tickets and split into 3 sections
   const queueFiltered = useMemo(
     () =>
       tickets.filter(
@@ -127,6 +128,19 @@ export default function QueueSidebar({
           ticketDeptAllowed(tk.dept),
       ),
     [tickets, filterDept, ticketDeptAllowed],
+  );
+
+  const myChats = useMemo(
+    () => queueFiltered.filter((tk) => supportOpenTickets.includes(tk.id)),
+    [queueFiltered, supportOpenTickets],
+  );
+  const otherAgents = useMemo(
+    () => queueFiltered.filter((tk) => !supportOpenTickets.includes(tk.id) && tk.supportId),
+    [queueFiltered, supportOpenTickets],
+  );
+  const unassigned = useMemo(
+    () => queueFiltered.filter((tk) => !tk.supportId),
+    [queueFiltered],
   );
 
   return (
@@ -210,36 +224,94 @@ export default function QueueSidebar({
 
       {/* Ticket list */}
       <div className="flex-1 overflow-y-auto">
-        {/* At max chats banner */}
-        {atMaxChats && sidebarTab === 'queue' && (
-          <div className="px-4 py-2 bg-[var(--color-bg-base)] text-[9px] font-bold uppercase tracking-wider text-center opacity-60">
-            {t('max_chats_reached') || 'Maximum chats reached'}
-          </div>
-        )}
-
-        <ul className="divide-y divide-[var(--color-border)]">
+        <ul>
           {sidebarTab === 'queue'
             ? (
               queueFiltered.length === 0 ? (
                 <li className="p-8 text-center">
                   <p className="mono-label opacity-20">{t('queue_empty') || 'Queue empty'}</p>
                 </li>
-              ) : queueFiltered.map((ticket) => {
-                const isOpen = supportOpenTickets.includes(ticket.id);
-                const unreadCount = Number(unreadTickets[ticket.id]) || 0;
+              ) : (
+                <>
+                  {/* MY CHATS */}
+                  {myChats.length > 0 && (
+                    <>
+                      <li className="px-3 pt-2.5 pb-1 flex items-center gap-1.5">
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-blue)]">
+                          {t('my_chats') || 'My Chats'}
+                        </span>
+                        <span className="font-mono text-[9px] font-bold bg-[var(--color-accent-blue)] text-[var(--color-bg-base)] px-1">{myChats.length}</span>
+                      </li>
+                      <li className="mx-3 mb-1 h-[2px] bg-[var(--color-accent-blue)]" />
+                      {myChats.map((ticket) => (
+                        <QueueTicketRow
+                          key={ticket.id}
+                          ticket={ticket}
+                          variant="mine"
+                          isActive={activeTab === ticket.id}
+                          unreadCount={Number(unreadTickets[ticket.id]) || 0}
+                          currentUserId={user?.id || ''}
+                          onClick={() => onSelectTicket(ticket)}
+                        />
+                      ))}
+                    </>
+                  )}
 
-                return (
-                  <QueueTicketRow
-                    key={ticket.id}
-                    ticket={ticket}
-                    isActive={activeTab === ticket.id}
-                    unreadCount={unreadCount}
-                    currentUserId={user?.id || ''}
-                    onClick={() => (!atMaxChats || isOpen ? onSelectTicket(ticket) : undefined)}
-                    disabled={atMaxChats && !isOpen}
-                  />
-                );
-              })
+                  {/* QUEUE — unassigned tickets, priority after your chats */}
+                  {unassigned.length > 0 && (
+                    <>
+                      <li className="px-3 pt-2.5 pb-1 flex items-center gap-1.5">
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                          {t('queue') || 'Queue'}
+                        </span>
+                        <span className="font-mono text-[9px] font-bold bg-[var(--color-text-muted)] text-[var(--color-bg-base)] px-1">{unassigned.length}</span>
+                      </li>
+                      <li className="mx-3 mb-1 h-[2px] bg-[var(--color-border)]" />
+                      {unassigned.map((ticket) => (
+                        <QueueTicketRow
+                          key={ticket.id}
+                          ticket={ticket}
+                          variant="queue"
+                          isActive={activeTab === ticket.id}
+                          unreadCount={Number(unreadTickets[ticket.id]) || 0}
+                          currentUserId={user?.id || ''}
+                          onClick={() => (!atMaxChats ? onSelectTicket(ticket) : undefined)}
+                          disabled={atMaxChats}
+                        />
+                      ))}
+                    </>
+                  )}
+
+                  {/* OTHER AGENTS — collapsible, below queue */}
+                  {otherAgents.length > 0 && (
+                    <>
+                      <li
+                        className="px-3 pt-2.5 pb-1 flex items-center gap-1.5 cursor-pointer hover:opacity-80"
+                        onClick={() => setOtherAgentsExpanded((v) => !v)}
+                      >
+                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-purple)]">
+                          {t('other_agents') || 'Other Agents'}
+                        </span>
+                        <span className="font-mono text-[9px] font-bold bg-[var(--color-accent-purple)] text-[var(--color-bg-base)] px-1">{otherAgents.length}</span>
+                        <span className="font-mono text-[9px] text-[var(--color-accent-purple)] ml-auto">{otherAgentsExpanded ? '\u25B4' : '\u25BE'}</span>
+                      </li>
+                      <li className="mx-3 mb-1 h-[2px] bg-[var(--color-accent-purple)]" />
+                      {otherAgentsExpanded && otherAgents.map((ticket) => (
+                        <QueueTicketRow
+                          key={ticket.id}
+                          ticket={ticket}
+                          variant="other"
+                          isActive={activeTab === ticket.id}
+                          unreadCount={Number(unreadTickets[ticket.id]) || 0}
+                          currentUserId={user?.id || ''}
+                          onClick={() => (!atMaxChats ? onSelectTicket(ticket) : undefined)}
+                          disabled={atMaxChats}
+                        />
+                      ))}
+                    </>
+                  )}
+                </>
+              )
             )
             : sidebarTab === 'archive' && searchQuery.length >= 2 ? (
               searchResults.isLoading ? (

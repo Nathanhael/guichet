@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import type { Ticket } from '../../types';
-import { getSmartTimestamp } from '../../utils/dateUtils';
+import { formatChatDuration, formatQueueWait } from '../../utils/dateUtils';
 import useStore from '../../store/useStore';
 import AgentBadges from './AgentBadges';
 
@@ -19,6 +19,7 @@ interface QueueTicketRowProps {
   isActive: boolean;
   unreadCount: number;
   currentUserId: string;
+  variant: 'mine' | 'other' | 'queue';
   onClick: () => void;
   disabled?: boolean;
 }
@@ -28,6 +29,7 @@ export default function QueueTicketRow({
   isActive,
   unreadCount,
   currentUserId,
+  variant,
   onClick,
   disabled = false,
 }: QueueTicketRowProps) {
@@ -35,6 +37,13 @@ export default function QueueTicketRow({
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers);
   const onlineAgentIds = useStore((s) => s.onlineAgentIds);
   const agentOnline = onlineAgentIds.includes(ticket.agentId);
+
+  // Tick timers every 30s so durations update while the sidebar is visible
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Soft-filter participants by live presence: ticket.participants is sticky in
   // the DB (audit/history record) but the queue row should only show supports
@@ -57,6 +66,25 @@ export default function QueueTicketRow({
     .filter(Boolean)
     .join(' ');
 
+  // Timer for row 2
+  const timerContent = variant === 'queue'
+    ? (() => {
+        const { text, severity } = formatQueueWait(ticket.createdAt);
+        const colorClass = severity === 'red' ? 'text-[var(--color-accent-red)]'
+          : severity === 'amber' ? 'text-[var(--color-accent-amber)]'
+          : 'text-[var(--color-text-muted)]';
+        return (
+          <span className={`font-mono text-[9px] font-bold tracking-wide ml-auto ${colorClass}`}>
+            {text}
+          </span>
+        );
+      })()
+    : (
+      <span className="font-mono text-[9px] font-bold tracking-wide text-[var(--color-text-muted)] ml-auto">
+        {formatChatDuration(ticket.supportJoinedAt)}
+      </span>
+    );
+
   return (
     <li
       className={rowClasses}
@@ -64,7 +92,7 @@ export default function QueueTicketRow({
       onMouseEnter={disabled ? undefined : prefetchComposeArea}
       onFocus={disabled ? undefined : prefetchComposeArea}
     >
-      {/* Row 1: dept + customer presence + name + time */}
+      {/* Row 1: dept + customer presence + name + unread */}
       <div className="flex items-center gap-1.5 mb-1">
         <span className="font-mono text-[7px] font-bold uppercase tracking-[0.5px] px-[5px] py-px border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] shrink-0">
           {ticket.dept}
@@ -79,22 +107,22 @@ export default function QueueTicketRow({
         <span className="text-[13px] font-semibold text-[var(--color-text-primary)] truncate flex-1 min-w-0">
           {ticket.agentName}
         </span>
-        <span className="font-mono text-[9px] text-[var(--color-text-muted)] shrink-0 ml-auto">
-          {getSmartTimestamp(ticket.createdAt)}
-        </span>
-      </div>
-
-      {/* Row 2: agent badges + unread count */}
-      <div className="flex items-center gap-1.5">
-        <AgentBadges
-          participants={liveParticipants}
-          currentUserId={currentUserId}
-        />
         {isUnread && (
-          <span className="font-mono text-[8px] font-bold bg-[var(--color-accent-blue)] text-white min-w-[16px] h-4 flex items-center justify-center px-1 shrink-0 ml-auto">
+          <span className="font-mono text-[8px] font-bold bg-[var(--color-accent-blue)] text-white min-w-[16px] h-4 flex items-center justify-center px-1 shrink-0">
             {unreadCount}
           </span>
         )}
+      </div>
+
+      {/* Row 2: agent badges + timer */}
+      <div className="flex items-center gap-1.5">
+        {variant !== 'queue' && (
+          <AgentBadges
+            participants={liveParticipants}
+            currentUserId={currentUserId}
+          />
+        )}
+        {timerContent}
       </div>
     </li>
   );
