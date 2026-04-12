@@ -69,7 +69,7 @@ export async function findTicketOwner(ticketId: string) {
  */
 export async function findTicketParticipants(ticketId: string) {
   const rows = await db
-    .select({ partnerId: tickets.partnerId, participants: tickets.participants })
+    .select({ partnerId: tickets.partnerId, supportId: tickets.supportId, participants: tickets.participants })
     .from(tickets)
     .where(eq(tickets.id, ticketId));
   return rows[0];

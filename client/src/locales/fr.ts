@@ -325,6 +325,8 @@ const fr: Record<string, string> = {
     whisper_hint: 'Visible uniquement au support & admins',
     whisper_label: 'interne',
 
+    my_chats: 'Mes conversations',
+    other_agents: 'Autres agents',
     queue: 'File d\u2019attente',
     waiting: 'en attente',
     active: 'actif',

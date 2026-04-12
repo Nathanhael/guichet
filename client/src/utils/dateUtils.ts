@@ -50,3 +50,28 @@ export const getSmartTimestamp = (iso: string | undefined): string => {
   if (diffDays >= 2 && diffDays <= 6) return `${DAY_NAMES[d.getDay()]} ${time}`;
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 };
+
+/** Chat duration since a start time → "02:14" or "1:25:07" for 1h+ */
+export const formatChatDuration = (startIso: string | undefined | null): string => {
+  const d = safeDate(startIso);
+  if (!d) return '00:00';
+  const secs = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  const mm = String(m).padStart(2, '0');
+  const ss = String(s).padStart(2, '0');
+  return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+};
+
+/** Queue waiting time → { text, severity } — amber >=10 min, red >=15 min */
+export const formatQueueWait = (startIso: string | undefined | null): { text: string; severity: 'normal' | 'amber' | 'red' } => {
+  const d = safeDate(startIso);
+  if (!d) return { text: 'WAITING', severity: 'normal' };
+  const mins = Math.max(0, Math.floor((Date.now() - d.getTime()) / 60000));
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const text = h > 0 ? `WAITING ${h}H ${String(m).padStart(2, '0')}M` : `WAITING ${mins}M`;
+  const severity = mins >= 15 ? 'red' : mins >= 10 ? 'amber' : 'normal';
+  return { text, severity };
+};

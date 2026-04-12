@@ -112,8 +112,14 @@ export function useSocket(): Socket {
       updateTicket(ticketId, { ...(supportId && { supportId }), supportName, status: 'open', participants: participants || [] });
     };
 
-    const handleSupportLeft = ({ ticketId, participants }: { ticketId: string; supportId?: string; supportName?: string; participants: Participant[] }) => {
-      updateTicket(ticketId, { participants: participants || [] });
+    const handleSupportLeft = ({ ticketId, participants, queueReturned }: { ticketId: string; supportId?: string; supportName?: string; participants: Participant[]; queueReturned?: boolean }) => {
+      const updates: Partial<Ticket> = { participants: participants || [] };
+      if (queueReturned) {
+        updates.supportId = null;
+        updates.supportName = undefined;
+        updates.supportJoinedAt = undefined;
+      }
+      updateTicket(ticketId, updates);
     };
 
     const handleTicketHistory = ({ ticketId, messages, labels, hasMore, nextCursor }: {
