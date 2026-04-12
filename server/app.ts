@@ -372,20 +372,17 @@ setTimeout(() => {
 logger.info({ purgeJitterMin: Math.round(purgeJitterMs / 60000) }, '[GDPR] Purge scheduled with jitter');
 
 // Abandoned ticket reclaim — returns tickets from offline agents to the queue
+let reclaimIntervalHandle: ReturnType<typeof setInterval> | null = null;
 if (config.RECLAIM_TIMEOUT_MINS > 0) {
   const reclaimRunner = createTaskRunner('ticket-reclaim');
   const RECLAIM_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes
+  const reclaimTask = () => reclaimRunner.run(async () => {
+    const { reclaimAbandonedTickets } = await import('./services/ticketReclaim.js');
+    await reclaimAbandonedTickets(io);
+  });
   setTimeout(() => {
-    reclaimRunner.run(async () => {
-      const { reclaimAbandonedTickets } = await import('./services/ticketReclaim.js');
-      await reclaimAbandonedTickets(io);
-    });
-    setInterval(() => {
-      reclaimRunner.run(async () => {
-        const { reclaimAbandonedTickets } = await import('./services/ticketReclaim.js');
-        await reclaimAbandonedTickets(io);
-      });
-    }, RECLAIM_INTERVAL_MS);
+    reclaimTask();
+    reclaimIntervalHandle = setInterval(reclaimTask, RECLAIM_INTERVAL_MS);
   }, Math.floor(Math.random() * 5 * 60 * 1000)); // 0-5min startup jitter
   logger.info({ timeoutMins: config.RECLAIM_TIMEOUT_MINS }, '[ticket-reclaim] Reclaim scheduled');
 }
@@ -439,6 +436,9 @@ async function gracefulShutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info({ signal }, '[shutdown] Received signal, draining connections...');
+
+  // 0. Stop scheduled tasks
+  if (reclaimIntervalHandle) clearInterval(reclaimIntervalHandle);
 
   // 1. Stop accepting new connections
   httpServer.close(() => {
