@@ -31,10 +31,6 @@ vi.mock('../../../utils/trpc', () => ({
   },
 }));
 
-vi.mock('../../../utils/uploadLogo', () => ({
-  uploadLogo: vi.fn(),
-}));
-
 describe('EditPartnerModal', () => {
   const onClose = vi.fn();
 

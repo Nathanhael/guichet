@@ -50,7 +50,7 @@ export default function PartnerList({ onCreateClick, onEditPartner, onDeletePart
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 border border-[var(--color-border)] flex items-center justify-center overflow-hidden bg-[var(--color-bg-elevated)] shrink-0">
-                      {p.logoUrl ? <img src={p.logoUrl} alt={p.name} className="w-full h-full object-contain" /> : <span className="text-2xl font-bold font-mono">{p.name.charAt(0)}</span>}
+                      <span className="text-2xl font-bold font-mono">{p.name.charAt(0)}</span>
                     </div>
                     <div>
                       <h2 className="text-xl font-bold uppercase tracking-tight line-clamp-1 font-mono" title={p.name}>{p.name}</h2>
@@ -79,7 +79,7 @@ export default function PartnerList({ onCreateClick, onEditPartner, onDeletePart
                 <div className="flex justify-between items-start mb-6">
                   <div className="flex items-center gap-4">
                     <div className="w-14 h-14 border border-[var(--color-border)] flex items-center justify-center overflow-hidden bg-[var(--color-bg-elevated)] shrink-0 grayscale">
-                      {p.logoUrl ? <img src={p.logoUrl} alt={p.name} className="w-full h-full object-contain" /> : <span className="text-2xl font-bold font-mono">{p.name.charAt(0)}</span>}
+                      <span className="text-2xl font-bold font-mono">{p.name.charAt(0)}</span>
                     </div>
                     <div>
                       <h2 className="text-xl font-bold uppercase tracking-tight line-through line-clamp-1 font-mono" title={p.name}>{p.name}</h2>

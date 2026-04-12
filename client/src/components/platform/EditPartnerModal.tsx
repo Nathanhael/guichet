@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
-import { uploadLogo } from '../../utils/uploadLogo';
 import Toast from '../Toast';
 import type { Partner, AiFeatures, ImprovementMode } from './types';
 
@@ -28,11 +27,10 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
   const utils = trpc.useUtils();
   const [form, setForm] = useState<{
     name: string;
-    logoUrl: string | null;
     authMethod: 'local' | 'sso' | 'both';
     aiEnabled: boolean;
     aiFeatures: AiFeatures;
-  }>({ name: '', logoUrl: null, authMethod: 'local', aiEnabled: false, aiFeatures: {} });
+  }>({ name: '', authMethod: 'local', aiEnabled: false, aiFeatures: {} });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showError = useCallback((message: string) => setToast({ message, type: 'error' }), []);
 
@@ -47,7 +45,6 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
 
       setForm({
         name: partner.name,
-        logoUrl: partner.logoUrl,
         authMethod: partner.authMethod,
         aiEnabled: partner.aiEnabled ?? false,
         aiFeatures: { ...raw, messageImprovement: improvement },
@@ -62,15 +59,6 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
     },
     onError: (err) => showError(err.message),
   });
-
-  async function handleLogo(file: File) {
-    try {
-      const url = await uploadLogo(file);
-      setForm(prev => ({ ...prev, logoUrl: url }));
-    } catch (err) {
-      showError(err instanceof Error ? err.message : t('request_failed'));
-    }
-  }
 
   function toggleFeature(key: Exclude<keyof AiFeatures, 'messageImprovement'>) {
     setForm(prev => ({
@@ -99,32 +87,14 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
               <div className="input-field w-full font-mono opacity-50 cursor-default">{partner.id}</div>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <label className="mono-label">Logo</label>
-              <div className="flex items-center gap-3">
-                {form.logoUrl ? (
-                  <img src={form.logoUrl} alt="Partner logo preview" className="w-10 h-10 object-contain border border-[var(--color-border)]" />
-                ) : (
-                  <div className="w-10 h-10 border border-dashed border-[var(--color-border)]" />
-                )}
-                <input type="file" accept="image/*" className="hidden" id="logo-upload-edit"
-                  onChange={e => e.target.files?.[0] && handleLogo(e.target.files[0])}
-                />
-                <label htmlFor="logo-upload-edit" className="btn-secondary cursor-pointer px-3 py-2 text-[10px] uppercase">
-                  {form.logoUrl ? t('configure') : 'Upload'}
-                </label>
-              </div>
-            </div>
-            <div className="flex-1">
-              <label className="mono-label">{t('provider_label')}</label>
-              <select className="input-field w-full"
-                value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' | 'both' })}>
-                <option value="local">Local (Email/Password)</option>
-                <option value="sso">Enterprise SSO</option>
-                <option value="both">Both (Local + SSO)</option>
-              </select>
-            </div>
+          <div>
+            <label className="mono-label">{t('provider_label')}</label>
+            <select className="input-field w-full"
+              value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' | 'both' })}>
+              <option value="local">Local (Email/Password)</option>
+              <option value="sso">Enterprise SSO</option>
+              <option value="both">Both (Local + SSO)</option>
+            </select>
           </div>
 
           {/* ── AI Features ─────────────────────────────────────────────── */}
@@ -211,7 +181,6 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
               id: partner.id,
               data: {
                 name: form.name,
-                logoUrl: form.logoUrl || undefined,
                 authMethod: form.authMethod,
                 aiEnabled: form.aiEnabled,
                 aiFeatures: form.aiFeatures,

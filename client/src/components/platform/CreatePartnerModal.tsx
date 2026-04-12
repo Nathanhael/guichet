@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
-import { uploadLogo } from '../../utils/uploadLogo';
 import Toast from '../Toast';
 
 interface CreatePartnerModalProps {
@@ -12,27 +11,18 @@ interface CreatePartnerModalProps {
 export default function CreatePartnerModal({ open, onClose }: CreatePartnerModalProps) {
   const t = useT();
   const utils = trpc.useUtils();
-  const [form, setForm] = useState({ id: '', name: '', logoUrl: '', industry: '', authMethod: 'local' as 'local' | 'sso' | 'both' });
+  const [form, setForm] = useState({ id: '', name: '', industry: '', authMethod: 'local' as 'local' | 'sso' | 'both' });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showError = useCallback((message: string) => setToast({ message, type: 'error' }), []);
 
   const createPartner = trpc.platform.createPartner.useMutation({
     onSuccess: () => {
       utils.platform.listPartners.invalidate();
-      setForm({ id: '', name: '', logoUrl: '', industry: '', authMethod: 'local' as 'local' | 'sso' | 'both' });
+      setForm({ id: '', name: '', industry: '', authMethod: 'local' as 'local' | 'sso' | 'both' });
       onClose();
     },
     onError: (err) => showError(err.message),
   });
-
-  async function handleLogo(file: File) {
-    try {
-      const url = await uploadLogo(file);
-      setForm(prev => ({ ...prev, logoUrl: url }));
-    } catch (err) {
-      showError(err instanceof Error ? err.message : t('request_failed'));
-    }
-  }
 
   if (!open) return null;
 
@@ -64,32 +54,14 @@ export default function CreatePartnerModal({ open, onClose }: CreatePartnerModal
               />
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <label className="mono-label">Logo</label>
-              <div className="flex items-center gap-3">
-                {form.logoUrl ? (
-                  <img src={form.logoUrl} alt="Partner logo preview" className="w-10 h-10 object-contain border border-[var(--color-border)]" />
-                ) : (
-                  <div className="w-10 h-10 border border-dashed border-[var(--color-border)]" />
-                )}
-                <input type="file" accept="image/*" className="hidden" id="logo-upload-create"
-                  onChange={e => e.target.files?.[0] && handleLogo(e.target.files[0])}
-                />
-                <label htmlFor="logo-upload-create" className="btn-secondary cursor-pointer px-3 py-2 text-[10px] uppercase">
-                  {form.logoUrl ? t('configure') : 'Upload'}
-                </label>
-              </div>
-            </div>
-            <div className="flex-1">
-              <label className="mono-label">{t('provider_label')}</label>
-              <select className="input-field w-full"
-                value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' | 'both' })}>
-                <option value="local">Local (Email/Password)</option>
-                <option value="sso">Enterprise SSO</option>
-                <option value="both">Both (Local + SSO)</option>
-              </select>
-            </div>
+          <div>
+            <label className="mono-label">{t('provider_label')}</label>
+            <select className="input-field w-full"
+              value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' | 'both' })}>
+              <option value="local">Local (Email/Password)</option>
+              <option value="sso">Enterprise SSO</option>
+              <option value="both">Both (Local + SSO)</option>
+            </select>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
             <button onClick={onClose} className="btn-secondary px-6 py-2 text-[10px] uppercase tracking-widest">{t('cancel')}</button>

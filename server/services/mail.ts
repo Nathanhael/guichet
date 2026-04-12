@@ -100,7 +100,7 @@ export class MailService {
     }
   }
 
-  static async sendPasswordReset(email: string, name: string, token: string, brand?: { partnerName?: string; logoUrl?: string }) {
+  static async sendPasswordReset(email: string, name: string, token: string, brand?: { partnerName?: string }) {
     const { renderPasswordReset } = await import('./mailTemplates.js');
     const resetLink = `${config.FRONTEND_URL}/reset-password?token=${token}`;
     const html = renderPasswordReset({ name, resetLink, brand });

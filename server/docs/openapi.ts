@@ -297,46 +297,6 @@ export const openapiSpec = {
         },
       },
     },
-    '/v1/logos': {
-      post: {
-        summary: 'Upload a partner logo (platform operators only)',
-        tags: ['Logos'],
-        security: [{ bearerAuth: [] }],
-        requestBody: {
-          required: true,
-          content: {
-            'multipart/form-data': {
-              schema: {
-                type: 'object',
-                properties: {
-                  file: {
-                    type: 'string',
-                    format: 'binary',
-                    description: 'Allowed types: image/png, image/jpeg, image/webp (max 5MB)',
-                  },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Logo uploaded',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    url: { type: 'string' },
-                  },
-                },
-              },
-            },
-          },
-          '403': { description: 'Not a platform operator' },
-        },
-      },
-    },
     '/v1/uploads': {
       post: {
         summary: 'Upload a file attachment',
