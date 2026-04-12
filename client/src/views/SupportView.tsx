@@ -67,15 +67,34 @@ export default function SupportView() {
   const t = useT();
   useIdleStatus();
 
+  // Hydrate persisted tabs from localStorage (partner-scoped)
+  const tabStorageKey = activeMembershipId ? `tessera:supportOpenTabs:${activeMembershipId}` : null;
+  const activeTabKey = activeMembershipId ? `tessera:activeTab:${activeMembershipId}` : null;
+
+  useEffect(() => {
+    if (!tabStorageKey) return;
+    try {
+      const saved = localStorage.getItem(tabStorageKey);
+      if (saved) {
+        const ids = JSON.parse(saved) as string[];
+        for (const id of ids) addSupportOpenTicket(id);
+      }
+    } catch { /* corrupt */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabStorageKey]);
+
   const [activeTab, setActiveTabRaw] = useState<string | null>(() => {
-    const saved = localStorage.getItem('tessera:activeTab');
-    return saved && supportOpenTickets.includes(saved) ? saved : null;
+    if (!activeTabKey) return null;
+    const saved = localStorage.getItem(activeTabKey);
+    return saved || null;
   });
   const setActiveTab = useCallback((id: string | null) => {
     setActiveTabRaw(id);
-    if (id) localStorage.setItem('tessera:activeTab', id);
-    else localStorage.removeItem('tessera:activeTab');
-  }, []);
+    if (activeTabKey) {
+      if (id) localStorage.setItem(activeTabKey, id);
+      else localStorage.removeItem(activeTabKey);
+    }
+  }, [activeTabKey]);
   const [previewTicket, setPreviewTicket] = useState<Ticket | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem('queueSidebarOpen') !== 'false');
   const toggleSidebar = useCallback(() => {
@@ -120,7 +139,7 @@ export default function SupportView() {
   const hasRejoinedRef = useRef(false);
   useEffect(() => {
     if (hasRejoinedRef.current) return;
-    if (supportOpenTickets.length === 0 || tickets.length === 0) return;
+    if (supportOpenTickets.length === 0 || !ticketsQuery.isSuccess) return;
     hasRejoinedRef.current = true;
     const socket = getSocket();
     if (!socket) return;
@@ -139,7 +158,7 @@ export default function SupportView() {
       }
     }
     return () => { socket.off('support:rejoin:denied', onDenied); };
-  }, [supportOpenTickets, tickets, removeSupportOpenTicket]);
+  }, [supportOpenTickets, tickets, ticketsQuery.isSuccess, removeSupportOpenTicket]);
 
   // Derived state
   const openTabTickets = useMemo(

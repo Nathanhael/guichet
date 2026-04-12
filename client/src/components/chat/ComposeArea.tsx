@@ -15,7 +15,7 @@ import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEdito
 
 // Purge expired drafts from localStorage on module load (once per session).
 // Drafts older than 24h are stale — the ticket is likely closed or reassigned.
-const DRAFT_TTL_MS_GLOBAL = 24 * 60 * 60 * 1000;
+const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 (() => {
   try {
     const keys = Object.keys(localStorage).filter((k) => k.startsWith('tessera:draft:'));
@@ -24,7 +24,7 @@ const DRAFT_TTL_MS_GLOBAL = 24 * 60 * 60 * 1000;
       if (!raw) continue;
       try {
         const { ts } = JSON.parse(raw);
-        if (!ts || Date.now() - ts > DRAFT_TTL_MS_GLOBAL) localStorage.removeItem(key);
+        if (!ts || Date.now() - ts > DRAFT_TTL_MS) localStorage.removeItem(key);
       } catch {
         localStorage.removeItem(key); // corrupt entry
       }
@@ -93,7 +93,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // keeps their own in-progress reply across reloads, and whisper vs regular
   // mode stay separate so a private note can't leak into a public reply.
   // Stored in localStorage (survives crashes) with a 24h TTL.
-  const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
   const draftKey = `tessera:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
 
   // Hydrate draft once per key change (ticket switch, whisper toggle).

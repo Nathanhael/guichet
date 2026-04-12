@@ -290,7 +290,7 @@ export async function transferTicket(
 export async function returnTicketToQueue(ticketId: string) {
   await db
     .update(tickets)
-    .set({ supportId: null, supportName: null, status: 'open' })
+    .set({ supportId: null, supportName: null, supportJoinedAt: null, status: 'open' })
     .where(eq(tickets.id, ticketId));
 }
 
