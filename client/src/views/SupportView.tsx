@@ -310,14 +310,33 @@ export default function SupportView() {
           />
 
           <div className="flex-1 overflow-hidden flex">
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative">
               {isSplitView ? (
-                <SplitChatLayout
-                  tabs={openTabTickets}
-                  activeTab={activeTab}
-                  onSelectTab={(id) => setActiveTab(id)}
-                  onCloseTab={closeTab}
-                />
+                <>
+                  <SplitChatLayout
+                    tabs={openTabTickets}
+                    activeTab={activeTab}
+                    viewMode={viewMode}
+                    onSelectTab={(id) => setActiveTab(id)}
+                    onCloseTab={closeTab}
+                  />
+                  {/* Overlay preview on top of split layout so queue → preview → join works */}
+                  {showPreview && previewTicket && (() => {
+                    const pt = previewTicket;
+                    const isTerminal = pt.status === 'closed' || pt.status === 'resolved';
+                    return (
+                      <div className="absolute inset-0 z-10 bg-bg-base">
+                        <TicketPreview
+                          ticket={pt}
+                          onJoin={isTerminal ? undefined : () => joinTicket(pt)}
+                          onClose={() => setPreviewTicket(null)}
+                          joinDisabled={atMaxChats}
+                          readOnly={isTerminal}
+                        />
+                      </div>
+                    );
+                  })()}
+                </>
               ) : showPreview && previewTicket ? (() => {
                 const pt = previewTicket;
                 const isTerminal = pt.status === 'closed' || pt.status === 'resolved';

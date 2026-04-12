@@ -1,83 +1,94 @@
 import { Ticket } from '../../types';
+import type { ViewMode } from '../../store/slices/uiSlice';
 import ChatWindow from '../ChatWindow';
 
 interface SplitChatLayoutProps {
   tabs: Ticket[];
   activeTab: string | null;
+  viewMode: ViewMode;
   onSelectTab: (ticketId: string) => void;
   onCloseTab: (ticketId: string) => void;
 }
 
 /**
- * Arranges 2-4 ChatWindows based on count:
- * - 2 chats: equal 50/50 columns
- * - 3 chats: primary (50%) + 2 secondary (25% each)
- * - 4 chats: 2x2 grid
+ * Arranges 2-4 ChatWindows in two layouts:
+ *
+ * split-grid  — 2x2 grid (falls back to columns for 2-3 tabs)
+ * split-stack — all panels side-by-side as columns
+ *
+ * In both modes the active/selected panel is larger than the rest.
  */
-export default function SplitChatLayout({ tabs, activeTab, onSelectTab, onCloseTab }: SplitChatLayoutProps) {
+export default function SplitChatLayout({ tabs, activeTab, viewMode, onSelectTab, onCloseTab }: SplitChatLayoutProps) {
   if (tabs.length === 0) return null;
 
-  // 2x2 grid for 4 chats
-  if (tabs.length === 4) {
+  const isActive = (id: string) => id === activeTab;
+
+  // ── split-stack: horizontal columns, active panel wider ──
+  if (viewMode === 'split-stack') {
     return (
-      <div className="grid grid-cols-2 grid-rows-2 flex-1 overflow-hidden">
-        {tabs.map((ticket) => (
+      <div className="flex h-full overflow-hidden">
+        {tabs.map((ticket, i) => (
           <div
             key={ticket.id}
             onClick={() => onSelectTab(ticket.id)}
-            className={`border border-border overflow-hidden flex flex-col ${
-              ticket.id === activeTab ? 'border-l-[3px] border-l-accent-blue' : ''
-            }`}
+            style={{ flex: isActive(ticket.id) ? 2 : 1 }}
+            className={`overflow-hidden flex flex-col min-w-0 transition-[flex] duration-150 ${
+              i < tabs.length - 1 ? 'border-r border-border-heavy' : ''
+            } ${isActive(ticket.id) ? 'border-l-[3px] border-l-accent-blue' : ''}`}
           >
-            <ChatWindow ticket={ticket} compact onClose={() => onCloseTab(ticket.id)} />
+            <ChatWindow ticket={ticket} compact={!isActive(ticket.id)} onClose={() => onCloseTab(ticket.id)} />
           </div>
         ))}
       </div>
     );
   }
 
-  // 3 chats: primary (50%) + 2 secondary (25% each)
-  if (tabs.length === 3) {
-    const primaryId = activeTab && tabs.find((t) => t.id === activeTab) ? activeTab : tabs[0].id;
-    const primary = tabs.find((t) => t.id === primaryId)!;
-    const secondaries = tabs.filter((t) => t.id !== primaryId);
+  // ── split-grid: 2x2 grid, graceful degradation for 1-3 tabs ──
+  // 4 tabs: 2 top + 2 bottom
+  // 3 tabs: 2 top + 1 spanning bottom
+  // 2 tabs: top row side-by-side, no bottom row
+  // 1 tab:  full screen
 
-    return (
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-[2] border-r border-border-heavy overflow-hidden flex flex-col border-l-[3px] border-l-accent-blue">
-          <ChatWindow ticket={primary} compact onClose={() => onCloseTab(primary.id)} />
-        </div>
-        <div className="flex-[1] flex flex-col overflow-hidden">
-          {secondaries.map((ticket, i) => (
+  const topRow = tabs.slice(0, 2);
+  const bottomRow = tabs.slice(2, 4);
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Top row */}
+      <div className={`flex ${bottomRow.length > 0 ? 'flex-1' : 'flex-1'} overflow-hidden min-h-0 ${
+        bottomRow.length > 0 ? 'border-b border-border-heavy' : ''
+      }`}>
+        {topRow.map((ticket, ci) => (
+          <div
+            key={ticket.id}
+            onClick={() => onSelectTab(ticket.id)}
+            style={{ flex: isActive(ticket.id) ? 2 : 1 }}
+            className={`overflow-hidden flex flex-col min-w-0 transition-[flex] duration-150 ${
+              ci === 0 && topRow.length > 1 ? 'border-r border-border-heavy' : ''
+            } ${isActive(ticket.id) ? 'border-l-[3px] border-l-accent-blue' : ''}`}
+          >
+            <ChatWindow ticket={ticket} compact={!isActive(ticket.id)} onClose={() => onCloseTab(ticket.id)} />
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom row — spans full width when only 1 tab */}
+      {bottomRow.length > 0 && (
+        <div className="flex flex-1 overflow-hidden min-h-0">
+          {bottomRow.map((ticket, ci) => (
             <div
               key={ticket.id}
               onClick={() => onSelectTab(ticket.id)}
-              className={`flex-1 overflow-hidden flex flex-col cursor-pointer hover:bg-bg-elevated ${
-                i < secondaries.length - 1 ? 'border-b border-border-heavy' : ''
-              }`}
+              style={{ flex: isActive(ticket.id) ? 2 : 1 }}
+              className={`overflow-hidden flex flex-col min-w-0 transition-[flex] duration-150 ${
+                ci === 0 && bottomRow.length > 1 ? 'border-r border-border-heavy' : ''
+              } ${isActive(ticket.id) ? 'border-l-[3px] border-l-accent-blue' : ''}`}
             >
-              <ChatWindow ticket={ticket} compact onClose={() => onCloseTab(ticket.id)} />
+              <ChatWindow ticket={ticket} compact={!isActive(ticket.id)} onClose={() => onCloseTab(ticket.id)} />
             </div>
           ))}
         </div>
-      </div>
-    );
-  }
-
-  // 2 chats: equal 50/50
-  return (
-    <div className="flex flex-1 overflow-hidden">
-      {tabs.map((ticket, i) => (
-        <div
-          key={ticket.id}
-          onClick={() => onSelectTab(ticket.id)}
-          className={`flex-1 overflow-hidden flex flex-col ${
-            i < tabs.length - 1 ? 'border-r border-border-heavy' : ''
-          } ${ticket.id === activeTab ? 'border-l-[3px] border-l-accent-blue' : ''}`}
-        >
-          <ChatWindow ticket={ticket} compact onClose={() => onCloseTab(ticket.id)} />
-        </div>
-      ))}
+      )}
     </div>
   );
 }

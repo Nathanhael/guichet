@@ -424,6 +424,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
           ticket={ticket}
           isClosed={isClosed}
           isSupport={isSupport}
+          compact={!!compact}
           textareaRef={textareaRef}
           replyingTo={replyingTo}
           onClearReply={() => setReplyingTo(null)}

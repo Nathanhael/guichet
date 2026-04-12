@@ -23,7 +23,7 @@ export default function SupportNav({ partnerName }: SupportNavProps) {
   return (
     <nav
       className={`px-8 flex items-center justify-between sticky top-0 z-50 border-b border-[var(--color-border)] ${
-        focusMode ? 'py-2 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]' : 'py-4 bg-[var(--color-bg-surface)]'
+        focusMode ? 'py-2 bg-bg-base border-border' : 'py-4 bg-[var(--color-bg-surface)]'
       }`}
     >
       {/* Left side: hamburger + TESSERA + SUPPORT + partner name */}

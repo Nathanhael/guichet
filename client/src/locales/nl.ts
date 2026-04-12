@@ -592,6 +592,7 @@ const nl: Record<string, string> = {
     account_security: 'Accountbeveiliging',
     language: 'Taal',
     dark_mode: 'Donkere modus',
+    light_mode: 'Lichte modus',
     accessibility: 'Toegankelijkheid',
     bionic_text: 'Bionische tekst',
     dyslexic_font: 'Dyslectisch lettertype',
