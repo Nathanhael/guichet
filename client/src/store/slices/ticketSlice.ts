@@ -33,7 +33,12 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   activeTicketId: null,
   unreadTickets: {},
   participantsOnline: {},
-  supportOpenTickets: [],
+  supportOpenTickets: (() => {
+    try {
+      const saved = localStorage.getItem('tessera:supportOpenTabs');
+      return saved ? JSON.parse(saved) as string[] : [];
+    } catch { return []; }
+  })(),
   queuePosition: null,
   topicAlerts: [],
 
@@ -86,15 +91,19 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   setParticipantOnline: (ticketId, online) =>
     set((state) => ({ participantsOnline: { ...state.participantsOnline, [ticketId]: online } })),
   addSupportOpenTicket: (ticketId) =>
-    set((state) => ({
-      supportOpenTickets: state.supportOpenTickets.includes(ticketId)
+    set((state) => {
+      const next = state.supportOpenTickets.includes(ticketId)
         ? state.supportOpenTickets
-        : [...state.supportOpenTickets, ticketId],
-    })),
+        : [...state.supportOpenTickets, ticketId];
+      localStorage.setItem('tessera:supportOpenTabs', JSON.stringify(next));
+      return { supportOpenTickets: next };
+    }),
   removeSupportOpenTicket: (ticketId) =>
-    set((state) => ({
-      supportOpenTickets: state.supportOpenTickets.filter((id) => id !== ticketId),
-    })),
+    set((state) => {
+      const next = state.supportOpenTickets.filter((id) => id !== ticketId);
+      localStorage.setItem('tessera:supportOpenTabs', JSON.stringify(next));
+      return { supportOpenTickets: next };
+    }),
   setQueuePosition: (pos) => set({ queuePosition: pos }),
   addTopicAlert: (alert) =>
     set((state) => ({
