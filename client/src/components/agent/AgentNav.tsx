@@ -5,9 +5,7 @@ import SettingsPopover from '../SettingsPopover';
 import UserMenu from '../UserMenu';
 
 interface AgentNavProps {
-  logoUrl?: string;
   partnerName: string;
-  industry: string;
   onShowFeedback: () => void;
 }
 

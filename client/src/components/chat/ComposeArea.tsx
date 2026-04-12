@@ -46,7 +46,7 @@ interface ComposeAreaProps {
   isClosed: boolean;
   isSupport: boolean;
   compact?: boolean;
-  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  aiConfig?: { messageImprovement?: string; [key: string]: unknown } | null;
   replyingTo?: Message | null;
   onClearReply?: () => void;
 }
@@ -56,7 +56,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   isClosed,
   isSupport,
   compact,
-  textareaRef: _unusedTextareaRef, // kept for ChatWindow API compat; editor focus goes through the ComposeAreaHandle.focus() method now
+  aiConfig,
   replyingTo,
   onClearReply,
 }, ref) {
@@ -349,13 +349,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showEmojiPicker]);
 
-  // tRPC: AI Config (to show/hide Improve button)
-  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
-    enabled: !!user,
-    staleTime: 60_000,
-  });
-  const aiConfig = aiConfigQuery.data;
-
   const improveMutation = trpc.ai.improveMessage.useMutation();
   const improvementMode = aiConfig?.messageImprovement ?? 'off';
 
@@ -552,7 +545,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         socket.emit('message:send', sendPayload);
         setToast(null);
       };
-      socket.on('connect', onConnect);
+      socket.once('connect', onConnect);
     }
     setText('');
     setOriginalText(null);

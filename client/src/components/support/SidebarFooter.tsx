@@ -98,7 +98,7 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
               onToggleMode?.();
             }}
             title={sidebarTab === 'queue' ? (t('view_archive') || 'View archive') : (t('view_queue') || 'Back to queue')}
-            className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-[2px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] hover:bg-[var(--color-accent-blue)] hover:text-white"
+            className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-[2px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)]"
           >
             {sidebarTab === 'queue' ? t('archive') : t('queue')}
           </button>

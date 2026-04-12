@@ -109,7 +109,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
         ref={toggleRef}
         onClick={() => setIsOpen((v) => !v)}
         className={[
-          'w-7 h-7 flex items-center justify-center border border-[var(--color-border)] transition-colors',
+          'w-7 h-7 flex items-center justify-center border border-[var(--color-border)] ',
           isOpen
             ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
             : 'hover:bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)]',
@@ -135,7 +135,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
             </span>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] "
               aria-label={t('close') || 'Close'}
             >
               <X size={10} />
@@ -152,7 +152,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
               views.map((view) => (
                 <div
                   key={view.id}
-                  className="group flex items-center gap-1 px-3 py-2 hover:bg-[var(--color-bg-elevated)] transition-colors"
+                  className="group flex items-center gap-1 px-3 py-2 hover:bg-[var(--color-bg-elevated)] "
                 >
                   {/* Apply button */}
                   <button
@@ -167,7 +167,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                   <button
                     onClick={() => handleSetDefault(view.id, view.isDefault)}
                     className={[
-                      'flex-shrink-0 transition-colors',
+                      'flex-shrink-0 ',
                       view.isDefault
                         ? 'text-[var(--color-accent-blue)] opacity-100'
                         : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100',
@@ -181,7 +181,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                   {/* Delete button */}
                   <button
                     onClick={() => deleteMutation.mutate(view.id)}
-                    className="flex-shrink-0 text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-accent-red)] transition-colors"
+                    className="flex-shrink-0 text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-accent-red)] "
                     title={t('delete') || 'Delete'}
                     aria-label={t('delete') || 'Delete'}
                   >
@@ -223,7 +223,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                     setShowSaveInput(false);
                     setSaveName('');
                   }}
-                  className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
+                  className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] "
                   aria-label={t('cancel') || 'Cancel'}
                 >
                   <X size={11} />
@@ -233,7 +233,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
               <button
                 onClick={() => setShowSaveInput(true)}
                 disabled={!hasFilters}
-                className="flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors w-full"
+                className="flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-20 disabled:cursor-not-allowed  w-full"
                 title={!hasFilters ? (t('noActiveFilter') || 'Apply a filter first') : undefined}
               >
                 <Plus size={11} />

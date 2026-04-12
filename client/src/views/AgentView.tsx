@@ -109,9 +109,7 @@ export default function AgentView() {
         <SystemBackground />
 
         <AgentNav
-          logoUrl={manifest.logoUrl}
           partnerName={activeMembership.partnerName}
-          industry={manifest.industry}
           onShowFeedback={() => setShowFeedback(true)}
         />
 
