@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import AgentBadges from '../AgentBadges';
+import useStore from '../../../store/useStore';
 import type { Participant } from '../../../types';
 
 // Real participant data has no role field — only { id, name }
@@ -8,6 +9,15 @@ const participants: Participant[] = [
   { id: 'user-1', name: 'Alice Reeves' },
   { id: 'user-2', name: 'Bob Chen' },
 ];
+
+beforeEach(() => {
+  useStore.setState({
+    onlineSupportUsers: [
+      { userId: 'user-1', name: 'Alice Reeves', status: 'online' },
+      { userId: 'user-2', name: 'Bob Chen', status: 'online' },
+    ],
+  });
+});
 
 describe('AgentBadges', () => {
   it('renders monograms for all participants', () => {
@@ -50,5 +60,29 @@ describe('AgentBadges', () => {
     render(<AgentBadges participants={participants} currentUserId="user-99" />);
     const badge = screen.getByText('AR');
     expect(badge.closest('[data-tooltip]')?.getAttribute('data-tooltip')).toBe('Alice Reeves');
+  });
+
+  it('renders green presence dot for online support', () => {
+    useStore.setState({ onlineSupportUsers: [{ userId: 'user-1', name: 'Alice Reeves', status: 'online' }] });
+    const { container } = render(<AgentBadges participants={[participants[0]]} currentUserId="other" />);
+    const dot = container.querySelector('[data-presence-dot]');
+    expect(dot).toBeInTheDocument();
+    expect(dot?.className).toContain('accent-green');
+  });
+
+  it('renders amber presence dot for away support', () => {
+    useStore.setState({ onlineSupportUsers: [{ userId: 'user-1', name: 'Alice Reeves', status: 'away' }] });
+    const { container } = render(<AgentBadges participants={[participants[0]]} currentUserId="other" />);
+    const dot = container.querySelector('[data-presence-dot]');
+    expect(dot).toBeInTheDocument();
+    expect(dot?.className).toContain('accent-amber');
+  });
+
+  it('always shows green dot for self (current user)', () => {
+    useStore.setState({ onlineSupportUsers: [] });
+    const { container } = render(<AgentBadges participants={[participants[0]]} currentUserId="user-1" />);
+    const dot = container.querySelector('[data-presence-dot]');
+    expect(dot).toBeInTheDocument();
+    expect(dot?.className).toContain('accent-green');
   });
 });
