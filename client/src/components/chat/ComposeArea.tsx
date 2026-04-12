@@ -4,7 +4,7 @@ import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
-import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send } from 'lucide-react';
+import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send, ALargeSmall } from 'lucide-react';
 import { EditorContent } from '@tiptap/react';
 import FormatToolbar from './FormatToolbar';
 import LinkPreviewCard from './LinkPreviewCard';
@@ -24,6 +24,7 @@ interface ComposeAreaProps {
   ticket: Ticket;
   isClosed: boolean;
   isSupport: boolean;
+  compact?: boolean;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   replyingTo?: Message | null;
   onClearReply?: () => void;
@@ -33,6 +34,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   ticket,
   isClosed,
   isSupport,
+  compact,
   textareaRef: _unusedTextareaRef, // kept for ChatWindow API compat; editor focus goes through the ComposeAreaHandle.focus() method now
   replyingTo,
   onClearReply,
@@ -59,6 +61,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [improving, setImproving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [showFormatToolbar, setShowFormatToolbar] = useState(false);
   // Debounced copy of `text` for the link-preview query. Updating it on
   // every keystroke would spam the server; we wait 800ms after the last
   // input before unfurling the first URL in the compose buffer.
@@ -716,31 +719,46 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             </div>
           )}
 
-          <FormatToolbar editor={editor} />
+          {showFormatToolbar && <FormatToolbar editor={editor} />}
 
-        <div className={`flex items-center gap-3 p-1.5 ${
+        <div className={`flex items-center ${compact ? 'gap-1 p-1' : 'gap-3 p-1.5'} ${
           whisperMode
             ? 'bg-whisper-bg'
             : 'bg-bg-elevated'
         }`}>
-        <div className="flex items-center self-center px-1">
+        <div className={`flex items-center self-center ${compact ? 'px-0' : 'px-1'}`}>
           {isSupport && (
             <button
               type="button"
               onClick={() => setWhisperMode((v) => !v)}
               aria-label={t('whisper_mode') || 'Toggle whisper mode'}
               title={t('whisper_mode')}
-              className={`w-10 h-10 flex items-center justify-center ${whisperMode
+              className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center ${whisperMode
                 ? 'bg-accent-blue text-[var(--color-btn-text-inverse)]'
                 : 'text-text-primary opacity-40 hover:opacity-100'
                 }`}
             >
-              <Ghost size={20} strokeWidth={2.5} />
+              <Ghost size={compact ? 16 : 20} strokeWidth={2.5} />
             </button>
           )}
 
-          <label className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 cursor-pointer" title={t('attach_file') || 'Attach file'}>
-            <ImageIcon size={20} strokeWidth={2.5} />
+          {!compact && (
+            <button
+              type="button"
+              onClick={() => setShowFormatToolbar((v) => !v)}
+              aria-label={t('formatting') || 'Toggle formatting'}
+              title={t('formatting') || 'Formatting'}
+              className={`w-10 h-10 flex items-center justify-center ${showFormatToolbar
+                ? 'text-accent-blue opacity-100'
+                : 'text-text-primary opacity-40 hover:opacity-100'
+                }`}
+            >
+              <ALargeSmall size={20} strokeWidth={2.5} />
+            </button>
+          )}
+
+          <label className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 cursor-pointer`} title={t('attach_file') || 'Attach file'}>
+            <ImageIcon size={compact ? 16 : 20} strokeWidth={2.5} />
             <input
               ref={fileRef}
               type="file"
@@ -752,7 +770,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             />
           </label>
 
-          {/* Emoji picker */}
+          {/* Emoji picker — hidden in compact mode */}
+          {!compact && (
           <div className="relative" ref={emojiPickerRef}>
             <button
               type="button"
@@ -804,6 +823,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               </div>
             )}
           </div>
+          )}
         </div>
 
         <div className="relative flex-1">
@@ -862,14 +882,18 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           type="submit"
           disabled={uploading || improving || (!text.trim() && pendingFiles.length === 0)}
           aria-label={t('send') || 'Send'}
-          className={`h-10 px-3 flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-btn-text-inverse)] disabled:opacity-30 ${
+          className={`${compact ? 'w-8 h-8' : 'h-10 px-3'} flex items-center ${compact ? 'justify-center' : 'gap-2'} font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-btn-text-inverse)] disabled:opacity-30 ${
             whisperMode ? 'bg-accent-purple' : 'bg-accent-blue'
           }`}
           title={improvementMode === 'forced' ? (t('ai_will_improve') || 'AI will improve before sending') : (t('send') || 'Send')}
         >
-          <Send size={14} strokeWidth={2.5} />
-          <span>{whisperMode ? (t('whisper_label') || 'Whisper') : (t('send') || 'Send')}</span>
-          <span className="inline-flex items-center text-[8px] font-bold px-1 border border-white/40 opacity-70">⏎</span>
+          <Send size={compact ? 14 : 14} strokeWidth={2.5} />
+          {!compact && (
+            <>
+              <span>{whisperMode ? (t('whisper_label') || 'Whisper') : (t('send') || 'Send')}</span>
+              <span className="inline-flex items-center text-[8px] font-bold px-1 border border-white/40 opacity-70">⏎</span>
+            </>
+          )}
         </button>
         </div>
 

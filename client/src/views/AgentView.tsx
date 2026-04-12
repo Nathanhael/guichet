@@ -22,7 +22,6 @@ export default function AgentView() {
     setTickets,
     activeTicketId,
     setActiveTicketId,
-    focusMode,
     memberships,
     activeMembershipId,
     queuePosition,
@@ -32,7 +31,6 @@ export default function AgentView() {
     setTickets: s.setTickets,
     activeTicketId: s.activeTicketId,
     setActiveTicketId: s.setActiveTicketId,
-    focusMode: s.focusMode,
     memberships: s.memberships,
     activeMembershipId: s.activeMembershipId,
     queuePosition: s.queuePosition,
@@ -107,7 +105,7 @@ export default function AgentView() {
   return (
     <ErrorBoundary>
     <BusinessHoursGuard mode={activeTicket ? 'notice' : 'block'}>
-      <div className={`h-full bg-transparent flex flex-col overflow-hidden relative ${focusMode ? 'zen-mode' : ''}`}>
+      <div className="h-full bg-transparent flex flex-col overflow-hidden relative">
         <SystemBackground />
 
         <AgentNav

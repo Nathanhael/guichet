@@ -50,10 +50,12 @@ export default function SettingsPopover({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const {
+    darkMode,
     dyslexicMode, toggleDyslexicMode,
     bionicReading, toggleBionicReading,
     monochromeMode, toggleMonochromeMode,
   } = useStoreShallow(s => ({
+    darkMode: s.darkMode,
     dyslexicMode: s.dyslexicMode,
     toggleDyslexicMode: s.toggleDyslexicMode,
     bionicReading: s.bionicReading,
@@ -120,7 +122,7 @@ export default function SettingsPopover({
 
           {/* Dark Mode — always visible */}
           <div className={ROW}>
-            <span className={LABEL}>{t('dark_mode')}</span>
+            <span className={LABEL}>{darkMode ? (t('light_mode') || 'Light Mode') : (t('dark_mode') || 'Dark Mode')}</span>
             <DarkModeToggle />
           </div>
 

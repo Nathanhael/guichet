@@ -619,6 +619,7 @@ const en: Record<string, string> = {
     account_security: 'Account Security',
     language: 'Language',
     dark_mode: 'Dark Mode',
+    light_mode: 'Light Mode',
     accessibility: 'Accessibility',
     bionic_text: 'Bionic Text',
     dyslexic_font: 'Dyslexic Font',
