@@ -12,6 +12,8 @@ import Toast from '../Toast';
 import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
 import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEditor';
+import { EMOJI_LIST } from '../../utils/emojiData';
+import EmojiSuggestion from './EmojiSuggestion';
 
 // Purge expired drafts from localStorage on module load (once per session).
 // Drafts older than 24h are stale — the ticket is likely closed or reassigned.
@@ -76,6 +78,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
+  const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
@@ -150,10 +153,17 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         if (markdown.startsWith('/')) setShowCannedPicker(true);
         else if (showCannedPicker) setShowCannedPicker(false);
       }
+      // Emoji suggestion trigger — `:` followed by 2+ word chars at end of text
+      const emojiMatch = markdown.match(/:(\w{2,})$/);
+      setEmojiQuery(emojiMatch ? emojiMatch[1] : null);
       emitTyping();
     },
-    onSubmit: () => sendMessage(),
+    onSubmit: () => {
+      if (emojiQuery) return; // Enter selects emoji, don't send
+      sendMessage();
+    },
     onEscape: () => {
+      if (emojiQuery) { setEmojiQuery(null); return; }
       if (showCannedPicker) setShowCannedPicker(false);
       else if (replyingTo && onClearReply) onClearReply();
     },
@@ -835,7 +845,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                 }}
               >
                 <div className="grid grid-cols-8 gap-0.5">
-                  {['😀','😂','🙂','😊','😍','😎','🤔','😅','😢','😤','👋','🙏','👍','👎','👏','❤️','🔥','⭐','✅','🎉','💡','⚠️','💬','📎'].map((emoji) => (
+                  {EMOJI_LIST.map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
@@ -870,6 +880,19 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                 editor?.chain().focus().run();
               }}
               onClose={() => setShowCannedPicker(false)}
+            />
+          )}
+          {emojiQuery && (
+            <EmojiSuggestion
+              query={emojiQuery}
+              onSelect={(emoji) => {
+                // Replace `:query` with the emoji character
+                const newText = text.replace(/:(\w{2,})$/, emoji);
+                setText(newText);
+                setEmojiQuery(null);
+                editor?.chain().focus().run();
+              }}
+              onClose={() => setEmojiQuery(null)}
             />
           )}
           {/* Tiptap WYSIWYG editor — replaces the plain textarea. Onkeydown
