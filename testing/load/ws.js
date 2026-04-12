@@ -116,20 +116,20 @@ export default function (data) {
 
             // Once identified, exercise a few real-time actions:
 
-            // 1. Join a ticket room (simulate agent viewing a ticket)
-            const joinPayload = JSON.stringify(['ticket:join', { ticketId: 'load-test-room' }]);
+            // 1. Join a ticket room (simulate support viewing a ticket)
+            const joinPayload = JSON.stringify(['support:join', { ticketId: 'load-test-room', supportLang: 'en' }]);
             socket.send('42' + joinPayload);
             wsMessagesSent.add(1);
 
             // 2. Send a typing indicator
             sleep(0.5);
-            const typingPayload = JSON.stringify(['ticket:typing', { ticketId: 'load-test-room' }]);
+            const typingPayload = JSON.stringify(['typing:start', { ticketId: 'load-test-room' }]);
             socket.send('42' + typingPayload);
             wsMessagesSent.add(1);
 
             // 3. Leave the room
             sleep(0.5);
-            const leavePayload = JSON.stringify(['ticket:leave', { ticketId: 'load-test-room' }]);
+            const leavePayload = JSON.stringify(['support:leave', { ticketId: 'load-test-room' }]);
             socket.send('42' + leavePayload);
             wsMessagesSent.add(1);
           }

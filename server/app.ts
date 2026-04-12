@@ -166,20 +166,43 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 
 app.use(metricsMiddleware);
 
-const rootUploadDir = path.join(__dirname, 'uploads');
 // Uploads require authentication — prevents public access to uploaded files (SEC-6).
-app.use('/uploads', async (req: Request, res: Response, next: NextFunction) => {
+// Files are served through the storage backend (local disk or Azure Blob Storage).
+app.use('/uploads', async (req: Request, res: Response) => {
   const token = req.cookies?.tessera_token;
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   try {
     await jwtVerify(token, new TextEncoder().encode(config.JWT_SECRET));
-    next();
   } catch {
     return res.status(401).json({ error: 'Authentication required' });
   }
-}, express.static(rootUploadDir));
+  // Extract filename from URL path (e.g. /uploads/abc.png or /uploads/logos/logo_abc.png)
+  const filePath = req.path.replace(/^\//, '');
+  if (!filePath || filePath.includes('..')) {
+    return res.status(400).json({ error: 'Invalid path' });
+  }
+  try {
+    const { getStorage } = await import('./services/storage.js');
+    const storage = getStorage();
+    const buffer = await storage.read(filePath);
+    // Infer content type from extension
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+      '.webp': 'image/webp', '.gif': 'image/gif', '.pdf': 'application/pdf',
+      '.txt': 'text/plain', '.csv': 'text/csv',
+      '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    };
+    res.setHeader('Content-Type', mimeMap[ext] || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(buffer);
+  } catch {
+    return res.status(404).json({ error: 'File not found' });
+  }
+});
 
 // API v1 Routing
 const v1Router = express.Router();

@@ -40,6 +40,8 @@ const configSchema = z.object({
       (v) => (v === '' ? undefined : v),
       z.string().min(16).optional()
     ),
+    AZURE_STORAGE_CONNECTION_STRING: z.string().optional(),
+    AZURE_STORAGE_CONTAINER: z.string().default('uploads'),
     REDIS_URL: z.string().default('redis://localhost:6379'),
     AI_ENABLED: z.coerce.boolean().default(false),
     AI_PROVIDER: z.enum(['ollama', 'azure', 'openai-compatible', 'gemini', 'anthropic']).default('ollama'),

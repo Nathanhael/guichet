@@ -108,13 +108,13 @@ export default function (data) {
             wsIdentifyDuration.add(Date.now() - identifyStart);
 
             // Join a ticket room
-            const joinPayload = JSON.stringify(['ticket:join', { ticketId: roomId }]);
+            const joinPayload = JSON.stringify(['support:join', { ticketId: roomId, supportLang: 'en' }]);
             socket.send('42' + joinPayload);
             wsMessagesSent.add(1);
 
             // Send periodic typing events to simulate active user
             socket.setInterval(function () {
-              const typingPayload = JSON.stringify(['ticket:typing', { ticketId: roomId }]);
+              const typingPayload = JSON.stringify(['typing:start', { ticketId: roomId }]);
               socket.send('42' + typingPayload);
               wsMessagesSent.add(1);
             }, 3000); // Every 3s
@@ -136,7 +136,7 @@ export default function (data) {
     socket.setTimeout(function () {
       // Leave room before disconnecting
       if (identified) {
-        const leavePayload = JSON.stringify(['ticket:leave', { ticketId: roomId }]);
+        const leavePayload = JSON.stringify(['support:leave', { ticketId: roomId }]);
         socket.send('42' + leavePayload);
         wsMessagesSent.add(1);
       }
