@@ -88,7 +88,6 @@ describe('platform router tenant and sso audit logging', () => {
     const result = await caller.createPartner({
       id: 'tenant-a',
       name: 'Tenant A',
-      logoUrl: null,
       industry: 'telecom',
       departments: [],
       authMethod: 'sso',

@@ -5,7 +5,6 @@
 
 interface BrandContext {
   partnerName?: string;
-  logoUrl?: string;
 }
 
 function escapeHtml(str: string): string {
@@ -19,13 +18,9 @@ function escapeHtml(str: string): string {
 
 function baseLayout(content: string, brand?: BrandContext): string {
   const title = brand?.partnerName ? `${escapeHtml(brand.partnerName)} — Tessera` : 'Tessera';
-  const logo = brand?.logoUrl
-    ? `<img src="${escapeHtml(brand.logoUrl)}" alt="${escapeHtml(brand.partnerName || 'Logo')}" style="max-height: 40px; margin-bottom: 10px;" />`
-    : '';
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px; color: #000; background: #fff;">
-      ${logo}
       <h1 style="text-transform: uppercase; letter-spacing: -0.05em; font-weight: 900; margin-top: 0; font-size: 22px;">${escapeHtml(title)}</h1>
       ${content}
       <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0 15px;" />

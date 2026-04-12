@@ -13,7 +13,7 @@ import { createContext } from './trpc/context.js';
 import { appRouter } from './trpc/router.js';
 
 import uploadRoutes from './routes/uploads.js';
-import logoRoutes from './routes/logos.js';
+
 import authRoutes from './routes/auth/index.js';
 import ssoRoutes from './routes/sso.js';
 import ticketRoutes from './routes/tickets.js'; // Kept for export route support
@@ -224,7 +224,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 v1Router.use('/tickets', ticketRoutes); // Kept for export support
 v1Router.use('/uploads', uploadLimiter, uploadRoutes);
-v1Router.use('/logos', uploadLimiter, logoRoutes);
+
 v1Router.use('/auth', authLimiter, authRoutes);
 v1Router.use('/auth/sso', authLimiter, ssoRoutes);
 

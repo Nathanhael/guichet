@@ -29,10 +29,6 @@ vi.mock('../../../utils/trpc', () => ({
   },
 }));
 
-vi.mock('../../../utils/uploadLogo', () => ({
-  uploadLogo: vi.fn(),
-}));
-
 describe('CreatePartnerModal', () => {
   const onClose = vi.fn();
 

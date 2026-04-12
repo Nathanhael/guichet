@@ -2,6 +2,7 @@ import { db } from '../db.js';
 import { sql, inArray, and, eq, lt, gte } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
+import { getStorage } from './storage.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
@@ -142,6 +143,30 @@ export async function runDailyPurge() {
             ratingsByDept: sql`EXCLUDED.ratings_by_dept`, hourly: sql`EXCLUDED.hourly`,
           },
         });
+      }
+
+      // Clean up uploaded files before deleting message rows
+      const storage = getStorage();
+      let filesDeleted = 0;
+      for (const msg of allMessages) {
+        if (msg.mediaUrl && msg.mediaUrl.startsWith('/uploads/')) {
+          const filename = msg.mediaUrl.replace(/^\/uploads\//, '');
+          await storage.delete(filename).catch(() => {});
+          filesDeleted++;
+        }
+        const attachments = (msg as unknown as { attachments?: Array<{ url: string }> }).attachments;
+        if (Array.isArray(attachments)) {
+          for (const att of attachments) {
+            if (att.url?.startsWith('/uploads/')) {
+              const filename = att.url.replace(/^\/uploads\//, '');
+              await storage.delete(filename).catch(() => {});
+              filesDeleted++;
+            }
+          }
+        }
+      }
+      if (filesDeleted > 0) {
+        logger.info({ filesDeleted }, '[purge] Cleaned up uploaded files from purged messages');
       }
     }
 

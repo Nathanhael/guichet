@@ -28,7 +28,6 @@ export const platformPartnersRouter = router({
     .input(z.object({
       id: z.string().min(3).max(50),
       name: z.string().min(2),
-      logoUrl: z.string().optional().nullable(),
       industry: z.string().default('Telecommunications'),
       departments: z.array(z.object({
         id: z.string(),
@@ -42,7 +41,6 @@ export const platformPartnersRouter = router({
         await db.insert(partners).values({
           id: input.id,
           name: input.name,
-          logoUrl: input.logoUrl,
           industry: input.industry,
           departments: input.departments,
           authMethod: input.authMethod,
@@ -78,7 +76,6 @@ export const platformPartnersRouter = router({
       id: z.string(),
       data: z.object({
         name: z.string().optional(),
-        logoUrl: z.string().optional().nullable(),
         industry: z.string().optional(),
         departments: z.array(z.object({
           id: z.string(),
@@ -120,7 +117,6 @@ export const platformPartnersRouter = router({
 
       const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (input.data.name !== undefined) updateData.name = input.data.name;
-      if (input.data.logoUrl !== undefined) updateData.logoUrl = input.data.logoUrl;
       if (input.data.industry !== undefined) updateData.industry = input.data.industry;
       if (input.data.departments !== undefined) updateData.departments = input.data.departments;
       if (input.data.authMethod !== undefined) updateData.authMethod = input.data.authMethod;
