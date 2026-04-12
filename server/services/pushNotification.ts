@@ -22,7 +22,7 @@ interface PushPayload {
   title: string;
   body: string;
   ticketId: string;
-  type: 'reply' | 'status' | 'joined' | 'rating';
+  type: 'reply' | 'status' | 'joined' | 'rating' | 'reclaimed';
   tag: string;
 }
 

@@ -292,13 +292,19 @@ export function useSocket(): Socket {
       }
     };
 
-    const handleTicketReclaimed = ({ ticketId, previousSupportId }: { ticketId: string; previousSupportId: string; previousSupportName: string }) => {
+    const handleTicketReclaimed = ({ ticketId, previousSupportId, previousSupportName }: { ticketId: string; previousSupportId: string; previousSupportName: string }) => {
       // Unassign support locally so ticket appears back in queue
       updateTicket(ticketId, { supportId: null, supportName: undefined, status: 'open' });
-      // If the current user was the abandoned agent, remove the tab
       const state = useStore.getState();
       if (previousSupportId === state.user?.id) {
+        // Current user was the abandoned agent — remove the tab
         state.removeSupportOpenTicket(ticketId);
+      } else if (state.notificationsEnabled) {
+        // Notify other online agents that a ticket is available
+        notify(`Ticket available`, {
+          body: `${previousSupportName || 'An agent'} went offline — ticket returned to queue`,
+          tag: `reclaim-${ticketId}`,
+        });
       }
     };
 

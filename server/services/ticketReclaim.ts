@@ -3,7 +3,8 @@ import { db } from '../db.js';
 import { tickets } from '../db/schema.js';
 import { and, eq, isNotNull, lt, ne } from 'drizzle-orm';
 import { insertSystemMessage } from './systemMessage.js';
-import { getUserStatus } from './presence.js';
+import { getUserStatus, getOnlineUsersForPartner } from './presence.js';
+import { sendPush } from './pushNotification.js';
 import { Rooms } from '../utils/rooms.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
@@ -76,6 +77,19 @@ export async function reclaimAbandonedTickets(io: Server): Promise<void> {
         previousSupportId: ticket.supportId,
         previousSupportName: ticket.supportName,
       });
+
+      // Push notification to online support agents for this partner
+      const onlineUsers = await getOnlineUsersForPartner(ticket.partnerId);
+      const supportUsers = onlineUsers.filter((u) => u.role === 'support' || u.role === 'admin');
+      for (const user of supportUsers) {
+        sendPush(user.userId, {
+          title: 'Ticket available',
+          body: `${ticket.supportName || 'An agent'} went offline — ticket returned to queue`,
+          ticketId: ticket.id,
+          type: 'reclaimed',
+          tag: `reclaim-${ticket.id}`,
+        });
+      }
 
       reclaimed++;
       logger.info(
