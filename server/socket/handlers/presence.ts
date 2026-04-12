@@ -13,6 +13,7 @@ import {
   updateParticipants,
 } from '../../services/ticketQueries.js';
 import { broadcastQueuePositions } from '../../services/businessHours.js';
+import { insertWhisperMessage } from '../../services/systemMessage.js';
 import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/messageQueries.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { sendPush } from '../../services/pushNotification.js';
@@ -63,7 +64,18 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const msgs = msgRows.map(mapMessageRow);
       const labelIds = await findTicketLabelIds(ticketId);
       socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
-      ctx.io.to(Rooms.ticket(ticketId)).emit('support:joined', { ticketId, supportId, supportName, participants });
+
+      // Insert a staff-only whisper announcing the join, then fan out the
+      // updated participants list to BOTH the ticket room (chat header) AND
+      // the staff room (queue rows of every other support). io.to().to() de-
+      // duplicates by socket id so no one receives the event twice.
+      const joinWhisper = await insertWhisperMessage(
+        ticketId, supportId, supportName, 'support', supportLang || 'en',
+        `${supportName} joined the conversation`,
+      );
+      ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', joinWhisper);
+      ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))
+        .emit('support:joined', { ticketId, supportId, supportName, participants });
       await broadcastQueuePositions(callerPartnerId);
       if (ticket.agentId) {
         sendPush(ticket.agentId, {
@@ -102,6 +114,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       // Use verified identity — never trust client-supplied supportId/supportName
       const supportId = socket.data.userId;
       const supportName = socket.data.name;
+      const callerPartnerId = socket.data.partnerId;
 
       const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketParticipants);
       if (!ticket) return;
@@ -115,8 +128,19 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
       let participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
       await updateParticipants(ticketId, participants);
+
+      // Insert the leave whisper BEFORE removing the socket from the ticket
+      // room so the leaver also receives the message:new event for their own
+      // farewell line in their currently-open chat tab.
+      const leaveWhisper = await insertWhisperMessage(
+        ticketId, supportId, supportName, 'support', 'en',
+        `${supportName} left the conversation`,
+      );
+      ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', leaveWhisper);
+
       socket.leave(Rooms.ticket(ticketId));
-      ctx.io.to(Rooms.ticket(ticketId)).emit('support:left', { ticketId, supportId, supportName, participants });
+      ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))
+        .emit('support:left', { ticketId, supportId, supportName, participants });
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:leave] error'); }
   });
 

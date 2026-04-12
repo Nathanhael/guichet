@@ -183,10 +183,13 @@ export default function ChatHeader({
             </span>
           )}
 
-          {/* Support agents — avatars. Participants JSONB only stores {id,name}, so the whole array IS the support list. */}
+          {/* Support agents — avatars. Participants JSONB only stores {id,name}, so the whole array IS the support list.
+              Soft-filter by live presence: ticket.participants is sticky in the DB but the chat header should only show
+              supports who are actually around right now. Self is always kept as a safety net (you're reading this view
+              so you must be online). Mirrors the queue-row filter in QueueTicketRow. */}
           {!focusMode && !compact && (() => {
             const supportParticipants: Array<{ id: string; name: string }> = (liveTicket.participants || []).filter(
-              (p: { id?: string }) => !!p?.id
+              (p: { id?: string }) => !!p?.id && (p.id === currentUserId || resolveStatus(p.id) !== undefined)
             );
             if (supportParticipants.length === 0) {
               return !isClosed ? (

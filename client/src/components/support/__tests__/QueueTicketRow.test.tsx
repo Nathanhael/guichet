@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import QueueTicketRow from '../QueueTicketRow';
+import useStore from '../../../store/useStore';
 import type { Ticket } from '../../../types';
 
 vi.mock('../../../i18n', () => ({
@@ -21,6 +22,10 @@ const baseTicket: Ticket = {
   labels: [],
 };
 
+beforeEach(() => {
+  useStore.setState({ onlineSupportUsers: [{ userId: 'support-1', name: 'Alice Reeves', status: 'online' }] });
+});
+
 describe('QueueTicketRow', () => {
   it('renders agent name in normal case', () => {
     render(
@@ -36,21 +41,51 @@ describe('QueueTicketRow', () => {
     expect(screen.getByText('BIL')).toBeInTheDocument();
   });
 
-  it('renders status dot with open class', () => {
+  it('does not render the row-level status dot', () => {
     const { container } = render(
       <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
     );
-    const dot = container.querySelector('[data-status-dot]');
-    expect(dot?.className).toContain('bg-[var(--color-accent-green)]');
+    expect(container.querySelector('[data-status-dot]')).toBeNull();
   });
 
-  it('renders pending status dot', () => {
-    const pendingTicket = { ...baseTicket, status: 'pending' as const };
-    const { container } = render(
-      <QueueTicketRow ticket={pendingTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+  it('hides participants who are not in the online presence list', () => {
+    useStore.setState({ onlineSupportUsers: [] });
+    const ticket = {
+      ...baseTicket,
+      participants: [
+        { id: 'support-1', name: 'Alice Reeves', role: 'support' as const },
+        { id: 'support-2', name: 'Bob Carter', role: 'support' as const },
+      ],
+    };
+    render(
+      <QueueTicketRow ticket={ticket} isActive={false} unreadCount={0} currentUserId="other-user" onClick={() => {}} />
     );
-    const dot = container.querySelector('[data-status-dot]');
-    expect(dot?.className).toContain('bg-[var(--color-accent-purple)]');
+    expect(screen.queryByText('AR')).toBeNull();
+    expect(screen.queryByText('BC')).toBeNull();
+  });
+
+  it('always keeps the current user even when missing from onlineSupportUsers (race-safe)', () => {
+    useStore.setState({ onlineSupportUsers: [] });
+    render(
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+    );
+    expect(screen.getByText('AR')).toBeInTheDocument();
+  });
+
+  it('shows online participants and hides offline ones in the same ticket', () => {
+    useStore.setState({ onlineSupportUsers: [{ userId: 'support-1', name: 'Alice Reeves', status: 'online' }] });
+    const ticket = {
+      ...baseTicket,
+      participants: [
+        { id: 'support-1', name: 'Alice Reeves', role: 'support' as const },
+        { id: 'support-2', name: 'Bob Carter', role: 'support' as const },
+      ],
+    };
+    render(
+      <QueueTicketRow ticket={ticket} isActive={false} unreadCount={0} currentUserId="other-user" onClick={() => {}} />
+    );
+    expect(screen.getByText('AR')).toBeInTheDocument();
+    expect(screen.queryByText('BC')).toBeNull();
   });
 
   it('shows unread count badge when unreadCount > 0', () => {

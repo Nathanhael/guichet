@@ -1,5 +1,7 @@
-import type { Ticket } from '../../types';
+import { useMemo } from 'react';
+import type { Ticket, OnlineSupport } from '../../types';
 import { getSmartTimestamp } from '../../utils/dateUtils';
+import useStore from '../../store/useStore';
 import AgentBadges from './AgentBadges';
 
 /**
@@ -21,11 +23,6 @@ interface QueueTicketRowProps {
   disabled?: boolean;
 }
 
-const STATUS_DOT_COLORS: Record<string, string> = {
-  open: 'bg-[var(--color-accent-green)]',
-  pending: 'bg-[var(--color-accent-purple)]',
-};
-
 export default function QueueTicketRow({
   ticket,
   isActive,
@@ -35,6 +32,17 @@ export default function QueueTicketRow({
   disabled = false,
 }: QueueTicketRowProps) {
   const isUnread = unreadCount > 0;
+  const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
+
+  // Soft-filter participants by live presence: ticket.participants is sticky in
+  // the DB (audit/history record) but the queue row should only show supports
+  // who are actually around right now. Self is always kept as a safety net.
+  const liveParticipants = useMemo(() => {
+    const onlineIds = new Set(onlineSupportUsers.map((u) => u.userId));
+    return ticket.participants.filter(
+      (p) => p.id === currentUserId || onlineIds.has(p.id),
+    );
+  }, [ticket.participants, onlineSupportUsers, currentUserId]);
 
   const rowClasses = [
     'px-3 py-2.5 border-b border-[var(--color-border)] cursor-pointer',
@@ -54,15 +62,11 @@ export default function QueueTicketRow({
       onMouseEnter={disabled ? undefined : prefetchComposeArea}
       onFocus={disabled ? undefined : prefetchComposeArea}
     >
-      {/* Row 1: dept + status + name + time */}
+      {/* Row 1: dept + name + time */}
       <div className="flex items-center gap-1.5 mb-1">
         <span className="font-mono text-[7px] font-bold uppercase tracking-[0.5px] px-[5px] py-px border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] shrink-0">
           {ticket.dept}
         </span>
-        <span
-          data-status-dot
-          className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT_COLORS[ticket.status] || 'bg-[var(--color-text-muted)]'}`}
-        />
         <span className="text-[13px] font-semibold text-[var(--color-text-primary)] truncate flex-1 min-w-0">
           {ticket.agentName}
         </span>
@@ -74,7 +78,7 @@ export default function QueueTicketRow({
       {/* Row 2: agent badges + unread count */}
       <div className="flex items-center gap-1.5">
         <AgentBadges
-          participants={ticket.participants}
+          participants={liveParticipants}
           currentUserId={currentUserId}
         />
         {isUnread && (
