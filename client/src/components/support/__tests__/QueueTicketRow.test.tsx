@@ -138,4 +138,30 @@ describe('QueueTicketRow', () => {
     );
     expect(screen.getByText('AR')).toBeInTheDocument();
   });
+
+  it('shows green dot when customer (agent) is online', () => {
+    useStore.setState({ onlineAgentIds: ['agent-1'] });
+    const { container } = render(
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+    );
+    const dot = container.querySelector('[data-agent-online]');
+    expect(dot).toBeInTheDocument();
+    expect(dot?.className).toContain('accent-green');
+  });
+
+  it('hides customer dot when agent is offline', () => {
+    useStore.setState({ onlineAgentIds: [] });
+    const { container } = render(
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+    );
+    expect(container.querySelector('[data-agent-online]')).toBeNull();
+  });
+
+  it('hides customer dot when a different agent is online', () => {
+    useStore.setState({ onlineAgentIds: ['other-agent'] });
+    const { container } = render(
+      <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={0} currentUserId="support-1" onClick={() => {}} />
+    );
+    expect(container.querySelector('[data-agent-online]')).toBeNull();
+  });
 });

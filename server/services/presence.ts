@@ -79,6 +79,43 @@ export async function broadcastOnlineSupport(partnerId: string) {
   }
 }
 
+/**
+ * Broadcast which agents (customers) are currently online to the staff room.
+ * Mirrors broadcastOnlineSupport but filters for role=agent and sends only
+ * user IDs (queue rows already have agentName from the ticket object).
+ */
+export async function broadcastOnlineAgents(partnerId: string) {
+  const { pubClient } = getRedisClients();
+  if (!io || !pubClient) return;
+
+  try {
+    const memberIds = await pubClient.sMembers(setKey(partnerId));
+    if (memberIds.length === 0) {
+      io.to(`partner:${partnerId}:staff`).emit('agents:online', []);
+      return;
+    }
+
+    const pipeline = pubClient.multi();
+    for (const uid of memberIds) {
+      pipeline.hGetAll(hashKey(partnerId, uid));
+    }
+    const results = await pipeline.exec();
+
+    const ids: string[] = [];
+    for (const result of results) {
+      const data = result as unknown as Record<string, string>;
+      if (data && data.userId && data.role === 'agent') {
+        ids.push(data.userId);
+      }
+    }
+
+    logger.debug({ partnerId, count: ids.length }, '[presence] broadcastOnlineAgents');
+    io.to(`partner:${partnerId}:staff`).emit('agents:online', ids);
+  } catch (err) {
+    logger.error({ err }, 'Failed to broadcast online agents from Redis');
+  }
+}
+
 export async function identifyUser(userId: string, role: string, name: string, partnerId: string, isPlatformOperator = false, socketId?: string) {
   const { pubClient } = getRedisClients();
   if (!pubClient) return;

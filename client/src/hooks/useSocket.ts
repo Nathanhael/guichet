@@ -36,6 +36,7 @@ export function useSocket(): Socket {
     setBusinessHoursStatus,
     setTyping, 
     setOnlineSupportUsers,
+    setOnlineAgentIds,
     addTopicAlert,
     setActiveTicketId,
   } = useStoreShallow((s) => ({
@@ -48,6 +49,7 @@ export function useSocket(): Socket {
     setBusinessHoursStatus: s.setBusinessHoursStatus,
     setTyping: s.setTyping,
     setOnlineSupportUsers: s.setOnlineSupportUsers,
+    setOnlineAgentIds: s.setOnlineAgentIds,
     addTopicAlert: s.addTopicAlert,
     setActiveTicketId: s.setActiveTicketId,
   }));
@@ -164,6 +166,11 @@ export function useSocket(): Socket {
     const handleSupportOnline = (list: OnlineSupport[]) => {
       console.debug('[socket] support:online', list);
       setOnlineSupportUsers(list);
+    };
+
+    const handleAgentsOnline = (ids: string[]) => {
+      console.debug('[socket] agents:online', ids);
+      setOnlineAgentIds(ids);
     };
 
     const handleAgentStatus = ({ ticketId, agentId: _agentId, online }: { ticketId: string; agentId: string; online: boolean }) => {
@@ -378,6 +385,7 @@ export function useSocket(): Socket {
     s.on('message:status', handleMessageStatus);
     s.on('typing:update', handleTypingUpdate);
     s.on('support:online', handleSupportOnline);
+    s.on('agents:online', handleAgentsOnline);
     s.on('agent:status', handleAgentStatus);
     s.on('message:edited', handleMessageEdited);
     s.on('message:deleted', handleMessageDeleted);
@@ -416,6 +424,7 @@ export function useSocket(): Socket {
       s.off('message:status', handleMessageStatus);
       s.off('typing:update', handleTypingUpdate);
       s.off('support:online', handleSupportOnline);
+      s.off('agents:online', handleAgentsOnline);
       s.off('agent:status', handleAgentStatus);
       s.off('message:edited', handleMessageEdited);
       s.off('message:deleted', handleMessageDeleted);
@@ -439,7 +448,7 @@ export function useSocket(): Socket {
       s.off('auth:expired', handleAuthExpired);
       listenersAttached = false;
     };
-  }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setTyping, updateTicket, setBusinessHoursStatus, addTopicAlert, setActiveTicketId]);
+  }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setOnlineAgentIds, setTyping, updateTicket, setBusinessHoursStatus, addTopicAlert, setActiveTicketId]);
 
   return getSocket();
 }
