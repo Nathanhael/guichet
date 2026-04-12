@@ -330,54 +330,42 @@ export async function getOnlineUsersForPartner(partnerId: string): Promise<Onlin
  * Cleanup stale presence Set entries whose hashes have expired.
  * Safe to call periodically — uses KEYS on the small partner:presence:* namespace only.
  */
-export async function cleanupStalePresence() {
+/**
+ * Flush all presence data from Redis. Call on server startup — all socket IDs
+ * from the previous process are stale, so every presence hash and socket set
+ * must be cleared. Users will re-register via socket:identify on reconnect.
+ */
+export async function flushPresenceOnStartup() {
   const { pubClient } = getRedisClients();
   if (!pubClient) return;
 
   try {
-    const partnerSetKeys: string[] = [];
-    let scanCursor: string | number = 0;
+    let deleted = 0;
+
+    // Scan and delete all presence hashes + socket sets
+    let cursor: string | number = 0;
     do {
-      const result = await pubClient.scan(String(scanCursor), { MATCH: `${SET_PREFIX}*`, COUNT: 100 });
-      scanCursor = result.cursor;
-      partnerSetKeys.push(...result.keys);
-    } while (Number(scanCursor) !== 0);
-
-    let totalRemoved = 0;
-    let totalChecked = 0;
-
-    for (const pSetKey of partnerSetKeys) {
-      const partnerId = pSetKey.slice(SET_PREFIX.length);
-      const memberIds = await pubClient.sMembers(pSetKey);
-      totalChecked += memberIds.length;
-
-      if (memberIds.length === 0) continue;
-
-      // Pipeline existence checks
-      const pipeline = pubClient.multi();
-      for (const uid of memberIds) {
-        pipeline.exists(hashKey(partnerId, uid));
+      const result = await pubClient.scan(String(cursor), { MATCH: `${HASH_PREFIX}*`, COUNT: 200 });
+      cursor = result.cursor;
+      if (result.keys.length > 0) {
+        await pubClient.del(result.keys);
+        deleted += result.keys.length;
       }
-      const results = await pipeline.exec();
+    } while (Number(cursor) !== 0);
 
-      const staleIds: string[] = [];
-      for (let i = 0; i < memberIds.length; i++) {
-        if ((results[i] as unknown as number) === 0) {
-          staleIds.push(memberIds[i]);
-        }
+    // Also delete partner presence sets
+    cursor = 0;
+    do {
+      const result = await pubClient.scan(String(cursor), { MATCH: `${SET_PREFIX}*`, COUNT: 200 });
+      cursor = result.cursor;
+      if (result.keys.length > 0) {
+        await pubClient.del(result.keys);
+        deleted += result.keys.length;
       }
+    } while (Number(cursor) !== 0);
 
-      if (staleIds.length > 0) {
-        await pubClient.sRem(pSetKey, staleIds);
-        totalRemoved += staleIds.length;
-      }
-    }
-
-    logger.info(
-      { totalChecked, totalRemoved, partnerSets: partnerSetKeys.length },
-      'Presence stale cleanup completed'
-    );
+    logger.info({ deleted }, '[presence] Startup flush complete — stale entries cleared');
   } catch (err) {
-    logger.error({ err }, 'Failed to cleanup stale presence entries');
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[presence] Startup flush failed (non-fatal)');
   }
 }

@@ -43,6 +43,7 @@ services:
       - AI_PROVIDER=${AI_PROVIDER:-ollama}
       - AI_TIMEOUT_MS=${AI_TIMEOUT_MS:-60000}
       - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
+      - RECLAIM_TIMEOUT_MINS=${RECLAIM_TIMEOUT_MINS:-30}
     volumes:
       - ./server:/app
       - server_node_modules:/app/node_modules
@@ -67,7 +68,8 @@ services:
     volumes:
       - ./testing/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - server
+      server:
+        condition: service_healthy
 
   redis:
     image: redis:8-alpine
@@ -92,7 +94,8 @@ services:
       # If tsc --noEmit fails with 100+ collision errors, recreate: docker compose up -d client --force-recreate
       - ./server:/server:ro
     depends_on:
-      - server
+      server:
+        condition: service_healthy
 
   prometheus:
     image: prom/prometheus:latest
@@ -102,7 +105,8 @@ services:
     ports:
       - "127.0.0.1:9090:9090"
     depends_on:
-      - server
+      server:
+        condition: service_healthy
 
   grafana:
     image: grafana/grafana:latest

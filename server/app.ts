@@ -25,7 +25,7 @@ import config from './config.js';
 import logger from './utils/logger.js';
 import { auth as authMiddleware, AuthRequest } from './middleware/auth.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
-import { setIo as setPresenceIo } from './services/presence.js';
+import { setIo as setPresenceIo, flushPresenceOnStartup } from './services/presence.js';
 import { runDailyPurge } from './services/gdpr.js';
 import { rollupDay } from './services/statusTracking.js';
 import { cleanupExpiredTokens } from './services/refreshToken.js';
@@ -334,6 +334,10 @@ app.get('/metrics', async (req: Request, res: Response) => {
   res.end(await register.metrics());
 });
 
+
+// Flush stale presence on startup — all socket IDs from the previous process
+// are dead. Users re-register via socket:identify on reconnect.
+flushPresenceOnStartup().catch((err) => logger.warn({ err }, '[presence] Startup flush failed (non-fatal)'));
 
 const gdprRunner = createTaskRunner('gdpr-purge');
 const tokenCleanupRunner = createTaskRunner('token-cleanup');
