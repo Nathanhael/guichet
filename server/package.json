@@ -15,6 +15,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@azure/storage-blob": "^12.31.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "@trpc/server": "^11.13.4",
     "argon2": "^0.44.0",
