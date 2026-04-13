@@ -314,43 +314,31 @@ v1Router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) 
  *         description: Database unreachable
  */
 v1Router.get('/health', async (_req: Request, res: Response) => {
-  const checks: Record<string, string> = {};
-  let healthy = true;
+  const PROBE_TIMEOUT = 3000;
+  const withTimeout = <T>(p: Promise<T>, label: string): Promise<T> =>
+    Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`${label} timeout`)), PROBE_TIMEOUT))]);
 
-  // Database
-  try {
-    await db.execute(sql`SELECT 1`);
-    checks.database = 'connected';
-  } catch {
-    checks.database = 'disconnected';
-    healthy = false;
-  }
+  const [dbResult, redisResult, storageResult] = await Promise.allSettled([
+    withTimeout(db.execute(sql`SELECT 1`), 'database'),
+    withTimeout((async () => {
+      const { getRedisClients } = await import('./utils/redis.js');
+      const { pubClient } = getRedisClients();
+      if (!pubClient) throw new Error('Redis not initialized');
+      await pubClient.ping();
+    })(), 'redis'),
+    withTimeout((async () => {
+      const { getStorage } = await import('./services/storage.js');
+      if (!await getStorage().healthy()) throw new Error('unhealthy');
+    })(), 'storage'),
+  ]);
 
-  // Redis
-  try {
-    const { getRedisClients } = await import('./utils/redis.js');
-    const { pubClient } = getRedisClients();
-    if (!pubClient) throw new Error('Redis not initialized');
-    await pubClient.ping();
-    checks.redis = 'connected';
-  } catch {
-    checks.redis = 'disconnected';
-    healthy = false;
-  }
-
-  // Storage backend
-  try {
-    const { getStorage } = await import('./services/storage.js');
-    const ok = await getStorage().healthy();
-    checks.storage = ok ? 'connected' : 'unhealthy';
-    if (!ok) healthy = false;
-  } catch {
-    checks.storage = 'error';
-    healthy = false;
-  }
-
-  const status = healthy ? 'ok' : 'degraded';
-  res.status(healthy ? 200 : 503).json({ status, ...checks });
+  const checks = {
+    database: dbResult.status === 'fulfilled' ? 'connected' : 'disconnected',
+    redis: redisResult.status === 'fulfilled' ? 'connected' : 'disconnected',
+    storage: storageResult.status === 'fulfilled' ? 'connected' : 'error',
+  };
+  const healthy = Object.values(checks).every(v => v === 'connected');
+  res.status(healthy ? 200 : 503).json({ status: healthy ? 'ok' : 'degraded', ...checks });
 });
 
 // Internal E2E Seeding Endpoint — test environments only

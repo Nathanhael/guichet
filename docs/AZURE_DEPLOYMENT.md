@@ -125,6 +125,6 @@ docker push tesseraregistry.azurecr.io/tessera-client:latest
 
 ## Monitoring
 
-The server exposes Prometheus metrics at `/api/v1/metrics`. For Azure Monitor integration, add `@azure/monitor-opentelemetry` (not yet implemented — use Prometheus scraping or a sidecar exporter in the interim).
+The server exposes Prometheus metrics at `/metrics` (root path, not under `/api/v1/`). For Azure Monitor integration, add `@azure/monitor-opentelemetry` (not yet implemented — use Prometheus scraping or a sidecar exporter in the interim).
 
 Structured JSON logs (Pino) are written to stdout — Azure Container Apps automatically ingests these into Log Analytics.
