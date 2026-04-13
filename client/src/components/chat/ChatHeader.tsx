@@ -358,9 +358,9 @@ export default function ChatHeader({
         {/* Right: actions (V2 — 32px unified, mono uppercase) */}
         <div className={`flex items-center gap-1.5 shrink-0 ${(focusMode || compact) ? 'opacity-60 hover:opacity-100' : ''}`}>
           {/* References — visible to both agent (who filled them in) and support */}
-          {!focusMode && !compact && (ticket.references as Array<{label: string; value: string}> || []).length > 0 && (
+          {!focusMode && !compact && (ticket.references as Array<{label: string; value: string}> || []).filter(r => r.value.trim()).length > 0 && (
             <div className="flex items-center gap-3 select-text mr-1">
-              {(ticket.references as Array<{label: string; value: string}>).map((ref, i) => (
+              {(ticket.references as Array<{label: string; value: string}>).filter(r => r.value.trim()).map((ref, i) => (
                 <span
                   key={i}
                   role="button"

@@ -7,6 +7,7 @@ import Toast from '../Toast';
 
 interface RefField {
   label: string;
+  optional?: boolean;
 }
 
 interface Department {
@@ -213,7 +214,14 @@ export default function AdminDepartments() {
   function updateRefFieldLabel(fieldIdx: number, label: string) {
     if (!editDraft) return;
     const newFields = [...editDraft.referenceFields];
-    newFields[fieldIdx] = { label };
+    newFields[fieldIdx] = { ...newFields[fieldIdx], label };
+    setEditDraft({ ...editDraft, referenceFields: newFields });
+  }
+
+  function toggleRefFieldOptional(fieldIdx: number) {
+    if (!editDraft) return;
+    const newFields = [...editDraft.referenceFields];
+    newFields[fieldIdx] = { ...newFields[fieldIdx], optional: !newFields[fieldIdx].optional };
     setEditDraft({ ...editDraft, referenceFields: newFields });
   }
 
@@ -287,8 +295,20 @@ export default function AdminDepartments() {
                           placeholder={t('ref_field_placeholder') || 'Field label (e.g. Invoice Number)'}
                         />
                         <button
+                          type="button"
+                          onClick={() => toggleRefFieldOptional(fIdx)}
+                          className={`text-[8px] font-mono font-bold uppercase tracking-wider px-2 py-1 border border-[var(--color-border)] shrink-0 ${
+                            field.optional
+                              ? 'bg-transparent text-[var(--color-text-muted)]'
+                              : 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
+                          }`}
+                          title={field.optional ? t('mark_required') || 'Mark as required' : t('mark_optional') || 'Mark as optional'}
+                        >
+                          {field.optional ? t('optional') || 'OPT' : t('required_short') || 'REQ'}
+                        </button>
+                        <button
                           onClick={() => removeRefField(fIdx)}
-                          className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white"
+                          className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)]"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
