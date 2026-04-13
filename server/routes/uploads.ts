@@ -18,6 +18,22 @@ const uploadRateLimit = rateLimit({
   legacyHeaders: false,
 });
 
+// Global in-flight memory guard — reject uploads when too much RAM is buffered.
+// Default cap: 100 MB across all concurrent uploads. Prevents OOM when many
+// users upload simultaneously (especially with Azure backend latency).
+const MAX_INFLIGHT_BYTES = 100 * 1024 * 1024;
+let inflightBytes = 0;
+
+function memoryGuard(req: Request, res: Response, next: () => void) {
+  const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+  if (inflightBytes + contentLength > MAX_INFLIGHT_BYTES) {
+    return res.status(503).json({ error: 'Server busy — try again in a moment' });
+  }
+  inflightBytes += contentLength;
+  res.on('finish', () => { inflightBytes -= contentLength; });
+  next();
+}
+
 // Use memory storage — buffers are passed to the storage backend (local or Azure)
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -33,7 +49,7 @@ const upload = multer({
 
 const router = Router();
 
-router.post('/', auth, uploadRateLimit, (req: Request, res: Response) => {
+router.post('/', auth, uploadRateLimit, memoryGuard, (req: Request, res: Response) => {
   upload.single('file')(req, res, async (err: unknown) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
@@ -62,7 +78,7 @@ router.post('/', auth, uploadRateLimit, (req: Request, res: Response) => {
   });
 });
 
-router.post('/multi', auth, uploadRateLimit, (req: Request, res: Response) => {
+router.post('/multi', auth, uploadRateLimit, memoryGuard, (req: Request, res: Response) => {
   const multiUpload = upload.array('files', 5);
   multiUpload(req, res, async (err: unknown) => {
     if (err instanceof multer.MulterError) {
