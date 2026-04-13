@@ -26,11 +26,19 @@ let inflightBytes = 0;
 
 function memoryGuard(req: Request, res: Response, next: () => void) {
   const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+  // Reject chunked uploads with no Content-Length — can't track memory accurately
+  if (!req.headers['content-length']) {
+    return res.status(411).json({ error: 'Content-Length required' });
+  }
   if (inflightBytes + contentLength > MAX_INFLIGHT_BYTES) {
     return res.status(503).json({ error: 'Server busy — try again in a moment' });
   }
   inflightBytes += contentLength;
-  res.on('finish', () => { inflightBytes -= contentLength; });
+  // Release on finish OR close (client abort) — once-guard prevents double-decrement
+  let released = false;
+  const release = () => { if (!released) { released = true; inflightBytes -= contentLength; } };
+  res.on('finish', release);
+  res.on('close', release);
   next();
 }
 

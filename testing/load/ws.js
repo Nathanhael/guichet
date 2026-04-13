@@ -58,10 +58,11 @@ export function setup() {
     'setup: login 200': (r) => r.status === 200,
   });
 
-  // Extract JWT cookie from Set-Cookie header — server authenticates
-  // socket connections via this cookie, not via a payload token field.
-  const setCookie = login.headers['Set-Cookie'] || '';
-  const cookies = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
+  // Extract JWT cookie from Set-Cookie header (k6 lowercases header names).
+  // Parse out just the token value — the raw header includes Path=, HttpOnly, etc.
+  const raw = login.headers['set-cookie'] || '';
+  const tokenMatch = raw.match(/tessera_token=([^;]+)/);
+  const cookies = tokenMatch ? `tessera_token=${tokenMatch[1]}` : '';
 
   const body = login.json();
   return {

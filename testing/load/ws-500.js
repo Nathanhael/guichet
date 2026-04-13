@@ -55,8 +55,9 @@ export function setup() {
 
   check(login, { 'setup: login 200': (r) => r.status === 200 });
 
-  const setCookie = login.headers['Set-Cookie'] || '';
-  const cookies = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
+  const raw = login.headers['set-cookie'] || '';
+  const tokenMatch = raw.match(/tessera_token=([^;]+)/);
+  const cookies = tokenMatch ? `tessera_token=${tokenMatch[1]}` : '';
 
   const body = login.json();
   return {
