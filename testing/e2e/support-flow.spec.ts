@@ -50,42 +50,67 @@ async function loginAsDemo(page: Page, userId: string) {
  * Closes any existing ticket first, then creates a new DSC ticket.
  * Returns the agent context (caller must close it).
  */
+/**
+ * Ensure agent_kevin has a fresh unassigned ticket for support to join.
+ * Closes existing tickets via tRPC, then creates a new one via the UI.
+ */
 async function ensureAgentTicket(browser: { newContext: () => Promise<BrowserContext> }): Promise<BrowserContext> {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   const res = await loginAsDemo(page, 'agent_kevin');
   if (!res.ok) return ctx;
 
-  await page.waitForTimeout(3000);
+  await page.waitForTimeout(2000);
 
-  // Close existing ticket if agent is in chat view
-  const closeBtn = page.getByText(/close/i).first();
-  if (await closeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+  // Close existing ticket — the "✓ CLOSE" button is in the ChatHeader.
+  // Target it directly by matching button text containing "close" (CSS uppercases it).
+  const closeBtn = page.locator('button').filter({ hasText: /close/i }).first();
+  if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
     await closeBtn.click();
-    await page.waitForTimeout(500);
-    const confirmBtn = page.getByText(/confirm|bevestig|yes/i).first();
-    if (await confirmBtn.isVisible({ timeout: 2000 })) await confirmBtn.click();
+    await page.waitForTimeout(1000);
+    // Confirm dialog shows "Yes, close" button
+    const confirmBtn = page.locator('[role="dialog"] button').filter({ hasText: /yes|bevestig/i }).first();
+    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await confirmBtn.click();
+    }
     await page.waitForTimeout(3000);
     // Dismiss rating modal if it appears
-    const skipRating = page.getByText(/later|skip|overslaan/i).first();
-    if (await skipRating.isVisible({ timeout: 2000 }).catch(() => false)) await skipRating.click();
+    const ratingDismiss = page.locator('button').filter({ hasText: /later|skip|overslaan|not now/i }).first();
+    if (await ratingDismiss.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await ratingDismiss.click();
+    }
     await page.waitForTimeout(1000);
   }
 
-  // Create new ticket
-  const deptBtn = page.getByText('DSC').first();
+  // Create new ticket via UI — departments show full names
+  const deptBtn = page.getByText(/Dispatch|DSC/i).first();
   if (await deptBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
     await deptBtn.click();
     await page.waitForTimeout(500);
+
+    // Fill reference fields (DSC requires "Order ID")
+    const refInputs = page.locator('input[placeholder]');
+    const refCount = await refInputs.count();
+    for (let i = 0; i < refCount; i++) {
+      await refInputs.nth(i).fill(`E2E-${Date.now()}`);
+    }
+    await page.waitForTimeout(300);
+
+    // Type message in editor
     const editor = page.locator('.ProseMirror, textarea, [contenteditable]').first();
     if (await editor.isVisible()) {
       await editor.click();
       await page.keyboard.type(`Support test ticket ${Date.now()}`);
     }
-    const submitBtn = page.locator('button[type="submit"], form button').filter({ hasText: /send|submit|start/i }).first();
-    if (await submitBtn.isVisible()) {
-      await submitBtn.click();
+    await page.waitForTimeout(500);
+
+    // Submit
+    const submitBtn = page.locator('button[type="submit"]').first();
+    try {
+      await submitBtn.click({ timeout: 5000 });
       await page.waitForTimeout(3000);
+    } catch {
+      console.warn('[ensureAgentTicket] Submit button not enabled');
     }
   }
 
@@ -102,6 +127,11 @@ test.describe.serial('Support Flow — Queue & Tabs', () => {
     try {
       const res = await loginAsDemo(supportPage, 'support_lucas');
       test.skip(!res.ok, 'support_lucas not seeded');
+      // Wait for ticket list to include Kevin's fresh ticket (poll interval is 30s,
+      // but the initial query fires on mount). Reload to guarantee a fresh fetch.
+      await supportPage.waitForTimeout(2000);
+      await supportPage.reload();
+      await supportPage.waitForLoadState('load');
       await supportPage.waitForTimeout(3000);
 
       // Find Kevin's ticket in queue

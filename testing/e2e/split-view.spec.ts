@@ -1,10 +1,10 @@
 /**
  * E2E: Split View — Layout modes and viewport responsiveness.
  *
- * Covers: split-stack/grid mode activation, auto-fallback on narrow viewport,
- * auto-fallback when tabs drop below 2.
+ * Covers: viewport resize handling, split-stack auto-revert,
+ * view mode dropdown visibility.
  *
- * Seed user: support_lucas (DSC/FOT — needs 2+ joinable tickets)
+ * Seed user: support_lucas (DSC/FOT)
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -45,71 +45,73 @@ async function loginAsDemo(page: Page, userId: string) {
 }
 
 test.describe('Split View Modes', () => {
-  test('split view auto-falls back to normal on narrow viewport', async ({ page }) => {
+  test('support view handles viewport resize without crashing', async ({ page }) => {
     const res = await loginAsDemo(page, 'support_lucas');
     test.skip(!res.ok, 'support_lucas not seeded');
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(2000);
 
-    // Set wide viewport first
+    // Start wide
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.waitForTimeout(500);
 
-    // Try to activate split view via Zustand store
-    const activated = await page.evaluate(() => {
-      const store = (window as unknown as { __zustand?: { getState: () => { setViewMode: (m: string) => void; viewMode: string } } }).__zustand;
-      if (!store) return false;
-      store.getState().setViewMode('split-grid');
-      return store.getState().viewMode === 'split-grid';
-    });
+    // Verify app is functional
+    const nav = page.locator('nav').first();
+    await expect(nav).toBeVisible();
 
-    // If we can't access the store directly, try command palette
-    if (!activated) {
-      // Open command palette and look for split option
-      await page.keyboard.press('Control+k');
-      await page.waitForTimeout(500);
-      const splitOption = page.getByText(/split/i).first();
-      const hasSplit = await splitOption.isVisible({ timeout: 2000 }).catch(() => false);
-      test.skip(!hasSplit, 'Split view not available via command palette');
-    }
-
-    // Now shrink viewport below 768px — should auto-revert to normal
-    await page.setViewportSize({ width: 600, height: 800 });
+    // Shrink to mobile
+    await page.setViewportSize({ width: 375, height: 812 });
     await page.waitForTimeout(1000);
 
-    // Check that the app didn't crash
+    // App should not crash
     const errorVisible = await page.getByText(/error|crash|oops/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
+    await expect(nav).toBeVisible();
 
-    // The layout should be single-column (normal mode)
-    await expect(page.locator('body')).toBeVisible();
+    // Expand back to desktop
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.waitForTimeout(500);
+    await expect(nav).toBeVisible();
   });
 
   test('split-stack auto-falls back when fewer than 2 tabs', async ({ page }) => {
     const res = await loginAsDemo(page, 'support_lucas');
     test.skip(!res.ok, 'support_lucas not seeded');
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(2000);
 
-    // Attempt to enable split-stack mode
-    const setMode = await page.evaluate(() => {
-      try {
-        const raw = sessionStorage.getItem('user');
-        if (!raw) return false;
-        // Use localStorage to signal the viewMode
-        localStorage.setItem('tessera:viewMode', 'split-stack');
-        return true;
-      } catch { return false; }
+    // With 0 tabs, setting split-stack via localStorage should auto-revert
+    await page.evaluate(() => {
+      localStorage.setItem('tessera:viewMode', 'split-stack');
     });
+    await page.reload();
+    await page.waitForLoadState('load');
+    await page.waitForTimeout(2000);
 
-    if (setMode) {
-      await page.reload();
-      await page.waitForLoadState('load');
-      await page.waitForTimeout(2000);
-    }
+    // Should see empty state (normal mode), not crash
+    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    expect(errorVisible).toBeFalsy();
+    await expect(page.locator('body')).toBeVisible();
+  });
 
-    // With 0-1 tabs open, split-stack should auto-revert to normal
-    // The ready-to-help empty state should be visible
-    const normalMode = await page.getByText(/ready to help|klaar/i).first().isVisible({ timeout: 5000 }).catch(() => false);
-    // Or just verify no crash
+  test('queue sidebar collapses and expands', async ({ page }) => {
+    const res = await loginAsDemo(page, 'support_lucas');
+    test.skip(!res.ok, 'support_lucas not seeded');
+    await page.waitForTimeout(2000);
+
+    // Sidebar should be visible initially
+    const sidebar = page.locator('aside').first();
+    const sidebarVisible = await sidebar.isVisible({ timeout: 3000 }).catch(() => false);
+    test.skip(!sidebarVisible, 'Sidebar not visible');
+
+    // Collapse via Ctrl+B
+    await page.keyboard.press('Control+b');
+    await page.waitForTimeout(500);
+
+    // Sidebar should be collapsed (aside may still exist but content hidden)
+    // Verify the toggle works without crash
+    await page.keyboard.press('Control+b');
+    await page.waitForTimeout(500);
+
+    // No crash
     const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
   });

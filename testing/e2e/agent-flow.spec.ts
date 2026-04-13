@@ -67,22 +67,32 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
 
     // Agent either sees the ticket form (no open ticket) or the chat view (has ticket)
     const hasChat = await page.locator('.ProseMirror, [contenteditable]').first().isVisible({ timeout: 5000 }).catch(() => false);
-    const hasForm = await page.getByText('DSC').first().isVisible({ timeout: 2000 }).catch(() => false);
+    const hasForm = await page.getByText(/Dispatch|DSC/i).first().isVisible({ timeout: 2000 }).catch(() => false);
 
     // One of these must be true — the agent view loaded
     expect(hasChat || hasForm).toBeTruthy();
 
     if (hasForm) {
-      // Create a ticket
-      await page.getByText('DSC').first().click();
+      // Create a ticket — select dept, fill reference fields, type message
+      await page.getByText(/Dispatch|DSC/i).first().click();
       await page.waitForTimeout(500);
+
+      // Fill reference fields (DSC requires "Order ID")
+      const refInputs = page.locator('input[placeholder]');
+      const refCount = await refInputs.count();
+      for (let i = 0; i < refCount; i++) {
+        await refInputs.nth(i).fill(`E2E-${Date.now()}`);
+      }
+      await page.waitForTimeout(300);
+
       const editor = page.locator('.ProseMirror, textarea, [contenteditable]').first();
       if (await editor.isVisible()) {
         await editor.click();
         await page.keyboard.type('E2E agent ticket');
       }
-      const submitBtn = page.locator('button[type="submit"], form button').filter({ hasText: /send|submit|verzend|start/i }).first();
-      if (await submitBtn.isVisible()) {
+      await page.waitForTimeout(500);
+      const submitBtn = page.locator('button[type="submit"]').first();
+      if (await submitBtn.isEnabled({ timeout: 3000 }).catch(() => false)) {
         await submitBtn.click();
         await page.waitForTimeout(3000);
       }
@@ -136,21 +146,22 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
       const ticketVisible = await ticketRow.isVisible({ timeout: 10000 }).catch(() => false);
       test.skip(!ticketVisible, 'Julie\'s ticket not in support queue');
 
-      // Click to select/preview
+      // Click to select/preview, then join to enter socket room + open tab
       await ticketRow.click();
       await supportPage.waitForTimeout(1500);
 
-      // Join if button visible (unassigned ticket), otherwise it opens directly as a tab
+      // Join button should appear in preview (even for pre-assigned tickets,
+      // since this browser session hasn't emitted support:join yet)
       const joinBtn = supportPage.getByText(/join|jump in/i).first();
-      if (await joinBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+      if (await joinBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
         await joinBtn.click();
-        await supportPage.waitForTimeout(2000);
+        await supportPage.waitForTimeout(3000);
       }
 
-      // Wait for compose editor — support must be in the chat
+      // Wait for compose editor
       const supportEditor = supportPage.locator('.ProseMirror, [contenteditable]').first();
-      const editorReady = await supportEditor.isVisible({ timeout: 8000 }).catch(() => false);
-      test.skip(!editorReady, 'Support editor not visible — cannot send message');
+      const editorReady = await supportEditor.isVisible({ timeout: 10000 }).catch(() => false);
+      test.skip(!editorReady, 'Support editor not visible — ticket may not show Join for assigned support');
       if (editorReady) {
         await supportEditor.click();
         const replyMsg = `Support reply ${Date.now()}`;
@@ -211,7 +222,7 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
       // Agent should see rating modal or return to ticket form
       await agentPage.waitForTimeout(3000);
       const ratingModal = agentPage.getByText(/rate|beoordeel|how was/i).first();
-      const ticketForm = agentPage.getByText('DSC').first();
+      const ticketForm = agentPage.getByText(/Dispatch|DSC/i).first();
       const ratingVisible = await ratingModal.isVisible({ timeout: 8000 }).catch(() => false);
       const formVisible = await ticketForm.isVisible({ timeout: 3000 }).catch(() => false);
 
