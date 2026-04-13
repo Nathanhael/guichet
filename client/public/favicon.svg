@@ -1,0 +1,9 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Small Arched Window (Simplified Favicon) -->
+  <g transform="translate(8, 6)">
+    <!-- Outer Frame (Slate-800) -->
+    <path d="M0 20 V8 C0 3.58172 3.58172 0 8 0 C12.4183 0 16 3.58172 16 8 V20 H0Z" fill="#1E293B"/>
+    <!-- Glow (Amber) -->
+    <path d="M2 18 V8 C2 4.68629 4.68629 2 8 2 C11.3137 2 14 4.68629 14 8 V18 H2Z" fill="#FDE68A"/>
+  </g>
+</svg>

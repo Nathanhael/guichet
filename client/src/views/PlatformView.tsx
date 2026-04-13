@@ -45,9 +45,12 @@ export default function PlatformView() {
     <ErrorBoundary>
     <div className="h-screen flex flex-col bg-[var(--color-bg-base)] text-[var(--color-text-primary)] overflow-hidden font-sans">
       <nav className="px-8 py-4 border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <span className="text-2xl font-bold uppercase tracking-tighter font-mono">TESSERA</span>
-          <span className="text-[10px] font-bold px-2.5 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] uppercase tracking-wide font-mono">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <img src="/icon-blue.svg" className="w-5 h-5 mr-1" alt="" />
+            <span className="text-[13px] font-mono font-bold uppercase tracking-[3px] text-[var(--color-text-primary)]">TESSERA</span>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] uppercase tracking-wide font-mono ml-2">
             {t('platform')}
           </span>
         </div>
