@@ -6,6 +6,8 @@ import {
   Play, Eye, EyeOff, KeyRound, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import ErrorBox from './ErrorBox';
+import FieldError from '../FieldError';
+import { webhookCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 
 const ALL_EVENTS = [
   'ticket.created',
@@ -40,8 +42,11 @@ export default function AdminWebhooks() {
 
   // Secret display
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  const { data: hooks, isLoading, error: fetchError, refetch } = trpc.webhook.list.useQuery();
+  const utils = trpc.useUtils();
+  const { data: hooks, isLoading, error: fetchError } = trpc.webhook.list.useQuery();
+  const invalidate = () => utils.webhook.list.invalidate();
 
   const createMutation = trpc.webhook.create.useMutation({
     onSuccess: (data) => {
@@ -50,25 +55,25 @@ export default function AdminWebhooks() {
       setNewDesc('');
       setNewEvents([]);
       setShowCreate(false);
-      refetch();
+      invalidate();
     },
   });
 
   const updateMutation = trpc.webhook.update.useMutation({
     onSuccess: () => {
       setEditingId(null);
-      refetch();
+      invalidate();
     },
   });
 
   const deleteMutation = trpc.webhook.delete.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: invalidate,
   });
 
   const regenMutation = trpc.webhook.regenerateSecret.useMutation({
     onSuccess: (data) => {
       setRevealedSecret(data.secret);
-      refetch();
+      invalidate();
     },
   });
 
@@ -89,7 +94,9 @@ export default function AdminWebhooks() {
   };
 
   const addHook = () => {
-    if (!newUrl.trim() || newEvents.length === 0) return;
+    const errors = validateForm(webhookCreateSchema, { url: newUrl.trim(), events: newEvents, description: newDesc || undefined });
+    if (errors) { setFieldErrors(errors); return; }
+    setFieldErrors({});
     createMutation.mutate({
       url: newUrl.trim(),
       events: newEvents,
@@ -151,7 +158,7 @@ export default function AdminWebhooks() {
           >
             <Plus className="h-3.5 w-3.5" /> New Webhook
           </button>
-          <button onClick={() => refetch()} className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white" title="Refresh">
+          <button onClick={() => invalidate()} className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white" title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -186,10 +193,11 @@ export default function AdminWebhooks() {
               <input
                 type="url"
                 value={newUrl}
-                onChange={(e) => setNewUrl(e.target.value)}
+                onChange={(e) => { setNewUrl(e.target.value); setFieldErrors({}); }}
                 placeholder="https://your-server.com/webhook"
-                className="input-field w-full"
+                className={`input-field w-full ${fieldErrors.url ? 'border-[var(--color-accent-red)]' : ''}`}
               />
+              <FieldError error={fieldErrors.url} />
             </div>
             <div>
               <label className="mono-label mb-1.5 block">Description</label>
@@ -204,7 +212,8 @@ export default function AdminWebhooks() {
           </div>
           <div className="mb-4">
             <label className="mono-label mb-2 block">Events *</label>
-            <EventChips events={ALL_EVENTS} selected={newEvents} onToggle={(e) => toggleEvent(newEvents, e, setNewEvents)} />
+            <EventChips events={ALL_EVENTS} selected={newEvents} onToggle={(e) => { toggleEvent(newEvents, e, setNewEvents); setFieldErrors({}); }} />
+            <FieldError error={fieldErrors.events} />
           </div>
           <div className="flex justify-end gap-2">
             <button onClick={() => setShowCreate(false)} className="btn-secondary">

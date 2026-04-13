@@ -4,8 +4,10 @@ import { useT } from '../../i18n';
 import { Plus, Trash2, RefreshCw, Pencil, Check, X } from 'lucide-react';
 import ErrorBox from './ErrorBox';
 import ConfirmDialog from '../ConfirmDialog';
+import FieldError from '../FieldError';
 import Toast from '../Toast';
 import { LABEL_COLORS as COLORS, COLOR_BG_MAP } from '../../utils/labelColors';
+import { labelCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 
 export default function AdminLabels() {
   const t = useT();
@@ -17,13 +19,16 @@ export default function AdminLabels() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editColor, setEditColor] = useState<typeof COLORS[number]['key']>('indigo');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  const { data: labels, isLoading, error: fetchError, refetch } = trpc.label.list.useQuery();
+  const utils = trpc.useUtils();
+  const { data: labels, isLoading, error: fetchError } = trpc.label.list.useQuery();
+  const invalidate = () => utils.label.list.invalidate();
 
   const createMutation = trpc.label.create.useMutation({
     onSuccess: () => {
       setNewName('');
-      refetch();
+      invalidate();
     },
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
@@ -31,7 +36,7 @@ export default function AdminLabels() {
   const updateMutation = trpc.label.update.useMutation({
     onSuccess: () => {
       setEditingId(null);
-      refetch();
+      invalidate();
     },
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
@@ -39,7 +44,7 @@ export default function AdminLabels() {
   const deleteMutation = trpc.label.delete.useMutation({
     onSuccess: () => {
       setDeletingId(null);
-      refetch();
+      invalidate();
     },
     onError: (err) => {
       setDeletingId(null);
@@ -48,7 +53,9 @@ export default function AdminLabels() {
   });
 
   const addLabel = () => {
-    if (!newName.trim()) return;
+    const errors = validateForm(labelCreateSchema, { name: newName, color: newColor });
+    if (errors) { setFieldErrors(errors); return; }
+    setFieldErrors({});
     createMutation.mutate({ name: newName, color: newColor });
   };
 
@@ -88,7 +95,7 @@ export default function AdminLabels() {
           <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-1">{t('labels_desc') || 'Categorize and tag conversations'}</p>
         </div>
         <button
-          onClick={() => refetch()}
+          onClick={() => invalidate()}
           className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white"
           title={t('refresh') || 'Refresh'}
         >
@@ -107,12 +114,13 @@ export default function AdminLabels() {
             <input
               type="text"
               value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={(e) => { setNewName(e.target.value); setFieldErrors({}); }}
               onKeyDown={(e) => e.key === 'Enter' && addLabel()}
               placeholder={t('label_name_placeholder') || 'e.g. Bug Report'}
-              className="input-field w-full"
+              className={`input-field w-full ${fieldErrors.name ? 'border-[var(--color-accent-red)]' : ''}`}
               maxLength={50}
             />
+            <FieldError error={fieldErrors.name} />
           </div>
           <div>
             <label className="mono-label mb-1.5 block">{t('label_color') || 'Color'} *</label>

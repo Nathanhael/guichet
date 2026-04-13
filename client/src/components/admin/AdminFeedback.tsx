@@ -24,6 +24,8 @@ export default function AdminFeedback() {
   const [showDismissed, setShowDismissed] = useState(false);
   const [selectedSupport, setSelectedSupport] = useState('ALL');
 
+  const utils = trpc.useUtils();
+
   // tRPC: Feedback List
   const feedbackQuery = trpc.feedback.list.useQuery();
 
@@ -33,7 +35,7 @@ export default function AdminFeedback() {
   // tRPC: Mark Treated
   const markTreatedMutation = trpc.feedback.markTreated.useMutation({
     onSuccess: () => {
-      feedbackQuery.refetch();
+      utils.feedback.list.invalidate();
     }
   });
 

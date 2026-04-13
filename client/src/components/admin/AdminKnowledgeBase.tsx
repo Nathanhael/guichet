@@ -3,7 +3,9 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { Plus, Trash2, RefreshCw, Pencil, X, Check, BookOpen, Eye, EyeOff, Search } from 'lucide-react';
 import ErrorBox from './ErrorBox';
+import FieldError from '../FieldError';
 import BionicText from '../BionicText';
+import { kbArticleCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 import { useStoreShallow } from '../../store/useStore';
 
 interface KBArticle {
@@ -42,10 +44,13 @@ export default function AdminKnowledgeBase() {
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
-  const { data: articles, isLoading, error: fetchError, refetch } = trpc.kb.list.useQuery(
+  const utils = trpc.useUtils();
+  const { data: articles, isLoading, error: fetchError } = trpc.kb.list.useQuery(
     { includeUnpublished: true }
   );
+  const invalidate = () => utils.kb.list.invalidate();
 
   const createMutation = trpc.kb.create.useMutation({
     onSuccess: () => {
@@ -55,26 +60,28 @@ export default function AdminKnowledgeBase() {
       setNewTags('');
       setNewPublished(true);
       setShowCreateForm(false);
-      refetch();
+      invalidate();
     },
   });
 
   const updateMutation = trpc.kb.update.useMutation({
     onSuccess: () => {
       setEditingId(null);
-      refetch();
+      invalidate();
     },
   });
 
   const deleteMutation = trpc.kb.delete.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: invalidate,
   });
 
   const parseTags = (str: string): string[] =>
     str.split(',').map(s => s.trim()).filter(Boolean);
 
   const addArticle = () => {
-    if (!newTitle.trim() || !newBody.trim()) return;
+    const errors = validateForm(kbArticleCreateSchema, { title: newTitle, body: newBody });
+    if (errors) { setFieldErrors(errors); return; }
+    setFieldErrors({});
     createMutation.mutate({
       title: newTitle.trim(),
       body: newBody.trim(),
@@ -138,7 +145,7 @@ export default function AdminKnowledgeBase() {
             New Article
           </button>
           <button
-            onClick={() => refetch()}
+            onClick={() => invalidate()}
             className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white"
             title="Refresh"
           >
@@ -171,10 +178,11 @@ export default function AdminKnowledgeBase() {
               <input
                 type="text"
                 value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
+                onChange={(e) => { setNewTitle(e.target.value); setFieldErrors({}); }}
                 placeholder="e.g. How to reset a customer password"
-                className="input-field w-full"
+                className={`input-field w-full ${fieldErrors.title ? 'border-[var(--color-accent-red)]' : ''}`}
               />
+              <FieldError error={fieldErrors.title} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -203,11 +211,12 @@ export default function AdminKnowledgeBase() {
             <label className="mono-label mb-1.5 block">Content *</label>
             <textarea
               value={newBody}
-              onChange={(e) => setNewBody(e.target.value)}
+              onChange={(e) => { setNewBody(e.target.value); setFieldErrors({}); }}
               placeholder="Write the article content here... (Markdown supported)"
               rows={8}
-              className="input-field w-full resize-y font-mono"
+              className={`input-field w-full resize-y font-mono ${fieldErrors.body ? 'border-[var(--color-accent-red)]' : ''}`}
             />
+            <FieldError error={fieldErrors.body} />
           </div>
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 cursor-pointer">
