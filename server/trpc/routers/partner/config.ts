@@ -325,6 +325,7 @@ export const partnerConfigRouter = router({
         description: z.string().optional(),
         referenceFields: z.array(z.object({
           label: z.string().min(1),
+          optional: z.boolean().optional(),
         })).max(3).optional().refine(
           (fields) => {
             if (!fields) return true;
