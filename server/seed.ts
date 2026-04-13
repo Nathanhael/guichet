@@ -113,13 +113,15 @@ const TICKETS: SeedTicket[] = [
     supportName: 'Lucas Support',
     firstMessage: 'New VIP customer onboarding kit is missing the welcome letter template.',
   },
-  // Sophie — 2 tickets (TEC)
-  // Unassigned queue tickets for Lucas's departments (open, no support)
+  // Unassigned queue tickets — one per agent (respects 1-ticket-per-agent limit).
+  // Julie's assigned ticket (ticket_lucas_1) is above, so this unassigned one uses Kevin.
+  // Kevin's assigned ticket (ticket_lucas_2) is above, so this unassigned one uses a
+  // "walkup" agent pattern — no supportId, waiting in queue.
   {
     id: 'ticket_queue_dsc_1',
     dept: 'DSC',
-    agentId: 'agent_julie',
-    agentName: 'Julie Agent',
+    agentId: 'agent_walkup_1',
+    agentName: 'Walkup Customer 1',
     supportId: null,
     supportName: null,
     firstMessage: 'Carrier ID 4421 stuck in triage for 20 minutes — please route.',
@@ -127,12 +129,13 @@ const TICKETS: SeedTicket[] = [
   {
     id: 'ticket_queue_fot_1',
     dept: 'FOT',
-    agentId: 'agent_kevin',
-    agentName: 'Kevin Agent',
+    agentId: 'agent_walkup_2',
+    agentName: 'Walkup Customer 2',
     supportId: null,
     supportName: null,
     firstMessage: 'Customer is asking about upgrade paths — needs a rep to call back.',
   },
+  // Sophie — 2 tickets (TEC)
   {
     id: 'ticket_sophie_1',
     dept: 'TEC',

@@ -1,14 +1,14 @@
 /**
  * E2E: Support Flow — Queue, tabs, transfer, close.
  *
- * Covers: joining from queue, tab persistence across refresh,
- * department transfer, closing tickets, multi-tab behavior.
+ * Tests adapt to DB state. When unassigned tickets are needed,
+ * uses agent_kevin to create a fresh one (serial execution).
  *
  * Seed users: support_lucas (DSC/FOT), support_sophie (TEC),
- *             agent_julie, agent_kevin (agents with pre-seeded tickets)
+ *             agent_kevin (creates tickets on demand)
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const DEMO_PASSWORD = 'password123';
@@ -45,117 +45,172 @@ async function loginAsDemo(page: Page, userId: string) {
   return data;
 }
 
-test.describe('Support Flow — Queue & Tabs', () => {
-  test('support joins ticket from queue — chat tab opens', async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
-    test.skip(!res.ok, 'support_lucas not seeded');
-    await page.waitForTimeout(3000);
+/**
+ * Ensure agent_kevin has a fresh unassigned ticket for support to join.
+ * Closes any existing ticket first, then creates a new DSC ticket.
+ * Returns the agent context (caller must close it).
+ */
+async function ensureAgentTicket(browser: { newContext: () => Promise<BrowserContext> }): Promise<BrowserContext> {
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  const res = await loginAsDemo(page, 'agent_kevin');
+  if (!res.ok) return ctx;
 
-    // Queue should show tickets in DSC/FOT departments
-    const ticketRow = page.locator('li').filter({ hasText: /Julie Agent|Kevin Agent/i }).first();
-    const hasTickets = await ticketRow.isVisible({ timeout: 8000 }).catch(() => false);
-    test.skip(!hasTickets, 'No tickets in queue for support_lucas departments');
+  await page.waitForTimeout(3000);
 
-    // Click ticket to preview
-    await ticketRow.click();
-    await page.waitForTimeout(1000);
-
-    // Look for Join button in preview
-    const joinBtn = page.getByText(/join|jump in/i).first();
-    const canJoin = await joinBtn.isVisible({ timeout: 3000 }).catch(() => false);
-    test.skip(!canJoin, 'Join button not visible — ticket may already be assigned');
-
-    await joinBtn.click();
-    await page.waitForTimeout(2000);
-
-    // Chat tab should appear in the tab bar
-    const tabBar = page.locator('[class*="border-b"]').filter({ hasText: /Julie|Kevin/i }).first();
-    const tabVisible = await tabBar.isVisible({ timeout: 5000 }).catch(() => false);
-    // Chat area should be visible
-    const chatArea = page.locator('.ProseMirror, textarea, [contenteditable]').first();
-    const chatVisible = await chatArea.isVisible({ timeout: 5000 }).catch(() => false);
-    expect(tabVisible || chatVisible).toBeTruthy();
-  });
-
-  test('tab persists across page refresh', async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
-    test.skip(!res.ok, 'support_lucas not seeded');
-    await page.waitForTimeout(3000);
-
-    // Join a ticket first
-    const ticketRow = page.locator('li').filter({ hasText: /Julie Agent|Kevin Agent/i }).first();
-    const hasTickets = await ticketRow.isVisible({ timeout: 8000 }).catch(() => false);
-    test.skip(!hasTickets, 'No tickets in queue');
-
-    await ticketRow.click();
-    await page.waitForTimeout(1000);
-
-    const joinBtn = page.getByText(/join|jump in/i).first();
-    if (await joinBtn.isVisible({ timeout: 3000 })) {
-      await joinBtn.click();
-      await page.waitForTimeout(2000);
-    }
-
-    // Verify a chat tab exists before refresh
-    const editorBefore = page.locator('.ProseMirror, textarea, [contenteditable]').first();
-    const hadChat = await editorBefore.isVisible({ timeout: 3000 }).catch(() => false);
-    test.skip(!hadChat, 'No active chat tab to test persistence');
-
-    // Refresh the page — tabs should restore from localStorage
-    await page.reload();
-    await page.waitForLoadState('load');
-    await page.waitForTimeout(3000);
-
-    // Chat should still be visible after refresh (tab restored + silent rejoin).
-    // The ProseMirror editor lazy-loads, so check for the chat area or tab bar instead.
-    const chatArea = page.locator('[class*="overflow-y-auto"]').first();
-    const editor = page.locator('.ProseMirror, textarea, [contenteditable]').first();
-    const chatRestored = await chatArea.isVisible({ timeout: 10000 }).catch(() => false)
-      || await editor.isVisible({ timeout: 3000 }).catch(() => false);
-    expect(chatRestored).toBeTruthy();
-  });
-
-  test('support closes ticket — tab removed', async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
-    test.skip(!res.ok, 'support_lucas not seeded');
-    await page.waitForTimeout(3000);
-
-    // Find and join a ticket
-    const ticketRow = page.locator('li').filter({ hasText: /Julie Agent|Kevin Agent/i }).first();
-    if (!(await ticketRow.isVisible({ timeout: 5000 }).catch(() => false))) {
-      test.skip(true, 'No tickets available');
-      return;
-    }
-    await ticketRow.click();
-    await page.waitForTimeout(1000);
-
-    const joinBtn = page.getByText(/join|jump in/i).first();
-    if (await joinBtn.isVisible({ timeout: 3000 })) {
-      await joinBtn.click();
-      await page.waitForTimeout(2000);
-    }
-
-    // Close the ticket via close button or command
-    const closeBtn = page.getByText(/close ticket|sluiten/i).first();
-    const hasClose = await closeBtn.isVisible({ timeout: 3000 }).catch(() => false);
-    test.skip(!hasClose, 'Close button not visible');
-
+  // Close existing ticket if agent is in chat view
+  const closeBtn = page.getByText(/close/i).first();
+  if (await closeBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
     await closeBtn.click();
     await page.waitForTimeout(500);
-
-    // Confirm dialog
     const confirmBtn = page.getByText(/confirm|bevestig|yes/i).first();
-    if (await confirmBtn.isVisible({ timeout: 2000 })) {
-      await confirmBtn.click();
-      await page.waitForTimeout(2000);
-    }
+    if (await confirmBtn.isVisible({ timeout: 2000 })) await confirmBtn.click();
+    await page.waitForTimeout(3000);
+    // Dismiss rating modal if it appears
+    const skipRating = page.getByText(/later|skip|overslaan/i).first();
+    if (await skipRating.isVisible({ timeout: 2000 }).catch(() => false)) await skipRating.click();
+    await page.waitForTimeout(1000);
+  }
 
-    // Should see the empty state ("ready to help")
-    const emptyState = page.getByText(/ready to help|klaar/i).first();
-    const isEmpty = await emptyState.isVisible({ timeout: 5000 }).catch(() => false);
-    // Or the tab bar should have no active tabs
-    const noChat = !(await page.locator('.ProseMirror, textarea, [contenteditable]').first().isVisible().catch(() => false));
-    expect(isEmpty || noChat).toBeTruthy();
+  // Create new ticket
+  const deptBtn = page.getByText('DSC').first();
+  if (await deptBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
+    await deptBtn.click();
+    await page.waitForTimeout(500);
+    const editor = page.locator('.ProseMirror, textarea, [contenteditable]').first();
+    if (await editor.isVisible()) {
+      await editor.click();
+      await page.keyboard.type(`Support test ticket ${Date.now()}`);
+    }
+    const submitBtn = page.locator('button[type="submit"], form button').filter({ hasText: /send|submit|start/i }).first();
+    if (await submitBtn.isVisible()) {
+      await submitBtn.click();
+      await page.waitForTimeout(3000);
+    }
+  }
+
+  return ctx;
+}
+
+test.describe.serial('Support Flow — Queue & Tabs', () => {
+  test('support joins ticket from queue — chat tab opens', async ({ browser }) => {
+    // Create a fresh ticket via agent_kevin
+    const agentCtx = await ensureAgentTicket(browser);
+    const supportCtx = await browser.newContext();
+    const supportPage = await supportCtx.newPage();
+
+    try {
+      const res = await loginAsDemo(supportPage, 'support_lucas');
+      test.skip(!res.ok, 'support_lucas not seeded');
+      await supportPage.waitForTimeout(3000);
+
+      // Find Kevin's ticket in queue
+      const ticketRow = supportPage.getByText('Kevin Agent').first();
+      const hasTicket = await ticketRow.isVisible({ timeout: 10000 }).catch(() => false);
+      test.skip(!hasTicket, 'Kevin\'s ticket not visible in queue');
+
+      await ticketRow.click();
+      await supportPage.waitForTimeout(1000);
+
+      // Join
+      const joinBtn = supportPage.getByText(/join|jump in/i).first();
+      const canJoin = await joinBtn.isVisible({ timeout: 3000 }).catch(() => false);
+      test.skip(!canJoin, 'Join button not visible');
+      await joinBtn.click();
+      await supportPage.waitForTimeout(2000);
+
+      // Chat area should be visible
+      const chatVisible = await supportPage.locator('.ProseMirror, [contenteditable]').first().isVisible({ timeout: 5000 }).catch(() => false);
+      expect(chatVisible).toBeTruthy();
+    } finally {
+      await agentCtx.close();
+      await supportCtx.close();
+    }
+  });
+
+  test('tab persists across page refresh', async ({ browser }) => {
+    const agentCtx = await ensureAgentTicket(browser);
+    const supportCtx = await browser.newContext();
+    const supportPage = await supportCtx.newPage();
+
+    try {
+      const res = await loginAsDemo(supportPage, 'support_lucas');
+      test.skip(!res.ok, 'support_lucas not seeded');
+      await supportPage.waitForTimeout(3000);
+
+      // Join Kevin's ticket
+      const ticketRow = supportPage.getByText('Kevin Agent').first();
+      if (await ticketRow.isVisible({ timeout: 8000 }).catch(() => false)) {
+        await ticketRow.click();
+        await supportPage.waitForTimeout(1000);
+        const joinBtn = supportPage.getByText(/join|jump in/i).first();
+        if (await joinBtn.isVisible({ timeout: 3000 })) {
+          await joinBtn.click();
+          await supportPage.waitForTimeout(2000);
+        }
+      }
+
+      // Verify chat is open before refresh
+      const chatBefore = await supportPage.locator('[class*="overflow-y-auto"]').first().isVisible({ timeout: 5000 }).catch(() => false);
+      test.skip(!chatBefore, 'No active chat to test persistence');
+
+      // Refresh
+      await supportPage.reload();
+      await supportPage.waitForLoadState('load');
+      await supportPage.waitForTimeout(3000);
+
+      // Tab should be restored
+      const chatAfter = await supportPage.locator('[class*="overflow-y-auto"]').first().isVisible({ timeout: 10000 }).catch(() => false)
+        || await supportPage.locator('.ProseMirror, [contenteditable]').first().isVisible({ timeout: 3000 }).catch(() => false);
+      expect(chatAfter).toBeTruthy();
+    } finally {
+      await agentCtx.close();
+      await supportCtx.close();
+    }
+  });
+
+  test('support closes ticket — tab removed', async ({ browser }) => {
+    const agentCtx = await ensureAgentTicket(browser);
+    const supportCtx = await browser.newContext();
+    const supportPage = await supportCtx.newPage();
+
+    try {
+      const res = await loginAsDemo(supportPage, 'support_lucas');
+      test.skip(!res.ok, 'support_lucas not seeded');
+      await supportPage.waitForTimeout(3000);
+
+      // Join Kevin's ticket
+      const ticketRow = supportPage.getByText('Kevin Agent').first();
+      if (await ticketRow.isVisible({ timeout: 8000 }).catch(() => false)) {
+        await ticketRow.click();
+        await supportPage.waitForTimeout(1000);
+        const joinBtn = supportPage.getByText(/join|jump in/i).first();
+        if (await joinBtn.isVisible({ timeout: 3000 })) {
+          await joinBtn.click();
+          await supportPage.waitForTimeout(2000);
+        }
+      }
+
+      // Close the ticket
+      const closeBtn = supportPage.getByText(/close/i).first();
+      const canClose = await closeBtn.isVisible({ timeout: 3000 }).catch(() => false);
+      test.skip(!canClose, 'Close button not visible');
+
+      await closeBtn.click();
+      await supportPage.waitForTimeout(500);
+      const confirmBtn = supportPage.getByText(/confirm|bevestig|yes/i).first();
+      if (await confirmBtn.isVisible({ timeout: 2000 })) await confirmBtn.click();
+      await supportPage.waitForTimeout(2000);
+
+      // Should show empty state or no active chat
+      const emptyState = supportPage.getByText(/ready to help|klaar/i).first();
+      const noChat = !(await supportPage.locator('.ProseMirror, [contenteditable]').first().isVisible().catch(() => false));
+      const isEmpty = await emptyState.isVisible({ timeout: 5000 }).catch(() => false);
+      expect(isEmpty || noChat).toBeTruthy();
+    } finally {
+      await agentCtx.close();
+      await supportCtx.close();
+    }
   });
 
   test('command palette opens with Ctrl+K', async ({ page }) => {
@@ -163,20 +218,15 @@ test.describe('Support Flow — Queue & Tabs', () => {
     test.skip(!res.ok, 'support_lucas not seeded');
     await page.waitForTimeout(2000);
 
-    // Press Ctrl+K to open command palette
     await page.keyboard.press('Control+k');
     await page.waitForTimeout(500);
 
-    // Palette should be visible with a search input
     const paletteInput = page.locator('input[type="text"]').last();
-    const paletteVisible = await paletteInput.isVisible({ timeout: 3000 }).catch(() => false);
-    expect(paletteVisible).toBeTruthy();
+    await expect(paletteInput).toBeVisible({ timeout: 3000 });
 
-    // Should show command groups
     const hasCommands = await page.getByText(/navigation|actions|status|view/i).first().isVisible({ timeout: 2000 }).catch(() => false);
     expect(hasCommands).toBeTruthy();
 
-    // Pressing Escape closes it
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
     const closed = !(await paletteInput.isVisible().catch(() => false));
@@ -186,6 +236,7 @@ test.describe('Support Flow — Queue & Tabs', () => {
 
 test.describe('Support Flow — Department Transfer', () => {
   test('transfer ticket to different department', async ({ browser }) => {
+    const agentCtx = await ensureAgentTicket(browser);
     const lucasCtx = await browser.newContext();
     const sophieCtx = await browser.newContext();
     const lucasPage = await lucasCtx.newPage();
@@ -199,43 +250,41 @@ test.describe('Support Flow — Department Transfer', () => {
       await lucasPage.waitForTimeout(3000);
       await sophiePage.waitForTimeout(3000);
 
-      // Lucas: join a DSC ticket
-      const ticketRow = lucasPage.locator('li').filter({ hasText: /DSC/i }).first();
-      const hasTicket = await ticketRow.isVisible({ timeout: 8000 }).catch(() => false);
-      test.skip(!hasTicket, 'No DSC tickets in queue');
+      // Lucas joins Kevin's DSC ticket
+      const ticketRow = lucasPage.getByText('Kevin Agent').first();
+      const hasTicket = await ticketRow.isVisible({ timeout: 10000 }).catch(() => false);
+      test.skip(!hasTicket, 'Kevin\'s ticket not in queue');
 
       await ticketRow.click();
       await lucasPage.waitForTimeout(1000);
-
       const joinBtn = lucasPage.getByText(/join|jump in/i).first();
       if (await joinBtn.isVisible({ timeout: 3000 })) {
         await joinBtn.click();
         await lucasPage.waitForTimeout(2000);
       }
 
-      // Lucas: transfer to TEC department
+      // Transfer to TEC
       const transferBtn = lucasPage.getByText(/transfer/i).first();
       const canTransfer = await transferBtn.isVisible({ timeout: 3000 }).catch(() => false);
       test.skip(!canTransfer, 'Transfer button not visible');
 
       await transferBtn.click();
       await lucasPage.waitForTimeout(500);
-
       const tecDept = lucasPage.getByText(/TEC/i).first();
       if (await tecDept.isVisible({ timeout: 2000 })) {
         await tecDept.click();
         await lucasPage.waitForTimeout(3000);
       }
 
-      // Sophie (TEC department): ticket should appear in her queue
+      // Sophie should see the ticket in her TEC queue
       await sophiePage.waitForTimeout(5000);
-      const transferredTicket = sophiePage.locator('li').filter({ hasText: /TEC/i }).first();
-      const sophieSees = await transferredTicket.isVisible({ timeout: 10000 }).catch(() => false);
-      // Soft assert — depends on socket timing across browser contexts
+      const transferred = sophiePage.getByText('Kevin Agent').first();
+      const sophieSees = await transferred.isVisible({ timeout: 10000 }).catch(() => false);
       if (!sophieSees) {
-        console.warn('[support-flow] Transferred ticket not visible in Sophie\'s queue within timeout');
+        console.warn('[support-flow] Transfer not visible in Sophie\'s queue within timeout');
       }
     } finally {
+      await agentCtx.close();
       await lucasCtx.close();
       await sophieCtx.close();
     }
