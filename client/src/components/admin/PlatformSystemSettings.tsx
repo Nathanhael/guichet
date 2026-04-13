@@ -14,6 +14,8 @@ interface MailConfig {
   smtpPass: string;
   smtpSecure: boolean;
   apiKey: string;
+  hasSmtpPass?: boolean;
+  hasApiKey?: boolean;
 }
 
 export default function PlatformSystemSettings() {
@@ -49,7 +51,11 @@ export default function PlatformSystemSettings() {
   }, [remoteConfig]);
 
   const handleSave = () => {
-    updateConfig.mutate(mailConfig);
+    // Only send secrets if the user typed a new value; omit empty strings so the server preserves existing
+    const { hasSmtpPass: _h1, hasApiKey: _h2, ...payload } = mailConfig;
+    if (!payload.smtpPass) delete (payload as Partial<MailConfig>).smtpPass;
+    if (!payload.apiKey) delete (payload as Partial<MailConfig>).apiKey;
+    updateConfig.mutate(payload);
   };
 
   const handleTestEmail = () => {
@@ -159,6 +165,7 @@ export default function PlatformSystemSettings() {
                         type="password"
                         value={mailConfig.smtpPass}
                         onChange={e => setMailConfig({ ...mailConfig, smtpPass: e.target.value })}
+                        placeholder={mailConfig.hasSmtpPass ? '••••••••' : ''}
                         className="input-field w-full"
                       />
                     </div>
@@ -173,7 +180,7 @@ export default function PlatformSystemSettings() {
                     type="password"
                     value={mailConfig.apiKey}
                     onChange={e => setMailConfig({ ...mailConfig, apiKey: e.target.value })}
-                    placeholder={mailConfig.provider === 'resend' ? 're_...' : 'SG....'}
+                    placeholder={mailConfig.hasApiKey ? '••••••••' : (mailConfig.provider === 'resend' ? 're_...' : 'SG....')}
                     className="input-field w-full"
                   />
                 </div>

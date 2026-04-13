@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
+import { APP_NAME } from '../constants';
 import type { User, Membership, UserRole } from '../types';
 import DarkModeToggle from '../components/DarkModeToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
@@ -195,16 +196,19 @@ export default function LoginView() {
       <div className="w-full max-w-lg overflow-hidden relative z-10 border border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)]">
         <div className="bg-[var(--color-text-primary)] px-8 py-10 relative overflow-hidden flex justify-between items-start" style={{ color: 'var(--color-bg-base)' }}>
           <div className="flex flex-col items-start gap-4">
-            <img 
-              src="/icon-blue.svg" 
-              className="w-12 h-12 cursor-pointer select-none" 
-              alt=""
+            <img
+              src="/icon-blue.svg"
+              className="w-12 h-12 cursor-pointer select-none"
+              alt={APP_NAME}
+              role="button"
+              tabIndex={0}
               onClick={handleLogoClick}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLogoClick(); } }}
             />
             <h1
               className="text-3xl font-mono font-bold uppercase tracking-[4px] relative z-10 cursor-default select-none focus:outline-none"
             >
-              TESSERA
+              {APP_NAME}
             </h1>
             <p className="mono-label relative z-10" style={{ opacity: 0.8 }}>
               {viewMode === 'sso-selection' ? t('sso_login_description') :

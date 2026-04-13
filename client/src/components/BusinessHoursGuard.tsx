@@ -1,6 +1,7 @@
 import React from 'react';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
+import { APP_NAME } from '../constants';
 import { formatBusinessHoursTimestamp, getBusinessHoursReason } from '../utils/businessHours';
 
 interface BusinessHoursGuardProps {
@@ -25,7 +26,7 @@ export default function BusinessHoursGuard({ children, mode = 'block' }: Busines
       <div className="h-screen bg-[var(--color-bg-base)] text-[var(--color-text-primary)] flex flex-col overflow-hidden" data-testid="business-hours-guard">
         <div className="border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-bold text-2xl uppercase tracking-tighter">TESSERA</span>
+            <span className="font-bold text-2xl uppercase tracking-tighter">{APP_NAME}</span>
             <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono">
               {t('agent')}
             </span>
