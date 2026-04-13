@@ -55,9 +55,12 @@ export function setup() {
 
   check(login, { 'setup: login 200': (r) => r.status === 200 });
 
+  const setCookie = login.headers['Set-Cookie'] || '';
+  const cookies = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
+
   const body = login.json();
   return {
-    token: body.token,
+    cookies,
     partnerId: body.user ? body.user.partnerId : 'acme-corp',
     userId: body.user ? body.user.id : '',
   };
@@ -67,7 +70,7 @@ export default function (data) {
   const url = `${WS_BASE}/socket.io/?EIO=4&transport=websocket`;
   const roomId = `load-test-room-${__VU % 50}`; // Spread across 50 rooms
 
-  const res = ws.connect(url, {}, function (socket) {
+  const res = ws.connect(url, { headers: { Cookie: data.cookies } }, function (socket) {
     wsConnections.add(1);
     let identified = false;
     let identifyStart = 0;
@@ -90,7 +93,7 @@ export default function (data) {
         identifyStart = Date.now();
         const identifyPayload = JSON.stringify([
           'socket:identify',
-          { token: data.token, partnerId: data.partnerId },
+          { partnerId: data.partnerId },
         ]);
         socket.send('42' + identifyPayload);
         wsMessagesSent.add(1);

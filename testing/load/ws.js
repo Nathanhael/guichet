@@ -58,9 +58,14 @@ export function setup() {
     'setup: login 200': (r) => r.status === 200,
   });
 
+  // Extract JWT cookie from Set-Cookie header — server authenticates
+  // socket connections via this cookie, not via a payload token field.
+  const setCookie = login.headers['Set-Cookie'] || '';
+  const cookies = Array.isArray(setCookie) ? setCookie.join('; ') : setCookie;
+
   const body = login.json();
   return {
-    token: body.token,
+    cookies,
     partnerId: body.user ? body.user.partnerId : 'acme-corp',
     userId: body.user ? body.user.id : '',
   };
@@ -71,7 +76,7 @@ export default function (data) {
   // Socket.io v4 uses path /socket.io/ with EIO=4.
   const url = `${WS_BASE}/socket.io/?EIO=4&transport=websocket`;
 
-  const res = ws.connect(url, {}, function (socket) {
+  const res = ws.connect(url, { headers: { Cookie: data.cookies } }, function (socket) {
     wsConnections.add(1);
     let identified = false;
     let identifyStart = 0;
@@ -96,7 +101,7 @@ export default function (data) {
         identifyStart = Date.now();
         const identifyPayload = JSON.stringify([
           'socket:identify',
-          { token: data.token, partnerId: data.partnerId },
+          { partnerId: data.partnerId },
         ]);
         // Socket.io EVENT = "42" + JSON array
         socket.send('42' + identifyPayload);
