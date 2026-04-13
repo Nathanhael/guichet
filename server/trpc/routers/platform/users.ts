@@ -339,6 +339,28 @@ export const platformUsersRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const memBefore = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
+      if (!memBefore[0]) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
+      }
+
+      const wasPlatformOperator = memBefore[0].role === 'platform_operator';
+      const willBePlatformOperator = input.data.role === 'platform_operator';
+      const isDemotion = wasPlatformOperator && !willBePlatformOperator;
+
+      if (isDemotion) {
+        // Prevent self-demotion
+        if (memBefore[0].userId === ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot demote your own platform operator role' });
+        }
+
+        // Prevent last-operator lockout: count total platform operators
+        const operatorCount = await db.select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(and(eq(users.isPlatformOperator, true), isNull(users.deletedAt)));
+        if (operatorCount[0].count <= 1) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot demote the last platform operator' });
+        }
+      }
 
       await db.update(memberships)
         .set({
@@ -347,29 +369,27 @@ export const platformUsersRouter = router({
         })
         .where(eq(memberships.id, input.id));
 
-      if (memBefore[0]) {
-        try {
-          await db.insert(auditLog).values({
-            id: randomUUID(),
-            action: 'member.updated',
-            actorId: ctx.user.id,
-            partnerId: memBefore[0].partnerId,
-            targetType: 'user',
-            targetId: memBefore[0].userId,
-            metadata: {
-              membershipId: input.id,
-              oldRole: memBefore[0].role,
-              newRole: input.data.role
-            }
-          });
-        } catch (auditErr) {
-          logger.error({ err: auditErr }, '[updateMembership] Audit log failed');
-        }
+      try {
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'member.updated',
+          actorId: ctx.user.id,
+          partnerId: memBefore[0].partnerId,
+          targetType: 'user',
+          targetId: memBefore[0].userId,
+          metadata: {
+            membershipId: input.id,
+            oldRole: memBefore[0].role,
+            newRole: input.data.role
+          }
+        });
+      } catch (auditErr) {
+        logger.error({ err: auditErr }, '[updateMembership] Audit log failed');
       }
 
       const mem = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
       if (mem[0]) {
-        if (input.data.role === 'platform_operator') {
+        if (willBePlatformOperator) {
           await db.update(users).set({ isPlatformOperator: true }).where(eq(users.id, mem[0].userId));
         } else {
           const otherPlatformMemberships = await db.select({ id: memberships.id })
@@ -456,6 +476,25 @@ export const platformUsersRouter = router({
   deleteUser: platformProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
+      // Prevent self-deletion
+      if (input === ctx.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot delete your own account' });
+      }
+
+      // Prevent deleting the last platform operator
+      const target = await db.select({ isPlatformOperator: users.isPlatformOperator })
+        .from(users).where(eq(users.id, input)).limit(1);
+      if (target[0]?.isPlatformOperator) {
+        const operatorCount = await db.select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(and(eq(users.isPlatformOperator, true), isNull(users.deletedAt)));
+        if (operatorCount[0].count <= 1) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot delete the last platform operator' });
+        }
+      }
+
+      await revokeUserSessions(input);
+
       await db.update(users)
         .set({ deletedAt: new Date().toISOString() })
         .where(eq(users.id, input));
