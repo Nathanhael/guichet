@@ -66,6 +66,8 @@ export async function runDailyPurge() {
     const windowEnd = cutoffDate;
     const windowStart = '1970-01-01'; // aggregate everything older than cutoff
 
+    const filesToDelete: string[] = [];
+
     const allTickets = (await db
       .select()
       .from(tickets)
@@ -145,28 +147,21 @@ export async function runDailyPurge() {
         });
       }
 
-      // Clean up uploaded files before deleting message rows
-      const storage = getStorage();
-      let filesDeleted = 0;
+      // Collect filenames to delete AFTER the DB transaction commits.
+      // Deleting before commit risks orphaning data if the transaction fails.
       for (const msg of allMessages) {
         if (msg.mediaUrl && msg.mediaUrl.startsWith('/uploads/')) {
-          const filename = msg.mediaUrl.replace(/^\/uploads\//, '');
-          await storage.delete(filename).catch(() => {});
-          filesDeleted++;
+          filesToDelete.push(msg.mediaUrl.replace(/^\/uploads\//, ''));
         }
-        const attachments = (msg as unknown as { attachments?: Array<{ url: string }> }).attachments;
-        if (Array.isArray(attachments)) {
-          for (const att of attachments) {
-            if (att.url?.startsWith('/uploads/')) {
-              const filename = att.url.replace(/^\/uploads\//, '');
-              await storage.delete(filename).catch(() => {});
-              filesDeleted++;
-            }
+        const rawAtt = (msg as unknown as Record<string, unknown>).attachments;
+        const attachments: Array<{ url: string }> = Array.isArray(rawAtt)
+          ? rawAtt
+          : typeof rawAtt === 'string' ? (() => { try { return JSON.parse(rawAtt); } catch { return []; } })() : [];
+        for (const att of attachments) {
+          if (att.url?.startsWith('/uploads/')) {
+            filesToDelete.push(att.url.replace(/^\/uploads\//, ''));
           }
         }
-      }
-      if (filesDeleted > 0) {
-        logger.info({ filesDeleted }, '[purge] Cleaned up uploaded files from purged messages');
       }
     }
 
@@ -209,6 +204,15 @@ export async function runDailyPurge() {
 
       logger.info({ auditAnonymized, archiveAnonymized, cutoffDate }, '[purge] Audit records anonymized (actorId set to NULL)');
     });
+
+    // Delete uploaded files only after DB transaction committed successfully.
+    if (filesToDelete.length > 0) {
+      const storage = getStorage();
+      for (const filename of filesToDelete) {
+        await storage.delete(filename).catch(() => {});
+      }
+      logger.info({ filesDeleted: filesToDelete.length }, '[purge] Cleaned up uploaded files from purged messages');
+    }
 
     // Step 3: Aggregate and purge old AI usage logs (separate retention window)
     const aiPurged = await aggregateAndPurgeAiUsage();
