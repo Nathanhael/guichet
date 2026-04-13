@@ -178,9 +178,10 @@ app.use('/uploads', async (req: Request, res: Response) => {
   } catch {
     return res.status(401).json({ error: 'Authentication required' });
   }
-  // Extract filename from URL path (e.g. /uploads/abc.png or /uploads/logos/logo_abc.png)
-  const filePath = req.path.replace(/^\//, '');
-  if (!filePath || filePath.includes('..')) {
+  // Extract and normalize filename — reject traversal attempts
+  const raw = req.path.replace(/^\//, '');
+  const filePath = path.posix.normalize(raw);
+  if (!filePath || filePath.startsWith('..') || filePath.includes('/../') || filePath.includes('\\') || filePath.includes('\0')) {
     return res.status(400).json({ error: 'Invalid path' });
   }
   try {

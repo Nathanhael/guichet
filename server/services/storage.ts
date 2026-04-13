@@ -19,6 +19,19 @@ export interface StorageBackend {
   healthy(): Promise<boolean>;
 }
 
+/** Reject filenames with traversal sequences or unsafe characters. */
+function assertSafeFilename(filename: string): void {
+  const normalized = path.posix.normalize(filename);
+  if (
+    normalized.startsWith('..') ||
+    normalized.includes('/../') ||
+    normalized.includes('\\') ||
+    normalized.includes('\0')
+  ) {
+    throw new Error('Invalid filename');
+  }
+}
+
 // ── Local Filesystem Backend ───────────────────────────────────────────────────
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -32,17 +45,18 @@ class LocalStorage implements StorageBackend {
   }
 
   async upload(buffer: Buffer, filename: string, _mimeType: string): Promise<string> {
+    assertSafeFilename(filename);
     const filePath = path.join(LOCAL_UPLOAD_DIR, filename);
     await fs.promises.writeFile(filePath, buffer);
     return `/uploads/${filename}`;
   }
 
   async delete(filename: string): Promise<void> {
+    assertSafeFilename(filename);
     const filePath = path.join(LOCAL_UPLOAD_DIR, filename);
     try {
       await fs.promises.unlink(filePath);
     } catch (err: unknown) {
-      // File may already be deleted — only warn, don't throw
       if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
         logger.warn({ filename, err }, '[storage:local] failed to delete file');
       }
@@ -54,9 +68,9 @@ class LocalStorage implements StorageBackend {
   }
 
   async read(filename: string): Promise<Buffer> {
-    // filename may include subdirectories (e.g. "logos/logo_abc.png")
+    assertSafeFilename(filename);
     const filePath = path.join(LOCAL_UPLOAD_DIR, filename);
-    // Guard against path traversal
+    // Double-check resolved path stays within upload dir
     if (!filePath.startsWith(LOCAL_UPLOAD_DIR)) {
       throw new Error('Invalid path');
     }
@@ -71,35 +85,41 @@ class LocalStorage implements StorageBackend {
 // ── Azure Blob Storage Backend ─────────────────────────────────────────────────
 
 class AzureBlobStorage implements StorageBackend {
-  private containerClient: import('@azure/storage-blob').ContainerClient | null = null;
-  private initialized = false;
+  /** Promise-based init lock — ensures only one init runs even under concurrency. */
+  private initPromise: Promise<import('@azure/storage-blob').ContainerClient> | null = null;
 
-  private async getContainer(): Promise<import('@azure/storage-blob').ContainerClient> {
-    if (this.containerClient) return this.containerClient;
+  private getContainer(): Promise<import('@azure/storage-blob').ContainerClient> {
+    if (!this.initPromise) {
+      this.initPromise = this._init();
+    }
+    return this.initPromise;
+  }
+
+  private async _init(): Promise<import('@azure/storage-blob').ContainerClient> {
     const { BlobServiceClient } = await import('@azure/storage-blob');
     const connStr = config.AZURE_STORAGE_CONNECTION_STRING!;
     const blobService = BlobServiceClient.fromConnectionString(connStr);
-    this.containerClient = blobService.getContainerClient(config.AZURE_STORAGE_CONTAINER);
-    if (!this.initialized) {
-      await this.containerClient.createIfNotExists({ access: 'blob' });
-      this.initialized = true;
-      logger.info({ container: config.AZURE_STORAGE_CONTAINER }, '[storage:azure] container ready');
-    }
-    return this.containerClient;
+    const containerClient = blobService.getContainerClient(config.AZURE_STORAGE_CONTAINER);
+    // Private container — blobs only accessible via connection string / SAS.
+    // All client access goes through the auth-gated /uploads proxy (SEC-6).
+    await containerClient.createIfNotExists();
+    logger.info({ container: config.AZURE_STORAGE_CONTAINER }, '[storage:azure] container ready');
+    return containerClient;
   }
 
   async upload(buffer: Buffer, filename: string, mimeType: string): Promise<string> {
+    assertSafeFilename(filename);
     const container = await this.getContainer();
     const blockBlob = container.getBlockBlobClient(filename);
     await blockBlob.uploadData(buffer, {
       blobHTTPHeaders: { blobContentType: mimeType },
     });
-    // Return relative URL — served through our auth-gated proxy route
     return `/uploads/${filename}`;
   }
 
   async delete(filename: string): Promise<void> {
     try {
+      assertSafeFilename(filename);
       const container = await this.getContainer();
       await container.getBlockBlobClient(filename).deleteIfExists();
     } catch (err) {
@@ -112,6 +132,7 @@ class AzureBlobStorage implements StorageBackend {
   }
 
   async read(filename: string): Promise<Buffer> {
+    assertSafeFilename(filename);
     const container = await this.getContainer();
     const blob = container.getBlockBlobClient(filename);
     const response = await blob.download(0);
