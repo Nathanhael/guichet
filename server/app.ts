@@ -314,13 +314,43 @@ v1Router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) 
  *         description: Database unreachable
  */
 v1Router.get('/health', async (_req: Request, res: Response) => {
+  const checks: Record<string, string> = {};
+  let healthy = true;
+
+  // Database
   try {
     await db.execute(sql`SELECT 1`);
-    res.json({ status: 'ok', database: 'connected' });
-  } catch (err) {
-    logger.error({ err }, 'Health check failed');
-    res.status(503).json({ status: 'error', database: 'disconnected' });
+    checks.database = 'connected';
+  } catch {
+    checks.database = 'disconnected';
+    healthy = false;
   }
+
+  // Redis
+  try {
+    const { getRedisClients } = await import('./utils/redis.js');
+    const { pubClient } = getRedisClients();
+    if (!pubClient) throw new Error('Redis not initialized');
+    await pubClient.ping();
+    checks.redis = 'connected';
+  } catch {
+    checks.redis = 'disconnected';
+    healthy = false;
+  }
+
+  // Storage backend
+  try {
+    const { getStorage } = await import('./services/storage.js');
+    const ok = await getStorage().healthy();
+    checks.storage = ok ? 'connected' : 'unhealthy';
+    if (!ok) healthy = false;
+  } catch {
+    checks.storage = 'error';
+    healthy = false;
+  }
+
+  const status = healthy ? 'ok' : 'degraded';
+  res.status(healthy ? 200 : 503).json({ status, ...checks });
 });
 
 // Internal E2E Seeding Endpoint — test environments only
