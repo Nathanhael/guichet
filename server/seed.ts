@@ -44,7 +44,7 @@ const DEPARTMENTS = [
     description: 'Deep technical troubleshooting',
     referenceFields: [
       { label: 'Product / System' },
-      { label: 'Error Code' },
+      { label: 'Error Code', optional: true },
     ],
   },
 ];

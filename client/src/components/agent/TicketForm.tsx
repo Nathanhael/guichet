@@ -31,7 +31,7 @@ export default function TicketForm({ manifest }: TicketFormProps) {
     [manifest.departments, dept],
   );
   const refFields = selectedDept?.referenceFields || [];
-  const allRefsFilledIn = refFields.length === 0 || references.every((r) => r.value.trim() !== '');
+  const allRefsFilledIn = refFields.length === 0 || references.every((r, i) => refFields[i]?.optional || r.value.trim() !== '');
 
   // Sync references when department changes
   useEffect(() => {
@@ -162,13 +162,13 @@ export default function TicketForm({ manifest }: TicketFormProps) {
                 {refFields.map((field, idx) => (
                   <div key={`${field.label}-${idx}`} className="space-y-1.5">
                     <label className="mono-label opacity-60">
-                      {field.label} *
+                      {field.label} {field.optional ? <span className="text-[8px] opacity-40">({t('optional')})</span> : '*'}
                     </label>
                     <input
                       type="text"
                       value={references.find((r) => r.label === field.label)?.value || ''}
                       onChange={(e) => updateReference(field.label, e.target.value)}
-                      required
+                      required={!field.optional}
                       className="input-field"
                     />
                   </div>
