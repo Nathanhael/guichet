@@ -15,32 +15,7 @@ import {
 } from '../../utils/businessHours';
 import { useBusinessHours } from '../../hooks/useBusinessHours';
 import { useT } from '../../i18n';
-
-const TIMEZONES = [
-  // Europe
-  'Europe/Brussels', 'Europe/London', 'Europe/Paris', 'Europe/Berlin',
-  'Europe/Amsterdam', 'Europe/Madrid', 'Europe/Rome', 'Europe/Zurich',
-  'Europe/Athens', 'Europe/Helsinki', 'Europe/Istanbul', 'Europe/Lisbon',
-  'Europe/Moscow', 'Europe/Warsaw',
-  // Americas
-  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-  'America/Anchorage', 'America/Toronto', 'America/Vancouver', 'America/Mexico_City',
-  'America/Sao_Paulo', 'America/Argentina/Buenos_Aires', 'America/Bogota',
-  // Middle East
-  'Asia/Dubai', 'Asia/Riyadh', 'Asia/Qatar', 'Asia/Bahrain', 'Asia/Kuwait',
-  'Asia/Jerusalem', 'Asia/Tehran',
-  // South & Southeast Asia
-  'Asia/Kolkata', 'Asia/Colombo', 'Asia/Dhaka', 'Asia/Karachi',
-  'Asia/Bangkok', 'Asia/Singapore', 'Asia/Jakarta', 'Asia/Manila',
-  'Asia/Kuala_Lumpur', 'Asia/Ho_Chi_Minh',
-  // East Asia & Oceania
-  'Asia/Tokyo', 'Asia/Shanghai', 'Asia/Hong_Kong', 'Asia/Seoul', 'Asia/Taipei',
-  'Australia/Sydney', 'Australia/Melbourne', 'Australia/Perth',
-  'Pacific/Auckland', 'Pacific/Honolulu',
-  // Africa
-  'Africa/Cairo', 'Africa/Lagos', 'Africa/Johannesburg', 'Africa/Nairobi',
-  'Africa/Casablanca',
-];
+import TimezonePicker from '../TimezonePicker';
 
 function cloneSchedule(schedule: BusinessHoursSchedule) {
   return JSON.parse(JSON.stringify(schedule)) as BusinessHoursSchedule;
@@ -79,7 +54,7 @@ function nextExceptionDate(schedule: BusinessHoursSchedule, timezone: string) {
 
 export default function AdminBusinessHours() {
   const t = useT();
-  const { schedule: fetchedSchedule, status, isLoading, refetch } = useBusinessHours();
+  const { schedule: fetchedSchedule, status, isLoading, invalidate } = useBusinessHours();
   const [schedule, setSchedule] = useState<BusinessHoursSchedule>(createDefaultBusinessHoursSchedule());
   const [isDirty, setIsDirty] = useState(false);
   const draftStatus = evaluateBusinessHoursStatus(schedule);
@@ -92,7 +67,7 @@ export default function AdminBusinessHours() {
         exceptions: sortBusinessHoursExceptions(data.schedule.exceptions),
       });
       setIsDirty(false);
-      await refetch();
+      await invalidate();
     },
   });
 
@@ -180,17 +155,14 @@ export default function AdminBusinessHours() {
       <div className="surface-card p-6 space-y-6">
         <div className="grid grid-cols-[220px_1fr_1fr] gap-6 items-end">
           <div>
-            <label className="mono-label mb-2 block">{t('bh_timezone')}</label>
-            <select
+            <TimezonePicker
+              label={t('bh_timezone')}
               value={schedule.timezone}
-              onChange={(e) => {
-                setSchedule((current) => ({ ...current, timezone: e.target.value }));
+              onChange={(tz) => {
+                setSchedule((current) => ({ ...current, timezone: tz }));
                 setIsDirty(true);
               }}
-              className="input-field w-full"
-            >
-              {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
-            </select>
+            />
           </div>
 
           <div className="border border-[var(--color-border)] p-4">

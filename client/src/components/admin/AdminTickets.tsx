@@ -3,7 +3,7 @@ import { useStoreShallow } from '../../store/useStore';
 import { trpc } from '../../utils/trpc';
 import ChatWindow from '../ChatWindow';
 import TicketPreview from '../TicketPreview';
-import { Ticket, Message } from '../../types';
+import { Ticket } from '../../types';
 import { useT } from '../../i18n';
 
 export default function AdminTickets() {
@@ -19,7 +19,6 @@ export default function AdminTickets() {
   const t = useT();
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicketId, setPreviewTicketId] = useState<string | null>(null);
-  const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
 
   // tRPC: Ticket List
   const ticketsQuery = trpc.ticket.list.useQuery(
@@ -34,20 +33,6 @@ export default function AdminTickets() {
       setTickets(ticketsQuery.data as Ticket[]);
     }
   }, [ticketsQuery.data, setTickets]);
-
-  // tRPC: Preview Messages
-  const messagesQuery = trpc.message.list.useQuery(
-    { ticketId: previewTicketId || '' },
-    {
-      enabled: !!previewTicketId,
-    }
-  );
-
-  useEffect(() => {
-    if (messagesQuery.data) {
-      setPreviewMessages(messagesQuery.data.messages as unknown as Message[]);
-    }
-  }, [messagesQuery.data]);
 
   const atMaxChats = supportOpenTickets.length >= 4;
 
@@ -136,7 +121,7 @@ export default function AdminTickets() {
                     </div>
                   )}
                   {!!unreadTickets[tk.id] && (
-                    <span className="absolute top-4 right-4 w-2 h-2 bg-[var(--color-text-primary)] shadow-sm" />
+                    <span className="absolute top-4 right-4 w-2 h-2 bg-[var(--color-text-primary)]" />
                   )}
                 </button>
               ))}
@@ -151,7 +136,6 @@ export default function AdminTickets() {
           <div className="h-full flex flex-col overflow-hidden">
             <TicketPreview
               ticket={tickets.find((t) => t.id === previewTicketId)!}
-              messages={previewMessages}
               onJoin={() => joinOpenTicket(tickets.find((t) => t.id === previewTicketId)!)}
               onClose={() => setPreviewTicketId(null)}
             />
@@ -180,7 +164,7 @@ export default function AdminTickets() {
                       : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] border-x border-transparent'
                   }`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${activeTab === tk.id ? 'bg-[var(--color-accent-blue)]' : 'bg-current opacity-30'}`} />
+                  <span className={`w-1.5 h-1.5 ${activeTab === tk.id ? 'bg-[var(--color-accent-blue)]' : 'bg-current opacity-30'}`} />
                   <span className="truncate flex-1 text-left uppercase tracking-tight">{tk.agentName}</span>
                   <button
                     onClick={(e) => {

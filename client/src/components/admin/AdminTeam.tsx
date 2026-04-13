@@ -4,6 +4,7 @@ import useStore, { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { Pencil, Check, X, Search, Users, Shield, User, UserX } from 'lucide-react';
 import Toast from '../Toast';
+import ConfirmDialog from '../ConfirmDialog';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import { OnlineSupport } from '../../types';
 
@@ -26,7 +27,9 @@ export default function AdminTeam() {
   const [onlineOnly, setOnlineOnly] = useState(false);
   const LIMIT = 20;
 
-  const { data, refetch, isLoading } = trpc.partner.listMembers.useQuery(
+  const utils = trpc.useUtils();
+  const invalidate = () => utils.partner.listMembers.invalidate();
+  const { data, isLoading } = trpc.partner.listMembers.useQuery(
     {
       limit: LIMIT,
       offset: page * LIMIT,
@@ -69,12 +72,12 @@ export default function AdminTeam() {
   }, [filteredData, onlineOnly, unconfiguredOnly, onlineStatusMap]);
 
   const removeMutation = trpc.partner.removeMember.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: invalidate,
     onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
   const updateMemberMutation = trpc.partner.updateMember.useMutation({
-    onSuccess: () => { setEditingMembershipId(null); refetch(); },
+    onSuccess: () => { setEditingMembershipId(null); invalidate(); },
     onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
@@ -83,6 +86,7 @@ export default function AdminTeam() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
   const [editDepts, setEditDepts] = useState<string[]>([]);
+  const [confirmRemove, setConfirmRemove] = useState<{ membershipId: string; name: string } | null>(null);
 
   const handleRoleFilter = (role: '' | 'agent' | 'support') => {
     setRoleFilter(role);
@@ -328,11 +332,7 @@ export default function AdminTeam() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => {
-                          if (confirm(`Remove ${member.name} from this partner?`)) {
-                            removeMutation.mutate({ membershipId: member.membershipId });
-                          }
-                        }}
+                        onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
                         className="p-2 text-[9px] font-bold uppercase tracking-widest text-text-muted hover:text-accent-red hover:bg-accent-red/5 transition-all opacity-40 hover:opacity-100"
                       >
                         Remove
@@ -375,8 +375,20 @@ export default function AdminTeam() {
         </div>
       )}
 
-      {showAddModal && <AddExistingUserModal onClose={() => setShowAddModal(false)} onAdded={() => { setShowAddModal(false); refetch(); }} />}
-      {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); refetch(); }} />}
+      {showAddModal && <AddExistingUserModal onClose={() => setShowAddModal(false)} onAdded={() => { setShowAddModal(false); invalidate(); }} />}
+      {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); invalidate(); }} />}
+      {confirmRemove && (
+        <ConfirmDialog
+          title={t('remove_member_title') || 'Remove Member'}
+          message={`Remove ${confirmRemove.name} from this partner? They will lose access to all partner resources.`}
+          confirmLabel={t('remove') || 'Remove'}
+          onConfirm={() => {
+            removeMutation.mutate({ membershipId: confirmRemove.membershipId });
+            setConfirmRemove(null);
+          }}
+          onCancel={() => setConfirmRemove(null)}
+        />
+      )}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );

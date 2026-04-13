@@ -4,9 +4,11 @@ import { trpc } from '../../utils/trpc';
 export default function AdminAlerts() {
   const [filter, setFilter] = useState<'active' | 'acknowledged' | 'resolved' | undefined>('active');
 
-  const { data: alerts, isLoading, refetch } = trpc.alerts.list.useQuery({ status: filter, limit: 50 });
-  const acknowledgeMutation = trpc.alerts.acknowledge.useMutation({ onSuccess: () => refetch() });
-  const resolveMutation = trpc.alerts.resolve.useMutation({ onSuccess: () => refetch() });
+  const utils = trpc.useUtils();
+  const { data: alerts, isLoading } = trpc.alerts.list.useQuery({ status: filter, limit: 50 });
+  const invalidate = () => utils.alerts.list.invalidate();
+  const acknowledgeMutation = trpc.alerts.acknowledge.useMutation({ onSuccess: invalidate });
+  const resolveMutation = trpc.alerts.resolve.useMutation({ onSuccess: invalidate });
 
   const FILTERS: { value: 'active' | 'acknowledged' | 'resolved' | undefined; label: string }[] = [
     { value: 'active', label: 'Active' },
