@@ -9,6 +9,7 @@ import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
 import { MailService } from '../../../services/mail.js';
 import { renderTestEmail } from '../../../services/mailTemplates.js';
+import { APP_NAME } from '../../../constants.js';
 
 export const platformSystemRouter = router({
   getSystemHealth: platformProcedure.query(async () => {
@@ -149,7 +150,7 @@ export const platformSystemRouter = router({
     .input(z.object({ email: z.string().email() }))
     .mutation(async ({ input, ctx }) => {
       const html = renderTestEmail({ operatorId: ctx.user.id, timestamp: new Date().toLocaleString() });
-      const success = await MailService.sendMail(input.email, 'Tessera - Mail Configuration Test', html);
+      const success = await MailService.sendMail(input.email, `${APP_NAME} - Mail Configuration Test`, html);
       if (!success) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send test email. Check server logs.' });
       }

@@ -65,6 +65,8 @@ const configSchema = z.object({
     AZURE_AD_CLIENT_ID: z.string().optional(),
     AZURE_AD_CLIENT_SECRET: z.string().optional(),
     AZURE_AD_REDIRECT_URI: z.string().url().optional(),
+    // CSV list of email domains treated as internal (SSO users from these domains skip invite emails)
+    INTERNAL_EMAIL_DOMAINS: z.string().optional().default(''),
     FRONTEND_URL: z.string().url().default('http://localhost:3001'),
     DISABLE_RATE_LIMIT: z.string().default('false').transform(v => v === 'true'),
     NODE_ENV: z.string().default('development'),
@@ -116,6 +118,7 @@ const parseResult = configSchema.safeParse({
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
     AZURE_AD_REDIRECT_URI: process.env.AZURE_AD_REDIRECT_URI,
+    INTERNAL_EMAIL_DOMAINS: process.env.INTERNAL_EMAIL_DOMAINS,
     FRONTEND_URL: process.env.FRONTEND_URL,
     DISABLE_RATE_LIMIT: process.env.DISABLE_RATE_LIMIT,
     NODE_ENV: process.env.NODE_ENV,
