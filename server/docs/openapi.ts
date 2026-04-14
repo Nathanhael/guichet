@@ -11,10 +11,10 @@
 export const openapiSpec = {
   openapi: '3.0.0',
   info: {
-    title: 'Tessera API',
+    title: 'Guichet API',
     version: '1.0.0',
     description:
-      'REST API endpoints for the Tessera multi-tenant live chat platform. tRPC endpoints are documented separately in the tRPC Reference section.',
+      'REST API endpoints for the Guichet multi-tenant live chat platform. tRPC endpoints are documented separately in the tRPC Reference section.',
   },
   servers: [{ url: '/api', description: 'API base' }],
   components: {

@@ -12,7 +12,7 @@ describe('SEC-6: /uploads route authentication guard', () => {
   });
 
   it('should have a JWT cookie check before serving uploads', () => {
-    // Find the /uploads block — must contain tessera_token check before file serving
+    // Find the /uploads block — must contain guichet_token check before file serving
     const uploadsBlock = appSource.match(
       /app\.use\(['"]\/uploads['"][\s\S]*?storage\.read\(/
     );
@@ -20,8 +20,8 @@ describe('SEC-6: /uploads route authentication guard', () => {
 
     const block = uploadsBlock![0];
 
-    // Must check tessera_token cookie
-    expect(block).toContain('tessera_token');
+    // Must check guichet_token cookie
+    expect(block).toContain('guichet_token');
 
     // Must call jwtVerify
     expect(block).toMatch(/jwtVerify\(/);
@@ -30,7 +30,7 @@ describe('SEC-6: /uploads route authentication guard', () => {
     expect(block).toContain('401');
 
     // Auth check must come BEFORE storage read
-    const authCheckPos = block.indexOf('tessera_token');
+    const authCheckPos = block.indexOf('guichet_token');
     const storagePos = block.indexOf('storage.read');
     expect(authCheckPos).toBeLessThan(storagePos);
   });

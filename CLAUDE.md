@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-Guidance for Claude Code when working with the Tessera codebase.
+Guidance for Claude Code when working with the Guichet codebase.
 
 ## Project Overview
 
-Tessera is a real-time, multi-tenant live chat platform with a brutalist design system. CSS custom property tokens drive the entire UI (light/dark mode), self-hosted JetBrains Mono + Inter fonts, zero external CDN dependencies.
+Guichet is a real-time, multi-tenant live chat platform with a brutalist design system. CSS custom property tokens drive the entire UI (light/dark mode), self-hosted JetBrains Mono + Inter fonts, zero external CDN dependencies.
 
 ## Commands
 

@@ -154,7 +154,7 @@ export async function findUserByEmail(email: string) {
   return rows[0];
 }
 
-const COOKIE_NAME = 'tessera_token';
+const COOKIE_NAME = 'guichet_token';
 const EXPIRY_COOKIE_NAME = 'session_expires';
 
 function cookieOptions(httpOnly: boolean) {

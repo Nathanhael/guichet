@@ -1,6 +1,6 @@
-# User Guide: Tessera Platform (Clean Slate)
+# User Guide: Guichet Platform (Clean Slate)
 
-Welcome to Tessera. This guide explains the core chat functionality, dynamic organizational structure, and the strict monochrome interface.
+Welcome to Guichet. This guide explains the core chat functionality, dynamic organizational structure, and the strict monochrome interface.
 
 ---
 
@@ -167,8 +167,8 @@ The chat header also shows the SLA timer for the active ticket.
 
 ## 6. Mobile Access (PWA)
 
-Tessera is a Progressive Web App — installable on mobile devices:
-- **Android**: Open Tessera in Chrome → tap "Add to Home Screen"
+Guichet is a Progressive Web App — installable on mobile devices:
+- **Android**: Open Guichet in Chrome → tap "Add to Home Screen"
 - **iOS**: Open in Safari → tap Share → "Add to Home Screen"
 - The app works in standalone mode (no browser chrome)
 - Cached assets load offline; API calls use network-first strategy

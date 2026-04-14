@@ -1,6 +1,6 @@
 # Azure Deployment Guide
 
-Pre-deployment checklist and configuration for running Tessera on Azure.
+Pre-deployment checklist and configuration for running Guichet on Azure.
 
 ## Environment Variables
 
@@ -70,7 +70,7 @@ Azure Redis Cache requires TLS. Use `rediss://` (double-s) in `REDIS_URL`:
 REDIS_URL=rediss://:your-access-key@your-cache.redis.cache.windows.net:6380
 ```
 
-The `ioredis` client used by Tessera auto-negotiates TLS when the protocol is `rediss://`.
+The `ioredis` client used by Guichet auto-negotiates TLS when the protocol is `rediss://`.
 
 **Do not** use the non-TLS port (6379) on Azure — it's disabled by default.
 
@@ -90,7 +90,7 @@ Returns `200 { status: "ok", database: "connected", redis: "connected", storage:
 
 ## File Uploads
 
-Tessera uses a storage backend abstraction. When `AZURE_STORAGE_CONNECTION_STRING` is set, uploads go to Azure Blob Storage. Otherwise, they use local disk (dev/Docker only).
+Guichet uses a storage backend abstraction. When `AZURE_STORAGE_CONNECTION_STRING` is set, uploads go to Azure Blob Storage. Otherwise, they use local disk (dev/Docker only).
 
 - Container is created as **private** — blobs are not publicly accessible
 - All file access goes through the auth-gated `/uploads` proxy

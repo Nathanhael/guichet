@@ -1,6 +1,6 @@
-# Technical Documentation: Tessera (Clean Slate)
+# Technical Documentation: Guichet (Clean Slate)
 
-This document provides an overview of the core architecture for the simplified, high-performance Tessera platform.
+This document provides an overview of the core architecture for the simplified, high-performance Guichet platform.
 
 ---
 
@@ -21,7 +21,7 @@ The database has been overhauled for type safety and performance:
 
 ## 2. Dynamic Organizational Structure
 
-Tessera is 100% data-driven. Hardcoded constants for departments have been removed.
+Guichet is 100% data-driven. Hardcoded constants for departments have been removed.
 - **Manifest-Driven**: Departments use an immutable `id`, display `name`, and optional `description`. The `SupportView` generates filters based on the `departments` JSONB array in the `partners` table.
 - **Multi-Department Assignments**: Users are assigned an array of department IDs (`memberships.departments`), serving as visibility filters. Generalists (`[]` or `null`) see all departments.
 - **Workspace Switching**: Users with memberships in multiple partners are presented with a "Choose Workspace" screen upon login to establish tenant context.

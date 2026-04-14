@@ -2,13 +2,13 @@
 
 ## Purpose
 
-This runbook defines how Tessera operators should use and recover break-glass access when normal admin access or SSO is unavailable.
+This runbook defines how Guichet operators should use and recover break-glass access when normal admin access or SSO is unavailable.
 
 Break-glass access is for emergency platform recovery only. It is not a normal operational path.
 
 ## Preconditions
 
-- break-glass accounts must be local Tessera accounts
+- break-glass accounts must be local Guichet accounts
 - passwords must be stored with `Argon2id`
 - credentials must be held in approved secure storage
 - account ownership must be documented
@@ -27,7 +27,7 @@ Use break-glass only when one of these is true:
 
 1. Confirm normal admin or SSO access is unavailable.
 2. Retrieve the break-glass credential through the approved access process.
-3. Log into Tessera using the local emergency account.
+3. Log into Guichet using the local emergency account.
 4. Complete TOTP step-up verification before attempting privileged platform actions.
 5. Perform only the minimum required recovery actions.
 6. Record:

@@ -25,7 +25,7 @@ export interface AuthRequest extends Request {
 }
 
 export const auth = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const token: string | undefined = req.cookies?.tessera_token;
+  const token: string | undefined = req.cookies?.guichet_token;
 
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });

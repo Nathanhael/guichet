@@ -2,9 +2,9 @@
 
 ## Current Scope
 
-Tessera currently models only internal company users. Tenant-company end users are out of scope for now and should not drive the authentication design.
+Guichet currently models only internal company users. Tenant-company end users are out of scope for now and should not drive the authentication design.
 
-- `users` are internal employees of Tessera
+- `users` are internal employees of Guichet
 - `partners` are customer organizations and should be treated as tenants
 - `memberships` link internal users to one or more tenants
 
@@ -32,7 +32,7 @@ Authentication and tenant access are separate concerns.
 
 Production default:
 
-- internal users authenticate with Tessera-controlled identity
+- internal users authenticate with Guichet-controlled identity
 - preferred path is Microsoft Entra / Azure SSO
 - local passwords are allowed for development, testing, break-glass accounts, or external agents without Azure AD access
 
@@ -106,7 +106,7 @@ SSO group mapping:
 
 - `partner_group_mappings` table maps SSO group names to tenant roles and departments
 - on SSO login, matched groups automatically provision or update memberships
-- allows Azure AD group membership to drive Tessera authorization without manual admin work
+- allows Azure AD group membership to drive Guichet authorization without manual admin work
 
 ## Data Model
 
@@ -242,7 +242,7 @@ Protected paths now include:
 
 If break-glass accounts are needed:
 
-- keep them local to Tessera, not dependent on external SSO availability
+- keep them local to Guichet, not dependent on external SSO availability
 - store passwords with `Argon2id`
 - keep them separate from normal daily accounts
 - protect them with strong secrets and out-of-band storage procedures
