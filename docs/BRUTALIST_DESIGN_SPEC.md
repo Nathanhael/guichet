@@ -1,4 +1,4 @@
-# Tessera Brutalist Redesign — Design Spec
+# Guichet Brutalist Redesign — Design Spec
 
 **Date**: 2026-03-26
 **Branch**: `feature/brutalist-redesign` (to be created)

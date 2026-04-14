@@ -114,7 +114,7 @@ export function refreshRateLimit(req: Request, res: Response, next: () => void):
 }
 
 export function setRefreshCookie(res: Response, token: string, maxAgeSecs: number): void {
-  res.cookie('tessera_refresh', token, {
+  res.cookie('guichet_refresh', token, {
     httpOnly: true,
     secure: config.COOKIE_SECURE,
     sameSite: 'lax',
@@ -125,7 +125,7 @@ export function setRefreshCookie(res: Response, token: string, maxAgeSecs: numbe
 }
 
 export function clearRefreshCookie(res: Response): void {
-  res.clearCookie('tessera_refresh', {
+  res.clearCookie('guichet_refresh', {
     httpOnly: true,
     secure: config.COOKIE_SECURE,
     sameSite: 'lax',

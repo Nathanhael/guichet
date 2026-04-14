@@ -167,7 +167,7 @@ describe('auth enter-partner route', () => {
 
     // Token should be in Set-Cookie header, not response body
     const cookies = res.headers['set-cookie'];
-    const tokenCookie = (Array.isArray(cookies) ? cookies : [cookies]).find((c: string) => c.startsWith('tessera_token='));
+    const tokenCookie = (Array.isArray(cookies) ? cookies : [cookies]).find((c: string) => c.startsWith('guichet_token='));
     expect(tokenCookie).toBeDefined();
     const cookieToken = tokenCookie!.split(';')[0].split('=').slice(1).join('=');
     const secret = new TextEncoder().encode('test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!');

@@ -113,13 +113,13 @@ describe('auth session helpers', () => {
       };
     }
 
-    it('setAuthCookie sets tessera_token as httpOnly and session_expires as non-httpOnly', () => {
+    it('setAuthCookie sets guichet_token as httpOnly and session_expires as non-httpOnly', () => {
       const res = makeMockRes();
       setAuthCookie(res as never, 'my.jwt.token', 86400);
 
       expect(res.cookie).toHaveBeenCalledTimes(2);
 
-      const tokenCall = res._cookies['tessera_token'];
+      const tokenCall = res._cookies['guichet_token'];
       expect(tokenCall).toBeDefined();
       expect(tokenCall.value).toBe('my.jwt.token');
       expect(tokenCall.options.httpOnly).toBe(true);
@@ -136,7 +136,7 @@ describe('auth session helpers', () => {
       clearAuthCookie(res as never);
 
       expect(res.clearCookie).toHaveBeenCalledTimes(2);
-      expect(res._cleared['tessera_token']).toBeDefined();
+      expect(res._cleared['guichet_token']).toBeDefined();
       expect(res._cleared['session_expires']).toBeDefined();
     });
   });

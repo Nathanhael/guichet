@@ -169,7 +169,7 @@ app.use(metricsMiddleware);
 // Uploads require authentication — prevents public access to uploaded files (SEC-6).
 // Files are served through the storage backend (local disk or Azure Blob Storage).
 app.use('/uploads', async (req: Request, res: Response) => {
-  const token = req.cookies?.tessera_token;
+  const token = req.cookies?.guichet_token;
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
   }
@@ -214,7 +214,7 @@ if (process.env.NODE_ENV !== 'production') {
   const { openapiSpec } = await import('./docs/openapi.js');
   v1Router.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiSpec, {
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Tessera API Documentation',
+    customSiteTitle: 'Guichet API Documentation',
   }));
 
   // Serve tRPC reference markdown as plain text

@@ -1,6 +1,6 @@
 # AWS Deployment Guide
 
-Pre-deployment checklist and configuration for running Tessera on AWS Free Tier.
+Pre-deployment checklist and configuration for running Guichet on AWS Free Tier.
 
 ## Architecture (Free Tier)
 

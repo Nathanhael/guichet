@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Tessera are documented here.
+All notable changes to Guichet are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [4.1.0] - 2026-04-11
