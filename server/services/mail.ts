@@ -5,6 +5,7 @@ import { systemSettings, users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 import config from '../config.js';
+import { APP_NAME } from '../constants.js';
 
 export type NotificationType = 'accountLocked' | 'mfaEnabled' | 'mfaDisabled' | 'passwordChanged';
 
@@ -104,7 +105,7 @@ export class MailService {
     const { renderPasswordReset } = await import('./mailTemplates.js');
     const resetLink = `${config.FRONTEND_URL}/reset-password?token=${token}`;
     const html = renderPasswordReset({ name, resetLink, brand });
-    return this.sendMail(email, 'Reset your Tessera Password', html);
+    return this.sendMail(email, `Reset your ${APP_NAME} Password`, html);
   }
 
   /** Check if a user has opted out of a notification type. Missing key = opted in (default true). */
@@ -123,27 +124,27 @@ export class MailService {
     if (userId && !(await this.shouldNotify(userId, 'accountLocked'))) return false;
     const { renderAccountLocked } = await import('./mailTemplates.js');
     const html = renderAccountLocked({ name, lockedMinutes });
-    return this.sendMail(email, 'Tessera — Account Temporarily Locked', html);
+    return this.sendMail(email, `${APP_NAME} — Account Temporarily Locked`, html);
   }
 
   static async sendMfaEnabled(email: string, name: string, userId?: string) {
     if (userId && !(await this.shouldNotify(userId, 'mfaEnabled'))) return false;
     const { renderMfaEnabled } = await import('./mailTemplates.js');
     const html = renderMfaEnabled({ name });
-    return this.sendMail(email, 'Tessera — Two-Factor Authentication Enabled', html);
+    return this.sendMail(email, `${APP_NAME} — Two-Factor Authentication Enabled`, html);
   }
 
   static async sendMfaDisabledByAdmin(email: string, name: string, userId?: string) {
     if (userId && !(await this.shouldNotify(userId, 'mfaDisabled'))) return false;
     const { renderMfaDisabledByAdmin } = await import('./mailTemplates.js');
     const html = renderMfaDisabledByAdmin({ name });
-    return this.sendMail(email, 'Tessera — Two-Factor Authentication Disabled', html);
+    return this.sendMail(email, `${APP_NAME} — Two-Factor Authentication Disabled`, html);
   }
 
   static async sendAccountUnlocked(email: string, name: string) {
     // Account unlock is always sent (security-critical, no opt-out)
     const { renderAccountUnlocked } = await import('./mailTemplates.js');
     const html = renderAccountUnlocked({ name });
-    return this.sendMail(email, 'Tessera — Account Unlocked', html);
+    return this.sendMail(email, `${APP_NAME} — Account Unlocked`, html);
   }
 }
