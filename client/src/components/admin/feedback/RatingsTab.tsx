@@ -7,13 +7,15 @@ import { aggregateSupportRatings, buildUserMaps, RatingInput, UserInput, DeptBre
 export default function RatingsTab() {
   const [selectedSupport, setSelectedSupport] = useState('ALL');
   const { manifest } = usePartner();
-  const departments = manifest.departments || [];
-  const deptIds = useMemo(() => departments.map((d) => d.id), [departments]);
+  const departments = useMemo(() => manifest.departments || [], [manifest.departments]);
+  const deptIdKey = departments.map((d) => d.id).join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const deptIds = useMemo(() => departments.map((d) => d.id), [deptIdKey]);
 
   const ratingsQuery = trpc.rating.list.useQuery({ limit: 200 });
   const { data: usersData } = trpc.user.list.useQuery();
 
-  const users = (usersData?.users || []) as unknown as UserInput[];
+  const users: UserInput[] = usersData?.users ?? [];
   const ratings = (ratingsQuery.data?.items || []) as RatingInput[];
   const loading = ratingsQuery.isLoading;
 
@@ -252,7 +254,8 @@ function SupportDetail({
   onBack: () => void;
 }) {
   if (!entry) return null;
-  const avg = (entry.sum / entry.total).toFixed(1);
+  const hasRatings = entry.total > 0;
+  const avg = hasRatings ? (entry.sum / entry.total).toFixed(1) : '—';
 
   // Responsive grid: 1 column on narrow, 2+ on medium+ — handles any dept count.
   const gridCols = departments.length <= 1
@@ -274,7 +277,7 @@ function SupportDetail({
           <div className="text-right">
             <p className="text-2xl font-bold leading-none">{avg}</p>
             <div className="mt-1">
-              <Stars value={Math.round(entry.sum / entry.total)} />
+              <Stars value={hasRatings ? Math.round(entry.sum / entry.total) : 0} />
             </div>
           </div>
           <div className="h-10 w-px bg-[var(--color-border)] mx-1" />
