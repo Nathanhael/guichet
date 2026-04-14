@@ -18,7 +18,7 @@ import {
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { exportDashboardCSV, exportDashboardPDF, DashboardStats } from '../../utils/exportDashboard';
-import { Download, FileText, AlertTriangle } from 'lucide-react';
+import { Download, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
 
 /** Shared Recharts tooltip styles using brutalist design tokens */
 const tooltipStyle: React.CSSProperties = {
@@ -94,7 +94,7 @@ export default function AdminStats() {
     setActivePreset(key);
   }
 
-  const { data: stats, isLoading } = trpc.stats.getGlobalStats.useQuery(
+  const statsQuery = trpc.stats.getGlobalStats.useQuery(
     {
       dept: statsDept === 'all' ? undefined : statsDept,
       dateFrom: statsDateFrom || undefined,
@@ -102,14 +102,35 @@ export default function AdminStats() {
     },
     { refetchInterval: 30000 }
   );
+  const { data: stats, isLoading, error: statsError, refetch: refetchStats } = statsQuery;
 
-  const { data: onlineTeam } = trpc.status.getTeamStatus.useQuery(undefined, {
+  const { data: onlineTeam, error: onlineError } = trpc.status.getTeamStatus.useQuery(undefined, {
     refetchInterval: 15000,
   });
   const onlineUsers = (onlineTeam || []) as Array<{ userId: string; name: string; role: string; status: string }>;
   const availableCount = onlineUsers.filter(u => u.status === 'online').length;
   const totalOnline = onlineUsers.length;
   const capacityPct = totalOnline > 0 ? Math.round((availableCount / totalOnline) * 100) : 0;
+
+  if (statsError) {
+    return (
+      <div className="min-w-[1280px] max-w-7xl mx-auto p-4">
+        <div className="border-2 border-[var(--color-accent-red)] bg-[var(--color-bg-surface)] p-8 flex flex-col items-center justify-center gap-4">
+          <AlertTriangle className="h-10 w-10 text-[var(--color-accent-red)]" />
+          <div className="text-center">
+            <h2 className="text-lg font-bold uppercase tracking-wide text-[var(--color-accent-red)]">Failed to load dashboard</h2>
+            <p className="text-xs uppercase font-mono text-[var(--color-text-muted)] mt-2 max-w-md">{statsError.message}</p>
+          </div>
+          <button
+            onClick={() => refetchStats()}
+            className="btn-primary flex items-center gap-2"
+          >
+            <RefreshCw className="h-3.5 w-3.5" /> Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading || !stats) {
     return (
@@ -277,7 +298,9 @@ export default function AdminStats() {
           </Panel>
 
           <Panel title="Online now" badge={`${totalOnline}`}>
-            {onlineUsers.length === 0 ? (
+            {onlineError ? (
+              <p className="text-xs uppercase font-bold text-[var(--color-accent-red)] py-2 text-center">Failed to load team status</p>
+            ) : onlineUsers.length === 0 ? (
               <p className="text-sm text-text-muted py-2 text-center">{t('no_data') || 'No agents online'}</p>
             ) : (
               <>
@@ -435,7 +458,7 @@ function sentimentLabel(score: number): string {
 }
 
 function SentimentPanel({ stats }: { stats: DashboardData }) {
-  const { data: negativeTix } = trpc.ai.getNegativeSentimentTickets.useQuery(
+  const { data: negativeTix, error: negativeError } = trpc.ai.getNegativeSentimentTickets.useQuery(
     { limit: 10 },
     { refetchInterval: 30000 }
   );
@@ -498,7 +521,9 @@ function SentimentPanel({ stats }: { stats: DashboardData }) {
 
       {/* Needs Attention */}
       <Panel title="Needs Attention">
-        {!negativeTix || !Array.isArray(negativeTix) || negativeTix.length === 0 ? (
+        {negativeError ? (
+          <p className="text-xs uppercase font-bold text-[var(--color-accent-red)] py-4 text-center">Failed to load sentiment data</p>
+        ) : !negativeTix || !Array.isArray(negativeTix) || negativeTix.length === 0 ? (
           <p className="text-sm text-[var(--color-text-secondary)] py-4 text-center">No negative sentiment tickets</p>
         ) : (
           <div className="space-y-2 max-h-[200px] overflow-y-auto">
@@ -545,7 +570,7 @@ function StarRating({ value }: { value: number }) {
 }
 
 function TeamSatisfaction({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
-  const { data: staffRatings, isLoading } = trpc.rating.getStaffRatings.useQuery(
+  const { data: staffRatings, isLoading, error: ratingsError } = trpc.rating.getStaffRatings.useQuery(
     {
       dateFrom: dateFrom || undefined,
       dateTo: dateTo || undefined,
@@ -555,7 +580,9 @@ function TeamSatisfaction({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
 
   return (
     <Panel title="Team Satisfaction">
-      {isLoading ? (
+      {ratingsError ? (
+        <p className="text-xs uppercase font-bold text-[var(--color-accent-red)] py-4 text-center">Failed to load ratings</p>
+      ) : isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : !staffRatings || staffRatings.length === 0 ? (
         <p className="text-sm text-[var(--color-text-secondary)]">No ratings yet</p>
