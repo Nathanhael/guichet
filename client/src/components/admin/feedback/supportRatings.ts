@@ -29,7 +29,6 @@ export interface RatingInput {
 export interface UserInput {
   id: string;
   name: string;
-  email: string;
   roles: string[] | null;
   dept?: string;
 }
