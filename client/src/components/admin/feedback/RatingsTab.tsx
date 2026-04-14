@@ -1,10 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Stars, Skeleton } from '../DashboardHelpers';
 import { trpc } from '../../../utils/trpc';
-import { aggregateSupportRatings, buildUserMaps, RatingInput, UserInput } from './supportRatings';
+import { usePartner } from '../../../hooks/usePartner';
+import { aggregateSupportRatings, buildUserMaps, RatingInput, UserInput, DeptBreakdown as DeptBreakdownData } from './supportRatings';
 
 export default function RatingsTab() {
   const [selectedSupport, setSelectedSupport] = useState('ALL');
+  const { manifest } = usePartner();
+  const departments = manifest.departments || [];
+  const deptIds = useMemo(() => departments.map((d) => d.id), [departments]);
 
   const ratingsQuery = trpc.rating.list.useQuery({ limit: 200 });
   const { data: usersData } = trpc.user.list.useQuery();
@@ -14,7 +18,10 @@ export default function RatingsTab() {
   const loading = ratingsQuery.isLoading;
 
   const maps = useMemo(() => buildUserMaps(users), [users]);
-  const supportRatings = useMemo(() => aggregateSupportRatings(ratings, maps), [ratings, maps]);
+  const supportRatings = useMemo(
+    () => aggregateSupportRatings(ratings, maps, deptIds),
+    [ratings, maps, deptIds],
+  );
   const { supportNameMap } = maps;
 
   if (loading) {
@@ -175,6 +182,7 @@ export default function RatingsTab() {
             <SupportDetail
               name={selectedSupport}
               entry={supportRatings[selectedSupport]}
+              departments={departments}
               onBack={() => setSelectedSupport('ALL')}
             />
           )}
@@ -226,17 +234,32 @@ export default function RatingsTab() {
   );
 }
 
+interface DeptInfo {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 function SupportDetail({
   name,
   entry,
+  departments,
   onBack: _onBack,
 }: {
   name: string;
   entry: ReturnType<typeof aggregateSupportRatings>[string] | undefined;
+  departments: DeptInfo[];
   onBack: () => void;
 }) {
   if (!entry) return null;
   const avg = (entry.sum / entry.total).toFixed(1);
+
+  // Responsive grid: 1 column on narrow, 2+ on medium+ — handles any dept count.
+  const gridCols = departments.length <= 1
+    ? 'grid-cols-1'
+    : departments.length === 2
+      ? 'grid-cols-1 md:grid-cols-2'
+      : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
 
   return (
     <div className="surface-card p-6">
@@ -261,29 +284,44 @@ function SupportDetail({
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-6 mt-6">
-        <DeptBreakdown code="DSC" label="Customer Support" data={entry.depts.DSC} />
-        <DeptBreakdown code="FOT" label="Front Office Team" data={entry.depts.FOT} />
-      </div>
+      {departments.length === 0 ? (
+        <p className="text-sm text-[var(--color-text-secondary)] mt-6 py-6 text-center border-2 border-dashed border-[var(--color-border)]">
+          No departments configured for this partner
+        </p>
+      ) : (
+        <div className={`grid gap-6 mt-6 ${gridCols}`}>
+          {departments.map((dept) => (
+            <DeptBreakdownCard
+              key={dept.id}
+              deptId={dept.id}
+              deptName={dept.name}
+              description={dept.description}
+              data={entry.depts[dept.id] ?? { total: 0, sum: 0, count5: 0, countLow: 0 }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function DeptBreakdown({
-  code,
-  label,
+function DeptBreakdownCard({
+  deptId,
+  deptName,
+  description,
   data,
 }: {
-  code: string;
-  label: string;
-  data: { total: number; sum: number; count5: number; countLow: number };
+  deptId: string;
+  deptName: string;
+  description?: string;
+  data: DeptBreakdownData;
 }) {
   return (
     <div className="bg-bg-elevated p-5 border border-[var(--color-border)] relative overflow-hidden">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <span className="text-sm font-bold uppercase tracking-wide">{code}</span>
-          <p className="text-xs text-[var(--color-text-secondary)]">{label}</p>
+          <span className="text-sm font-bold uppercase tracking-wide">{deptName}</span>
+          {description && <p className="text-xs text-[var(--color-text-secondary)]">{description}</p>}
         </div>
         <span className="text-xs font-bold bg-bg-elevated px-3 py-1">{data.total} ratings</span>
       </div>
@@ -306,7 +344,7 @@ function DeptBreakdown({
         </div>
       ) : (
         <div className="py-6 text-center border-2 border-dashed border-[var(--color-border)]">
-          <p className="text-sm text-[var(--color-text-secondary)]">No {code} ratings</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">No {deptId} ratings</p>
         </div>
       )}
     </div>
