@@ -1,17 +1,17 @@
 import { Rating } from '../../../types';
 
+export interface DeptBreakdown {
+  total: number;
+  sum: number;
+  count5: number;
+  countLow: number;
+}
+
 export interface SupportRatingEntry {
   total: number;
   sum: number;
   ratings: Rating[];
-  depts: {
-    [key: string]: {
-      total: number;
-      sum: number;
-      count5: number;
-      countLow: number;
-    };
-  };
+  depts: Record<string, DeptBreakdown>;
 }
 
 export type SupportRatings = Record<string, SupportRatingEntry>;
@@ -50,9 +50,22 @@ export function buildUserMaps(users: UserInput[]): UserMaps {
   return { agentDeptMap, supportNameMap };
 }
 
+function emptyDeptMap(deptIds: string[]): Record<string, DeptBreakdown> {
+  const depts: Record<string, DeptBreakdown> = {};
+  for (const id of deptIds) {
+    depts[id] = { total: 0, sum: 0, count5: 0, countLow: 0 };
+  }
+  return depts;
+}
+
+/**
+ * Aggregate ratings by support staff, breaking down per partner department.
+ * `deptIds` comes from the active partner's manifest — no hardcoded DSC/FOT.
+ */
 export function aggregateSupportRatings(
   ratings: RatingInput[],
   maps: UserMaps,
+  deptIds: string[],
 ): SupportRatings {
   const result: SupportRatings = {};
   for (const r of ratings) {
@@ -62,10 +75,7 @@ export function aggregateSupportRatings(
         total: 0,
         sum: 0,
         ratings: [],
-        depts: {
-          DSC: { total: 0, sum: 0, count5: 0, countLow: 0 },
-          FOT: { total: 0, sum: 0, count5: 0, countLow: 0 },
-        },
+        depts: emptyDeptMap(deptIds),
       };
     }
     result[name].total++;
