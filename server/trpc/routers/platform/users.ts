@@ -13,9 +13,17 @@ import { revokeUserSessions } from '../../../services/sessionRevocation.js';
 import { APP_NAME } from '../../../constants.js';
 import config from '../../../config.js';
 
-/** Internal SSO users (Azure AD-backed, email domain in the configured list) don't need invite emails. */
-function isInternalSsoUser(email: string, authMethod: string): boolean {
-  if (authMethod !== 'sso') return false;
+/**
+ * Should we skip the invite email for this user?
+ *
+ * Skipped when the partner supports SSO (`sso` or `both`) AND the email domain
+ * is in the configured internal-domain list. These users authenticate via
+ * Azure AD regardless of the partner's local-fallback option, so a password
+ * email would be noise (and a mild security smell — sending a temp password
+ * to an account that will never use local auth).
+ */
+function shouldSkipInviteMail(email: string, partnerAuthMethod: string): boolean {
+  if (partnerAuthMethod !== 'sso' && partnerAuthMethod !== 'both') return false;
   const domains = config.INTERNAL_EMAIL_DOMAINS.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
   if (domains.length === 0) return false;
   const emailDomain = email.split('@')[1]?.toLowerCase();
@@ -210,10 +218,11 @@ export const platformUsersRouter = router({
           departments: input.departments || []
         });
 
-        // Skip invite email for internal SSO users — they're provisioned via Azure AD and don't need notification
-        const skipInviteEmail = isInternalSsoUser(input.email, userAuthMethod);
+        // Skip invite email for internal SSO users — they're provisioned via Azure AD and don't need notification.
+        // Checks partner auth capability (not resolved user method) so 'both' partners still skip for internal domains.
+        const skipInviteEmail = shouldSkipInviteMail(input.email, partner[0].authMethod);
         if (skipInviteEmail) {
-          logger.info({ email: input.email, authMethod: userAuthMethod }, '[inviteUser] Skipping invite email for internal SSO user');
+          logger.info({ email: input.email, partnerAuthMethod: partner[0].authMethod }, '[inviteUser] Skipping invite email for internal SSO user');
         } else {
           try {
             const partnerName = (await db.select({ name: partners.name }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0]?.name || input.partnerId;
@@ -237,7 +246,7 @@ export const platformUsersRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: userId,
-          metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: userAuthMethod }
+          metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: userAuthMethod, emailSkipped: skipInviteEmail }
         });
 
         return { userId, membershipId: memId, tempPassword: tempPassword ?? '', isExistingUser: isExistingUser ?? false };
@@ -270,6 +279,23 @@ export const platformUsersRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'User or Partner not found' });
         }
 
+        // Skip reminder for internal SSO users (provisioned via Azure AD).
+        // Checked BEFORE hashing a password or rendering a template to avoid wasted work
+        // and — more importantly — to avoid rotating the password on an SSO-only user.
+        if (shouldSkipInviteMail(user.email ?? '', partner.authMethod)) {
+          logger.info({ userId: user.id, email: user.email, partnerAuthMethod: partner.authMethod }, '[resendInvite] Skipping reminder for internal SSO user');
+          await db.insert(auditLog).values({
+            id: randomUUID(),
+            action: 'member.invite_resent',
+            actorId: ctx.user.id,
+            partnerId: input.partnerId,
+            targetType: 'user',
+            targetId: user.id,
+            metadata: { email: user.email, emailSkipped: true }
+          });
+          return { success: true, skipped: true };
+        }
+
         const isLocal = partner.authMethod === 'local';
         let tempPassword: string | null = null;
 
@@ -288,13 +314,6 @@ export const platformUsersRouter = router({
           brand: { partnerName: partner.name },
         });
 
-        // Skip reminder for internal SSO users (provisioned via Azure AD)
-        const resolvedAuthMethod = partner.authMethod === 'both' ? 'sso' : partner.authMethod;
-        if (isInternalSsoUser(user.email ?? '', resolvedAuthMethod)) {
-          logger.info({ userId: user.id, email: user.email }, '[resendInvite] Skipping reminder for internal SSO user');
-          return { success: true, skipped: true };
-        }
-
         await MailService.sendMail(user.email!, `Reminder: Invitation to join ${partner.name}`, welcomeHtml);
 
         await db.insert(auditLog).values({
@@ -304,7 +323,7 @@ export const platformUsersRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: user.id,
-          metadata: { email: user.email }
+          metadata: { email: user.email, emailSkipped: false }
         });
 
         return { success: true };
