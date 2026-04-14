@@ -24,29 +24,30 @@ export interface RatingInput {
   rating: number;
   comment: string | null;
   createdAt: string;
+  /** Ticket department, joined server-side from tickets.dept */
+  dept: string | null;
 }
 
 export interface UserInput {
   id: string;
   name: string;
   roles: string[] | null;
-  dept?: string;
 }
 
 export interface UserMaps {
-  agentDeptMap: Record<string, string>;
+  /** Map of userId → display name for support/admin staff */
   supportNameMap: Record<string, string>;
 }
 
 export function buildUserMaps(users: UserInput[]): UserMaps {
-  const agentDeptMap: Record<string, string> = {};
   const supportNameMap: Record<string, string> = {};
   for (const u of users) {
     const roles = u.roles || [];
-    if (roles.includes('agent')) agentDeptMap[u.id] = u.dept || 'N/A';
-    if (roles.includes('support') || roles.includes('admin')) supportNameMap[u.id] = u.name;
+    if (roles.includes('support') || roles.includes('admin') || roles.includes('agent')) {
+      supportNameMap[u.id] = u.name;
+    }
   }
-  return { agentDeptMap, supportNameMap };
+  return { supportNameMap };
 }
 
 function emptyDeptMap(deptIds: string[]): Record<string, DeptBreakdown> {
@@ -81,7 +82,9 @@ export function aggregateSupportRatings(
     result[name].sum += r.rating;
     result[name].ratings.push(r as Rating);
 
-    const dept = maps.agentDeptMap[r.agentId];
+    // Group by ticket.dept (joined server-side). Falls outside any bucket if
+    // the ticket's dept has since been removed from the partner manifest.
+    const dept = r.dept;
     if (dept && result[name].depts[dept]) {
       const d = result[name].depts[dept];
       d.total++;
