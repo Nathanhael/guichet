@@ -39,21 +39,48 @@ async function loginAsDemo(page: Page, userId: string) {
 /** Open the first available ticket in the sidebar (support view). */
 async function openFirstTicket(page: Page) {
   // QueueTicketRow stamps `data-ticket-row` + `data-ticket-variant` on its
-  // `<li>`. Scoping to `variant="queue"` avoids two layout traps:
-  //   - the "Other Agents" collapsible section header (no variant attr),
-  //   - Lucas-style demo users whose pre-assigned tickets land under
-  //     "mine"/"other" on a fresh login before he actively joins them.
-  // The `support_qa` fixture has empty assignments, so everything renders
-  // as `variant="queue"` and is directly clickable.
-  const ticket = page
-    .locator('li[data-ticket-row][data-ticket-variant="queue"]')
+  // `<li>`. Preferred targets are "mine" or "queue":
+  //   - "queue"  → unassigned (first test run after a fresh seed)
+  //   - "mine"   → tickets this support user has in an active tab in *this*
+  //                browser context (supportOpenTickets client state)
+  // Fallback is "other":
+  //   - Every click-into-ticket flips the server-side ticket.supportId, but
+  //     `supportOpenTickets` is a local zustand slice with no persistence.
+  //     On the NEXT test's fresh login it resets to [], so any ticket we
+  //     joined (including the seeded one) shows up under "Other Agents"
+  //     instead of "Mine". That section is collapsed by default.
+  // Strategy: try mine-or-queue (5 s budget — fast path for fresh/early
+  // tests), then fall back to expanding "Other Agents" and clicking the
+  // first row there.
+  const mineOrQueue = page
+    .locator(
+      'li[data-ticket-row][data-ticket-variant="mine"], ' +
+      'li[data-ticket-row][data-ticket-variant="queue"]'
+    )
     .first();
-  await ticket.waitFor({ state: 'visible', timeout: 20000 });
+
+  let ticket = mineOrQueue;
+  try {
+    await mineOrQueue.waitFor({ state: 'visible', timeout: 5000 });
+  } catch {
+    // Fall back to the "Other Agents" section. Its header is an <li>
+    // containing the literal "Other Agents" label; clicking it toggles
+    // the collapsible.
+    const otherToggle = page
+      .locator('li', { hasText: /other agents/i })
+      .first();
+    await otherToggle.waitFor({ state: 'visible', timeout: 15000 });
+    await otherToggle.click();
+    ticket = page
+      .locator('li[data-ticket-row][data-ticket-variant="other"]')
+      .first();
+    await ticket.waitFor({ state: 'visible', timeout: 10000 });
+  }
 
   // Trigger the QueueTicketRow's onMouseEnter/onFocus prefetch for the lazy
   // ComposeArea chunk *before* we click. `.hover()` dispatches mouseenter
   // which kicks off the dynamic `import()` early — without this, the chunk
-  // fetch only starts when the chat window renders, and the 25 s `.ProseMirror`
+  // fetch only starts when the chat window renders, and the 35 s `.ProseMirror`
   // wait below races the 460 KB `vendor-editor` download on cold Docker cache.
   await ticket.hover();
   // Settle for in-flight queue re-renders and give the prefetch a few frames
