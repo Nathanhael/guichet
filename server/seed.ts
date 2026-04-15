@@ -167,6 +167,13 @@ const PARTNER_USERS: SeedUser[] = [
   { id: 'agent_marc',     name: 'Marc Agent',     email: 'marc@acme.test',    lang: 'en', role: 'agent',   departments: [] },
   { id: 'agent_sarah',    name: 'Sarah Agent',    email: 'sarah@acme.test',   lang: 'en', role: 'agent',   departments: [] },
   { id: 'agent_marie',    name: 'Marie Agent',    email: 'marie@acme.test',   lang: 'en', role: 'agent',   departments: [] },
+  // QA fixtures — intentionally kept free of pre-seeded tickets so E2E tests
+  // (see testing/e2e/chat-enhancements.spec.ts) can log in as them without
+  // colliding with the 1-ticket-per-agent guard or the queue-variant layout
+  // of demo users. Do not attach tickets or departments here without updating
+  // that spec.
+  { id: 'support_qa',     name: 'QA Support',     email: 'support_qa@acme.test', lang: 'en', role: 'support', departments: ['DSC', 'FOT', 'TEC'] },
+  { id: 'agent_qa',       name: 'QA Agent',       email: 'agent_qa@acme.test',   lang: 'en', role: 'agent',   departments: [] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -315,6 +322,9 @@ async function seedMinimal() {
   console.log('    - marc@acme.test              (agent_marc,   DSC queue)');
   console.log('    - sarah@acme.test             (agent_sarah,  FOT queue)');
   console.log('    - marie@acme.test             (agent_marie,  TEC queue)');
+  console.log('  QA fixtures (no tickets — reserved for E2E):');
+  console.log('    - support_qa@acme.test        (support_qa, depts: DSC, FOT, TEC)');
+  console.log('    - agent_qa@acme.test          (agent_qa,  no tickets)');
 }
 
 async function main() {

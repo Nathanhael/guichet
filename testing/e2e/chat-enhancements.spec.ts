@@ -38,11 +38,16 @@ async function loginAsDemo(page: Page, userId: string) {
 
 /** Open the first available ticket in the sidebar (support view). */
 async function openFirstTicket(page: Page) {
-  // QueueTicketRow stamps `data-ticket-row` on its `<li>`. This is more
-  // specific than the previous `li.cursor-pointer` selector, which also
-  // matched the "Other Agents" collapsible section header when the queue
-  // had enough tickets to show that group.
-  const ticket = page.locator('li[data-ticket-row]').first();
+  // QueueTicketRow stamps `data-ticket-row` + `data-ticket-variant` on its
+  // `<li>`. Scoping to `variant="queue"` avoids two layout traps:
+  //   - the "Other Agents" collapsible section header (no variant attr),
+  //   - Lucas-style demo users whose pre-assigned tickets land under
+  //     "mine"/"other" on a fresh login before he actively joins them.
+  // The `support_qa` fixture has empty assignments, so everything renders
+  // as `variant="queue"` and is directly clickable.
+  const ticket = page
+    .locator('li[data-ticket-row][data-ticket-variant="queue"]')
+    .first();
   await ticket.waitFor({ state: 'visible', timeout: 20000 });
 
   // Trigger the QueueTicketRow's onMouseEnter/onFocus prefetch for the lazy
@@ -76,7 +81,7 @@ async function openFirstTicket(page: Page) {
 }
 
 /**
- * Seed a fresh open ticket as agent_julie so the support queue isn't empty.
+ * Seed a fresh open ticket as agent_qa so the support queue isn't empty.
  * Runs once before all tests in this file. Uses a throwaway browser context
  * so the support tests can login independently and see the ticket.
  */
@@ -84,7 +89,10 @@ async function seedOpenTicket(browser: import('@playwright/test').Browser) {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   try {
-    const login = await loginAsDemo(page, 'agent_julie');
+    // agent_qa (not agent_julie) — the latter has a pre-seeded DSC ticket
+    // which the server's 1-ticket-per-agent guard would reject silently when
+    // we try to create another here. agent_qa starts empty.
+    const login = await loginAsDemo(page, 'agent_qa');
     if (!login.ok) throw new Error(`Seed: agent login failed (status ${(login as { status?: number }).status})`);
 
     await page.waitForTimeout(2000);
@@ -93,8 +101,8 @@ async function seedOpenTicket(browser: import('@playwright/test').Browser) {
     const composeArea = page.locator('.ProseMirror');
     if (await composeArea.isVisible({ timeout: 3000 }).catch(() => false)) return;
 
-    // Pick the Dispatch department — minimal seed dept DSC, scoped to
-    // support_lucas so the queue shows the ticket to him.
+    // Pick the Dispatch department — minimal seed dept DSC. support_qa
+    // covers DSC/FOT/TEC so the ticket shows up in its queue regardless.
     const dispatchBtn = page.locator('button').filter({ hasText: /dispatch/i }).first();
     await dispatchBtn.waitFor({ state: 'visible', timeout: 5000 });
     await dispatchBtn.click();
@@ -132,7 +140,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('delivery checkmarks visible on sent messages', async ({ page }) => {
-    await loginAsDemo(page, 'support_lucas');
+    await loginAsDemo(page, 'support_qa');
     await openFirstTicket(page);
 
     // Send a test message
@@ -153,7 +161,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('markdown renders in messages', async ({ page }) => {
-    await loginAsDemo(page, 'support_lucas');
+    await loginAsDemo(page, 'support_qa');
     await openFirstTicket(page);
 
     // Send a message with markdown bold syntax. Playwright's .fill() on
@@ -184,7 +192,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('reply to a message', async ({ page }) => {
-    await loginAsDemo(page, 'support_lucas');
+    await loginAsDemo(page, 'support_qa');
     await openFirstTicket(page);
 
     // Wait for messages to load
@@ -227,7 +235,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('jump-to-bottom FAB', async ({ page }) => {
-    await loginAsDemo(page, 'support_lucas');
+    await loginAsDemo(page, 'support_qa');
     await openFirstTicket(page);
 
     // Wait for messages to load
@@ -275,7 +283,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('label picker opens and shows labels', async ({ page }) => {
-    await loginAsDemo(page, 'support_lucas');
+    await loginAsDemo(page, 'support_qa');
     await openFirstTicket(page);
 
     // Wait for labels to load from store (tRPC query)
@@ -308,7 +316,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('date separator renders', async ({ page }) => {
-    await loginAsDemo(page, 'support_lucas');
+    await loginAsDemo(page, 'support_qa');
     await openFirstTicket(page);
 
     // Wait for messages to load
@@ -337,7 +345,7 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('multi-file upload input accepts multiple', async ({ page }) => {
-    await loginAsDemo(page, 'support_lucas');
+    await loginAsDemo(page, 'support_qa');
     await openFirstTicket(page);
 
     // Wait for the compose area to mount (the textarea is already visible at this
