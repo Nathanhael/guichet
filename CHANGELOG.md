@@ -5,18 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [4.2.0] - 2026-04-15
+
 ### Added
 - **SSO-driven locale sync** — UI language is now derived from the Azure Entra `preferredLanguage` claim on every SSO login. Users can still override via the Settings popover; a manual pick silently sets `users.lang_locked = true` so subsequent SSO logins preserve the user's choice. "SYNCED FROM SSO" badge appears in the `LanguageSwitcher` while the lock is off. Backend: new service `server/services/localeSync.ts` with 20 unit tests, BCP 47 → `nl`/`fr`/`en` mapper, per-partner claim-name overrides via `partners.sso_attribute_map` (JSONB, default-null). New tRPC procedures `user.getLocaleInfo` + `user.setLocale`. Audit actions `user.locale.sso_sync` (claim overwrote lang) and `user.locale.changed` (manual pick). Design spec at `docs/superpowers/specs/2026-04-15-sso-locale-sync-design.md`.
 - **Guichet rebrand** — full sweep renaming Tessera → Guichet across code, config, docs, cookie names (`guichet_token`, `guichet_refresh`), Docker compose project, Postgres DB name, Grafana dashboard, git remote. Paired rename in the cross-project wiki (42 files moved via `git mv`, history preserved).
+- **E2E QA fixtures** — new `support_qa` (DSC+FOT+TEC) and `agent_qa` (no tickets) users in `server/seed.ts`, intentionally kept free of pre-seeded tickets so specs can create their own without tripping the server's 1-ticket-per-agent guard. `QueueTicketRow` now stamps `data-ticket-row` + `data-ticket-variant={"mine"|"queue"|"other"}` on its `<li>` as a stable E2E selector contract.
+
+### Security
+- **drizzle-orm SQL injection** ([GHSA-gpj5-g38j-94v9](https://github.com/advisories/GHSA-gpj5-g38j-94v9), CVSS 7.5, HIGH) — bumped 0.45.1 → 0.45.2. SQL identifiers were not escaped correctly in certain query builder paths.
+- **nodemailer SMTP command injection** ([GHSA-vvjj-xcjg-gr5g](https://github.com/advisories/GHSA-vvjj-xcjg-gr5g), MODERATE) — bumped 8.0.4 → 8.0.5. CRLF injection via the transport `name` option's `EHLO`/`HELO` exchange.
+- **Vite dev server** ([GHSA-v2wj-q39q-566r](https://github.com/advisories/GHSA-v2wj-q39q-566r), [GHSA-p9ff-h696-f583](https://github.com/advisories/GHSA-p9ff-h696-f583), [GHSA-4w7w-66w2-5vf9](https://github.com/advisories/GHSA-4w7w-66w2-5vf9), HIGH) — bumped 8.0.1 → 8.0.8. Three advisories: path traversal in `.map` handling, `server.fs.deny` bypass via query parameters, arbitrary file read via WebSocket.
+- All three fixes are patch-level bumps within the existing caret ranges — only `package-lock.json` changed, not `package.json`.
+- **Remaining moderate findings accepted** — 4 moderate advisories traced to `drizzle-kit` → `@esbuild-kit/esm-loader` → bundled `esbuild <=0.24.2` ([GHSA-67mh-4wv8-2f99](https://github.com/advisories/GHSA-67mh-4wv8-2f99)) are documented as accepted risk in `SECURITY.md`. `@esbuild-kit/*` is deprecated, the latest stable `drizzle-kit` (0.31.10) still depends on it, and the advisory requires esbuild's dev server to be running — `drizzle-kit` only ever invokes esbuild's bundler API via its CLI, so the attack surface is inert in Guichet's usage.
 
 ### Fixed
 - **Rolldown production build panic** — `client/src/constants.ts` previously held `LANG_LABEL` with `\u{1F1E7}\u{1F1EA}` flag codepoints. Rolldown's `hash_placeholder.rs:56` slices chunk source by byte offset without char-boundary checks and panicked mid-codepoint on the regional-indicator bytes. Replaced the flag labels with plain `NL`/`FR`/`EN`; removed the unused `LANG_FLAG` constant. `npm run build` now succeeds.
 - **Seed: 1-ticket-per-agent rule and FK violations** — `server/seed.ts` inserted two tickets per agent (violating the server-enforced rule at `socket/handlers/ticket.ts:98`) and referenced `agent_walkup_*` user IDs that were never inserted (FK crash mid-seed). Fix: added 4 new agent rows so each of the 6 fixture tickets has a distinct `agentId`. Seed now succeeds end-to-end.
 
+### Tests
+- **E2E suite restoration round 2 — 60 → 94 passing, 0 failed.** A later seed cleanup (between the 2026-04-10 round-1 restoration and this release) removed the `expert_alex`, `expert_piet`, `support_jan`, `support_thomas`, `admin_dirk`, `agent_jan`, `e2e-agent-a`, and `e2e-support-a` fixtures that round 1 had added, without touching the specs that hardcoded them. Every affected test either silently skipped under `test.skip(!loginOk, ...)` (drift invisible to CI green) or false-positive passed against the login page (no login-success guard in `agent-view.spec.ts` / `admin-view.spec.ts`). Swept across 9 specs — `ai-features`, `status-and-transfer`, `view-modes`, `collision-detection`, `support-view`, `chat-flow`, `chat-demo`, `push-and-idle`, `agent-view`, `admin-view` — mapping defunct IDs to current seed users (`agent_julie`, `support_lucas`/`support_sophie`, `admin_emma`, `support_qa`/`agent_qa`). Plus UI-relocation drift: `NotificationToggle` and `ViewModeDropdown` moved into `SettingsPopover`/`ChatTabBar` so specs now open the gear popover or open a ticket first. Captured in `wiki/learnings/guichet-e2e-suite-restoration-round2.md` and `wiki/patterns/e2e-skip-as-silent-failure.md` (cross-project anti-pattern).
+- Final local CI (`scripts/ci.ps1 -Skip audit`): 6/6 steps pass; 94 E2E passed / 33 skipped (all conditional — env-gated demos, feature flags, state-dependent fan-outs) / 0 failed.
+
 ### Migration notes
 - **Locale sync first-run caveat** — on the first SSO login after this release, users whose `users.lang` was set manually in a prior session will have it overwritten by the claim (`lang_locked` defaults to `false` on all existing rows). One-click recovery: the user re-picks in the Settings popover, which locks the choice permanently.
 - **Cookie rename** — `tessera_token` / `tessera_refresh` → `guichet_token` / `guichet_refresh`. All active sessions are invalidated; users must re-login.
 - **Postgres DB name** — config now points at `guichet`. Recreate the database or run `ALTER DATABASE tessera RENAME TO guichet;` before `docker compose up`.
+- **Docker client container restart required after `npm ci`** — Vite's HMR chunk cache can serve stale dynamic-import manifests after a package-lock update, which surfaces in E2E as `TypeError: Failed to fetch dynamically imported module: AdminView.tsx`. Always `docker compose restart client` after updating the client container's dependencies.
 
 ## [4.1.0] - 2026-04-11
 
