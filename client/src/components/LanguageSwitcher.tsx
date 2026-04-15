@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useStoreShallow } from '../store/useStore';
 import { trpc } from '../utils/trpc';
 
@@ -19,8 +18,8 @@ export default function LanguageSwitcher() {
     setSelectedLang: s.setSelectedLang,
   }));
 
-  // Authenticated users get the locale-info query to render the SYNCED /
-  // UNLOCK badges. Pre-auth (login page) skips it — `user` is null there.
+  // Authenticated users get the locale-info query to render the "SYNCED FROM
+  // SSO" badge. Pre-auth (login page) skips it — `user` is null there.
   const utils = trpc.useUtils();
   const localeInfoQuery = trpc.user.getLocaleInfo.useQuery(undefined, {
     enabled: !!user,
@@ -31,28 +30,23 @@ export default function LanguageSwitcher() {
 
   const currentLang = selectedLang || user?.lang || 'en';
   const info = localeInfoQuery.data;
-  const showSyncUi = !!user && !!info?.hasSso;
-
-  const [pendingUnlock, setPendingUnlock] = useState(false);
-  useEffect(() => {
-    if (!setLocale.isPending) setPendingUnlock(false);
-  }, [setLocale.isPending]);
 
   const handlePick = (code: 'en' | 'nl' | 'fr') => {
     setSelectedLang(code);
     if (user && info?.hasSso) {
-      // Persist pick + lock so SSO login doesn't overwrite it next time.
+      // Persist pick + silent lock so the next SSO login does not overwrite
+      // the user's choice. There is no user-facing unlock affordance — an
+      // admin would flip `users.lang_locked` directly on the rare occasion
+      // someone needs to re-enable SSO-driven sync.
       setLocale.mutate({ lang: code, lockFromSso: true });
     } else if (user) {
-      // Local-only user (platform operator): persist, no lock semantics needed.
+      // Local-only user (platform operator with no external_id): persist,
+      // no lock semantics needed.
       setLocale.mutate({ lang: code });
     }
   };
 
-  const handleUnlock = () => {
-    setPendingUnlock(true);
-    setLocale.mutate({ lockFromSso: false });
-  };
+  const showBadge = !!user && !!info?.hasSso && !info.langLocked;
 
   return (
     <div className="flex flex-col gap-1">
@@ -71,19 +65,10 @@ export default function LanguageSwitcher() {
           </button>
         ))}
       </div>
-      {showSyncUi && info && !info.langLocked && (
+      {showBadge && (
         <span className="text-[8px] font-bold uppercase tracking-widest text-text-secondary">
           SYNCED FROM SSO
         </span>
-      )}
-      {showSyncUi && info?.langLocked && (
-        <button
-          onClick={handleUnlock}
-          disabled={setLocale.isPending}
-          className="text-[8px] font-bold uppercase tracking-widest text-accent-blue hover:underline disabled:opacity-40 text-left"
-        >
-          {pendingUnlock ? 'UNLOCKING…' : 'UNLOCK SSO SYNC'}
-        </button>
       )}
     </div>
   );
