@@ -32,8 +32,8 @@ async function waitForLoginForm(page: Page) {
  *  (see LoginView.tsx:42 handleLogoClick). */
 async function gotoForgotPassword(page: Page) {
   await waitForLoginForm(page);
-  // Triple-click the TESSERA logo to reveal the platform admin link
-  const logo = page.getByRole('button', { name: /^tessera$/i });
+  // Triple-click the GUICHET logo to reveal the platform admin link
+  const logo = page.getByRole('button', { name: /^guichet$/i });
   await logo.waitFor({ state: 'visible', timeout: 5000 });
   await logo.click();
   await logo.click();

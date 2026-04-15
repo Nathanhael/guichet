@@ -23,7 +23,7 @@ export default function PlatformSystemSettings() {
   const [mailConfig, setMailConfig] = useState<MailConfig>({
     provider: 'none',
     fromEmail: '',
-    fromName: 'Tessera Support',
+    fromName: 'Guichet Support',
     smtpHost: '',
     smtpPort: 587,
     smtpUser: '',
@@ -108,7 +108,7 @@ export default function PlatformSystemSettings() {
                     type="text"
                     value={mailConfig.fromName}
                     onChange={e => setMailConfig({ ...mailConfig, fromName: e.target.value })}
-                    placeholder="e.g. Tessera Support"
+                    placeholder="e.g. Guichet Support"
                     className="input-field w-full"
                   />
                 </div>
@@ -121,7 +121,7 @@ export default function PlatformSystemSettings() {
                     type="email"
                     value={mailConfig.fromEmail}
                     onChange={e => setMailConfig({ ...mailConfig, fromEmail: e.target.value })}
-                    placeholder="noreply@tessera.io"
+                    placeholder="noreply@guichet.io"
                     className="input-field w-full"
                   />
                 </div>

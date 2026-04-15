@@ -224,7 +224,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     const email: string = (claims.email || claims.preferred_username || '').toLowerCase();
     const name: string = claims.name || email;
 
-    // Map Azure locale claim to supported Tessera languages (nl, fr, en)
+    // Map Azure locale claim to supported Guichet languages (nl, fr, en)
     const SUPPORTED_LANGS = ['nl', 'fr', 'en'] as const;
     type SupportedLang = typeof SUPPORTED_LANGS[number];
     const rawLang = claims.locale ?? claims.xms_lang;

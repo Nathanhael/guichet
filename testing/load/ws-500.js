@@ -1,5 +1,5 @@
 /**
- * 500-connection WebSocket (Socket.io) load test for Tessera.
+ * 500-connection WebSocket (Socket.io) load test for Guichet.
  *
  * Ramps to 500 concurrent WebSocket connections, each:
  *   - Connecting via Engine.IO/Socket.io
@@ -56,8 +56,8 @@ export function setup() {
   check(login, { 'setup: login 200': (r) => r.status === 200 });
 
   const raw = login.headers['set-cookie'] || '';
-  const tokenMatch = raw.match(/tessera_token=([^;]+)/);
-  const cookies = tokenMatch ? `tessera_token=${tokenMatch[1]}` : '';
+  const tokenMatch = raw.match(/guichet_token=([^;]+)/);
+  const cookies = tokenMatch ? `guichet_token=${tokenMatch[1]}` : '';
 
   const body = login.json();
   return {

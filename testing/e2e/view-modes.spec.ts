@@ -343,7 +343,7 @@ test.describe('Split View', () => {
     test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     // This test requires 2+ tickets in the user's queue.
-    // expert_alex is in tessera-main which may not have tickets.
+    // expert_alex is in guichet-main which may not have tickets.
     // The test gracefully skips when the queue is empty.
     await page.waitForTimeout(1500);
 

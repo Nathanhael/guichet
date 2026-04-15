@@ -2,7 +2,7 @@
 
 ## Overview
 
-Add Web Push notifications for agents (end-users) so they receive OS-level alerts when support interacts with their tickets. Push only fires when no Tessera tab is focused. Support, admin, and platform operators do not receive push notifications.
+Add Web Push notifications for agents (end-users) so they receive OS-level alerts when support interacts with their tickets. Push only fires when no Guichet tab is focused. Support, admin, and platform operators do not receive push notifications.
 
 ## Trigger Events
 
@@ -28,7 +28,7 @@ Add Web Push notifications for agents (end-users) so they receive OS-level alert
 2. Client sends subscription to `POST /api/v1/push/subscribe`
 3. Server stores in `push_subscriptions` table
 4. On trigger event, server calls `web-push` library to send notification
-5. Service worker receives push, checks if any Tessera tab is focused — if not, shows OS notification
+5. Service worker receives push, checks if any Guichet tab is focused — if not, shows OS notification
 6. Agent taps notification → app opens to the specific ticket
 
 ### Notification Payload
@@ -87,7 +87,7 @@ All push calls check `role === 'agent'` before sending.
 
 - `VAPID_PUBLIC_KEY` — exposed to client for subscription
 - `VAPID_PRIVATE_KEY` — server-only for signing push messages
-- `VAPID_SUBJECT` — contact email (e.g., `mailto:admin@tessera.app`)
+- `VAPID_SUBJECT` — contact email (e.g., `mailto:admin@guichet.app`)
 - Added to `server/config.ts` with Zod validation (optional — push disabled if not set)
 
 ## Client-Side
@@ -105,13 +105,13 @@ Add two event handlers:
 
 ```javascript
 self.addEventListener('push', (event) => {
-  // Check if any Tessera tab is focused — skip if so
+  // Check if any Guichet tab is focused — skip if so
   // Parse payload, show notification with title/body/icon/tag
 });
 
 self.addEventListener('notificationclick', (event) => {
   // Close notification
-  // Open or focus Tessera tab at /ticket/{ticketId}
+  // Open or focus Guichet tab at /ticket/{ticketId}
 });
 ```
 

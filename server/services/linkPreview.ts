@@ -193,7 +193,7 @@ export async function fetchOgData(url: string): Promise<LinkPreview | null> {
         signal: controller.signal,
         headers: {
           'Accept': 'text/html',
-          'User-Agent': 'TesseraBot/1.0 (+link-preview)',
+          'User-Agent': 'GuichetBot/1.0 (+link-preview)',
         },
         redirect: 'error', // SSRF: prevent redirects to internal IPs (mirrors webhookDispatch.ts)
       });

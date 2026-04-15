@@ -9,7 +9,7 @@ export default function () {
   // Login
   const login = http.post(
     `${BASE}/api/v1/auth/login-local`,
-    JSON.stringify({ email: 'dirk@tessera.demo', password: 'password123' }),
+    JSON.stringify({ email: 'dirk@guichet.demo', password: 'password123' }),
     { headers: { 'Content-Type': 'application/json' } }
   );
   console.log(`login: status=${login.status} body=${login.body.substring(0, 300)}`);

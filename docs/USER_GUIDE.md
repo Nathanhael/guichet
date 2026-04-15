@@ -63,7 +63,7 @@ Welcome to Guichet. This guide explains the core chat functionality, dynamic org
 
 Platform Operators use the **PlatformView** to manage the entire ecosystem.
 
-**Access Note**: The platform administrator login is hidden on the main SSO page to maintain a clean interface. To reveal it, **triple-click** the **"TESSERA"** logo at the top of the login card.
+**Access Note**: The platform administrator login is hidden on the main SSO page to maintain a clean interface. To reveal it, **triple-click** the **"GUICHET"** logo at the top of the login card.
 
 ### Partners Tab
 

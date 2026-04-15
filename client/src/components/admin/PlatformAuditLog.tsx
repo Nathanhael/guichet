@@ -221,7 +221,7 @@ export default function PlatformAuditLog() {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', `tessera_audit_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute('download', `guichet_audit_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

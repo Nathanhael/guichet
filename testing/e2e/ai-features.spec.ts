@@ -73,14 +73,14 @@ async function enableAiFeatures(page: Page) {
 
   if (!loginData.ok) return false;
 
-  // Enable AI on the tessera-main partner via tRPC
+  // Enable AI on the guichet-main partner via tRPC
   const updateData = await page.evaluate(async () => {
     const res = await fetch('/api/v1/trpc/platform.updatePartner', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        id: 'tessera-main',
+        id: 'guichet-main',
         data: {
           aiEnabled: true,
           aiFeatures: {
@@ -201,10 +201,10 @@ test.describe('Sprint 1: Per-Tenant AI Configuration', () => {
     const res = await loginAsDemo(page, 'platform_bart');
     test.skip(!res.ok, 'Platform login failed');
 
-    // Enable AI on tessera-main
+    // Enable AI on guichet-main
     const updateRes = await page.request.post(`${BASE}/api/v1/trpc/platform.updatePartner`, {
       data: {
-        id: 'tessera-main',
+        id: 'guichet-main',
         data: {
           aiEnabled: true,
           aiFeatures: {
