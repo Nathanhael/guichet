@@ -91,6 +91,7 @@ export default function QueueTicketRow({
   return (
     <li
       data-ticket-row
+      data-ticket-variant={variant}
       className={rowClasses}
       onClick={disabled ? undefined : onClick}
       onMouseEnter={disabled ? undefined : prefetchComposeArea}
