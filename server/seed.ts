@@ -93,10 +93,15 @@ interface SeedTicket {
   firstMessage: string;
 }
 
+// One open/pending ticket per agent — matches server-side enforcement in
+// `server/socket/handlers/ticket.ts` (guard rejects `ticket:new` when the agent
+// already has a non-closed ticket). Seed bypasses the socket path via direct
+// DB insert, so the constraint is enforced here by construction: each `agentId`
+// below appears in at most one TICKETS entry.
 const TICKETS: SeedTicket[] = [
-  // Lucas — 2 tickets (DSC + FOT)
+  // Assigned (pending) — one per support user, distinct agents.
   {
-    id: 'ticket_lucas_1',
+    id: 'ticket_dsc_julie',
     dept: 'DSC',
     agentId: 'agent_julie',
     agentName: 'Julie Agent',
@@ -105,7 +110,7 @@ const TICKETS: SeedTicket[] = [
     firstMessage: 'I cannot reach the dispatcher for route 17 — the carrier portal keeps timing out.',
   },
   {
-    id: 'ticket_lucas_2',
+    id: 'ticket_fot_kevin',
     dept: 'FOT',
     agentId: 'agent_kevin',
     agentName: 'Kevin Agent',
@@ -113,15 +118,21 @@ const TICKETS: SeedTicket[] = [
     supportName: 'Lucas Support',
     firstMessage: 'New VIP customer onboarding kit is missing the welcome letter template.',
   },
-  // Unassigned queue tickets — one per agent (respects 1-ticket-per-agent limit).
-  // Julie's assigned ticket (ticket_lucas_1) is above, so this unassigned one uses Kevin.
-  // Kevin's assigned ticket (ticket_lucas_2) is above, so this unassigned one uses a
-  // "walkup" agent pattern — no supportId, waiting in queue.
+  {
+    id: 'ticket_tec_thomas',
+    dept: 'TEC',
+    agentId: 'agent_thomas',
+    agentName: 'Thomas Agent',
+    supportId: 'support_sophie',
+    supportName: 'Sophie Support',
+    firstMessage: 'Production API is returning 500 on POST /ingest since the deploy this morning.',
+  },
+  // Unassigned (open queue) — distinct agents still, no supportId.
   {
     id: 'ticket_queue_dsc_1',
     dept: 'DSC',
-    agentId: 'agent_walkup_1',
-    agentName: 'Walkup Customer 1',
+    agentId: 'agent_marc',
+    agentName: 'Marc Agent',
     supportId: null,
     supportName: null,
     firstMessage: 'Carrier ID 4421 stuck in triage for 20 minutes — please route.',
@@ -129,29 +140,19 @@ const TICKETS: SeedTicket[] = [
   {
     id: 'ticket_queue_fot_1',
     dept: 'FOT',
-    agentId: 'agent_walkup_2',
-    agentName: 'Walkup Customer 2',
+    agentId: 'agent_sarah',
+    agentName: 'Sarah Agent',
     supportId: null,
     supportName: null,
     firstMessage: 'Customer is asking about upgrade paths — needs a rep to call back.',
   },
-  // Sophie — 2 tickets (TEC)
   {
-    id: 'ticket_sophie_1',
+    id: 'ticket_queue_tec_1',
     dept: 'TEC',
-    agentId: 'agent_julie',
-    agentName: 'Julie Agent',
-    supportId: 'support_sophie',
-    supportName: 'Sophie Support',
-    firstMessage: 'Production API is returning 500 on POST /ingest since the deploy this morning.',
-  },
-  {
-    id: 'ticket_sophie_2',
-    dept: 'TEC',
-    agentId: 'agent_kevin',
-    agentName: 'Kevin Agent',
-    supportId: 'support_sophie',
-    supportName: 'Sophie Support',
+    agentId: 'agent_marie',
+    agentName: 'Marie Agent',
+    supportId: null,
+    supportName: null,
     firstMessage: 'Webhook signatures fail verification intermittently — roughly 1 in 20 deliveries.',
   },
 ];
@@ -162,6 +163,10 @@ const PARTNER_USERS: SeedUser[] = [
   { id: 'support_sophie', name: 'Sophie Support', email: 'sophie@acme.test',  lang: 'en', role: 'support', departments: ['TEC'] },
   { id: 'agent_julie',    name: 'Julie Agent',    email: 'julie@acme.test',   lang: 'en', role: 'agent',   departments: [] },
   { id: 'agent_kevin',    name: 'Kevin Agent',    email: 'kevin@acme.test',   lang: 'en', role: 'agent',   departments: [] },
+  { id: 'agent_thomas',   name: 'Thomas Agent',   email: 'thomas@acme.test',  lang: 'en', role: 'agent',   departments: [] },
+  { id: 'agent_marc',     name: 'Marc Agent',     email: 'marc@acme.test',    lang: 'en', role: 'agent',   departments: [] },
+  { id: 'agent_sarah',    name: 'Sarah Agent',    email: 'sarah@acme.test',   lang: 'en', role: 'agent',   departments: [] },
+  { id: 'agent_marie',    name: 'Marie Agent',    email: 'marie@acme.test',   lang: 'en', role: 'agent',   departments: [] },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -303,9 +308,13 @@ async function seedMinimal() {
   console.log('  Support:');
   console.log('    - lucas@acme.test             (support_lucas, depts: DSC, FOT)');
   console.log('    - sophie@acme.test            (support_sophie, depts: TEC)');
-  console.log('  Agents:');
-  console.log('    - julie@acme.test             (agent_julie)');
-  console.log('    - kevin@acme.test             (agent_kevin)');
+  console.log('  Agents (each has 1 open/pending ticket):');
+  console.log('    - julie@acme.test             (agent_julie,  DSC pending)');
+  console.log('    - kevin@acme.test             (agent_kevin,  FOT pending)');
+  console.log('    - thomas@acme.test            (agent_thomas, TEC pending)');
+  console.log('    - marc@acme.test              (agent_marc,   DSC queue)');
+  console.log('    - sarah@acme.test             (agent_sarah,  FOT queue)');
+  console.log('    - marie@acme.test             (agent_marie,  TEC queue)');
 }
 
 async function main() {
