@@ -250,8 +250,8 @@ export default function LoginView() {
               onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }}
               className="w-full py-3 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] font-mono font-bold uppercase tracking-widest text-sm hover:bg-[var(--color-accent-blue)] hover:text-white flex items-center justify-center gap-4"
             >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" /></svg>
-              <span>{t('sign_in_sso')}</span>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" /></svg>
+              <span>{t('sso_microsoft')}</span>
             </button>
             <div className="text-center pt-2 flex flex-col items-center gap-2">
               <button
