@@ -33,8 +33,8 @@ async function loginAsDemo(page: Page, userId: string) {
     }
     // Language override for demo
     const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}');
-    if (uid === 'agent_jan') storedUser.lang = 'nl';
-    if (uid === 'expert_alex') storedUser.lang = 'fr';
+    if (uid === 'agent_julie') storedUser.lang = 'nl';
+    if (uid === 'support_lucas') storedUser.lang = 'fr';
     sessionStorage.setItem('user', JSON.stringify(storedUser));
   }, { ...data, uid: userId });
 
@@ -166,8 +166,8 @@ test('record seamless language-agnostic chat demo', async ({ browser }) => {
   await mockAiResponses(supportPage);
 
   // 2. Login
-  await loginAsDemo(agentPage, 'agent_jan');
-  await loginAsDemo(supportPage, 'expert_alex');
+  await loginAsDemo(agentPage, 'agent_julie');
+  await loginAsDemo(supportPage, 'support_lucas');
   await agentPage.waitForTimeout(3000);
   await supportPage.waitForTimeout(1000);
 

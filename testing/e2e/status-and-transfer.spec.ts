@@ -57,7 +57,7 @@ test.describe('StatusPicker', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'expert_alex');
+    const res = await loginAsDemo(page, 'support_lucas');
     loginOk = !!res.ok;
     await page.waitForTimeout(2000);
   });
@@ -153,7 +153,7 @@ test.describe('Team Capacity Badge', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'expert_alex');
+    const res = await loginAsDemo(page, 'support_lucas');
     loginOk = !!res.ok;
     await page.waitForTimeout(2000);
   });
@@ -186,8 +186,8 @@ test.describe('Team Capacity Badge', () => {
     const page2 = await ctx2.newPage();
 
     try {
-      const res1 = await loginAsDemo(page1, 'expert_alex');
-      const res2 = await loginAsDemo(page2, 'expert_piet');
+      const res1 = await loginAsDemo(page1, 'support_lucas');
+      const res2 = await loginAsDemo(page2, 'support_sophie');
       if (!res1.ok || !res2.ok) {
         test.skip(true, 'One or more demo logins failed');
         return;
@@ -225,7 +225,7 @@ test.describe('Department Transfer', () => {
 
   test.beforeEach(async ({ page }) => {
     // Use support_jan — member of wavelink partner which has open tickets
-    const res = await loginAsDemo(page, 'support_jan');
+    const res = await loginAsDemo(page, 'support_lucas');
     loginOk = !!res.ok;
     await page.waitForTimeout(2000);
   });
@@ -243,7 +243,9 @@ test.describe('Department Transfer', () => {
     }
 
     // Open a ticket from the queue sidebar
-    const ticketItem = page.locator('[class*="cursor-pointer"]').first();
+    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow).
+    // `cursor-pointer` alone matched collapsible section headers too.
+    const ticketItem = page.locator('li[data-ticket-row]').first();
     const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
     if (!hasTicket) {
       test.skip(true, 'No clickable tickets found in queue');
@@ -269,7 +271,9 @@ test.describe('Department Transfer', () => {
     test.skip(!loginOk, 'Demo login failed — user may not be seeded');
     await page.setViewportSize({ width: 1600, height: 900 });
 
-    const ticketItem = page.locator('[class*="cursor-pointer"]').first();
+    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow).
+    // `cursor-pointer` alone matched collapsible section headers too.
+    const ticketItem = page.locator('li[data-ticket-row]').first();
     const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
     if (!hasTicket) {
       test.skip(true, 'No tickets in queue');
@@ -301,7 +305,9 @@ test.describe('Department Transfer', () => {
     test.skip(!loginOk, 'Demo login failed — user may not be seeded');
     await page.setViewportSize({ width: 1600, height: 900 });
 
-    const ticketItem = page.locator('[class*="cursor-pointer"]').first();
+    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow).
+    // `cursor-pointer` alone matched collapsible section headers too.
+    const ticketItem = page.locator('li[data-ticket-row]').first();
     const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
     if (!hasTicket) {
       test.skip(true, 'No tickets in queue');
@@ -340,7 +346,9 @@ test.describe('Department Transfer', () => {
     test.skip(!loginOk, 'Demo login failed — user may not be seeded');
     await page.setViewportSize({ width: 1600, height: 900 });
 
-    const ticketItem = page.locator('[class*="cursor-pointer"]').first();
+    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow).
+    // `cursor-pointer` alone matched collapsible section headers too.
+    const ticketItem = page.locator('li[data-ticket-row]').first();
     const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
     if (!hasTicket) {
       test.skip(true, 'No tickets in queue');
@@ -379,7 +387,7 @@ test.describe('AdminTeam Status Column', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'admin_dirk');
+    const res = await loginAsDemo(page, 'admin_emma');
     loginOk = !!res.ok;
     await page.waitForTimeout(3000);
   });

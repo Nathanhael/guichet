@@ -73,8 +73,8 @@ test.describe('Collision Detection — Real-Time', () => {
     const page2 = await ctx2.newPage();
 
     try {
-      const res1 = await loginAsDemo(page1, 'expert_alex');
-      const res2 = await loginAsDemo(page2, 'expert_piet');
+      const res1 = await loginAsDemo(page1, 'support_lucas');
+      const res2 = await loginAsDemo(page2, 'support_sophie');
       test.skip(!res1.ok || !res2.ok, 'Login failed for one or both users');
 
       await page1.waitForTimeout(2000);
@@ -124,8 +124,8 @@ test.describe('Collision Detection — Real-Time', () => {
     const page2 = await ctx2.newPage();
 
     try {
-      const res1 = await loginAsDemo(page1, 'expert_alex');
-      const res2 = await loginAsDemo(page2, 'expert_piet');
+      const res1 = await loginAsDemo(page1, 'support_lucas');
+      const res2 = await loginAsDemo(page2, 'support_sophie');
       test.skip(!res1.ok || !res2.ok, 'Login failed');
 
       await page1.waitForTimeout(2000);
@@ -169,8 +169,8 @@ test.describe('Collision Detection — Real-Time', () => {
 
     try {
       // Login agent and support
-      const res1 = await loginAsDemo(page1, 'agent_jan');
-      const res2 = await loginAsDemo(page2, 'expert_alex');
+      const res1 = await loginAsDemo(page1, 'agent_julie');
+      const res2 = await loginAsDemo(page2, 'support_lucas');
       test.skip(!res1.ok || !res2.ok, 'Login failed');
 
       await page1.waitForTimeout(2000);
@@ -208,8 +208,8 @@ test.describe('Collision Detection — Real-Time', () => {
     const page2 = await ctx2.newPage();
 
     try {
-      const res1 = await loginAsDemo(page1, 'expert_alex');
-      const res2 = await loginAsDemo(page2, 'expert_piet');
+      const res1 = await loginAsDemo(page1, 'support_lucas');
+      const res2 = await loginAsDemo(page2, 'support_sophie');
       test.skip(!res1.ok || !res2.ok, 'Login failed');
 
       await page1.waitForTimeout(2000);

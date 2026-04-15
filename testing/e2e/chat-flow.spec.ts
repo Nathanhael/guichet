@@ -59,8 +59,12 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
 
     try {
       // ── Phase 1: Login both users ──────────────────────────────────────
-      const agentLogin = await loginAsDemo(agentPage, 'e2e-agent-a');
-      const supportLogin = await loginAsDemo(supportPage, 'e2e-support-a');
+      // Use agent_qa — the E2E-only fixture with no pre-seeded tickets, so
+      // the ticket:new event below isn't rejected by the server's
+      // 1-ticket-per-agent guard. support_qa (DSC/FOT/TEC) is the paired
+      // support fixture so the resulting ticket lands in a queue it can see.
+      const agentLogin = await loginAsDemo(agentPage, 'agent_qa');
+      const supportLogin = await loginAsDemo(supportPage, 'support_qa');
       test.skip(!agentLogin.ok || !supportLogin.ok, 'Demo login failed — seed data may be missing');
 
       // ── Phase 2: Agent creates a new ticket ────────────────────────────
@@ -96,7 +100,10 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
 
       // ── Phase 3: Support sees ticket in queue and joins ────────────────
       // Wait for the ticket to appear in the queue (socket push or 30s poll)
-      const agentNameInQueue = supportPage.getByText(/E2E Agent A/i).first();
+      // Was `/E2E Agent A/i` for the retired e2e-agent-a fixture. After the
+      // fixture-rename migration this spec uses agent_qa whose display name
+      // is "QA Agent" (see server/seed.ts PARTNER_USERS).
+      const agentNameInQueue = supportPage.getByText(/QA Agent/i).first();
       await expect(agentNameInQueue).toBeVisible({ timeout: 30000 });
 
       // Click the ticket row in the sidebar

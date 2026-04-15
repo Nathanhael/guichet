@@ -52,7 +52,7 @@ async function loginAsDemo(page: Page, userId: string) {
 test.describe('Support View', () => {
   let loginOk = false;
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'expert_alex');
+    const res = await loginAsDemo(page, 'support_lucas');
     loginOk = !!res.ok;
     await page.waitForTimeout(2000);
   });
@@ -115,8 +115,8 @@ test.describe('Collision Detection', () => {
     const page2 = await context2.newPage();
 
     try {
-      await loginAsDemo(page1, 'expert_alex');
-      await loginAsDemo(page2, 'expert_piet');
+      await loginAsDemo(page1, 'support_lucas');
+      await loginAsDemo(page2, 'support_sophie');
 
       await page1.waitForTimeout(3000);
       await page2.waitForTimeout(3000);

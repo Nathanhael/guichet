@@ -57,7 +57,7 @@ test.describe('ViewModeDropdown', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_jan');
+    const res = await loginAsDemo(page, 'support_lucas');
     loginOk = !!res.ok;
     await page.waitForTimeout(2000);
     // ViewModeDropdown is rendered inside ChatTabBar (see
@@ -81,8 +81,27 @@ test.describe('ViewModeDropdown', () => {
     }
   });
 
-  test('ViewModeDropdown button is visible in SupportNav', async ({ page }) => {
+  test('ViewModeDropdown button is visible in ChatTabBar when a ticket is open', async ({ page }) => {
     test.skip(!loginOk, 'Demo login failed — user may not be seeded');
+
+    // ViewModeDropdown was relocated out of SupportNav and is now rendered
+    // only by ChatTabBar (when at least one ticket tab is open). The
+    // `showViewMode` prop on SettingsPopover exists but no nav currently
+    // passes it, so the entry point is strictly contextual. Open a ticket
+    // from the queue to make ChatTabBar mount, then assert the dropdown.
+    const ticket = page.locator('li[data-ticket-row]').first();
+    const hasTicket = await ticket.isVisible({ timeout: 10000 }).catch(() => false);
+    test.skip(!hasTicket, 'No tickets visible in queue to open ChatTabBar');
+    await ticket.click();
+    await page.waitForTimeout(500);
+
+    // If the ticket opens as a preview first, click Join to promote it to
+    // an active tab (ChatTabBar only renders for active tabs).
+    const joinBtn = page.getByRole('button', { name: /^join$|^accept$|deelnemen|rejoindre/i });
+    if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await joinBtn.click();
+      await page.waitForTimeout(1500);
+    }
 
     // The ViewModeDropdown renders a button with aria-label matching the current mode name.
     // Support multiple locales: EN "View Mode", NL "Weergavemodus", FR "Mode d'affichage"
@@ -90,15 +109,7 @@ test.describe('ViewModeDropdown', () => {
       'button[aria-label*="View Mode"], button[aria-label*="Weergavemodus"], button[aria-label*="affichage"]'
     ).first();
 
-    // Fallback: the button contains a Unicode block character (▣/▥/▤/□) used as the view icon
-    const iconBtn = page.locator('button').filter({ hasText: /[▣▥▤□]/ }).first();
-
-    const primaryVisible = await modeBtn.isVisible({ timeout: 10000 }).catch(() => false);
-    if (primaryVisible) {
-      await expect(modeBtn).toBeVisible();
-    } else {
-      await expect(iconBtn).toBeVisible({ timeout: 10000 });
-    }
+    await expect(modeBtn).toBeVisible({ timeout: 10000 });
   });
 
   // NOTE: Two former tests were removed here — `shows 4 mode options when opened`
@@ -120,7 +131,7 @@ test.describe('Preview Mode', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_jan');
+    const res = await loginAsDemo(page, 'support_lucas');
     loginOk = !!res.ok;
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.waitForTimeout(2000);
@@ -429,7 +440,7 @@ test.describe('Focus Mode', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_jan');
+    const res = await loginAsDemo(page, 'support_lucas');
     loginOk = !!res.ok;
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.waitForTimeout(2000);
