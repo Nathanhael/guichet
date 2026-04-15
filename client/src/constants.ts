@@ -1,15 +1,14 @@
-/** Flag emoji per language code */
-export const LANG_FLAG: Record<string, string> = {
-  nl: '\u{1F1E7}\u{1F1EA}',
-  fr: '\u{1F1EB}\u{1F1F7}',
-  en: '\u{1F1EC}\u{1F1E7}',
-};
-
-/** Flag emoji + language code (for UI labels) */
+/**
+ * Language-code text labels (replaces the former flag-emoji labels).
+ * Kept as a constant so the DemoUserPicker + any future caller share the
+ * same source. The regional-indicator flag codepoints were removed because
+ * Rolldown's hash-placeholder resolver panicked when they landed at
+ * mid-chunk byte offsets; text also aligns with the brutalist spec.
+ */
 export const LANG_LABEL: Record<string, string> = {
-  nl: '\u{1F1E7}\u{1F1EA} NL',
-  fr: '\u{1F1EB}\u{1F1F7} FR',
-  en: '\u{1F1EC}\u{1F1E7} EN',
+  nl: 'NL',
+  fr: 'FR',
+  en: 'EN',
 };
 
 /** Fixed emoji set for message reactions (mirrors server/constants.ts) */

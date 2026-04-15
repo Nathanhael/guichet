@@ -33,6 +33,14 @@ export const partners = pgTable('partners', {
   aiModel: text('ai_model'),
   aiConfig: jsonb('ai_config').default({}),
   aiFeatures: jsonb('ai_features').default({}),
+  // SSO attribute mapping — per-partner IdP claim name overrides. Shape:
+  // { locale?: string, firstName?: string, lastName?: string }. Null = use
+  // defaults (Entra `preferredLanguage`, `givenName`, `sn`).
+  ssoAttributeMap: jsonb('sso_attribute_map').$type<{
+    locale?: string;
+    firstName?: string;
+    lastName?: string;
+  } | null>(),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
@@ -44,6 +52,9 @@ export const users = pgTable('users', {
   externalId: text('external_id').unique(), // Azure OID / Entra ID
   name: text('name').notNull(),
   lang: text('lang').default('nl'),
+  // When true, SSO login does NOT overwrite `lang` — user's manual choice wins.
+  // Set by `trpc.user.setLocale({ lockFromSso: true })`. Cleared by unlock.
+  langLocked: boolean('lang_locked').notNull().default(false),
   password: text('password'), // Optional legacy/local login
   avatarUrl: text('avatar_url'),
   isPlatformOperator: boolean('is_platform_operator').default(false),
