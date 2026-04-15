@@ -11,6 +11,7 @@ export function useBusinessHours() {
     storeStatus: state.businessHoursStatus,
   }));
 
+  const utils = trpc.useUtils();
   const query = trpc.partner.getBusinessHours.useQuery(undefined, {
     enabled: !!activeMembershipId,
     refetchOnWindowFocus: false,
@@ -27,6 +28,6 @@ export function useBusinessHours() {
     schedule: (query.data?.schedule as BusinessHoursSchedule | null) ?? createDefaultBusinessHoursSchedule(),
     status: (query.data?.status as BusinessHoursStatus | null) ?? storeStatus,
     isLoading: query.isLoading,
-    refetch: query.refetch,
+    invalidate: () => utils.partner.getBusinessHours.invalidate(),
   };
 }

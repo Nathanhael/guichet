@@ -9,9 +9,9 @@ import UserMenu from '../UserMenu';
 const mockLogout = vi.fn();
 
 vi.mock('../../store/useStore', () => ({
-  default: (selector: (s: { user: { id: string; name: string; email: string }; logout: () => void }) => unknown) =>
+  default: (selector: (s: { user: { id: string; name: string; email: string; isPlatformOperator: boolean }; logout: () => void }) => unknown) =>
     selector({
-      user: { id: 'u1', name: 'Amelie Rousseau', email: 'amelie@acme.com' },
+      user: { id: 'u1', name: 'Amelie Rousseau', email: 'amelie@acme.com', isPlatformOperator: true },
       logout: mockLogout,
     }),
 }));

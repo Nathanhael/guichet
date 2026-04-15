@@ -221,7 +221,7 @@ export default function PlatformAuditLog() {
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', `tessera_audit_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute('download', `guichet_audit_${new Date().toISOString().slice(0,10)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -368,6 +368,14 @@ export default function PlatformAuditLog() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
+              {(!visibleData || visibleData.length === 0) && (
+                <tr>
+                  <td colSpan={6} className="py-16 text-center">
+                    <p className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('no_audit_entries') || 'No audit entries'}</p>
+                    <p className="text-[10px] uppercase text-[var(--color-text-muted)] mt-2 opacity-60">{t('no_audit_entries_hint') || 'Audit log entries will appear here as actions are performed.'}</p>
+                  </td>
+                </tr>
+              )}
               {visibleData?.map((log) => (
                 <tr key={log.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                   <td className="p-3 text-[10px] font-mono whitespace-nowrap">

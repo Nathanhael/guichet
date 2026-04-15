@@ -27,11 +27,11 @@ export default function () {
   const jar = http.cookieJar();
   const cookies = jar.cookiesForURL(`${BASE}/`);
 
-  if (!cookies.tessera_token || cookies.tessera_token.length === 0) {
+  if (!cookies.guichet_token || cookies.guichet_token.length === 0) {
     // First iteration for this VU — login
     const login = http.post(
       `${BASE}/api/v1/auth/login-local`,
-      JSON.stringify({ email: 'dirk@tessera.demo', password: 'password123' }),
+      JSON.stringify({ email: 'dirk@guichet.demo', password: 'password123' }),
       { headers: { 'Content-Type': 'application/json' } }
     );
 

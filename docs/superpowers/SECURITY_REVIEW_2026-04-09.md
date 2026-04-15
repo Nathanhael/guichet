@@ -1,4 +1,4 @@
-# Tessera Security Review — 2026-04-09
+# Guichet Security Review — 2026-04-09
 
 Comprehensive code and security review across 5 domains: auth/sessions, input validation/injection, multi-tenancy/authorization, socket/real-time, and database/config/infrastructure.
 
@@ -37,7 +37,7 @@ Comprehensive code and security review across 5 domains: auth/sessions, input va
 **File**: `server/routes/sso.ts:477`
 **Severity**: Critical (functional) | **Confidence**: 90
 
-The SSO callback sets the access token cookie but never calls `createRefreshToken` + `setRefreshCookie`. SSO users get logged out every 15 minutes (access token expiry) because `useTokenRefresh` hits `/refresh` with no `tessera_refresh` cookie.
+The SSO callback sets the access token cookie but never calls `createRefreshToken` + `setRefreshCookie`. SSO users get logged out every 15 minutes (access token expiry) because `useTokenRefresh` hits `/refresh` with no `guichet_refresh` cookie.
 
 **Fix**: Add refresh token issuance after `setAuthCookie`, mirroring the local login flow.
 

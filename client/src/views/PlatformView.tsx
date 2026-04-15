@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useT } from '../i18n';
 import PlatformSystemHealth from '../components/admin/PlatformSystemHealth';
@@ -19,6 +19,7 @@ import GroupMappingsPanel from '../components/platform/GroupMappingsPanel';
 import PlatformArchiveViewer from '../components/admin/PlatformArchiveViewer';
 import type { PlatformTab, Partner, GlobalUser } from '../components/platform/types';
 import { trpc } from '../utils/trpc';
+import { APP_NAME } from '../constants';
 
 export default function PlatformView() {
   const t = useT();
@@ -26,12 +27,6 @@ export default function PlatformView() {
   const { data: securityStatus, isLoading: securityStatusLoading } = trpc.platformSecurity.getStatus.useQuery();
   const stepUpLocked = securityStatusLoading || (securityStatus ? !securityStatus.stepUpSatisfied : true);
   const effectiveTab: PlatformTab = stepUpLocked ? 'security' : activeTab;
-
-  useEffect(() => {
-    if (stepUpLocked && activeTab !== 'security') {
-      setActiveTab('security');
-    }
-  }, [activeTab, stepUpLocked]);
 
   // Modal visibility state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -45,9 +40,12 @@ export default function PlatformView() {
     <ErrorBoundary>
     <div className="h-screen flex flex-col bg-[var(--color-bg-base)] text-[var(--color-text-primary)] overflow-hidden font-sans">
       <nav className="px-8 py-4 border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <span className="text-2xl font-bold uppercase tracking-tighter font-mono">TESSERA</span>
-          <span className="text-[10px] font-bold px-2.5 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] uppercase tracking-wide font-mono">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <img src="/icon-blue.svg" className="w-5 h-5 mr-1" alt="" />
+            <span className="text-[13px] font-mono font-bold uppercase tracking-[3px] text-[var(--color-text-primary)]">{APP_NAME}</span>
+          </div>
+          <span className="text-[10px] font-bold px-2.5 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] uppercase tracking-wide font-mono ml-2">
             {t('platform')}
           </span>
         </div>
@@ -57,10 +55,13 @@ export default function PlatformView() {
         </div>
       </nav>
 
-      <div className="flex border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] px-8 overflow-x-auto">
+      <div role="tablist" aria-label={t('platform')} className="flex border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] px-8 overflow-x-auto">
         {(['partners', 'users', 'sso', 'security', 'health', 'config', 'audit', 'archive'] as const).map((tab) => (
           <button
             key={tab}
+            role="tab"
+            aria-selected={effectiveTab === tab}
+            aria-disabled={stepUpLocked && tab !== 'security'}
             onClick={() => {
               if (stepUpLocked && tab !== 'security') {
                 return;
@@ -79,7 +80,7 @@ export default function PlatformView() {
         ))}
       </div>
 
-      <main className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <main role="tabpanel" aria-label={t(`${effectiveTab}_tab`)} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
         <div className="max-w-6xl mx-auto">
           {stepUpLocked && effectiveTab === 'security' && (
             <div className="mb-6 border border-[var(--color-border-heavy)] p-4 text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--color-text-secondary)]">

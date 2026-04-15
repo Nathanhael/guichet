@@ -83,7 +83,7 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
 
     router.post('/refresh', refreshRateLimit, async (req: Request, res: Response) => {
         try {
-            const refreshTokenCookie = req.cookies?.tessera_refresh;
+            const refreshTokenCookie = req.cookies?.guichet_refresh;
             if (!refreshTokenCookie) {
                 return res.status(401).json({ error: 'No refresh token' });
             }

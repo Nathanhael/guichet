@@ -68,8 +68,8 @@ export default function SupportView() {
   useIdleStatus();
 
   // Hydrate persisted tabs from localStorage (partner-scoped)
-  const tabStorageKey = activeMembershipId ? `tessera:supportOpenTabs:${activeMembershipId}` : null;
-  const activeTabKey = activeMembershipId ? `tessera:activeTab:${activeMembershipId}` : null;
+  const tabStorageKey = activeMembershipId ? `guichet:supportOpenTabs:${activeMembershipId}` : null;
+  const activeTabKey = activeMembershipId ? `guichet:activeTab:${activeMembershipId}` : null;
 
   useEffect(() => {
     if (!tabStorageKey) return;
@@ -108,7 +108,7 @@ export default function SupportView() {
   const chatWindowRef = useRef<ChatWindowHandle>(null);
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
-  const partnerName = activeMembership?.partnerName || 'Tessera';
+  const partnerName = activeMembership?.partnerName || 'Guichet';
 
   // Request notification permission once when enabled
   useEffect(() => {

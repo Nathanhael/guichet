@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
+import { APP_NAME } from '../constants';
 import PartnerSwitcher from '../components/PartnerSwitcher';
 import SettingsPopover from '../components/SettingsPopover';
 import UserMenu from '../components/UserMenu';
@@ -78,11 +79,14 @@ export default function AdminView() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <span className="font-bold text-2xl tracking-tighter uppercase">TESSERA</span>
-          <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono">
+          <div className="flex items-center gap-2">
+            <img src="/icon-blue.svg" className="w-5 h-5 mr-1" alt="" />
+            <span className="text-[13px] font-mono font-bold uppercase tracking-[3px] text-[var(--color-text-primary)]">{APP_NAME}</span>
+          </div>
+          <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono ml-2">
             {t('admin')}
           </span>
-          <div className="h-6 w-px bg-[var(--color-border)]" />
+          <div className="h-6 w-px bg-[var(--color-border)] mx-2" />
           <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
         </div>
 

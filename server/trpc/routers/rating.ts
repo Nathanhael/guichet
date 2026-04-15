@@ -47,8 +47,20 @@ export const ratingRouter = router({
       }
 
       const fetchLimit = input.limit + 1;
-      const data = await db.select()
+      // Join tickets to include ticket.dept per rating — consumer groups by
+      // ticket dept (not agent dept, which is per-membership and ambiguous).
+      const data = await db.select({
+          id: ratings.id,
+          ticketId: ratings.ticketId,
+          agentId: ratings.agentId,
+          supportId: ratings.supportId,
+          rating: ratings.rating,
+          comment: ratings.comment,
+          createdAt: ratings.createdAt,
+          dept: tickets.dept,
+        })
         .from(ratings)
+        .innerJoin(tickets, eq(ratings.ticketId, tickets.id))
         .where(and(...conditions))
         .orderBy(desc(ratings.createdAt))
         .limit(fetchLimit);

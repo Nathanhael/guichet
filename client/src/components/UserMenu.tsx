@@ -105,8 +105,8 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
             </button>
           )}
 
-          {/* Account Security (optional) */}
-          {showSecurity && (
+          {/* Account Security — platform operators only (SSO users manage security at their IdP) */}
+          {showSecurity && user?.isPlatformOperator && (
             <button
               onClick={handleSecurity}
               className="w-full flex items-center gap-2 px-3 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] border-b border-[var(--color-border)]"

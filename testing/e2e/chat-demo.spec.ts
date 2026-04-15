@@ -68,7 +68,7 @@ async function enableAiFeatures(page: Page) {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
       body: JSON.stringify({
-        id: 'tessera-main',
+        id: 'guichet-main',
         data: {
           aiEnabled: true,
           aiFeatures: {

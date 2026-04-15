@@ -252,6 +252,12 @@ export default function AdminDepartments() {
         </div>
 
         {/* Rows */}
+        {departments.length === 0 && (
+          <div className="px-4 py-12 text-center">
+            <p className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('no_departments') || 'No departments configured'}</p>
+            <p className="text-[10px] uppercase text-[var(--color-text-muted)] mt-2 opacity-60">{t('no_departments_hint') || 'Add a department to get started.'}</p>
+          </div>
+        )}
         {departments.map((dept, idx) => (
           <div key={dept.id || `new-${idx}`}>
             {editingIdx === idx && editDraft ? (

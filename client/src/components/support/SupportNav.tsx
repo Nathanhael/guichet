@@ -1,5 +1,6 @@
 import useStore from '../../store/useStore';
 import { useT } from '../../i18n';
+import { APP_NAME } from '../../constants';
 import StatusPicker from '../StatusPicker';
 import SettingsPopover from '../SettingsPopover';
 import UserMenu from '../UserMenu';
@@ -25,15 +26,16 @@ export default function SupportNav({ partnerName }: SupportNavProps) {
         focusMode ? 'py-2 bg-bg-base border-border' : 'py-4 bg-[var(--color-bg-surface)]'
       }`}
     >
-      {/* Left side: hamburger + TESSERA + SUPPORT + partner name */}
-      <div className="flex items-center gap-4">
-        <span className="font-bold text-2xl uppercase tracking-tighter">TESSERA</span>
+      {/* Left side: hamburger + brand + SUPPORT + partner name */}
+      <div className="flex items-center gap-2">
+        <img src="/icon-blue.svg" className="w-5 h-5 mr-1" alt="" />
+        <span className="text-[13px] font-mono font-bold uppercase tracking-[3px] text-[var(--color-text-primary)]">{APP_NAME}</span>
         {!focusMode && (
           <>
-            <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono">
+            <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono ml-2">
               {t('support')}
             </span>
-            <div className="h-6 w-px bg-[var(--color-border)]" />
+            <div className="h-6 w-px bg-[var(--color-border)] mx-2" />
             <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
           </>
         )}

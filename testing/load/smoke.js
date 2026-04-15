@@ -23,7 +23,7 @@ export default function () {
   // 2. Login (local auth) — uses seeded Acme Corp admin (cookie-based auth)
   const login = http.post(
     `${BASE}/api/v1/auth/login-local`,
-    JSON.stringify({ email: 'dirk@tessera.demo', password: 'password123' }),
+    JSON.stringify({ email: 'dirk@guichet.demo', password: 'password123' }),
     { headers: { 'Content-Type': 'application/json' } }
   );
   check(login, {
@@ -35,7 +35,7 @@ export default function () {
     // Cookies are automatically sent by k6 cookie jar
 
     // 3. tRPC: fetch ticket list (requires partnerId input)
-    const input = encodeURIComponent(JSON.stringify({ partnerId: 'tessera-main' }));
+    const input = encodeURIComponent(JSON.stringify({ partnerId: 'guichet-main' }));
     const tickets = http.get(`${BASE}/api/v1/trpc/ticket.list?input=${input}`);
     check(tickets, {
       'tickets: status 200': (r) => r.status === 200,

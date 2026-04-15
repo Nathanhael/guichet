@@ -10,6 +10,25 @@ import { MailService } from '../../../services/mail.js';
 import { renderInviteNew, renderInviteExisting, renderInviteReminder } from '../../../services/mailTemplates.js';
 import { hashPassword } from '../../../utils/passwords.js';
 import { revokeUserSessions } from '../../../services/sessionRevocation.js';
+import { APP_NAME } from '../../../constants.js';
+import config from '../../../config.js';
+
+/**
+ * Should we skip the invite email for this user?
+ *
+ * Skipped when the partner supports SSO (`sso` or `both`) AND the email domain
+ * is in the configured internal-domain list. These users authenticate via
+ * Azure AD regardless of the partner's local-fallback option, so a password
+ * email would be noise (and a mild security smell — sending a temp password
+ * to an account that will never use local auth).
+ */
+function shouldSkipInviteMail(email: string, partnerAuthMethod: string): boolean {
+  if (partnerAuthMethod !== 'sso' && partnerAuthMethod !== 'both') return false;
+  const domains = config.INTERNAL_EMAIL_DOMAINS.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
+  if (domains.length === 0) return false;
+  const emailDomain = email.split('@')[1]?.toLowerCase();
+  return !!emailDomain && domains.includes(emailDomain);
+}
 
 export const platformUsersRouter = router({
   updateUser: platformProcedure
@@ -199,18 +218,25 @@ export const platformUsersRouter = router({
           departments: input.departments || []
         });
 
-        try {
-          const partnerName = (await db.select({ name: partners.name }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0]?.name || input.partnerId;
-          const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-          const brand = { partnerName };
+        // Skip invite email for internal SSO users — they're provisioned via Azure AD and don't need notification.
+        // Checks partner auth capability (not resolved user method) so 'both' partners still skip for internal domains.
+        const skipInviteEmail = shouldSkipInviteMail(input.email, partner[0].authMethod);
+        if (skipInviteEmail) {
+          logger.info({ email: input.email, partnerAuthMethod: partner[0].authMethod }, '[inviteUser] Skipping invite email for internal SSO user');
+        } else {
+          try {
+            const partnerName = (await db.select({ name: partners.name }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0]?.name || input.partnerId;
+            const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+            const brand = { partnerName };
 
-          const welcomeHtml = isExistingUser
-            ? renderInviteExisting({ name: input.name, partnerName, loginUrl, brand })
-            : renderInviteNew({ name: input.name, partnerName, tempPassword: tempPassword ?? undefined, isLocal, loginUrl, brand });
+            const welcomeHtml = isExistingUser
+              ? renderInviteExisting({ name: input.name, partnerName, loginUrl, brand })
+              : renderInviteNew({ name: input.name, partnerName, tempPassword: tempPassword ?? undefined, isLocal, loginUrl, brand });
 
-          await MailService.sendMail(input.email, `Invitation to join ${partnerName} on Tessera`, welcomeHtml);
-        } catch (mailErr) {
-          logger.error({ err: mailErr }, '[inviteUser] Failed to send welcome email');
+            await MailService.sendMail(input.email, `Invitation to join ${partnerName} on ${APP_NAME}`, welcomeHtml);
+          } catch (mailErr) {
+            logger.error({ err: mailErr }, '[inviteUser] Failed to send welcome email');
+          }
         }
 
         await db.insert(auditLog).values({
@@ -220,7 +246,7 @@ export const platformUsersRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: userId,
-          metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: userAuthMethod }
+          metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: userAuthMethod, emailSkipped: skipInviteEmail }
         });
 
         return { userId, membershipId: memId, tempPassword: tempPassword ?? '', isExistingUser: isExistingUser ?? false };
@@ -253,6 +279,23 @@ export const platformUsersRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'User or Partner not found' });
         }
 
+        // Skip reminder for internal SSO users (provisioned via Azure AD).
+        // Checked BEFORE hashing a password or rendering a template to avoid wasted work
+        // and — more importantly — to avoid rotating the password on an SSO-only user.
+        if (shouldSkipInviteMail(user.email ?? '', partner.authMethod)) {
+          logger.info({ userId: user.id, email: user.email, partnerAuthMethod: partner.authMethod }, '[resendInvite] Skipping reminder for internal SSO user');
+          await db.insert(auditLog).values({
+            id: randomUUID(),
+            action: 'member.invite_resent',
+            actorId: ctx.user.id,
+            partnerId: input.partnerId,
+            targetType: 'user',
+            targetId: user.id,
+            metadata: { email: user.email, emailSkipped: true }
+          });
+          return { success: true, skipped: true };
+        }
+
         const isLocal = partner.authMethod === 'local';
         let tempPassword: string | null = null;
 
@@ -280,7 +323,7 @@ export const platformUsersRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: user.id,
-          metadata: { email: user.email }
+          metadata: { email: user.email, emailSkipped: false }
         });
 
         return { success: true };
@@ -339,6 +382,28 @@ export const platformUsersRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const memBefore = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
+      if (!memBefore[0]) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
+      }
+
+      const wasPlatformOperator = memBefore[0].role === 'platform_operator';
+      const willBePlatformOperator = input.data.role === 'platform_operator';
+      const isDemotion = wasPlatformOperator && !willBePlatformOperator;
+
+      if (isDemotion) {
+        // Prevent self-demotion
+        if (memBefore[0].userId === ctx.user.id) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot demote your own platform operator role' });
+        }
+
+        // Prevent last-operator lockout: count total platform operators
+        const operatorCount = await db.select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(and(eq(users.isPlatformOperator, true), isNull(users.deletedAt)));
+        if (operatorCount[0].count <= 1) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot demote the last platform operator' });
+        }
+      }
 
       await db.update(memberships)
         .set({
@@ -347,29 +412,27 @@ export const platformUsersRouter = router({
         })
         .where(eq(memberships.id, input.id));
 
-      if (memBefore[0]) {
-        try {
-          await db.insert(auditLog).values({
-            id: randomUUID(),
-            action: 'member.updated',
-            actorId: ctx.user.id,
-            partnerId: memBefore[0].partnerId,
-            targetType: 'user',
-            targetId: memBefore[0].userId,
-            metadata: {
-              membershipId: input.id,
-              oldRole: memBefore[0].role,
-              newRole: input.data.role
-            }
-          });
-        } catch (auditErr) {
-          logger.error({ err: auditErr }, '[updateMembership] Audit log failed');
-        }
+      try {
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'member.updated',
+          actorId: ctx.user.id,
+          partnerId: memBefore[0].partnerId,
+          targetType: 'user',
+          targetId: memBefore[0].userId,
+          metadata: {
+            membershipId: input.id,
+            oldRole: memBefore[0].role,
+            newRole: input.data.role
+          }
+        });
+      } catch (auditErr) {
+        logger.error({ err: auditErr }, '[updateMembership] Audit log failed');
       }
 
       const mem = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
       if (mem[0]) {
-        if (input.data.role === 'platform_operator') {
+        if (willBePlatformOperator) {
           await db.update(users).set({ isPlatformOperator: true }).where(eq(users.id, mem[0].userId));
         } else {
           const otherPlatformMemberships = await db.select({ id: memberships.id })
@@ -456,6 +519,25 @@ export const platformUsersRouter = router({
   deleteUser: platformProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
+      // Prevent self-deletion
+      if (input === ctx.user.id) {
+        throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot delete your own account' });
+      }
+
+      // Prevent deleting the last platform operator
+      const target = await db.select({ isPlatformOperator: users.isPlatformOperator })
+        .from(users).where(eq(users.id, input)).limit(1);
+      if (target[0]?.isPlatformOperator) {
+        const operatorCount = await db.select({ count: sql<number>`count(*)::int` })
+          .from(users)
+          .where(and(eq(users.isPlatformOperator, true), isNull(users.deletedAt)));
+        if (operatorCount[0].count <= 1) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot delete the last platform operator' });
+        }
+      }
+
+      await revokeUserSessions(input);
+
       await db.update(users)
         .set({ deletedAt: new Date().toISOString() })
         .where(eq(users.id, input));

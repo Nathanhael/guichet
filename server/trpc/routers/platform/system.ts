@@ -9,6 +9,7 @@ import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
 import { MailService } from '../../../services/mail.js';
 import { renderTestEmail } from '../../../services/mailTemplates.js';
+import { APP_NAME } from '../../../constants.js';
 
 export const platformSystemRouter = router({
   getSystemHealth: platformProcedure.query(async () => {
@@ -80,7 +81,14 @@ export const platformSystemRouter = router({
         .where(eq(systemSettings.key, 'mail_config'))
         .limit(1);
 
-      return (config[0]?.value as Record<string, unknown>) || { provider: 'none' };
+      const raw = (config[0]?.value as Record<string, unknown>) || { provider: 'none' };
+      // Never return secrets to the client — only indicate whether they're set
+      const { smtpPass, apiKey, ...safe } = raw;
+      return {
+        ...safe,
+        hasSmtpPass: typeof smtpPass === 'string' && smtpPass.length > 0,
+        hasApiKey: typeof apiKey === 'string' && apiKey.length > 0,
+      };
     } catch (err: unknown) {
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
     }
@@ -102,15 +110,21 @@ export const platformSystemRouter = router({
       try {
         const before = await db.select().from(systemSettings).where(eq(systemSettings.key, 'mail_config')).limit(1);
 
+        // Preserve existing secrets when client omits them
+        const existing = (before[0]?.value as Record<string, unknown>) || {};
+        const merged = { ...input };
+        if (!input.smtpPass && existing.smtpPass) (merged as Record<string, unknown>).smtpPass = existing.smtpPass;
+        if (!input.apiKey && existing.apiKey) (merged as Record<string, unknown>).apiKey = existing.apiKey;
+
         await db.insert(systemSettings)
           .values({
             key: 'mail_config',
-            value: input,
+            value: merged,
             updatedAt: new Date().toISOString()
           })
           .onConflictDoUpdate({
             target: systemSettings.key,
-            set: { value: input, updatedAt: new Date().toISOString() }
+            set: { value: merged, updatedAt: new Date().toISOString() }
           });
 
         await db.insert(auditLog).values({
@@ -136,7 +150,7 @@ export const platformSystemRouter = router({
     .input(z.object({ email: z.string().email() }))
     .mutation(async ({ input, ctx }) => {
       const html = renderTestEmail({ operatorId: ctx.user.id, timestamp: new Date().toLocaleString() });
-      const success = await MailService.sendMail(input.email, 'Tessera - Mail Configuration Test', html);
+      const success = await MailService.sendMail(input.email, `${APP_NAME} - Mail Configuration Test`, html);
       if (!success) {
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to send test email. Check server logs.' });
       }

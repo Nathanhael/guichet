@@ -1,4 +1,4 @@
-const BASE_TITLE = 'Tessera';
+const BASE_TITLE = 'Guichet';
 
 export function requestNotificationPermission(): void {
     if (!('Notification' in window)) return;

@@ -80,7 +80,7 @@ export function setupJwtMiddleware(io: Server): void {
       let token = socket.handshake.auth?.token as string | undefined;
       if (!token && socket.handshake.headers?.cookie) {
         const cookies = parseCookie(socket.handshake.headers.cookie);
-        token = cookies['tessera_token'];
+        token = cookies['guichet_token'];
       }
       if (!token) {
         return next(new Error('Authentication required'));

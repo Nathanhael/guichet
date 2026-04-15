@@ -1,4 +1,4 @@
-# Tessera
+# Guichet
 
 Real-time, multi-tenant live chat platform for customer support teams. Built for speed, security, and simplicity.
 
@@ -42,11 +42,11 @@ docker compose up
 docker compose exec server npx tsx seed.ts
 ```
 
-Open `http://localhost:3001`. Tessera uses SSO for partner authentication. For local development, you can log in as the platform operator to configure the system.
+Open `http://localhost:3001`. Guichet uses SSO for partner authentication. For local development, you can log in as the platform operator to configure the system.
 
 ### First-Time Production Setup
 
-On first startup with no platform operators, Tessera auto-creates one from environment variables:
+On first startup with no platform operators, Guichet auto-creates one from environment variables:
 
 ```bash
 PLATFORM_ADMIN_EMAIL=admin@yourcompany.com    # Required
@@ -94,7 +94,7 @@ npm run db:backup:docker        # Same, from Docker container
 ## Architecture
 
 ```
-tessera/
+guichet/
 ├── server/          # Express + tRPC + Socket.io
 │   ├── db/          # Drizzle ORM schema + connection
 │   ├── trpc/        # tRPC router + domain routers

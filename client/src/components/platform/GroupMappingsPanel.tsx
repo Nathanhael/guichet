@@ -3,11 +3,13 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { getRoleDisplayName } from '../../utils/roles';
 import Toast from '../Toast';
+import ConfirmDialog from '../ConfirmDialog';
 
 export default function GroupMappingsPanel() {
   const t = useT();
   const [showAddModal, setShowAddModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [mappingToRemove, setMappingToRemove] = useState<string | null>(null);
   const [editingMapping, setEditingMapping] = useState<{
     id: string;
     azureGroupName: string | null;
@@ -16,10 +18,12 @@ export default function GroupMappingsPanel() {
     partnerId: string;
   } | null>(null);
 
-  const { data: mappings, refetch, isLoading } = trpc.platform.listGroupMappings.useQuery({});
+  const utils = trpc.useUtils();
+  const { data: mappings, isLoading } = trpc.platform.listGroupMappings.useQuery({});
   const { data: partnersList } = trpc.platform.listPartners.useQuery();
+  const invalidate = () => utils.platform.listGroupMappings.invalidate();
   const removeMutation = trpc.platform.removeGroupMapping.useMutation({
-    onSuccess: () => refetch(),
+    onSuccess: invalidate,
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
 
@@ -86,11 +90,7 @@ export default function GroupMappingsPanel() {
                       {t('edit')}
                     </button>
                     <button
-                      onClick={() => {
-                        if (confirm(t('confirm_remove_mapping'))) {
-                          removeMutation.mutate(m.id);
-                        }
-                      }}
+                      onClick={() => setMappingToRemove(m.id)}
                       className="text-[10px] font-bold uppercase tracking-widest font-mono text-[var(--color-accent-red)] hover:line-through"
                     >
                       {t('remove')}
@@ -111,7 +111,7 @@ export default function GroupMappingsPanel() {
         <AddMappingModal
           ssoPartners={ssoPartners}
           onClose={() => setShowAddModal(false)}
-          onAdded={() => { setShowAddModal(false); refetch(); }}
+          onAdded={() => { setShowAddModal(false); invalidate(); }}
         />
       )}
 
@@ -119,7 +119,15 @@ export default function GroupMappingsPanel() {
         <EditMappingModal
           mapping={editingMapping}
           onClose={() => setEditingMapping(null)}
-          onUpdated={() => { setEditingMapping(null); refetch(); }}
+          onUpdated={() => { setEditingMapping(null); invalidate(); }}
+        />
+      )}
+      {mappingToRemove && (
+        <ConfirmDialog
+          title={t('remove')}
+          message={t('confirm_remove_mapping')}
+          onConfirm={() => { removeMutation.mutate(mappingToRemove); setMappingToRemove(null); }}
+          onCancel={() => setMappingToRemove(null)}
         />
       )}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

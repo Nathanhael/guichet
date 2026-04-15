@@ -1,4 +1,4 @@
-# Tessera tRPC API Reference
+# Guichet tRPC API Reference
 
 Reference for all tRPC procedures (18 routers).
 Client access: `trpc.<router>.<procedure>`
