@@ -81,10 +81,10 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
-}, (table) => ({
-  emailIdx: index('idx_users_email').on(table.email),
-  externalIdIdx: index('idx_users_external_id').on(table.externalId),
-}));
+}, (table) => [
+  index('idx_users_email').on(table.email),
+  index('idx_users_external_id').on(table.externalId),
+]);
 
 export const systemSettings = pgTable('system_settings', {
   key: text('key').primaryKey(),
@@ -100,9 +100,9 @@ export const memberships = pgTable('memberships', {
   departments: jsonb('departments').default([]),
   source: membershipSourceEnum('source').notNull().default('sso'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  userPartnerIdx: uniqueIndex('idx_memberships_user_partner').on(table.userId, table.partnerId),
-}));
+}, (table) => [
+  uniqueIndex('idx_memberships_user_partner').on(table.userId, table.partnerId),
+]);
 
 export const tickets = pgTable('tickets', {
   id: text('id').primaryKey(),
@@ -125,18 +125,18 @@ export const tickets = pgTable('tickets', {
   participants: jsonb('participants').$type<Array<{ id: string; name: string; role?: string; lang?: string }>>().default([]),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
-}, (table) => ({
-  partnerIdIdx: index('idx_tickets_partner_id').on(table.partnerId),
-  agentIdIdx: index('idx_tickets_agent_id').on(table.agentId),
-  statusIdx: index('idx_tickets_status').on(table.status),
-  deptIdx: index('idx_tickets_dept').on(table.dept),
-  createdAtIdx: index('idx_tickets_created_at').on(table.createdAt),
-  partnerCreatedIdx: index('idx_tickets_partner_created').on(table.partnerId, table.createdAt),
-  partnerStatusIdx: index('idx_tickets_partner_status').on(table.partnerId, table.status),
-  supportIdIdx: index('idx_tickets_support_id').on(table.supportId),
-  participantsGinIdx: index('idx_tickets_participants_gin').using('gin', table.participants),
-  openUnassignedIdx: index('idx_tickets_open_unassigned').on(table.partnerId, table.createdAt).where(sql`status = 'open' AND support_id IS NULL`),
-}));
+}, (table) => [
+  index('idx_tickets_partner_id').on(table.partnerId),
+  index('idx_tickets_agent_id').on(table.agentId),
+  index('idx_tickets_status').on(table.status),
+  index('idx_tickets_dept').on(table.dept),
+  index('idx_tickets_created_at').on(table.createdAt),
+  index('idx_tickets_partner_created').on(table.partnerId, table.createdAt),
+  index('idx_tickets_partner_status').on(table.partnerId, table.status),
+  index('idx_tickets_support_id').on(table.supportId),
+  index('idx_tickets_participants_gin').using('gin', table.participants),
+  index('idx_tickets_open_unassigned').on(table.partnerId, table.createdAt).where(sql`status = 'open' AND support_id IS NULL`),
+]);
 
 export const messages = pgTable('messages', {
   id: text('id').primaryKey(),
@@ -163,14 +163,14 @@ export const messages = pgTable('messages', {
   replyToId: text('reply_to_id'),
   /** Full-text search vector — populated by DB trigger on INSERT/UPDATE */
   searchVector: tsvector('search_vector'),
-}, (table) => ({
-  ticketIdIdx: index('idx_messages_ticket_id').on(table.ticketId),
-  senderIdIdx: index('idx_messages_sender_id').on(table.senderId),
-  ticketDeletedIdx: index('idx_messages_ticket_deleted').on(table.ticketId, table.deletedAt),
-  ticketCreatedIdx: index('idx_messages_ticket_created').on(table.ticketId, table.createdAt),
-  replyToIdx: index('idx_messages_reply_to_id').on(table.replyToId),
-  searchVectorIdx: index('idx_messages_search_vector').using('gin', table.searchVector),
-}));
+}, (table) => [
+  index('idx_messages_ticket_id').on(table.ticketId),
+  index('idx_messages_sender_id').on(table.senderId),
+  index('idx_messages_ticket_deleted').on(table.ticketId, table.deletedAt),
+  index('idx_messages_ticket_created').on(table.ticketId, table.createdAt),
+  index('idx_messages_reply_to_id').on(table.replyToId),
+  index('idx_messages_search_vector').using('gin', table.searchVector),
+]);
 
 export const ratings = pgTable('ratings', {
   id: text('id').primaryKey(),
@@ -181,12 +181,12 @@ export const ratings = pgTable('ratings', {
   rating: integer('rating').notNull(),
   comment: text('comment'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  ticketIdIdx: uniqueIndex('idx_ratings_ticket_unique').on(table.ticketId),
-  supportIdIdx: index('idx_ratings_support_id').on(table.supportId),
-  createdAtIdx: index('idx_ratings_created_at').on(table.createdAt),
-  partnerCreatedIdx: index('idx_ratings_partner_created').on(table.partnerId, table.createdAt),
-}));
+}, (table) => [
+  uniqueIndex('idx_ratings_ticket_unique').on(table.ticketId),
+  index('idx_ratings_support_id').on(table.supportId),
+  index('idx_ratings_created_at').on(table.createdAt),
+  index('idx_ratings_partner_created').on(table.partnerId, table.createdAt),
+]);
 
 export const appFeedback = pgTable('app_feedback', {
   id: text('id').primaryKey(),
@@ -197,27 +197,27 @@ export const appFeedback = pgTable('app_feedback', {
   text: text('text').notNull(),
   treated: integer('treated').default(0),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
+}, (table) => [
   // ME-05 fix: Add missing indexes for common query patterns (filter by partner, sort by date)
-  partnerIdIdx: index('idx_app_feedback_partner_id').on(table.partnerId),
-  createdAtIdx: index('idx_app_feedback_created_at').on(table.createdAt),
-}));
+  index('idx_app_feedback_partner_id').on(table.partnerId),
+  index('idx_app_feedback_created_at').on(table.createdAt),
+]);
 
 export const labels = pgTable('labels', {
   id: text('id').primaryKey(),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   color: text('color').notNull(),
-}, (table) => ({
-  partnerNameIdx: index('idx_labels_partner_name').on(table.partnerId, table.name),
-}));
+}, (table) => [
+  index('idx_labels_partner_name').on(table.partnerId, table.name),
+]);
 
 export const ticketLabels = pgTable('ticket_labels', {
   ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
   labelId: text('label_id').notNull().references(() => labels.id, { onDelete: 'cascade' }),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.ticketId, table.labelId] }),
-}));
+}, (table) => [
+  primaryKey({ columns: [table.ticketId, table.labelId] }),
+]);
 
 export const dailyStats = pgTable('daily_stats', {
   date: date('date', { mode: 'string' }).notNull(),
@@ -237,9 +237,9 @@ export const dailyStats = pgTable('daily_stats', {
   deptCounts: jsonb('dept_counts').default({}),
   ratingsByDept: jsonb('ratings_by_dept').default({}),
   hourly: jsonb('hourly').default({}),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.date, table.partnerId] }),
-}));
+}, (table) => [
+  primaryKey({ columns: [table.date, table.partnerId] }),
+]);
 
 export const topicAlerts = pgTable('topic_alerts', {
   id: text('id').primaryKey(),
@@ -252,9 +252,9 @@ export const topicAlerts = pgTable('topic_alerts', {
   status: alertStatusEnum('status').default('active'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   resolvedAt: timestamp('resolved_at', { mode: 'string' }),
-}, (table) => ({
-  partnerStatusIdx: index('idx_alerts_partner_status').on(table.partnerId, table.status),
-}));
+}, (table) => [
+  index('idx_alerts_partner_status').on(table.partnerId, table.status),
+]);
 
 export const partnerGroupMappings = pgTable('partner_group_mappings', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -264,10 +264,10 @@ export const partnerGroupMappings = pgTable('partner_group_mappings', {
   defaultRole: roleEnum('default_role').notNull().default('agent'),
   defaultDepartments: jsonb('default_departments').default([]),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerGroupIdx: uniqueIndex('idx_pgm_partner_group').on(table.partnerId, table.azureGroupId),
-  groupIdx: index('idx_pgm_azure_group').on(table.azureGroupId),
-}));
+}, (table) => [
+  uniqueIndex('idx_pgm_partner_group').on(table.partnerId, table.azureGroupId),
+  index('idx_pgm_azure_group').on(table.azureGroupId),
+]);
 
 export const auditLog = pgTable('audit_log', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -278,13 +278,13 @@ export const auditLog = pgTable('audit_log', {
   targetId: text('target_id'),
   metadata: jsonb('metadata').default({}),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerCreatedIdx: index('idx_audit_log_partner_created').on(table.partnerId, table.createdAt),
-  actorCreatedIdx: index('idx_audit_log_actor_created').on(table.actorId, table.createdAt),
-  actionIdx: index('idx_audit_log_action').on(table.action),
-  createdAtIdx: index('idx_audit_log_created_at').on(table.createdAt),
-  targetIdIdx: index('idx_audit_log_target_id').on(table.targetId),
-}));
+}, (table) => [
+  index('idx_audit_log_partner_created').on(table.partnerId, table.createdAt),
+  index('idx_audit_log_actor_created').on(table.actorId, table.createdAt),
+  index('idx_audit_log_action').on(table.action),
+  index('idx_audit_log_created_at').on(table.createdAt),
+  index('idx_audit_log_target_id').on(table.targetId),
+]);
 
 // ─── Canned Responses ────────────────────────────────────────────────────────
 
@@ -298,10 +298,10 @@ export const cannedResponses = pgTable('canned_responses', {
   createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerIdx: index('idx_canned_partner').on(table.partnerId),
-  shortcutIdx: index('idx_canned_shortcut').on(table.partnerId, table.shortcut),
-}));
+}, (table) => [
+  index('idx_canned_partner').on(table.partnerId),
+  index('idx_canned_shortcut').on(table.partnerId, table.shortcut),
+]);
 
 // ─── Archive Tables ──────────────────────────────────────────────────────────
 
@@ -322,13 +322,13 @@ export const auditArchive = pgTable('audit_archive', {
   archivedAt: timestamp('archived_at', { mode: 'string' }).notNull().defaultNow(),
   chainHash: text('chain_hash').notNull(),           // SHA-256(prev_hash + row_data)
   sequence: integer('sequence').notNull().default(0), // Monotonic ordering for deterministic hash chain
-}, (table) => ({
-  createdAtIdx: index('idx_audit_archive_created').on(table.createdAt),
-  archivedAtIdx: index('idx_audit_archive_archived').on(table.archivedAt),
-  partnerIdx: index('idx_audit_archive_partner').on(table.partnerId),
-  targetIdIdx: index('idx_audit_archive_target_id').on(table.targetId),
-  sequenceIdx: index('idx_audit_archive_sequence').on(table.sequence),
-}));
+}, (table) => [
+  index('idx_audit_archive_created').on(table.createdAt),
+  index('idx_audit_archive_archived').on(table.archivedAt),
+  index('idx_audit_archive_partner').on(table.partnerId),
+  index('idx_audit_archive_target_id').on(table.targetId),
+  index('idx_audit_archive_sequence').on(table.sequence),
+]);
 
 /**
  * Archived tickets — closed tickets moved here before GDPR purge deletes them.
@@ -348,11 +348,11 @@ export const archivedTickets = pgTable('archived_tickets', {
   reopenCount: integer('reopen_count').default(0),
   messageCount: integer('message_count').default(0),
   archivedAt: timestamp('archived_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerIdx: index('idx_archived_tickets_partner').on(table.partnerId),
-  createdAtIdx: index('idx_archived_tickets_created').on(table.createdAt),
-  archivedAtIdx: index('idx_archived_tickets_archived').on(table.archivedAt),
-}));
+}, (table) => [
+  index('idx_archived_tickets_partner').on(table.partnerId),
+  index('idx_archived_tickets_created').on(table.createdAt),
+  index('idx_archived_tickets_archived').on(table.archivedAt),
+]);
 
 // ─── Knowledge Base ─────────────────────────────────────────────────────────
 
@@ -368,11 +368,11 @@ export const kbArticles = pgTable('kb_articles', {
   createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerIdx: index('idx_kb_partner').on(table.partnerId),
-  partnerSlugIdx: uniqueIndex('idx_kb_partner_slug').on(table.partnerId, table.slug),
-  partnerPublishedIdx: index('idx_kb_partner_published').on(table.partnerId, table.published),
-}));
+}, (table) => [
+  index('idx_kb_partner').on(table.partnerId),
+  uniqueIndex('idx_kb_partner_slug').on(table.partnerId, table.slug),
+  index('idx_kb_partner_published').on(table.partnerId, table.published),
+]);
 
 // ─── Webhooks ───────────────────────────────────────────────────────────────
 
@@ -387,10 +387,10 @@ export const webhooks = pgTable('webhooks', {
   createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerIdx: index('idx_webhooks_partner').on(table.partnerId),
-  partnerActiveIdx: index('idx_webhooks_partner_active').on(table.partnerId, table.active),
-}));
+}, (table) => [
+  index('idx_webhooks_partner').on(table.partnerId),
+  index('idx_webhooks_partner_active').on(table.partnerId, table.active),
+]);
 
 export const webhookLogs = pgTable('webhook_logs', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -402,9 +402,9 @@ export const webhookLogs = pgTable('webhook_logs', {
   error: text('error'),
   durationMs: integer('duration_ms'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  webhookCreatedIdx: index('idx_webhook_logs_webhook_created').on(table.webhookId, table.createdAt),
-}));
+}, (table) => [
+  index('idx_webhook_logs_webhook_created').on(table.webhookId, table.createdAt),
+]);
 
 // ─── AI Service Tables ──────────────────────────────────────────────────────
 
@@ -416,9 +416,9 @@ export const aiPromptTemplates = pgTable('ai_prompt_templates', {
   model: text('model'),              // override model per action
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerActionIdx: uniqueIndex('idx_ai_prompts_partner_action').on(table.partnerId, table.action),
-}));
+}, (table) => [
+  uniqueIndex('idx_ai_prompts_partner_action').on(table.partnerId, table.action),
+]);
 
 export const aiUsageLog = pgTable('ai_usage_log', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -433,10 +433,10 @@ export const aiUsageLog = pgTable('ai_usage_log', {
   success: boolean('success').notNull().default(true),
   errorMessage: text('error_message'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerCreatedIdx: index('idx_ai_usage_partner_created').on(table.partnerId, table.createdAt),
-  userCreatedIdx: index('idx_ai_usage_user_created').on(table.userId, table.createdAt),
-}));
+}, (table) => [
+  index('idx_ai_usage_partner_created').on(table.partnerId, table.createdAt),
+  index('idx_ai_usage_user_created').on(table.userId, table.createdAt),
+]);
 
 /**
  * Daily AI usage aggregates — rolled up from ai_usage_log before purge.
@@ -457,10 +457,10 @@ export const dailyAiUsage = pgTable('daily_ai_usage', {
   errorCount: integer('error_count').notNull().default(0),
   avgLatencyMs: integer('avg_latency_ms'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerDateIdx: index('idx_daily_ai_usage_partner_date').on(table.partnerId, table.date),
-  uniqueDayKey: uniqueIndex('idx_daily_ai_usage_unique').on(table.date, table.partnerId, table.action, table.provider, table.model),
-}));
+}, (table) => [
+  index('idx_daily_ai_usage_partner_date').on(table.partnerId, table.date),
+  uniqueIndex('idx_daily_ai_usage_unique').on(table.date, table.partnerId, table.action, table.provider, table.model),
+]);
 
 // ─── Push Subscriptions ─────────────────────────────────────────────────────
 
@@ -474,10 +474,10 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
   endpoint: text('endpoint').notNull(),
   keys: jsonb('keys').notNull(),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  userIdx: index('idx_push_subscriptions_user').on(table.userId),
-  endpointIdx: uniqueIndex('idx_push_subscriptions_endpoint').on(table.endpoint),
-}));
+}, (table) => [
+  index('idx_push_subscriptions_user').on(table.userId),
+  uniqueIndex('idx_push_subscriptions_endpoint').on(table.endpoint),
+]);
 
 // ─── Agent Status Tracking ──────────────────────────────────────────────────
 
@@ -494,11 +494,11 @@ export const agentStatusLog = pgTable('agent_status_log', {
   startedAt: timestamp('started_at', { mode: 'string' }).notNull().defaultNow(),
   endedAt: timestamp('ended_at', { mode: 'string' }),
   duration: integer('duration'),
-}, (table) => ({
-  userPartnerIdx: index('idx_agent_status_log_user_partner').on(table.userId, table.partnerId),
-  partnerStartedIdx: index('idx_agent_status_log_partner_started').on(table.partnerId, table.startedAt),
-  openRowIdx: index('idx_agent_status_log_open').on(table.userId, table.partnerId).where(sql`ended_at IS NULL`),
-}));
+}, (table) => [
+  index('idx_agent_status_log_user_partner').on(table.userId, table.partnerId),
+  index('idx_agent_status_log_partner_started').on(table.partnerId, table.startedAt),
+  index('idx_agent_status_log_open').on(table.userId, table.partnerId).where(sql`ended_at IS NULL`),
+]);
 
 /**
  * Daily rollup of agent time-in-status.
@@ -513,10 +513,10 @@ export const dailyAgentStatus = pgTable('daily_agent_status', {
   onlineSeconds: integer('online_seconds').notNull().default(0),
   awaySeconds: integer('away_seconds').notNull().default(0),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-}, (table) => ({
-  partnerDateIdx: index('idx_daily_agent_status_partner_date').on(table.partnerId, table.date),
-  uniqueDayKey: uniqueIndex('idx_daily_agent_status_unique').on(table.date, table.userId, table.partnerId),
-}));
+}, (table) => [
+  index('idx_daily_agent_status_partner_date').on(table.partnerId, table.date),
+  uniqueIndex('idx_daily_agent_status_unique').on(table.date, table.userId, table.partnerId),
+]);
 
 // ─── Saved Views ─────────────────────────────────────────────────────────────
 

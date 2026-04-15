@@ -38,16 +38,22 @@ async function loginAsDemo(page: Page, userId: string) {
 
 /** Open the first available ticket in the sidebar (support view). */
 async function openFirstTicket(page: Page) {
-  // QueueTicketRow renders as <li class="... cursor-pointer ..."> inside the
-  // QueueSidebar (which is a <div>, not <aside>, so don't scope to aside).
-  // Wait for the queue to actually contain a row instead of using a fixed
-  // sleep — the queue is hydrated via WebSocket and timing varies.
-  const ticket = page.locator('li.cursor-pointer').first();
+  // QueueTicketRow stamps `data-ticket-row` on its `<li>`. This is more
+  // specific than the previous `li.cursor-pointer` selector, which also
+  // matched the "Other Agents" collapsible section header when the queue
+  // had enough tickets to show that group.
+  const ticket = page.locator('li[data-ticket-row]').first();
   await ticket.waitFor({ state: 'visible', timeout: 20000 });
 
-  // Tiny settle so any in-flight queue re-render finishes before the click,
-  // preventing Playwright from racing against a DOM swap.
-  await page.waitForTimeout(150);
+  // Trigger the QueueTicketRow's onMouseEnter/onFocus prefetch for the lazy
+  // ComposeArea chunk *before* we click. `.hover()` dispatches mouseenter
+  // which kicks off the dynamic `import()` early — without this, the chunk
+  // fetch only starts when the chat window renders, and the 25 s `.ProseMirror`
+  // wait below races the 460 KB `vendor-editor` download on cold Docker cache.
+  await ticket.hover();
+  // Settle for in-flight queue re-renders and give the prefetch a few frames
+  // before the click triggers the mount itself.
+  await page.waitForTimeout(300);
   await ticket.click();
 
   // SupportView shows a preview first — need to click "Join" to open the chat
@@ -63,8 +69,10 @@ async function openFirstTicket(page: Page) {
   // ComposeArea is lazy-loaded (vendor-editor chunk ~462 KB), so the first
   // mount in a fresh browser context can be slower than later mounts — give
   // it a generous timeout to absorb cold-cache chunk fetch + Suspense boot.
+  // 35 s rather than the previous 25 s because Docker volume I/O + Vite dev
+  // server + React.Suspense + Tiptap boot exceeded 25 s on slow runners.
   await page.locator('.ProseMirror').first()
-    .waitFor({ state: 'visible', timeout: 25000 });
+    .waitFor({ state: 'visible', timeout: 35000 });
 }
 
 /**
