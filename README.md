@@ -19,6 +19,12 @@ Real-time, multi-tenant live chat platform for customer support teams. Built for
 - **Customer Satisfaction** — Auto-prompted ratings on ticket close, follow-up reminders, per-agent CSAT reporting
 - **PWA Ready** — Installable on mobile with offline support and push notifications
 
+## Screenshots
+
+| Support View | Platform Admin |
+|:---:|:---:|
+| ![Support](docs/screenshots/support-dark.png) | ![Platform](docs/screenshots/platform-dark.png) |
+
 ## Tech Stack
 
 | Layer | Technology |
