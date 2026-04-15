@@ -12,6 +12,7 @@ import { setRefreshCookie } from './auth/rateLimit.js';
 import { isPlatformAdmin } from '../services/roles.js';
 import { getRedisClients } from '../utils/redis.js';
 import { auth } from '../middleware/auth.js';
+import { extractLocaleClaim, mapClaimToLocale, computeLocaleUpdate } from '../services/localeSync.js';
 
 const router = express.Router();
 
@@ -224,15 +225,12 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     const email: string = (claims.email || claims.preferred_username || '').toLowerCase();
     const name: string = claims.name || email;
 
-    // Map Azure locale claim to supported Guichet languages (nl, fr, en)
-    const SUPPORTED_LANGS = ['nl', 'fr', 'en'] as const;
-    type SupportedLang = typeof SUPPORTED_LANGS[number];
-    const rawLang = claims.locale ?? claims.xms_lang;
-    const azureLang: SupportedLang | null = rawLang
-      ? (SUPPORTED_LANGS.includes(rawLang.slice(0, 2).toLowerCase() as SupportedLang)
-          ? (rawLang.slice(0, 2).toLowerCase() as SupportedLang)
-          : null)
-      : null;
+    // Locale claim resolved via the shared `localeSync` helper. Per-partner
+    // attribute map (if configured) is applied after we identify the partner
+    // further down; for the initial create/upsert we use the defaults.
+    const claimsRecord = claims as unknown as Record<string, unknown>;
+    const rawLocaleClaim = extractLocaleClaim(claimsRecord, null);
+    const azureLang = mapClaimToLocale(rawLocaleClaim);
 
     if (!oid || !email) {
       logger.error({ hasOid: !!oid, hasEmail: !!email }, '[SSO] Missing oid or email in ID token');
@@ -283,10 +281,28 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         logger.info({ userId: newId, oid }, '[SSO] Created new SSO user');
       }
     } else {
-      // Update name/email if changed in Azure (intentionally NOT updating lang —
-      // the user may have manually switched language via the UI, and we don't
-      // want Azure to overwrite that choice on every login)
-      await db.update(users).set({ name, email }).where(eq(users.id, user.id));
+      // Sync locale from the IdP claim unless the user has explicitly locked
+      // it via the UI (`users.langLocked = true`). See
+      // `docs/superpowers/specs/2026-04-15-sso-locale-sync-design.md`.
+      const nextLang = computeLocaleUpdate({
+        currentLang: user.lang,
+        langLocked: user.langLocked ?? false,
+        claim: rawLocaleClaim,
+      });
+      await db
+        .update(users)
+        .set({ name, email, ...(nextLang && { lang: nextLang }) })
+        .where(eq(users.id, user.id));
+      if (nextLang) {
+        await db.insert(auditLog).values({
+          action: 'user.locale.sso_sync',
+          actorId: user.id,
+          targetType: 'user',
+          targetId: user.id,
+          metadata: { from: user.lang, to: nextLang, claim: rawLocaleClaim },
+        });
+        user = { ...user, lang: nextLang };
+      }
     }
 
     // Update lastActiveAt

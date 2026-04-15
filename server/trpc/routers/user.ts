@@ -240,6 +240,83 @@ export const userRouter = router({
     return (rows[0]?.notificationPreferences ?? {}) as Record<string, boolean>;
   }),
 
+  /**
+   * Get the current user's locale + sync metadata. Used by `LanguageSwitcher`
+   * to render the "SYNCED FROM SSO" badge and the "UNLOCK SSO SYNC" button.
+   */
+  getLocaleInfo: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await db
+      .select({
+        lang: users.lang,
+        langLocked: users.langLocked,
+        externalId: users.externalId,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.user.id))
+      .limit(1);
+    const row = rows[0];
+    return {
+      lang: (row?.lang ?? 'en') as string,
+      langLocked: row?.langLocked ?? false,
+      hasSso: !!row?.externalId,
+    };
+  }),
+
+  /**
+   * Set the current user's locale and/or toggle the SSO sync lock.
+   *
+   * Product rule (see `docs/superpowers/specs/2026-04-15-sso-locale-sync-design.md`):
+   * - Picking a language manually sets `langLocked=true` so subsequent SSO
+   *   logins don't overwrite the user's choice.
+   * - Unlocking (`lockFromSso: false`) re-enables SSO sync; no lang change.
+   */
+  setLocale: protectedProcedure
+    .input(
+      z.object({
+        lang: z.enum(['nl', 'fr', 'en']).optional(),
+        lockFromSso: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const patch: { lang?: string; langLocked?: boolean; updatedAt: string } = {
+        updatedAt: new Date().toISOString(),
+      };
+      if (input.lang) patch.lang = input.lang;
+      if (typeof input.lockFromSso === 'boolean') patch.langLocked = input.lockFromSso;
+
+      if (Object.keys(patch).length === 1) {
+        // Only `updatedAt` set → caller passed no real changes. Return current state.
+        const rows = await db
+          .select({ lang: users.lang, langLocked: users.langLocked })
+          .from(users)
+          .where(eq(users.id, ctx.user.id))
+          .limit(1);
+        return { lang: rows[0]?.lang ?? 'en', langLocked: rows[0]?.langLocked ?? false };
+      }
+
+      await db.update(users).set(patch).where(eq(users.id, ctx.user.id));
+
+      await db.insert(auditLog).values({
+        action: 'user.locale.changed',
+        actorId: ctx.user.id,
+        targetType: 'user',
+        targetId: ctx.user.id,
+        metadata: {
+          ...(input.lang && { lang: input.lang }),
+          ...(typeof input.lockFromSso === 'boolean' && { langLocked: input.lockFromSso }),
+        },
+      });
+
+      return {
+        lang: patch.lang ?? (await db
+          .select({ lang: users.lang })
+          .from(users)
+          .where(eq(users.id, ctx.user.id))
+          .limit(1))[0]?.lang ?? 'en',
+        langLocked: patch.langLocked ?? false,
+      };
+    }),
+
   /** Update notification preferences (merge, not replace) */
   updateNotificationPrefs: protectedProcedure
     .input(z.object({
