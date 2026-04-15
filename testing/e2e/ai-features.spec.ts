@@ -10,7 +10,7 @@
  *
  * Prerequisites:
  *   - Server running at E2E_BASE_URL (default http://localhost:3001)
- *   - Seeded demo database (agent_jan, expert_alex, admin_dirk, platform_bart)
+ *   - Seeded demo database (agent_julie, support_lucas, admin_emma, platform_bart)
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -433,7 +433,7 @@ test.describe('Sprint 2: AI Translation', () => {
   });
 
   test('translation UI appears on messages from different language', async ({ page }) => {
-    // Login as English-speaking support (expert_alex, lang='en')
+    // Login as English-speaking support (support_lucas, lang='en')
     const res = await loginAsDemo(page, 'support_lucas');
     test.skip(!res.ok, 'Login failed');
     await page.waitForTimeout(2000);

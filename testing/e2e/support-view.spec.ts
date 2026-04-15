@@ -58,7 +58,7 @@ test.describe('Support View', () => {
   });
 
   test('queue sidebar is visible with tickets', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login API failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login API failed — support_lucas may not be seeded');
     // The queue sidebar should show ticket list or sidebar navigation
     const sidebar = page.locator('aside').first();
     const queue = page.getByText(/queue|wachtrij|file d'attente|ticket/i).first();
@@ -88,7 +88,7 @@ test.describe('Support View', () => {
   });
 
   test('archive tab shows closed tickets', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login API failed — expert_alex may not be seeded');
+    test.skip(!loginOk, 'Demo login API failed — support_lucas may not be seeded');
     // The archive affordance is only rendered for support/admin roles and
     // the panel contents depend on whether any tickets have been closed. On a
     // fresh --e2e seed there are no closed tickets, so this test must tolerate

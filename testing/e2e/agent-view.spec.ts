@@ -51,7 +51,7 @@ async function loginAsDemo(page: Page, userId: string) {
 
 test.describe('Agent View', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsDemo(page, 'agent_jan');
+    await loginAsDemo(page, 'agent_julie');
     await page.waitForTimeout(2000);
   });
 
@@ -112,7 +112,7 @@ test.describe('Agent View', () => {
 
 test.describe('AI Message Improvement', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsDemo(page, 'agent_jan');
+    await loginAsDemo(page, 'agent_julie');
     await page.waitForTimeout(2000);
   });
 
