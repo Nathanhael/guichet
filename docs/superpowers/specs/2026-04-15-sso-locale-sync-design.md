@@ -89,39 +89,48 @@ Table:
 
 ## Sync policy
 
+### Product rule
+
+**SSO claim is the source of truth for locale. User can override via UI; override persists across sessions until explicitly unlocked.**
+
+One rule, no per-partner toggle. Simpler DB, simpler mental model. If a tenant ever needs to opt out, that becomes a future feature — YAGNI for v1.
+
 ### New column: `users.langLocked` (boolean, default `false`)
 
 Tracks whether the user has manually overridden the locale. Once locked, SSO claim no longer updates `users.lang`.
 
-### Decision matrix on SSO login
+### Decision matrix on login
 
-| Partner `syncLocaleFromSso` | User `langLocked` | Claim present | Action |
+| Auth path | `langLocked` | Claim present | Action |
 |---|---|---|---|
-| `false` | — | — | No change (backward compat) |
-| `true` | `false` | yes, mapped | Update `users.lang` to mapped claim |
-| `true` | `false` | no / unmapped | Fall through: keep existing `users.lang` or set browser default on first login |
-| `true` | `true` | — | No change (user override wins) |
+| Local password | — | — | No change (no claim exists; `Accept-Language` fallback on first-ever login only) |
+| SSO | `false` | yes, mapped | Update `users.lang` to mapped claim |
+| SSO | `false` | no / unmapped | Keep existing `users.lang` (no overwrite with null) |
+| SSO | `true` | — | No change (user override wins) |
 
 ### Manual override flow (client)
 
 - User opens `LanguageSwitcher`, picks a different locale.
 - Client calls new `trpc.user.setLocale({ lang, lockFromSso: true })` mutation.
 - Server sets `users.lang` + `users.langLocked = true`. Logs to audit trail.
-- User gets "Unlock" affordance in the switcher to re-enable SSO sync:
-  - Calls `trpc.user.setLocale({ lockFromSso: false })`, no lang change.
-  - Next SSO login re-syncs from claim.
+- Badge flips from "SYNCED FROM SSO" to "UNLOCK SSO SYNC" button.
+- Clicking unlock calls `trpc.user.setLocale({ lockFromSso: false })` (no lang change). Next SSO login re-syncs from claim.
 
 ### First login of a local operator (no SSO)
 
-Browser `Accept-Language` header → run through same mapper → set `users.lang`. `langLocked` stays `false`.
+Browser `Accept-Language` header → run through same mapper → set `users.lang`. `langLocked` stays `false`. (Future SSO logins, if the operator ever has an SSO account in another tenant, would sync normally.)
 
 ---
 
-## Partner opt-in
+## Handling existing users
 
-Add boolean column `partners.syncLocaleFromSso` (default `false`). Platform operator UI (`AdminPartnerConfig`) exposes a toggle. Existing tenants aren't surprised; new tenants can opt in.
+Production tenants already have users with manually-picked `users.lang` values. On first SSO login after this ships, the claim will overwrite `users.lang` because `langLocked=false` on all pre-existing rows.
 
-SSO routes check this flag before running the sync. When `false`, the claim is ignored even if present — respects tenant policy.
+**Chosen path: let it happen.** User notices the wrong locale, clicks the switcher once, `langLocked=true`, done. One-click recovery. Cost: temporary confusion for a handful of users who had deliberately-different locales.
+
+**Alternative considered (rejected):** one-time backfill setting `langLocked=true` on every existing row. Safer but delays the benefit indefinitely for users whose current `users.lang` matches what the claim would have set anyway. The audit trail can't distinguish user-picked from admin-seeded values, so the backfill is too conservative.
+
+Documented in `CHANGELOG.md` as expected behavior when this ships.
 
 ---
 
@@ -130,11 +139,15 @@ SSO routes check this flag before running the sync. When `false`, the claim is i
 ### Post-auth `LanguageSwitcher`
 
 - Replace `🇧🇪 NL / 🇫🇷 FR / 🇬🇧 EN` with native-language labels: `Nederlands / Français / English`. No emoji. No flag SVG. Text-only, matches brutalist JetBrains Mono aesthetic.
-- When `partners.syncLocaleFromSso=true` AND `users.langLocked=false`:
+- When the user logged in via SSO AND `langLocked=false`:
   - Show a small "SYNCED FROM SSO" badge next to the current language.
-  - On manual pick, confirm via tooltip that this will override SSO (sets `langLocked=true`).
-- When `langLocked=true`:
+  - On manual pick, tooltip confirms this overrides SSO sync (sets `langLocked=true`).
+- When `langLocked=true` AND the user has an SSO auth path available:
   - Show "UNLOCK SSO SYNC" button below the picker.
+- When the user is a local-only platform operator (no SSO in their auth history):
+  - Hide the badge + unlock button entirely. Switcher behaves like today.
+
+Check "has SSO available" via `users.lastAuthMethod` (new column, see Migration) rather than per-partner `authMethod`, since `both`-mode partners have a mix of SSO and local users in the same tenant.
 
 ### Login page (`LoginView`)
 
@@ -171,19 +184,19 @@ New migration `drizzle/NNNN_sso_locale_sync.sql`:
 
 ```sql
 ALTER TABLE users ADD COLUMN lang_locked BOOLEAN NOT NULL DEFAULT FALSE;
-ALTER TABLE partners ADD COLUMN sync_locale_from_sso BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN last_auth_method TEXT;  -- 'local' | 'sso' | NULL
 ALTER TABLE partners ADD COLUMN sso_attribute_map JSONB;
 ```
 
 ### Backfill
 
-- `users.lang_locked = FALSE` for all existing rows. If any user has a `lang` value that differs from the tenant default, we have no audit trail distinguishing "user picked it" from "admin set it during seed" — leave `false`. Next SSO login with `syncLocaleFromSso=true` will re-sync. Users re-override as needed. Acceptable for a dev-favored migration.
-- `partners.sync_locale_from_sso = FALSE` — opt-in per partner.
-- `partners.sso_attribute_map = NULL` — defaults used until configured.
+- `users.lang_locked = FALSE` for all existing rows. See "Handling existing users" above for the rationale — we accept one-time locale overwrite on first SSO login rather than a conservative backfill.
+- `users.last_auth_method = NULL` — populated on next login.
+- `partners.sso_attribute_map = NULL` — defaults used until platform operator configures per-partner overrides.
 
 ### Rollback
 
-Drop the three columns. Feature gracefully no-ops: SSO route checks `if (partner.syncLocaleFromSso)`, missing column → falsy → skip. Existing `users.lang` behavior unaffected.
+Drop the three columns. Feature gracefully no-ops: SSO route reads `partner.ssoAttributeMap` defensively (`?? DEFAULT_MAP`), missing column → defaults used → behavior falls back to "no sync on login". Existing `users.lang` values unaffected.
 
 ---
 
@@ -193,9 +206,10 @@ Drop the three columns. Feature gracefully no-ops: SSO route checks `if (partner
 
 - `server/services/localeSync.test.ts` — mapper table: `nl-BE` → `nl`, `fr-FR` → `fr`, `de-DE` → `null`, `en` → `en`, `''` → `null`, `null` → `null`, `EN-US` → `en` (case insensitive).
 - `server/services/ssoClaims.test.ts` — attribute lookup with/without partner override, claim extraction from SAML + OIDC response fixtures.
-- `server/routes/sso.test.ts` — integration: mock Entra response with `preferredLanguage: "fr-FR"`, assert `users.lang = 'fr'`, `langLocked = false`, audit log entry.
-- Decision matrix: exhaustive test cases for the 5 rows above.
-- Reuse detection: replay old SAML response after override lock → user lang unchanged.
+- `server/routes/sso.test.ts` — integration: mock Entra response with `preferredLanguage: "fr-FR"`, assert `users.lang = 'fr'`, `langLocked = false`, `lastAuthMethod = 'sso'`, audit log entry.
+- Decision matrix: exhaustive test cases for the 4 rows above.
+- Override lock: replay SAML response after user set `langLocked=true` → `users.lang` unchanged.
+- Unmapped claim: SSO response with `preferredLanguage: "de-DE"` → existing `users.lang` preserved (no null overwrite).
 
 ### Client (Vitest + jsdom)
 
@@ -207,12 +221,13 @@ Drop the three columns. Feature gracefully no-ops: SSO route checks `if (partner
 
 New `testing/e2e/sso-locale-sync.spec.ts`:
 
-1. Seed partner with `syncLocaleFromSso=true`, SSO user with no `users.lang` set.
+1. Seed an SSO-capable partner with a user who has no `users.lang` set.
 2. Mock SSO IdP returns `preferredLanguage=fr-BE`.
-3. Log in → assert UI is French.
-4. Manually switch to English in the switcher → assert UI is English, `langLocked` set.
-5. Log out, log in again (same IdP claim) → assert UI stays English.
-6. Click "UNLOCK SSO SYNC" → log out, log in again → assert UI is French again.
+3. Log in → assert UI is French, "SYNCED FROM SSO" badge visible.
+4. Manually switch to English in the switcher → assert UI is English, `langLocked=true`, badge replaced by "UNLOCK SSO SYNC" button.
+5. Log out, log in again (same IdP claim) → assert UI stays English (override wins).
+6. Click "UNLOCK SSO SYNC" → log out, log in again → assert UI is French again, badge returns.
+7. Local platform operator login (no SSO) → assert switcher shows no badge and no unlock button.
 
 ---
 
@@ -274,27 +289,33 @@ If flag emojis in `LoginView` eventually trigger the same panic (chunk byte offs
 
 ---
 
-## Open questions (need user decision before implementation)
+## Decisions made
 
-1. **Default opt-in**: should `syncLocaleFromSso` default to `true` for new partners (safer UX default) or `false` (explicit tenant choice)? Recommending `false` — explicit consent aligns with existing multi-tenant opt-in patterns.
-2. **Per-user opt-out UI**: expose the "unlock SSO sync" button always, or hide it from partners that don't use SSO? Recommending: show only when `partners.authMethod !== 'local'`.
-3. **Login page flag handling**: leave flags as-is until proven broken, or remove proactively? Recommending: leave, with monitoring — the login chunk has a different byte layout.
-4. **Attribute map UI**: new platform operator tab vs. inline edit in partner config vs. JSON textarea? Recommending: JSON textarea in partner config initially; dedicated UI if multi-field mapping becomes common.
+1. **~~Per-partner opt-in~~** — REJECTED. Product rule is "SSO claim drives locale, user can override via UI" for every tenant that uses SSO. No `partners.syncLocaleFromSso` column. Simpler DB, simpler UI, simpler mental model.
+2. **Badge + unlock UI visibility** — hide when the user's `lastAuthMethod` is `'local'` (e.g., platform operators with no SSO path). Show for all SSO-authenticated users.
+3. **Login page flag emojis** — leave as-is. The login chunk has different byte layout from the panicking post-auth chunk. Add `build` step to `scripts/ci.ps1` so future regressions fail fast; replace with text labels only if the login chunk ever panics.
+4. **Attribute map UI** — JSON textarea in partner config, validated with Zod on submit. Graduate to a dedicated form if the shape grows beyond 5 keys or platform operators request it.
+
+## Remaining open questions
+
+- **Audit verbosity**: log every SSO-driven locale sync, or only transitions where `users.lang` actually changes? Recommending: log only changes (claim matched current value is noise).
+- **Rate limiting on `setLocale`**: any need to cap how often a user can flip lang? Recommending: no — the switcher already requires manual click, no automated abuse vector.
 
 ---
 
 ## Implementation order
 
-1. Migration (users.langLocked, partners.syncLocaleFromSso, partners.ssoAttributeMap).
-2. `server/services/localeSync.ts` + unit tests.
-3. `server/services/ssoClaims.ts` + unit tests.
-4. Wire into `server/routes/sso.ts` SAML + OIDC callbacks.
-5. `trpc.user.setLocale` mutation.
-6. Client `LanguageSwitcher` refactor — text labels + lock badge + unlock button.
-7. Remove `🇧🇪 / 🇫🇷 / 🇬🇧` string literals from post-auth chunk.
-8. Add `build` step to `scripts/ci.ps1`.
-9. E2E spec `sso-locale-sync.spec.ts`.
-10. Admin UI for `syncLocaleFromSso` toggle + attribute map editor.
+1. Migration (`users.langLocked`, `users.lastAuthMethod`, `partners.ssoAttributeMap`).
+2. `server/services/localeSync.ts` + unit tests (pure mapper).
+3. `server/services/ssoClaims.ts` + unit tests (attribute lookup, per-partner override).
+4. Wire into `server/routes/sso.ts` SAML + OIDC callbacks. Stamp `users.lastAuthMethod` on every successful login (both SSO and local paths).
+5. `trpc.user.setLocale` mutation + audit log entry.
+6. Client `LanguageSwitcher` refactor — text labels, "SYNCED FROM SSO" badge, "UNLOCK SSO SYNC" button, visibility gated by `lastAuthMethod`.
+7. Remove `🇧🇪 / 🇫🇷 / 🇬🇧` string literals from post-auth chunks; verify Rolldown build passes.
+8. Add `build` step to `scripts/ci.ps1` (outside the e2e skip branch).
+9. E2E spec `testing/e2e/sso-locale-sync.spec.ts` covering the 7 scenarios above.
+10. Admin UI for per-partner SSO attribute-map JSON editor (`AdminPartnerConfig` or platform SSO tab).
+11. CHANGELOG entry noting the "first SSO login may overwrite manually-set locale once" behavior for existing users.
 
 Estimated effort: half a day end-to-end, assuming the upstream SAML/OIDC plumbing is intact (it is — see `decisions/guichet-internal-sso-mail-skip` for recent SSO work).
 
