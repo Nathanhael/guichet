@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tessera-__BUILD_HASH__';
+const CACHE_NAME = 'guichet-__BUILD_HASH__';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -98,7 +98,7 @@ self.addEventListener('push', (event) => {
         body: payload.body,
         icon: '/icons/icon-192x192.png',
         badge: '/icons/icon-72x72.png',
-        tag: payload.tag || 'tessera',
+        tag: payload.tag || 'guichet',
         data: {
           ticketId: payload.ticketId,
           type: payload.type,

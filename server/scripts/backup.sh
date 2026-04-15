@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Database backup script for Tessera.
+# Database backup script for Guichet.
 #
 # Usage:
 #   ./scripts/backup.sh                 # uses DATABASE_URL from .env
@@ -17,12 +17,12 @@ KEEP=10
 
 mkdir -p "$BACKUP_DIR"
 
-OUTFILE="$BACKUP_DIR/tessera_${TIMESTAMP}.sql.gz"
+OUTFILE="$BACKUP_DIR/guichet_${TIMESTAMP}.sql.gz"
 
 if [[ "${1:-}" == "--docker" ]]; then
-  CONTAINER="${TESSERA_DB_CONTAINER:-tessera-db-1}"
+  CONTAINER="${GUICHET_DB_CONTAINER:-guichet-db-1}"
   echo "Dumping from Docker container: $CONTAINER"
-  docker exec "$CONTAINER" pg_dump -U "${POSTGRES_USER:-user}" "${POSTGRES_DB:-tessera}" \
+  docker exec "$CONTAINER" pg_dump -U "${POSTGRES_USER:-user}" "${POSTGRES_DB:-guichet}" \
     | gzip > "$OUTFILE"
 else
   # Parse DATABASE_URL from .env if not already set
@@ -46,7 +46,7 @@ SIZE="$(du -h "$OUTFILE" | cut -f1)"
 echo "Backup saved: $OUTFILE ($SIZE)"
 
 # Prune old backups, keep the $KEEP most recent
-BACKUPS=($(ls -1t "$BACKUP_DIR"/tessera_*.sql.gz 2>/dev/null))
+BACKUPS=($(ls -1t "$BACKUP_DIR"/guichet_*.sql.gz 2>/dev/null))
 if (( ${#BACKUPS[@]} > KEEP )); then
   for OLD in "${BACKUPS[@]:$KEEP}"; do
     rm -f "$OLD"

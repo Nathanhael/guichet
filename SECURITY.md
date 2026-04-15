@@ -8,11 +8,11 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability in Tessera, please report it responsibly. **Do not open a public GitHub issue.**
+If you discover a security vulnerability in Guichet, please report it responsibly. **Do not open a public GitHub issue.**
 
 ### How to Report
 
-Email your findings to: **security@tessera.dev**
+Email your findings to: **security@guichet.dev**
 
 Please include:
 - A description of the vulnerability
@@ -45,7 +45,7 @@ The following are **out of scope**:
 
 ### Recognition
 
-We appreciate security researchers who help keep Tessera safe. With your permission, we will acknowledge your contribution in our release notes.
+We appreciate security researchers who help keep Guichet safe. With your permission, we will acknowledge your contribution in our release notes.
 
 ## Security Best Practices for Deployment
 

@@ -19,8 +19,8 @@ docker compose exec client npm test                        # Run client tests
 docker compose exec server npx drizzle-kit push            # Database push
 docker compose exec server npx drizzle-kit generate        # Generate migration
 docker compose exec server npx drizzle-kit studio          # Interactive database explorer
-docker logs -f tessera-server-1                            # Server logs
-docker logs -f tessera-client-1                            # Client logs
+docker logs -f guichet-server-1                            # Server logs
+docker logs -f guichet-client-1                            # Client logs
 ```
 
 ### Database Management
@@ -176,7 +176,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 
 **Token Refresh**: `hooks/useTokenRefresh.ts` — proactive access token refresh via `POST /api/v1/auth/refresh`. Timer-based with visibility change detection for tab sleep/resume.
 
-**Navbar**: All 4 views share a unified navbar pattern. Left side: `TESSERA | ROLE_BADGE | PARTNER_NAME` (text only, no logos). Right side: view-specific items + `SettingsPopover` (gear icon, preference toggles) + `UserMenu` (avatar initials, identity/actions dropdown). `SettingsPopover` accepts boolean props to control which items appear per view. `UserMenu` shows account security for all users (modal adapts content: password+MFA for platform operators, notification prefs only for partner users).
+**Navbar**: All 4 views share a unified navbar pattern. Left side: `GUICHET | ROLE_BADGE | PARTNER_NAME` (text only, no logos). Right side: view-specific items + `SettingsPopover` (gear icon, preference toggles) + `UserMenu` (avatar initials, identity/actions dropdown). `SettingsPopover` accepts boolean props to control which items appear per view. `UserMenu` shows account security for all users (modal adapts content: password+MFA for platform operators, notification prefs only for partner users).
 
 **Views**:
 - `PlatformView` — Thin shell (tabs + modal state). Feature modules in `components/platform/`. Each component owns its own tRPC hooks and cache invalidation.
@@ -201,8 +201,8 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **Roles**: `agent`, `support`, `admin`, `platform_operator`
 - **Multi-Tenancy**: Every query must include `partner_id` filter. No data leaks between partners.
 - **Multi-Partner Users**: Users belong to multiple partners via `memberships`. One active partner at a time — switching issues a new JWT cookie via `/switch-partner`.
-- **Cookie-Only Auth**: JWTs are transported exclusively via `HttpOnly SameSite=Lax` cookies (`tessera_token`). No Bearer header support. Client uses `credentials: 'include'` on all requests. A companion `session_expires` cookie (non-HttpOnly) carries the expiry timestamp for client-side detection. Config: `COOKIE_SECURE` (default `true`), `COOKIE_DOMAIN` (optional, for subdomains).
-- **Refresh Tokens**: Short-lived access tokens (`ACCESS_TOKEN_EXPIRY`, default 15m) paired with rotating refresh tokens (`REFRESH_TOKEN_EXPIRY`, default 7d) in `tessera_refresh` HttpOnly cookie (path-restricted to `/api/v1/auth/refresh`). `useTokenRefresh` hook auto-refreshes ~2min before expiry, handles tab sleep/resume. Family-based reuse detection: replaying a used refresh token revokes the entire token family. Session revocation also revokes all refresh tokens.
+- **Cookie-Only Auth**: JWTs are transported exclusively via `HttpOnly SameSite=Lax` cookies (`guichet_token`). No Bearer header support. Client uses `credentials: 'include'` on all requests. A companion `session_expires` cookie (non-HttpOnly) carries the expiry timestamp for client-side detection. Config: `COOKIE_SECURE` (default `true`), `COOKIE_DOMAIN` (optional, for subdomains).
+- **Refresh Tokens**: Short-lived access tokens (`ACCESS_TOKEN_EXPIRY`, default 15m) paired with rotating refresh tokens (`REFRESH_TOKEN_EXPIRY`, default 7d) in `guichet_refresh` HttpOnly cookie (path-restricted to `/api/v1/auth/refresh`). `useTokenRefresh` hook auto-refreshes ~2min before expiry, handles tab sleep/resume. Family-based reuse detection: replaying a used refresh token revokes the entire token family. Session revocation also revokes all refresh tokens.
 - **Partner Status**: `active` | `inactive`. Inactive blocks logins, ticket creation, switching. Enforce at login, switch-partner, socket, and tRPC layers.
 - **Dynamic Departments**: Never hardcode department IDs. Always read from `partner.departments` JSONB. Schema: `{ id (auto-slug), name, description? }`. IDs are immutable.
 - **Department Assignment**: `memberships.departments` is a JSONB array of dept IDs. Empty/null = generalist (sees all).
@@ -257,7 +257,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 ## Project Structure
 
 ```
-tessera/
+guichet/
 ├── server/
 │   ├── db/
 │   │   ├── schema.ts              # Database schema (Drizzle ORM) — 28 tables
@@ -402,7 +402,7 @@ MSYS_NO_PATHCONV=1 docker run --rm -e K6_BASE_URL=http://host.docker.internal:30
 
 ## Debugging
 
-- **Server logs**: `docker logs -f tessera-server-1`
+- **Server logs**: `docker logs -f guichet-server-1`
 - **Client logs**: Browser DevTools → Console
 - **Socket events**: Browser DevTools → Network → WS tab
 - **Database**: `docker compose exec server npx drizzle-kit studio`

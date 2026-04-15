@@ -1,5 +1,5 @@
 /**
- * Static OpenAPI 3.0 specification for Tessera REST endpoints.
+ * Static OpenAPI 3.0 specification for Guichet REST endpoints.
  *
  * Previously generated at runtime by swagger-jsdoc (which pulled in the
  * deprecated glob@7 → minimatch@3 → brace-expansion chain, introducing CVEs).

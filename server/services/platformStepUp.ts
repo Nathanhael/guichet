@@ -7,7 +7,7 @@ const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const TOTP_DIGITS = 6;
 const TOTP_PERIOD_SECONDS = 30;
 const TOTP_WINDOW = 1;
-const TOTP_ISSUER = 'Tessera';
+const TOTP_ISSUER = 'Guichet';
 
 function base32Encode(buffer: Buffer): string {
   let bits = 0;

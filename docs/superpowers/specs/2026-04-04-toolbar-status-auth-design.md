@@ -15,17 +15,17 @@ The SupportView toolbar has 13 visible controls on the right side. AgentView, Ad
 
 #### Left Side — Unified Pattern
 
-All views follow the same left-side structure: `[Hamburger] TESSERA [ROLE] | PARTNER NAME`
+All views follow the same left-side structure: `[Hamburger] GUICHET [ROLE] | PARTNER NAME`
 
 | View | Left side |
 |------|-----------|
-| PlatformView | `TESSERA` `PLATFORM` |
-| AdminView | `☰` `TESSERA` `ADMIN` `\|` `ACME CORP` |
-| SupportView | `☰` `TESSERA` `SUPPORT` `\|` `ACME CORP` |
-| AgentView | `☰` `TESSERA` `AGENT` `\|` `ACME CORP` |
+| PlatformView | `GUICHET` `PLATFORM` |
+| AdminView | `☰` `GUICHET` `ADMIN` `\|` `ACME CORP` |
+| SupportView | `☰` `GUICHET` `SUPPORT` `\|` `ACME CORP` |
+| AgentView | `☰` `GUICHET` `AGENT` `\|` `ACME CORP` |
 
 Rules:
-- **TESSERA brand** always present (product identity)
+- **GUICHET brand** always present (product identity)
 - **Role badge** always present (inverted colors: light text on dark bg in dark mode, dark text on light bg in light mode)
 - **Partner name** shown for all partner-scoped views (Admin, Support, Agent). Always text — no logos in the navbar (logos vary in size/aspect ratio and break the brutalist aesthetic).
 - **Hamburger** shown when view has a sidebar (all except Platform)
@@ -111,7 +111,7 @@ Account Security only appears for platform operators (the only users with local 
 | **Modify** | `client/src/components/agent/AgentNav.tsx` — replace NavToolbar + feedback button + sign out with SettingsPopover + UserMenu |
 | **Modify** | `client/src/views/AdminView.tsx` — replace inline toolbar with SettingsPopover + UserMenu |
 | **Modify** | `client/src/views/PlatformView.tsx` — replace inline toolbar with SettingsPopover + UserMenu |
-| **Modify** | `client/src/components/BusinessHoursGuard.tsx` — replace hardcoded navbar with unified pattern (TESSERA + AGENT + partner name, gear + avatar). Replace hardcoded colors (`bg-white text-black dark:bg-black`) with CSS custom property tokens. |
+| **Modify** | `client/src/components/BusinessHoursGuard.tsx` — replace hardcoded navbar with unified pattern (GUICHET + AGENT + partner name, gear + avatar). Replace hardcoded colors (`bg-white text-black dark:bg-black`) with CSS custom property tokens. |
 
 ### Popover Behavior
 

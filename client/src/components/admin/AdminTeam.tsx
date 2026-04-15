@@ -621,7 +621,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
                   <input type="radio" name="inviteAuthMethod" value="local" checked={authMethod === 'local'}
                     onChange={() => setAuthMethod('local')}
                     className="w-4 h-4 accent-accent-blue" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest group-hover:text-accent-blue">Local (Tessera Native)</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest group-hover:text-accent-blue">Local (Guichet Native)</span>
                 </label>
                 <label className="flex items-center gap-3 cursor-pointer group">
                   <input type="radio" name="inviteAuthMethod" value="sso" checked={authMethod === 'sso'}

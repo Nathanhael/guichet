@@ -1,4 +1,4 @@
-# Tessera — E2E Test Health Dashboard
+# Guichet — E2E Test Health Dashboard
 
 **Date:** 2026-04-10
 **Scope:** Full Playwright E2E suite run against `DEMO_MODE=true`, fresh `--wipe` + `--e2e` seed.
@@ -41,7 +41,7 @@
 | 4 | `demo user can log in and see the app` | Same UI drift. |
 | 5 | `invalid login shows error` | Cascades from #1. |
 | 6 | `forgot password link works` | Cascades from #1. |
-| 7–10 | `Refresh Token Flow › …` × 4 | Uses hardcoded `dirk@tessera.demo` which **does not exist in `--e2e` seed**. Needs to be changed to `bart@tessera.io` (the seeded platform operator) or a seeded non-platform user via `/api/v1/auth/login` (id-path). |
+| 7–10 | `Refresh Token Flow › …` × 4 | Uses hardcoded `dirk@guichet.demo` which **does not exist in `--e2e` seed**. Needs to be changed to `bart@guichet.io` (the seeded platform operator) or a seeded non-platform user via `/api/v1/auth/login` (id-path). |
 
 **Fix cost:** ~30 min total. Update selectors and swap credential.
 
@@ -75,7 +75,7 @@
 |---|---|---|
 | `ai-features.spec.ts` | 24 | Fires pre-checks like `test.skip(!res.ok, 'Login failed')` in 15+ places. AI features aren't implemented yet — this is expected and **correct behavior for now**. Ignore this spec until AI work begins. |
 | `status-and-transfer.spec.ts` | 17 | Login helper mismatch — tests assume seeded state. |
-| `platform-view.spec.ts` | 16 | Platform ops tests likely need `bart@tessera.io` via `/login-local` (email path). |
+| `platform-view.spec.ts` | 16 | Platform ops tests likely need `bart@guichet.io` via `/login-local` (email path). |
 | `view-modes.spec.ts` | 11 | Depends on logged-in state. |
 | `admin-view.spec.ts` | 7 | Depends on admin login (alice@acme.com or e2e-admin-a). |
 | `push-and-idle.spec.ts` | 7 | Depends on logged-in state. |
@@ -100,7 +100,7 @@ No uncaught server errors. No socket disconnects. No 500s in the failure traces.
 **Phase A — Unblock the queue (≤ 1 hour)**
 
 1. **Fix `chat-enhancements.spec.ts`** — add ticket seeding before the suite. 7 tests should go green immediately, giving real coverage of delivery receipts, markdown, reply, labels, FAB, date separator, multi-upload.
-2. **Fix the auth.spec.ts credential** — change `dirk@tessera.demo` → `bart@tessera.io` in the 4 Refresh Token Flow tests. Those 4 will go green.
+2. **Fix the auth.spec.ts credential** — change `dirk@guichet.demo` → `bart@guichet.io` in the 4 Refresh Token Flow tests. Those 4 will go green.
 
 **Phase B — Fix login drift (1–2 hours)**
 
@@ -220,7 +220,7 @@ Fixing P1 + P2 alone would push the suite to **~80 passed / ~12 failed / 30 skip
 
 ## Key conclusion
 
-**The Tessera server is in far better shape than the initial red numbers suggested.** Nearly every "failure" we've resolved so far has been test infrastructure drift (missing seed users, wrong fixture names, i18n string mismatches, state-machine assumptions) — not server regressions from the security hardening commit. The chat-flow core loop, refresh token rotation, chat enhancements (delivery receipts, markdown, reply, labels, date separators, FAB, file input), and auth cookie mechanics are all **verified working**.
+**The Guichet server is in far better shape than the initial red numbers suggested.** Nearly every "failure" we've resolved so far has been test infrastructure drift (missing seed users, wrong fixture names, i18n string mismatches, state-machine assumptions) — not server regressions from the security hardening commit. The chat-flow core loop, refresh token rotation, chat enhancements (delivery receipts, markdown, reply, labels, date separators, FAB, file input), and auth cookie mechanics are all **verified working**.
 
 ---
 
@@ -241,7 +241,7 @@ Fixing P1 + P2 alone would push the suite to **~80 passed / ~12 failed / 30 skip
 ## What I changed in P1+P2
 
 ### P1 fixes
-1. **`auth.spec.ts › gotoPlatformLogin`** — discovered an Easter egg: triple-clicking the TESSERA `h1` logo within 500ms flips `showAdminLoginLink` to `true` (see `LoginView.tsx:42`). The helper now clicks the logo 3 times, then the now-visible "Platform administrator login" link. **All 5 Authentication UI tests now pass.**
+1. **`auth.spec.ts › gotoPlatformLogin`** — discovered an Easter egg: triple-clicking the GUICHET `h1` logo within 500ms flips `showAdminLoginLink` to `true` (see `LoginView.tsx:42`). The helper now clicks the logo 3 times, then the now-visible "Platform administrator login" link. **All 5 Authentication UI tests now pass.**
 
 2. **`status-and-transfer.spec.ts › StatusPicker`** — the old tests asserted 5 statuses (`available`, `break`, `lunch`, `meeting`, `training / focus`). The current `StatusPicker.tsx` has exactly 2 (`online`, `away`) per CLAUDE.md. Rewrote 4 tests to expect Online/Away, assert the two coloured dots (green + amber), and select "Away" instead of "Meeting". **All 4 now pass.**
 
@@ -280,7 +280,7 @@ Fixing P1 + P2 alone would push the suite to **~80 passed / ~12 failed / 30 skip
 - **Refresh token rotation + reuse detection**
 - **Cookie-based auth** (HttpOnly + refresh cookie + session_expires)
 - **LoginView state machine** (sso-selection → platform-login via logo Easter egg)
-- **Platform operator local login** (bart@tessera.io via `/login-local`)
+- **Platform operator local login** (bart@guichet.io via `/login-local`)
 - **StatusPicker** — 2 statuses (online/away) with coloured dots, selection, persistence
 - **Chat enhancements** — delivery checkmarks, markdown rendering, reply/quote, labels, FAB (now with proper scroll setup), multi-file upload input
 - **ViewModeDropdown button** (when ChatTabBar is mounted)
@@ -408,7 +408,7 @@ Across the entire session:
 
 ## Bottom line
 
-The Tessera E2E suite went from `43/19/59 (121 tests)` to `89/2/25 (116 tests)` in one session. That's a **2× jump in passing tests, an 89% reduction in failures, and a 58% reduction in unreachable-skipped tests**. The suite runs clean in ~2 minutes against a local Docker stack. The 2 remaining reds are (1) an unimplemented feature and (2) one UI timing bug — both are knowns, both are isolated.
+The Guichet E2E suite went from `43/19/59 (121 tests)` to `89/2/25 (116 tests)` in one session. That's a **2× jump in passing tests, an 89% reduction in failures, and a 58% reduction in unreachable-skipped tests**. The suite runs clean in ~2 minutes against a local Docker stack. The 2 remaining reds are (1) an unimplemented feature and (2) one UI timing bug — both are knowns, both are isolated.
 
 **The backend is solid post-security-hardening.** Nothing in this entire session suggested a real regression. All the churn was test infrastructure catching up to source code that had already moved on.
 

@@ -20,7 +20,7 @@ import EmojiSuggestion from './EmojiSuggestion';
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 (() => {
   try {
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith('tessera:draft:'));
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith('guichet:draft:'));
     for (const key of keys) {
       const raw = localStorage.getItem(key);
       if (!raw) continue;
@@ -96,7 +96,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // keeps their own in-progress reply across reloads, and whisper vs regular
   // mode stay separate so a private note can't leak into a public reply.
   // Stored in localStorage (survives crashes) with a 24h TTL.
-  const draftKey = `tessera:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
+  const draftKey = `guichet:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
 
   // Hydrate draft once per key change (ticket switch, whisper toggle).
   // The editor reference is captured via ref in a downstream effect
@@ -188,7 +188,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // short-circuit fires — but a draft-hydrated mount during the lazy-load
   // race window would land in the same trap. Wrap in try-catch and let the
   // next text change retry once the view exists. See learning page
-  // `learnings/tessera-tiptap-view-proxy-throw` in the cross-project wiki.
+  // `learnings/guichet-tiptap-view-proxy-throw` in the cross-project wiki.
   useEffect(() => {
     if (!editor) return;
     if (getEditorMarkdown(editor) === text) return;

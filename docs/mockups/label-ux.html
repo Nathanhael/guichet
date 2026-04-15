@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Tessera — Label UX Mockups</title>
+<title>Guichet — Label UX Mockups</title>
 <style>
   :root {
     --bg: #09090b;
@@ -355,7 +355,7 @@
 </head>
 <body>
 <div class="container">
-  <h1>TESSERA — LABEL UX MOCKUPS</h1>
+  <h1>GUICHET — LABEL UX MOCKUPS</h1>
   <p class="desc">Three proposals for labeling support tickets in ChatWindow header. All assume secondary-row or inline-pill patterns. Brutalist tokens only: no gradients, no shadows, no border-radius.</p>
 
   <!-- OPTION A — Secondary row -->
@@ -700,7 +700,7 @@
     • End-user (agent view): row never shown — they don't manage labels<br>
     • Support/admin, ticket has labels: row expanded by default, chevron collapses to compact strip (T1 style)<br>
     • Support/admin, ticket empty: row shown expanded with `+ LABEL` button only<br>
-    • Collapse state persisted per-ticket in localStorage (key: `tessera.labelRow.collapsed.${ticketId}`)<br>
+    • Collapse state persisted per-ticket in localStorage (key: `guichet.labelRow.collapsed.${ticketId}`)<br>
     • Auto-hide in focus/compact mode (inherited from existing header rules)<br>
     <br>
     <strong>No global setting needed</strong> — the toggle lives on the row itself and is cheaper to discover than a SettingsPopover entry.
@@ -828,7 +828,7 @@
 
   <h2>VERDICT</h2>
   <div class="notes">
-    <strong>Option A wins</strong> for Tessera's triage-heavy support workflow. Labels are metadata agents need at-a-glance (priority, category, customer tier). The secondary row adds 32px of chrome but matches the brutalist pattern already used for AI summary + collision viewers below the header.
+    <strong>Option A wins</strong> for Guichet's triage-heavy support workflow. Labels are metadata agents need at-a-glance (priority, category, customer tier). The secondary row adds 32px of chrome but matches the brutalist pattern already used for AI summary + collision viewers below the header.
     <br><br>
     Config: row visible only for support/admin OR when labels exist. Hides in focus/compact mode (same rule as existing header items).
   </div>

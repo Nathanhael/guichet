@@ -71,5 +71,5 @@ The platform administrator login link is hidden by default to maintain a clean i
 
 To reveal the **"Platform administrator login"** link on the main SSO login page:
 1. Navigate to the standard login screen.
-2. **Triple-click** (3 rapid clicks) on the large **"TESSERA"** logo at the top of the login card.
+2. **Triple-click** (3 rapid clicks) on the large **"GUICHET"** logo at the top of the login card.
 3. The link will appear below the SSO button.

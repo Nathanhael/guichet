@@ -1,4 +1,4 @@
-# Tessera Full Code Review
+# Guichet Full Code Review
 
 **Date**: 2026-04-09
 **Reviewer**: Claude Opus 4.6

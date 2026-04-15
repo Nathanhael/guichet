@@ -109,9 +109,9 @@ describe('fireWebhooks', () => {
     expect(init?.method).toBe('POST');
     const headers = init?.headers as Record<string, string>;
     expect(headers['Content-Type']).toBe('application/json');
-    expect(headers['X-Tessera-Event']).toBe('ticket.created');
-    expect(headers['X-Tessera-Signature']).toBeDefined();
-    expect(headers['User-Agent']).toBe('Tessera-Webhook/1.0');
+    expect(headers['X-Guichet-Event']).toBe('ticket.created');
+    expect(headers['X-Guichet-Signature']).toBeDefined();
+    expect(headers['User-Agent']).toBe('Guichet-Webhook/1.0');
     expect(headers['Host']).toBe('example.com');
 
     // Verify delivery log was inserted
@@ -182,7 +182,7 @@ describe('fireWebhooks', () => {
 });
 
 describe('HMAC signature', () => {
-  it('generates correct HMAC-SHA256 signature in X-Tessera-Signature header', async () => {
+  it('generates correct HMAC-SHA256 signature in X-Guichet-Signature header', async () => {
     const hook = makeHook();
     selectQueue.push([hook]);
 
@@ -196,7 +196,7 @@ describe('HMAC signature', () => {
     const [, init] = fetchMock.mock.calls[0];
     const sentBody = init?.body as string;
     const headers = init?.headers as Record<string, string>;
-    const receivedSig = headers['X-Tessera-Signature'];
+    const receivedSig = headers['X-Guichet-Signature'];
 
     // Recompute the expected signature
     const expectedSig = createHmac('sha256', 'test-secret-key')

@@ -73,7 +73,7 @@ const configSchema = z.object({
     DEMO_MODE: z.preprocess(v => v === 'true' || v === '1' || v === true, z.boolean()).default(false),
     VAPID_PUBLIC_KEY: z.string().optional(),
     VAPID_PRIVATE_KEY: z.string().optional(),
-    VAPID_SUBJECT: z.string().optional().default('mailto:admin@tessera.app'),
+    VAPID_SUBJECT: z.string().optional().default('mailto:admin@guichet.app'),
 });
 
 export type Config = z.infer<typeof configSchema>;

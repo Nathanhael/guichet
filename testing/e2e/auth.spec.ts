@@ -13,12 +13,12 @@ import { test, expect } from '@playwright/test';
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 
 /** Wait for the React app (LoginView) to mount. The initial AuthViewMode is
- *  'sso-selection' which doesn't render a <form>, so we wait for the TESSERA
+ *  'sso-selection' which doesn't render a <form>, so we wait for the GUICHET
  *  heading that is always present in the LoginView. */
 async function waitForApp(page: import('@playwright/test').Page) {
   await page.goto(BASE);
   await page.waitForLoadState('load');
-  // The LoginView always renders the "TESSERA" branding heading in any
+  // The LoginView always renders the "GUICHET" branding heading in any
   // AuthViewMode ('sso-selection', 'platform-login', 'forgot', etc.).
   await page.waitForSelector('h1', { timeout: 15000 });
   // Extra safety: wait until at least one button (SSO, demo, or platform-login link) is visible.
@@ -29,7 +29,7 @@ async function waitForApp(page: import('@playwright/test').Page) {
  *  LocalLoginForm (with email + password fields) is rendered.
  *
  *  The platform-admin link is hidden behind an Easter egg: clicking the
- *  TESSERA logo (h1 with role="button", aria-label="Tessera") 3 times within
+ *  GUICHET logo (h1 with role="button", aria-label="Guichet") 3 times within
  *  500ms reveals it (see LoginView.tsx:42 handleLogoClick). */
 async function gotoPlatformLogin(page: import('@playwright/test').Page) {
   await waitForApp(page);
@@ -37,8 +37,8 @@ async function gotoPlatformLogin(page: import('@playwright/test').Page) {
   const emailInput = page.locator('input[type="email"]').first();
   if (await emailInput.isVisible({ timeout: 500 }).catch(() => false)) return;
 
-  // Triple-click the Tessera logo to reveal the platform-admin link.
-  const logo = page.getByRole('button', { name: /^tessera$/i });
+  // Triple-click the Guichet logo to reveal the platform-admin link.
+  const logo = page.getByRole('button', { name: /^guichet$/i });
   await logo.waitFor({ state: 'visible', timeout: 5000 });
   await logo.click();
   await logo.click();
@@ -84,7 +84,7 @@ test.describe('Authentication', () => {
     // demo user picker UI that no longer exists. We exercise the real flow:
     // SSO selection → platform login → fill credentials → assert navigated out.
     await gotoPlatformLogin(page);
-    await page.locator('input[type="email"]').first().fill('bart@tessera.io');
+    await page.locator('input[type="email"]').first().fill('bart@guichet.io');
     await page.locator('input[type="password"]').first().fill('password123');
     await page.getByRole('button', { name: /log in|inloggen|se connecter/i }).first().click();
     // After successful login, the LoginView unmounts and the app shell appears.
@@ -126,7 +126,7 @@ test.describe('Refresh Token Flow', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email: 'bart@tessera.io', password: 'password123' }),
+        body: JSON.stringify({ email: 'bart@guichet.io', password: 'password123' }),
       });
       return { status: res.status };
     });
@@ -137,8 +137,8 @@ test.describe('Refresh Token Flow', () => {
     await apiLogin(page, context);
 
     const cookies = await context.cookies(`${BASE}/api/v1/auth/refresh`);
-    const accessCookie = cookies.find(c => c.name === 'tessera_token');
-    const refreshCookie = cookies.find(c => c.name === 'tessera_refresh');
+    const accessCookie = cookies.find(c => c.name === 'guichet_token');
+    const refreshCookie = cookies.find(c => c.name === 'guichet_refresh');
     const expiryCookie = cookies.find(c => c.name === 'session_expires');
 
     expect(accessCookie).toBeDefined();
@@ -154,7 +154,7 @@ test.describe('Refresh Token Flow', () => {
     await apiLogin(page, context);
 
     const cookiesBefore = await context.cookies(`${BASE}/api/v1/auth/refresh`);
-    const refreshBefore = cookiesBefore.find(c => c.name === 'tessera_refresh');
+    const refreshBefore = cookiesBefore.find(c => c.name === 'guichet_refresh');
     expect(refreshBefore).toBeDefined();
 
     const response = await page.evaluate(async () => {
@@ -169,7 +169,7 @@ test.describe('Refresh Token Flow', () => {
     expect(response.body.expiresIn).toBeGreaterThan(0);
 
     const cookiesAfter = await context.cookies(`${BASE}/api/v1/auth/refresh`);
-    const refreshAfter = cookiesAfter.find(c => c.name === 'tessera_refresh');
+    const refreshAfter = cookiesAfter.find(c => c.name === 'guichet_refresh');
     expect(refreshAfter).toBeDefined();
     expect(refreshAfter!.value).not.toBe(refreshBefore!.value);
   });
@@ -199,7 +199,7 @@ test.describe('Refresh Token Flow', () => {
     await apiLogin(page, context);
 
     const cookiesBefore = await context.cookies(`${BASE}/api/v1/auth/refresh`);
-    const oldRefresh = cookiesBefore.find(c => c.name === 'tessera_refresh')!.value;
+    const oldRefresh = cookiesBefore.find(c => c.name === 'guichet_refresh')!.value;
 
     // Rotate (invalidates the old token)
     await page.evaluate(async () => {
@@ -208,7 +208,7 @@ test.describe('Refresh Token Flow', () => {
 
     // Manually set the old refresh cookie back (simulate replay)
     await context.addCookies([{
-      name: 'tessera_refresh',
+      name: 'guichet_refresh',
       value: oldRefresh,
       domain: 'localhost',
       path: '/api/v1/auth/refresh',

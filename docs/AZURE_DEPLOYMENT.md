@@ -10,10 +10,10 @@ Pre-deployment checklist and configuration for running Guichet on Azure.
 |----------|---------|-------|
 | `NODE_ENV` | `production` | Enables all production hardening checks |
 | `JWT_SECRET` | 64+ char random string | HS256 signing key |
-| `DATABASE_URL` | `postgresql://user:pass@host:5432/tessera?sslmode=require` | Azure Database for PostgreSQL |
+| `DATABASE_URL` | `postgresql://user:pass@host:5432/guichet?sslmode=require` | Azure Database for PostgreSQL |
 | `REDIS_URL` | `rediss://:password@host:6380` | **Must use `rediss://` (TLS)** for Azure Redis Cache |
-| `CORS_ORIGIN` | `https://tessera.example.com` | Must not contain `localhost` |
-| `FRONTEND_URL` | `https://tessera.example.com` | Must not contain `localhost` |
+| `CORS_ORIGIN` | `https://guichet.example.com` | Must not contain `localhost` |
+| `FRONTEND_URL` | `https://guichet.example.com` | Must not contain `localhost` |
 | `COOKIE_SECURE` | `true` | Mandatory in production |
 | `COOKIE_DOMAIN` | `.example.com` | Set if using subdomains |
 | `PLATFORM_ADMIN_EMAIL` | `admin@example.com` | Auto-creates platform operator on first boot |
@@ -40,8 +40,8 @@ Socket.io requires the same client to reach the same server instance across the 
 
 ### Azure Container Apps
 ```
-az containerapp update --name tessera-server \
-  --resource-group rg-tessera \
+az containerapp update --name guichet-server \
+  --resource-group rg-guichet \
   --set-env-vars ... \
   --configuration-active-revision-mode single
 ```
@@ -102,7 +102,7 @@ Guichet uses a storage backend abstraction. When `AZURE_STORAGE_CONNECTION_STRIN
 Azure Database for PostgreSQL (Flexible Server) with `?sslmode=require`:
 
 ```
-DATABASE_URL=postgresql://tessera:password@tessera-db.postgres.database.azure.com:5432/tessera?sslmode=require
+DATABASE_URL=postgresql://guichet:password@guichet-db.postgres.database.azure.com:5432/guichet?sslmode=require
 ```
 
 Run migrations on first deploy:
@@ -115,12 +115,12 @@ docker compose exec server npm run db:migrate
 Push production images to Azure Container Registry:
 
 ```bash
-az acr login --name tesseraregistry
+az acr login --name guichetregistry
 docker compose -f docker-compose.prod.yml build
-docker tag tessera-server tesseraregistry.azurecr.io/tessera-server:latest
-docker tag tessera-client tesseraregistry.azurecr.io/tessera-client:latest
-docker push tesseraregistry.azurecr.io/tessera-server:latest
-docker push tesseraregistry.azurecr.io/tessera-client:latest
+docker tag guichet-server guichetregistry.azurecr.io/guichet-server:latest
+docker tag guichet-client guichetregistry.azurecr.io/guichet-client:latest
+docker push guichetregistry.azurecr.io/guichet-server:latest
+docker push guichetregistry.azurecr.io/guichet-client:latest
 ```
 
 ## Monitoring

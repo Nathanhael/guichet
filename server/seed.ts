@@ -1,5 +1,5 @@
 /**
- * Tessera Database Seed Script — Minimal
+ * Guichet Database Seed Script — Minimal
  *
  * Wipes all tables and seeds a single tenant with a handful of users for
  * local development. No demo tickets, messages, labels, or partner fixtures.
@@ -221,7 +221,7 @@ async function seedMinimal() {
   await db.insert(schema.users).values({
     id: 'platform_bart',
     name: 'Bart Operator',
-    email: 'bart@tessera.io',
+    email: 'bart@guichet.io',
     lang: 'en',
     password: hash,
     isPlatformOperator: true,
@@ -297,7 +297,7 @@ async function seedMinimal() {
   console.log('  Password for all users: ' + DEFAULT_PASSWORD);
   console.log('');
   console.log('  Platform operator:');
-  console.log('    - bart@tessera.io             (platform_bart)');
+  console.log('    - bart@guichet.io             (platform_bart)');
   console.log('  Admin:');
   console.log('    - emma@acme.test              (admin_emma)');
   console.log('  Support:');
@@ -310,7 +310,7 @@ async function seedMinimal() {
 
 async function main() {
   console.log('╔══════════════════════════════════════════════════╗');
-  console.log('║   Tessera Database Seed Utility (minimal)        ║');
+  console.log('║   Guichet Database Seed Utility (minimal)        ║');
   console.log('╚══════════════════════════════════════════════════╝\n');
 
   try {

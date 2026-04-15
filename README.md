@@ -94,7 +94,7 @@ npm run db:backup:docker        # Same, from Docker container
 ## Architecture
 
 ```
-tessera/
+guichet/
 ├── server/          # Express + tRPC + Socket.io
 │   ├── db/          # Drizzle ORM schema + connection
 │   ├── trpc/        # tRPC router + domain routers

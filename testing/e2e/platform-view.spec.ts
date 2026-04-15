@@ -70,8 +70,8 @@ test.describe('Platform Dashboard', () => {
   test('platform view loads without errors', async ({ page }) => {
     test.skip(!loginOk, 'Demo login API failed — platform_bart may not be seeded');
     await page.waitForTimeout(1000);
-    // Should see the TESSERA header and platform_operator badge
-    const hasBrand = await page.getByText(/tessera/i).first().isVisible().catch(() => false);
+    // Should see the GUICHET header and platform_operator badge
+    const hasBrand = await page.getByText(/guichet/i).first().isVisible().catch(() => false);
     expect(hasBrand).toBeTruthy();
 
     // No crash or error messages
@@ -233,7 +233,7 @@ test.describe('Platform View - Responsive Layout', () => {
     const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
 
-    const hasBrand = await page.getByText(/tessera/i).first().isVisible().catch(() => false);
+    const hasBrand = await page.getByText(/guichet/i).first().isVisible().catch(() => false);
     expect(hasBrand).toBeTruthy();
   });
 

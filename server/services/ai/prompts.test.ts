@@ -17,9 +17,9 @@ describe('prompt helpers', () => {
       const result = interpolate('{{greeting}} {{name}}, welcome to {{place}}!', {
         greeting: 'Hi',
         name: 'Bart',
-        place: 'Tessera',
+        place: 'Guichet',
       });
-      expect(result).toBe('Hi Bart, welcome to Tessera!');
+      expect(result).toBe('Hi Bart, welcome to Guichet!');
     });
 
     it('replaces missing variables with empty string', () => {
