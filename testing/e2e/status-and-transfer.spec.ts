@@ -393,7 +393,7 @@ test.describe('AdminTeam Status Column', () => {
   });
 
   test('Team tab is accessible from admin sidebar', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — admin_dirk may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — admin_emma may not be seeded');
 
     // NavButton with label "Team" in admin sidebar
     const teamNav = page.getByRole('button', { name: /^team$/i }).first();
@@ -407,7 +407,7 @@ test.describe('AdminTeam Status Column', () => {
   });
 
   test('shows Status column header in team table', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — admin_dirk may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — admin_emma may not be seeded');
 
     // Widen viewport — table has min-w-[1200px]
     await page.setViewportSize({ width: 1600, height: 900 });
@@ -419,10 +419,10 @@ test.describe('AdminTeam Status Column', () => {
       await page.waitForTimeout(2000);
     }
 
-    // The team-table may be absent if admin_dirk lands on a different initial tab.
+    // The team-table may be absent if admin_emma lands on a different initial tab.
     const anyTh = page.locator('table th');
     const thCount = await anyTh.count().catch(() => 0);
-    test.skip(thCount === 0, 'AdminTeam table not visible — admin_dirk may not be on Team tab');
+    test.skip(thCount === 0, 'AdminTeam table not visible — admin_emma may not be on Team tab');
 
     // AdminTeam.tsx:189 renders the column as literal "Status" (not "Team Status").
     const statusHeader = page.locator('table th').filter({ hasText: /^status$/i }).first();
@@ -430,7 +430,7 @@ test.describe('AdminTeam Status Column', () => {
   });
 
   test('team table rows have a Status column', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — admin_dirk may not be seeded');
+    test.skip(!loginOk, 'Demo login failed — admin_emma may not be seeded');
 
     await page.setViewportSize({ width: 1600, height: 900 });
 

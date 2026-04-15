@@ -295,8 +295,10 @@ test.describe('Split View', () => {
   let loginOk = false;
 
   test.beforeEach(async ({ page }) => {
-    // Use support_thomas — generalist support at wavelink (no dept filter), has tickets
-    const res = await loginAsDemo(page, 'support_thomas');
+    // support_qa covers all three departments (DSC/FOT/TEC), so every queue
+    // ticket is in its view regardless of routing. Replaces the retired
+    // support_thomas fixture from the previous seed.
+    const res = await loginAsDemo(page, 'support_qa');
     loginOk = !!res.ok;
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.waitForTimeout(2000);
@@ -354,7 +356,7 @@ test.describe('Split View', () => {
     test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     // This test requires 2+ tickets in the user's queue.
-    // expert_alex is in guichet-main which may not have tickets.
+    // support_qa is a generalist across DSC/FOT/TEC and has the seeded ticket.
     // The test gracefully skips when the queue is empty.
     await page.waitForTimeout(1500);
 

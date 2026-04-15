@@ -51,7 +51,7 @@ async function loginAsDemo(page: Page, userId: string) {
 
 test.describe('Admin Dashboard', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsDemo(page, 'admin_dirk');
+    await loginAsDemo(page, 'admin_emma');
     await page.waitForTimeout(3000);
   });
 
@@ -101,7 +101,7 @@ test.describe('Admin - Responsive Layout', () => {
   test('admin view works on mobile viewport', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 812 });
-    await loginAsDemo(page, 'admin_dirk');
+    await loginAsDemo(page, 'admin_emma');
     await page.waitForTimeout(3000);
 
     // Page should render without horizontal scroll issues
@@ -114,7 +114,7 @@ test.describe('Admin - Responsive Layout', () => {
 
   test('admin sidebar toggle works on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await loginAsDemo(page, 'admin_dirk');
+    await loginAsDemo(page, 'admin_emma');
     await page.waitForTimeout(3000);
 
     // Find hamburger/toggle button
