@@ -28,7 +28,7 @@ export interface TicketSlice {
 }
 
 function tabStorageKey(partnerId?: string): string {
-  return partnerId ? `tessera:supportOpenTabs:${partnerId}` : 'tessera:supportOpenTabs';
+  return partnerId ? `guichet:supportOpenTabs:${partnerId}` : 'guichet:supportOpenTabs';
 }
 
 export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = (set, get) => ({

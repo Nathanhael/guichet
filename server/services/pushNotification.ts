@@ -9,7 +9,7 @@ const pushEnabled = !!(config.VAPID_PUBLIC_KEY && config.VAPID_PRIVATE_KEY);
 
 if (pushEnabled) {
   webpush.setVapidDetails(
-    config.VAPID_SUBJECT || 'mailto:admin@tessera.app',
+    config.VAPID_SUBJECT || 'mailto:admin@guichet.app',
     config.VAPID_PUBLIC_KEY!,
     config.VAPID_PRIVATE_KEY!,
   );

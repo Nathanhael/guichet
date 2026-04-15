@@ -108,9 +108,9 @@
     }
   ],
   "schemaVersion": 39,
-  "tags": ["tessera"],
+  "tags": ["guichet"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
-  "title": "Tessera Overview",
-  "uid": "tessera-overview"
+  "title": "Guichet Overview",
+  "uid": "guichet-overview"
 }

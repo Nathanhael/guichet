@@ -1,5 +1,5 @@
 /**
- * WebSocket (Socket.io) load test for Tessera.
+ * WebSocket (Socket.io) load test for Guichet.
  *
  * k6 doesn't natively speak Socket.io's protocol (Engine.IO framing),
  * so we use the k6 WebSocket API with raw Engine.IO / Socket.io frames.
@@ -61,8 +61,8 @@ export function setup() {
   // Extract JWT cookie from Set-Cookie header (k6 lowercases header names).
   // Parse out just the token value — the raw header includes Path=, HttpOnly, etc.
   const raw = login.headers['set-cookie'] || '';
-  const tokenMatch = raw.match(/tessera_token=([^;]+)/);
-  const cookies = tokenMatch ? `tessera_token=${tokenMatch[1]}` : '';
+  const tokenMatch = raw.match(/guichet_token=([^;]+)/);
+  const cookies = tokenMatch ? `guichet_token=${tokenMatch[1]}` : '';
 
   const body = login.json();
   return {

@@ -35,6 +35,9 @@ export const DISABLED_FEATURES: readonly DisabledFeature[] = [
   'webhooks',
 ];
 
+/** Application brand name — mirrors client/src/constants.ts */
+export const APP_NAME = 'Guichet';
+
 /** Fixed emoji set for message reactions */
 export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🎉', '✅'] as const;
 export type ReactionEmoji = typeof REACTION_EMOJIS[number];

@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB:-tessera}
+      POSTGRES_DB: ${POSTGRES_DB:-guichet}
       # Postgres 18 alpine image defaults PGDATA to /var/lib/postgresql/18/docker
       # which lives in the container layer, not our mounted volume. Pin PGDATA
       # into a subdirectory of the volume mount so data actually persists.
@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-tessera}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-guichet}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
           memory: 256M
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-tessera}
+      - DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-guichet}
       - JWT_SECRET=${JWT_SECRET}
       - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://${DOMAIN:-localhost}}

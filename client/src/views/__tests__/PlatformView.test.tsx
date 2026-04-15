@@ -117,10 +117,29 @@ describe('PlatformView', () => {
     vi.clearAllMocks();
   });
 
-  it('renders nav bar with TESSERA brand and platform badge', () => {
+  it('renders nav bar with GUICHET brand and platform badge', () => {
     render(<PlatformView />);
-    expect(screen.getByText('TESSERA')).toBeInTheDocument();
+    expect(screen.getByText('GUICHET')).toBeInTheDocument();
     expect(screen.getByText('platform')).toBeInTheDocument();
+  });
+
+  it('tab bar has role="tablist" for accessibility', () => {
+    render(<PlatformView />);
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+  });
+
+  it('tab buttons have role="tab" and aria-selected attributes', () => {
+    render(<PlatformView />);
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.length).toBe(8);
+    // First tab (partners) should be selected by default
+    const partnersTab = tabs.find(t => t.textContent === 'partners_tab');
+    expect(partnersTab).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('main content area has role="tabpanel"', () => {
+    render(<PlatformView />);
+    expect(screen.getByRole('tabpanel')).toBeInTheDocument();
   });
 
   it('renders all platform tab buttons', () => {

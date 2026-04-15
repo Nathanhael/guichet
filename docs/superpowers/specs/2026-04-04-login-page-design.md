@@ -1,4 +1,4 @@
-# Tessera Login Page — Design Spec
+# Guichet Login Page — Design Spec
 
 **Date:** 2026-04-04
 **Status:** Approved
@@ -6,14 +6,14 @@
 
 ## Overview
 
-A single login page serving as the entry point for all Tessera users. Email-first flow determines auth method (local vs SSO) from the user's email. Supports dark and light themes via CSS custom property toggle. No marketing content — this is an internal app login.
+A single login page serving as the entry point for all Guichet users. Email-first flow determines auth method (local vs SSO) from the user's email. Supports dark and light themes via CSS custom property toggle. No marketing content — this is an internal app login.
 
 ## User Flow
 
 ### 1. Email Entry (Initial State)
 
 User lands on the login page and sees:
-- TESSERA logo + "Real-Time Support Platform" tagline
+- GUICHET logo + "Real-Time Support Platform" tagline
 - A centered card with a single email field + "Continue" button
 - Theme toggle (top-right corner)
 - Footer: system status dot, version, "What's new" link, legal

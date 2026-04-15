@@ -72,7 +72,7 @@ export default function PwaInstallPrompt() {
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-bg-surface border-t-2 border-border-heavy px-4 py-3 flex items-center justify-between gap-4 animate-fade-in">
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-text-primary">
-          {t('pwa_install_title') || 'Install Tessera'}
+          {t('pwa_install_title') || 'Install Guichet'}
         </p>
         <p className="text-[10px] text-text-muted mt-0.5">
           {t('pwa_install_body') || 'Quick access and push notifications on your device'}

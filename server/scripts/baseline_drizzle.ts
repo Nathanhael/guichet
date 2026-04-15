@@ -60,7 +60,7 @@ async function main() {
   const skipPrompt = process.argv.includes('--yes') || process.argv.includes('-y');
   const drizzleDir = path.resolve(process.cwd(), 'drizzle');
   const journal = readJournal(drizzleDir);
-  const connectionString = process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/tessera';
+  const connectionString = process.env.DATABASE_URL || 'postgres://user:password@localhost:5432/guichet';
 
   if (!skipPrompt) {
     console.log(`This will mark ${journal.entries.length} migrations as already-applied.`);

@@ -37,7 +37,7 @@ function Run-Step {
 }
 
 Write-Host "`n========================================" -ForegroundColor White
-Write-Host "  Tessera Local CI" -ForegroundColor White
+Write-Host "  Guichet Local CI" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor White
 
 Run-Step "typecheck" @("docker compose exec server npx tsc --noEmit", "docker compose exec client npx tsc --noEmit")

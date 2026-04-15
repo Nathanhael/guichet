@@ -14,3 +14,6 @@ export const LANG_LABEL: Record<string, string> = {
 
 /** Fixed emoji set for message reactions (mirrors server/constants.ts) */
 export const REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '🎉', '✅'] as const;
+
+/** Application brand name — single source of truth for UI chrome */
+export const APP_NAME = 'GUICHET';

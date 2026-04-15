@@ -1,4 +1,4 @@
-# Tessera Brutalist Redesign — Design Spec
+# Guichet Brutalist Redesign — Design Spec
 
 **Date**: 2026-03-26
 **Branch**: `feature/brutalist-redesign` (to be created)
@@ -71,7 +71,7 @@ Define tokens as CSS custom properties in `index.css` `@theme` block. Dark/light
 
 | Element                | Font           | Size    | Weight | Transform                 |
 |------------------------|----------------|---------|--------|---------------------------|
-| App title (TESSERA)    | JetBrains Mono | 13px    | 700    | uppercase, tracking 3px   |
+| App title (GUICHET)    | JetBrains Mono | 13px    | 700    | uppercase, tracking 3px   |
 | Section headers        | JetBrains Mono | 9-10px  | 500    | uppercase, tracking 1px   |
 | Nav items              | JetBrains Mono | 10px    | 500    | uppercase, tracking 1px   |
 | Badges/status          | JetBrains Mono | 8-9px   | 700    | uppercase                 |
@@ -92,7 +92,7 @@ Monospace = UI structure (nav, labels, badges, buttons, IDs, timestamps). Sans-s
 
 ### Shell (all views)
 
-- Top nav bar: `TESSERA` logo left, view tabs center/right, user info + theme toggle far right
+- Top nav bar: `GUICHET` logo left, view tabs center/right, user info + theme toggle far right
 - 1px border bottom separating nav from content (dark: `#27272a`, light: `#1c1917` heavy)
 - Content area below adapts per view
 

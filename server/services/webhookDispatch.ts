@@ -7,8 +7,8 @@
  *
  * Each matching webhook gets an HTTP POST with:
  *   - JSON body: { event, data, timestamp }
- *   - Header X-Tessera-Signature: HMAC-SHA256 of the body using the webhook's secret
- *   - Header X-Tessera-Event: the event name
+ *   - Header X-Guichet-Signature: HMAC-SHA256 of the body using the webhook's secret
+ *   - Header X-Guichet-Event: the event name
  *
  * Delivery is logged to `webhook_logs` for debugging.
  */
@@ -178,9 +178,9 @@ async function deliverOne(
       headers: {
         'Content-Type': 'application/json',
         'Host': originalHostname,
-        'X-Tessera-Signature': signature,
-        'X-Tessera-Event': event,
-        'User-Agent': 'Tessera-Webhook/1.0',
+        'X-Guichet-Signature': signature,
+        'X-Guichet-Event': event,
+        'User-Agent': 'Guichet-Webhook/1.0',
       },
       body,
       signal: controller.signal,

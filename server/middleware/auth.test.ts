@@ -41,7 +41,7 @@ async function makeToken(payload: Record<string, unknown>) {
 function mockReqRes(cookie?: string) {
   const req: any = {
     headers: {},
-    cookies: cookie ? { tessera_token: cookie } : {},
+    cookies: cookie ? { guichet_token: cookie } : {},
     user: undefined,
   };
   const res: any = {

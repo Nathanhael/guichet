@@ -128,7 +128,7 @@ export function exportDashboardCSV(stats: DashboardStats, staffRatings?: StaffRa
     );
   }
 
-  downloadBlob(csv, `tessera-dashboard-${timestamp}.csv`, 'text/csv;charset=utf-8');
+  downloadBlob(csv, `guichet-dashboard-${timestamp}.csv`, 'text/csv;charset=utf-8');
 }
 
 // ─── PDF (via browser print) ────────────────────────────────────────────────
@@ -139,7 +139,7 @@ export function exportDashboardPDF(stats: DashboardStats, staffRatings?: StaffRa
 
   const html = `<!DOCTYPE html>
 <html><head>
-<title>Tessera Dashboard Report — ${timestamp}</title>
+<title>Guichet Dashboard Report — ${timestamp}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 40px; color: #111; font-size: 12px; }
@@ -156,7 +156,7 @@ export function exportDashboardPDF(stats: DashboardStats, staffRatings?: StaffRa
   @media print { body { padding: 20px; } }
 </style>
 </head><body>
-<h1>Tessera Dashboard Report</h1>
+<h1>Guichet Dashboard Report</h1>
 <div class="subtitle">Generated ${new Date().toLocaleString()}</div>
 
 <h2>Key Metrics</h2>
@@ -210,7 +210,7 @@ ${stats.dailyTrend.length > 0 ? `
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     // Popup blocked — fall back to download as HTML
-    downloadBlob(html, `tessera-dashboard-${timestamp}.html`, 'text/html;charset=utf-8');
+    downloadBlob(html, `guichet-dashboard-${timestamp}.html`, 'text/html;charset=utf-8');
     return;
   }
   printWindow.document.write(html);

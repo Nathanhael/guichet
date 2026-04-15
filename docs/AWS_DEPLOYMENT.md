@@ -1,6 +1,6 @@
 # AWS Deployment Guide
 
-Pre-deployment checklist and configuration for running Tessera on AWS Free Tier.
+Pre-deployment checklist and configuration for running Guichet on AWS Free Tier.
 
 ## Architecture (Free Tier)
 
@@ -23,10 +23,10 @@ Pre-deployment checklist and configuration for running Tessera on AWS Free Tier.
 |----------|---------|-------|
 | `NODE_ENV` | `production` | Enables production hardening |
 | `JWT_SECRET` | 64+ char random string | HS256 signing key |
-| `DATABASE_URL` | `postgresql://user:pass@rds-host:5432/tessera?sslmode=require` | RDS connection string |
+| `DATABASE_URL` | `postgresql://user:pass@rds-host:5432/guichet?sslmode=require` | RDS connection string |
 | `REDIS_URL` | `rediss://:auth-token@elasticache-host:6379` | **Must use `rediss://` (TLS)** for ElastiCache |
-| `CORS_ORIGIN` | `https://tessera.example.com` | Must not contain `localhost` |
-| `FRONTEND_URL` | `https://tessera.example.com` | Must not contain `localhost` |
+| `CORS_ORIGIN` | `https://guichet.example.com` | Must not contain `localhost` |
+| `FRONTEND_URL` | `https://guichet.example.com` | Must not contain `localhost` |
 | `COOKIE_SECURE` | `true` | Mandatory in production |
 | `COOKIE_DOMAIN` | `.example.com` | Set if using subdomains |
 | `PLATFORM_ADMIN_EMAIL` | `admin@example.com` | Auto-creates platform operator on first boot |
@@ -35,7 +35,7 @@ Pre-deployment checklist and configuration for running Tessera on AWS Free Tier.
 
 | Variable | Example | Notes |
 |----------|---------|-------|
-| `AWS_S3_BUCKET` | `tessera-uploads` | Presence enables S3 backend |
+| `AWS_S3_BUCKET` | `guichet-uploads` | Presence enables S3 backend |
 | `AWS_REGION` | `eu-west-1` | Default: eu-west-1 |
 | `AWS_ACCESS_KEY_ID` | `AKIA...` | Optional — omit if using IAM roles (ECS task role) |
 | `AWS_SECRET_ACCESS_KEY` | `secret...` | Optional — omit if using IAM roles |
@@ -48,8 +48,8 @@ Pre-deployment checklist and configuration for running Tessera on AWS Free Tier.
 1. VPC + Subnets (or use default VPC)
 2. RDS PostgreSQL (db.t3.micro, 20GB, public=false)
 3. ElastiCache Redis (cache.t3.micro, encryption in-transit=true)
-4. S3 Bucket (tessera-uploads, Block All Public Access)
-5. ECR Repository (tessera-server)
+4. S3 Bucket (guichet-uploads, Block All Public Access)
+5. ECR Repository (guichet-server)
 6. ALB + Target Group (health check: /api/v1/health)
 7. ECS Cluster + Task Definition + Service
 8. ACM Certificate (for custom domain)
@@ -112,8 +112,8 @@ When `AWS_S3_BUCKET` is set, uploads go to S3. The bucket is created automatical
     "Effect": "Allow",
     "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject", "s3:HeadBucket"],
     "Resource": [
-      "arn:aws:s3:::tessera-uploads",
-      "arn:aws:s3:::tessera-uploads/*"
+      "arn:aws:s3:::guichet-uploads",
+      "arn:aws:s3:::guichet-uploads/*"
     ]
   }]
 }
@@ -124,7 +124,7 @@ When `AWS_S3_BUCKET` is set, uploads go to S3. The bucket is created automatical
 RDS PostgreSQL with `?sslmode=require`:
 
 ```
-DATABASE_URL=postgresql://tessera:password@tessera-db.xxx.rds.amazonaws.com:5432/tessera?sslmode=require
+DATABASE_URL=postgresql://guichet:password@guichet-db.xxx.rds.amazonaws.com:5432/guichet?sslmode=require
 ```
 
 Run migrations on first deploy:
@@ -139,22 +139,22 @@ Push production images to ECR:
 ```bash
 aws ecr get-login-password --region eu-west-1 | docker login --username AWS --password-stdin 123456789.dkr.ecr.eu-west-1.amazonaws.com
 docker compose -f docker-compose.prod.yml build
-docker tag tessera-server 123456789.dkr.ecr.eu-west-1.amazonaws.com/tessera-server:latest
-docker push 123456789.dkr.ecr.eu-west-1.amazonaws.com/tessera-server:latest
+docker tag guichet-server 123456789.dkr.ecr.eu-west-1.amazonaws.com/guichet-server:latest
+docker push 123456789.dkr.ecr.eu-west-1.amazonaws.com/guichet-server:latest
 ```
 
 ## ECS Task Definition (key fields)
 
 ```json
 {
-  "family": "tessera-server",
+  "family": "guichet-server",
   "networkMode": "awsvpc",
   "requiresCompatibilities": ["FARGATE"],
   "cpu": "512",
   "memory": "1024",
   "containerDefinitions": [{
     "name": "server",
-    "image": "123456789.dkr.ecr.eu-west-1.amazonaws.com/tessera-server:latest",
+    "image": "123456789.dkr.ecr.eu-west-1.amazonaws.com/guichet-server:latest",
     "portMappings": [{ "containerPort": 3001, "protocol": "tcp" }],
     "healthCheck": {
       "command": ["CMD-SHELL", "curl -f http://localhost:3001/api/v1/health || exit 1"],
@@ -166,8 +166,8 @@ docker push 123456789.dkr.ecr.eu-west-1.amazonaws.com/tessera-server:latest
       { "name": "NODE_ENV", "value": "production" }
     ],
     "secrets": [
-      { "name": "JWT_SECRET", "valueFrom": "arn:aws:ssm:...:parameter/tessera/jwt-secret" },
-      { "name": "DATABASE_URL", "valueFrom": "arn:aws:ssm:...:parameter/tessera/database-url" }
+      { "name": "JWT_SECRET", "valueFrom": "arn:aws:ssm:...:parameter/guichet/jwt-secret" },
+      { "name": "DATABASE_URL", "valueFrom": "arn:aws:ssm:...:parameter/guichet/database-url" }
     ]
   }]
 }

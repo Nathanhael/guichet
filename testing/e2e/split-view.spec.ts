@@ -80,7 +80,7 @@ test.describe('Split View Modes', () => {
 
     // With 0 tabs, setting split-stack via localStorage should auto-revert
     await page.evaluate(() => {
-      localStorage.setItem('tessera:viewMode', 'split-stack');
+      localStorage.setItem('guichet:viewMode', 'split-stack');
     });
     await page.reload();
     await page.waitForLoadState('load');

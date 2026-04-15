@@ -38,7 +38,7 @@ export interface TRPCUser {
 }
 
 export async function createContext({ req, res }: CreateExpressContextOptions) {
-  const token: string | undefined = req.cookies?.tessera_token;
+  const token: string | undefined = req.cookies?.guichet_token;
   let user: TRPCUser | null = null;
 
   if (token) {

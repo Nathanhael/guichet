@@ -189,7 +189,7 @@ export const webhookRouter = router({
         _test: true,
         ticketId: 'test-000',
         agentName: 'Test Agent',
-        message: 'This is a test webhook delivery from Tessera.',
+        message: 'This is a test webhook delivery from Guichet.',
       });
 
       return { success: true };

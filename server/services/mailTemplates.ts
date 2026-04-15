@@ -1,7 +1,9 @@
 /**
- * Centralized email templates for Tessera.
+ * Centralized email templates.
  * All templates follow the strict B&W design system.
  */
+
+import { APP_NAME } from '../constants.js';
 
 interface BrandContext {
   partnerName?: string;
@@ -17,14 +19,14 @@ function escapeHtml(str: string): string {
 }
 
 function baseLayout(content: string, brand?: BrandContext): string {
-  const title = brand?.partnerName ? `${escapeHtml(brand.partnerName)} — Tessera` : 'Tessera';
+  const title = brand?.partnerName ? `${escapeHtml(brand.partnerName)} — ${APP_NAME}` : APP_NAME;
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; border: 2px solid #000; padding: 40px; color: #000; background: #fff;">
       <h1 style="text-transform: uppercase; letter-spacing: -0.05em; font-weight: 900; margin-top: 0; font-size: 22px;">${escapeHtml(title)}</h1>
       ${content}
       <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0 15px;" />
-      <p style="font-size: 10px; font-weight: bold; text-transform: uppercase; opacity: 0.4; margin: 0;">Tessera Platform Infrastructure</p>
+      <p style="font-size: 10px; font-weight: bold; text-transform: uppercase; opacity: 0.4; margin: 0;">${APP_NAME} Platform Infrastructure</p>
     </div>
   `;
 }
@@ -56,7 +58,7 @@ export function renderPasswordReset(opts: {
     ${heading('Password Reset Request')}
     ${separator()}
     <p>Hello ${escapeHtml(opts.name)},</p>
-    <p>We received a request to reset your password for your Tessera account.</p>
+    <p>We received a request to reset your password for your ${APP_NAME} account.</p>
     ${button('Reset Password', opts.resetLink)}
     <p style="font-size: 12px; opacity: 0.6;">If you didn't request this, you can safely ignore this email. This link will expire in 1 hour.</p>
   `, opts.brand);
@@ -79,7 +81,7 @@ export function renderInviteNew(opts: {
 
   return baseLayout(`
     <p>Hello ${escapeHtml(opts.name)},</p>
-    <p>Welcome to Tessera! You have been invited to join <strong>${escapeHtml(opts.partnerName)}</strong>.</p>
+    <p>Welcome to ${APP_NAME}! You have been invited to join <strong>${escapeHtml(opts.partnerName)}</strong>.</p>
     ${credBlock}
     ${button('Sign In Now', opts.loginUrl)}
   `, opts.brand);
@@ -93,7 +95,7 @@ export function renderInviteExisting(opts: {
 }): string {
   return baseLayout(`
     <p>Hello ${escapeHtml(opts.name)},</p>
-    <p>You have been granted access to <strong>${escapeHtml(opts.partnerName)}</strong> on the Tessera platform.</p>
+    <p>You have been granted access to <strong>${escapeHtml(opts.partnerName)}</strong> on the ${APP_NAME} platform.</p>
     <p>You can sign in using your existing credentials.</p>
     ${button('Sign In Now', opts.loginUrl)}
   `, opts.brand);
@@ -115,7 +117,7 @@ export function renderInviteReminder(opts: {
 
   return baseLayout(`
     <p>Hello ${escapeHtml(opts.name)},</p>
-    <p>This is a reminder of your invitation to join <strong>${escapeHtml(opts.partnerName)}</strong> on Tessera.</p>
+    <p>This is a reminder of your invitation to join <strong>${escapeHtml(opts.partnerName)}</strong> on ${APP_NAME}.</p>
     ${credBlock}
     ${button('Sign In Now', opts.loginUrl)}
   `, opts.brand);
@@ -144,7 +146,7 @@ export function renderMfaEnabled(opts: {
     ${heading('MFA Enabled')}
     ${separator()}
     <p>Hello ${escapeHtml(opts.name)},</p>
-    <p>Two-factor authentication has been successfully enabled on your Tessera account.</p>
+    <p>Two-factor authentication has been successfully enabled on your ${APP_NAME} account.</p>
     <p>From now on, you will need your authenticator app to sign in.</p>
     <p style="font-size: 12px; opacity: 0.6;">If you didn't do this, contact your administrator immediately.</p>
   `, opts.brand);
@@ -158,7 +160,7 @@ export function renderMfaDisabledByAdmin(opts: {
     ${heading('MFA Disabled by Administrator')}
     ${separator()}
     <p>Hello ${escapeHtml(opts.name)},</p>
-    <p>A platform administrator has disabled two-factor authentication on your Tessera account.</p>
+    <p>A platform administrator has disabled two-factor authentication on your ${APP_NAME} account.</p>
     <p>Your account is now accessible with your password only. We strongly recommend re-enabling MFA at your earliest convenience.</p>
     <p style="font-size: 12px; opacity: 0.6;">If you did not request this change, contact your administrator immediately.</p>
   `, opts.brand);
@@ -172,7 +174,7 @@ export function renderAccountUnlocked(opts: {
     ${heading('Account Unlocked')}
     ${separator()}
     <p>Hello ${escapeHtml(opts.name)},</p>
-    <p>A platform administrator has unlocked your Tessera account. You can now sign in again.</p>
+    <p>A platform administrator has unlocked your ${APP_NAME} account. You can now sign in again.</p>
     <p style="font-size: 12px; opacity: 0.6;">If your account was locked due to suspicious activity, we recommend changing your password immediately.</p>
   `, opts.brand);
 }

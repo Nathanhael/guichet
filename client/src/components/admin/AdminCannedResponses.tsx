@@ -3,7 +3,9 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import { Plus, Trash2, RefreshCw, Pencil, X, Check, MessageSquareText } from 'lucide-react';
 import ErrorBox from './ErrorBox';
+import FieldError from '../FieldError';
 import BionicText from '../BionicText';
+import { cannedResponseCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 import { useStoreShallow } from '../../store/useStore';
 import { usePartner } from '../../hooks/usePartner';
 
@@ -38,6 +40,7 @@ export default function AdminCannedResponses() {
 
   // Expanded row (to preview body)
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const { data: responses, isLoading, error: fetchError, refetch } = trpc.cannedResponse.list.useQuery();
 
@@ -65,7 +68,11 @@ export default function AdminCannedResponses() {
   });
 
   const addResponse = () => {
-    if (!newTitle.trim() || !newBody.trim()) return;
+    const errors = validateForm(cannedResponseCreateSchema, {
+      title: newTitle, body: newBody, dept: newDept || undefined, shortcut: newShortcut || undefined,
+    });
+    if (errors) { setFieldErrors(errors); return; }
+    setFieldErrors({});
     createMutation.mutate({
       title: newTitle.trim(),
       body: newBody.trim(),
@@ -128,10 +135,11 @@ export default function AdminCannedResponses() {
             <input
               type="text"
               value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
+              onChange={(e) => { setNewTitle(e.target.value); setFieldErrors({}); }}
               placeholder="e.g. Greeting"
-              className="input-field w-full"
+              className={`input-field w-full ${fieldErrors.title ? 'border-[var(--color-accent-red)]' : ''}`}
             />
+            <FieldError error={fieldErrors.title} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -163,11 +171,12 @@ export default function AdminCannedResponses() {
           <label className="mono-label mb-1.5 block">Body *</label>
           <textarea
             value={newBody}
-            onChange={(e) => setNewBody(e.target.value)}
+            onChange={(e) => { setNewBody(e.target.value); setFieldErrors({}); }}
             placeholder="Hello {{agentName}}, how can I help you today?"
             rows={3}
-            className="input-field w-full resize-y"
+            className={`input-field w-full resize-y ${fieldErrors.body ? 'border-[var(--color-accent-red)]' : ''}`}
           />
+          <FieldError error={fieldErrors.body} />
           <p className="text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mt-1">
             Variables: {'{{agentName}}'} {'{{supportName}}'} {'{{ticketId}}'}
           </p>

@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: tessera
+      POSTGRES_DB: guichet
       # Postgres 18 alpine image defaults PGDATA to /var/lib/postgresql/18/docker
       # which lives in the container layer, not our mounted volume. Pin PGDATA
       # into a subdirectory of the volume mount so data actually persists.
@@ -15,7 +15,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d tessera"]
+      test: ["CMD-SHELL", "pg_isready -U user -d guichet"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -25,7 +25,7 @@ services:
       context: ./server
       dockerfile: Dockerfile
     environment:
-      - DATABASE_URL=postgres://user:password@db:5432/tessera
+      - DATABASE_URL=postgres://user:password@db:5432/guichet
       - REDIS_URL=redis://:devpassword@redis:6379
       - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set in .env}
       - DISABLE_RATE_LIMIT=${DISABLE_RATE_LIMIT:-false}

@@ -6,7 +6,7 @@
 
 ## Overview
 
-Eight independent tracks that modernize Tessera's chat experience. Track 0 (refactor) ships first to create clean extraction boundaries. Feature tracks A-G ship separately after that — no cross-dependencies. Ordered by execution sequence.
+Eight independent tracks that modernize Guichet's chat experience. Track 0 (refactor) ships first to create clean extraction boundaries. Feature tracks A-G ship separately after that — no cross-dependencies. Ordered by execution sequence.
 
 ---
 
