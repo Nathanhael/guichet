@@ -110,4 +110,20 @@ test.describe('SupportView keyboard shortcuts', () => {
     // triggerCloseTicket surfaces the shared ConfirmDialog with title "Close ticket?"
     await expect(page.getByText(/close ticket\?/i)).toBeVisible();
   });
+
+  test('palette shows always-visible Tier-2 shortcut hints', async ({ page }) => {
+    await loginAsDemo(page, 'support_lucas');
+    await expect(page.getByRole('button', { name: /command palette/i })).toBeVisible();
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
+    });
+
+    const palette = page.getByRole('dialog', { name: /command palette/i });
+    await expect(palette).toBeVisible();
+
+    // Hints that don't require an active ticket
+    await expect(palette.getByRole('button', { name: /open status picker ctrl\+\./i })).toBeVisible();
+    await expect(palette.getByRole('button', { name: /ctrl\+shift\+a/i })).toBeVisible();
+  });
 });
