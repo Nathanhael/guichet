@@ -74,8 +74,10 @@ describe('SSO Azure B2B guest detection and rejection', () => {
       );
       expect(rejectBlock).toBeTruthy();
       expect(rejectBlock![0]).toMatch(/groupCount/);
-      // azureGroups must NOT be inlined as a metadata key in this block
-      expect(rejectBlock![0]).not.toMatch(/metadata:\s*\{[^}]*azureGroups[^:]*\}/);
+      // azureGroups must NOT appear as a bare key in the metadata block.
+      // Legitimate scalar usage like `azureGroups.length` is fine — the
+      // regex excludes a following `.` to avoid matching property access.
+      expect(rejectBlock![0]).not.toMatch(/\bazureGroups\s*[,:}]/);
     });
 
     it('rejection happens BEFORE the membership upsert loop', () => {
