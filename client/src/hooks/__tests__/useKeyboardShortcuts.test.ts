@@ -9,6 +9,11 @@ describe('useKeyboardShortcuts', () => {
     onNextTab: vi.fn(),
     onPrevTab: vi.fn(),
     onToggleSidebar: vi.fn(),
+    onCloseTicket: vi.fn(),
+    onTransferTicket: vi.fn(),
+    onCloseTab: vi.fn(),
+    onToggleWhisper: vi.fn(),
+    onExitFocus: vi.fn(),
   };
 
   function fire(key: string, opts: Partial<KeyboardEventInit> = {}) {
@@ -113,5 +118,11 @@ describe('useKeyboardShortcuts', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
     fire('k', { metaKey: true });
     expect(handlers.onOpenPalette).toHaveBeenCalledOnce();
+  });
+
+  it('Ctrl+Enter fires onCloseTicket', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('Enter', { ctrlKey: true });
+    expect(handlers.onCloseTicket).toHaveBeenCalledOnce();
   });
 });
