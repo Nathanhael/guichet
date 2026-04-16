@@ -49,15 +49,15 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   const composeRef = useRef<ComposeAreaHandle>(null);
 
-  // Expose minimal imperative handle for command palette actions
+  // Expose minimal imperative handle for command palette actions.
+  // triggerCloseTicket opens the close-ticket ConfirmDialog so the user can
+  // confirm/cancel — matching the ❓ dialog the close button surfaces at :328.
   useImperativeHandle(ref, () => ({
     focusTextarea: () => composeRef.current?.focus(),
     toggleWhisper: () => composeRef.current?.toggleWhisper(),
     openTransferMenu: () => setShowTransferMenu(true),
-    triggerCloseTicket: () => {
-      if (onClose) onClose();
-    },
-  }), [onClose]);
+    triggerCloseTicket: () => setShowCloseConfirm(true),
+  }), []);
 
   const bottomRef = useRef<HTMLDivElement>(null);
 
