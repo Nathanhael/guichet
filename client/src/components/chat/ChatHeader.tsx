@@ -48,10 +48,13 @@ export default function ChatHeader({
     onlineSupportUsers: s.onlineSupportUsers,
   }));
   const currentUserId = useStore(s => s.user?.id);
+  const currentUserIsExternal = useStore(s => !!s.user?.isExternal);
   // Map of userId -> live status, used to light up support avatars and keep them in sync with presence changes.
   const supportStatusById = new Map<string, 'online' | 'away'>();
+  const supportExternalById = new Map<string, boolean>();
   for (const u of (onlineSupportUsers || [])) {
     supportStatusById.set(u.userId, u.status);
+    if (u.isExternal) supportExternalById.set(u.userId, true);
   }
   // Resolve a participant's live status. Returns the known status, or defaults the
   // current viewer to 'online' (they're obviously connected), or undefined when we
@@ -61,6 +64,16 @@ export default function ChatHeader({
     if (s) return s;
     if (userId === currentUserId) return 'online';
     return undefined;
+  };
+  // Azure B2B guest flag per participant. Sourced from the presence store,
+  // which carries `isExternal` for anyone currently online. For the viewer
+  // themselves we trust the store's `user.isExternal`. Historical
+  // participants who are no longer online won't show a guest marker in
+  // the tooltip — the plumbing limitation noted in
+  // docs/superpowers/specs/partner-sso-b2b-guest.md (Known limitations).
+  const resolveIsExternal = (userId: string): boolean => {
+    if (userId === currentUserId) return currentUserIsExternal;
+    return supportExternalById.get(userId) === true;
   };
   const t = useT();
   const { manifest } = usePartner();
@@ -223,7 +236,7 @@ export default function ChatHeader({
             return (
               <span
                 className="flex items-center gap-0.5 shrink-0"
-                title={sorted.map((p) => p.name).join(', ')}
+                title={sorted.map((p) => (resolveIsExternal(p.id) ? `${p.name} (GUEST)` : p.name)).join(', ')}
               >
                 {sorted.map((p) => {
                   // Self-status is already shown explicitly by StatusPicker in the
@@ -232,15 +245,21 @@ export default function ChatHeader({
                   // indicator of their availability.
                   const isSelf = p.id === currentUserId;
                   const st = resolveStatus(p.id);
+                  const isExternal = resolveIsExternal(p.id);
                   return (
-                    <UserAvatar
+                    <span
                       key={p.id}
-                      userId={p.id}
-                      name={p.name}
-                      size="xs"
-                      showStatus={!isSelf && st !== undefined}
-                      isOnline={st === 'online'}
-                    />
+                      className={isExternal ? 'ring-1 ring-[var(--color-accent-amber)] ring-offset-0 inline-block' : 'inline-block'}
+                      title={isExternal ? `${p.name} — external guest` : p.name}
+                    >
+                      <UserAvatar
+                        userId={p.id}
+                        name={p.name}
+                        size="xs"
+                        showStatus={!isSelf && st !== undefined}
+                        isOnline={st === 'online'}
+                      />
+                    </span>
                   );
                 })}
               </span>

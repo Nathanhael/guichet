@@ -163,9 +163,15 @@ Every guest-relevant event writes to `audit_log`:
    claim and sends `_claim_names` instead. Guichet logs an error and
    the user gets no groups. Guests rarely hit this. Fix would require
    calling Microsoft Graph; not in scope.
-2. **GUEST badge missing from ChatHeader participants and MessageBubble
-   senders.** Both need `isExternal` threaded through ticket participants
-   JSON and message payloads. Tracked as Task 5 follow-up in the plan.
+2. **MessageBubble + ChatHeader rely on the presence store for guest
+   detection.** The GUEST badge in `MessageBubble` and the amber ring
+   around participant avatars in `ChatHeader` cross-reference
+   `onlineSupportUsers` to learn `isExternal`. That means a guest who
+   is currently offline — including historical senders in a closed
+   ticket review — won't be flagged. For server-authoritative fidelity
+   (badge shows regardless of live presence), denormalize
+   `senderIsExternal` onto the `messages` row at insert and thread
+   `isExternal` through `tickets.participants` JSON. Deferred.
 3. **Destructive buttons are not visibly disabled.** A guest admin clicks,
    gets a FORBIDDEN toast. UX polish — out of scope for the initial ship.
 4. **Partner-employee SSO via the partner's OWN IdP.** Not supported.
@@ -194,6 +200,8 @@ Client:
 - `client/src/components/UserMenu.tsx` — own identity badge
 - `client/src/components/admin/AdminTeam.tsx` — team row badge
 - `client/src/components/support/SidebarFooter.tsx` — team-panel badge
+- `client/src/components/MessageBubble.tsx` — per-message sender badge (cross-refs presence store)
+- `client/src/components/chat/ChatHeader.tsx` — amber ring around guest participant avatars + enriched tooltip
 - `client/src/components/PartnerSwitcher.tsx` — `confirmBeforeSwitch` prop
 - `client/src/components/agent/AgentNav.tsx` — switcher + confirm
 - `client/src/components/support/SupportNav.tsx` — switcher + confirm
