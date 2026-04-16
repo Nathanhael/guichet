@@ -8,10 +8,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 - **SupportView Tier-1 keyboard shortcuts** — `Ctrl+Enter` (close ticket), `Alt+T` (transfer), `Alt+W` (close chat tab), `Ctrl+/` (toggle whisper), `Esc` (exit focus mode), and `?` (open command palette as help). `Alt+T`/`Alt+W` chosen over `Ctrl+T`/`Ctrl+W` to avoid browser tab conflicts. All bindings go through the existing `useKeyboardShortcuts` hook and `ChatWindowHandle` ref so they stay in sync with the palette's shortcut-hint column.
 - **Clickable `Ctrl+K` nav badge** — the decorative `<kbd>` in `SupportNav` is now a button that dispatches a `support:open-palette` window event; `SupportView` listens for it and opens the palette.
+- **SupportView Tier-2 keyboard shortcuts** — `Ctrl+1..9` (jump to chat tab N), `Ctrl+F` (message search), `Ctrl+L` / `Alt+L` (label picker), `Ctrl+J` / `Alt+J` (canned responses), `Ctrl+Shift+A` (toggle AI copilot sidebar), `Ctrl+.` (open status picker). Cross-component openings use `window` CustomEvents (`support:open-label-picker`, `support:open-canned-picker`, `support:open-search`, `support:open-status-picker`) to avoid prop-drilling. Palette gains `jump-to-tab-1..3`, `search-messages`, `open-label-picker`, `open-canned`, and `open-status-picker` commands with matching shortcut hints; existing `toggle-sidebar-right` gets a `Ctrl+Shift+A` hint. en/nl/fr locales updated.
 
 ### Tests
-- 9 new Vitest cases covering the new hotkey bindings and the SupportNav button wiring.
-- New `testing/e2e/support-shortcuts.spec.ts` verifies Ctrl+K opens the palette, Tier-1 hints are visible in the palette, and Ctrl+Enter surfaces the close-ticket confirmation.
+- 9 new Vitest cases covering the Tier-1 hotkey bindings and the SupportNav button wiring.
+- 11 new Vitest cases covering the Tier-2 key bindings (digit bounds, dual-modifier bindings for L/J, no-Shift guard for Ctrl+A).
+- New `testing/e2e/support-shortcuts.spec.ts` verifies Ctrl+K opens the palette, Tier-1 hints are visible, Ctrl+Enter surfaces the close-ticket confirmation, and Tier-2 palette hints render (Ctrl+., Ctrl+Shift+A).
 
 ## [4.2.0] - 2026-04-15
 
