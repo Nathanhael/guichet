@@ -87,16 +87,6 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
               <div className="input-field w-full font-mono opacity-50 cursor-default">{partner.id}</div>
             </div>
           </div>
-          <div>
-            <label className="mono-label">{t('provider_label')}</label>
-            <select className="input-field w-full"
-              value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' | 'both' })}>
-              <option value="local">Local (Email/Password)</option>
-              <option value="sso">Enterprise SSO</option>
-              <option value="both">Both (Local + SSO)</option>
-            </select>
-          </div>
-
           {/* ── AI Features ─────────────────────────────────────────────── */}
           <div className="border-t border-[var(--color-border)] pt-4">
             <div className="flex items-center justify-between mb-4">
