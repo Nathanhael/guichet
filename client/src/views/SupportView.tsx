@@ -105,6 +105,16 @@ export default function SupportView() {
   }, []);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
+  // SupportNav's Ctrl+K badge dispatches this event; keeps the badge free
+  // of prop-drilling while still sharing the palette with the hotkey hook.
+  useEffect(() => {
+    function openPalette() {
+      setPaletteOpen(true);
+    }
+    window.addEventListener('support:open-palette', openPalette);
+    return () => window.removeEventListener('support:open-palette', openPalette);
+  }, []);
+
   const chatWindowRef = useRef<ChatWindowHandle>(null);
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
