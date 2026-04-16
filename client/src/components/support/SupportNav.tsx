@@ -2,6 +2,7 @@ import useStore from '../../store/useStore';
 import { useT } from '../../i18n';
 import { APP_NAME } from '../../constants';
 import StatusPicker from '../StatusPicker';
+import PartnerSwitcher from '../PartnerSwitcher';
 import SettingsPopover from '../SettingsPopover';
 import UserMenu from '../UserMenu';
 import type { OnlineSupport } from '../../types';
@@ -41,8 +42,12 @@ export default function SupportNav({ partnerName }: SupportNavProps) {
         )}
       </div>
 
-      {/* Right side: status + capacity + Ctrl+K + gear + avatar */}
+      {/* Right side: partner switcher + status + capacity + Ctrl+K + gear + avatar */}
       <div className="flex items-center gap-4">
+        {/* Confirm on switch: SupportView keeps active chat tabs with open
+            compose state held in component memory. Flipping tenants reconnects
+            the socket and drops those tabs, so warn first. */}
+        {!focusMode && <PartnerSwitcher confirmBeforeSwitch />}
         <StatusPicker />
 
         {totalOnline > 0 && !focusMode && (

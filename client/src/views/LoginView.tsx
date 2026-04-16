@@ -101,6 +101,8 @@ export default function LoginView() {
         'expired': t('login_failed'),
         'unauthorized': t('login_failed'),
         'server_error': t('login_failed'),
+        // Azure B2B guest mapped to >1 partner — fail-closed per strict single-partner rule.
+        'guest_multi_partner_mapping': t('sso_guest_multi_partner_message'),
       };
       setError(ssoErrorMessages[ssoError] || t('login_failed'));
       window.history.replaceState({}, document.title, window.location.pathname);

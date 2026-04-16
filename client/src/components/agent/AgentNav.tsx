@@ -2,6 +2,7 @@ import useStore from '../../store/useStore';
 import { useT } from '../../i18n';
 import { APP_NAME } from '../../constants';
 import ConnectionStatus from '../ConnectionStatus';
+import PartnerSwitcher from '../PartnerSwitcher';
 import SettingsPopover from '../SettingsPopover';
 import UserMenu from '../UserMenu';
 
@@ -31,8 +32,12 @@ export default function AgentNav({
         <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
       </div>
 
-      {/* Right side: connection status + gear + avatar */}
+      {/* Right side: partner switcher (when multi-tenant) + connection status + gear + avatar */}
       <div className="flex items-center gap-4">
+        {/* Confirm on switch: AgentView holds unsaved ticket drafts in local
+            component state, so flipping tenants mid-session would silently
+            lose the user's work. Prompt before we drop them. */}
+        <PartnerSwitcher confirmBeforeSwitch />
         <ConnectionStatus />
         <SettingsPopover showAccessibility showNotifications />
         <UserMenu showFeedback showSecurity onFeedback={onShowFeedback} />

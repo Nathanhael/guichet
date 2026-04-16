@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { LogOut, MessageSquare, Shield } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useT } from '../i18n';
+import GuestBadge from './GuestBadge';
 
 const UserSecurityModal = lazy(() => import('./UserSecurityModal'));
 
@@ -88,8 +89,9 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
         <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-[var(--color-bg-surface)] border border-[var(--color-border-heavy)]">
           {/* Header */}
           <div className="px-3 py-2.5 border-b border-[var(--color-border)]">
-            <div className="text-[11px] font-bold uppercase tracking-tight text-[var(--color-text-primary)]">
-              {user.name}
+            <div className="text-[11px] font-bold uppercase tracking-tight text-[var(--color-text-primary)] flex items-center gap-2">
+              <span className="truncate">{user.name}</span>
+              <GuestBadge isExternal={user.isExternal} size="prominent" />
             </div>
             <div className="text-[9px] text-[var(--color-text-muted)] mt-0.5">{user.email}</div>
           </div>
