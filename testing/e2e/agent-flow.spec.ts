@@ -8,41 +8,10 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
+import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const DEMO_PASSWORD = 'password123';
-
-async function loginAsDemo(page: Page, userId: string) {
-  await page.goto(BASE);
-  await page.waitForLoadState('load');
-
-  const data = await page.evaluate(async ({ uid, pw }) => {
-    const res = await fetch('/api/v1/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ id: uid, password: pw }),
-    });
-    if (!res.ok) return { ok: false, status: res.status };
-    const json = await res.json();
-    return { ok: true, ...json };
-  }, { uid: userId, pw: DEMO_PASSWORD });
-
-  if (!data.ok) return data;
-
-  await page.evaluate(({ user, memberships }) => {
-    sessionStorage.setItem('user', JSON.stringify(user));
-    sessionStorage.setItem('memberships', JSON.stringify(memberships));
-    if (memberships?.length > 0) {
-      sessionStorage.setItem('activeMembershipId', memberships[0].id);
-      sessionStorage.setItem('activePartnerId', memberships[0].partnerId);
-    }
-  }, data);
-
-  await page.reload();
-  await page.waitForLoadState('load');
-  return data;
-}
 
 /** Close the agent's current ticket via the Close button if visible. */
 async function closeCurrentTicket(page: Page): Promise<boolean> {
