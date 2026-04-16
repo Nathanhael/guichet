@@ -145,4 +145,31 @@ describe('useKeyboardShortcuts', () => {
     fire('t', { altKey: true, ctrlKey: true });
     expect(handlers.onTransferTicket).not.toHaveBeenCalled();
   });
+
+  it('Ctrl+/ fires onToggleWhisper', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('/', { ctrlKey: true });
+    expect(handlers.onToggleWhisper).toHaveBeenCalledOnce();
+  });
+
+  it('Escape fires onExitFocus', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('Escape');
+    expect(handlers.onExitFocus).toHaveBeenCalledOnce();
+  });
+
+  it('? fires onOpenPalette when target is body', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fireOnElement(document.body, '?');
+    expect(handlers.onOpenPalette).toHaveBeenCalledOnce();
+  });
+
+  it('? does NOT fire onOpenPalette when target is a textarea', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    const textarea = document.createElement('textarea');
+    document.body.appendChild(textarea);
+    fireOnElement(textarea, '?');
+    expect(handlers.onOpenPalette).not.toHaveBeenCalled();
+    textarea.remove();
+  });
 });
