@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { tickets, ticketLabels } from '../../db/schema.js';
-import { eq, and, or, ilike, sql, asc, desc, gte, lte, inArray } from 'drizzle-orm';
+import { eq, and, or, ilike, sql, asc, desc, gte, lte, inArray, isNull, isNotNull } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { escapeLikePattern } from '../../utils/security.js';
@@ -33,6 +33,7 @@ export const ticketRouter = router({
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
       partnerId: z.string().optional(), // required for platform operators
+      hasSupport: z.boolean().optional(), // true = supportId assigned, false = unassigned
     }))
     .query(async ({ input, ctx }) => {
       try {
@@ -76,6 +77,9 @@ export const ticketRouter = router({
           conditions.push(inArray(tickets.status, statusArr));
         }
         if (input.dept && input.dept !== 'all') conditions.push(eq(tickets.dept, input.dept));
+
+        if (input.hasSupport === true) conditions.push(isNotNull(tickets.supportId));
+        else if (input.hasSupport === false) conditions.push(isNull(tickets.supportId));
 
         if (input.search) {
           const q = `%${escapeLikePattern(input.search)}%`;

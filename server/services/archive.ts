@@ -180,6 +180,38 @@ export async function verifyAuditChain(): Promise<{ valid: boolean; checked: num
 // ─── Ticket Archiving ────────────────────────────────────────────────────────
 
 /**
+ * Snapshot a single ticket into archived_tickets immediately (on close/resolve).
+ * Idempotent via onConflictDoNothing. Leaves the live row + messages in place —
+ * the scheduled archive/GDPR job handles eventual deletion after retention.
+ */
+export async function snapshotTicketToArchive(ticketId: string): Promise<void> {
+  const rows = await db.select().from(tickets).where(eq(tickets.id, ticketId)).limit(1);
+  const ticket = rows[0];
+  if (!ticket) return;
+  if (ticket.status !== 'closed' && ticket.status !== 'resolved') return;
+
+  const [countRow] = await db.select({ count: sql<number>`count(*)` })
+    .from(messages)
+    .where(eq(messages.ticketId, ticketId));
+
+  await db.insert(archivedTickets).values({
+    id: ticket.id,
+    partnerId: ticket.partnerId,
+    dept: ticket.dept,
+    agentId: ticket.agentId ?? undefined,
+    supportId: ticket.supportId ?? undefined,
+    status: ticket.status ?? 'closed',
+    createdAt: ticket.createdAt,
+    closedAt: ticket.closedAt ?? undefined,
+    closedBy: ticket.closedBy ?? undefined,
+    closingNotes: ticket.closingNotes ?? undefined,
+    reopenCount: ticket.reopenCount ?? 0,
+    messageCount: Number(countRow?.count ?? 0),
+    archivedAt: new Date().toISOString(),
+  }).onConflictDoNothing();
+}
+
+/**
  * Archive closed tickets older than `retentionDays` into archived_tickets.
  * Stores summary metadata (no messages — those are purged by GDPR).
  * Returns the count of archived tickets.
