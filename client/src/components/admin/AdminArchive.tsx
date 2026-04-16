@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
+import { usePartner } from '../../hooks/usePartner';
 
 const LIMIT = 25;
 
@@ -10,7 +11,9 @@ export default function AdminArchive() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState('');
-  const [dept, _setDept] = useState('all');
+  const [dept, setDept] = useState('all');
+  const { manifest } = usePartner();
+  const departments = manifest.departments || [];
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [preview, setPreview] = useState<Ticket | null>(null);
@@ -126,6 +129,17 @@ export default function AdminArchive() {
               <button onClick={() => { setDateFrom(''); setDateTo(''); resetPagination(); }} className="text-[10px] font-bold uppercase text-accent-blue hover:underline px-1">
                 ✕ Clear
               </button>
+            )}
+            {departments.length > 0 && (
+              <select
+                value={dept}
+                aria-label="Filter by department"
+                onChange={(e) => { setDept(e.target.value); resetPagination(); }}
+                className="bg-bg-elevated border-2 border-border-heavy px-2 py-1.5 text-[10px] font-bold uppercase outline-none cursor-pointer hover:border-accent-blue"
+              >
+                <option value="all">All depts</option>
+                {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
             )}
             {allLabels.length > 0 && (
               <select
