@@ -1,6 +1,6 @@
 # Guichet
 
-Real-time, multi-tenant live chat platform for customer support teams. Built for speed, security, and simplicity.
+Real-time, multi-tenant chat platform for BPO and outsourced helpdesk teams. Each partner you serve is a scoped tenant; your agents handle their customers externally and use Guichet to get second-line help from in-house support. Built for speed, security, and simplicity.
 
 ## Features
 
@@ -8,8 +8,8 @@ Real-time, multi-tenant live chat platform for customer support teams. Built for
 - **Multi-Tenant Architecture** — Strict isolation between tenants, platform-wide SSO with multi-tenant user memberships, and seamless workspace switching
 - **Brutalist Design System** — Raw token-based UI (Zinc + accent colors), JetBrains Mono typography, and minimal functional motion
 - **Role-Based Access** — Four roles (agent, support, admin, platform_operator) with granular permission gates
-- **Hybrid Authentication** — Corporate SSO (Azure Entra ID) + Local fallback (Argon2id) for platform recovery and external partners
-- **Identity Model** — Single corporate identity per user across multiple tenant organizations with scoped roles per tenant
+- **SSO-First Authentication** — Azure Entra ID for all staff; partner employees federate in via Azure B2B guest invites (see `docs/superpowers/specs/partner-sso-b2b-guest.md`). Local Argon2id auth is reserved for platform operators (recovery + break-glass).
+- **Identity Model** — Single corporate identity per user across multiple tenant organizations with scoped roles per tenant. External guests (`users.isExternal`) are enforced single-partner and blocked from destructive partner-admin mutations via the `destructiveAdminProcedure` tRPC middleware.
 - **Platform Cockpit** — Global operator view for tenant management, user provisioning, audit log, and archive browser
 - **AI-Powered Support** — Message improvement, chat summarization, translation (nl/en/fr), sentiment detection, and auto-summarize on close (Ollama / Azure OpenAI)
 - **Security Hardening** — MFA (TOTP), account lockout, password policies, WORM audit archive (SHA-256 hash chain), session revocation, HttpOnly cookie auth
@@ -95,7 +95,7 @@ npm run db:backup:docker        # Same, from Docker container
 ## API Documentation
 
 - **REST** — Swagger UI at `/api/v1/docs/`
-- **tRPC** — Reference at `/api/v1/trpc-reference` (18 routers)
+- **tRPC** — Reference at `/api/v1/trpc-reference` (19 routers)
 
 ## Architecture
 

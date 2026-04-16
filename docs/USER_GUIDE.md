@@ -107,7 +107,7 @@ Platform Operators use the **PlatformView** to manage the entire ecosystem.
 ## 4. Partner Administration
 
 Partner Admins use the **AdminView** to manage their local workspace:
-- **Team Tab**: Manage users specific to the partner. Invite existing platform users or invite new external users. When inviting, choose auth method (local or SSO) per user.
+- **Team Tab**: Manage users specific to the partner. Invite existing platform users or invite new external users. When inviting, choose auth method (local or SSO) per user. External (Azure B2B guest) admins show a `GUEST` badge next to their name — they have read access to every admin panel but are blocked from destructive mutations (webhook secrets, department edits, team-member add/remove/update). Have a full-rights admin perform those actions or promote the user internally if that's the intent.
 - **Departments Tab**: Create and update the names and descriptions of support departments.
 - **Tickets Tab**: Browse and manage all partner tickets.
 - **Business Hours Tab**: Configure operating hours per day. Outside hours, agents see a "business hours" guard and queue position.
@@ -139,6 +139,32 @@ Support Specialists use the **SupportView** to handle tickets:
 - **Ticket Transfer**: Click the transfer button to hand off a ticket to another online support agent.
 - **Customer Info Panel**: View agent details, reference fields, and past ticket history in the right sidebar.
 - **CSAT Ratings**: When a ticket is closed, agents are auto-prompted to rate their support experience. Support admins can view per-agent satisfaction scores with date filtering in the Stats dashboard.
+
+### Keyboard Shortcuts
+
+Support Specialists can use high-traffic shortcuts to speed up ticket handling. The **Ctrl+K** nav badge in the top-right doubles as a button to open the command palette, which serves as a live cheat sheet for all bindings.
+
+- **Navigation**:
+  - `Ctrl+K` or `?` — Open Command Palette
+  - `Ctrl+ArrowDown` / `Ctrl+ArrowUp` — Next/Previous chat tab
+  - `Ctrl+1..9` — Jump directly to chat tab N
+  - `Alt+Left` / `Alt+Right` — Jump to next/previous unread chat tab
+  - `Ctrl+B` — Toggle Queue Sidebar
+  - `Ctrl+F` — Open message search within the active ticket
+  - `Esc` — Exit focus mode (when active)
+  - `Ctrl+Shift+F` — Toggle focus mode
+- **Actions**:
+  - `Ctrl+Enter` — Close current ticket (opens confirmation)
+  - `Alt+T` — Transfer ticket to another agent
+  - `Alt+W` — Close current chat tab
+  - `Ctrl+/` — Toggle whisper mode (internal-only messages)
+  - `Ctrl+L` or `Alt+L` — Open label picker
+  - `Ctrl+J` or `Alt+J` — Open canned response picker
+  - `Ctrl+Shift+A` — Toggle AI Copilot sidebar
+  - `Ctrl+.` — Open status picker (Online/Away/Offline)
+  - `/` (when not typing) — Focus the message input
+
+---
 
 ### AI Features
 

@@ -57,6 +57,7 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 - **Implicit Partner Access**: Platform operators can enter any active partner's admin view without an explicit membership, via a dedicated `/enter-partner` endpoint that issues a partner-scoped JWT with admin role.
 - **Flexible Auth**: Partners support `authMethod` of `'local'`, `'sso'`, or `'both'`. When `'both'`, the login page shows both email/password and SSO options. Per-user `auth_method` column allows overriding the partner default (e.g., SSO partner with one local break-glass account).
 - **SSO Group Mapping**: `partner_group_mappings` table automatically maps SSO group memberships to tenant roles and departments during login.
+- **Azure B2B Guests**: Partner employees can be invited as B2B guests in our Azure tenant and authenticate via their home IdP. The SSO callback detects them from the `acct === 1` or `idp` claim and sets `users.is_external`. Guests are enforced single-partner (fail-closed audit at login) and blocked from destructive partner-admin mutations (webhook secrets, member management, department edits) via the `destructiveAdminProcedure` tRPC middleware. A `GUEST` badge surfaces in the UI. See `docs/superpowers/specs/partner-sso-b2b-guest.md`.
 - **Tenant Mapping**: The current platform treats `partners` as tenants and `memberships` as the authorization link from internal users to one or more tenants. See `docs/TENANT_IDENTITY_SPEC.md`.
 
 ---
@@ -116,5 +117,6 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 - **Data Visualization**: Recharts for dashboard charts (AdminStats, sentiment trends, SLA compliance).
 - **Full i18n**: All UI strings use `useT()` with translations in English, French, and Dutch (`i18n.ts`). Business hours, admin views, and platform views are fully translated.
 - **State Synchronization**: Strict single-page-app behaviors using Zustand for global state and tRPC for seamless query invalidation and refetching.
+- **Window Event Architecture**: To avoid deep prop-drilling or complex handle-passing for UI modals, the system uses a producer/consumer pattern based on `window` CustomEvents. Components like `SupportNav` or the keyboard hook dispatch events (e.g., `support:open-label-picker`), which are consumed by the component owning the modal state (`ChatHeader`).
 - **PWA**: Progressive Web App with `manifest.json`, service worker (`sw.js` with build-hash cache busting), and icons. Installable on Android/iOS. Network-first strategy for API calls.
 - **Test Coverage**: Vitest + React Testing Library covering platform components, auth middleware, socket handlers, account lockout, message mapping, and security utilities. Tests mock tRPC at the hook level using `vi.hoisted()` for clean isolation.
