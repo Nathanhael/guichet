@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useT } from '../../i18n';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
+import GuestBadge from '../GuestBadge';
 import type { OnlineSupport } from '../../types';
 
 interface SidebarFooterProps {
@@ -50,7 +51,10 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
                     {getInitials(agent.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[11px] font-semibold text-[var(--color-text-primary)] truncate">{agent.name}</div>
+                    <div className="text-[11px] font-semibold text-[var(--color-text-primary)] truncate flex items-center gap-1.5">
+                      <span className="truncate">{agent.name}</span>
+                      <GuestBadge isExternal={agent.isExternal} />
+                    </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className={`w-2 h-2 rounded-full ${colors.dot}`} />

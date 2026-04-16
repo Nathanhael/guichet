@@ -83,6 +83,12 @@ export interface User {
   role: UserRole;
   lang: 'nl' | 'fr' | 'en';
   isPlatformOperator: boolean;
+  /**
+   * True when the user is an Azure B2B guest (external partner employee).
+   * Drives GUEST badge rendering and read-only handling in admin UI.
+   * Populated by the server from `users.isExternal` via `trpc.user.me`.
+   */
+  isExternal?: boolean;
   avatarUrl?: string;
   departments?: string[];
   dept?: string;
@@ -180,6 +186,8 @@ export interface OnlineSupport {
   name: string;
   status: 'online' | 'away';
   role?: string;
+  /** Azure B2B guest flag — drives the GUEST badge in QueueSidebar + AdminTeam. */
+  isExternal?: boolean;
 }
 
 export interface RatingPromptData {
