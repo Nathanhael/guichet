@@ -133,7 +133,7 @@ export default function AgentView() {
                 </div>
               </div>
             )}
-            {activeTicket && activeTicket.status !== 'closed' && activeTicket.status !== 'resolved' ? (
+            {activeTicket && activeTicket.status !== 'closed' ? (
               <div className="flex-1 min-h-0 w-full">
                 <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
                   <ChatWindow key={activeTicket.id} ticket={activeTicket} />

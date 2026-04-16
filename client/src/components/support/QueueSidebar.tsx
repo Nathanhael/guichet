@@ -68,10 +68,10 @@ export default function QueueSidebar({
     { enabled: sidebarTab === 'archive' && searchQuery.length >= 2 }
   );
 
-  // Archive query — includes both closed and resolved tickets
+  // Archive query — closed tickets (resolved status is deprecated)
   const archiveQuery = trpc.ticket.list.useQuery(
     {
-      status: ['closed', 'resolved'],
+      status: ['closed'],
       limit: ARCHIVE_PAGE_SIZE,
       cursor: archiveCursor,
       dept: filterDept === 'all' ? undefined : filterDept,
@@ -110,7 +110,7 @@ export default function QueueSidebar({
   const deptCounts = useMemo(() => {
     const open = tickets.filter(
       (tk) =>
-        tk.status !== 'closed' && tk.status !== 'resolved' &&
+        tk.status !== 'closed' &&
         ticketDeptAllowed(tk.dept),
     );
     const counts: Record<string, number> = { all: open.length };
@@ -125,7 +125,7 @@ export default function QueueSidebar({
     () =>
       tickets.filter(
         (tk) =>
-          tk.status !== 'closed' && tk.status !== 'resolved' &&
+          tk.status !== 'closed' &&
           (filterDept === 'all' || tk.dept === filterDept) &&
           ticketDeptAllowed(tk.dept),
       ),

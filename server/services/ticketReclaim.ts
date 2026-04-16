@@ -40,9 +40,8 @@ export async function reclaimAbandonedTickets(io: Server): Promise<void> {
       and(
         isNotNull(tickets.supportId),
         lt(tickets.supportJoinedAt, cutoff),
-        // Only open/pending — don't touch closed/resolved
+        // Only open/pending — don't touch closed
         ne(tickets.status, 'closed'),
-        ne(tickets.status, 'resolved'),
       ),
     );
 

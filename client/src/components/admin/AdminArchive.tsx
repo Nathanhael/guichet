@@ -24,7 +24,7 @@ export default function AdminArchive() {
   const { data: allLabels = [] } = trpc.label.list.useQuery();
 
   const ticketsQuery = trpc.ticket.list.useQuery({
-    status: ['closed', 'resolved'],
+    status: ['closed'],
     limit: LIMIT,
     cursor,
     dept: dept === 'all' ? undefined : dept,

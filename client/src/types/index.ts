@@ -132,7 +132,7 @@ export interface Ticket {
   references?: Array<{ label: string; value: string }> | null;
   cdbId?: string | null; // legacy
   dareRef?: string | null; // legacy
-  status: 'open' | 'pending' | 'closed' | 'resolved';
+  status: 'open' | 'pending' | 'closed';
   supportId?: string | null;
   supportName?: string | null;
   supportLang?: string | null;

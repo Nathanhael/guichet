@@ -373,13 +373,10 @@ export default function ChatHeader({
             );
           })()}
 
-          {/* Ticket status badge — only show resolved/closed */}
-          {!focusMode && !compact && (ticket.status === 'resolved' || ticket.status === 'closed') && (
-            <span className={`text-[8px] font-mono font-bold uppercase tracking-widest px-1.5 py-px border shrink-0 ${
-              ticket.status === 'resolved' ? 'border-accent-blue text-accent-blue' :
-              'border-border text-text-muted'
-            }`}>
-              {t(`status_${ticket.status}`) || ticket.status}
+          {/* Ticket status badge — only when closed */}
+          {!focusMode && !compact && ticket.status === 'closed' && (
+            <span className="text-[8px] font-mono font-bold uppercase tracking-widest px-1.5 py-px border shrink-0 border-border text-text-muted">
+              {t('status_closed') || 'closed'}
             </span>
           )}
 

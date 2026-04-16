@@ -25,7 +25,7 @@ export const ticketRouter = router({
   list: protectedProcedure
     .input(z.object({
       agentId: z.string().optional(),
-      status: z.union([z.enum(['open', 'pending', 'closed', 'resolved']), z.array(z.enum(['open', 'pending', 'closed', 'resolved']))]).optional(),
+      status: z.union([z.enum(['open', 'pending', 'closed']), z.array(z.enum(['open', 'pending', 'closed']))]).optional(),
       dept: z.string().optional(),
       search: z.string().optional(),
       limit: z.number().min(1).optional(),
@@ -96,7 +96,7 @@ export const ticketRouter = router({
         }
 
         // Terminal statuses (closed/resolved) sort by closedAt DESC; active statuses by createdAt ASC
-        const isTerminal = statusArr.length > 0 && statusArr.every(s => ['closed', 'resolved'].includes(s));
+        const isTerminal = statusArr.length > 0 && statusArr.every(s => s === 'closed');
         const orderCol = isTerminal ? tickets.closedAt : tickets.createdAt;
 
         // Cursor-based pagination
