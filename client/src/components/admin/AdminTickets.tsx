@@ -8,7 +8,7 @@ import { useT } from '../../i18n';
 import { usePartner } from '../../hooks/usePartner';
 import { Search, X } from 'lucide-react';
 
-type TicketStatus = 'open' | 'pending' | 'closed' | 'resolved';
+type TicketStatus = 'open' | 'pending' | 'closed';
 
 type QueueFilter = { key: 'all' | 'open' | 'pending'; label: string; hasSupport?: boolean };
 
@@ -24,7 +24,6 @@ const TICKET_STATUS_COLORS: Record<string, string> = {
   open: 'bg-[var(--color-accent-blue)]',
   pending: 'bg-[var(--color-accent-amber)]',
   closed: 'bg-[var(--color-text-muted)]',
-  resolved: 'bg-[var(--color-accent-green)]',
 };
 
 function useDebounce(value: string, ms: number) {
@@ -247,11 +246,6 @@ export default function AdminTickets() {
                       <div className="w-1 h-1 bg-current" />
                       <p className="text-[9px] truncate font-medium">{tk.supportName}</p>
                     </div>
-                  )}
-                  {(tk.status === 'closed' || tk.status === 'resolved') && tk.closedAt && (
-                    <p className={`text-[8px] font-mono mt-1 ${previewTicketId === tk.id ? 'text-white/40' : 'text-[var(--color-text-muted)] opacity-60'}`}>
-                      Closed {new Date(tk.closedAt).toLocaleDateString()}
-                    </p>
                   )}
                   {!!unreadTickets[tk.id] && (
                     <span className="absolute top-3 right-3 w-2 h-2 bg-[var(--color-text-primary)]" />

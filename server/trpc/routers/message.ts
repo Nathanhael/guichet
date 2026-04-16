@@ -118,7 +118,7 @@ export const messageRouter = router({
     .input(z.object({
       query: z.string().min(1).max(200),
       dept: z.string().optional(),
-      status: z.enum(['open', 'pending', 'closed', 'resolved']).optional(),
+      status: z.enum(['open', 'pending', 'closed']).optional(),
       limit: z.number().min(1).max(50).default(20),
     }))
     .query(async ({ input, ctx }) => {

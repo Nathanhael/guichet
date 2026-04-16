@@ -332,7 +332,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   const isOwnTicket = ticket?.agentId === user?.id;
   const canClose = isSupportLike(activeRole) || isOwnTicket;
-  const isClosed = ticket.status === 'closed' || ticket.status === 'resolved';
+  const isClosed = ticket.status === 'closed';
 
   function requestCloseTicket() {
     if (closing) return;

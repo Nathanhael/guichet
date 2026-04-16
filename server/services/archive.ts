@@ -12,7 +12,7 @@
 import crypto from 'crypto';
 import { db } from '../db.js';
 import { auditLog, auditArchive, tickets, archivedTickets, messages } from '../db/schema.js';
-import { lte, asc, desc, eq, and, inArray, or, sql, notExists, gt } from 'drizzle-orm';
+import { lte, asc, desc, eq, and, inArray, sql, notExists, gt } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 import config from '../config.js';
 
@@ -188,7 +188,7 @@ export async function snapshotTicketToArchive(ticketId: string): Promise<void> {
   const rows = await db.select().from(tickets).where(eq(tickets.id, ticketId)).limit(1);
   const ticket = rows[0];
   if (!ticket) return;
-  if (ticket.status !== 'closed' && ticket.status !== 'resolved') return;
+  if (ticket.status !== 'closed') return;
 
   const [countRow] = await db.select({ count: sql<number>`count(*)` })
     .from(messages)
@@ -223,12 +223,12 @@ export async function archiveTickets(retentionDays?: number): Promise<number> {
   const cutoffStr = cutoff.toISOString().slice(0, 10); // date only
 
   try {
-    // Find closed/resolved tickets older than cutoff that aren't already archived
+    // Find closed tickets older than cutoff that aren't already archived
     const rows = await db.select()
       .from(tickets)
       .where(and(
         lte(tickets.createdAt, cutoffStr),
-        or(eq(tickets.status, 'closed'), eq(tickets.status, 'resolved')),
+        eq(tickets.status, 'closed'),
         notExists(
           db.select({ id: archivedTickets.id })
             .from(archivedTickets)

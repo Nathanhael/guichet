@@ -182,7 +182,7 @@ export default function SupportView() {
     if (!activeMembership) return 0;
     const assignedDepts = activeMembership.departments || [];
     return tickets.filter(
-      (tk) => tk.status !== 'closed' && tk.status !== 'resolved' && assignedDepts.includes(tk.dept),
+      (tk) => tk.status !== 'closed' && assignedDepts.includes(tk.dept),
     ).length;
   }, [tickets, activeMembership]);
 
@@ -452,7 +452,7 @@ export default function SupportView() {
                   {/* Overlay preview on top of split layout so queue → preview → join works */}
                   {showPreview && previewTicket && (() => {
                     const pt = previewTicket;
-                    const isTerminal = pt.status === 'closed' || pt.status === 'resolved';
+                    const isTerminal = pt.status === 'closed';
                     return (
                       <div className="absolute inset-0 z-10 bg-bg-base">
                         <TicketPreview
@@ -468,7 +468,7 @@ export default function SupportView() {
                 </>
               ) : showPreview && previewTicket ? (() => {
                 const pt = previewTicket;
-                const isTerminal = pt.status === 'closed' || pt.status === 'resolved';
+                const isTerminal = pt.status === 'closed';
                 return (
                   <TicketPreview
                     ticket={pt}
