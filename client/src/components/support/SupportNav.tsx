@@ -52,9 +52,15 @@ export default function SupportNav({ partnerName }: SupportNavProps) {
         )}
 
         {!focusMode && (
-          <kbd className="text-[9px] font-mono px-1.5 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] select-none cursor-default" title={t('cmd_palette_title') || 'Command Palette'}>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('support:open-palette'))}
+            className="text-[9px] font-mono px-1.5 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)] select-none cursor-pointer bg-transparent"
+            title={t('cmd_palette_title') || 'Command Palette'}
+            aria-label={t('cmd_palette_title') || 'Command Palette'}
+          >
             Ctrl+K
-          </kbd>
+          </button>
         )}
 
         <SettingsPopover
