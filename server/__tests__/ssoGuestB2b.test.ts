@@ -14,18 +14,10 @@ describe('SSO Azure B2B guest detection and rejection', () => {
   const ssoSource = fs.readFileSync(
     path.resolve(__dirname, '../routes/sso.ts'), 'utf-8',
   );
-  const loginViewSource = fs.readFileSync(
-    path.resolve(__dirname, '../../client/src/views/LoginView.tsx'), 'utf-8',
-  );
-  const enSource = fs.readFileSync(
-    path.resolve(__dirname, '../../client/src/locales/en.ts'), 'utf-8',
-  );
-  const frSource = fs.readFileSync(
-    path.resolve(__dirname, '../../client/src/locales/fr.ts'), 'utf-8',
-  );
-  const nlSource = fs.readFileSync(
-    path.resolve(__dirname, '../../client/src/locales/nl.ts'), 'utf-8',
-  );
+  // NB: client-side assertions (LoginView handler, locale keys) live in a
+  // client-side Vitest test (`client/src/__tests__/ssoGuestI18n.test.ts`).
+  // The server container does not have the client tree mounted (`/app` ==
+  // server dir only), so reading client files from here ENOENTs inside CI.
 
   describe('isExternal detection', () => {
     it('detects B2B guest via acct === 1 OR idp claim', () => {
@@ -106,23 +98,5 @@ describe('SSO Azure B2B guest detection and rejection', () => {
     });
   });
 
-  describe('client i18n coverage', () => {
-    it('LoginView maps guest_multi_partner_mapping error code to translated message', () => {
-      expect(loginViewSource).toMatch(
-        /['"]guest_multi_partner_mapping['"]\s*:\s*t\(['"]sso_guest_multi_partner_message['"]\)/,
-      );
-    });
-
-    it('EN locale defines sso_guest_multi_partner_message', () => {
-      expect(enSource).toMatch(/sso_guest_multi_partner_message:\s*['"]/);
-    });
-
-    it('FR locale defines sso_guest_multi_partner_message', () => {
-      expect(frSource).toMatch(/sso_guest_multi_partner_message:\s*['"]/);
-    });
-
-    it('NL locale defines sso_guest_multi_partner_message', () => {
-      expect(nlSource).toMatch(/sso_guest_multi_partner_message:\s*['"]/);
-    });
-  });
+  // Client i18n coverage moved to client/src/__tests__/ssoGuestI18n.test.ts.
 });

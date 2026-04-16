@@ -67,6 +67,9 @@ describe('auth session helpers', () => {
       email: 'alice@example.com',
       lang: 'en',
       isPlatformOperator: false,
+      // Azure B2B guest flag — not supplied by the test input so defaults to false.
+      // See docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md.
+      isExternal: false,
       accessibilityPrefs: null,
     });
     expect(response.memberships).toHaveLength(1);
