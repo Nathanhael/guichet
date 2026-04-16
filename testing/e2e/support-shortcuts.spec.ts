@@ -86,7 +86,7 @@ test.describe('SupportView keyboard shortcuts', () => {
     // commands gated on `!!activeTab` and are hidden by the palette when
     // no tab is open — test 3 covers one of them with an active ticket.
     await expect(palette.getByRole('button', { name: /toggle queue sidebar ctrl\+b/i })).toBeVisible();
-    await expect(palette.getByRole('button', { name: /toggle focus mode esc/i })).toBeVisible();
+    await expect(palette.getByRole('button', { name: /toggle focus mode ctrl\+shift\+f/i })).toBeVisible();
 
     await page.keyboard.press('Escape');
     await expect(palette).toBeHidden();
