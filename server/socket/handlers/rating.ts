@@ -38,7 +38,17 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
       const id = crypto.randomUUID();
       const safeComment = comment ? comment.slice(0, MAX_NOTE_LENGTH) : null;
-      await insertRating({ id, ticketId, agentId: agentId!, supportId, partnerId: socket.data.partnerId, rating: intRating, comment: safeComment });
+      await insertRating({
+        id,
+        ticketId,
+        agentId: agentId!,
+        supportId,
+        partnerId: socket.data.partnerId,
+        rating: intRating,
+        comment: safeComment,
+        dept: ticket.dept ?? null,
+        closedAt: ticket.closedAt ?? null,
+      });
       ctx.io.to(Rooms.ticket(ticketId)).emit('rating:submitted', { ticketId, agentId, supportId, rating: intRating });
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[rating:submit] error'); }
   });

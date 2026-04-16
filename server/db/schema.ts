@@ -179,11 +179,16 @@ export const messages = pgTable('messages', {
 export const ratings = pgTable('ratings', {
   id: text('id').primaryKey(),
   partnerId: text('partner_id').references(() => partners.id, { onDelete: 'cascade' }),
-  ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
-  agentId: text('agent_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  supportId: text('support_id').references(() => users.id, { onDelete: 'cascade' }),
+  // Ratings outlive tickets: ticket row is purged at 30d (GDPR), scores + attribution
+  // stay for long-term trend analysis and agent coaching. Denormalized dept + closedAt
+  // let queries work without the ticket row.
+  ticketId: text('ticket_id').references(() => tickets.id, { onDelete: 'set null' }),
+  agentId: text('agent_id').references(() => users.id, { onDelete: 'set null' }),
+  supportId: text('support_id').references(() => users.id, { onDelete: 'set null' }),
   rating: integer('rating').notNull(),
   comment: text('comment'),
+  dept: text('dept'),
+  closedAt: timestamp('closed_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => [
   uniqueIndex('idx_ratings_ticket_unique').on(table.ticketId),

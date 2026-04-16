@@ -1,7 +1,7 @@
 import { router, roleProcedure, partnerAdminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { ratings, tickets, users } from '../../db/schema.js';
-import { desc, eq, inArray, sql, and, gte, lt } from 'drizzle-orm';
+import { desc, eq, sql, and, gte, lt } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import logger from '../../utils/logger.js';
@@ -27,12 +27,9 @@ export const ratingRouter = router({
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner context required to list ratings' });
       }
 
-      // Scope ratings to this partner's tickets
-      const partnerTicketIds = db.select({ id: tickets.id })
-        .from(tickets)
-        .where(eq(tickets.partnerId, ctx.user.partnerId!));
-
-      const conditions = [inArray(ratings.ticketId, partnerTicketIds)];
+      // Scope ratings via the denormalized partnerId column so rows survive
+      // ticket purge (ratings.ticketId may be NULL after GDPR retention).
+      const conditions = [eq(ratings.partnerId, ctx.user.partnerId!)];
 
       // IM-13: Cursor-based pagination to prevent unbounded result sets
       if (input.cursor) {
@@ -47,8 +44,8 @@ export const ratingRouter = router({
       }
 
       const fetchLimit = input.limit + 1;
-      // Join tickets to include ticket.dept per rating — consumer groups by
-      // ticket dept (not agent dept, which is per-membership and ambiguous).
+      // LEFT JOIN tickets so ratings whose ticket was purged still appear.
+      // Prefer the denormalized ratings.dept; fall back to live ticket row for legacy rows.
       const data = await db.select({
           id: ratings.id,
           ticketId: ratings.ticketId,
@@ -57,10 +54,10 @@ export const ratingRouter = router({
           rating: ratings.rating,
           comment: ratings.comment,
           createdAt: ratings.createdAt,
-          dept: tickets.dept,
+          dept: sql<string | null>`COALESCE(${ratings.dept}, ${tickets.dept})`,
         })
         .from(ratings)
-        .innerJoin(tickets, eq(ratings.ticketId, tickets.id))
+        .leftJoin(tickets, eq(ratings.ticketId, tickets.id))
         .where(and(...conditions))
         .orderBy(desc(ratings.createdAt))
         .limit(fetchLimit);
@@ -88,11 +85,8 @@ export const ratingRouter = router({
         // Build conditions for the ratings query
         const conditions = [];
 
-        // Scope to partner's tickets (tenant isolation — mandatory)
-        const partnerTicketIds = db.select({ id: tickets.id })
-          .from(tickets)
-          .where(eq(tickets.partnerId, ctx.user.partnerId));
-        conditions.push(inArray(ratings.ticketId, partnerTicketIds));
+        // Scope via the denormalized ratings.partnerId so rows outlive the ticket row.
+        conditions.push(eq(ratings.partnerId, ctx.user.partnerId));
 
         // Date range filters — use ISO strings for timestamp comparison (column is PgTimestampString)
         if (input.dateFrom) {
@@ -137,8 +131,10 @@ export const ratingRouter = router({
       try {
         const partnerId = ctx.user.partnerId;
 
-        // Build dynamic WHERE fragments using Drizzle sql operator
-        const conditions = [sql`t.partner_id = ${partnerId}`];
+        // Scope by the denormalized ratings.partner_id so rows survive ticket purge.
+        // Use COALESCE(r.dept, t.dept) to prefer the denormalized dept but fall back
+        // to the live ticket row for rows created before backfill.
+        const conditions = [sql`r.partner_id = ${partnerId}`];
         if (input.dateFrom) {
           conditions.push(sql`r.created_at >= ${new Date(input.dateFrom).toISOString()}`);
         }
@@ -148,7 +144,7 @@ export const ratingRouter = router({
           conditions.push(sql`r.created_at < ${endDate.toISOString()}`);
         }
         if (input.dept) {
-          conditions.push(sql`t.dept = ${input.dept}`);
+          conditions.push(sql`COALESCE(r.dept, t.dept) = ${input.dept}`);
         }
 
         const whereClause = sql.join(conditions, sql` AND `);
@@ -158,7 +154,7 @@ export const ratingRouter = router({
           SELECT DATE(r.created_at) AS date,
                  ROUND(AVG(r.rating)::numeric, 2) AS avg,
                  COUNT(*)::int AS count
-          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          FROM ratings r LEFT JOIN tickets t ON r.ticket_id = t.id
           WHERE ${whereClause}
           GROUP BY DATE(r.created_at) ORDER BY date ASC
         `)).rows as unknown as Record<string, unknown>[];
@@ -166,24 +162,26 @@ export const ratingRouter = router({
         // 2) Distribution
         const distRows = (await db.execute(sql`
           SELECT r.rating, COUNT(*)::int AS count
-          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          FROM ratings r LEFT JOIN tickets t ON r.ticket_id = t.id
           WHERE ${whereClause}
           GROUP BY r.rating ORDER BY r.rating ASC
         `)).rows as unknown as Record<string, unknown>[];
 
         // 3) By department
         const deptRows = (await db.execute(sql`
-          SELECT t.dept, ROUND(AVG(r.rating)::numeric, 2) AS avg, COUNT(*)::int AS count
-          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          SELECT COALESCE(r.dept, t.dept) AS dept,
+                 ROUND(AVG(r.rating)::numeric, 2) AS avg,
+                 COUNT(*)::int AS count
+          FROM ratings r LEFT JOIN tickets t ON r.ticket_id = t.id
           WHERE ${whereClause}
-          GROUP BY t.dept ORDER BY avg DESC
+          GROUP BY COALESCE(r.dept, t.dept) ORDER BY avg DESC
         `)).rows as unknown as Record<string, unknown>[];
 
         // 4) By staff
         const staffRows = (await db.execute(sql`
           SELECT r.support_id, COALESCE(u.name, 'Unknown') AS name,
                  ROUND(AVG(r.rating)::numeric, 2) AS avg, COUNT(*)::int AS count
-          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          FROM ratings r LEFT JOIN tickets t ON r.ticket_id = t.id
           LEFT JOIN users u ON r.support_id = u.id
           WHERE ${whereClause}
           GROUP BY r.support_id, u.name ORDER BY avg DESC
@@ -194,7 +192,7 @@ export const ratingRouter = router({
           SELECT ROUND(AVG(r.rating)::numeric, 2) AS avg,
                  COUNT(*)::int AS total,
                  COUNT(r.comment) FILTER (WHERE r.comment IS NOT NULL AND r.comment != '')::int AS with_comment
-          FROM ratings r JOIN tickets t ON r.ticket_id = t.id
+          FROM ratings r LEFT JOIN tickets t ON r.ticket_id = t.id
           WHERE ${whereClause}
         `)).rows as unknown as Record<string, unknown>[];
 
