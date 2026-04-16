@@ -10,6 +10,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
+import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const DEMO_PASSWORD = 'password123';
@@ -21,48 +22,10 @@ async function clickPlatformTab(page: Page, tabName: RegExp, timeout = 15000) {
   await enabledTab.click();
 }
 
-async function loginAsDemo(page: Page, userId: string) {
-  await page.goto(BASE);
-  await page.waitForLoadState('load');
-
-  // Use page.evaluate(fetch) so cookies land in the browser's cookie jar
-  const data = await page.evaluate(async ({ uid, pw }) => {
-    const res = await fetch('/api/v1/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ id: uid, password: pw }),
-    });
-    if (!res.ok) return { ok: false, status: res.status };
-    const json = await res.json();
-    return { ok: true, ...json };
-  }, { uid: userId, pw: DEMO_PASSWORD });
-
-  if (!data.ok) {
-    console.error(`[loginAsDemo] Login API failed for ${userId}: ${data.status}`);
-    return data;
-  }
-
-  // Set Zustand store hydration data in localStorage
-  // For platform operators, do NOT set activeMembershipId so they land on PlatformView
-  await page.evaluate(({ user, memberships }) => {
-    sessionStorage.setItem('user', JSON.stringify({ ...user, lang: 'en' }));
-    sessionStorage.setItem('memberships', JSON.stringify(memberships));
-    if (!user.isPlatformOperator && memberships?.length > 0) {
-      sessionStorage.setItem('activeMembershipId', memberships[0].id);
-      sessionStorage.setItem('activePartnerId', memberships[0].partnerId);
-    }
-  }, data);
-
-  await page.reload();
-  await page.waitForLoadState('load');
-  return data;
-}
-
 test.describe('Platform Dashboard', () => {
   let loginOk = false;
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'platform_bart');
+    const res = await loginAsDemo(page, 'platform_bart', { lang: 'en' });
     loginOk = !!res.ok;
     await page.waitForTimeout(2000);
   });
@@ -104,7 +67,7 @@ test.describe('Platform Dashboard', () => {
 
 test.describe('Partner Management', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsDemo(page, 'platform_bart');
+    await loginAsDemo(page, 'platform_bart', { lang: 'en' });
     await page.waitForTimeout(3000);
   });
 
@@ -137,7 +100,7 @@ test.describe('Partner Management', () => {
 
 test.describe('Tab Navigation', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsDemo(page, 'platform_bart');
+    await loginAsDemo(page, 'platform_bart', { lang: 'en' });
     await page.waitForTimeout(3000);
   });
 
@@ -193,7 +156,7 @@ test.describe('Tab Navigation', () => {
 
 test.describe('User Management', () => {
   test.beforeEach(async ({ page }) => {
-    await loginAsDemo(page, 'platform_bart');
+    await loginAsDemo(page, 'platform_bart', { lang: 'en' });
     await page.waitForTimeout(3000);
   });
 
@@ -226,7 +189,7 @@ test.describe('User Management', () => {
 test.describe('Platform View - Responsive Layout', () => {
   test('platform view works on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    const res = await loginAsDemo(page, 'platform_bart');
+    const res = await loginAsDemo(page, 'platform_bart', { lang: 'en' });
     test.skip(!res.ok, 'Demo login API failed — platform_bart may not be seeded');
     await page.waitForTimeout(2000);
 
@@ -239,7 +202,7 @@ test.describe('Platform View - Responsive Layout', () => {
 
   test('tabs are scrollable on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await loginAsDemo(page, 'platform_bart');
+    await loginAsDemo(page, 'platform_bart', { lang: 'en' });
     await page.waitForTimeout(3000);
 
     const tabBar = page.locator('.overflow-x-auto').first();
@@ -253,7 +216,7 @@ test.describe('Platform View - Responsive Layout', () => {
 
   test('platform view works on tablet viewport', async ({ page }) => {
     await page.setViewportSize({ width: 768, height: 1024 });
-    await loginAsDemo(page, 'platform_bart');
+    await loginAsDemo(page, 'platform_bart', { lang: 'en' });
     await page.waitForTimeout(3000);
 
     const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);

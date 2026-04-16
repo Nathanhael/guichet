@@ -1,47 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
+import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 const DEMO_PASSWORD = 'password123';
-
-/** Login helper using browser fetch so cookies land in the browser's cookie jar */
-async function loginAsDemo(page: Page, userId: string) {
-  await page.goto(BASE);
-  await page.waitForLoadState('load');
-
-  const data = await page.evaluate(async ({ uid, pw }) => {
-    const res = await fetch('/api/v1/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ id: uid, password: pw }),
-    });
-    if (!res.ok) return { ok: false, status: res.status };
-    const json = await res.json();
-    return { ok: true, ...json };
-  }, { uid: userId, pw: DEMO_PASSWORD });
-
-  if (!data.ok) return data;
-
-  await page.evaluate(({ user, memberships, uid }) => {
-    sessionStorage.setItem('user', JSON.stringify(user));
-    sessionStorage.setItem('memberships', JSON.stringify(memberships));
-    if (memberships?.length > 0) {
-      sessionStorage.setItem('activeMembershipId', memberships[0].id);
-      sessionStorage.setItem('activePartnerId', memberships[0].partnerId);
-    }
-    // Language override for demo
-    const storedUser = JSON.parse(sessionStorage.getItem('user') || '{}');
-    if (uid === 'agent_julie') storedUser.lang = 'nl';
-    if (uid === 'support_lucas') storedUser.lang = 'fr';
-    sessionStorage.setItem('user', JSON.stringify(storedUser));
-  }, { ...data, uid: userId });
-
-  await page.reload();
-  await page.waitForLoadState('networkidle');
-  return data;
-}
 
 /** Enable AI features via platform API */
 async function enableAiFeatures(page: Page) {
@@ -166,8 +129,8 @@ test('record seamless language-agnostic chat demo', async ({ browser }) => {
   await mockAiResponses(supportPage);
 
   // 2. Login
-  await loginAsDemo(agentPage, 'agent_julie');
-  await loginAsDemo(supportPage, 'support_lucas');
+  await loginAsDemo(agentPage, 'agent_julie', { lang: 'nl', waitFor: 'networkidle' });
+  await loginAsDemo(supportPage, 'support_lucas', { lang: 'fr', waitFor: 'networkidle' });
   await agentPage.waitForTimeout(3000);
   await supportPage.waitForTimeout(1000);
 
