@@ -78,6 +78,16 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
+  // Global shortcut: Ctrl+J / Alt+J dispatches `support:open-canned-picker`
+  // on SupportView. Listening here keeps the picker owner (this compose
+  // area) free of prop-drilling.
+  useEffect(() => {
+    function open() {
+      setShowCannedPicker(true);
+    }
+    window.addEventListener('support:open-canned-picker', open);
+    return () => window.removeEventListener('support:open-canned-picker', open);
+  }, []);
   const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
