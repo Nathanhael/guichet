@@ -5,6 +5,14 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **SupportView Tier-1 keyboard shortcuts** — `Ctrl+Enter` (close ticket), `Alt+T` (transfer), `Alt+W` (close chat tab), `Ctrl+/` (toggle whisper), `Esc` (exit focus mode), and `?` (open command palette as help). `Alt+T`/`Alt+W` chosen over `Ctrl+T`/`Ctrl+W` to avoid browser tab conflicts. All bindings go through the existing `useKeyboardShortcuts` hook and `ChatWindowHandle` ref so they stay in sync with the palette's shortcut-hint column.
+- **Clickable `Ctrl+K` nav badge** — the decorative `<kbd>` in `SupportNav` is now a button that dispatches a `support:open-palette` window event; `SupportView` listens for it and opens the palette.
+
+### Tests
+- 9 new Vitest cases covering the new hotkey bindings and the SupportNav button wiring.
+- New `testing/e2e/support-shortcuts.spec.ts` verifies Ctrl+K opens the palette, Tier-1 hints are visible in the palette, and Ctrl+Enter surfaces the close-ticket confirmation.
+
 ## [4.2.0] - 2026-04-15
 
 ### Added
