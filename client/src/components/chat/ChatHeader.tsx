@@ -95,6 +95,17 @@ export default function ChatHeader({
     };
   }, [showLabelPicker]);
 
+  // Global shortcut: Ctrl+L / Alt+L dispatches `support:open-label-picker`
+  // on SupportView. Listening here keeps the picker owner (this header)
+  // free of prop-drilling from the parent view.
+  useEffect(() => {
+    function open() {
+      setShowLabelPicker(true);
+    }
+    window.addEventListener('support:open-label-picker', open);
+    return () => window.removeEventListener('support:open-label-picker', open);
+  }, []);
+
   const MAX_LABELS = 50;
   const MAX_VISIBLE_LABELS = 3;
 
