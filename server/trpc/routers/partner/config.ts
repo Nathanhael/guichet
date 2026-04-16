@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, adminProcedure, protectedProcedure } from '../../trpc.js';
+import { router, adminProcedure, destructiveAdminProcedure, protectedProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { partners, memberships, auditLog } from '../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
@@ -317,7 +317,7 @@ export const partnerConfigRouter = router({
       }
     }),
 
-  updateDepartments: adminProcedure
+  updateDepartments: destructiveAdminProcedure
     .input(z.object({
       departments: z.array(z.object({
         id: z.string().optional(),

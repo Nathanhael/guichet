@@ -233,6 +233,47 @@ export const userRouter = router({
       return { success: true };
     }),
 
+  /**
+   * Return the current authenticated user's identity payload.
+   *
+   * Added for Azure B2B guest support (see docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md):
+   * client components (UserMenu, GuestBadge, etc.) need a fresh `isExternal`
+   * flag without relying on stale data from the login response. Also handy as
+   * a canonical "current user" query point going forward.
+   */
+  me: protectedProcedure.query(async ({ ctx }) => {
+    const rows = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        lang: users.lang,
+        avatarUrl: users.avatarUrl,
+        isPlatformOperator: users.isPlatformOperator,
+        isExternal: users.isExternal,
+      })
+      .from(users)
+      .where(eq(users.id, ctx.user.id))
+      .limit(1);
+    const row = rows[0];
+    if (!row) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+    }
+    return {
+      id: row.id,
+      name: row.name,
+      email: row.email ?? '',
+      lang: (row.lang ?? 'en') as 'nl' | 'fr' | 'en',
+      avatarUrl: row.avatarUrl ?? null,
+      isPlatformOperator: !!row.isPlatformOperator,
+      isExternal: !!row.isExternal,
+      // Role + departments are JWT-bound (partner-scoped), pulled from context.
+      role: ctx.user.role,
+      partnerId: ctx.user.partnerId ?? null,
+      departments: ctx.user.departments,
+    };
+  }),
+
   /** Get notification preferences for the current user */
   getNotificationPrefs: protectedProcedure.query(async ({ ctx }) => {
     const rows = await db.select({ notificationPreferences: users.notificationPreferences })
