@@ -25,9 +25,10 @@ interface MessageBubbleProps {
   highlightQuery?: string;
   isSearchMatch?: boolean;
   isCurrentSearchMatch?: boolean;
+  suppressActions?: boolean;
 }
 
-export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig, onReply, highlightQuery, isSearchMatch, isCurrentSearchMatch }: MessageBubbleProps) {
+export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig, onReply, highlightQuery, isSearchMatch, isCurrentSearchMatch, suppressActions }: MessageBubbleProps) {
   const { user, bionicReading } = useStoreShallow(s => ({
     user: s.user,
     bionicReading: s.bionicReading,
@@ -132,7 +133,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
     <div
       id={`msg-${message.id}`}
       className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row${isCurrentSearchMatch ? ' bg-accent-amber/25' : isSearchMatch ? ' bg-accent-amber/10' : ''}`}
-      onMouseEnter={() => !isDeleted && setShowActions(true)}
+      onMouseEnter={() => !isDeleted && !suppressActions && setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); }}
     >
       <div className="flex flex-col justify-end w-7 shrink-0 mr-3">
@@ -273,45 +274,51 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
 
       {/* Action buttons — sibling in flex row, to the right of bubble */}
       {showActions && !editing && (
-        <div className="flex items-start gap-0.5 ml-1 shrink-0 self-start pt-1">
-          {REACTION_EMOJIS.map((emoji) => (
-            <button
-              key={emoji}
-              onClick={() => { const s = getSocket(); if (s?.connected) s.emit('message:react', { ticketId, messageId: message.id, emoji }); }}
-              disabled={isDeleted}
-              title={`React with ${emoji}`}
-              aria-label={`React with ${emoji}`}
-              className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-[11px] hover:bg-bg-elevated"
-            >
-              {emoji}
-            </button>
-          ))}
-          {onReply && !isDeleted && (
-            <button
-              onClick={() => onReply(message)}
-              title={t('reply') || 'Reply'}
-              className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
-            >
-              <CornerUpLeft size={14} />
-            </button>
-          )}
-          {canEdit && (
-            <button
-              onClick={startEdit}
-              title={t('edit') || 'Edit'}
-              className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
-            >
-              <Pencil size={12} />
-            </button>
-          )}
-          {canDelete && (
-            <button
-              onClick={() => { setConfirmDelete(true); setShowActions(false); }}
-              title={t('delete') || 'Delete'}
-              className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
-            >
-              <Trash2 size={12} />
-            </button>
+        <div className="flex flex-col gap-0.5 ml-1 shrink-0 self-start pt-1">
+          <div className="flex items-start gap-0.5">
+            {REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={() => { const s = getSocket(); if (s?.connected) s.emit('message:react', { ticketId, messageId: message.id, emoji }); }}
+                disabled={isDeleted}
+                title={`React with ${emoji}`}
+                aria-label={`React with ${emoji}`}
+                className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-[11px] hover:bg-bg-elevated"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+          {(onReply || canEdit || canDelete) && (
+            <div className="flex items-start gap-0.5">
+              {onReply && !isDeleted && (
+                <button
+                  onClick={() => onReply(message)}
+                  title={t('reply') || 'Reply'}
+                  className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
+                >
+                  <CornerUpLeft size={14} />
+                </button>
+              )}
+              {canEdit && (
+                <button
+                  onClick={startEdit}
+                  title={t('edit') || 'Edit'}
+                  className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
+                >
+                  <Pencil size={12} />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  onClick={() => { setConfirmDelete(true); setShowActions(false); }}
+                  title={t('delete') || 'Delete'}
+                  className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
