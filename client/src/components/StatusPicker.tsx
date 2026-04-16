@@ -35,6 +35,16 @@ export default function StatusPicker() {
     return () => document.removeEventListener('mousedown', onOutsideClick);
   }, []);
 
+  // Global shortcut: Ctrl+. dispatches `support:open-status-picker` on
+  // SupportView. Listening here keeps the picker self-contained.
+  useEffect(() => {
+    function openPicker() {
+      setOpen(true);
+    }
+    window.addEventListener('support:open-status-picker', openPicker);
+    return () => window.removeEventListener('support:open-status-picker', openPicker);
+  }, []);
+
   useEffect(() => {
     const socket = getSocket();
     function onStatusRestored({ status }: { status: string }) {
