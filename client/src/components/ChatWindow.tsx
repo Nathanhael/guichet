@@ -45,6 +45,17 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Global shortcut: Ctrl+F dispatches `support:open-search` on SupportView.
+  // Listening here keeps the search state owner (this window) free of
+  // prop-drilling.
+  useEffect(() => {
+    function open() {
+      setSearchOpen(true);
+    }
+    window.addEventListener('support:open-search', open);
+    return () => window.removeEventListener('support:open-search', open);
+  }, []);
   const t = useT();
 
   const composeRef = useRef<ComposeAreaHandle>(null);
