@@ -323,6 +323,13 @@ export default function SupportView() {
       const s = useStore.getState();
       if (s.viewMode === 'focus') s.setViewMode('normal');
     },
+    // Tier-2 stubs — wired properly in the next commit.
+    onJumpToTab: () => {},
+    onOpenSearch: () => {},
+    onOpenLabelPicker: () => {},
+    onOpenCannedPicker: () => {},
+    onToggleAiCopilot: () => {},
+    onOpenStatusPicker: () => {},
   });
 
   // ── Guards ──

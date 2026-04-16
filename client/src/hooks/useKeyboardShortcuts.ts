@@ -13,23 +13,37 @@ interface UseKeyboardShortcutsOptions {
   onCloseTab: () => void;
   onToggleWhisper: () => void;
   onExitFocus: () => void;
+  onJumpToTab: (n: number) => void;
+  onOpenSearch: () => void;
+  onOpenLabelPicker: () => void;
+  onOpenCannedPicker: () => void;
+  onToggleAiCopilot: () => void;
+  onOpenStatusPicker: () => void;
 }
 
 /**
  * Global keyboard shortcut listener for SupportView.
  *
- * Direct shortcuts (AZERTY-safe):
+ * Tier-1 (AZERTY-safe):
  *  - Ctrl+K         → open command palette
  *  - ?              → open command palette (help)
  *  - Ctrl+ArrowDown → next chat tab
  *  - Ctrl+ArrowUp   → previous chat tab
  *  - Ctrl+B         → toggle queue sidebar
  *  - Ctrl+Enter     → close current ticket
- *  - Alt+T          → transfer ticket (avoids browser Ctrl+T)
- *  - Alt+W          → close chat tab (avoids browser Ctrl+W)
- *  - Ctrl+/         → toggle whisper mode
- *  - Esc            → exit focus mode (when nothing else consumes it)
- *  - bare /         → focus message textarea (only when NOT inside an input)
+ *  - Alt+T          → transfer ticket
+ *  - Alt+W          → close chat tab
+ *  - Ctrl+/         → toggle whisper
+ *  - Esc            → exit focus mode
+ *  - bare /         → focus message textarea
+ *
+ * Tier-2:
+ *  - Ctrl+1..9      → jump to chat tab N (steals browser tab switch)
+ *  - Ctrl+F         → open message search (steals browser Find)
+ *  - Ctrl+L / Alt+L → open label picker
+ *  - Ctrl+J / Alt+J → open canned response picker
+ *  - Ctrl+Shift+A   → toggle AI copilot sidebar
+ *  - Ctrl+.         → open status picker
  */
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
   const {
@@ -44,6 +58,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onCloseTab,
     onToggleWhisper,
     onExitFocus,
+    onJumpToTab,
+    onOpenSearch,
+    onOpenLabelPicker,
+    onOpenCannedPicker,
+    onToggleAiCopilot,
+    onOpenStatusPicker,
   } = options;
 
   useEffect(() => {
@@ -52,15 +72,16 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     function handleKeyDown(e: KeyboardEvent) {
       const ctrl = e.ctrlKey || e.metaKey;
       const alt = e.altKey;
+      const shift = e.shiftKey;
 
       // Ctrl+K — open command palette
-      if (ctrl && e.key === 'k') {
+      if (ctrl && !shift && e.key === 'k') {
         e.preventDefault();
         onOpenPalette();
         return;
       }
 
-      // ? — open command palette (help), only when not typing
+      // ? — open command palette (help)
       if (e.key === '?' && !ctrl && !alt) {
         const tag = (e.target as HTMLElement)?.tagName;
         const editable = (e.target as HTMLElement)?.isContentEditable;
@@ -70,35 +91,77 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Ctrl+Enter — close current ticket
+      // Ctrl+Shift+A — toggle AI copilot (checked before plain Ctrl+letter)
+      if (ctrl && shift && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        onToggleAiCopilot();
+        return;
+      }
+
+      // Ctrl+Enter — close ticket
       if (ctrl && e.key === 'Enter') {
         e.preventDefault();
         onCloseTicket();
         return;
       }
 
-      // Alt+T — transfer ticket (avoids browser Ctrl+T new-tab collision)
+      // Ctrl+1..9 — jump to tab N
+      if (ctrl && !alt && !shift && e.key >= '1' && e.key <= '9') {
+        e.preventDefault();
+        onJumpToTab(Number(e.key));
+        return;
+      }
+
+      // Ctrl+F — open message search
+      if (ctrl && !shift && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        onOpenSearch();
+        return;
+      }
+
+      // Ctrl+L or Alt+L — open label picker (XOR on modifiers, no Shift)
+      if ((ctrl !== alt) && !shift && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        onOpenLabelPicker();
+        return;
+      }
+
+      // Ctrl+J or Alt+J — open canned response picker (XOR on modifiers, no Shift)
+      if ((ctrl !== alt) && !shift && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        onOpenCannedPicker();
+        return;
+      }
+
+      // Ctrl+. — open status picker
+      if (ctrl && !shift && e.key === '.') {
+        e.preventDefault();
+        onOpenStatusPicker();
+        return;
+      }
+
+      // Alt+T — transfer ticket
       if (alt && !ctrl && e.key.toLowerCase() === 't') {
         e.preventDefault();
         onTransferTicket();
         return;
       }
 
-      // Alt+W — close chat tab (avoids browser Ctrl+W close-tab collision)
+      // Alt+W — close chat tab
       if (alt && !ctrl && e.key.toLowerCase() === 'w') {
         e.preventDefault();
         onCloseTab();
         return;
       }
 
-      // Ctrl+/ — toggle whisper mode
+      // Ctrl+/ — toggle whisper
       if (ctrl && e.key === '/') {
         e.preventDefault();
         onToggleWhisper();
         return;
       }
 
-      // Esc — exit focus mode (palette/modals consume their own Escape first)
+      // Esc — exit focus mode
       if (e.key === 'Escape' && !ctrl && !alt) {
         onExitFocus();
         return;
@@ -125,8 +188,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Bare / — focus message input (only when not inside an input/textarea)
-      if (e.key === '/' && !ctrl && !e.altKey && !e.shiftKey) {
+      // Bare / — focus message input
+      if (e.key === '/' && !ctrl && !alt && !shift) {
         const tag = (e.target as HTMLElement)?.tagName;
         const editable = (e.target as HTMLElement)?.isContentEditable;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return;
@@ -149,5 +212,11 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onCloseTab,
     onToggleWhisper,
     onExitFocus,
+    onJumpToTab,
+    onOpenSearch,
+    onOpenLabelPicker,
+    onOpenCannedPicker,
+    onToggleAiCopilot,
+    onOpenStatusPicker,
   ]);
 }

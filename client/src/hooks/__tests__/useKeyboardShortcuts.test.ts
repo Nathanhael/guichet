@@ -14,6 +14,12 @@ describe('useKeyboardShortcuts', () => {
     onCloseTab: vi.fn(),
     onToggleWhisper: vi.fn(),
     onExitFocus: vi.fn(),
+    onJumpToTab: vi.fn(),
+    onOpenSearch: vi.fn(),
+    onOpenLabelPicker: vi.fn(),
+    onOpenCannedPicker: vi.fn(),
+    onToggleAiCopilot: vi.fn(),
+    onOpenStatusPicker: vi.fn(),
   };
 
   function fire(key: string, opts: Partial<KeyboardEventInit> = {}) {
@@ -171,5 +177,73 @@ describe('useKeyboardShortcuts', () => {
     fireOnElement(textarea, '?');
     expect(handlers.onOpenPalette).not.toHaveBeenCalled();
     textarea.remove();
+  });
+
+  // ── Tier-2 ───────────────────────────────────────────────────────────────
+
+  it('Ctrl+1 fires onJumpToTab with 1', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('1', { ctrlKey: true });
+    expect(handlers.onJumpToTab).toHaveBeenCalledWith(1);
+  });
+
+  it('Ctrl+9 fires onJumpToTab with 9', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('9', { ctrlKey: true });
+    expect(handlers.onJumpToTab).toHaveBeenCalledWith(9);
+  });
+
+  it('Ctrl+0 does NOT fire onJumpToTab (outside 1..9 range)', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('0', { ctrlKey: true });
+    expect(handlers.onJumpToTab).not.toHaveBeenCalled();
+  });
+
+  it('Ctrl+F fires onOpenSearch', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('f', { ctrlKey: true });
+    expect(handlers.onOpenSearch).toHaveBeenCalledOnce();
+  });
+
+  it('Ctrl+L fires onOpenLabelPicker', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('l', { ctrlKey: true });
+    expect(handlers.onOpenLabelPicker).toHaveBeenCalledOnce();
+  });
+
+  it('Alt+L also fires onOpenLabelPicker (browser/AZERTY-safe fallback)', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('l', { altKey: true });
+    expect(handlers.onOpenLabelPicker).toHaveBeenCalledOnce();
+  });
+
+  it('Ctrl+J fires onOpenCannedPicker', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('j', { ctrlKey: true });
+    expect(handlers.onOpenCannedPicker).toHaveBeenCalledOnce();
+  });
+
+  it('Alt+J also fires onOpenCannedPicker', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('j', { altKey: true });
+    expect(handlers.onOpenCannedPicker).toHaveBeenCalledOnce();
+  });
+
+  it('Ctrl+Shift+A fires onToggleAiCopilot', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('a', { ctrlKey: true, shiftKey: true });
+    expect(handlers.onToggleAiCopilot).toHaveBeenCalledOnce();
+  });
+
+  it('Ctrl+A without Shift does NOT fire onToggleAiCopilot (preserve select-all)', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('a', { ctrlKey: true });
+    expect(handlers.onToggleAiCopilot).not.toHaveBeenCalled();
+  });
+
+  it('Ctrl+. fires onOpenStatusPicker', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('.', { ctrlKey: true });
+    expect(handlers.onOpenStatusPicker).toHaveBeenCalledOnce();
   });
 });
