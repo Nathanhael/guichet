@@ -277,15 +277,15 @@ export default function SupportView() {
     { id: 'toggle-sidebar', labelKey: 'cmd_toggle_sidebar', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+B', execute: toggleSidebar, keywords: ['queue', 'sidebar', 'hide', 'show'] },
     { id: 'search-tickets', labelKey: 'cmd_search_tickets', groupKey: 'cmd_group_navigation', execute: () => { setSidebarOpen(true); localStorage.setItem('queueSidebarOpen', 'true'); setTimeout(() => { const el = document.querySelector<HTMLInputElement>('[data-queue-search]'); el?.focus(); }, 50); }, keywords: ['find', 'search', 'filter'] },
     // Actions
-    { id: 'toggle-whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.toggleWhisper(), enabled: !!activeTab, keywords: ['whisper', 'internal', 'private'] },
-    { id: 'transfer-ticket', labelKey: 'cmd_transfer_ticket', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.openTransferMenu(), enabled: !!activeTab, keywords: ['transfer', 'hand off', 'department'] },
-    { id: 'close-tab', labelKey: 'cmd_close_tab', groupKey: 'cmd_group_actions', execute: () => { if (activeTab) closeTab(activeTab); }, enabled: !!activeTab, keywords: ['close', 'tab'] },
-    { id: 'close-ticket', labelKey: 'cmd_close_ticket', groupKey: 'cmd_group_actions', execute: () => chatWindowRef.current?.triggerCloseTicket(), enabled: !!activeTab, keywords: ['resolve', 'close', 'end'] },
+    { id: 'toggle-whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+/', execute: () => chatWindowRef.current?.toggleWhisper(), enabled: !!activeTab, keywords: ['whisper', 'internal', 'private'] },
+    { id: 'transfer-ticket', labelKey: 'cmd_transfer_ticket', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+T', execute: () => chatWindowRef.current?.openTransferMenu(), enabled: !!activeTab, keywords: ['transfer', 'hand off', 'department'] },
+    { id: 'close-tab', labelKey: 'cmd_close_tab', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+W', execute: () => { if (activeTab) closeTab(activeTab); }, enabled: !!activeTab, keywords: ['close', 'tab'] },
+    { id: 'close-ticket', labelKey: 'cmd_close_ticket', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+Enter', execute: () => chatWindowRef.current?.triggerCloseTicket(), enabled: !!activeTab, keywords: ['resolve', 'close', 'end'] },
     // Status
     { id: 'status-online', labelKey: 'cmd_status_online', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'online' }), keywords: ['online', 'available'] },
     { id: 'status-away', labelKey: 'cmd_status_away', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'away' }), keywords: ['away', 'break', 'pause'] },
     // View & Toggles
-    { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
+    { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', shortcutHint: 'Esc', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
     { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
     { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_sidebar_right', groupKey: 'cmd_group_view', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'copilot', 'info'] },
   ], [activeTab, openTabTickets, navigateTab]);
@@ -297,6 +297,22 @@ export default function SupportView() {
     onNextTab: () => navigateTab(1),
     onPrevTab: () => navigateTab(-1),
     onToggleSidebar: toggleSidebar,
+    onCloseTicket: () => {
+      if (activeTab) chatWindowRef.current?.triggerCloseTicket();
+    },
+    onTransferTicket: () => {
+      if (activeTab) chatWindowRef.current?.openTransferMenu();
+    },
+    onCloseTab: () => {
+      if (activeTab) closeTab(activeTab);
+    },
+    onToggleWhisper: () => {
+      if (activeTab) chatWindowRef.current?.toggleWhisper();
+    },
+    onExitFocus: () => {
+      const s = useStore.getState();
+      if (s.viewMode === 'focus') s.setViewMode('normal');
+    },
   });
 
   // ── Guards ──
