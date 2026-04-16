@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, adminProcedure } from '../../trpc.js';
+import { router, adminProcedure, destructiveAdminProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { partners, users, memberships, auditLog } from '../../../db/schema.js';
 import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
@@ -72,6 +72,7 @@ export const partnerMembersRouter = router({
             source: memberships.source,
             createdAt: memberships.createdAt,
             externalId: users.externalId,
+            isExternal: users.isExternal,
             lastActiveAt: users.lastActiveAt,
           })
           .from(memberships)
@@ -88,7 +89,7 @@ export const partnerMembersRouter = router({
       }
     }),
 
-  addMemberByEmail: adminProcedure
+  addMemberByEmail: destructiveAdminProcedure
     .input(z.object({
       email: z.string().email(),
       role: z.enum(['agent', 'support']),
@@ -147,7 +148,7 @@ export const partnerMembersRouter = router({
       }
     }),
 
-  inviteExternalUser: adminProcedure
+  inviteExternalUser: destructiveAdminProcedure
     .input(z.object({
       email: z.string().email(),
       name: z.string().min(1),
@@ -244,7 +245,7 @@ export const partnerMembersRouter = router({
       }
     }),
 
-  updateMember: adminProcedure
+  updateMember: destructiveAdminProcedure
     .input(z.object({
       membershipId: z.string(),
       departments: z.array(z.string()).optional()
@@ -292,7 +293,7 @@ export const partnerMembersRouter = router({
       }
     }),
 
-  removeMember: adminProcedure
+  removeMember: destructiveAdminProcedure
     .input(z.object({
       membershipId: z.string(),
     }))

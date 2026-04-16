@@ -5,6 +5,7 @@ import { useT } from '../../i18n';
 import { Pencil, Check, X, Search, Users, Shield, User, UserX } from 'lucide-react';
 import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
+import GuestBadge from '../GuestBadge';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import { OnlineSupport } from '../../types';
 
@@ -221,6 +222,7 @@ export default function AdminTeam() {
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
                             <span className="font-bold uppercase tracking-tight text-[13px] group-hover/row:text-accent-blue transition-colors">{member.name}</span>
+                            <GuestBadge isExternal={member.isExternal} />
                             {member.externalId ? (
                               <span className="text-[7px] bg-accent-blue/10 text-accent-blue border border-accent-blue/20 px-1 font-mono font-bold tracking-tighter">SSO SYNC</span>
                             ) : member.lastActiveAt && (

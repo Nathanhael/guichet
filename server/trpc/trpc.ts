@@ -1,9 +1,12 @@
 import { initTRPC, TRPCError } from '@trpc/server';
+import { eq } from 'drizzle-orm';
 import { Context } from './context.js';
 import { UserRole } from '../types/index.js';
 import { isPlatformAdmin, isTenantAdmin } from '../services/roles.js';
 import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
 import { DISABLED_FEATURES, type DisabledFeature } from '../constants.js';
+import { db } from '../db.js';
+import { users } from '../db/schema.js';
 
 const t = initTRPC.context<Context>().create();
 
@@ -121,3 +124,52 @@ export const featureGate = (feature: DisabledFeature) =>
     }
     return next();
   });
+
+/**
+ * Blocks Azure B2B guest users (`users.isExternal = true`) from destructive
+ * admin mutations. Guests keep read access to admin panels but cannot touch
+ * secrets, grant/revoke access, or mutate tenant structure.
+ *
+ * Platform operators always bypass: they are never marked as external by
+ * definition (SSO callback only sets isExternal from Azure B2B claims, and
+ * platform operators authenticate via our staff SSO path with `acct=member`).
+ *
+ * This middleware fetches `users.isExternal` from the DB on each call because
+ * the JWT does not carry the flag — adding it would require rotation of all
+ * existing tokens across 5 mint sites. The DB hit only fires on destructive
+ * admin mutations, which are rare. Revisit if traffic patterns change.
+ *
+ * Applied via `destructiveAdminProcedure` for `adminProcedure`-based routers,
+ * or composed manually for `partnerAdminProcedure`-based routers (e.g.
+ * webhook router's `gatedPartnerAdmin`).
+ *
+ * See docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md.
+ */
+export const blockExternalUsers = t.middleware(async ({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+  // Platform operators are never guests — skip the DB round-trip.
+  if (isPlatformAdmin(ctx.user.isPlatformOperator)) {
+    return next();
+  }
+  const row = await db
+    .select({ isExternal: users.isExternal })
+    .from(users)
+    .where(eq(users.id, ctx.user.id))
+    .limit(1);
+  if (row[0]?.isExternal) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'This action is not available to external guest users.',
+    });
+  }
+  return next();
+});
+
+/**
+ * Admin procedure with external-guest block. Use for any admin mutation that
+ * touches secrets, grants/revokes access, or mutates tenant structure.
+ * Reads stay on the plain `adminProcedure`.
+ */
+export const destructiveAdminProcedure = adminProcedure.use(blockExternalUsers);

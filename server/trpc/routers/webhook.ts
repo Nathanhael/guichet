@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
-import { router, partnerAdminProcedure, featureGate } from '../trpc.js';
+import { router, partnerAdminProcedure, featureGate, blockExternalUsers } from '../trpc.js';
 import { db } from '../../db.js';
 import { webhooks, webhookLogs } from '../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
@@ -37,6 +37,12 @@ async function verifyWebhookOwnership(id: string, partnerId: string) {
 // DISABLED_FEATURE: Webhooks — gated until feature is production-ready
 const gatedPartnerAdmin = partnerAdminProcedure.use(featureGate('webhooks'));
 
+// Destructive variant — adds the Azure B2B guest block. Used for create,
+// update, regenerateSecret, delete, and test (anything that mutates webhook
+// config, rotates secrets, or triggers outbound deliveries).
+// See docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md.
+const gatedPartnerAdminNoGuests = gatedPartnerAdmin.use(blockExternalUsers);
+
 export const webhookRouter = router({
   /** List all webhooks for the current partner */
   list: gatedPartnerAdmin.query(async ({ ctx }) => {
@@ -55,7 +61,7 @@ export const webhookRouter = router({
   }),
 
   /** Create a new webhook endpoint */
-  create: gatedPartnerAdmin
+  create: gatedPartnerAdminNoGuests
     .input(z.object({
       url: z.string().url().max(2000),
       events: webhookEventsSchema,
@@ -86,7 +92,7 @@ export const webhookRouter = router({
     }),
 
   /** Update a webhook */
-  update: gatedPartnerAdmin
+  update: gatedPartnerAdminNoGuests
     .input(z.object({
       id: z.string(),
       url: z.string().url().max(2000).optional(),
@@ -113,7 +119,7 @@ export const webhookRouter = router({
     }),
 
   /** Regenerate the signing secret for a webhook */
-  regenerateSecret: gatedPartnerAdmin
+  regenerateSecret: gatedPartnerAdminNoGuests
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await verifyWebhookOwnership(input.id, ctx.user.partnerId);
@@ -127,7 +133,7 @@ export const webhookRouter = router({
     }),
 
   /** Delete a webhook */
-  delete: gatedPartnerAdmin
+  delete: gatedPartnerAdminNoGuests
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       await db
@@ -169,7 +175,7 @@ export const webhookRouter = router({
     }),
 
   /** Test-fire a webhook with a sample payload */
-  test: gatedPartnerAdmin
+  test: gatedPartnerAdminNoGuests
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Fetch the specific webhook (verifies ownership and gets secret/url)

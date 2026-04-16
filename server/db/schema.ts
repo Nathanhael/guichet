@@ -77,6 +77,10 @@ export const users = pgTable('users', {
     focusMode?: boolean;
   }>(),
   authMethod: text('auth_method'),  // Per-user auth method override (null = use partner default)
+  // True when the user is an Azure B2B guest (external partner employee invited into our tenant).
+  // Set at SSO callback from the `acct === 1` or `idp` claim. Drives UI GUEST badge and
+  // destructiveAdminProcedure blocklist (see docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md).
+  isExternal: boolean('is_external').notNull().default(false),
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),

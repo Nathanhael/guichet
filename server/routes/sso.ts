@@ -214,7 +214,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     }
 
     // Azure-specific claims from the verified payload
-    const claims = payload as JWTPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string; locale?: string; xms_lang?: string };
+    const claims = payload as JWTPayload & { oid?: string; email?: string; preferred_username?: string; name?: string; groups?: string[]; _claim_names?: Record<string, string>; nonce?: string; locale?: string; xms_lang?: string; acct?: number; idp?: string };
 
     // Verify nonce to prevent token replay attacks
     if (claims.nonce !== expectedNonce) {
@@ -224,6 +224,14 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
     const oid: string = claims.oid || '';
     const email: string = (claims.email || claims.preferred_username || '').toLowerCase();
     const name: string = claims.name || email;
+
+    // Azure B2B guest detection.
+    //   acct === 1  → Microsoft documents this as "account type: guest" on the resource tenant.
+    //   idp present → token includes a federated IdP claim, meaning the user's home tenant issued
+    //                 the identity; the guest signed in against our tenant via B2B.
+    // Either signal is sufficient. The `issuer` was already verified equal to our tenant, so `tid`
+    // would be redundant here.
+    const isExternal: boolean = claims.acct === 1 || !!claims.idp;
 
     // Locale claim resolved via the shared `localeSync` helper. Per-partner
     // attribute map (if configured) is applied after we identify the partner
@@ -263,8 +271,8 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           return res.redirect(`${clientOrigin}/login?sso_error=email_conflict`);
         } else {
           // Safe to link: account has no password (SSO-only or uninitialised invite)
-          await db.update(users).set({ externalId: oid, name }).where(eq(users.id, user.id));
-          logger.info({ userId: user.id, oid }, '[SSO] Linked existing user to Azure OID');
+          await db.update(users).set({ externalId: oid, name, isExternal }).where(eq(users.id, user.id));
+          logger.info({ userId: user.id, oid, isExternal }, '[SSO] Linked existing user to Azure OID');
         }
       } else {
         // Brand new SSO user
@@ -275,10 +283,11 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           name,
           externalId: oid,
           password: null,
+          isExternal,
           ...(azureLang && { lang: azureLang }),
         });
         user = (await db.select().from(users).where(eq(users.id, newId)).limit(1))[0];
-        logger.info({ userId: newId, oid }, '[SSO] Created new SSO user');
+        logger.info({ userId: newId, oid, isExternal }, '[SSO] Created new SSO user');
       }
     } else {
       // Sync locale from the IdP claim unless the user has explicitly locked
@@ -291,7 +300,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       });
       await db
         .update(users)
-        .set({ name, email, ...(nextLang && { lang: nextLang }) })
+        .set({ name, email, isExternal, ...(nextLang && { lang: nextLang }) })
         .where(eq(users.id, user.id));
       if (nextLang) {
         await db.insert(auditLog).values({
@@ -349,6 +358,29 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
             departments: (m.defaultDepartments as string[]) || [] 
           });
         }
+      }
+
+      // Guest single-partner enforcement (Azure B2B guests must map to exactly one partner).
+      // Fail-closed: if a guest is in groups that resolve to more than one partner it is a
+      // misconfiguration in Azure (group assignment mistake or partner boundary bleed) and we
+      // reject the login entirely rather than silently picking one. Internal staff keep the
+      // existing multi-partner behavior (they use PartnerSwitcher mid-session).
+      if (isExternal && targetMemberships.size > 1) {
+        const partnerIdList = Array.from(targetMemberships.keys());
+        logger.warn(
+          { userId: user.id, partnerIds: partnerIdList, azureGroups },
+          '[SSO] Guest rejected: mapped to multiple partners',
+        );
+        await db.insert(auditLog).values({
+          action: 'sso.guest_multi_partner_rejected',
+          actorId: user.id,
+          targetType: 'user',
+          targetId: user.id,
+          // Audit metadata stays minimal (#45): partnerIds for diagnosis, groupCount only.
+          // Full azureGroups array is in the structured log, not the audit DB.
+          metadata: { partnerIds: partnerIdList, groupCount: azureGroups.length },
+        });
+        return res.redirect(`${clientOrigin}/?sso_error=guest_multi_partner_mapping`);
       }
 
       // Upsert current memberships (Force Sync)
@@ -469,6 +501,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         email: user.email ?? '',
         lang: user.lang,
         isPlatformOperator: user.isPlatformOperator,
+        isExternal: user.isExternal,
         accessibilityPrefs: user.accessibilityPrefs ?? {},
       },
       memberships: userMemberships,
