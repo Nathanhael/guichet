@@ -10,13 +10,14 @@ import { Search, X } from 'lucide-react';
 
 type TicketStatus = 'open' | 'pending' | 'closed' | 'resolved';
 
-const STATUS_FILTERS: { value: TicketStatus[] | undefined; label: string }[] = [
-  { value: ['open', 'pending'], label: 'Active' },
-  { value: undefined, label: 'All' },
-  { value: ['open'], label: 'Open' },
-  { value: ['pending'], label: 'Pending' },
-  { value: ['closed'], label: 'Closed' },
-  { value: ['resolved'], label: 'Resolved' },
+type QueueFilter = { key: 'all' | 'open' | 'pending'; label: string; hasSupport?: boolean };
+
+const LIVE_STATUS: TicketStatus[] = ['open', 'pending'];
+
+const QUEUE_FILTERS: QueueFilter[] = [
+  { key: 'all', label: 'All' },
+  { key: 'open', label: 'Open', hasSupport: false },
+  { key: 'pending', label: 'Pending', hasSupport: true },
 ];
 
 const TICKET_STATUS_COLORS: Record<string, string> = {
@@ -50,40 +51,30 @@ export default function AdminTickets() {
   const departments = manifest.departments || [];
 
   // Filter state
-  const [statusFilter, setStatusFilter] = useState<TicketStatus[] | undefined>(['open', 'pending']);
+  const [queueFilter, setQueueFilter] = useState<QueueFilter['key']>('all');
   const [deptFilter, setDeptFilter] = useState('');
   const [search, setSearch] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const debouncedSearch = useDebounce(search, 300);
 
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicketId, setPreviewTicketId] = useState<string | null>(null);
 
-  // Show date filters when viewing closed/resolved
-  const showDateFilters = useMemo(() => {
-    if (!statusFilter) return true; // "All" includes closed
-    return statusFilter.some(s => s === 'closed' || s === 'resolved');
-  }, [statusFilter]);
+  const activeFilter = useMemo(
+    () => QUEUE_FILTERS.find((f) => f.key === queueFilter) ?? QUEUE_FILTERS[0],
+    [queueFilter]
+  );
 
-  // Only poll when viewing live statuses
-  const isLiveView = useMemo(() => {
-    if (!statusFilter) return false;
-    return statusFilter.every(s => s === 'open' || s === 'pending');
-  }, [statusFilter]);
-
-  // tRPC: Ticket List
+  // tRPC: Ticket List (always live — closed/resolved live in the archive view)
   const ticketsQuery = trpc.ticket.list.useQuery(
     {
-      status: statusFilter,
+      status: LIVE_STATUS,
+      hasSupport: activeFilter.hasSupport,
       dept: deptFilter || undefined,
       search: debouncedSearch || undefined,
-      dateFrom: dateFrom || undefined,
-      dateTo: dateTo || undefined,
       limit: 50,
     },
     {
-      refetchInterval: isLiveView ? 30000 : false,
+      refetchInterval: 30000,
     }
   );
 
@@ -131,7 +122,7 @@ export default function AdminTickets() {
     setPreviewTicketId(null);
   }
 
-  const hasFilters = deptFilter || search || dateFrom || dateTo;
+  const hasFilters = deptFilter || search;
 
   return (
     <div className="flex h-full overflow-hidden bg-[var(--color-bg-base)]">
@@ -148,14 +139,14 @@ export default function AdminTickets() {
             )}
           </div>
 
-          {/* Status filter chips */}
+          {/* Queue filter chips */}
           <div className="flex flex-wrap gap-1 mb-2">
-            {STATUS_FILTERS.map(({ value, label }) => {
-              const active = statusFilter === value || (statusFilter && value && JSON.stringify(statusFilter) === JSON.stringify(value));
+            {QUEUE_FILTERS.map(({ key, label }) => {
+              const active = queueFilter === key;
               return (
                 <button
-                  key={label}
-                  onClick={() => setStatusFilter(value)}
+                  key={key}
+                  onClick={() => setQueueFilter(key)}
                   className={`px-2 py-1 text-[8px] font-bold uppercase tracking-wide border ${
                     active
                       ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-text-primary)]'
@@ -199,30 +190,10 @@ export default function AdminTickets() {
             </select>
           )}
 
-          {/* Date range — only for closed/resolved */}
-          {showDateFilters && (
-            <div className="flex gap-2">
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="input-field flex-1 text-[9px] py-1"
-                title="From date"
-              />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="input-field flex-1 text-[9px] py-1"
-                title="To date"
-              />
-            </div>
-          )}
-
           {/* Clear filters */}
           {hasFilters && (
             <button
-              onClick={() => { setDeptFilter(''); setSearch(''); setDateFrom(''); setDateTo(''); }}
+              onClick={() => { setDeptFilter(''); setSearch(''); }}
               className="text-[8px] font-bold uppercase tracking-widest text-[var(--color-accent-blue)] mt-2 hover:underline"
             >
               Clear filters

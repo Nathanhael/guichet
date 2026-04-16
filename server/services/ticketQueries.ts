@@ -1,6 +1,8 @@
 import { eq, and, ne, desc, sql, inArray } from 'drizzle-orm';
 import { db } from '../db/postgres.js';
 import { tickets, ticketLabels, labels, ratings } from '../db/schema.js';
+import { snapshotTicketToArchive } from './archive.js';
+import logger from '../utils/logger.js';
 
 // ── SELECT queries ──────────────────────────────────────────────────────────
 
@@ -57,7 +59,13 @@ export async function findTicketForClose(ticketId: string) {
  */
 export async function findTicketOwner(ticketId: string) {
   const rows = await db
-    .select({ partnerId: tickets.partnerId, agentId: tickets.agentId, supportId: tickets.supportId })
+    .select({
+      partnerId: tickets.partnerId,
+      agentId: tickets.agentId,
+      supportId: tickets.supportId,
+      dept: tickets.dept,
+      closedAt: tickets.closedAt,
+    })
     .from(tickets)
     .where(eq(tickets.id, ticketId));
   return rows[0];
@@ -257,6 +265,11 @@ export async function closeTicket(ticketId: string, closedBy: string, closingNot
     .update(tickets)
     .set({ status: 'closed', closedAt: now, closedBy, closingNotes })
     .where(eq(tickets.id, ticketId));
+  // Fire-and-forget snapshot into archived_tickets so AdminArchive shows it immediately.
+  // Live row + messages stay until the scheduled GDPR/archive job purges them.
+  snapshotTicketToArchive(ticketId).catch((err: unknown) => {
+    logger.error({ err, ticketId }, '[ticketQueries] snapshotTicketToArchive failed');
+  });
   return now;
 }
 
@@ -321,6 +334,8 @@ export async function insertRating(data: {
   partnerId: string;
   rating: number;
   comment: string | null;
+  dept: string | null;
+  closedAt: string | null;
 }) {
   await db.insert(ratings).values({
     id: data.id,
@@ -330,5 +345,7 @@ export async function insertRating(data: {
     partnerId: data.partnerId,
     rating: data.rating,
     comment: data.comment,
+    dept: data.dept ?? undefined,
+    closedAt: data.closedAt ?? undefined,
   }).onConflictDoNothing({ target: ratings.ticketId });
 }
