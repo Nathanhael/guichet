@@ -285,6 +285,21 @@ export default function SupportView() {
     setActiveTab(openTabTickets[idx].id);
   }, [openTabTickets]);
 
+  // Jump to the prev/next open tab that has an unread indicator. No-op if
+  // nothing is unread. Wraps around the list in either direction.
+  const navigateUnread = useCallback((direction: 1 | -1) => {
+    const { unreadTickets } = useStore.getState();
+    const unreadOpen = openTabTickets.filter((tk) => unreadTickets[tk.id]);
+    if (unreadOpen.length === 0) return;
+    const currentIdx = unreadOpen.findIndex((tk) => tk.id === activeTab);
+    // If the current tab isn't unread, jump to the first/last unread based on direction.
+    const nextIdx =
+      currentIdx === -1
+        ? direction === 1 ? 0 : unreadOpen.length - 1
+        : (currentIdx + direction + unreadOpen.length) % unreadOpen.length;
+    setActiveTab(unreadOpen[nextIdx].id);
+  }, [openTabTickets, activeTab]);
+
   const commands: Command[] = useMemo(() => [
     // Navigation
     { id: 'focus-message', labelKey: 'cmd_focus_message', groupKey: 'cmd_group_navigation', shortcutHint: '/', execute: () => chatWindowRef.current?.focusTextarea(), keywords: ['type', 'input', 'chat'] },
@@ -308,7 +323,7 @@ export default function SupportView() {
     { id: 'status-away', labelKey: 'cmd_status_away', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'away' }), keywords: ['away', 'break', 'pause'] },
     { id: 'open-status-picker', labelKey: 'cmd_open_status_picker', groupKey: 'cmd_group_status', shortcutHint: 'Ctrl+.', execute: () => window.dispatchEvent(new CustomEvent('support:open-status-picker')), keywords: ['status', 'picker'] },
     // View & Toggles
-    { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', shortcutHint: 'Esc', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
+    { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+F', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
     { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
     { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_sidebar_right', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+A', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'copilot', 'info', 'ai'] },
   ], [activeTab, openTabTickets, navigateTab, jumpToTab]);
@@ -351,6 +366,12 @@ export default function SupportView() {
     },
     onOpenStatusPicker: () => {
       window.dispatchEvent(new CustomEvent('support:open-status-picker'));
+    },
+    onPrevUnread: () => navigateUnread(-1),
+    onNextUnread: () => navigateUnread(1),
+    onToggleFocus: () => {
+      const s = useStore.getState();
+      s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus');
     },
   });
 

@@ -19,6 +19,9 @@ interface UseKeyboardShortcutsOptions {
   onOpenCannedPicker: () => void;
   onToggleAiCopilot: () => void;
   onOpenStatusPicker: () => void;
+  onPrevUnread: () => void;
+  onNextUnread: () => void;
+  onToggleFocus: () => void;
 }
 
 /**
@@ -44,6 +47,11 @@ interface UseKeyboardShortcutsOptions {
  *  - Ctrl+J / Alt+J → open canned response picker
  *  - Ctrl+Shift+A   → toggle AI copilot sidebar
  *  - Ctrl+.         → open status picker
+ *
+ * Tier-3:
+ *  - Alt+ArrowUp    → jump to previous unread ticket in openTabs
+ *  - Alt+ArrowDown  → jump to next unread ticket in openTabs
+ *  - Ctrl+Shift+F   → toggle focus mode (enter AND exit; Esc only exits)
  */
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
   const {
@@ -64,6 +72,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onOpenCannedPicker,
     onToggleAiCopilot,
     onOpenStatusPicker,
+    onPrevUnread,
+    onNextUnread,
+    onToggleFocus,
   } = options;
 
   useEffect(() => {
@@ -95,6 +106,25 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       if (ctrl && shift && e.key.toLowerCase() === 'a') {
         e.preventDefault();
         onToggleAiCopilot();
+        return;
+      }
+
+      // Ctrl+Shift+F — toggle focus mode (checked before Ctrl+F search)
+      if (ctrl && shift && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        onToggleFocus();
+        return;
+      }
+
+      // Alt+ArrowUp / Alt+ArrowDown — prev/next unread ticket
+      if (alt && !ctrl && !shift && e.key === 'ArrowUp') {
+        e.preventDefault();
+        onPrevUnread();
+        return;
+      }
+      if (alt && !ctrl && !shift && e.key === 'ArrowDown') {
+        e.preventDefault();
+        onNextUnread();
         return;
       }
 
@@ -218,5 +248,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onOpenCannedPicker,
     onToggleAiCopilot,
     onOpenStatusPicker,
+    onPrevUnread,
+    onNextUnread,
+    onToggleFocus,
   ]);
 }

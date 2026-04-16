@@ -20,6 +20,9 @@ describe('useKeyboardShortcuts', () => {
     onOpenCannedPicker: vi.fn(),
     onToggleAiCopilot: vi.fn(),
     onOpenStatusPicker: vi.fn(),
+    onPrevUnread: vi.fn(),
+    onNextUnread: vi.fn(),
+    onToggleFocus: vi.fn(),
   };
 
   function fire(key: string, opts: Partial<KeyboardEventInit> = {}) {
@@ -245,5 +248,32 @@ describe('useKeyboardShortcuts', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
     fire('.', { ctrlKey: true });
     expect(handlers.onOpenStatusPicker).toHaveBeenCalledOnce();
+  });
+
+  // ── Tier-3 ───────────────────────────────────────────────────────────────
+
+  it('Alt+ArrowUp fires onPrevUnread', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('ArrowUp', { altKey: true });
+    expect(handlers.onPrevUnread).toHaveBeenCalledOnce();
+  });
+
+  it('Alt+ArrowDown fires onNextUnread', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('ArrowDown', { altKey: true });
+    expect(handlers.onNextUnread).toHaveBeenCalledOnce();
+  });
+
+  it('Ctrl+Shift+F fires onToggleFocus', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('f', { ctrlKey: true, shiftKey: true });
+    expect(handlers.onToggleFocus).toHaveBeenCalledOnce();
+  });
+
+  it('Ctrl+F without Shift still fires onOpenSearch (not onToggleFocus)', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('f', { ctrlKey: true });
+    expect(handlers.onOpenSearch).toHaveBeenCalledOnce();
+    expect(handlers.onToggleFocus).not.toHaveBeenCalled();
   });
 });
