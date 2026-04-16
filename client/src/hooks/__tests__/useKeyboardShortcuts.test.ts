@@ -125,4 +125,24 @@ describe('useKeyboardShortcuts', () => {
     fire('Enter', { ctrlKey: true });
     expect(handlers.onCloseTicket).toHaveBeenCalledOnce();
   });
+
+  it('Alt+T fires onTransferTicket', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('t', { altKey: true });
+    expect(handlers.onTransferTicket).toHaveBeenCalledOnce();
+  });
+
+  it('Alt+W fires onCloseTab', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('w', { altKey: true });
+    expect(handlers.onCloseTab).toHaveBeenCalledOnce();
+  });
+
+  it('Ctrl+Alt+T does NOT fire onTransferTicket (Alt-only binding)', () => {
+    // Guards against accidental double-trigger if users hold Ctrl while
+    // pressing Alt+T. Alt+T requires Alt without Ctrl.
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('t', { altKey: true, ctrlKey: true });
+    expect(handlers.onTransferTicket).not.toHaveBeenCalled();
+  });
 });
