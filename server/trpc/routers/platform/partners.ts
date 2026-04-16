@@ -34,7 +34,7 @@ export const platformPartnersRouter = router({
         name: z.string(),
         description: z.string().optional()
       })).default([]),
-      authMethod: z.enum(['local', 'sso', 'both']).default('local'),
+      authMethod: z.enum(['local', 'sso', 'both']).default('sso'),
     }))
     .mutation(async ({ input, ctx }) => {
       try {

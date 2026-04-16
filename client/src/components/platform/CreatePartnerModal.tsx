@@ -11,14 +11,14 @@ interface CreatePartnerModalProps {
 export default function CreatePartnerModal({ open, onClose }: CreatePartnerModalProps) {
   const t = useT();
   const utils = trpc.useUtils();
-  const [form, setForm] = useState({ id: '', name: '', industry: '', authMethod: 'local' as 'local' | 'sso' | 'both' });
+  const [form, setForm] = useState({ id: '', name: '', industry: '' });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showError = useCallback((message: string) => setToast({ message, type: 'error' }), []);
 
   const createPartner = trpc.platform.createPartner.useMutation({
     onSuccess: () => {
       utils.platform.listPartners.invalidate();
-      setForm({ id: '', name: '', industry: '', authMethod: 'local' as 'local' | 'sso' | 'both' });
+      setForm({ id: '', name: '', industry: '' });
       onClose();
     },
     onError: (err) => showError(err.message),
@@ -53,15 +53,6 @@ export default function CreatePartnerModal({ open, onClose }: CreatePartnerModal
                 onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
-          </div>
-          <div>
-            <label className="mono-label">{t('provider_label')}</label>
-            <select className="input-field w-full"
-              value={form.authMethod} onChange={e => setForm({ ...form, authMethod: e.target.value as 'local' | 'sso' | 'both' })}>
-              <option value="local">Local (Email/Password)</option>
-              <option value="sso">Enterprise SSO</option>
-              <option value="both">Both (Local + SSO)</option>
-            </select>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
             <button onClick={onClose} className="btn-secondary px-6 py-2 text-[10px] uppercase tracking-widest">{t('cancel')}</button>
