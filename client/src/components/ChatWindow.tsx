@@ -417,6 +417,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         searchQuery={searchQuery}
         onSearchQueryChange={setSearchQuery}
         onSearchClose={closeSearch}
+        suppressActions={!!compact}
       />
 
       {/* Input — Suspense fallback matches ComposeArea height to prevent layout shift */}

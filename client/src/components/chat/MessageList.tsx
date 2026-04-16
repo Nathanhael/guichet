@@ -34,6 +34,7 @@ interface MessageListProps {
   searchQuery?: string;
   onSearchQueryChange?: (q: string) => void;
   onSearchClose?: () => void;
+  suppressActions?: boolean;
 }
 
 const langToLocale: Record<string, string> = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
@@ -69,6 +70,7 @@ export default function MessageList({
   searchQuery,
   onSearchQueryChange,
   onSearchClose,
+  suppressActions,
 }: MessageListProps) {
   const { user, typingUsers } = useStoreShallow(s => ({
     user: s.user,
@@ -216,6 +218,7 @@ export default function MessageList({
                     highlightQuery={searchOpen && searchQuery ? searchQuery : undefined}
                     isSearchMatch={matchedSet.has(msg.id)}
                     isCurrentSearchMatch={msg.id === currentMatchId}
+                    suppressActions={suppressActions}
                   />
                   {isWhisperRunEnd && (
                     <div className="flex items-center gap-3 mt-1 mb-2 px-14 opacity-55">
