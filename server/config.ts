@@ -9,6 +9,7 @@ const configSchema = z.object({
     GDPR_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
     AI_USAGE_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
     AUDIT_ARCHIVE_DELAY_DAYS: z.coerce.number().int().positive().default(2),
+    RATINGS_COMMENT_RETENTION_DAYS: z.coerce.number().int().positive().default(90),
     COOKIE_DOMAIN: z.string().optional(),
     // Default to true (secure). Set COOKIE_SECURE=false only for local dev (no HTTPS).
     COOKIE_SECURE: z.preprocess(v => v === 'false' || v === '0' ? false : v === 'true' || v === '1' || v === true ? true : v, z.boolean()).default(true),
@@ -87,6 +88,7 @@ const parseResult = configSchema.safeParse({
     GDPR_RETENTION_DAYS: process.env.GDPR_RETENTION_DAYS,
     AI_USAGE_RETENTION_DAYS: process.env.AI_USAGE_RETENTION_DAYS,
     AUDIT_ARCHIVE_DELAY_DAYS: process.env.AUDIT_ARCHIVE_DELAY_DAYS,
+    RATINGS_COMMENT_RETENTION_DAYS: process.env.RATINGS_COMMENT_RETENTION_DAYS,
     COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
     COOKIE_SECURE: process.env.COOKIE_SECURE,
     PURGE_INTERVAL_MS: process.env.PURGE_INTERVAL_MS,

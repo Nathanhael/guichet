@@ -169,7 +169,9 @@ export async function runDailyPurge() {
       // Only delete tickets that are closed (and thus have been archived above).
       // Open/pending tickets are never purged to prevent data loss.
       await tx.execute(sql`DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
-      await tx.execute(sql`DELETE FROM ratings WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
+      // Ratings outlive tickets: the ticket FK is set to NULL via ON DELETE SET NULL so
+      // score + support_id stay for long-term trend analysis. Comments (PII) are
+      // nullified on a separate schedule below.
       await tx.execute(sql`DELETE FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
       // Purge app_feedback older than retention period (GDPR compliance)
       await tx.execute(sql`DELETE FROM app_feedback WHERE created_at < ${cutoffDate}`);
@@ -218,6 +220,22 @@ export async function runDailyPurge() {
     const aiPurged = await aggregateAndPurgeAiUsage();
     if (aiPurged > 0) {
       logger.info({ aiPurged }, '[purge] AI usage log aggregate + purge complete');
+    }
+
+    // Step 3.5: Nullify rating comments past the comment-retention window.
+    // The score + support_id remain for long-term analytics; comments are PII.
+    try {
+      const commentCutoff = new Date(Date.now() - config.RATINGS_COMMENT_RETENTION_DAYS * 86400000).toISOString();
+      const commentResult = await db.execute(sql`
+        UPDATE ratings SET comment = NULL
+        WHERE comment IS NOT NULL AND created_at < ${commentCutoff}
+      `);
+      const commentsAnonymized = (commentResult as { rowCount?: number } | undefined)?.rowCount ?? 0;
+      if (commentsAnonymized > 0) {
+        logger.info({ commentsAnonymized, cutoff: commentCutoff }, '[purge] Rating comments nullified past retention window');
+      }
+    } catch (err) {
+      logger.error({ err }, '[purge] Failed to nullify rating comments');
     }
 
     // Purge agent status log entries older than 30 days
