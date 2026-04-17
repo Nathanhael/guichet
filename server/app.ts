@@ -199,7 +199,9 @@ const trpcLimiter = rateLimit({
 
 
 app.use((req: Request, _res: Response, next: NextFunction) => {
-  logger.info({ method: req.method, path: req.path }, `Incoming ${req.method} request`);
+  // Per-request logging at info is a flood in production — Prometheus metrics
+  // already cover method/path/status/duration. Keep at debug for local tracing.
+  logger.debug({ method: req.method, path: req.path }, `Incoming ${req.method} request`);
   next();
 });
 
