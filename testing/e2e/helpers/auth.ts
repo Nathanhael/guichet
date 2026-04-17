@@ -71,12 +71,12 @@ export async function loginAsDemo(
   await page.waitForLoadState(waitFor);
 
   const data = await page.evaluate(
-    async ({ uid, pw, seedMode, langOverride }) => {
-      const res = await fetch('/api/v1/auth/login', {
+    async ({ uid, seedMode, langOverride }) => {
+      const res = await fetch('/api/v1/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ id: uid, password: pw }),
+        body: JSON.stringify({ userId: uid }),
       });
       if (!res.ok) return { ok: false, status: res.status } as LoginResult;
       const json = (await res.json()) as {
@@ -110,7 +110,6 @@ export async function loginAsDemo(
     },
     {
       uid: userId,
-      pw: DEMO_PASSWORD,
       seedMode: seedActiveMembership,
       langOverride: lang ?? null,
     },

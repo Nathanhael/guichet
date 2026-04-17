@@ -9,17 +9,15 @@ type DemoUser = { id: string; name: string; email?: string; role?: string; lang?
 
 interface DemoUserPickerProps {
   onLoginSuccess: (user: User, memberships: Membership[], preferredMembershipId?: string) => void;
-  onMfaRequired: (endpoint: string, body: Record<string, unknown>, passwordRef: string) => void;
 }
 
-export default function DemoUserPicker({ onLoginSuccess, onMfaRequired }: DemoUserPickerProps) {
+export default function DemoUserPicker({ onLoginSuccess }: DemoUserPickerProps) {
   const t = useT();
   const [filter, setFilter] = useState<'all' | 'platform' | 'support' | 'admin' | 'agent'>('all');
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [error, setError] = useState('');
 
   const { data: usersData } = trpc.user.demoList.useQuery();
-  const demoLoginMutation = trpc.user.demoLogin.useMutation();
   const users: DemoUser[] = usersData ? (usersData as DemoUser[]) : [];
 
   const filtered = filter === 'all' ? users :
@@ -34,18 +32,14 @@ export default function DemoUserPicker({ onLoginSuccess, onMfaRequired }: DemoUs
     setError('');
     setIsDemoLoading(true);
     try {
-      const { password: demoPassword } = await demoLoginMutation.mutateAsync({ userId: u.id });
-      const res = await fetch('/api/v1/auth/login', {
+      const res = await fetch('/api/v1/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ id: u.id, password: demoPassword })
+        body: JSON.stringify({ userId: u.id }),
       });
       const data = await res.json();
-      if (data.mfaRequired) {
-        onMfaRequired('/api/v1/auth/login', { id: u.id }, demoPassword);
-      } else if (res.ok) {
-        // Pass the membershipId from the clicked entry to auto-select the correct role
+      if (res.ok) {
         const preferredId = u.membershipId ?? undefined;
         onLoginSuccess(data.user, data.memberships || [], preferredId);
       } else {
