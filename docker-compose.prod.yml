@@ -49,7 +49,12 @@ services:
       - AI_BASE_URL=${AI_BASE_URL:-}
       - AI_API_KEY=${AI_API_KEY:-}
       - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT:-}
+      # Field encryption key — REQUIRED. encryption.ts reads FIELD_ENCRYPTION_SECRET preferentially.
+      # AI_KEY_ENCRYPTION_SECRET kept as a legacy alias; one of the two must be set.
+      - FIELD_ENCRYPTION_SECRET=${FIELD_ENCRYPTION_SECRET:?FIELD_ENCRYPTION_SECRET must be set in .env (generate with: node -e "console.log(require(\"crypto\").randomBytes(32).toString(\"hex\"))")}
       - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:-}
+      # METRICS_TOKEN — required for external Prometheus scraping; without it only localhost can scrape.
+      - METRICS_TOKEN=${METRICS_TOKEN:-}
       - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
     extra_hosts:
       - "host.docker.internal:host-gateway"
