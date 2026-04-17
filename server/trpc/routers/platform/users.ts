@@ -7,29 +7,8 @@ import { TRPCError } from '@trpc/server';
 import { randomUUID } from 'crypto';
 import logger from '../../../utils/logger.js';
 import { MailService } from '../../../services/mail.js';
-import { renderInviteExisting, renderInviteReminder } from '../../../services/mailTemplates.js';
+import { renderInviteReminder } from '../../../services/mailTemplates.js';
 import { revokeUserSessions } from '../../../services/sessionRevocation.js';
-import { APP_NAME } from '../../../constants.js';
-import config from '../../../config.js';
-
-/**
- * Is this email address internal staff (Entra-provisioned)?
- *
- * Returns true when the email's domain is in the configured internal-domain
- * list. Used to suppress the invite email: internal staff sign in via Entra
- * SSO and don't need the "click the SSO button" nudge. External B2B guests
- * (and anyone with a non-internal domain) still receive it.
- *
- * Note: we can't use `users.isExternal` here — that flag is stamped by the
- * SSO callback on first login, so at invite time (before the user ever logs
- * in) it's always false. The email domain is the only signal available.
- */
-function isInternalStaffEmail(email: string): boolean {
-  const domains = config.INTERNAL_EMAIL_DOMAINS.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
-  if (domains.length === 0) return false;
-  const emailDomain = email.split('@')[1]?.toLowerCase();
-  return !!emailDomain && domains.includes(emailDomain);
-}
 
 export const platformUsersRouter = router({
   updateUser: platformProcedure
@@ -203,23 +182,9 @@ export const platformUsersRouter = router({
           departments: input.departments || []
         });
 
-        const skipInviteEmail = isInternalStaffEmail(input.email);
-        if (skipInviteEmail) {
-          logger.info({ email: input.email }, '[inviteUser] Skipping invite email for internal staff');
-        } else {
-          try {
-            const partnerName = partner[0].name || input.partnerId;
-            const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-            const brand = { partnerName };
-
-            const welcomeHtml = renderInviteExisting({ name: input.name, partnerName, loginUrl, brand });
-
-            await MailService.sendMail(input.email, `Invitation to join ${partnerName} on ${APP_NAME}`, welcomeHtml);
-          } catch (mailErr) {
-            logger.error({ err: mailErr }, '[inviteUser] Failed to send welcome email');
-          }
-        }
-
+        // All partners are SSO-only: Azure sends the B2B invite for external
+        // guests; internal staff are already provisioned via Entra. Guichet
+        // stays silent on the initial invite to avoid a duplicate mail.
         await db.insert(auditLog).values({
           id: randomUUID(),
           action: 'member.invited',
@@ -227,7 +192,7 @@ export const platformUsersRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: userId,
-          metadata: { email: input.email, role: input.role, membershipId: memId, emailSkipped: skipInviteEmail }
+          metadata: { email: input.email, role: input.role, membershipId: memId }
         });
 
         return { userId, membershipId: memId, tempPassword: '', isExistingUser };
@@ -259,22 +224,6 @@ export const platformUsersRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'User or Partner not found' });
         }
 
-        // Checked BEFORE hashing a password or rendering a template to avoid wasted work
-        // and — more importantly — to avoid rotating the password on an SSO-only user.
-        if (isInternalStaffEmail(user.email ?? '')) {
-          logger.info({ userId: user.id, email: user.email }, '[resendInvite] Skipping reminder for internal staff');
-          await db.insert(auditLog).values({
-            id: randomUUID(),
-            action: 'member.invite_resent',
-            actorId: ctx.user.id,
-            partnerId: input.partnerId,
-            targetType: 'user',
-            targetId: user.id,
-            metadata: { email: user.email, emailSkipped: true }
-          });
-          return { success: true, skipped: true };
-        }
-
         const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
         const welcomeHtml = renderInviteReminder({
           name: user.name,
@@ -292,7 +241,7 @@ export const platformUsersRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: user.id,
-          metadata: { email: user.email, emailSkipped: false }
+          metadata: { email: user.email }
         });
 
         return { success: true };
