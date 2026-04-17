@@ -1,12 +1,12 @@
 import { db } from '../db.js';
-import { sql, inArray, and, eq, lt, gte } from 'drizzle-orm';
+import { sql, inArray, and, eq, lt, gte, isNull } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { getStorage } from './storage.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
-import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog, pushSubscriptions } from '../db/schema.js';
+import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog, pushSubscriptions, users } from '../db/schema.js';
 
 /**
  * Error message thrown when the audit chain integrity check fails during a
@@ -264,12 +264,21 @@ export async function runDailyPurge() {
     `);
     logger.info({ cutoff: cutoffDate }, '[gdpr] Purged stale push_subscriptions');
 
+    // Step: Purge abandoned invites — user rows created by inviteExternalUser /
+    // platform inviteUser that were never claimed via SSO or local login.
+    // Keeps orphan rows from persisting indefinitely and narrows the
+    // claim-by-email window beyond the shorter sso.ts INVITE_TTL_DAYS guard.
+    const invitesPurged = await purgeAbandonedInvites();
+    if (invitesPurged > 0) {
+      logger.info({ invitesPurged }, '[purge] Abandoned invites purged');
+    }
+
     // Log the successful purge in audit_log
     await db.insert(auditLogTable).values({
       action: 'system.gdpr_purge',
       actorId: null, // System action, no user associated
       targetType: 'system',
-      metadata: { cutoffDate, aiUsagePurged: aiPurged, success: true }
+      metadata: { cutoffDate, aiUsagePurged: aiPurged, invitesPurged, success: true }
     });
 
     logger.info(`[purge] GDPR purge complete for data older than ${cutoffDate}.`);
@@ -337,4 +346,29 @@ export async function aggregateAndPurgeAiUsage(): Promise<number> {
   });
 
   return purgedCount;
+}
+
+export async function purgeAbandonedInvites(): Promise<number> {
+  const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const stale = await db.select({ id: users.id, email: users.email })
+    .from(users)
+    .where(and(
+      isNull(users.externalId),
+      isNull(users.password),
+      lt(users.createdAt, cutoff),
+    ))
+    .limit(500);
+  if (stale.length === 0) return 0;
+
+  await db.transaction(async (tx) => {
+    await tx.delete(users).where(inArray(users.id, stale.map(s => s.id)));
+    await tx.insert(auditLogTable).values(stale.map(s => ({
+      action: 'invite.purged_stale',
+      targetType: 'user',
+      targetId: s.id,
+      metadata: { email: s.email, reason: 'unclaimed_30d' },
+    })));
+  });
+  logger.info({ count: stale.length }, '[gdpr] Stale invites purged');
+  return stale.length;
 }
