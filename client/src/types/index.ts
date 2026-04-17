@@ -121,6 +121,14 @@ export interface Participant {
   name: string;
   role?: string;
   lang?: string;
+  /**
+   * Azure B2B guest flag snapshot at join time (denormalized on
+   * `tickets.participants`). Drives the amber ring around guest avatars
+   * in ChatHeader. Optional for legacy rows written before the B2B
+   * plumbing landed — falsy means not-a-guest. ChatHeader falls back to
+   * the presence store when this field is absent.
+   */
+  isExternal?: boolean;
 }
 
 export interface Ticket {

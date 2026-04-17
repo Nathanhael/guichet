@@ -164,6 +164,15 @@ export function validatePayload<T>(socket: Socket, schema: z.ZodType<T>, data: u
 export interface Participant {
   id: string;
   name: string;
+  /**
+   * Azure B2B guest flag snapshot at join time. Denormalized onto
+   * `tickets.participants` JSONB so ChatHeader can render the amber ring
+   * on guest participants regardless of live presence. Optional for
+   * backward compatibility with participants written before the B2B
+   * plumbing landed — treat undefined as false.
+   * See docs/superpowers/specs/partner-sso-b2b-guest.md.
+   */
+  isExternal?: boolean;
 }
 
 export interface SenderInfo {

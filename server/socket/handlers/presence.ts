@@ -17,6 +17,7 @@ import { insertSystemMessage } from '../../services/systemMessage.js';
 import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/messageQueries.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { sendPush } from '../../services/pushNotification.js';
+import { findUserName } from '../../services/userQueries.js';
 import {
   requireIdentified,
   socketioEventsTotal,
@@ -55,7 +56,18 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         return socket.emit('error', { message: 'Cannot join a closed ticket' });
       }
 
-      await assignSupport(ticketId, supportId, supportName, supportLang);
+      // Resolve the joiner's Azure B2B guest flag so it can be denormalized
+      // onto tickets.participants — lets ChatHeader flag offline guests
+      // without a live presence lookup. findUserName is a cheap single-row
+      // read; support:join is infrequent.
+      const joinerInfo = await findUserName(supportId);
+      await assignSupport(
+        ticketId,
+        supportId,
+        supportName,
+        supportLang,
+        !!joinerInfo?.isExternal,
+      );
 
       // Read back updated participants for broadcast
       const participants = (await findUpdatedParticipants(ticketId)) || [];
