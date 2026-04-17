@@ -11,6 +11,14 @@ export interface InsertMessageData {
   senderName: string;
   senderRole: string;
   senderLang: string;
+  /**
+   * Azure B2B guest flag snapshot at send time. Denormalized onto the
+   * messages row so MessageBubble can render the GUEST marker on
+   * historical messages without a live presence lookup. Omit/`false` for
+   * system messages and internal staff; pass `true` for external guests.
+   * See docs/superpowers/specs/partner-sso-b2b-guest.md.
+   */
+  senderIsExternal?: boolean;
   text: string;
   mediaUrl?: string | null;
   attachments?: Array<{ url: string; name: string; mimeType: string; size: number }> | null;
@@ -30,6 +38,8 @@ export async function insertMessage(data: InsertMessageData) {
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
+  const senderIsExternal = !!data.senderIsExternal;
+
   await db.insert(messages).values({
     id,
     ticketId: data.ticketId,
@@ -37,6 +47,7 @@ export async function insertMessage(data: InsertMessageData) {
     senderName: data.senderName,
     senderRole: data.senderRole,
     senderLang: data.senderLang,
+    senderIsExternal,
     text: data.text,
     mediaUrl: data.mediaUrl || null,
     attachments: data.attachments || null,
@@ -54,6 +65,7 @@ export async function insertMessage(data: InsertMessageData) {
     senderName: data.senderName,
     senderRole: data.senderRole,
     senderLang: data.senderLang,
+    senderIsExternal,
     text: data.text,
     // Client uses originalText for "revert AI improvement" — set to input text at creation time
     originalText: data.text,

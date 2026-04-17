@@ -4,7 +4,7 @@ import UserAvatar from './UserAvatar';
 import GuestBadge from './GuestBadge';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
-import { Message, OnlineSupport } from '../types';
+import { Message } from '../types';
 import { DeliveryStatus, MessageContent } from './chat';
 import { safeDate } from '../utils/dateUtils';
 import { REACTION_EMOJIS } from '../constants';
@@ -30,10 +30,9 @@ interface MessageBubbleProps {
 }
 
 export default function MessageBubble({ message, ticketId, isGroupStart = true, isGroupEnd = true, aiConfig, onReply, highlightQuery, isSearchMatch, isCurrentSearchMatch, suppressActions }: MessageBubbleProps) {
-  const { user, bionicReading, onlineSupportUsers } = useStoreShallow(s => ({
+  const { user, bionicReading } = useStoreShallow(s => ({
     user: s.user,
     bionicReading: s.bionicReading,
-    onlineSupportUsers: s.onlineSupportUsers as OnlineSupport[],
   }));
   const t = useT();
 
@@ -78,14 +77,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const isMine = message.senderId === user?.id;
   const isWhisper = !!message.whisper;
 
-  // Resolve sender's GUEST flag by cross-referencing the presence store.
-  // Caveat (documented follow-up): the badge only shows for senders who
-  // are currently online — historical senders who have logged out won't
-  // be flagged. For server-authoritative fidelity we would denormalize
-  // senderIsExternal onto the messages table; deferred per scope.
-  const isSenderExternal = isMine
-    ? !!user?.isExternal
-    : !!onlineSupportUsers.find((u) => u.userId === message.senderId)?.isExternal;
+  // Server-authoritative GUEST flag — denormalized onto the message at
+  // insert time (migration 0006). Works for historical senders in closed
+  // tickets as well as live chats; no presence-store lookup needed.
+  // See docs/superpowers/specs/partner-sso-b2b-guest.md.
+  const isSenderExternal = !!message.senderIsExternal;
 
   const originalDisplayText = isDeleted ? (t('message_deleted') || 'This message was deleted') : (message.text || '');
   // Show translated text if available and user hasn't toggled to original

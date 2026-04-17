@@ -163,15 +163,23 @@ Every guest-relevant event writes to `audit_log`:
    claim and sends `_claim_names` instead. Guichet logs an error and
    the user gets no groups. Guests rarely hit this. Fix would require
    calling Microsoft Graph; not in scope.
-2. **MessageBubble + ChatHeader rely on the presence store for guest
-   detection.** The GUEST badge in `MessageBubble` and the amber ring
-   around participant avatars in `ChatHeader` cross-reference
-   `onlineSupportUsers` to learn `isExternal`. That means a guest who
-   is currently offline — including historical senders in a closed
-   ticket review — won't be flagged. For server-authoritative fidelity
-   (badge shows regardless of live presence), denormalize
-   `senderIsExternal` onto the `messages` row at insert and thread
-   `isExternal` through `tickets.participants` JSON. Deferred.
+2. **ChatHeader participant ring relies on the presence store.** Guests
+   who are currently offline won't show the amber ring/tooltip suffix
+   on their avatar in `ChatHeader` — only live-presence participants
+   are flagged. Message senders are now server-authoritative (see item
+   below), so this limit scope-shrunk from the initial ship. To close
+   the remaining gap, denormalize `isExternal` onto the
+   `tickets.participants` JSON at join time (or resolve via a bulk
+   `users` lookup when rendering the header). Deferred.
+3. **MessageBubble is server-authoritative as of migration 0006.**
+   `messages.sender_is_external` is set from `users.isExternal` at
+   insert time (through `findSenderInfo` / `findUserName`). The client
+   reads `message.senderIsExternal` directly — no presence lookup
+   needed; historical messages in closed tickets flag correctly. System
+   messages always carry `false`. Backfill applied current
+   `users.is_external` to existing rows on migration, which is an
+   approximation for pre-plumbing history but accurate for guests who
+   were already guests at the time they sent.
 3. **Destructive buttons are not visibly disabled.** A guest admin clicks,
    gets a FORBIDDEN toast. UX polish — out of scope for the initial ship.
 4. **Partner-employee SSO via the partner's OWN IdP.** Not supported.
