@@ -22,6 +22,13 @@ function makeQueryChain() {
   chain.orderBy = vi.fn(self);
   chain.limit = limitMock;
   chain.groupBy = groupByMock;
+  // Drizzle query builders are thenable — awaiting the chain executes the query.
+  // Support `await db.select().from().where(...)` (no .limit/.groupBy terminator) by
+  // shifting selectQueue. Existing .limit/.groupBy call paths still work because they
+  // return their own Promise from limitMock/groupByMock before .then is ever checked.
+  chain.then = (resolve: (v: unknown) => unknown) => {
+    resolve(selectQueue.shift());
+  };
   return chain;
 }
 
@@ -294,6 +301,60 @@ describe('verifyAuditChain', () => {
     expect(result.valid).toBe(false);
     expect(result.brokenAt).toBe('a1');
     expect(result.checked).toBe(1);
+  });
+});
+
+describe('snapshotTicketToArchive', () => {
+  beforeEach(() => {
+    selectQueue.length = 0;
+    dbMock.select.mockClear();
+    dbMock.insert.mockClear();
+    transactionMock.mockClear();
+    insertValuesMock.mockClear();
+    insertValuesMock.mockReturnValue({
+      onConflictDoNothing: vi.fn(async () => undefined),
+    });
+    transactionMock.mockImplementation(async (cb: (tx: typeof dbMock) => Promise<unknown>) => {
+      return await cb(dbMock);
+    });
+  });
+
+  it('runs the read + archive insert inside a single transaction', async () => {
+    // Read consistency: ticket row and count must be observed atomically with
+    // the archive insert so a concurrent message does not desync messageCount.
+    const ticket = makeTicketRow();
+    selectQueue.push([ticket]);
+    selectQueue.push([{ count: 7 }]);
+
+    const { snapshotTicketToArchive } = await import('./archive.js');
+    await snapshotTicketToArchive('ticket-1');
+
+    expect(transactionMock).toHaveBeenCalledTimes(1);
+    expect(insertValuesMock).toHaveBeenCalledTimes(1);
+    const inserted = insertValuesMock.mock.calls[0][0];
+    expect(inserted.id).toBe('ticket-1');
+    expect(inserted.messageCount).toBe(7);
+  });
+
+  it('skips non-closed tickets without inserting', async () => {
+    const ticket = makeTicketRow({ status: 'open' });
+    selectQueue.push([ticket]);
+
+    const { snapshotTicketToArchive } = await import('./archive.js');
+    await snapshotTicketToArchive('ticket-1');
+
+    expect(transactionMock).toHaveBeenCalledTimes(1);
+    expect(insertValuesMock).not.toHaveBeenCalled();
+  });
+
+  it('skips missing tickets without inserting', async () => {
+    selectQueue.push([]);
+
+    const { snapshotTicketToArchive } = await import('./archive.js');
+    await snapshotTicketToArchive('nope');
+
+    expect(transactionMock).toHaveBeenCalledTimes(1);
+    expect(insertValuesMock).not.toHaveBeenCalled();
   });
 });
 

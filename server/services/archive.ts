@@ -183,32 +183,39 @@ export async function verifyAuditChain(): Promise<{ valid: boolean; checked: num
  * Snapshot a single ticket into archived_tickets immediately (on close/resolve).
  * Idempotent via onConflictDoNothing. Leaves the live row + messages in place —
  * the scheduled archive/GDPR job handles eventual deletion after retention.
+ *
+ * The read (ticket + messageCount) and write (archive insert) run in a single
+ * transaction so the snapshot reflects a consistent point-in-time view. Without
+ * this, a concurrent message insert between the count and the archive write
+ * would produce a snapshot with the wrong messageCount.
  */
 export async function snapshotTicketToArchive(ticketId: string): Promise<void> {
-  const rows = await db.select().from(tickets).where(eq(tickets.id, ticketId)).limit(1);
-  const ticket = rows[0];
-  if (!ticket) return;
-  if (ticket.status !== 'closed') return;
+  await db.transaction(async (tx) => {
+    const rows = await tx.select().from(tickets).where(eq(tickets.id, ticketId)).limit(1);
+    const ticket = rows[0];
+    if (!ticket) return;
+    if (ticket.status !== 'closed') return;
 
-  const [countRow] = await db.select({ count: sql<number>`count(*)` })
-    .from(messages)
-    .where(eq(messages.ticketId, ticketId));
+    const [countRow] = await tx.select({ count: sql<number>`count(*)` })
+      .from(messages)
+      .where(eq(messages.ticketId, ticketId));
 
-  await db.insert(archivedTickets).values({
-    id: ticket.id,
-    partnerId: ticket.partnerId,
-    dept: ticket.dept,
-    agentId: ticket.agentId ?? undefined,
-    supportId: ticket.supportId ?? undefined,
-    status: ticket.status ?? 'closed',
-    createdAt: ticket.createdAt,
-    closedAt: ticket.closedAt ?? undefined,
-    closedBy: ticket.closedBy ?? undefined,
-    closingNotes: ticket.closingNotes ?? undefined,
-    reopenCount: ticket.reopenCount ?? 0,
-    messageCount: Number(countRow?.count ?? 0),
-    archivedAt: new Date().toISOString(),
-  }).onConflictDoNothing();
+    await tx.insert(archivedTickets).values({
+      id: ticket.id,
+      partnerId: ticket.partnerId,
+      dept: ticket.dept,
+      agentId: ticket.agentId ?? undefined,
+      supportId: ticket.supportId ?? undefined,
+      status: ticket.status ?? 'closed',
+      createdAt: ticket.createdAt,
+      closedAt: ticket.closedAt ?? undefined,
+      closedBy: ticket.closedBy ?? undefined,
+      closingNotes: ticket.closingNotes ?? undefined,
+      reopenCount: ticket.reopenCount ?? 0,
+      messageCount: Number(countRow?.count ?? 0),
+      archivedAt: new Date().toISOString(),
+    }).onConflictDoNothing();
+  });
 }
 
 /**
