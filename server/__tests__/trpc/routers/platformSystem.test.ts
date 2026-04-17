@@ -7,27 +7,42 @@ const source = readFileSync(
   'utf-8'
 );
 
-describe('platform system — SMTP password masking', () => {
-  it('getMailConfig strips smtpPass and apiKey from response', () => {
-    expect(source).toMatch(/const \{ smtpPass, apiKey, \.\.\.safe \} = raw/);
+/**
+ * Thin guard on the platform/system router's mail_config surface. The deeper
+ * encryption contract (encrypt-on-write, decrypt-on-read, legacy plaintext
+ * fallback, bootstrap upgrade) lives in
+ * `__tests__/services/mailConfigEncryption.test.ts`. This file only asserts
+ * the router-shape invariants that platform operators depend on: the merged
+ * object is what gets persisted, the client never sees the secret, and the
+ * `has*` flags reflect either form.
+ */
+describe('platform system — mail_config router surface', () => {
+  it('getMailConfig strips secrets in BOTH forms from the response', () => {
+    // Ciphertext AND legacy plaintext must all be destructured away before
+    // returning — never leak a secret to the client, encrypted or otherwise.
+    expect(source).toMatch(
+      /const\s*\{\s*smtpPass,\s*apiKey,\s*encryptedSmtpPass,\s*encryptedApiKey,\s*\.\.\.safe\s*\}\s*=\s*raw/,
+    );
   });
 
-  it('getMailConfig returns hasSmtpPass boolean indicator', () => {
-    expect(source).toContain('hasSmtpPass:');
-    expect(source).toMatch(/typeof smtpPass === 'string' && smtpPass\.length > 0/);
+  it('getMailConfig hasSmtpPass checks ciphertext OR legacy plaintext', () => {
+    expect(source).toMatch(
+      /hasSmtpPass:\s*hasSecret\(encryptedSmtpPass\)\s*\|\|\s*hasSecret\(smtpPass\)/,
+    );
   });
 
-  it('getMailConfig returns hasApiKey boolean indicator', () => {
-    expect(source).toContain('hasApiKey:');
-    expect(source).toMatch(/typeof apiKey === 'string' && apiKey\.length > 0/);
+  it('getMailConfig hasApiKey checks ciphertext OR legacy plaintext', () => {
+    expect(source).toMatch(
+      /hasApiKey:\s*hasSecret\(encryptedApiKey\)\s*\|\|\s*hasSecret\(apiKey\)/,
+    );
   });
 
-  it('updateMailConfig preserves existing smtpPass when client omits it', () => {
-    expect(source).toMatch(/!input\.smtpPass && existing\.smtpPass/);
+  it('updateMailConfig preserves existing encrypted smtpPass when client omits it', () => {
+    expect(source).toMatch(/merged\.encryptedSmtpPass\s*=\s*existing\.encryptedSmtpPass/);
   });
 
-  it('updateMailConfig preserves existing apiKey when client omits it', () => {
-    expect(source).toMatch(/!input\.apiKey && existing\.apiKey/);
+  it('updateMailConfig preserves existing encrypted apiKey when client omits it', () => {
+    expect(source).toMatch(/merged\.encryptedApiKey\s*=\s*existing\.encryptedApiKey/);
   });
 
   it('updateMailConfig writes merged value (not raw input) to DB', () => {

@@ -9,6 +9,7 @@ import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
 import { MailService } from '../../../services/mail.js';
 import { renderTestEmail } from '../../../services/mailTemplates.js';
+import { encrypt } from '../../../services/encryption.js';
 import { APP_NAME } from '../../../constants.js';
 
 export const platformSystemRouter = router({
@@ -82,12 +83,16 @@ export const platformSystemRouter = router({
         .limit(1);
 
       const raw = (config[0]?.value as Record<string, unknown>) || { provider: 'none' };
-      // Never return secrets to the client — only indicate whether they're set
-      const { smtpPass, apiKey, ...safe } = raw;
+      // Never return secrets (ciphertext OR plaintext) to the client — only
+      // booleans indicating presence. Legacy plaintext `smtpPass` / `apiKey`
+      // rows still exist in older installs until upgradeMailConfigEncryption
+      // runs, so the has-flag must consider both forms.
+      const { smtpPass, apiKey, encryptedSmtpPass, encryptedApiKey, ...safe } = raw;
+      const hasSecret = (v: unknown) => typeof v === 'string' && v.length > 0;
       return {
         ...safe,
-        hasSmtpPass: typeof smtpPass === 'string' && smtpPass.length > 0,
-        hasApiKey: typeof apiKey === 'string' && apiKey.length > 0,
+        hasSmtpPass: hasSecret(encryptedSmtpPass) || hasSecret(smtpPass),
+        hasApiKey: hasSecret(encryptedApiKey) || hasSecret(apiKey),
       };
     } catch (err: unknown) {
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
@@ -110,11 +115,37 @@ export const platformSystemRouter = router({
       try {
         const before = await db.select().from(systemSettings).where(eq(systemSettings.key, 'mail_config')).limit(1);
 
-        // Preserve existing secrets when client omits them
         const existing = (before[0]?.value as Record<string, unknown>) || {};
-        const merged = { ...input };
-        if (!input.smtpPass && existing.smtpPass) (merged as Record<string, unknown>).smtpPass = existing.smtpPass;
-        if (!input.apiKey && existing.apiKey) (merged as Record<string, unknown>).apiKey = existing.apiKey;
+        // Strip the plaintext secrets from the input before they hit the
+        // stored object — they will be re-added only as ciphertext below.
+        const { smtpPass: inputSmtpPass, apiKey: inputApiKey, ...inputRest } = input;
+        const merged: Record<string, unknown> = { ...inputRest };
+
+        // --- smtpPass handling ---
+        if (inputSmtpPass) {
+          // Client supplied a new value → encrypt fresh.
+          merged.encryptedSmtpPass = encrypt(inputSmtpPass);
+        } else if (existing.encryptedSmtpPass) {
+          // Client omitted → keep existing ciphertext.
+          merged.encryptedSmtpPass = existing.encryptedSmtpPass;
+        } else if (typeof existing.smtpPass === 'string' && existing.smtpPass.length > 0) {
+          // Legacy plaintext present → lazy upgrade to ciphertext on this write.
+          merged.encryptedSmtpPass = encrypt(existing.smtpPass);
+        }
+
+        // --- apiKey handling (same rules) ---
+        if (inputApiKey) {
+          merged.encryptedApiKey = encrypt(inputApiKey);
+        } else if (existing.encryptedApiKey) {
+          merged.encryptedApiKey = existing.encryptedApiKey;
+        } else if (typeof existing.apiKey === 'string' && existing.apiKey.length > 0) {
+          merged.encryptedApiKey = encrypt(existing.apiKey);
+        }
+
+        // Belt-and-braces: the stored value MUST NOT contain plaintext secret
+        // keys, even if some future code path tries to re-introduce them.
+        delete (merged as Record<string, unknown>).smtpPass;
+        delete (merged as Record<string, unknown>).apiKey;
 
         await db.insert(systemSettings)
           .values({
