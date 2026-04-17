@@ -502,7 +502,6 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   const [role, setRole] = useState<'agent'|'support'>('agent');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const { activeMembershipId, memberships } = useStoreShallow((s) => ({
     activeMembershipId: s.activeMembershipId,
@@ -512,12 +511,8 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   const departments = activeMembership?.manifest?.departments || [];
 
   const inviteMutation = trpc.partner.inviteExternalUser.useMutation({
-    onSuccess: (data) => {
-      if (data.tempPassword) {
-        setTempPassword(data.tempPassword);
-      } else {
-        onInvited();
-      }
+    onSuccess: () => {
+      onInvited();
     },
     onError: (err) => setToast({ message: err.message, type: 'error' })
   });
@@ -528,45 +523,6 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
       email, name, role, departments: selectedDepts,
     });
   };
-
-  if (tempPassword) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => { setTempPassword(null); onInvited(); }} aria-label="Close" />
-        <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border-2 border-border-heavy p-8 w-full max-w-[480px] relative z-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.2)]">
-          <h3 className="text-2xl font-bold uppercase tracking-tighter mb-4 flex items-center gap-3">
-            <Check className="h-6 w-6 text-accent-green" />
-            Invitation Generated
-          </h3>
-          <div className="space-y-6">
-            <p className="text-sm font-bold uppercase tracking-tight opacity-70">New identity record created. Provision the temporary credentials below:</p>
-            <div className="border-2 border-border bg-bg-surface p-6 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-8 h-8 bg-accent-blue/10 transform rotate-45 translate-x-4 -translate-y-4" />
-              <p className="font-mono text-[9px] uppercase tracking-widest text-text-muted mb-3 italic">One-Time Credentials</p>
-              <div className="flex items-center justify-between gap-4">
-                <code className="font-mono text-base font-bold break-all text-accent-blue select-all bg-bg-elevated px-2 py-1">{tempPassword}</code>
-                <button
-                  onClick={() => navigator.clipboard.writeText(tempPassword)}
-                  className="px-4 py-2 text-[10px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated active:scale-95 transition-all"
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-            <p className="text-[9px] uppercase font-bold text-accent-red tracking-widest animate-pulse">Critical: This sequence will not be displayed again. Secure it immediately.</p>
-          </div>
-          <div className="flex justify-end mt-8 border-t border-border pt-6">
-            <button
-              onClick={() => { setTempPassword(null); onInvited(); }}
-              className="px-8 py-3 text-[11px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/90 transition-all"
-            >
-              System Ready
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

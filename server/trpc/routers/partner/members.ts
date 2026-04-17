@@ -212,7 +212,7 @@ export const partnerMembersRouter = router({
         });
 
         logger.info({ userId: newUserId }, '[inviteExternalUser] User created');
-        return { success: true, userId: newUserId, tempPassword: '' };
+        return { success: true, userId: newUserId };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });

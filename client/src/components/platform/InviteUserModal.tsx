@@ -17,7 +17,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
     email: '', name: '', role: 'support', partnerId: '', dept: ''
   });
   const [error, setError] = useState('');
-  const [result, setResult] = useState<{ tempPassword: string | null; isExistingUser: boolean; partnerName: string } | null>(null);
+  const [result, setResult] = useState<{ isExistingUser: boolean; partnerName: string } | null>(null);
 
   const { data: partners } = trpc.platform.listPartners.useQuery();
 
@@ -28,7 +28,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
       setError('');
       const currentPartners = utils.platform.listPartners.getData();
       const partnerName = currentPartners?.find(p => p.id === form.partnerId)?.name || form.partnerId;
-      setResult({ tempPassword: data.tempPassword, isExistingUser: data.isExistingUser, partnerName });
+      setResult({ isExistingUser: data.isExistingUser, partnerName });
       setForm({ email: '', name: '', role: 'support', partnerId: '', dept: '' });
       utils.platform.listGlobalUsers.invalidate();
       onClose();
@@ -63,24 +63,6 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
               </p>
               <p className="text-[10px] uppercase text-[var(--color-text-muted)]">
                 {t('status_linked_sso')}
-              </p>
-            </div>
-          ) : result.tempPassword ? (
-            <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest font-mono">
-                {result.partnerName}
-              </p>
-              <div className="border border-[var(--color-border)] p-4">
-                <p className="mono-label mb-2">{t('password_label')}</p>
-                <div className="flex items-center justify-between gap-3">
-                  <code className="font-mono text-sm font-bold break-all text-[var(--color-text-primary)]">{result.tempPassword}</code>
-                  <button onClick={() => navigator.clipboard.writeText(result.tempPassword!)}
-                    className="btn-secondary px-3 py-1.5 text-[9px] uppercase tracking-widest"
-                  >Copy</button>
-                </div>
-              </div>
-              <p className="text-[9px] uppercase font-bold text-[var(--color-text-muted)]">
-                {t('config_verify_note')}
               </p>
             </div>
           ) : (
