@@ -8,9 +8,12 @@ import ConfirmDialog from '../ConfirmDialog';
 import GuestBadge from '../GuestBadge';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import { OnlineSupport } from '../../types';
+import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 export default function AdminTeam() {
   const t = useT();
+  const isExternal = useIsExternalAdmin();
+  const guestTooltip = t('guest_admin_disabled_tooltip');
   const { activeMembershipId, memberships } = useStoreShallow((s) => ({
     activeMembershipId: s.activeMembershipId,
     memberships: s.memberships,
@@ -146,7 +149,11 @@ export default function AdminTeam() {
           <div className="flex gap-2">
             <button
               onClick={() => setShowInviteModal(true)}
-              className="flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] border-2 border-accent-blue hover:bg-accent-blue/90 active:scale-[0.98] transition-all shadow-[4px_4px_0px_0px_rgba(59,130,246,0.2)] whitespace-nowrap"
+              disabled={isExternal}
+              aria-disabled={isExternal || undefined}
+              title={isExternal ? guestTooltip : undefined}
+              data-guest-disabled={isExternal || undefined}
+              className="flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] border-2 border-accent-blue hover:bg-accent-blue/90 active:scale-[0.98] transition-all shadow-[4px_4px_0px_0px_rgba(59,130,246,0.2)] whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Invite External
             </button>
@@ -297,8 +304,11 @@ export default function AdminTeam() {
                           <div className="flex items-center gap-2 pt-2 border-t border-border mt-2">
                             <button
                               onClick={() => updateMemberMutation.mutate({ membershipId: member.membershipId, departments: editDepts })}
-                              disabled={updateMemberMutation.isPending || (member.role === 'support' && editDepts.length === 0)}
-                              className="flex-1 py-1.5 text-[9px] font-bold bg-accent-blue text-[var(--color-btn-text-inverse)] uppercase border border-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 transition-all"
+                              disabled={isExternal || updateMemberMutation.isPending || (member.role === 'support' && editDepts.length === 0)}
+                              aria-disabled={isExternal || undefined}
+                              title={isExternal ? guestTooltip : undefined}
+                              data-guest-disabled={isExternal || undefined}
+                              className="flex-1 py-1.5 text-[9px] font-bold bg-accent-blue text-[var(--color-btn-text-inverse)] uppercase border border-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                             >
                               {updateMemberMutation.isPending ? '...' : 'Save'}
                             </button>
@@ -312,8 +322,12 @@ export default function AdminTeam() {
                         </div>
                       ) : (
                         <div
-                          className="cursor-pointer group/dept flex flex-wrap gap-1.5 items-center min-h-[32px] p-1 -m-1 hover:bg-bg-elevated/50 transition-colors border border-transparent hover:border-border"
+                          aria-disabled={isExternal || undefined}
+                          title={isExternal ? guestTooltip : undefined}
+                          data-guest-disabled={isExternal || undefined}
+                          className={`group/dept flex flex-wrap gap-1.5 items-center min-h-[32px] p-1 -m-1 transition-colors border border-transparent ${isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-bg-elevated/50 hover:border-border'}`}
                           onClick={() => {
+                            if (isExternal) return;
                             setEditingMembershipId(member.membershipId);
                             setEditDepts((member.departments as string[]) || []);
                           }}
@@ -335,7 +349,11 @@ export default function AdminTeam() {
                     <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
-                        className="p-2 text-[9px] font-bold uppercase tracking-widest text-text-muted hover:text-accent-red hover:bg-accent-red/5 transition-all opacity-40 hover:opacity-100"
+                        disabled={isExternal}
+                        aria-disabled={isExternal || undefined}
+                        title={isExternal ? guestTooltip : undefined}
+                        data-guest-disabled={isExternal || undefined}
+                        className="p-2 text-[9px] font-bold uppercase tracking-widest text-text-muted hover:text-accent-red hover:bg-accent-red/5 transition-all opacity-40 hover:opacity-100 disabled:cursor-not-allowed"
                       >
                         Remove
                       </button>
