@@ -187,7 +187,7 @@ describe('runDailyPurge', () => {
     const txCallback = dbMock.transaction.mock.calls[0][0];
     const txMock = { execute: vi.fn().mockResolvedValue({ rowCount: 0 }) };
     await txCallback(txMock);
-    expect(txMock.execute).toHaveBeenCalledTimes(6); // messages, ticket_labels, app_feedback, tickets + audit_log anonymize + audit_archive anonymize (ratings survive ticket purge — comments nullified separately)
+    expect(txMock.execute).toHaveBeenCalledTimes(7); // messages, ticket_labels, app_feedback, ratings agent_id anon, tickets + audit_log anonymize + audit_archive anonymize (ratings rows survive — comments nullified by a separate step)
   });
 
   it('does NOT delete tickets within the retention window', async () => {
