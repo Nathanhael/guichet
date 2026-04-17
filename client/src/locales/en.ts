@@ -186,6 +186,7 @@ const en: Record<string, string> = {
     sso_no_mappings: 'No group mappings configured yet. Add a mapping to enable auto-provisioning.',
     sso_no_groups_message: 'Your Microsoft account was verified, but no workspace access has been configured for your security groups. Contact your platform administrator.',
     sso_guest_multi_partner_message: 'Your account is linked to multiple partner tenants. This is not allowed for external guests — contact your administrator to resolve Azure group assignments.',
+    sso_invite_expired_message: 'Your invitation has expired. Please ask your administrator to send a new invite.',
     guest_badge: 'GUEST',
     guest_badge_tooltip: 'External partner guest (B2B) — limited admin permissions.',
     guest_badge_aria: 'External guest user',

@@ -180,6 +180,7 @@ const fr: Record<string, string> = {
     sso_no_mappings: 'Aucun mapping de groupe configur\u00e9. Ajoutez un mapping pour activer le provisionnement automatique.',
     sso_no_groups_message: 'Votre compte Microsoft a \u00e9t\u00e9 v\u00e9rifi\u00e9, mais aucun acc\u00e8s n\'a \u00e9t\u00e9 configur\u00e9 pour vos groupes de s\u00e9curit\u00e9. Contactez votre administrateur.',
     sso_guest_multi_partner_message: 'Votre compte est li\u00e9 \u00e0 plusieurs tenants partenaires. Cela n\'est pas autoris\u00e9 pour les invit\u00e9s externes \u2014 contactez votre administrateur pour r\u00e9soudre l\'attribution des groupes Azure.',
+    sso_invite_expired_message: 'Votre invitation a expir\u00e9. Veuillez demander \u00e0 votre administrateur d\'envoyer une nouvelle invitation.',
     guest_badge: 'INVIT\u00c9',
     guest_badge_tooltip: 'Invit\u00e9 externe partenaire (B2B) \u2014 permissions administratives limit\u00e9es.',
     guest_badge_aria: 'Utilisateur invit\u00e9 externe',
