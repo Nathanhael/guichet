@@ -183,6 +183,8 @@ const fr: Record<string, string> = {
     guest_badge: 'INVIT\u00c9',
     guest_badge_tooltip: 'Invit\u00e9 externe partenaire (B2B) \u2014 permissions administratives limit\u00e9es.',
     guest_badge_aria: 'Utilisateur invit\u00e9 externe',
+    guest_admin_disabled_tooltip: 'Non disponible pour les utilisateurs invit\u00e9s externes. Demandez \u00e0 un administrateur interne d\'effectuer cette action.',
+    guest_admin_disabled_tooltip_short: 'Indisponible pour les invit\u00e9s',
     partner_switch_confirm: 'Changer de tenant ? Les conversations ouvertes et les brouillons non sauvegard\u00e9s seront perdus.',
     add_mapping: 'Ajouter un mapping',
     edit_mapping: 'Modifier le mapping',
