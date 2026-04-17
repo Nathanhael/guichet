@@ -1,6 +1,7 @@
 // server/services/linkPreview.ts — Server-side OG unfurling for link previews
 import { resolve4, resolve6 } from 'dns/promises';
 import { isIP } from 'net';
+import { createHash } from 'crypto';
 import logger from '../utils/logger.js';
 import { getRedisClients } from '../utils/redis.js';
 
@@ -20,11 +21,17 @@ const MAX_HTML_BYTES = 50 * 1024; // 50 KB
 const CACHE_PREFIX = 'og:';
 const CACHE_TTL_SECONDS = 86400; // 24 hours
 
+// Hash the URL so Redis keys have a bounded size regardless of the input URL
+// (would otherwise be an unbounded-memory / key-DoS vector on crafted URLs).
+function cacheKey(url: string): string {
+  return `${CACHE_PREFIX}${createHash('sha256').update(url).digest('hex')}`;
+}
+
 async function getCachedPreview(url: string): Promise<LinkPreview | null> {
   try {
     const { pubClient } = getRedisClients();
     if (!pubClient) return null;
-    const cached = await pubClient.get(`${CACHE_PREFIX}${url}`);
+    const cached = await pubClient.get(cacheKey(url));
     if (cached) return JSON.parse(cached) as LinkPreview;
     return null;
   } catch {
@@ -36,7 +43,7 @@ async function setCachedPreview(url: string, preview: LinkPreview): Promise<void
   try {
     const { pubClient } = getRedisClients();
     if (!pubClient) return;
-    await pubClient.set(`${CACHE_PREFIX}${url}`, JSON.stringify(preview), { EX: CACHE_TTL_SECONDS });
+    await pubClient.set(cacheKey(url), JSON.stringify(preview), { EX: CACHE_TTL_SECONDS });
   } catch {
     // fire-and-forget, cache write failure is not critical
   }
