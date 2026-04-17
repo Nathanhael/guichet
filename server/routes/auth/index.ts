@@ -1,4 +1,5 @@
 import express from 'express';
+import config from '../../config.js';
 import logger from '../../utils/logger.js';
 import { registerLoginRoutes } from './login.js';
 import { registerPasswordRoutes } from './password.js';
@@ -11,6 +12,11 @@ logger.info('[Auth] Routes file loaded');
 registerPasswordRoutes(router);
 registerLoginRoutes(router);
 registerSessionRoutes(router);
-registerDevLoginRoutes(router);
+
+// Gate dev-login at mount time so the route literal does not exist in
+// production. The in-handler NODE_ENV check stays as defense in depth.
+if (config.NODE_ENV !== 'production') {
+  registerDevLoginRoutes(router);
+}
 
 export default router;
