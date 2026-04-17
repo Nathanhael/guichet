@@ -24,12 +24,10 @@ export default function AdminArchive() {
 
   const { data: allLabels = [] } = trpc.label.list.useQuery();
   const { data: membersData } = trpc.partner.listMembers.useQuery({ role: 'support' }, { staleTime: 60_000 });
-  const supportMembers = useMemo(() => {
-    const rows = (membersData as { items?: Array<{ userId: string; name: string; role: string }> } | undefined)?.items
-      ?? (membersData as Array<{ userId: string; name: string; role: string }> | undefined)
-      ?? [];
-    return rows.filter((m) => m.role === 'support');
-  }, [membersData]);
+  const supportMembers = useMemo(
+    () => (membersData ?? []).filter((m) => m.role === 'support'),
+    [membersData],
+  );
 
   const ticketsQuery = trpc.ticket.list.useQuery({
     status: ['closed'],
