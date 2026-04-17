@@ -124,9 +124,9 @@ export interface Participant {
   /**
    * Azure B2B guest flag snapshot at join time (denormalized on
    * `tickets.participants`). Drives the amber ring around guest avatars
-   * in ChatHeader. Optional for legacy rows written before the B2B
-   * plumbing landed — falsy means not-a-guest. ChatHeader falls back to
-   * the presence store when this field is absent.
+   * in ChatHeader. Always written by `assignSupport`; kept optional only
+   * so legacy fixtures that don't include the field still parse (reseed
+   * to refresh). Falsy means not-a-guest.
    */
   isExternal?: boolean;
 }
