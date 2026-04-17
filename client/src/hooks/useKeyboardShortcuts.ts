@@ -81,6 +81,10 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     if (!enabled) return;
 
     function handleKeyDown(e: KeyboardEvent) {
+      // Skip when a descendant handler has already consumed the event
+      // (e.g. CommandPalette / SearchBar call preventDefault on Escape).
+      if (e.defaultPrevented) return;
+
       const ctrl = e.ctrlKey || e.metaKey;
       const alt = e.altKey;
       const shift = e.shiftKey;
@@ -192,7 +196,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
       }
 
       // Esc — exit focus mode
+      // Skip when any modal/dialog is open; its own Esc handler owns the event.
       if (e.key === 'Escape' && !ctrl && !alt) {
+        if (document.querySelector('[role="dialog"]')) return;
         onExitFocus();
         return;
       }
