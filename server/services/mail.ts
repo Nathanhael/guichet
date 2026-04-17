@@ -1,4 +1,3 @@
-// @ts-ignore nodemailer types may not be installed
 import nodemailer from 'nodemailer';
 import { db } from '../db.js';
 import { systemSettings, users } from '../db/schema.js';
