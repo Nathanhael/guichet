@@ -313,10 +313,7 @@ export default function LoginView() {
         )}
 
         {viewMode === 'demo' && (
-          <DemoUserPicker
-            onLoginSuccess={handleLoginSuccess}
-            onMfaRequired={handleMfaRequired}
-          />
+          <DemoUserPicker onLoginSuccess={handleLoginSuccess} />
         )}
       </div>
 
