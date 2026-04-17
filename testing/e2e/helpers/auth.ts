@@ -16,7 +16,7 @@ import type { Page } from '@playwright/test';
  */
 
 export const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3001';
-export const DEMO_PASSWORD = 'DemoPass1!';
+export const DEMO_PASSWORD = 'password123';
 
 export interface LoginResult {
   ok: boolean;
