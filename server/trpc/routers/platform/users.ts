@@ -14,16 +14,18 @@ import { APP_NAME } from '../../../constants.js';
 import config from '../../../config.js';
 
 /**
- * Should we skip the invite email for this user?
+ * Is this email address internal staff (Entra-provisioned)?
  *
- * Skipped when the partner supports SSO (`sso` or `both`) AND the email domain
- * is in the configured internal-domain list. These users authenticate via
- * Azure AD regardless of the partner's local-fallback option, so a password
- * email would be noise (and a mild security smell — sending a temp password
- * to an account that will never use local auth).
+ * Returns true when the email's domain is in the configured internal-domain
+ * list. Used to suppress the invite email: internal staff sign in via Entra
+ * SSO and don't need the "click the SSO button" nudge. External B2B guests
+ * (and anyone with a non-internal domain) still receive it.
+ *
+ * Note: we can't use `users.isExternal` here — that flag is stamped by the
+ * SSO callback on first login, so at invite time (before the user ever logs
+ * in) it's always false. The email domain is the only signal available.
  */
-function shouldSkipInviteMail(email: string, partnerAuthMethod: string): boolean {
-  if (partnerAuthMethod !== 'sso' && partnerAuthMethod !== 'both') return false;
+function isInternalStaffEmail(email: string): boolean {
   const domains = config.INTERNAL_EMAIL_DOMAINS.split(',').map(d => d.trim().toLowerCase()).filter(Boolean);
   if (domains.length === 0) return false;
   const emailDomain = email.split('@')[1]?.toLowerCase();
@@ -218,11 +220,9 @@ export const platformUsersRouter = router({
           departments: input.departments || []
         });
 
-        // Skip invite email for internal SSO users — they're provisioned via Azure AD and don't need notification.
-        // Checks partner auth capability (not resolved user method) so 'both' partners still skip for internal domains.
-        const skipInviteEmail = shouldSkipInviteMail(input.email, partner[0].authMethod);
+        const skipInviteEmail = isInternalStaffEmail(input.email);
         if (skipInviteEmail) {
-          logger.info({ email: input.email, partnerAuthMethod: partner[0].authMethod }, '[inviteUser] Skipping invite email for internal SSO user');
+          logger.info({ email: input.email }, '[inviteUser] Skipping invite email for internal staff');
         } else {
           try {
             const partnerName = (await db.select({ name: partners.name }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0]?.name || input.partnerId;
@@ -279,11 +279,10 @@ export const platformUsersRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'User or Partner not found' });
         }
 
-        // Skip reminder for internal SSO users (provisioned via Azure AD).
         // Checked BEFORE hashing a password or rendering a template to avoid wasted work
         // and — more importantly — to avoid rotating the password on an SSO-only user.
-        if (shouldSkipInviteMail(user.email ?? '', partner.authMethod)) {
-          logger.info({ userId: user.id, email: user.email, partnerAuthMethod: partner.authMethod }, '[resendInvite] Skipping reminder for internal SSO user');
+        if (isInternalStaffEmail(user.email ?? '')) {
+          logger.info({ userId: user.id, email: user.email }, '[resendInvite] Skipping reminder for internal staff');
           await db.insert(auditLog).values({
             id: randomUUID(),
             action: 'member.invite_resent',
