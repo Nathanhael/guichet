@@ -4,6 +4,7 @@ import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { Pencil, Trash2, Check, X, Plus } from 'lucide-react';
 import Toast from '../Toast';
+import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 interface RefField {
   label: string;
@@ -34,6 +35,8 @@ export default function AdminDepartments() {
   }));
   const t = useT();
   const utils = trpc.useUtils();
+  const isExternal = useIsExternalAdmin();
+  const guestTooltip = t('guest_admin_disabled_tooltip');
 
   // Fetch departments from server — single source of truth
   const { data: manifest } = trpc.partner.getManifest.useQuery();
@@ -234,7 +237,10 @@ export default function AdminDepartments() {
         </div>
         <button
           onClick={handleAdd}
-          disabled={isSaving}
+          disabled={isExternal || isSaving}
+          aria-disabled={isExternal || undefined}
+          title={isExternal ? guestTooltip : undefined}
+          data-guest-disabled={isExternal || undefined}
           className="btn-primary disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -334,7 +340,10 @@ export default function AdminDepartments() {
                 <div className="flex items-center gap-2 pt-2">
                   <button
                     onClick={saveEdit}
-                    disabled={isSaving}
+                    disabled={isExternal || isSaving}
+                    aria-disabled={isExternal || undefined}
+                    title={isExternal ? guestTooltip : undefined}
+                    data-guest-disabled={isExternal || undefined}
                     className="btn-primary disabled:opacity-50"
                   >
                     <Check className="h-3.5 w-3.5" />
@@ -362,15 +371,21 @@ export default function AdminDepartments() {
                 <div className="px-4 py-3 flex items-center justify-center gap-1">
                   <button
                     onClick={() => startEdit(idx)}
-                    className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
-                    title="Edit"
+                    disabled={isExternal}
+                    aria-disabled={isExternal || undefined}
+                    data-guest-disabled={isExternal || undefined}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={isExternal ? guestTooltip : 'Edit'}
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => startDelete(idx)}
-                    className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
-                    title="Delete"
+                    disabled={isExternal}
+                    aria-disabled={isExternal || undefined}
+                    data-guest-disabled={isExternal || undefined}
+                    className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={isExternal ? guestTooltip : 'Delete'}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -388,7 +403,10 @@ export default function AdminDepartments() {
                 </span>
                 <button
                   onClick={confirmDelete}
-                  disabled={isSaving}
+                  disabled={isExternal || isSaving}
+                  aria-disabled={isExternal || undefined}
+                  title={isExternal ? guestTooltip : undefined}
+                  data-guest-disabled={isExternal || undefined}
                   className="btn-danger disabled:opacity-50"
                 >
                   Confirm

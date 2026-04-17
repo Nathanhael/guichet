@@ -1,9 +1,28 @@
 # Plan — Visibly disable destructive admin actions for guest users
 
 **Date:** 2026-04-17
-**Status:** Draft — awaiting review
+**Status:** Shipped
 **Author:** Claude (drafted with Bart)
 **Parent work:** [2026-04-16-partner-sso-b2b-guest.md](./2026-04-16-partner-sso-b2b-guest.md)
+
+## Execution notes (post-ship)
+
+- `useIsExternalAdmin` reads from the Zustand store (`user.isExternal`)
+  instead of calling `trpc.user.me.useQuery` as originally sketched.
+  The store already carries a fresh value (stamped at SSO callback,
+  refreshed on partner switch) and every other consumer (`ChatHeader`,
+  `UserMenu`, `MessageBubble`) reads it the same way. Skipping an extra
+  query keeps the admin tabs lighter and stays consistent.
+- Dedicated component-level tests for `AdminWebhooks.tsx`, `AdminTeam.tsx`,
+  and `AdminDepartments.tsx` were not created — they had no pre-existing
+  test files and the CLAUDE.md convention explicitly discourages
+  render-only smoke tests. The E2E spec covers the wiring end-to-end
+  against a real seed fixture; the primitive (`ExternalGuestGuard`)
+  has 7 unit tests.
+- `AdminWebhooks` ships wired but is not reachable via the UI (gated by
+  a `DISABLED_FEATURE` flag in `AdminView.tsx`). The E2E spec documents
+  this and covers Team + Departments only. When Webhooks is re-enabled
+  the wiring will cover it with no further work.
 
 ## Goal
 

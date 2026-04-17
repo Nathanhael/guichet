@@ -181,11 +181,20 @@ Every guest-relevant event writes to `audit_log`:
    `users.is_external` to existing rows on migration, which is an
    approximation for pre-plumbing history but accurate for guests who
    were already guests at the time they sent.
-3. **Destructive buttons are not visibly disabled.** A guest admin clicks,
-   gets a FORBIDDEN toast. UX polish — out of scope for the initial ship.
 4. **Partner-employee SSO via the partner's OWN IdP.** Not supported.
    Guests must federate through our Azure tenant. If a partner refuses
    B2B, fall back to the Option B plan (per-partner SSO).
+
+## Resolved follow-ups
+
+- **Destructive buttons are visibly disabled for guest admins.** Shipped
+  as a follow-up ([plan](../plans/2026-04-17-guest-admin-visible-disable.md)).
+  `AdminTeam`, `AdminDepartments`, and `AdminWebhooks` render destructive
+  controls with `disabled` + `aria-disabled="true"` + a hover tooltip when
+  the viewer is external. Backend `destructiveAdminProcedure` is unchanged
+  and remains the source of truth; the UI disable is additive
+  (defense-in-depth + UX). New seed fixture `admin_guest` (Gina Guest)
+  drives the E2E spec `testing/e2e/guest-admin-visible-disable.spec.ts`.
 
 ## File map — what shipped
 
