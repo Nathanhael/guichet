@@ -6,9 +6,12 @@ import { eq } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 import config from '../config.js';
 import { APP_NAME } from '../constants.js';
+import { decrypt } from './encryption.js';
 
 export type NotificationType = 'accountLocked' | 'mfaEnabled' | 'mfaDisabled' | 'passwordChanged';
 
+// Runtime shape — fields are plaintext after getConfig() has decrypted the
+// stored ciphertext. Never persist this shape; see StoredMailConfig.
 export interface MailConfig {
   provider: 'none' | 'smtp' | 'resend' | 'sendgrid';
   apiKey?: string;
@@ -21,12 +24,56 @@ export interface MailConfig {
   fromName: string;
 }
 
+// On-disk JSONB shape for system_settings.value where key='mail_config'.
+// Plaintext `smtpPass` / `apiKey` are kept on the type only for backward-compat
+// reading of rows written before this change; nothing writes them anymore.
+export interface StoredMailConfig extends Omit<MailConfig, 'smtpPass' | 'apiKey'> {
+  encryptedSmtpPass?: string;
+  encryptedApiKey?: string;
+  /** @deprecated Legacy plaintext — lazy-upgraded on next updateMailConfig. */
+  smtpPass?: string;
+  /** @deprecated Legacy plaintext — lazy-upgraded on next updateMailConfig. */
+  apiKey?: string;
+}
+
 export class MailService {
   private static async getConfig(): Promise<MailConfig | null> {
     try {
       const results = await db.select().from(systemSettings).where(eq(systemSettings.key, 'mail_config')).limit(1);
       if (results.length === 0) return null;
-      return results[0].value as MailConfig;
+      const stored = results[0].value as StoredMailConfig;
+
+      // Copy non-secret fields verbatim.
+      const { encryptedSmtpPass, encryptedApiKey, smtpPass: legacySmtpPass, apiKey: legacyApiKey, ...rest } = stored;
+      const out: MailConfig = { ...rest } as MailConfig;
+
+      // SMTP password — prefer encrypted, fall back to legacy plaintext.
+      if (encryptedSmtpPass) {
+        try {
+          out.smtpPass = decrypt(encryptedSmtpPass);
+        } catch (err) {
+          logger.error({ err }, '[MailService] Failed to decrypt smtpPass — disabling mail');
+          return null;
+        }
+      } else if (legacySmtpPass) {
+        logger.warn('[MailService] mail_config.smtpPass is stored as plaintext — will be upgraded on next save or at next boot');
+        out.smtpPass = legacySmtpPass;
+      }
+
+      // Provider API key — same rule.
+      if (encryptedApiKey) {
+        try {
+          out.apiKey = decrypt(encryptedApiKey);
+        } catch (err) {
+          logger.error({ err }, '[MailService] Failed to decrypt apiKey — disabling mail');
+          return null;
+        }
+      } else if (legacyApiKey) {
+        logger.warn('[MailService] mail_config.apiKey is stored as plaintext — will be upgraded on next save or at next boot');
+        out.apiKey = legacyApiKey;
+      }
+
+      return out;
     } catch (err) {
       logger.error({ err }, '[MailService] Failed to fetch config from DB');
       return null;
