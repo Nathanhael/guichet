@@ -28,9 +28,9 @@ vi.mock('../../../utils/trpc', () => ({
         useQuery: () => ({ data: [partner], isLoading: false }),
       },
       inviteUser: {
-        useMutation: (opts: { onSuccess?: (data: { tempPassword: string | null; isExistingUser: boolean }) => void; onError?: (err: Error) => void }) => {
+        useMutation: (opts: { onSuccess?: (data: { isExistingUser: boolean }) => void; onError?: (err: Error) => void }) => {
           mockInvite.mutate.mockImplementation(() =>
-            opts.onSuccess?.({ tempPassword: 'abc123', isExistingUser: false })
+            opts.onSuccess?.({ isExistingUser: false })
           );
           return mockInvite;
         },

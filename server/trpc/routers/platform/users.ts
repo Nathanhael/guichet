@@ -195,7 +195,7 @@ export const platformUsersRouter = router({
           metadata: { email: input.email, role: input.role, membershipId: memId }
         });
 
-        return { userId, membershipId: memId, tempPassword: '', isExistingUser };
+        return { userId, membershipId: memId, isExistingUser };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
