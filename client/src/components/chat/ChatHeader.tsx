@@ -51,10 +51,8 @@ export default function ChatHeader({
   const currentUserIsExternal = useStore(s => !!s.user?.isExternal);
   // Map of userId -> live status, used to light up support avatars and keep them in sync with presence changes.
   const supportStatusById = new Map<string, 'online' | 'away'>();
-  const supportExternalById = new Map<string, boolean>();
   for (const u of (onlineSupportUsers || [])) {
     supportStatusById.set(u.userId, u.status);
-    if (u.isExternal) supportExternalById.set(u.userId, true);
   }
   // Resolve a participant's live status. Returns the known status, or defaults the
   // current viewer to 'online' (they're obviously connected), or undefined when we
@@ -67,16 +65,17 @@ export default function ChatHeader({
   };
   // Azure B2B guest flag per participant. Authoritative source is the
   // `isExternal` field denormalized onto `tickets.participants` at join time
-  // (see docs/superpowers/specs/partner-sso-b2b-guest.md). Falls back to the
-  // live presence store when the participant row predates that plumbing
-  // (legacy tickets) and finally to the viewer's own `user.isExternal`.
+  // (see docs/superpowers/specs/partner-sso-b2b-guest.md). Tickets are
+  // reseeded, so every participant row carries the field; no legacy
+  // fallback. The viewer's own flag comes from the store because the
+  // viewer may not be in the participant list (agent-side chat).
   const resolveIsExternal = (
     p: { id: string; isExternal?: boolean } | string,
   ): boolean => {
     const userId = typeof p === 'string' ? p : p.id;
-    if (typeof p === 'object' && p.isExternal !== undefined) return !!p.isExternal;
+    if (typeof p === 'object') return !!p.isExternal;
     if (userId === currentUserId) return currentUserIsExternal;
-    return supportExternalById.get(userId) === true;
+    return false;
   };
   const t = useT();
   const { manifest } = usePartner();

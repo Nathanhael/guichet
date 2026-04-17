@@ -230,17 +230,13 @@ export async function assignSupport(
     name: supportName,
     isExternal: supportIsExternal,
   });
-  // "Already joined" probe matches only on id so we don't append a second
-  // entry when a legacy row exists for the same user without the new
-  // isExternal field (records written before the B2B plumbing).
-  const idOnlyProbe = JSON.stringify([{ id: supportId }]);
   await db.execute(sql`UPDATE tickets SET
     support_id = COALESCE(support_id, ${supportId}),
     support_name = COALESCE(support_name, ${supportName}),
     support_lang = COALESCE(support_lang, ${supportLang}),
     support_joined_at = COALESCE(support_joined_at, ${new Date().toISOString()}),
     participants = CASE
-      WHEN NOT (COALESCE(participants, '[]'::jsonb) @> ${idOnlyProbe}::jsonb)
+      WHEN NOT (COALESCE(participants, '[]'::jsonb) @> ${`[${participantJson}]`}::jsonb)
       THEN COALESCE(participants, '[]'::jsonb) || ${participantJson}::jsonb
       ELSE participants
     END,
