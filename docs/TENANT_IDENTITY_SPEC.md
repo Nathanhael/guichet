@@ -38,9 +38,8 @@ Production default:
 
 Auth method per partner:
 
-- All partners are SSO-only. The per-partner `auth_method` column and `auth_method` enum were removed in migration `0007_drop_auth_method.sql`.
+- All partners are SSO-only. The per-partner `auth_method` column and `auth_method` enum were removed in migration `0008_drop_auth_method.sql`. The per-user `users.auth_method` override followed in `0009_drop_users_auth_method.sql` — no code path read it after the partner-level drop.
 - Local auth (email/password) is reserved for platform operators, gated by `users.is_platform_operator`.
-- `users.auth_method` text column remains on the schema as legacy data; it is no longer written by the invite flows.
 
 Local password policy:
 
@@ -186,14 +185,6 @@ the Guichet user as external.
 - Platform operators are never external by definition (staff authenticate via our tenant as members, `acct !== 1`). The middleware short-circuits before its DB lookup for operators.
 
 Full ops runbook: `docs/superpowers/specs/partner-sso-b2b-guest.md`.
-
-### Mixed auth (`'both'` mode)
-
-1. Login page shows both email/password fields and SSO button.
-2. User chooses their preferred method.
-3. SSO users without a local password can only use SSO (password field is ignored).
-4. Local users with a password can always use local login as a fallback, even if partner prefers SSO.
-5. The invite flow lets admins choose `'local'` or `'sso'` per user, which sets `users.auth_method`.
 
 ## Current Implementation Rules
 
