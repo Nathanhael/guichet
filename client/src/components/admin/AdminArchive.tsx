@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { trpc } from '../../utils/trpc';
@@ -19,9 +19,17 @@ export default function AdminArchive() {
   const [preview, setPreview] = useState<Ticket | null>(null);
   const [previewMessages, setPreviewMessages] = useState<Message[]>([]);
   const [labelFilter, setLabelFilter] = useState('all');
+  const [supportFilter, setSupportFilter] = useState<'all' | 'none' | string>('all');
   const t = useT();
 
   const { data: allLabels = [] } = trpc.label.list.useQuery();
+  const { data: membersData } = trpc.partner.listMembers.useQuery({ role: 'support' }, { staleTime: 60_000 });
+  const supportMembers = useMemo(() => {
+    const rows = (membersData as { items?: Array<{ userId: string; name: string; role: string }> } | undefined)?.items
+      ?? (membersData as Array<{ userId: string; name: string; role: string }> | undefined)
+      ?? [];
+    return rows.filter((m) => m.role === 'support');
+  }, [membersData]);
 
   const ticketsQuery = trpc.ticket.list.useQuery({
     status: ['closed'],
@@ -31,6 +39,8 @@ export default function AdminArchive() {
     search: search.trim() || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
+    hasSupport: supportFilter === 'none' ? false : undefined,
+    supportId: supportFilter !== 'all' && supportFilter !== 'none' ? supportFilter : undefined,
   }, {
     refetchInterval: 60000, // Refresh once a minute
   });
@@ -139,6 +149,18 @@ export default function AdminArchive() {
               >
                 <option value="all">All depts</option>
                 {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            )}
+            {supportMembers.length > 0 && (
+              <select
+                value={supportFilter}
+                aria-label="Filter by support agent"
+                onChange={(e) => { setSupportFilter(e.target.value); resetPagination(); }}
+                className="bg-bg-elevated border-2 border-border-heavy px-2 py-1.5 text-[10px] font-bold uppercase outline-none cursor-pointer hover:border-accent-blue"
+              >
+                <option value="all">All support</option>
+                <option value="none">Abandoned (no support)</option>
+                {supportMembers.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
               </select>
             )}
             {allLabels.length > 0 && (
