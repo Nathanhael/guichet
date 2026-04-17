@@ -1,8 +1,8 @@
 # Drop `users.auth_method` column
 
-**Status:** Blocked — waiting on `claude/admiring-mendel-337850` (partners.auth_method drop) to land on `main`.
-**Branch (target):** rebase `claude/priceless-goldstine-686e45` onto updated `main` once unblocked.
-**Migration:** `server/drizzle/0008_drop_users_auth_method.sql` (assumes parent PR lands as `0007_drop_auth_method.sql`).
+**Status:** Shipped
+**Branch:** `claude/drop-users-auth-method` (merged to main)
+**Migration:** `server/drizzle/0009_drop_users_auth_method.sql` (parent PR landed as `0008_drop_auth_method.sql`, pushing this to 0009).
 
 ## Why
 
