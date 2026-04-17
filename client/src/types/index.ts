@@ -15,7 +15,6 @@ export interface PartnerManifest {
   aiRules?: string;
   themeConfig?: ThemeConfig;
   ollamaModel?: string;
-  authMethod?: 'local' | 'sso' | 'both';
 }
 
 export interface Membership {

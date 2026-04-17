@@ -27,10 +27,9 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
   const utils = trpc.useUtils();
   const [form, setForm] = useState<{
     name: string;
-    authMethod: 'local' | 'sso' | 'both';
     aiEnabled: boolean;
     aiFeatures: AiFeatures;
-  }>({ name: '', authMethod: 'local', aiEnabled: false, aiFeatures: {} });
+  }>({ name: '', aiEnabled: false, aiFeatures: {} });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showError = useCallback((message: string) => setToast({ message, type: 'error' }), []);
 
@@ -45,7 +44,6 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
 
       setForm({
         name: partner.name,
-        authMethod: partner.authMethod,
         aiEnabled: partner.aiEnabled ?? false,
         aiFeatures: { ...raw, messageImprovement: improvement },
       });
@@ -171,7 +169,6 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
               id: partner.id,
               data: {
                 name: form.name,
-                authMethod: form.authMethod,
                 aiEnabled: form.aiEnabled,
                 aiFeatures: form.aiFeatures,
               },

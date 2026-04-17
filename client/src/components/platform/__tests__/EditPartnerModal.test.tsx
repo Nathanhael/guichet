@@ -7,7 +7,7 @@ const { mockUpdate, partner } = vi.hoisted(() => ({
   mockUpdate: { mutate: vi.fn(), isPending: false },
   partner: {
     id: 'edit-1', name: 'EditCorp', logoUrl: null, industry: 'Tech',
-    status: 'active', authMethod: 'local' as const, createdAt: '', updatedAt: '',
+    status: 'active', createdAt: '', updatedAt: '',
   } satisfies Partner,
 }));
 
@@ -57,7 +57,7 @@ describe('EditPartnerModal', () => {
     fireEvent.click(screen.getByText('save_profile'));
     expect(mockUpdate.mutate).toHaveBeenCalledWith({
       id: 'edit-1',
-      data: expect.objectContaining({ name: 'NewName', authMethod: 'local' }),
+      data: expect.objectContaining({ name: 'NewName' }),
     });
   });
 

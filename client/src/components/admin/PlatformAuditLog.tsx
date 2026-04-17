@@ -54,7 +54,7 @@ function formatAuditDetails(log: { action: string; metadata?: unknown; targetId:
   switch (log.action) {
     // Partner
     case 'partner.created':
-      return `Created tenant with ${String(metadata.authMethod || 'unknown')} auth`;
+      return 'Created tenant';
     case 'partner.config_updated':
       return `Updated tenant configuration`;
     case 'partner.deactivated':

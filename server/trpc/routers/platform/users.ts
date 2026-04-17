@@ -4,11 +4,10 @@ import { db } from '../../../db.js';
 import { users, memberships, partners, auditLog } from '../../../db/schema.js';
 import { eq, desc, sql, isNull, and, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import { randomUUID, randomBytes } from 'crypto';
+import { randomUUID } from 'crypto';
 import logger from '../../../utils/logger.js';
 import { MailService } from '../../../services/mail.js';
-import { renderInviteNew, renderInviteExisting, renderInviteReminder } from '../../../services/mailTemplates.js';
-import { hashPassword } from '../../../utils/passwords.js';
+import { renderInviteExisting, renderInviteReminder } from '../../../services/mailTemplates.js';
 import { revokeUserSessions } from '../../../services/sessionRevocation.js';
 import { APP_NAME } from '../../../constants.js';
 import config from '../../../config.js';
@@ -154,11 +153,10 @@ export const platformUsersRouter = router({
       role: z.enum(['agent', 'support', 'admin', 'platform_operator']),
       partnerId: z.string(),
       departments: z.array(z.string()).optional(),
-      authMethod: z.enum(['local', 'sso', 'both']).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const partner = await db.select({ authMethod: partners.authMethod })
+        const partner = await db.select({ id: partners.id, name: partners.name })
           .from(partners)
           .where(eq(partners.id, input.partnerId))
           .limit(1);
@@ -167,36 +165,21 @@ export const platformUsersRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
         }
 
-        const userAuthMethod = input.authMethod ?? (partner[0].authMethod === 'both' ? 'local' : partner[0].authMethod);
-        const isLocal = userAuthMethod === 'local';
-        let tempPassword: string | null = null;
         let isExistingUser = false;
-
         let userId: string;
         const existing = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
 
         if (existing.length > 0) {
           userId = existing[0].id;
           isExistingUser = true;
-          if (partner[0].authMethod === 'both' && input.authMethod) {
-            await db.update(users).set({ authMethod: input.authMethod }).where(eq(users.id, userId));
-          }
         } else {
           userId = `u_${randomUUID().slice(0, 8)}`;
-
-          let hashedPassword: string | undefined;
-          if (isLocal) {
-            tempPassword = randomBytes(12).toString('base64url');
-            hashedPassword = await hashPassword(tempPassword);
-          }
 
           await db.insert(users).values({
             id: userId,
             email: input.email,
             name: input.name,
-            password: hashedPassword,
             isPlatformOperator: input.role === 'platform_operator',
-            authMethod: partner[0].authMethod === 'both' ? userAuthMethod : undefined,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
@@ -225,13 +208,11 @@ export const platformUsersRouter = router({
           logger.info({ email: input.email }, '[inviteUser] Skipping invite email for internal staff');
         } else {
           try {
-            const partnerName = (await db.select({ name: partners.name }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0]?.name || input.partnerId;
+            const partnerName = partner[0].name || input.partnerId;
             const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
             const brand = { partnerName };
 
-            const welcomeHtml = isExistingUser
-              ? renderInviteExisting({ name: input.name, partnerName, loginUrl, brand })
-              : renderInviteNew({ name: input.name, partnerName, tempPassword: tempPassword ?? undefined, isLocal, loginUrl, brand });
+            const welcomeHtml = renderInviteExisting({ name: input.name, partnerName, loginUrl, brand });
 
             await MailService.sendMail(input.email, `Invitation to join ${partnerName} on ${APP_NAME}`, welcomeHtml);
           } catch (mailErr) {
@@ -246,10 +227,10 @@ export const platformUsersRouter = router({
           partnerId: input.partnerId,
           targetType: 'user',
           targetId: userId,
-          metadata: { email: input.email, role: input.role, membershipId: memId, authMethod: userAuthMethod, emailSkipped: skipInviteEmail }
+          metadata: { email: input.email, role: input.role, membershipId: memId, emailSkipped: skipInviteEmail }
         });
 
-        return { userId, membershipId: memId, tempPassword: tempPassword ?? '', isExistingUser: isExistingUser ?? false };
+        return { userId, membershipId: memId, tempPassword: '', isExistingUser };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
@@ -272,7 +253,6 @@ export const platformUsersRouter = router({
         const partner = (await db.select({
           id: partners.id,
           name: partners.name,
-          authMethod: partners.authMethod,
         }).from(partners).where(eq(partners.id, input.partnerId)).limit(1))[0];
 
         if (!user || !partner) {
@@ -295,20 +275,10 @@ export const platformUsersRouter = router({
           return { success: true, skipped: true };
         }
 
-        const isLocal = partner.authMethod === 'local';
-        let tempPassword: string | null = null;
-
-        if (isLocal && !user.externalId) {
-          tempPassword = randomBytes(12).toString('base64url');
-          const hashedPassword = await hashPassword(tempPassword);
-          await db.update(users).set({ password: hashedPassword }).where(eq(users.id, user.id));
-        }
-
         const loginUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
         const welcomeHtml = renderInviteReminder({
           name: user.name,
           partnerName: partner.name,
-          tempPassword: tempPassword ?? undefined,
           loginUrl,
           brand: { partnerName: partner.name },
         });

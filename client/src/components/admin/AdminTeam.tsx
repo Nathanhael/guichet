@@ -503,7 +503,6 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const [authMethod, setAuthMethod] = useState<'local' | 'sso'>('local');
 
   const { activeMembershipId, memberships } = useStoreShallow((s) => ({
     activeMembershipId: s.activeMembershipId,
@@ -511,7 +510,6 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   }));
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
-  const partnerAuthMethod = activeMembership?.manifest?.authMethod;
 
   const inviteMutation = trpc.partner.inviteExternalUser.useMutation({
     onSuccess: (data) => {
@@ -528,7 +526,6 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
     e.preventDefault();
     inviteMutation.mutate({
       email, name, role, departments: selectedDepts,
-      ...(partnerAuthMethod === 'both' ? { authMethod } : {}),
     });
   };
 
@@ -615,25 +612,6 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
               <option value="support">Support (Analytical Access)</option>
             </select>
           </div>
-          {partnerAuthMethod === 'both' && (
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted block">Authentication Protocol</label>
-              <div className="flex flex-col sm:flex-row gap-4 bg-bg-elevated/30 p-3 border-2 border-border">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input type="radio" name="inviteAuthMethod" value="local" checked={authMethod === 'local'}
-                    onChange={() => setAuthMethod('local')}
-                    className="w-4 h-4 accent-accent-blue" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest group-hover:text-accent-blue">Local (Guichet Native)</span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <input type="radio" name="inviteAuthMethod" value="sso" checked={authMethod === 'sso'}
-                    onChange={() => setAuthMethod('sso')}
-                    className="w-4 h-4 accent-accent-blue" />
-                  <span className="text-[10px] font-bold uppercase tracking-widest group-hover:text-accent-blue">SSO (Microsoft Entra)</span>
-                </label>
-              </div>
-            </div>
-          )}
           {role !== 'agent' && departments.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">

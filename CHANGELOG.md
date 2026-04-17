@@ -20,6 +20,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - 11 new Vitest cases covering the Tier-2 key bindings (digit bounds, dual-modifier bindings for L/J, no-Shift guard for Ctrl+A).
 - New `testing/e2e/support-shortcuts.spec.ts` verifies Ctrl+K opens the palette, Tier-1 hints are visible, Ctrl+Enter surfaces the close-ticket confirmation, and Tier-2 palette hints render (Ctrl+., Ctrl+Shift+A).
 
+### Removed
+- **`partners.auth_method` column + `auth_method` enum** — partners are SSO-only (SSO config lives in env) so the per-partner method is dead data. Platform operators still use local auth, gated by `users.is_platform_operator` — not by any partner flag. Migration `0007_drop_auth_method.sql` drops the column and the enum. The `users.auth_method` text column is kept for legacy rows but is no longer written by any invite flow. Invite flows simplified: all invited users are provisioned without passwords (SSO-only), `renderInviteNew` email template removed (unused). Per-partner UI pickers (`CreatePartnerModal`, `EditPartnerModal`, `InviteUserModal`, `AdminTeam` invite) and the `authMethod !== 'sso'` gate in `platform.addGroupMapping` are gone.
+
 ## [4.2.0] - 2026-04-15
 
 ### Added

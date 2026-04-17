@@ -225,7 +225,6 @@ async function seedMinimal() {
     businessHoursEnd: '23:59',
     businessHoursTimezone: 'Europe/Brussels',
     businessHoursSchedule: BUSINESS_HOURS_SCHEDULE,
-    authMethod: 'local',
     status: 'active',
   });
 

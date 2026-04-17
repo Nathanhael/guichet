@@ -7,7 +7,7 @@ const { mockInvite, partner } = vi.hoisted(() => ({
   mockInvite: { mutate: vi.fn(), isPending: false },
   partner: {
     id: 'p1', name: 'Acme', logoUrl: null, industry: 'Tech',
-    status: 'active', authMethod: 'local' as const, createdAt: '', updatedAt: '',
+    status: 'active', createdAt: '', updatedAt: '',
   } satisfies Partner,
 }));
 

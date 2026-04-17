@@ -13,8 +13,8 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
   const t = useT();
   const utils = trpc.useUtils();
 
-  const [form, setForm] = useState<{ email: string; name: string; role: UserRole; partnerId: string; dept: string; authMethod: 'local' | 'sso' }>({
-    email: '', name: '', role: 'support', partnerId: '', dept: '', authMethod: 'local'
+  const [form, setForm] = useState<{ email: string; name: string; role: UserRole; partnerId: string; dept: string }>({
+    email: '', name: '', role: 'support', partnerId: '', dept: ''
   });
   const [error, setError] = useState('');
   const [result, setResult] = useState<{ tempPassword: string | null; isExistingUser: boolean; partnerName: string } | null>(null);
@@ -29,7 +29,7 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
       const currentPartners = utils.platform.listPartners.getData();
       const partnerName = currentPartners?.find(p => p.id === form.partnerId)?.name || form.partnerId;
       setResult({ tempPassword: data.tempPassword, isExistingUser: data.isExistingUser, partnerName });
-      setForm({ email: '', name: '', role: 'support', partnerId: '', dept: '', authMethod: 'local' });
+      setForm({ email: '', name: '', role: 'support', partnerId: '', dept: '' });
       utils.platform.listGlobalUsers.invalidate();
       onClose();
     },
@@ -146,40 +146,13 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
               </select>
             </div>
           </div>
-          {(() => {
-            const selectedPartner = partners?.find(p => p.id === form.partnerId);
-            if (selectedPartner?.authMethod === 'both') {
-              return (
-                <div>
-                  <label className="mono-label">Auth Method</label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="authMethod" value="local" checked={form.authMethod === 'local'}
-                        onChange={() => setForm({ ...form, authMethod: 'local' })}
-                        className="accent-current w-4 h-4" />
-                      <span className="text-xs font-bold uppercase">Local (Email + Password)</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" name="authMethod" value="sso" checked={form.authMethod === 'sso'}
-                        onChange={() => setForm({ ...form, authMethod: 'sso' })}
-                        className="accent-current w-4 h-4" />
-                      <span className="text-xs font-bold uppercase">SSO (Sign in with Microsoft)</span>
-                    </label>
-                  </div>
-                </div>
-              );
-            }
-            return null;
-          })()}
           {error && <p className="text-xs font-bold uppercase text-[var(--color-accent-red)]">{error}</p>}
           <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
             <button onClick={() => { onClose(); setError(''); }} className="btn-secondary px-6 py-2 text-[10px] uppercase tracking-widest">{t('cancel')}</button>
             <button onClick={() => {
-              const selectedPartner = partners?.find(p => p.id === form.partnerId);
               inviteUser.mutate({
                 email: form.email, name: form.name, role: form.role, partnerId: form.partnerId,
                 departments: form.dept ? [form.dept] : undefined,
-                ...(selectedPartner?.authMethod === 'both' ? { authMethod: form.authMethod } : {}),
               });
             }}
               disabled={!form.email || !isValidEmail(form.email) || !form.name || (!form.partnerId && form.role !== 'platform_operator')}

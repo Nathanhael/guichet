@@ -38,16 +38,9 @@ Production default:
 
 Auth method per partner:
 
-- `partners.authMethod` controls which login options are available: `'local'`, `'sso'`, or `'both'`
-- when `'both'`, the login page shows both email/password and SSO button simultaneously
-- default for new partners: `'both'`
-
-Per-user auth override:
-
-- `users.auth_method` column: `'local'` | `'sso'` | `NULL`
-- `NULL` means use the partner default
-- allows individual users to use a different auth method than their partner's setting (e.g., one local break-glass account in an SSO-only partner)
-- set during invite or by admin afterwards
+- All partners are SSO-only. The per-partner `auth_method` column and `auth_method` enum were removed in migration `0007_drop_auth_method.sql`.
+- Local auth (email/password) is reserved for platform operators, gated by `users.is_platform_operator`.
+- `users.auth_method` text column remains on the schema as legacy data; it is no longer written by the invite flows.
 
 Local password policy:
 

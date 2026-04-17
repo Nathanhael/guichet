@@ -90,14 +90,12 @@ describe('platform router tenant and sso audit logging', () => {
       name: 'Tenant A',
       industry: 'telecom',
       departments: [],
-      authMethod: 'sso',
     });
 
     expect(result).toEqual({ success: true, id: 'tenant-a' });
     expect(insertValuesMock).toHaveBeenNthCalledWith(1, expect.objectContaining({
       id: 'tenant-a',
       name: 'Tenant A',
-      authMethod: 'sso',
     }));
     expect(insertValuesMock).toHaveBeenNthCalledWith(2, expect.objectContaining({
       action: 'partner.created',
@@ -106,7 +104,6 @@ describe('platform router tenant and sso audit logging', () => {
       targetType: 'partner',
       targetId: 'tenant-a',
       metadata: expect.objectContaining({
-        authMethod: 'sso',
         industry: 'telecom',
       }),
     }));
@@ -136,7 +133,7 @@ describe('platform router tenant and sso audit logging', () => {
   });
 
   it('writes an audit record when adding an SSO group mapping', async () => {
-    selectQueue.push([{ authMethod: 'sso' }]);
+    selectQueue.push([{ id: 'tenant-a' }]);
 
     const { platformRouter } = await import('./platform/index.js');
     const caller = platformRouter.createCaller({
