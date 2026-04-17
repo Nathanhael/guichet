@@ -10,13 +10,15 @@ const insertValuesMock = vi.fn(() => ({ onConflictDoUpdate: insertOnConflictMock
 const orderByMock = vi.fn(async () => []);
 
 // Each db.select() call creates a fresh chain. The `where` result has an
-// optional `.orderBy` (used by the ticket query) — when absent the `where`
-// itself is awaited (ratings/messages queries).
+// optional `.orderBy` (used by the ticket query) and `.limit` (used by the
+// invite-cleanup query) — when absent the `where` itself is awaited
+// (ratings/messages queries).
 function makeSelectChain() {
   const whereMock = vi.fn((..._args: unknown[]) => {
-    // Return a thenable that also exposes `.orderBy`
+    // Return a thenable that also exposes `.orderBy` and `.limit`
     const p = Promise.resolve([]);
     (p as unknown as Record<string, unknown>).orderBy = orderByMock;
+    (p as unknown as Record<string, unknown>).limit = vi.fn(async () => []);
     return p;
   });
   return {
@@ -66,6 +68,7 @@ vi.mock('drizzle-orm', () => ({
   eq: vi.fn((a: unknown, b: unknown) => ({ op: 'eq', a, b })),
   lt: vi.fn((a: unknown, b: unknown) => ({ op: 'lt', a, b })),
   gte: vi.fn((a: unknown, b: unknown) => ({ op: 'gte', a, b })),
+  isNull: vi.fn((col: unknown) => ({ op: 'isnull', col })),
 }));
 
 const archiveAuditLogMock = vi.fn();
@@ -96,6 +99,7 @@ vi.mock('../db/schema.js', () => ({
   appFeedback: 'app_feedback_table',
   agentStatusLog: { startedAt: 'started_at' },
   pushSubscriptions: { createdAt: 'created_at', userId: 'user_id' },
+  users: { id: 'id', email: 'email', externalId: 'external_id', password: 'password', createdAt: 'created_at' },
 }));
 
 // --- Helpers ---
