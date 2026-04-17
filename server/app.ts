@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import RedisStore from 'rate-limit-redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import * as trpcExpress from '@trpc/server/adapters/express';
 import { createContext } from './trpc/context.js';
@@ -139,12 +140,50 @@ const globalLimiter = rateLimit({
 });
 app.use('/api', globalLimiter);
 
-export const authLimiter = rateLimit({
+/**
+ * Auth rate limiter — 5 req/min per IP across /api/v1/auth and /api/v1/auth/sso.
+ *
+ * Redis-backed when REDIS_URL is configured so a horizontally scaled deployment
+ * (N instances) shares a single counter — otherwise each instance would enforce
+ * its own 5/min window, giving an attacker 5×N attempts. Falls back to an
+ * in-memory limiter at request time when the Redis client is not yet connected
+ * (startup race) or has disconnected, so auth remains rate-limited during Redis
+ * outages — still imperfect across instances but better than nothing, and
+ * account lockout at the DB layer backstops brute force.
+ */
+const authLimiterBaseOpts = {
   windowMs: 60 * 1000,
   max: (process.env.NODE_ENV === 'test' || config.DISABLE_RATE_LIMIT) ? 999999 : 5,
   message: { error: 'Too many authentication attempts, please try again later.' },
-  skip: (req) => req.path === '/refresh',
-});
+  skip: (req: Request) => req.path === '/refresh',
+};
+
+const inMemoryAuthLimiter = rateLimit(authLimiterBaseOpts);
+
+const redisBackedAuthLimiter = config.REDIS_URL
+  ? rateLimit({
+      ...authLimiterBaseOpts,
+      store: new RedisStore({
+        prefix: 'rl:auth:',
+        sendCommand: (async (...args: string[]) => {
+          const { pubClient } = getRedisClients();
+          if (!pubClient) throw new Error('Redis client not initialized');
+          return pubClient.sendCommand(args);
+        }) as unknown as (...args: string[]) => Promise<string | number | string[] | number[]>,
+      }),
+    })
+  : null;
+
+export const authLimiter = (req: Request, res: Response, next: NextFunction): void => {
+  if (redisBackedAuthLimiter) {
+    const { pubClient } = getRedisClients();
+    if (pubClient) {
+      redisBackedAuthLimiter(req, res, next);
+      return;
+    }
+  }
+  inMemoryAuthLimiter(req, res, next);
+};
 
 const uploadLimiter = rateLimit({
   windowMs: 60 * 1000,
