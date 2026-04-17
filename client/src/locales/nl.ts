@@ -180,6 +180,7 @@ const nl: Record<string, string> = {
     sso_no_mappings: 'Nog geen groep mappings geconfigureerd. Voeg een mapping toe om automatische provisioning in te schakelen.',
     sso_no_groups_message: 'Je Microsoft-account is geverifieerd, maar er is geen werkruimte geconfigureerd voor je beveiligingsgroepen. Neem contact op met je platform administrator.',
     sso_guest_multi_partner_message: 'Je account is gekoppeld aan meerdere partner-tenants. Dit is niet toegestaan voor externe gasten \u2014 neem contact op met je beheerder om de Azure-groepstoewijzingen op te lossen.',
+    sso_invite_expired_message: 'Je uitnodiging is verlopen. Vraag je beheerder om een nieuwe uitnodiging te sturen.',
     guest_badge: 'GAST',
     guest_badge_tooltip: 'Externe partner-gast (B2B) \u2014 beperkte beheerdersrechten.',
     guest_badge_aria: 'Externe gastgebruiker',
