@@ -179,7 +179,18 @@ class S3Storage implements StorageBackend {
     try {
       await s3.send(new HeadBucketCommand({ Bucket: bucket }));
     } catch {
-      await s3.send(new CreateBucketCommand({ Bucket: bucket })).catch(() => {});
+      try {
+        await s3.send(new CreateBucketCommand({ Bucket: bucket }));
+      } catch (err: unknown) {
+        // BucketAlreadyOwnedByYou / BucketAlreadyExists are race-with-sibling
+        // boot outcomes — both mean the bucket is usable. Anything else is a
+        // real failure (perms, network, region mismatch) and must surface so
+        // the "bucket ready" log below never lies to ops.
+        const name = (err as { name?: string } | null)?.name ?? '';
+        if (name !== 'BucketAlreadyOwnedByYou' && name !== 'BucketAlreadyExists') {
+          throw err;
+        }
+      }
     }
     logger.info({ bucket }, '[storage:s3] bucket ready');
     return { s3, bucket };
