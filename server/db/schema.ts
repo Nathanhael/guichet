@@ -12,7 +12,6 @@ export const roleEnum = pgEnum('user_role', ['agent', 'support', 'admin', 'platf
 export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'pending', 'closed', 'resolved']);
 export const severityEnum = pgEnum('severity', ['low', 'medium', 'high', 'critical']);
 export const alertStatusEnum = pgEnum('alert_status', ['active', 'acknowledged', 'resolved']);
-export const authMethodEnum = pgEnum('auth_method', ['local', 'sso', 'both']);
 export const membershipSourceEnum = pgEnum('membership_source', ['sso', 'manual']);
 
 export const partners = pgTable('partners', {
@@ -26,7 +25,6 @@ export const partners = pgTable('partners', {
   businessHoursEnd: text('business_hours_end'),
   businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   status: text('status').notNull().default('active'),
-  authMethod: authMethodEnum('auth_method').notNull().default('sso'),
   // AI configuration
   aiEnabled: boolean('ai_enabled').default(false),
   aiProvider: text('ai_provider').default('ollama'),

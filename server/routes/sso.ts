@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { decodeProtectedHeader, jwtVerify, importSPKI, type JWTPayload } from 'jose';
 import { db } from '../db.js';
 import { users, memberships, partners, partnerGroupMappings, auditLog } from '../db/schema.js';
-import { eq, and, inArray, or } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 import { buildAuthResponse, buildAuthToken, listUserMemberships, setAuthCookie, parseExpiryToSeconds } from '../services/authSession.js';
@@ -343,7 +343,6 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         .innerJoin(partners, eq(partnerGroupMappings.partnerId, partners.id))
         .where(and(
           inArray(partnerGroupMappings.azureGroupId, azureGroups),
-          or(eq(partners.authMethod, 'sso'), eq(partners.authMethod, 'both')),
           eq(partners.status, 'active'),
         ));
 

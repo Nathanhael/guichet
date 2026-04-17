@@ -34,7 +34,6 @@ export const platformPartnersRouter = router({
         name: z.string(),
         description: z.string().optional()
       })).default([]),
-      authMethod: z.enum(['local', 'sso', 'both']).default('sso'),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -43,7 +42,6 @@ export const platformPartnersRouter = router({
           name: input.name,
           industry: input.industry,
           departments: input.departments,
-          authMethod: input.authMethod,
           status: 'active',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -57,7 +55,6 @@ export const platformPartnersRouter = router({
           targetType: 'partner',
           targetId: input.id,
           metadata: {
-            authMethod: input.authMethod,
             industry: input.industry,
           },
         });
@@ -83,7 +80,6 @@ export const platformPartnersRouter = router({
           description: z.string().optional(),
           isActive: z.boolean().default(true)
         })).optional(),
-        authMethod: z.enum(['local', 'sso', 'both']).optional(),
         aiEnabled: z.boolean().optional(),
         aiFeatures: z.object({
           messageImprovement: z.enum(['off', 'optional', 'forced']).optional(),
@@ -119,7 +115,6 @@ export const platformPartnersRouter = router({
       if (input.data.name !== undefined) updateData.name = input.data.name;
       if (input.data.industry !== undefined) updateData.industry = input.data.industry;
       if (input.data.departments !== undefined) updateData.departments = input.data.departments;
-      if (input.data.authMethod !== undefined) updateData.authMethod = input.data.authMethod;
       if (input.data.aiEnabled !== undefined) updateData.aiEnabled = input.data.aiEnabled;
       if (input.data.aiFeatures !== undefined) updateData.aiFeatures = input.data.aiFeatures;
       if (input.data.aiConfig !== undefined) {

@@ -23,7 +23,7 @@ const { mockDeleteUser, mockResendInvite, mockRevokeSessions, mockDisableMfa, mo
   };
   const partner: Partner = {
     id: 'p1', name: 'Acme', logoUrl: null, industry: 'Tech',
-    status: 'active', authMethod: 'local', createdAt: '', updatedAt: '',
+    status: 'active', createdAt: '', updatedAt: '',
   };
   return {
     mockDeleteUser: { mutate: vi.fn(), isPending: false },

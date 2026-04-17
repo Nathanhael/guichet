@@ -7,7 +7,7 @@ const { mockDelete, partner } = vi.hoisted(() => ({
   mockDelete: { mutate: vi.fn(), isPending: false },
   partner: {
     id: 'del-1', name: 'DangerCorp', logoUrl: null, industry: 'Tech',
-    status: 'inactive', authMethod: 'local' as const, createdAt: '', updatedAt: '',
+    status: 'inactive', createdAt: '', updatedAt: '',
   } satisfies Partner,
 }));
 

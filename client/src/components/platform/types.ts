@@ -24,7 +24,6 @@ export interface Partner {
   logoUrl: string | null;
   industry: string | null;
   status: string;
-  authMethod: 'local' | 'sso' | 'both';
   departments?: unknown;
   deletedAt?: string | null;
   createdAt: string;

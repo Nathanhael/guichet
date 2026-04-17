@@ -64,29 +64,6 @@ export function renderPasswordReset(opts: {
   `, opts.brand);
 }
 
-export function renderInviteNew(opts: {
-  name: string;
-  partnerName: string;
-  tempPassword?: string;
-  isLocal: boolean;
-  loginUrl: string;
-  brand?: BrandContext;
-}): string {
-  const credBlock = opts.isLocal && opts.tempPassword ? `
-    <div style="background: #f4f4f4; padding: 20px; margin: 20px 0;">
-      <p style="margin-top: 0; font-weight: bold; text-transform: uppercase; font-size: 12px;">Your Temporary Password</p>
-      <code style="font-size: 18px; font-weight: 900; letter-spacing: 0.05em;">${escapeHtml(opts.tempPassword)}</code>
-    </div>
-  ` : '<p>Please sign in using your corporate Microsoft account.</p>';
-
-  return baseLayout(`
-    <p>Hello ${escapeHtml(opts.name)},</p>
-    <p>Welcome to ${APP_NAME}! You have been invited to join <strong>${escapeHtml(opts.partnerName)}</strong>.</p>
-    ${credBlock}
-    ${button('Sign In Now', opts.loginUrl)}
-  `, opts.brand);
-}
-
 export function renderInviteExisting(opts: {
   name: string;
   partnerName: string;

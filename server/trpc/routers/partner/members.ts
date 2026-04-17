@@ -5,8 +5,6 @@ import { partners, users, memberships, auditLog } from '../../../db/schema.js';
 import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../../utils/logger.js';
-import { randomBytes } from 'crypto';
-import { hashPassword } from '../../../utils/passwords.js';
 import { canAssignTenantRole } from '../../../services/roles.js';
 
 export const partnerMembersRouter = router({
@@ -154,7 +152,6 @@ export const partnerMembersRouter = router({
       name: z.string().min(1),
       role: z.enum(['agent', 'support']),
       departments: z.array(z.string()).optional(),
-      authMethod: z.enum(['local', 'sso']).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -168,8 +165,7 @@ export const partnerMembersRouter = router({
           throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department' });
         }
 
-        // 1. Look up partner auth method
-        const partner = await db.select({ authMethod: partners.authMethod })
+        const partner = await db.select({ id: partners.id })
           .from(partners)
           .where(eq(partners.id, partnerId))
           .limit(1);
@@ -178,43 +174,23 @@ export const partnerMembersRouter = router({
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
         }
 
-        // Determine effective auth method for this user:
-        // - If caller specified per-user authMethod, use that (only meaningful when partner is 'both')
-        // - If partner is 'both', default to 'local' unless caller specified 'sso'
-        // - Otherwise use partner's authMethod
-        const userAuthMethod = input.authMethod ?? (partner[0].authMethod === 'both' ? 'local' : partner[0].authMethod);
-        const isLocal = userAuthMethod === 'local';
-
-        // IM-09: Wrap check-then-insert in a transaction to prevent race conditions
-        let tempPassword: string | null = null;
         let newUserId: string = '';
         let newMembershipId: string = '';
 
         await db.transaction(async (tx) => {
-          // 2. Check for existing user (inside transaction for atomicity)
           const existingUser = await tx.select().from(users).where(eq(users.email, input.email)).limit(1);
           if (existingUser.length > 0) {
             throw new TRPCError({ code: 'CONFLICT', message: 'Email already in use' });
           }
 
-          // 3. Create user — with or without password based on auth method
           newUserId = crypto.randomUUID();
-
-          let hashedPassword: string | undefined;
-          if (isLocal) {
-            tempPassword = randomBytes(12).toString('base64url');
-            hashedPassword = await hashPassword(tempPassword);
-          }
 
           await tx.insert(users).values({
             id: newUserId,
             email: input.email,
             name: input.name,
-            password: hashedPassword,
-            authMethod: partner[0].authMethod === 'both' ? userAuthMethod : undefined,
           });
 
-          // 4. Create membership
           newMembershipId = crypto.randomUUID();
           await tx.insert(memberships).values({
             id: newMembershipId,
@@ -225,20 +201,18 @@ export const partnerMembersRouter = router({
             source: 'manual'
           });
 
-          // 5. Audit log
           await tx.insert(auditLog).values({
             action: 'member.invited',
             actorId: ctx.user.id,
             partnerId: partnerId,
             targetType: 'user',
             targetId: newUserId,
-            metadata: { role: input.role, departments: input.departments, email: input.email, authMethod: userAuthMethod }
+            metadata: { role: input.role, departments: input.departments, email: input.email }
           });
         });
 
-        // Never log plaintext passwords
-        logger.info({ userId: newUserId, authMethod: userAuthMethod }, '[inviteExternalUser] User created');
-        return { success: true, userId: newUserId, tempPassword: tempPassword ?? '' };
+        logger.info({ userId: newUserId }, '[inviteExternalUser] User created');
+        return { success: true, userId: newUserId, tempPassword: '' };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });

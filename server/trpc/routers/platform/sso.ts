@@ -41,10 +41,9 @@ export const platformSsoRouter = router({
       defaultDepartments: z.array(z.string()).default([]),
     }))
     .mutation(async ({ input, ctx }) => {
-      const partner = await db.select({ authMethod: partners.authMethod })
+      const partner = await db.select({ id: partners.id })
         .from(partners).where(eq(partners.id, input.partnerId)).limit(1);
       if (partner.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
-      if (partner[0].authMethod !== 'sso') throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner must use SSO auth method' });
 
       if (input.defaultRole === 'support' && input.defaultDepartments.length === 0) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department in group mapping' });

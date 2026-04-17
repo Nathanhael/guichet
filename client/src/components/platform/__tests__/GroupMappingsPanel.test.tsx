@@ -21,7 +21,7 @@ const { mockRemoveMutate, mockMappings, mockPartners } = vi.hoisted(() => {
       },
     ],
     mockPartners: [
-      { id: 'p1', name: 'Acme Corp', status: 'active', authMethod: 'sso', departments: [], deletedAt: null },
+      { id: 'p1', name: 'Acme Corp', status: 'active', departments: [], deletedAt: null },
     ],
   };
 });

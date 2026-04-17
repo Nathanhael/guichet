@@ -138,7 +138,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 | Table | Purpose | Key Columns |
 |---|---|---|
 | `users` | Global user accounts | `id`, `email`, `password`, `lang` (nl/fr/en), `isPlatformOperator` |
-| `partners` | Tenant organizations | `id`, `name`, `status` (active/inactive), `authMethod` (local/sso), `departments` (JSONB), `logoUrl`, `industry` |
+| `partners` | Tenant organizations | `id`, `name`, `status` (active/inactive), `departments` (JSONB), `logoUrl`, `industry` |
 | `memberships` | User-Partner junction | `userId`, `partnerId`, `role`, `departments` (JSONB array of dept IDs) |
 | `tickets` | Support tickets | `id`, `partnerId`, `agentId`, `status` (open/pending/closed/resolved), `participants` (JSONB) |
 | `messages` | Per-ticket messages | `ticketId`, `senderId`, `body`, `whisper`, `reactions` (JSONB), `editedAt`, `deletedAt` |
@@ -210,7 +210,6 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **Argon2id**: Password hashing uses `argon2` (native C bindings). No bcrypt anywhere in the codebase.
 - **SSO-Only Auth**: Partners authenticate exclusively via SSO. Local auth (password, MFA, lockout) is restricted to platform operators only. Login route, forgot-password, reset-password, `trpc.mfa.*`, and `trpc.user.changePassword` all guard with `isPlatformOperator` check. LoginView shows SSO button primary; "Platform administrator login" link reveals local form.
 - **Azure B2B Guest Support**: Partner employees can be invited into our Azure tenant as B2B guests and log into Guichet via the existing SSO flow. The callback detects guests via the `acct === 1` or `idp` claim and stamps `users.isExternal = true`. Guests are strictly single-partner: if Azure groups resolve to more than one partner the login is rejected with `sso_error=guest_multi_partner_mapping` (audited). Destructive admin mutations (webhook CRUD + secret rotation + test, partner-member add/update/remove/invite, partner department edits) use `destructiveAdminProcedure` which throws FORBIDDEN when `isExternal=true`. UI surfaces a GUEST badge in `UserMenu`, `AdminTeam`, and `SidebarFooter` team panel. Full runbook at `docs/superpowers/specs/partner-sso-b2b-guest.md`.
-- **Auth Method**: Per-partner `authMethodEnum` pgEnum (`local` | `sso` | `both`). Default is `sso`. The `local` and `both` options exist for platform operator contexts only.
 - **Audit Logging**: All significant actions (partner lifecycle, user management, GDPR purges) recorded in `audit_log`.
 - **MFA (TOTP)**: Platform operators only. Per-user MFA via `mfaSecret`, `mfaEnabledAt`, `mfaRecoveryCodes` (SHA-256 hashed). Setup/enable/disable via `trpc.mfa.*` (guarded to `isPlatformOperator`). Login challenge returns `{ mfaRequired: true }` and waits for TOTP code re-submission.
 - **Account Lockout**: Platform operators only. 5 failed login attempts → 15-minute lockout. State in `failedLoginAttempts` + `lockedUntil` columns. Email notification on lockout (fire-and-forget). `recordFailedLogin` skips non-platform users.

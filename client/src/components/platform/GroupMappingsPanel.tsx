@@ -27,7 +27,7 @@ export default function GroupMappingsPanel() {
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
 
-  const ssoPartners = partnersList?.filter(p => (p.authMethod === 'sso' || p.authMethod === 'both') && !p.deletedAt) || [];
+  const ssoPartners = partnersList?.filter(p => !p.deletedAt) || [];
 
   return (
     <div>

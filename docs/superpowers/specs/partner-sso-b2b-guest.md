@@ -23,8 +23,9 @@ sees an Azure token with the `acct=1` claim (or an `idp` claim) and flips
 
 - Azure tenant admin access (our tenant) for inviting guests and managing
   security groups.
-- A partner with `authMethod IN ('sso','both')` and at least one
-  `partner_group_mappings` row keyed to an Azure security group you control.
+- A partner with at least one `partner_group_mappings` row keyed to an
+  Azure security group you control. (All partners are SSO-only; the
+  per-partner `auth_method` column was dropped in migration 0007.)
 - Partner IT needs to be willing to accept B2B federation. If they refuse,
   this runbook does not apply — revisit per-partner SSO (Option B in the
   original plan doc).
