@@ -167,6 +167,24 @@ describe('useKeyboardShortcuts', () => {
     expect(handlers.onExitFocus).toHaveBeenCalledOnce();
   });
 
+  it('Escape does NOT fire onExitFocus when a role=dialog is open', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    document.body.appendChild(dialog);
+    fire('Escape');
+    expect(handlers.onExitFocus).not.toHaveBeenCalled();
+    dialog.remove();
+  });
+
+  it('shortcut is skipped when the event has defaultPrevented set', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    event.preventDefault();
+    window.dispatchEvent(event);
+    expect(handlers.onExitFocus).not.toHaveBeenCalled();
+  });
+
   it('? fires onOpenPalette when target is body', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
     fireOnElement(document.body, '?');
