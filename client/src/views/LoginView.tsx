@@ -249,7 +249,6 @@ export default function LoginView() {
               </div>
             )}
             <p className="mono-label text-[var(--color-text-secondary)] leading-relaxed">{t('sso_login_description')}</p>
-            {/* TODO: Replace /api/v1/auth/sso/login with the correct universal SSO endpoint when available */}
             <button
               onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }}
               className="w-full py-3 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] font-mono font-bold uppercase tracking-widest text-sm hover:bg-[var(--color-accent-blue)] hover:text-white flex items-center justify-center gap-4"
