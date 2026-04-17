@@ -216,15 +216,31 @@ export async function assignSupport(
   supportId: string,
   supportName: string,
   supportLang: string,
+  /**
+   * Azure B2B guest flag for the joining support user. Denormalized onto
+   * the `tickets.participants` JSONB entry so ChatHeader can render the
+   * amber guest ring even when the participant is offline. Defaults to
+   * false for backward compatibility with callers that haven't resolved
+   * the flag. See docs/superpowers/specs/partner-sso-b2b-guest.md.
+   */
+  supportIsExternal: boolean = false,
 ) {
-  const participantJson = JSON.stringify({ id: supportId, name: supportName });
+  const participantJson = JSON.stringify({
+    id: supportId,
+    name: supportName,
+    isExternal: supportIsExternal,
+  });
+  // "Already joined" probe matches only on id so we don't append a second
+  // entry when a legacy row exists for the same user without the new
+  // isExternal field (records written before the B2B plumbing).
+  const idOnlyProbe = JSON.stringify([{ id: supportId }]);
   await db.execute(sql`UPDATE tickets SET
     support_id = COALESCE(support_id, ${supportId}),
     support_name = COALESCE(support_name, ${supportName}),
     support_lang = COALESCE(support_lang, ${supportLang}),
     support_joined_at = COALESCE(support_joined_at, ${new Date().toISOString()}),
     participants = CASE
-      WHEN NOT (COALESCE(participants, '[]'::jsonb) @> ${`[${participantJson}]`}::jsonb)
+      WHEN NOT (COALESCE(participants, '[]'::jsonb) @> ${idOnlyProbe}::jsonb)
       THEN COALESCE(participants, '[]'::jsonb) || ${participantJson}::jsonb
       ELSE participants
     END,

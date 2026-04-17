@@ -163,14 +163,16 @@ Every guest-relevant event writes to `audit_log`:
    claim and sends `_claim_names` instead. Guichet logs an error and
    the user gets no groups. Guests rarely hit this. Fix would require
    calling Microsoft Graph; not in scope.
-2. **ChatHeader participant ring relies on the presence store.** Guests
-   who are currently offline won't show the amber ring/tooltip suffix
-   on their avatar in `ChatHeader` — only live-presence participants
-   are flagged. Message senders are now server-authoritative (see item
-   below), so this limit scope-shrunk from the initial ship. To close
-   the remaining gap, denormalize `isExternal` onto the
-   `tickets.participants` JSON at join time (or resolve via a bulk
-   `users` lookup when rendering the header). Deferred.
+2. **ChatHeader participant ring — authoritative going forward,
+   presence-backed for legacy tickets.** `assignSupport` now writes
+   `isExternal` onto each new `tickets.participants` JSONB entry at
+   join time, resolved via `findUserName`. `resolveIsExternal` in
+   `ChatHeader` reads `participant.isExternal` first and only falls
+   back to the presence store when the field is absent (tickets
+   whose participants were stored before this plumbing landed). No
+   backfill migration — legacy tickets degrade to the prior
+   presence-store behavior and self-heal once a support member joins
+   fresh.
 3. **MessageBubble is server-authoritative as of migration 0006.**
    `messages.sender_is_external` is set from `users.isExternal` at
    insert time (through `findSenderInfo` / `findUserName`). The client

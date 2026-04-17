@@ -65,13 +65,16 @@ export default function ChatHeader({
     if (userId === currentUserId) return 'online';
     return undefined;
   };
-  // Azure B2B guest flag per participant. Sourced from the presence store,
-  // which carries `isExternal` for anyone currently online. For the viewer
-  // themselves we trust the store's `user.isExternal`. Historical
-  // participants who are no longer online won't show a guest marker in
-  // the tooltip — the plumbing limitation noted in
-  // docs/superpowers/specs/partner-sso-b2b-guest.md (Known limitations).
-  const resolveIsExternal = (userId: string): boolean => {
+  // Azure B2B guest flag per participant. Authoritative source is the
+  // `isExternal` field denormalized onto `tickets.participants` at join time
+  // (see docs/superpowers/specs/partner-sso-b2b-guest.md). Falls back to the
+  // live presence store when the participant row predates that plumbing
+  // (legacy tickets) and finally to the viewer's own `user.isExternal`.
+  const resolveIsExternal = (
+    p: { id: string; isExternal?: boolean } | string,
+  ): boolean => {
+    const userId = typeof p === 'string' ? p : p.id;
+    if (typeof p === 'object' && p.isExternal !== undefined) return !!p.isExternal;
     if (userId === currentUserId) return currentUserIsExternal;
     return supportExternalById.get(userId) === true;
   };
@@ -212,7 +215,7 @@ export default function ChatHeader({
               supports who are actually around right now. Self is always kept as a safety net (you're reading this view
               so you must be online). Mirrors the queue-row filter in QueueTicketRow. */}
           {!focusMode && !compact && (() => {
-            const supportParticipants: Array<{ id: string; name: string }> = (liveTicket.participants || []).filter(
+            const supportParticipants: Array<{ id: string; name: string; isExternal?: boolean }> = (liveTicket.participants || []).filter(
               (p: { id?: string }) => !!p?.id && (p.id === currentUserId || resolveStatus(p.id) !== undefined)
             );
             if (supportParticipants.length === 0) {
@@ -236,7 +239,7 @@ export default function ChatHeader({
             return (
               <span
                 className="flex items-center gap-0.5 shrink-0"
-                title={sorted.map((p) => (resolveIsExternal(p.id) ? `${p.name} (GUEST)` : p.name)).join(', ')}
+                title={sorted.map((p) => (resolveIsExternal(p) ? `${p.name} (GUEST)` : p.name)).join(', ')}
               >
                 {sorted.map((p) => {
                   // Self-status is already shown explicitly by StatusPicker in the
@@ -245,7 +248,7 @@ export default function ChatHeader({
                   // indicator of their availability.
                   const isSelf = p.id === currentUserId;
                   const st = resolveStatus(p.id);
-                  const isExternal = resolveIsExternal(p.id);
+                  const isExternal = resolveIsExternal(p);
                   return (
                     <span
                       key={p.id}
