@@ -8,6 +8,7 @@
  *   - Seeded E2E database (e2e-agent-a, e2e-support-a on test-partner-a)
  */
 
+import { execSync } from 'node:child_process';
 import { test, expect } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
@@ -17,6 +18,24 @@ const DEMO_PASSWORD = 'password123';
 test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
   test.describe.configure({ retries: 1 });
   test.setTimeout(90_000);
+
+  // Make this spec independent of sibling-file ordering. Playwright runs
+  // spec files in parallel workers, so chat-enhancements.spec.ts's
+  // afterAll cleanup cannot be relied on to complete before we start.
+  // Defensively close any open tickets for agent_qa so the 1-ticket-per-agent
+  // guard doesn't bounce our creation (and the `alreadyInChat` probe doesn't
+  // race a stale chat surface from a parallel spec).
+  test.beforeAll(() => {
+    try {
+      execSync(
+        `docker compose exec -T db psql -U user -d guichet -c "UPDATE tickets SET status='closed' WHERE agent_id='agent_qa' AND status <> 'closed';"`,
+        { stdio: 'ignore' }
+      );
+    } catch {
+      // Non-fatal — if docker is unavailable the test will fail visibly
+      // on the real assertion instead.
+    }
+  });
 
   test('complete chat lifecycle', async ({ browser }) => {
     // Create two isolated browser contexts (separate cookie jars)
