@@ -183,6 +183,8 @@ const nl: Record<string, string> = {
     guest_badge: 'GAST',
     guest_badge_tooltip: 'Externe partner-gast (B2B) \u2014 beperkte beheerdersrechten.',
     guest_badge_aria: 'Externe gastgebruiker',
+    guest_admin_disabled_tooltip: 'Niet beschikbaar voor externe gastgebruikers. Vraag een interne beheerder om deze actie uit te voeren.',
+    guest_admin_disabled_tooltip_short: 'Niet beschikbaar voor gasten',
     partner_switch_confirm: 'Van tenant wisselen? Openstaande gesprekken en niet-opgeslagen concepten gaan verloren.',
     add_mapping: 'Mapping Toevoegen',
     edit_mapping: 'Mapping Bewerken',

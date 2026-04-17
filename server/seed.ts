@@ -72,6 +72,12 @@ interface SeedUser {
   lang: string;
   role: SeedRole;
   departments: string[];
+  /**
+   * Stamp `users.isExternal = true` on insert — simulates an Azure B2B guest
+   * who signed in via SSO. Used by the guest-admin-visible-disable E2E spec
+   * (testing/e2e/guest-admin-visible-disable.spec.ts).
+   */
+  isExternal?: boolean;
 }
 
 const LABELS: Array<{ dept: string; name: string; color: string }> = [
@@ -174,6 +180,10 @@ const PARTNER_USERS: SeedUser[] = [
   // that spec.
   { id: 'support_qa',     name: 'QA Support',     email: 'support_qa@acme.test', lang: 'en', role: 'support', departments: ['DSC', 'FOT', 'TEC'] },
   { id: 'agent_qa',       name: 'QA Agent',       email: 'agent_qa@acme.test',   lang: 'en', role: 'agent',   departments: [] },
+  // Azure B2B guest admin fixture — same admin permissions as Emma, but
+  // `users.isExternal = true` trips `destructiveAdminProcedure` and the UI
+  // visible-disable treatment. Used by guest-admin-visible-disable.spec.ts.
+  { id: 'admin_guest',    name: 'Gina Guest',     email: 'gina@external.test',   lang: 'en', role: 'admin',   departments: [], isExternal: true },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -258,6 +268,7 @@ async function seedMinimal() {
       lang: u.lang,
       password: hash,
       isPlatformOperator: false,
+      isExternal: u.isExternal ?? false,
       accessibilityPrefs: {},
     });
 

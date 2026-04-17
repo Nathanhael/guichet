@@ -189,6 +189,8 @@ const en: Record<string, string> = {
     guest_badge: 'GUEST',
     guest_badge_tooltip: 'External partner guest (B2B) — limited admin permissions.',
     guest_badge_aria: 'External guest user',
+    guest_admin_disabled_tooltip: 'Not available to external guest users. Ask an internal admin to perform this action.',
+    guest_admin_disabled_tooltip_short: 'Unavailable for guests',
     partner_switch_confirm: 'Switch tenant? Open chats and unsaved drafts will be lost.',
     add_mapping: 'Add Mapping',
     edit_mapping: 'Edit Mapping',

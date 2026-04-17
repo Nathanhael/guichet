@@ -8,6 +8,7 @@ import {
 import ErrorBox from './ErrorBox';
 import FieldError from '../FieldError';
 import { webhookCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
+import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 const ALL_EVENTS = [
   'ticket.created',
@@ -25,6 +26,9 @@ type WebhookEvent = (typeof ALL_EVENTS)[number];
 
 export default function AdminWebhooks() {
   const t = useT();
+  const isExternal = useIsExternalAdmin();
+  const guestTooltip = t('guest_admin_disabled_tooltip');
+  const guestTooltipShort = t('guest_admin_disabled_tooltip_short');
   // Create form
   const [showCreate, setShowCreate] = useState(false);
   const [newUrl, setNewUrl] = useState('');
@@ -154,6 +158,10 @@ export default function AdminWebhooks() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowCreate(!showCreate)}
+            disabled={isExternal}
+            aria-disabled={isExternal || undefined}
+            title={isExternal ? guestTooltip : undefined}
+            data-guest-disabled={isExternal || undefined}
             className="btn-primary"
           >
             <Plus className="h-3.5 w-3.5" /> New Webhook
@@ -221,7 +229,10 @@ export default function AdminWebhooks() {
             </button>
             <button
               onClick={addHook}
-              disabled={!newUrl.trim() || newEvents.length === 0 || createMutation.isPending}
+              disabled={isExternal || !newUrl.trim() || newEvents.length === 0 || createMutation.isPending}
+              aria-disabled={isExternal || undefined}
+              title={isExternal ? guestTooltip : undefined}
+              data-guest-disabled={isExternal || undefined}
               className="btn-primary disabled:opacity-50"
             >
               <Plus className="h-3.5 w-3.5" /> {createMutation.isPending ? 'Creating...' : 'Create'}
@@ -268,7 +279,10 @@ export default function AdminWebhooks() {
                       <X className="h-3 w-3" /> Cancel
                     </button>
                     <button onClick={saveEdit}
-                      disabled={!editUrl.trim() || editEvents.length === 0 || updateMutation.isPending}
+                      disabled={isExternal || !editUrl.trim() || editEvents.length === 0 || updateMutation.isPending}
+                      aria-disabled={isExternal || undefined}
+                      title={isExternal ? guestTooltip : undefined}
+                      data-guest-disabled={isExternal || undefined}
                       className="btn-primary disabled:opacity-50">
                       <Check className="h-3 w-3" /> {updateMutation.isPending ? 'Saving...' : 'Save'}
                     </button>
@@ -293,33 +307,48 @@ export default function AdminWebhooks() {
                       </span>
                       <button
                         onClick={() => updateMutation.mutate({ id: h.id, active: !h.active })}
-                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
-                        title={h.active ? 'Pause' : 'Activate'}
+                        disabled={isExternal}
+                        aria-disabled={isExternal || undefined}
+                        data-guest-disabled={isExternal || undefined}
+                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isExternal ? guestTooltip : (h.active ? 'Pause' : 'Activate')}
                       >
                         {h.active ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </button>
                       <button
                         onClick={() => testMutation.mutate({ id: h.id })}
-                        disabled={testMutation.isPending}
-                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
-                        title="Send test event"
+                        disabled={isExternal || testMutation.isPending}
+                        aria-disabled={isExternal || undefined}
+                        data-guest-disabled={isExternal || undefined}
+                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isExternal ? guestTooltip : 'Send test event'}
                       >
                         <Play className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={() => regenMutation.mutate({ id: h.id })}
-                        disabled={regenMutation.isPending}
-                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
-                        title="Regenerate secret"
+                        disabled={isExternal || regenMutation.isPending}
+                        aria-disabled={isExternal || undefined}
+                        data-guest-disabled={isExternal || undefined}
+                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isExternal ? guestTooltipShort : 'Regenerate secret'}
                       >
                         <KeyRound className="h-3.5 w-3.5" />
                       </button>
                       <button onClick={() => startEdit(h)}
-                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white" title="Edit">
+                        disabled={isExternal}
+                        aria-disabled={isExternal || undefined}
+                        data-guest-disabled={isExternal || undefined}
+                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isExternal ? guestTooltip : 'Edit'}>
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={() => deleteMutation.mutate({ id: h.id })} disabled={deleteMutation.isPending}
-                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50" title="Delete">
+                      <button onClick={() => deleteMutation.mutate({ id: h.id })}
+                        disabled={isExternal || deleteMutation.isPending}
+                        aria-disabled={isExternal || undefined}
+                        data-guest-disabled={isExternal || undefined}
+                        className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={isExternal ? guestTooltip : 'Delete'}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
