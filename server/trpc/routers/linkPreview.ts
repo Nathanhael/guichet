@@ -1,7 +1,44 @@
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { protectedProcedure, router } from '../trpc.js';
 import { fetchOgData, extractUrls, type LinkPreview } from '../../services/linkPreview.js';
+import { getRedisClients } from '../../utils/redis.js';
 import logger from '../../utils/logger.js';
+
+// Per-user budget for the compose-time preview. The global tRPC IP limiter
+// (200/min) caps the overall blast radius; this adds a per-identity cap so a
+// single compromised account can't ride the IP budget alone to probe external
+// hosts through the server's egress. 20/min = generous for a human typing,
+// tight enough to kill automation.
+const LINK_PREVIEW_WINDOW_SECS = 60;
+const LINK_PREVIEW_MAX_PER_WINDOW = 20;
+
+async function enforcePerUserLimit(userId: string): Promise<void> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) {
+      // Redis unavailable — fail open. The SSRF guard in fetchOgData still
+      // applies; worst case is the global tRPC limiter takes the slack.
+      return;
+    }
+    const key = `rl:lp:${userId}`;
+    const count = await pubClient.incr(key);
+    if (count === 1) {
+      await pubClient.expire(key, LINK_PREVIEW_WINDOW_SECS);
+    }
+    if (count > LINK_PREVIEW_MAX_PER_WINDOW) {
+      logger.warn({ userId, count }, '[linkPreview] per-user rate limit exceeded');
+      throw new TRPCError({
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Too many link previews — slow down for a moment.',
+      });
+    }
+  } catch (err) {
+    if (err instanceof TRPCError) throw err;
+    // Redis error (not a rejection) — fail open, same reasoning as above.
+    logger.warn({ err: err instanceof Error ? err.message : String(err) }, '[linkPreview] rate limit check failed, allowing');
+  }
+}
 
 /**
  * On-demand link preview unfurling for the compose area.
@@ -27,7 +64,9 @@ export const linkPreviewRouter = router({
     .input(z.object({
       text: z.string().max(5500), // a bit of headroom over the 5000 server cap
     }))
-    .query(async ({ input }): Promise<LinkPreview | null> => {
+    .query(async ({ ctx, input }): Promise<LinkPreview | null> => {
+      // Enforce BEFORE URL extraction so abusers can't burn CPU/regex cycles.
+      if (ctx.user) await enforcePerUserLimit(ctx.user.id);
       const urls = extractUrls(input.text);
       if (urls.length === 0) return null;
       // Only the first URL — previewing every URL inline would be
