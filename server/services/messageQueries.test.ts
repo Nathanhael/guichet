@@ -18,6 +18,17 @@ vi.mock('../db/postgres.js', () => {
   };
 });
 
+const mockStorageDelete = vi.fn().mockResolvedValue(undefined);
+vi.mock('./storage.js', () => ({
+  getStorage: () => ({
+    upload: vi.fn(),
+    delete: mockStorageDelete,
+    getUrl: vi.fn(),
+    read: vi.fn(),
+    healthy: vi.fn(),
+  }),
+}));
+
 vi.stubGlobal('crypto', { ...crypto, randomUUID: vi.fn(() => 'mock-uuid') });
 
 import {
@@ -132,12 +143,70 @@ describe('messageQueries', () => {
   });
 
   describe('softDeleteMessage', () => {
-    it('sets deletedAt and clears text', async () => {
-      const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(undefined) };
-      vi.mocked(db.update).mockReturnValue(chain as never);
+    function mockExistingMessage(mediaUrl: string | null, attachments: unknown) {
+      const selectChain = {
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([{ mediaUrl, attachments }]),
+      };
+      vi.mocked(db.select).mockReturnValue(selectChain as never);
+      const updateChain = {
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.mocked(db.update).mockReturnValue(updateChain as never);
+      return { selectChain, updateChain };
+    }
+
+    it('sets deletedAt and clears text, mediaUrl, attachments', async () => {
+      mockExistingMessage(null, null);
 
       await softDeleteMessage('m1');
+
       expect(db.update).toHaveBeenCalled();
+    });
+
+    it('deletes the mediaUrl blob from storage', async () => {
+      mockStorageDelete.mockClear();
+      mockExistingMessage('/uploads/photo-abc.png', null);
+
+      await softDeleteMessage('m1');
+
+      expect(mockStorageDelete).toHaveBeenCalledWith('photo-abc.png');
+    });
+
+    it('deletes each attachment blob from storage', async () => {
+      mockStorageDelete.mockClear();
+      mockExistingMessage(null, [
+        { url: '/uploads/a.pdf', name: 'a', mimeType: 'application/pdf', size: 1 },
+        { url: '/uploads/b.jpg', name: 'b', mimeType: 'image/jpeg', size: 2 },
+      ]);
+
+      await softDeleteMessage('m1');
+
+      expect(mockStorageDelete).toHaveBeenCalledWith('a.pdf');
+      expect(mockStorageDelete).toHaveBeenCalledWith('b.jpg');
+    });
+
+    it('skips storage.delete for non-upload URLs', async () => {
+      mockStorageDelete.mockClear();
+      mockExistingMessage('https://external.example/photo.png', [
+        { url: 'https://external.example/a.pdf', name: 'a', mimeType: 'x', size: 1 },
+      ]);
+
+      await softDeleteMessage('m1');
+
+      expect(mockStorageDelete).not.toHaveBeenCalled();
+    });
+
+    it('does not throw when storage.delete fails (fire-and-forget)', async () => {
+      mockStorageDelete.mockClear();
+      mockStorageDelete.mockRejectedValueOnce(new Error('S3 down'));
+      mockExistingMessage('/uploads/x.png', null);
+
+      await expect(softDeleteMessage('m1')).resolves.toBeDefined();
+      // Give the fire-and-forget promise a tick to settle so the rejection
+      // does not surface as an unhandled promise in later tests.
+      await new Promise((r) => setImmediate(r));
     });
   });
 

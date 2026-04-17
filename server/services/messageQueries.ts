@@ -2,6 +2,8 @@
 import { eq, and, asc, isNull, inArray, lt, or } from 'drizzle-orm';
 import { db } from '../db/postgres.js';
 import { messages, ticketLabels } from '../db/schema.js';
+import logger from '../utils/logger.js';
+import { getStorage } from './storage.js';
 
 import type { LinkPreview } from './linkPreview.js';
 
@@ -217,15 +219,50 @@ export async function updateMessageText(messageId: string, newText: string) {
 }
 
 /**
- * Soft-deletes a message (sets deletedAt, clears text and mediaUrl).
+ * Soft-deletes a message (sets deletedAt, clears text, mediaUrl and attachments)
+ * and deletes any uploaded blobs backing the cleared URLs. Blob deletion is
+ * fire-and-forget AFTER the DB update commits — a storage outage must not
+ * orphan the DB row.
+ *
  * Used by: message:delete
  */
 export async function softDeleteMessage(messageId: string) {
+  const [existing] = await db
+    .select({ mediaUrl: messages.mediaUrl, attachments: messages.attachments })
+    .from(messages)
+    .where(eq(messages.id, messageId));
+
+  const filesToDelete: string[] = [];
+  if (existing) {
+    if (existing.mediaUrl && existing.mediaUrl.startsWith('/uploads/')) {
+      filesToDelete.push(existing.mediaUrl.replace(/^\/uploads\//, ''));
+    }
+    const attachments = (existing.attachments ?? []) as Array<{ url?: string }>;
+    for (const att of attachments) {
+      if (att?.url?.startsWith('/uploads/')) {
+        filesToDelete.push(att.url.replace(/^\/uploads\//, ''));
+      }
+    }
+  }
+
   const now = new Date().toISOString();
   await db
     .update(messages)
-    .set({ deletedAt: now, text: '', mediaUrl: null })
+    .set({ deletedAt: now, text: '', mediaUrl: null, attachments: null })
     .where(eq(messages.id, messageId));
+
+  if (filesToDelete.length > 0) {
+    const storage = getStorage();
+    for (const filename of filesToDelete) {
+      storage.delete(filename).catch((err: unknown) => {
+        logger.warn(
+          { messageId, filename, err: err instanceof Error ? err.message : String(err) },
+          '[msgQueries] soft-delete: storage.delete failed',
+        );
+      });
+    }
+  }
+
   return now;
 }
 
