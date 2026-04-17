@@ -34,6 +34,7 @@ export const ticketRouter = router({
       dateTo: z.string().optional(),
       partnerId: z.string().optional(), // required for platform operators
       hasSupport: z.boolean().optional(), // true = supportId assigned, false = unassigned
+      supportId: z.string().optional(), // narrow to a specific support user
     }))
     .query(async ({ input, ctx }) => {
       try {
@@ -80,6 +81,8 @@ export const ticketRouter = router({
 
         if (input.hasSupport === true) conditions.push(isNotNull(tickets.supportId));
         else if (input.hasSupport === false) conditions.push(isNull(tickets.supportId));
+
+        if (input.supportId) conditions.push(eq(tickets.supportId, input.supportId));
 
         if (input.search) {
           const q = `%${escapeLikePattern(input.search)}%`;
