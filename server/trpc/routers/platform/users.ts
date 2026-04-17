@@ -67,7 +67,6 @@ export const platformUsersRouter = router({
       lang: users.lang,
       avatarUrl: users.avatarUrl,
       isPlatformOperator: users.isPlatformOperator,
-      authMethod: users.authMethod,
       lastActiveAt: users.lastActiveAt,
       createdAt: users.createdAt,
       updatedAt: users.updatedAt,
