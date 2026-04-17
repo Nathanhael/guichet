@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { test, expect, type Page } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
@@ -132,6 +133,25 @@ test.describe('Chat Enhancements', () => {
 
   test.beforeAll(async ({ browser }) => {
     await seedOpenTicket(browser);
+  });
+
+  // Close any open tickets agent_qa owns so the seeded CHAT-ENH ticket
+  // doesn't leak into sibling specs (notably chat-flow.spec.ts, where
+  // the 1-ticket-per-agent guard would silently reject a fresh ticket
+  // and the `alreadyInChat` probe would race the pre-existing chat).
+  // Runs a direct SQL UPDATE via the docker db container — simpler than
+  // re-authenticating to the UI to click a close button.
+  test.afterAll(() => {
+    try {
+      execSync(
+        `docker compose exec -T db psql -U user -d guichet -c "UPDATE tickets SET status='closed' WHERE agent_id='agent_qa' AND status <> 'closed';"`,
+        { stdio: 'ignore' }
+      );
+    } catch {
+      // Non-fatal — cleanup is best-effort. If docker is unavailable or
+      // the ticket was already closed, the next spec will still fail
+      // visibly on the real assertion rather than on cleanup noise.
+    }
   });
 
   test('delivery checkmarks visible on sent messages', async ({ page }) => {
