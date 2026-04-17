@@ -399,8 +399,15 @@ app.use('/api/v1', v1Router);
 app.get('/metrics', async (req: Request, res: Response) => {
   const remoteIp = req.socket.remoteAddress;
   const isLocal = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
-  const tokenHeader = req.headers['x-metrics-token'];
-  
+  // Accept either X-Metrics-Token (custom) or Authorization: Bearer (Prometheus native).
+  // Prometheus scrape_configs can emit Bearer natively via credentials_file; custom
+  // headers aren't supported in scrape_configs, hence the dual acceptance.
+  const authHeader = req.headers.authorization;
+  const bearerToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : undefined;
+  const tokenHeader = req.headers['x-metrics-token'] ?? bearerToken;
+
   if (config.METRICS_TOKEN) {
     // Token is configured: require it (localhost bypass stays)
     if (tokenHeader !== config.METRICS_TOKEN && !isLocal) {
