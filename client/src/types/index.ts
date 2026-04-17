@@ -156,6 +156,13 @@ export interface Message {
   senderName: string;
   senderRole: string;
   senderLang: string;
+  /**
+   * Azure B2B guest flag denormalized from users.isExternal at insert time.
+   * Drives the GUEST badge in MessageBubble. Optional to stay backward
+   * compatible with older cached messages whose payloads were written
+   * before migration 0006 — treat undefined as false.
+   */
+  senderIsExternal?: boolean;
   originalText: string;
   improvedText: string;
   processedText: string;

@@ -13,6 +13,7 @@ interface MessageRow {
   senderName?: string | null;
   senderRole?: string | null;
   senderLang?: string | null;
+  senderIsExternal?: boolean | null;
   mediaUrl?: string | null;
   createdAt?: string | null;
   editedAt?: string | null;
@@ -23,6 +24,7 @@ interface MessageRow {
   sender_name?: string | null;
   sender_role?: string | null;
   sender_lang?: string | null;
+  sender_is_external?: boolean | null;
   media_url?: string | null;
   created_at?: string | null;
   delivered_at?: string | null;
@@ -61,6 +63,9 @@ export function mapMessageRow(row: MessageRow): Message {
     senderName: row.sender_name ?? row.senderName ?? '',
     senderRole,
     senderLang,
+    // Denormalized GUEST flag from migration 0006 — drives MessageBubble's
+    // brutalist amber badge without relying on live presence.
+    senderIsExternal: Boolean(row.sender_is_external ?? row.senderIsExternal),
     originalText,
     processedText: originalText,
     improvedText: originalText,

@@ -150,6 +150,11 @@ export const messages = pgTable('messages', {
   senderName: text('sender_name'),
   senderRole: text('sender_role'),
   senderLang: text('sender_lang'),
+  // Denormalized at insert time so historical messages can still render the
+  // GUEST badge in MessageBubble without a live presence lookup. Sourced from
+  // `users.isExternal` via `findSenderInfo`. System messages are always false.
+  // See docs/superpowers/specs/partner-sso-b2b-guest.md.
+  senderIsExternal: boolean('sender_is_external').notNull().default(false),
   text: text('text'),
   mediaUrl: text('media_url'),
   whisper: integer('whisper').default(0),

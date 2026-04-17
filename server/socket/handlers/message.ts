@@ -101,6 +101,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           name: socket.data.name as string || senderId,
           role: 'platform_operator',
           lang: (socket.data.lang as string) || 'en',
+          // Platform operators are never Azure B2B guests by definition
+          // (they authenticate via our staff SSO path with acct=member).
+          isExternal: false,
         };
         logger.info({ senderId }, '[message:send] Platform operator fallback — no membership row');
       }
@@ -159,6 +162,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         senderName: sender.name,
         senderRole: sender.role,
         senderLang: sender.lang,
+        senderIsExternal: sender.isExternal,
         text: guardedText,
         mediaUrl,
         attachments: validAttachments && validAttachments.length > 0 ? validAttachments : null,

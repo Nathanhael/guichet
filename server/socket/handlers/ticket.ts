@@ -135,6 +135,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
             senderName: agentUser?.name || agentId,
             senderRole: 'agent',
             senderLang: agentLang,
+            senderIsExternal: !!agentUser?.isExternal,
             text: text,
             mediaUrl: mediaUrl,
           });
@@ -225,6 +226,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
               ticketId, senderId, senderName,
               senderInfo?.role || 'support', senderInfo?.lang || 'en',
               note.trim(),
+              !!senderInfo?.isExternal,
             );
             ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', whisperMsg);
           }

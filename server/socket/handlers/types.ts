@@ -170,6 +170,8 @@ export interface SenderInfo {
   name: string;
   role: string;
   lang: string;
+  /** Azure B2B guest flag — denormalized onto messages at insert for GUEST-badge rendering. */
+  isExternal: boolean;
 }
 
 // ─── Socket-Level Rate Limiting ───────────────────────────────────────────────
