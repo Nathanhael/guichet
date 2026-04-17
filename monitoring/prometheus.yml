@@ -7,3 +7,10 @@ scrape_configs:
     static_configs:
       - targets: ['server:3001']
     metrics_path: '/metrics'
+    # The /metrics endpoint requires either X-Metrics-Token (custom) or
+    # Authorization: Bearer (native). Prometheus scrape_configs can only emit
+    # the latter. Value must match METRICS_TOKEN env in the server service.
+    # Dev default is hardcoded — rotate in prod by replacing both sides.
+    authorization:
+      type: Bearer
+      credentials: dev-only-metrics-token-replace-in-prod

@@ -38,8 +38,14 @@ services:
       - PLATFORM_ADMIN_EMAIL=${PLATFORM_ADMIN_EMAIL:-}
       - PLATFORM_ADMIN_PASSWORD=${PLATFORM_ADMIN_PASSWORD:-}
       - AI_ENABLED=${AI_ENABLED:-false}
-      # AI encryption key loaded from .env — DO NOT hardcode
-      - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:?AI_KEY_ENCRYPTION_SECRET must be set in .env}
+      # Field encryption key loaded from .env — DO NOT hardcode.
+      # FIELD_ENCRYPTION_SECRET is the canonical name; AI_KEY_ENCRYPTION_SECRET is a legacy alias.
+      # encryption.ts reads `FIELD_ENCRYPTION_SECRET || AI_KEY_ENCRYPTION_SECRET` so either works.
+      - FIELD_ENCRYPTION_SECRET=${FIELD_ENCRYPTION_SECRET:-}
+      - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:?AI_KEY_ENCRYPTION_SECRET or FIELD_ENCRYPTION_SECRET must be set in .env}
+      # METRICS_TOKEN — shared secret between /metrics and Prometheus scraper.
+      # Dev default matches the value in monitoring/prometheus.yml so scraping works out of the box.
+      - METRICS_TOKEN=${METRICS_TOKEN:-dev-only-metrics-token-replace-in-prod}
       - AI_PROVIDER=${AI_PROVIDER:-ollama}
       - AI_TIMEOUT_MS=${AI_TIMEOUT_MS:-60000}
       - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
