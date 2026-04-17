@@ -175,6 +175,14 @@ export async function runDailyPurge() {
       await tx.execute(sql`DELETE FROM ticket_labels WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
       // Purge app_feedback older than retention period (GDPR compliance)
       await tx.execute(sql`DELETE FROM app_feedback WHERE created_at < ${cutoffDate}`);
+      // Anonymize the customer (agent) link on ratings whose ticket is about
+      // to be purged. support_id is kept forever for coaching / team analytics;
+      // agent_id is dropped since it ties a rating to a named customer past
+      // the 30d ticket retention window.
+      await tx.execute(sql`
+        UPDATE ratings SET agent_id = NULL
+        WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')
+      `);
       await tx.execute(sql`DELETE FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'`);
 
       // CR-02 fix: Anonymize audit_log — filter NULLs from array_agg to prevent
