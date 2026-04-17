@@ -1,81 +1,133 @@
+import { z } from 'zod';
 import { db } from '../db.js';
 import { sql, inArray } from 'drizzle-orm';
 import { users } from '../db/schema.js';
 import { Ticket } from '../types/index.js';
 
-/** Sentiment aggregate per ticket from SQL AVG query */
-export interface TicketSentimentAvg {
-  ticketId: string;
-  sentimentAvg: number | null;
-  sentimentCount: number;
+/**
+ * Raw-SQL row validation.
+ *
+ * All dashboard stats come from hand-written SQL against daily_stats / tickets
+ * / messages / ratings / labels. A silent column rename — or a forgotten AS
+ * alias — used to propagate as `undefined` through eight `as unknown as`
+ * casts, corrupting dashboard output without a single error.
+ *
+ * Runtime validation via `parseRows` now makes that impossible: a missing or
+ * wrong-shaped column throws immediately with the query name, and consumers
+ * get types derived directly from the schema (`z.infer`) so there is no
+ * interface/SQL divergence to drift.
+ *
+ * `z.coerce.number()` is used for aggregate columns (SUM / COUNT / AVG)
+ * because node-postgres returns `numeric` / `bigint` types as strings.
+ */
+
+function parseRows<T extends z.ZodTypeAny>(
+  rows: unknown,
+  schema: T,
+  context: string,
+): z.infer<T>[] {
+  const result = z.array(schema).safeParse(rows ?? []);
+  if (!result.success) {
+    throw new Error(
+      `statsQueries.${context}: row shape mismatch — ${result.error.message}`,
+    );
+  }
+  return result.data;
 }
 
-/** Sentiment aggregate per dept from SQL AVG+JOIN query */
-export interface DeptSentimentAvg {
-  dept: string;
-  sentimentAvg: number | null;
-  sentimentCount: number;
-}
+const ticketSentimentSchema = z.object({
+  ticketId: z.string(),
+  sentimentAvg: z.coerce.number().nullable(),
+  sentimentCount: z.coerce.number(),
+});
+export type TicketSentimentAvg = z.infer<typeof ticketSentimentSchema>;
 
-export interface HistoricalStatRow {
-  date: string;
-  total: number;
-  closed: number;
-  abandoned: number;
-  avgResponseMs: number;
-  avgDurationMs: number;
-  avgRating: number | null;
-  ratingCount: number;
-  responseCount: number;
-  p95ResponseMs: number;
-  reopened: number;
-  sentimentSum: number;
-  sentimentCount: number;
-  deptCounts: string;
-  ratingsByDept: string;
-  hourly: string;
-}
+const deptSentimentSchema = z.object({
+  // tickets.dept is NOT NULL in schema.ts, so GROUP BY t.dept cannot yield null
+  dept: z.string(),
+  sentimentAvg: z.coerce.number().nullable(),
+  sentimentCount: z.coerce.number(),
+});
+export type DeptSentimentAvg = z.infer<typeof deptSentimentSchema>;
 
-export interface RatingRow {
-  id: string;
-  ticketId: string;
-  supportId: string;
-  rating: number;
-  createdAt: string;
-}
+const historicalStatSchema = z.object({
+  date: z.string(),
+  total: z.coerce.number(),
+  closed: z.coerce.number(),
+  abandoned: z.coerce.number(),
+  avgResponseMs: z.coerce.number(),
+  avgDurationMs: z.coerce.number(),
+  avgRating: z.coerce.number().nullable(),
+  ratingCount: z.coerce.number(),
+  responseCount: z.coerce.number(),
+  p95ResponseMs: z.coerce.number(),
+  reopened: z.coerce.number(),
+  sentimentSum: z.coerce.number(),
+  sentimentCount: z.coerce.number(),
+  deptCounts: z.string(),
+  ratingsByDept: z.string(),
+  hourly: z.string(),
+});
+export type HistoricalStatRow = z.infer<typeof historicalStatSchema>;
 
-export interface PrevHistRow {
-  total: number | null;
-  avgresp: number | null;
-  avgdur: number | null;
-  abandoned: number | null;
-}
+const ratingSchema = z.object({
+  id: z.string(),
+  ticketId: z.string(),
+  supportId: z.string().nullable(),
+  rating: z.coerce.number(),
+  comment: z.string().nullable().optional(),
+  createdAt: z.union([z.string(), z.date()]).transform((v) => (v instanceof Date ? v.toISOString() : v)),
+});
+export type RatingRow = z.infer<typeof ratingSchema>;
 
-export interface LabelCountRow {
-  name: string;
-  dept: string;
-  count: number;
-}
+const prevHistSchema = z.object({
+  total: z.coerce.number().nullable(),
+  avgresp: z.coerce.number().nullable(),
+  avgdur: z.coerce.number().nullable(),
+  abandoned: z.coerce.number().nullable(),
+  avgrat: z.coerce.number().nullable(),
+});
+export type PrevHistRow = z.infer<typeof prevHistSchema>;
+
+const labelCountSchema = z.object({
+  name: z.string(),
+  dept: z.string(),
+  count: z.coerce.number(),
+});
+export type LabelCountRow = z.infer<typeof labelCountSchema>;
+
+const waitingSchema = z.object({
+  // node-postgres returns timestamptz as a Date, but raw queries can land as string too
+  created_at: z.union([z.string(), z.date()]).transform((v) => (v instanceof Date ? v.toISOString() : v)),
+});
 
 export async function fetchHistoricalStats(partnerId: string, rangeStart: string, rangeEnd: string): Promise<HistoricalStatRow[]> {
   const result = await db.execute(sql`SELECT date, total, closed, abandoned, avg_response_ms AS "avgResponseMs", avg_duration_ms AS "avgDurationMs", avg_rating AS "avgRating", rating_count AS "ratingCount", response_count AS "responseCount", p95_response_ms AS "p95ResponseMs", reopened, sentiment_sum AS "sentimentSum", sentiment_count AS "sentimentCount", dept_counts AS "deptCounts", ratings_by_dept AS "ratingsByDept", hourly FROM daily_stats WHERE date >= ${rangeStart} AND date <= ${rangeEnd} AND partner_id = ${partnerId}`);
-  return (result.rows ?? []) as unknown as HistoricalStatRow[];
+  return parseRows(result.rows, historicalStatSchema, 'fetchHistoricalStats');
 }
 
 export async function fetchLiveTickets(partnerId: string, rangeStart: string, rangeEnd: string): Promise<Ticket[]> {
+  // Ticket shape is defined in types/index.ts and is shared across the app;
+  // guarding it here would require duplicating 20+ fields. The selected
+  // columns below are fixed — any rename will surface at read-site via the
+  // Ticket type. Kept as cast by design.
   const result = await db.execute(sql`SELECT id, created_at, status, closed_at, dept, agent_id, agent_name, support_id, support_name, support_joined_at, reopened, closing_notes, closed_by, partner_id FROM tickets WHERE created_at::date >= ${rangeStart} AND created_at::date <= ${rangeEnd} AND partner_id = ${partnerId}`);
   return result.rows as unknown as Ticket[];
 }
 
 export async function fetchRatings(partnerId: string, rangeStart: string, rangeEnd: string, dept?: string): Promise<RatingRow[]> {
+  // NB: `id` and `supportId` were previously absent from the SELECT while the
+  // old `as unknown as RatingRow[]` cast still claimed they existed — a silent
+  // propagation of `undefined` into the support-by-rating map in stats.ts.
+  // Adding the columns and validating the row shape fixes that latent bug.
   const result = dept && dept !== 'all'
-    ? await db.execute(sql`SELECT r.ticket_id AS "ticketId", r.rating, r.comment, r.created_at AS "createdAt"
+    ? await db.execute(sql`SELECT r.id, r.ticket_id AS "ticketId", r.support_id AS "supportId", r.rating, r.comment, r.created_at AS "createdAt"
        FROM ratings r JOIN tickets t ON r.ticket_id = t.id
        WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND t.dept = ${dept}`)
-    : await db.execute(sql`SELECT r.ticket_id AS "ticketId", r.rating, r.comment, r.created_at AS "createdAt"
+    : await db.execute(sql`SELECT r.id, r.ticket_id AS "ticketId", r.support_id AS "supportId", r.rating, r.comment, r.created_at AS "createdAt"
        FROM ratings r JOIN tickets t ON r.ticket_id = t.id
        WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}`);
-  return result.rows as unknown as RatingRow[];
+  return parseRows(result.rows, ratingSchema, 'fetchRatings');
 }
 
 export async function fetchTicketSentiment(partnerId: string, rangeStart: string, rangeEnd: string, dept?: string): Promise<TicketSentimentAvg[]> {
@@ -88,7 +140,7 @@ export async function fetchTicketSentiment(partnerId: string, rangeStart: string
        FROM messages m JOIN tickets t ON m.ticket_id = t.id
        WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND m.sentiment IS NOT NULL
        GROUP BY m.ticket_id`);
-  return result.rows as unknown as TicketSentimentAvg[];
+  return parseRows(result.rows, ticketSentimentSchema, 'fetchTicketSentiment');
 }
 
 export async function fetchDeptSentiment(partnerId: string, rangeStart: string, rangeEnd: string): Promise<DeptSentimentAvg[]> {
@@ -96,21 +148,22 @@ export async function fetchDeptSentiment(partnerId: string, rangeStart: string, 
      FROM messages m JOIN tickets t ON m.ticket_id = t.id
      WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND m.sentiment IS NOT NULL
      GROUP BY t.dept`);
-  return result.rows as unknown as DeptSentimentAvg[];
+  return parseRows(result.rows, deptSentimentSchema, 'fetchDeptSentiment');
 }
 
 export async function fetchWaitingTickets(partnerId: string, thirtyMinsAgo: string): Promise<{ createdAt: string }[]> {
   const result = await db.execute(sql`SELECT created_at FROM tickets WHERE status = 'open' AND support_id IS NULL AND created_at >= ${thirtyMinsAgo} AND partner_id = ${partnerId}`);
-  return result.rows as unknown as { createdAt: string }[];
+  const rows = parseRows(result.rows, waitingSchema, 'fetchWaitingTickets');
+  return rows.map((r) => ({ createdAt: r.created_at }));
 }
 
-export async function fetchPreviousPeriodStats(partnerId: string, prevStartStr: string, prevEndStr: string, excludeWeekends?: boolean): Promise<(PrevHistRow & { avgrat: number | null })[]> {
+export async function fetchPreviousPeriodStats(partnerId: string, prevStartStr: string, prevEndStr: string, excludeWeekends?: boolean): Promise<PrevHistRow[]> {
   const result = excludeWeekends
     ? await db.execute(sql`SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(avg_rating) as avgrat
        FROM daily_stats WHERE date >= ${prevStartStr} AND date <= ${prevEndStr} AND partner_id = ${partnerId} AND EXTRACT(DOW FROM date::date) NOT IN (0, 6)`)
     : await db.execute(sql`SELECT SUM(total) as total, AVG(avg_response_ms) as avgresp, AVG(avg_duration_ms) as avgdur, SUM(abandoned) as abandoned, AVG(avg_rating) as avgrat
        FROM daily_stats WHERE date >= ${prevStartStr} AND date <= ${prevEndStr} AND partner_id = ${partnerId}`);
-  return result.rows as unknown as (PrevHistRow & { avgrat: number | null })[];
+  return parseRows(result.rows, prevHistSchema, 'fetchPreviousPeriodStats');
 }
 
 export async function fetchLabelSummary(partnerId: string, rangeStart: string, rangeEnd: string): Promise<LabelCountRow[]> {
@@ -121,7 +174,7 @@ export async function fetchLabelSummary(partnerId: string, rangeStart: string, r
                      WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}
                      GROUP BY l.name, t.dept
                      ORDER BY t.dept, count DESC`);
-  return result.rows as unknown as LabelCountRow[];
+  return parseRows(result.rows, labelCountSchema, 'fetchLabelSummary');
 }
 
 export async function fetchSupportUserNames(supportIds: string[]): Promise<{ id: string; name: string }[]> {
@@ -130,3 +183,15 @@ export async function fetchSupportUserNames(supportIds: string[]): Promise<{ id:
     .from(users)
     .where(inArray(users.id, supportIds));
 }
+
+// Exported for tests — lets us assert schema shape without hitting the DB.
+export const __schemas = {
+  historicalStatSchema,
+  ratingSchema,
+  ticketSentimentSchema,
+  deptSentimentSchema,
+  waitingSchema,
+  prevHistSchema,
+  labelCountSchema,
+  parseRows,
+};

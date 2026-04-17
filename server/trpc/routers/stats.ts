@@ -403,7 +403,7 @@ export const statsRouter = router({
         });
 
         // Batch-fetch user names for supportIds not already in supportMap (avoids N+1 queries)
-        const missingSupportIds = [...new Set(liveRatings.map(r => r.supportId).filter(id => id && !supportMap[id]))];
+        const missingSupportIds = [...new Set(liveRatings.map(r => r.supportId).filter((id): id is string => !!id && !supportMap[id]))];
         const supportUserMap = new Map<string, string>();
         if (missingSupportIds.length > 0) {
           const userRows = await fetchSupportUserNames(missingSupportIds);
