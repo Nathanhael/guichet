@@ -52,15 +52,15 @@ docker compose -f docker-compose.prod.yml build            # Build prod images
 docker compose exec server npx tsx seed.ts                       # Truncate all tables (clean slate)
 ```
 
-The seed script truncates all tables. The platform operator is auto-created by the bootstrap service on server startup from `PLATFORM_ADMIN_EMAIL` env var. Platform step-up TOTP is controlled by `REQUIRE_PLATFORM_STEP_UP` (default `false`). When `false`, all PlatformView tabs are accessible without authenticator setup. Set to `true` in production to enforce TOTP verification before accessing platform admin.
+The seed script truncates all tables. The platform operator is auto-created by the bootstrap service on server startup from `PLATFORM_ADMIN_EMAIL` env var. All production logins go through Azure SSO (see `server/routes/sso.ts`). The only way to mint a JWT without SSO is the break-glass CLI (`server/scripts/break_glass.ts`) — see `docs/BREAK_GLASS_RUNBOOK.md`.
 
 ## Architecture
 
 ### Server (`server/`)
 
 **API Layer**:
-- **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 19 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `mfa`, `partner`, `platform`, `platformSecurity`, `presence`, `rating`, `savedView`, `stats`, `status`, `ticket`, `user`, `webhook`. Input validation via Zod.
-- **Express Routes**: Auth (`server/routes/auth.ts`), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`), Push (`server/routes/push.ts`).
+- **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 17 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `partner`, `platform`, `presence`, `rating`, `savedView`, `stats`, `status`, `ticket`, `user`, `webhook`. Input validation via Zod.
+- **Express Routes**: Auth (`server/routes/auth/` — dev-login + session only), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`), Push (`server/routes/push.ts`).
 - **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference`.
 
 **tRPC Middleware** (`server/trpc/trpc.ts`):
@@ -77,12 +77,9 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `statusTracking.ts` — Agent status transition logging, daily rollup aggregation, time-in-status queries
 - `transferService.ts` — Department-based ticket transfer (findPartnerDepartments, transferTicketToDepartment)
 - `stats.ts` — Live statistics computation for dashboard (Recharts)
-- `accountLockout.ts` — 5-attempt lockout with 15-min window, email notification
-- `mail.ts` / `mailTemplates.ts` — Centralized email service + B&W templates (lockout, MFA, password reset)
 - `authSession.ts` — Auth session management and token lifecycle
-- `platformStepUp.ts` — Platform TOTP step-up authentication
 - `roles.ts` — Role hierarchy and permission checks
-- `sessionRevocation.ts` — Session revocation on password/security changes (also revokes refresh tokens)
+- `sessionRevocation.ts` — Session revocation on security changes (also revokes refresh tokens)
 - `refreshToken.ts` — Rotating refresh token lifecycle (create, rotate, revoke family, reuse detection)
 - `repetitionStore.ts` — Message repetition detection for guards
 - `sla.ts` — SLA enforcement with per-department config and alerting
@@ -137,7 +134,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 
 | Table | Purpose | Key Columns |
 |---|---|---|
-| `users` | Global user accounts | `id`, `email`, `password`, `lang` (nl/fr/en), `isPlatformOperator` |
+| `users` | Global user accounts | `id`, `email`, `externalId` (Azure OID), `lang` (nl/fr/en), `isPlatformOperator` |
 | `partners` | Tenant organizations | `id`, `name`, `status` (active/inactive), `departments` (JSONB), `logoUrl`, `industry` |
 | `memberships` | User-Partner junction | `userId`, `partnerId`, `role`, `departments` (JSONB array of dept IDs) |
 | `tickets` | Support tickets | `id`, `partnerId`, `agentId`, `status` (open/pending/closed/resolved), `participants` (JSONB) |
@@ -176,23 +173,23 @@ The seed script truncates all tables. The platform operator is auto-created by t
 
 **Token Refresh**: `hooks/useTokenRefresh.ts` — proactive access token refresh via `POST /api/v1/auth/refresh`. Timer-based with visibility change detection for tab sleep/resume.
 
-**Navbar**: All 4 views share a unified navbar pattern. Left side: `GUICHET | ROLE_BADGE | PARTNER_NAME` (text only, no logos). Right side: view-specific items + `SettingsPopover` (gear icon, preference toggles) + `UserMenu` (avatar initials, identity/actions dropdown). `SettingsPopover` accepts boolean props to control which items appear per view. `UserMenu` shows account security for all users (modal adapts content: password+MFA for platform operators, notification prefs only for partner users).
+**Navbar**: All 4 views share a unified navbar pattern. Left side: `GUICHET | ROLE_BADGE | PARTNER_NAME` (text only, no logos). Right side: view-specific items + `SettingsPopover` (gear icon, preference toggles) + `UserMenu` (avatar initials, identity/actions dropdown). `SettingsPopover` accepts boolean props to control which items appear per view.
 
 **Views**:
 - `PlatformView` — Thin shell (tabs + modal state). Feature modules in `components/platform/`. Each component owns its own tRPC hooks and cache invalidation.
 - `AdminView` — Partner admin: team, departments, tickets, business hours, labels, canned responses, knowledge base, webhooks, alerts, feedback, stats, archive
 - `SupportView` — Support staff: ticket queue by department, multi-tab chat, AI copilot sidebar
 - `AgentView` — End-user: ticket creation, chat, attachments
-- `LoginView` — Auth flow: login, password reset, MFA challenge, partner selection
+- `LoginView` — Auth flow: Azure SSO button (primary) + dev-login picker (non-prod only) + partner selection
 
 **Component Directories**:
 - `components/platform/` — PlatformView feature modules (PartnerList, UserTable, CreatePartnerModal, DeletePartnerModal, EditPartnerModal, EditUserProfileModal, InviteUserModal, ManageAccessModal, GroupMappingsPanel)
-- `components/admin/` — AdminView panels: AdminAlerts, AdminArchive, AdminBusinessHours, AdminCannedResponses, AdminDepartments, AdminFeedback, AdminKnowledgeBase, AdminLabels, AdminSatisfaction, AdminStats, AdminTeam, AdminTickets, AdminWebhooks, AgentStatusStats, DashboardHelpers, ErrorBox, PlatformAuditLog, PlatformArchiveViewer, PlatformSecurityOps, PlatformSystemHealth, PlatformSystemSettings
+- `components/admin/` — AdminView panels: AdminAlerts, AdminArchive, AdminBusinessHours, AdminCannedResponses, AdminDepartments, AdminFeedback, AdminKnowledgeBase, AdminLabels, AdminSatisfaction, AdminStats, AdminTeam, AdminTickets, AdminWebhooks, AgentStatusStats, DashboardHelpers, ErrorBox, PlatformAuditLog, PlatformArchiveViewer, PlatformSystemHealth
 - `components/agent/` — AgentNav, AgentTicketSidebar, TicketForm
 - `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
 - `components/chat/` — Decomposed chat sub-components: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LabelPicker, LinkPreviewCard, QuoteBlock, SearchBar
 - `utils/` — `statusColors.ts`, `dateUtils.ts`, `markdown.ts`, `fileUtils.ts`, `exportDashboard.ts`, `labelColors.ts`, `highlightText.tsx`, `businessHours.ts`, `notifications.ts`, `notificationSound.ts`, `roles.ts`, `uploadLogo.ts`, `trpc.ts`
-- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, NotificationToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu, UserSecurityModal
+- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, NotificationToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
 
 **Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
 
@@ -207,16 +204,12 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **Dynamic Departments**: Never hardcode department IDs. Always read from `partner.departments` JSONB. Schema: `{ id (auto-slug), name, description? }`. IDs are immutable.
 - **Department Assignment**: `memberships.departments` is a JSONB array of dept IDs. Empty/null = generalist (sees all).
 - **TypeScript**: No `any` types. Zod schemas on backend, TypeScript interfaces in `client/src/types/index.ts`.
-- **Argon2id**: Password hashing uses `argon2` (native C bindings). No bcrypt anywhere in the codebase.
-- **SSO-Only Auth**: Partners authenticate exclusively via SSO. Local auth (password, MFA, lockout) is restricted to platform operators only. Login route, forgot-password, reset-password, `trpc.mfa.*`, and `trpc.user.changePassword` all guard with `isPlatformOperator` check. LoginView shows SSO button primary; "Platform administrator login" link reveals local form.
+- **SSO-Only Auth**: All production logins go through Azure SSO. The `users` table has no password, MFA, lockout, or step-up columns. Non-prod only: `/api/v1/auth/dev-login` mints JWTs by `userId` for the demo picker and Playwright suite (route returns 404 when `NODE_ENV=production`). Emergency access uses the break-glass CLI (`server/scripts/break_glass.ts`) which mints a short-lived JWT for a platform operator and audits `auth.break_glass`.
 - **Azure B2B Guest Support**: Partner employees can be invited into our Azure tenant as B2B guests and log into Guichet via the existing SSO flow. The callback detects guests via the `acct === 1` or `idp` claim and stamps `users.isExternal = true`. Guests are strictly single-partner: if Azure groups resolve to more than one partner the login is rejected with `sso_error=guest_multi_partner_mapping` (audited). Destructive admin mutations (webhook CRUD + secret rotation + test, partner-member add/update/remove/invite, partner department edits) use `destructiveAdminProcedure` which throws FORBIDDEN when `isExternal=true`. UI surfaces a GUEST badge in `UserMenu`, `AdminTeam`, and `SidebarFooter` team panel. Full runbook at `docs/superpowers/specs/partner-sso-b2b-guest.md`.
-- **Audit Logging**: All significant actions (partner lifecycle, user management, GDPR purges) recorded in `audit_log`.
-- **MFA (TOTP)**: Platform operators only. Per-user MFA via `mfaSecret`, `mfaEnabledAt`, `mfaRecoveryCodes` (SHA-256 hashed). Setup/enable/disable via `trpc.mfa.*` (guarded to `isPlatformOperator`). Login challenge returns `{ mfaRequired: true }` and waits for TOTP code re-submission.
-- **Account Lockout**: Platform operators only. 5 failed login attempts → 15-minute lockout. State in `failedLoginAttempts` + `lockedUntil` columns. Email notification on lockout (fire-and-forget). `recordFailedLogin` skips non-platform users.
-- **Password Policies**: Platform operators only. Min 10 chars, upper/lower/digit/special required, common password blocking, email/name inclusion check. History check prevents reuse of last 5 passwords (Argon2id verified).
+- **Audit Logging**: All significant actions (partner lifecycle, user management, GDPR purges, break-glass JWT mints) recorded in `audit_log`.
 - **WORM Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Tickets archived with message count summary.
 - **Cursor-Based Pagination**: Ticket list and audit archive use keyset pagination (`createdAt|id` composite cursor). Pattern: fetch `limit+1`, detect hasMore, return `{ items, nextCursor }`.
-- **Platform Operator Bootstrap**: On first startup with no platform operators, auto-creates one from `PLATFORM_ADMIN_EMAIL` (and optional `PLATFORM_ADMIN_PASSWORD`) env vars. Runs before server accepts traffic. Race-safe, non-fatal.
+- **Platform Operator Bootstrap**: On first startup with no platform operators, auto-creates one from `PLATFORM_ADMIN_EMAIL` env var. Runs before server accepts traffic. Race-safe, non-fatal. Subsequent logins for that operator go through SSO.
 - **Platform Operator Partner Access**: Platform operators can enter any active partner's admin view via `POST /enter-partner` without needing a membership. Socket auth bypasses membership check for operators.
 - **AI Provider Abstraction**: Multi-provider AI via factory pattern (`server/services/ai/`). Uses `AiContext` dependency injection (wired at boot) — all AI modules import from the barrel `index.ts`, never directly. Supports Ollama, Azure OpenAI, and OpenAI-compatible APIs. Per-partner AI config (`aiEnabled`, `aiFeatures` JSONB) controls feature availability. Features: message improvement (optional/forced modes with revert), chat summarization (Redis-cached), translation, sentiment detection (fire-and-forget), auto-summarize on close. Rate limiting and usage logging per partner.
 - **Knowledge Base**: Per-partner KB articles (`kb_articles` table). CRUD via `trpc.kb.*`. Admin UI in `AdminKnowledgeBase`.
@@ -225,7 +218,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with staff-facing analytics and date filtering. Feedback system (`app_feedback` table) for in-app user feedback.
 - **Collision Detection**: `ticket:viewing` / `ticket:left` socket events track who's viewing a ticket. Viewer badges and typing indicators prevent duplicate responses.
 - **PWA**: Progressive Web App with `manifest.json`, `sw.js`, and icons for mobile installation.
-- **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users). Toggle UI in security modal.
+- **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users).
 - **Agent Status Visibility**: 2 statuses (online/away) with color tokens (`accent-green` for online, `accent-amber` for away). Auto-away after 5 minutes idle (via `useIdleStatus` hook), auto-online on activity. Status persists in Redis across reconnects (Lua script preserves status on re-identify). Visible in QueueSidebar (team panel), AdminTeam (status column), SupportNav (capacity badge). Time-in-status tracked in `agent_status_log`, rolled up hourly to `daily_agent_status` (`onlineSeconds`, `awaySeconds`). Stats via `trpc.status.*` (getTeamStatus, getAgentStats, getTeamStats). GDPR: log purged at 30 days, daily rollup retained as aggregate.
 - **Push Notifications**: VAPID-based web push via `pushNotification.ts` service, `push.ts` Express route, and `push_subscriptions` table. Client subscribes via `utils/notifications.ts`. Type definitions in `server/types/web-push.d.ts`.
 - **Department Transfer**: Tickets transfer between department queues (not individual agents). Socket event `ticket:transfer` accepts `{ ticketId, departmentId?, note? }`. Optional whisper note for context handoff. Clears support assignment, re-opens ticket, removes all support sockets from room. Service layer: `transferService.ts` + `insertWhisperMessage` in `systemMessage.ts`.
@@ -241,7 +234,6 @@ The seed script truncates all tables. The platform operator is auto-created by t
 | `COOKIE_SECURE=false` | FATAL | Server exits |
 | `DISABLE_RATE_LIMIT=true` | FATAL | Server exits |
 | `REDIS_URL` without auth | WARN | Logs warning |
-| `REQUIRE_PLATFORM_STEP_UP=false` | WARN | Logs warning |
 
 ## Critical Mandates
 
@@ -263,12 +255,12 @@ guichet/
 │   │   ├── schema.ts              # Database schema (Drizzle ORM) — 28 tables
 │   │   └── postgres.ts            # DB connection, raw query helpers
 │   ├── trpc/
-│   │   ├── router.ts              # Main tRPC router (19 domain routers)
+│   │   ├── router.ts              # Main tRPC router (17 domain routers)
 │   │   ├── trpc.ts                # Procedure middleware (auth, roles)
 │   │   ├── context.ts             # JWT → tRPC context
 │   │   └── routers/               # ai, alerts, cannedResponse, feedback, kb, label, message,
-│   │       │                      # mfa, partner/, platform/, platformSecurity, presence,
-│   │       │                      # rating, savedView, stats, ticket, user, webhook
+│   │       │                      # partner/, platform/, presence, rating, savedView,
+│   │       │                      # stats, status, ticket, user, webhook
 │   │       ├── partner/           # Split: config, members + barrel index
 │   │       └── platform/          # Split: partners, users, audit, sso, system + barrel index
 │   ├── socket/
@@ -276,11 +268,10 @@ guichet/
 │   │   ├── handlers/              # Domain handler modules (auth, message, ticket, presence, collision, rating, disconnect, types)
 │   │   └── partnerScope.ts        # Partner-scoped room helpers
 │   ├── routes/
-│   │   ├── auth/                  # /api/auth/* — split into domain modules
+│   │   ├── auth/                  # /api/auth/* — SSO-only; local-auth removed
 │   │   │   ├── index.ts           # Barrel mounting sub-routers
 │   │   │   ├── rateLimit.ts       # Redis-backed rate limiters + shared helpers
-│   │   │   ├── login.ts           # /login, /login-local
-│   │   │   ├── password.ts        # /forgot-password, /reset-password
+│   │   │   ├── devLogin.ts        # /dev-login (non-prod only)
 │   │   │   └── session.ts         # /refresh, /logout, /switch-partner, /enter-partner
 │   │   ├── sso.ts                 # /api/auth/sso/* (SAML/OIDC flows)
 │   │   ├── logos.ts               # /api/v1/logos
@@ -297,11 +288,7 @@ guichet/
 │   │   ├── presence.ts            # Redis-backed online/offline tracking
 │   │   ├── stats.ts               # Dashboard statistics
 │   │   ├── sla.ts                 # SLA enforcement + per-dept config
-│   │   ├── accountLockout.ts      # 5-attempt lockout
-│   │   ├── mail.ts                # Email service
-│   │   ├── mailTemplates.ts       # B&W email templates
 │   │   ├── authSession.ts         # Auth session management
-│   │   ├── platformStepUp.ts      # Platform TOTP step-up
 │   │   ├── roles.ts               # Role hierarchy/permissions
 │   │   ├── sessionRevocation.ts   # Session revocation on security changes
 │   │   ├── refreshToken.ts        # Rotating refresh token lifecycle
@@ -312,7 +299,7 @@ guichet/
 │   │   ├── systemMessage.ts       # System/whisper message insertion
 │   │   ├── linkPreview.ts         # URL metadata extraction for link previews
 │   │   └── *Queries.ts            # Data-access helpers (message, partner, ticket, user)
-│   ├── scripts/                   # backup.sh, baseline_drizzle.ts, purge_local_passwords.ts
+│   ├── scripts/                   # backup.sh, baseline_drizzle.ts, break_glass.ts (emergency JWT mint)
 │   ├── middleware/                 # Express middleware (auth, validator, metrics)
 │   ├── utils/                     # Logger, Redis, metrics, security
 │   ├── types/                     # TypeScript types (index.ts, web-push.d.ts)

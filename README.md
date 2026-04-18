@@ -8,11 +8,11 @@ Real-time, multi-tenant chat platform for BPO and outsourced helpdesk teams. Eac
 - **Multi-Tenant Architecture** — Strict isolation between tenants, platform-wide SSO with multi-tenant user memberships, and seamless workspace switching
 - **Brutalist Design System** — Raw token-based UI (Zinc + accent colors), JetBrains Mono typography, and minimal functional motion
 - **Role-Based Access** — Four roles (agent, support, admin, platform_operator) with granular permission gates
-- **SSO-First Authentication** — Azure Entra ID for all staff; partner employees federate in via Azure B2B guest invites (see `docs/superpowers/specs/partner-sso-b2b-guest.md`). Local Argon2id auth is reserved for platform operators (recovery + break-glass).
+- **SSO-Only Authentication** — Azure Entra ID for all staff; partner employees federate in via Azure B2B guest invites (see `docs/superpowers/specs/partner-sso-b2b-guest.md`). No passwords, no MFA. Emergency access via the break-glass CLI (`server/scripts/break_glass.ts`).
 - **Identity Model** — Single corporate identity per user across multiple tenant organizations with scoped roles per tenant. External guests (`users.isExternal`) are enforced single-partner and blocked from destructive partner-admin mutations via the `destructiveAdminProcedure` tRPC middleware.
 - **Platform Cockpit** — Global operator view for tenant management, user provisioning, audit log, and archive browser
 - **AI-Powered Support** — Message improvement, chat summarization, translation (nl/en/fr), sentiment detection, and auto-summarize on close (Ollama / Azure OpenAI)
-- **Security Hardening** — MFA (TOTP), account lockout, password policies, WORM audit archive (SHA-256 hash chain), session revocation, HttpOnly cookie auth
+- **Security Hardening** — WORM audit archive (SHA-256 hash chain), session revocation, rotating refresh tokens with reuse detection, HttpOnly cookie auth
 - **SLA Management** — Per-tenant/department SLA targets with real-time countdown, breach alerts, and business hours support
 - **GDPR Compliance** — 30-day retention purge with automatic archival, daily stats aggregation, and notification preferences
 - **Canned Responses** — Per-partner templates with shortcut keys and `/` picker in chat
@@ -55,8 +55,7 @@ Open `http://localhost:3001`. Guichet uses SSO for partner authentication. For l
 On first startup with no platform operators, Guichet auto-creates one from environment variables:
 
 ```bash
-PLATFORM_ADMIN_EMAIL=admin@yourcompany.com    # Required
-PLATFORM_ADMIN_PASSWORD=changeme123            # Optional — omit for SSO-only
+PLATFORM_ADMIN_EMAIL=admin@yourcompany.com    # Required — this user logs in via SSO
 ```
 
 ### Production Deployment
