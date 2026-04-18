@@ -1,8 +1,9 @@
 # In-Conversation Search — Design Spec
 
 **Date:** 2026-04-07
-**Status:** Approved
+**Status:** ✅ Shipped (stamped 2026-04-18)
 **Scope:** Client-side search within a single ticket's messages (Ctrl+F + header icon)
+**Evidence:** `client/src/components/chat/SearchBar.tsx` live; `utils/highlightText.tsx` for hit rendering.
 
 ## Overview
 

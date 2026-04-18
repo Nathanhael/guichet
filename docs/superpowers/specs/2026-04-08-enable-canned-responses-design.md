@@ -1,8 +1,9 @@
 # Enable Canned Responses — Design Spec
 
 **Date:** 2026-04-08
-**Status:** Approved
+**Status:** ✅ Shipped (stamped 2026-04-18)
 **Scope:** Re-enable existing canned response feature (approach B — re-enable + harden)
+**Evidence:** `server/trpc/routers/cannedResponse.ts` + `canned_responses` table in `server/db/schema.ts`; `client/src/components/admin/AdminCannedResponses.tsx` + `CannedResponsePicker.tsx` live.
 
 ## Background
 
