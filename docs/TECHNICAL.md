@@ -66,11 +66,55 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 - **SSO-Only Auth**: Identity outsourced to Azure Entra. No password hashes, MFA secrets, lockout state, or step-up TOTP stored locally. Break-glass JWT mints are audited.
 - **HttpOnly Cookie JWT**: Access tokens transported via `guichet_token` HttpOnly SameSite=Lax cookie. No Bearer header support.
 - **Rotating Refresh Tokens**: Short-lived access tokens paired with `guichet_refresh` HttpOnly cookie (path-restricted to `/api/v1/auth/refresh`). Family-based reuse detection revokes the entire token family on replay.
-- **Session Revocation**: Security-sensitive changes (partner status flip, SSO link removal, break-glass mint) revoke all sessions and refresh tokens for the affected user.
+- **Session Revocation**: Security-sensitive changes (partner status flip, SSO link removal, break-glass mint, guest offboarding) revoke all sessions and refresh tokens for the affected user.
 - **WORM Audit Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Ticket archiving with message count summary.
+- **Field-Level Encryption at Rest**: SMTP / mail-provider credentials in `partners.mail_config` JSONB are AES-GCM encrypted via `FIELD_ENCRYPTION_SECRET`. Service layer encrypts on write, decrypts on read; DB dumps remain opaque. Schema stays JSONB — only `services/encryption.ts` knows the cleartext shape.
+- **Redis-Backed Rate Limiting**: `rate-limit-redis` store so replicas share counters instead of each maintaining its own bucket. Applied to `authLimiter`, `linkPreviewLimiter`, per-partner AI limiters.
+- **Dev-Login Mount-Gated**: `/api/v1/auth/dev-login` is registered in `app.ts` only when `NODE_ENV !== 'production'`; the route is **absent** (not just 403) in prod builds. Removes the attack surface entirely rather than relying on a handler-level check.
+- **Bounded Invite Claim Window**: SSO-provisioned invites expire after 30 days. Scheduled service purges abandoned invites; revoked invites stay visible (status REVOKED) for 7 days before purge. Guards against stale mailed-invite replay.
 - **JWT Algorithm Pinning**: All `jwt.verify()` calls specify `{ algorithms: ['HS256'] }` to prevent algorithm confusion attacks.
 - **CSP Headers**: Helmet configured with Content Security Policy for XSS mitigation.
-- **Rate Limiting**: Express rate limits on auth endpoints (Redis-backed).
+
+---
+
+## 6a. Audit Trail Observability
+
+Guichet's audit log is a first-class operations surface, not a silent table. Implementation arc captured in `wiki/decisions/guichet-audit-trail-observability.md`; oncall response in `docs/AUDIT_RUNBOOK.md`.
+
+- **Platform Chain-Integrity Verify UI** (`PlatformSystemHealth`): Operator-triggered verify run (rate-limited 1 per 5 min per operator), server-persisted history table, CSV export for compliance attestation. Auto-scheduled daily via `services/chainVerifySchedule.ts`.
+- **Multi-Axis Filtering**: `targetType` dropdown, `targetId` search, date range, actor filter, partner filter. All combinable, all deep-linkable via URL params — a filtered view can be pasted into a ticket.
+- **Metadata Drawer**: Click any audit row to see full JSON, severity highlight, previous/next navigation, filter-links into sibling rows (same actor, same target, same action), and a before/after diff on mutation rows.
+- **Cross-Partner Activity Panel**: `trpc.platform.getCrossPartnerActivity` returns per-partner event totals + `lastEventAt` for the selected window. Top-N rollup (≤50 partners, 10 shown in UI). Click a row to scope the audit log below by `partnerId` — first-line signal for "which tenant is unusually noisy?" Aggregate-only by design; the scoped filter is where raw investigation happens.
+- **Partner-Scoped Audit Log** (`AdminAudit`): Partner admins see their slice + a per-admin verify-chain UI (no platform access required).
+- **Ticket Audit Drawer**: Every ticket row exposes its lifecycle events (`ticket.created` / `ticket.assigned` / `ticket.transferred` / `ticket.closed` / `ticket.reopened`) via `services/ticketAudit.ts`. The emitter writes `ticket.*` actions into `audit_log`; the partner audit router and platform audit view filter `ticket.*` out by default so security-relevant rows stay uncluttered. Co-mingling would dilute the platform view and push chain hashing past its useful throughput.
+- **Chain-Broken Webhook**: Side-channel notification to partner-configured URL, independent of Prometheus/Alertmanager — compliance operators wanted a channel that didn't depend on the monitoring stack being healthy.
+- **Staleness Banner** in the audit log when the last successful chain-verify is >24h old.
+- **JSON + CSV Export** of the filtered audit view.
+
+### Metrics (`server/utils/metrics.ts`)
+
+| Metric | Labels | Meaning |
+|---|---|---|
+| `guichet_audit_chain_verify_runs_total` | `result` | Verify runs grouped by `valid` / `broken` / `error` |
+| `guichet_audit_chain_broken_total` | — | Page-worthy counter — nonzero = tamper or infra fault |
+| `guichet_ticket_audit_events_total` | `action` | Ticket lifecycle emissions; flatline = broken emitter |
+| `guichet_gdpr_purge_runs_total` | `outcome` | Daily purge runs: `success` / `chain_aborted` / `error` |
+| `guichet_gdpr_rows_purged_total` | `scope` | Row-level granularity (`ai_usage_log`, `invites`, …) |
+
+GDPR purge increments `chain_aborted` **before** throwing, so a missing-run alert doesn't double-fire on top of a chain-integrity alert. A purge that attempted and bailed is still a purge attempt from the observability view.
+
+### Alert Rules (`monitoring/alerts.yml`)
+
+- **AuditChainTamperDetected** — immediate page on any broken chain.
+- **AuditChainVerifyServiceError** — verify service errored on DB/Redis; fix before compliance run.
+- **AuditChainStaleness** — no successful verify in 48h.
+- **TicketAuditEmitterSilenced** — **self-arming.** Fires when 30m of zero events followed 1h+ of prior activity (via `offset 30m` lookback). Silent in idle tenants; pages only when an active emitter goes dark post-deploy.
+- **GdprPurgeMissing** — no purge run in 48h; retention is slipping past the 30-day cutoff.
+- **GdprPurgeChainAborted** — purge aborted because chain verify failed; pairs with the tamper alert.
+
+### Grafana Dashboard (`monitoring/grafana/dashboards/guichet.json`)
+
+Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR purge run counts (stat by outcome), and rows-purged time series.
 
 ---
 

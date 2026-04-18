@@ -12,9 +12,11 @@ Real-time, multi-tenant chat platform for BPO and outsourced helpdesk teams. Eac
 - **Identity Model** — Single corporate identity per user across multiple tenant organizations with scoped roles per tenant. External guests (`users.isExternal`) are enforced single-partner and blocked from destructive partner-admin mutations via the `destructiveAdminProcedure` tRPC middleware.
 - **Platform Cockpit** — Global operator view for tenant management, user provisioning, audit log, and archive browser
 - **AI-Powered Support** — Message improvement, chat summarization, translation (nl/en/fr), sentiment detection, and auto-summarize on close (Ollama / Azure OpenAI)
-- **Security Hardening** — WORM audit archive (SHA-256 hash chain), session revocation, rotating refresh tokens with reuse detection, HttpOnly cookie auth
+- **Security Hardening** — WORM audit archive (SHA-256 hash chain), session revocation, rotating refresh tokens with reuse detection, HttpOnly cookie auth, field-level encryption at rest for SMTP / mail-provider credentials
+- **Audit Observability** — Chain-integrity verify UI with server-persisted history + CSV export for compliance attestation, multi-axis filtering (targetType / targetId / actor / date / partner), metadata drawer with diff view, cross-partner activity rollup, per-ticket audit drawer, chain-broken webhook side-channel. Alertmanager rules for tamper / staleness / silent emitters / GDPR purge misses. Runbook at `docs/AUDIT_RUNBOOK.md`.
+- **Invite Flow** — Admin / support / agent invitable via SSO-provisioned flow (no passwords, no invite email). Pending-invite worklist with Revoke action; 30-day claim window; abandoned-invite purge; guest-removal revokes sessions + refresh tokens immediately.
 - **SLA Management** — Per-tenant/department SLA targets with real-time countdown, breach alerts, and business hours support
-- **GDPR Compliance** — 30-day retention purge with automatic archival, daily stats aggregation, and notification preferences
+- **GDPR Compliance** — 30-day retention purge with automatic archival, daily stats aggregation, and notification preferences. Purge observability via `guichet_gdpr_purge_runs_total{outcome}` and `guichet_gdpr_rows_purged_total{scope}`; aborts if the audit chain fails verification (fail-closed).
 - **Canned Responses** — Per-partner templates with shortcut keys and `/` picker in chat
 - **Customer Satisfaction** — Auto-prompted ratings on ticket close, follow-up reminders, per-agent CSAT reporting
 - **PWA Ready** — Installable on mobile with offline support and push notifications
