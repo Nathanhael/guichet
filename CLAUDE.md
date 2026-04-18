@@ -60,7 +60,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 
 **API Layer**:
 - **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 17 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `partner`, `platform`, `presence`, `rating`, `savedView`, `stats`, `status`, `ticket`, `user`, `webhook`. Input validation via Zod.
-- **Express Routes**: Auth (`server/routes/auth/` — dev-login + session only), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`), Push (`server/routes/push.ts`).
+- **Express Routes**: Auth (`server/routes/auth/` — dev-login + session only), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`).
 - **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference`.
 
 **tRPC Middleware** (`server/trpc/trpc.ts`):
@@ -85,7 +85,6 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `sla.ts` — SLA enforcement with per-department config and alerting
 - `webhookDispatch.ts` — Webhook event dispatch to partner-configured endpoints
 - `encryption.ts` — Field-level encryption utilities
-- `pushNotification.ts` — Web push notification dispatch (VAPID-based)
 - `systemMessage.ts` — System/whisper message insertion (used by transfers, auto-actions)
 - `linkPreview.ts` — URL metadata extraction for link preview cards
 - `ticketAudit.ts` — Ticket lifecycle audit emitter (created / assigned / transferred / closed / reopened). Writes `ticket.*` actions into `audit_log`; partner audit router and platform audit view filter them out by default to keep security-relevant rows uncluttered.
@@ -164,7 +163,6 @@ The seed script truncates all tables. The platform operator is auto-created by t
 | `saved_views` | Per-user saved ticket filter views | `userId`, `partnerId`, `name`, `filters` (JSONB) |
 | `agent_status_log` | Agent status transitions | `userId`, `partnerId`, `status`, `startedAt`, `endedAt`, `duration` |
 | `daily_agent_status` | Daily time-in-status rollup | `date`, `userId`, `partnerId`, `onlineSeconds`, `awaySeconds` |
-| `push_subscriptions` | Web push notification subscriptions | `userId`, `partnerId`, `endpoint`, `keys` (JSONB) |
 
 ### Client (`client/src/`)
 
@@ -192,7 +190,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
 - `components/chat/` — Decomposed chat sub-components: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LabelPicker, LinkPreviewCard, QuoteBlock, SearchBar
 - `utils/` — `statusColors.ts`, `dateUtils.ts`, `markdown.ts`, `fileUtils.ts`, `exportDashboard.ts`, `labelColors.ts`, `highlightText.tsx`, `businessHours.ts`, `notifications.ts`, `notificationSound.ts`, `roles.ts`, `uploadLogo.ts`, `trpc.ts`
-- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, NotificationToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
+- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
 
 **Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
 
@@ -221,10 +219,8 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **Alerts & SLA**: Topic alerts with configurable thresholds (`topic_alerts` table). Per-department SLA config with `SlaIndicator` component. Admin UI in `AdminAlerts`.
 - **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with staff-facing analytics and date filtering. Feedback system (`app_feedback` table) for in-app user feedback.
 - **Collision Detection**: `ticket:viewing` / `ticket:left` socket events track who's viewing a ticket. Viewer badges and typing indicators prevent duplicate responses.
-- **PWA**: Progressive Web App with `manifest.json`, `sw.js`, and icons for mobile installation.
 - **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users).
 - **Agent Status Visibility**: 2 statuses (online/away) with color tokens (`accent-green` for online, `accent-amber` for away). Auto-away after 5 minutes idle (via `useIdleStatus` hook), auto-online on activity. Status persists in Redis across reconnects (Lua script preserves status on re-identify). Visible in QueueSidebar (team panel), AdminTeam (status column), SupportNav (capacity badge). Time-in-status tracked in `agent_status_log`, rolled up hourly to `daily_agent_status` (`onlineSeconds`, `awaySeconds`). Stats via `trpc.status.*` (getTeamStatus, getAgentStats, getTeamStats). GDPR: log purged at 30 days, daily rollup retained as aggregate.
-- **Push Notifications**: VAPID-based web push via `pushNotification.ts` service, `push.ts` Express route, and `push_subscriptions` table. Client subscribes via `utils/notifications.ts`. Type definitions in `server/types/web-push.d.ts`.
 - **Field-Level Encryption**: `services/encryption.ts` provides AES-GCM helpers keyed off `FIELD_ENCRYPTION_SECRET`. Used for SMTP / mail-provider credentials in `partners.mail_config` JSONB — DB dumps don't leak credentials. Read-through + write-through in the service layer; schema stays opaque JSONB.
 - **Invite Flow**: Admins can invite `admin` / `support` / `agent` roles (not `platform_operator` — host-provisioning only). Pending invites surfaced in `AdminTeam` > Pending Invites tab with Revoke action (`platform.revokePendingInvite`). 30-day claim window with scheduled abandoned-invite purge. Removing an external (B2B guest) user from a partner revokes their sessions + refresh-token family immediately. SSO-provisioned — no invite email.
 - **Department Transfer**: Tickets transfer between department queues (not individual agents). Socket event `ticket:transfer` accepts `{ ticketId, departmentId?, note? }`. Optional whisper note for context handoff. Clears support assignment, re-opens ticket, removes all support sockets from room. Service layer: `transferService.ts` + `insertWhisperMessage` in `systemMessage.ts`.
@@ -258,7 +254,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 guichet/
 ├── server/
 │   ├── db/
-│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 28 tables
+│   │   ├── schema.ts              # Database schema (Drizzle ORM) — 27 tables
 │   │   └── postgres.ts            # DB connection, raw query helpers
 │   ├── trpc/
 │   │   ├── router.ts              # Main tRPC router (17 domain routers)
@@ -283,7 +279,6 @@ guichet/
 │   │   ├── logos.ts               # /api/v1/logos
 │   │   ├── uploads.ts             # /api/v1/uploads (file attachments)
 │   │   ├── tickets.ts             # /api/v1/tickets (REST ticket endpoints)
-│   │   └── push.ts                # /api/v1/push (web push subscriptions)
 │   ├── services/                  # Business logic
 │   │   ├── ai/                    # AI provider abstraction (factory, providers, prompts, sentiment)
 │   │   ├── bootstrap.ts           # First-run platform operator creation
@@ -301,14 +296,13 @@ guichet/
 │   │   ├── repetitionStore.ts     # Message repetition detection
 │   │   ├── webhookDispatch.ts     # Webhook event dispatch
 │   │   ├── encryption.ts          # Field-level encryption
-│   │   ├── pushNotification.ts    # Web push dispatch (VAPID)
 │   │   ├── systemMessage.ts       # System/whisper message insertion
 │   │   ├── linkPreview.ts         # URL metadata extraction for link previews
 │   │   └── *Queries.ts            # Data-access helpers (message, partner, ticket, user)
 │   ├── scripts/                   # backup.sh, baseline_drizzle.ts, break_glass.ts (emergency JWT mint)
 │   ├── middleware/                 # Express middleware (auth, validator, metrics)
 │   ├── utils/                     # Logger, Redis, metrics, security
-│   ├── types/                     # TypeScript types (index.ts, web-push.d.ts)
+│   ├── types/                     # TypeScript types (index.ts)
 │   ├── docs/openapi.ts            # Swagger/OpenAPI spec generation
 │   ├── app.ts                     # Server bootstrap
 │   ├── config.ts                  # Env validation via Zod

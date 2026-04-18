@@ -22,7 +22,6 @@ import { insertMessage } from '../../services/messageQueries.js';
 import { autoSummarizeOnClose } from '../../services/ai/index.js';
 import { insertSystemMessage, insertWhisperMessage } from '../../services/systemMessage.js';
 import { findPartnerDepartments, transferTicketToDepartment } from '../../services/transferService.js';
-import { sendPush } from '../../services/pushNotification.js';
 import {
   auditTicketCreated,
   auditTicketClosed,
@@ -193,15 +192,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         });
         ctx.io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System', supportId: ticket.supportId ?? undefined, supportName: ticket.supportName ?? undefined });
         await broadcastQueuePositions(ticket.partnerId);
-        if (ticket.agentId) {
-          sendPush(ticket.agentId, {
-            title: 'How was your experience?',
-            body: 'Your ticket has been closed. Rate your support.',
-            ticketId,
-            type: 'rating',
-            tag: `ticket-${ticketId}`,
-          });
-        }
 
         // Fire-and-forget AI auto-summarize
         autoSummarizeOnClose(ticket.partnerId, senderId, ticketId, io).catch(() => {});

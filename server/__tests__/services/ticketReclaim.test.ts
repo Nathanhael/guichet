@@ -64,12 +64,6 @@ describe('reclaimAbandonedTickets — crash-recovery wiring', () => {
     expect(source).toMatch(/io\.to\(\s*Rooms\.staff\(\s*ticket\.partnerId\s*\)\s*\)\s*\.emit\(\s*['"]ticket:reclaimed['"]/);
   });
 
-  it('pushes a notification only to online support/admin users for that partner', () => {
-    expect(source).toMatch(/getOnlineUsersForPartner\(\s*ticket\.partnerId\s*\)/);
-    expect(source).toMatch(/u\.role\s*===\s*['"]support['"]\s*\|\|\s*u\.role\s*===\s*['"]admin['"]/);
-    expect(source).toMatch(/sendPush\(\s*user\.userId/);
-  });
-
   it('wraps per-ticket work in try/catch so one failure does not starve the rest', () => {
     // for (...) { try { ... } catch (err) { logger.error(...) } }
     expect(source).toMatch(/for\s*\(\s*const\s+ticket\s+of\s+candidates\s*\)[\s\S]*?try\s*\{[\s\S]*?\}\s*catch\s*\(\s*err[\s\S]*?logger\.error/);

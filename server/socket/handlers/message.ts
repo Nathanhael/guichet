@@ -23,7 +23,6 @@ import {
 import { runSyncGuards, guardRepetition } from '../../services/guards.js';
 import { invalidateSummary, scoreSentiment } from '../../services/ai/index.js';
 import { unfurlLinks } from '../../services/linkPreview.js';
-import { sendPush } from '../../services/pushNotification.js';
 import { getRedisClients } from '../../utils/redis.js';
 import {
   MAX_MESSAGE_LENGTH,
@@ -190,16 +189,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', broadcastPayload);
       }
       logger.info({ messageId, whisper: !!isWhisper }, '[message:send] Emitted message:new');
-      // Push notification to agent when support replies (fire-and-forget)
-      if (socket.data.isSupport && !isWhisper && ticket.agentId) {
-        sendPush(ticket.agentId, {
-          title: 'New message from support',
-          body: `${sender.name}: ${guardedText.slice(0, 100)}`,
-          ticketId,
-          type: 'reply',
-          tag: `ticket-${ticketId}`,
-        });
-      }
       // Invalidate cached AI summary for this ticket (fire-and-forget)
       invalidateSummary(ticketId).catch(() => {});
       // Fire-and-forget sentiment scoring (skip whispers — internal notes shouldn't affect sentiment)

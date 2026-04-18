@@ -205,7 +205,7 @@ async function wipeDatabase() {
       messages, tickets, archived_tickets, audit_archive, audit_log,
       daily_stats, topic_alerts, canned_responses, kb_articles,
       partner_group_mappings, labels, memberships, system_settings,
-      daily_agent_status, agent_status_log, push_subscriptions,
+      daily_agent_status, agent_status_log,
       users, partners
     CASCADE
   `);

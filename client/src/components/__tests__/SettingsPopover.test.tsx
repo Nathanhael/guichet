@@ -14,10 +14,6 @@ vi.mock('../DarkModeToggle', () => ({
   default: () => <div data-testid="dark-mode-toggle" />,
 }));
 
-vi.mock('../NotificationToggle', () => ({
-  default: () => <div data-testid="notification-toggle" />,
-}));
-
 vi.mock('../../store/useStore', () => ({
   useStoreShallow: () => ({
     dyslexicMode: false,
@@ -80,7 +76,6 @@ describe('SettingsPopover', () => {
     render(<SettingsPopover />);
     fireEvent.click(screen.getByRole('button', { name: 'settings' }));
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('notification-toggle')).not.toBeInTheDocument();
     expect(screen.queryByTestId('view-mode-dropdown')).not.toBeInTheDocument();
   });
 
@@ -89,12 +84,6 @@ describe('SettingsPopover', () => {
     fireEvent.click(screen.getByRole('button', { name: 'settings' }));
     const switches = screen.getAllByRole('switch');
     expect(switches).toHaveLength(3);
-  });
-
-  it('shows notifications when showNotifications=true', () => {
-    render(<SettingsPopover showNotifications />);
-    fireEvent.click(screen.getByRole('button', { name: 'settings' }));
-    expect(screen.getByTestId('notification-toggle')).toBeInTheDocument();
   });
 
   it('shows view mode dropdown when showViewMode=true', () => {
@@ -123,7 +112,6 @@ describe('SettingsPopover', () => {
     render(
       <SettingsPopover
         showAccessibility
-        showNotifications
         showViewMode
       />,
     );
@@ -131,7 +119,6 @@ describe('SettingsPopover', () => {
     expect(screen.getByTestId('language-switcher')).toBeInTheDocument();
     expect(screen.getByTestId('dark-mode-toggle')).toBeInTheDocument();
     expect(screen.getAllByRole('switch')).toHaveLength(3);
-    expect(screen.getByTestId('notification-toggle')).toBeInTheDocument();
     expect(screen.getByTestId('view-mode-dropdown')).toBeInTheDocument();
   });
 });

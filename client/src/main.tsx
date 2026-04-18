@@ -52,18 +52,3 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     </TRPCProvider>
   </React.StrictMode>
 );
-
-// Register service worker for PWA support (production only — dev mode
-// uses Vite HMR which conflicts with SW stale-while-revalidate caching)
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // SW registration failed — non-critical, app works without it
-    });
-  });
-} else if ('serviceWorker' in navigator && import.meta.env.DEV) {
-  // Unregister any leftover SW from a previous prod build or dev session
-  navigator.serviceWorker.getRegistrations().then((registrations) => {
-    registrations.forEach((r) => r.unregister());
-  });
-}

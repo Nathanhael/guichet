@@ -30,7 +30,6 @@ Pre-deployment checklist and configuration for running Guichet on Azure.
 | Variable | Default | Notes |
 |----------|---------|-------|
 | `FIELD_ENCRYPTION_SECRET` | — | 64-char hex for encrypted fields |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | — | For web push notifications |
 | `AI_ENABLED` | `false` | Enable AI features (requires provider config) |
 
 ## WebSocket: Sticky Sessions

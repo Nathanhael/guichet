@@ -26,7 +26,7 @@ Welcome to Guichet. This guide explains the core chat functionality, dynamic org
 - If SSO itself is down, platform operators can use the break-glass CLI (`docs/BREAK_GLASS_RUNBOOK.md`) to mint a short-lived JWT for emergency administration.
 
 ### Notification Preferences
-- Open the Settings popover (gear icon in the navbar) to toggle in-app and push notification categories.
+- Open the Settings popover (gear icon in the navbar) to toggle in-app notification categories.
 - All notifications are enabled by default (opt-out model).
 
 ---
@@ -155,18 +155,7 @@ The chat header also shows the SLA timer for the active ticket.
 
 ---
 
-## 6. Mobile Access (PWA)
-
-Guichet is a Progressive Web App — installable on mobile devices:
-- **Android**: Open Guichet in Chrome → tap "Add to Home Screen"
-- **iOS**: Open in Safari → tap Share → "Add to Home Screen"
-- The app works in standalone mode (no browser chrome)
-- Cached assets load offline; API calls use network-first strategy
-- All views are responsive and touch-friendly (44px minimum tap targets)
-
----
-
-## 7. Accessibility & Performance
+## 6. Accessibility & Performance
 
 ### High-Performance Core
 - Strictly black and white with zero animations for maximum responsiveness.

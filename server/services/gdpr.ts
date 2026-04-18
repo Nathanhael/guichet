@@ -6,7 +6,7 @@ import { getStorage } from './storage.js';
 import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
-import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog, pushSubscriptions, users } from '../db/schema.js';
+import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog, users } from '../db/schema.js';
 import { gdprPurgeRunsTotal, gdprRowsPurgedTotal } from '../utils/metrics.js';
 
 /**
@@ -257,17 +257,6 @@ export async function runDailyPurge() {
       .delete(agentStatusLog)
       .where(lt(agentStatusLog.startedAt, statusCutoff));
     logger.info({ cutoff: statusCutoff }, '[gdpr] Purged old agent_status_log entries');
-
-    // Purge stale push subscriptions for users with no activity beyond retention window
-    await db.execute(sql`
-      DELETE FROM ${pushSubscriptions}
-      WHERE ${pushSubscriptions.createdAt} < ${cutoffDate}
-      AND ${pushSubscriptions.userId} NOT IN (
-        SELECT DISTINCT u.id FROM users u
-        WHERE u.last_active_at >= ${cutoffDate} OR u.last_active_at IS NULL
-      )
-    `);
-    logger.info({ cutoff: cutoffDate }, '[gdpr] Purged stale push_subscriptions');
 
     // Step: Purge abandoned invites — user rows created by inviteExternalUser /
     // platform inviteUser that were never claimed via SSO or local login.

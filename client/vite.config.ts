@@ -1,41 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
-import { execSync } from 'child_process';
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
-
-/**
- * Injects the git short SHA into sw.js at build time so the cache name
- * is automatically tied to the deployed version. In dev mode, falls back
- * to a timestamp so the SW always refreshes.
- */
-function swBuildHashPlugin() {
-  let hash: string;
-  return {
-    name: 'sw-build-hash',
-    buildStart() {
-      try {
-        hash = execSync('git rev-parse --short HEAD').toString().trim();
-      } catch {
-        hash = Date.now().toString(36);
-      }
-    },
-    writeBundle() {
-      const swPath = resolve(__dirname, 'dist', 'sw.js');
-      try {
-        let content = readFileSync(swPath, 'utf-8');
-        content = content.replace('__BUILD_HASH__', hash);
-        writeFileSync(swPath, content, 'utf-8');
-      } catch {
-        // sw.js may not exist in test/preview builds — ignore
-      }
-    },
-  };
-}
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), swBuildHashPlugin()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     dedupe: ['react', 'react-dom', 'react-is'],
   },

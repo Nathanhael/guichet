@@ -1,5 +1,5 @@
 CREATE TYPE "public"."alert_status" AS ENUM('active', 'acknowledged', 'resolved');--> statement-breakpoint
-CREATE TYPE "public"."auth_method" AS ENUM('local', 'sso', 'both');--> statement-breakpoint
+CREATE TYPE "public"."membership_source" AS ENUM('sso', 'manual');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('agent', 'support', 'admin', 'platform_operator');--> statement-breakpoint
 CREATE TYPE "public"."severity" AS ENUM('low', 'medium', 'high', 'critical');--> statement-breakpoint
 CREATE TYPE "public"."ticket_status" AS ENUM('open', 'pending', 'closed', 'resolved');--> statement-breakpoint
@@ -107,11 +107,8 @@ CREATE TABLE "daily_agent_status" (
 	"date" text NOT NULL,
 	"user_id" text NOT NULL,
 	"partner_id" text NOT NULL,
-	"available_seconds" integer DEFAULT 0 NOT NULL,
-	"break_seconds" integer DEFAULT 0 NOT NULL,
-	"lunch_seconds" integer DEFAULT 0 NOT NULL,
-	"meeting_seconds" integer DEFAULT 0 NOT NULL,
-	"training_seconds" integer DEFAULT 0 NOT NULL,
+	"online_seconds" integer DEFAULT 0 NOT NULL,
+	"away_seconds" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -141,8 +138,7 @@ CREATE TABLE "daily_stats" (
 	"avg_duration_ms" integer DEFAULT 0,
 	"avg_rating" real,
 	"rating_count" integer DEFAULT 0,
-	"sla_resolved" integer DEFAULT 0,
-	"sla_compliant" integer DEFAULT 0,
+	"response_count" integer DEFAULT 0,
 	"p95_response_ms" integer DEFAULT 0,
 	"reopened" integer DEFAULT 0,
 	"sentiment_sum" real DEFAULT 0,
@@ -180,6 +176,7 @@ CREATE TABLE "memberships" (
 	"partner_id" text NOT NULL,
 	"role" "user_role" NOT NULL,
 	"departments" jsonb DEFAULT '[]'::jsonb,
+	"source" "membership_source" DEFAULT 'sso' NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -190,6 +187,7 @@ CREATE TABLE "messages" (
 	"sender_name" text,
 	"sender_role" text,
 	"sender_lang" text,
+	"sender_is_external" boolean DEFAULT false NOT NULL,
 	"text" text,
 	"media_url" text,
 	"whisper" integer DEFAULT 0,
@@ -200,7 +198,11 @@ CREATE TABLE "messages" (
 	"reactions" jsonb DEFAULT '{}'::jsonb,
 	"sentiment" real,
 	"edited_at" timestamp,
-	"deleted_at" timestamp
+	"deleted_at" timestamp,
+	"link_previews" jsonb,
+	"attachments" jsonb,
+	"reply_to_id" text,
+	"search_vector" "tsvector"
 );
 --> statement-breakpoint
 CREATE TABLE "partner_group_mappings" (
@@ -224,13 +226,12 @@ CREATE TABLE "partners" (
 	"business_hours_end" text,
 	"business_hours_timezone" text DEFAULT 'Europe/Brussels',
 	"status" text DEFAULT 'active' NOT NULL,
-	"auth_method" "auth_method" DEFAULT 'local' NOT NULL,
-	"sla_config" jsonb DEFAULT '{}'::jsonb,
 	"ai_enabled" boolean DEFAULT false,
 	"ai_provider" text DEFAULT 'ollama',
 	"ai_model" text,
 	"ai_config" jsonb DEFAULT '{}'::jsonb,
 	"ai_features" jsonb DEFAULT '{}'::jsonb,
+	"sso_attribute_map" jsonb,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp
@@ -239,11 +240,13 @@ CREATE TABLE "partners" (
 CREATE TABLE "ratings" (
 	"id" text PRIMARY KEY NOT NULL,
 	"partner_id" text,
-	"ticket_id" text NOT NULL,
-	"agent_id" text NOT NULL,
+	"ticket_id" text,
+	"agent_id" text,
 	"support_id" text,
 	"rating" integer NOT NULL,
 	"comment" text,
+	"dept" text,
+	"closed_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -301,10 +304,7 @@ CREATE TABLE "tickets" (
 	"closed_by" text,
 	"participants" jsonb DEFAULT '[]'::jsonb,
 	"reopened" boolean DEFAULT false,
-	"reopen_count" integer DEFAULT 0,
-	"sla_response_due_at" timestamp,
-	"sla_resolution_due_at" timestamp,
-	"sla_breached" boolean DEFAULT false
+	"reopen_count" integer DEFAULT 0
 );
 --> statement-breakpoint
 CREATE TABLE "topic_alerts" (
@@ -326,23 +326,11 @@ CREATE TABLE "users" (
 	"external_id" text,
 	"name" text NOT NULL,
 	"lang" text DEFAULT 'nl',
-	"password" text,
+	"lang_locked" boolean DEFAULT false NOT NULL,
 	"avatar_url" text,
 	"is_platform_operator" boolean DEFAULT false,
-	"platform_totp_secret" text,
-	"platform_totp_enabled_at" timestamp,
-	"reset_password_token" text,
-	"reset_password_expires" timestamp,
-	"password_changed_at" timestamp,
-	"password_history" jsonb DEFAULT '[]'::jsonb,
-	"failed_login_attempts" integer DEFAULT 0,
-	"locked_until" timestamp,
-	"mfa_secret" text,
-	"mfa_enabled_at" timestamp,
-	"mfa_recovery_codes" jsonb DEFAULT '[]'::jsonb,
-	"notification_preferences" jsonb DEFAULT '{}'::jsonb,
 	"accessibility_prefs" jsonb DEFAULT '{}'::jsonb NOT NULL,
-	"auth_method" text,
+	"is_external" boolean DEFAULT false NOT NULL,
 	"last_active_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
@@ -400,9 +388,9 @@ ALTER TABLE "memberships" ADD CONSTRAINT "memberships_partner_id_partners_id_fk"
 ALTER TABLE "messages" ADD CONSTRAINT "messages_ticket_id_tickets_id_fk" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "partner_group_mappings" ADD CONSTRAINT "partner_group_mappings_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ratings" ADD CONSTRAINT "ratings_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ratings" ADD CONSTRAINT "ratings_ticket_id_tickets_id_fk" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ratings" ADD CONSTRAINT "ratings_agent_id_users_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "ratings" ADD CONSTRAINT "ratings_support_id_users_id_fk" FOREIGN KEY ("support_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ratings" ADD CONSTRAINT "ratings_ticket_id_tickets_id_fk" FOREIGN KEY ("ticket_id") REFERENCES "public"."tickets"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ratings" ADD CONSTRAINT "ratings_agent_id_users_id_fk" FOREIGN KEY ("agent_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "ratings" ADD CONSTRAINT "ratings_support_id_users_id_fk" FOREIGN KEY ("support_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "refresh_tokens" ADD CONSTRAINT "refresh_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "saved_views" ADD CONSTRAINT "saved_views_partner_id_partners_id_fk" FOREIGN KEY ("partner_id") REFERENCES "public"."partners"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "saved_views" ADD CONSTRAINT "saved_views_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -429,11 +417,13 @@ CREATE INDEX "idx_archived_tickets_archived" ON "archived_tickets" USING btree (
 CREATE INDEX "idx_audit_archive_created" ON "audit_archive" USING btree ("created_at");--> statement-breakpoint
 CREATE INDEX "idx_audit_archive_archived" ON "audit_archive" USING btree ("archived_at");--> statement-breakpoint
 CREATE INDEX "idx_audit_archive_partner" ON "audit_archive" USING btree ("partner_id");--> statement-breakpoint
+CREATE INDEX "idx_audit_archive_target_id" ON "audit_archive" USING btree ("target_id");--> statement-breakpoint
 CREATE INDEX "idx_audit_archive_sequence" ON "audit_archive" USING btree ("sequence");--> statement-breakpoint
 CREATE INDEX "idx_audit_log_partner_created" ON "audit_log" USING btree ("partner_id","created_at");--> statement-breakpoint
 CREATE INDEX "idx_audit_log_actor_created" ON "audit_log" USING btree ("actor_id","created_at");--> statement-breakpoint
 CREATE INDEX "idx_audit_log_action" ON "audit_log" USING btree ("action");--> statement-breakpoint
 CREATE INDEX "idx_audit_log_created_at" ON "audit_log" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "idx_audit_log_target_id" ON "audit_log" USING btree ("target_id");--> statement-breakpoint
 CREATE INDEX "idx_canned_partner" ON "canned_responses" USING btree ("partner_id");--> statement-breakpoint
 CREATE INDEX "idx_canned_shortcut" ON "canned_responses" USING btree ("partner_id","shortcut");--> statement-breakpoint
 CREATE INDEX "idx_daily_agent_status_partner_date" ON "daily_agent_status" USING btree ("partner_id","date");--> statement-breakpoint
@@ -449,6 +439,8 @@ CREATE INDEX "idx_messages_ticket_id" ON "messages" USING btree ("ticket_id");--
 CREATE INDEX "idx_messages_sender_id" ON "messages" USING btree ("sender_id");--> statement-breakpoint
 CREATE INDEX "idx_messages_ticket_deleted" ON "messages" USING btree ("ticket_id","deleted_at");--> statement-breakpoint
 CREATE INDEX "idx_messages_ticket_created" ON "messages" USING btree ("ticket_id","created_at");--> statement-breakpoint
+CREATE INDEX "idx_messages_reply_to_id" ON "messages" USING btree ("reply_to_id");--> statement-breakpoint
+CREATE INDEX "idx_messages_search_vector" ON "messages" USING gin ("search_vector");--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_pgm_partner_group" ON "partner_group_mappings" USING btree ("partner_id","azure_group_id");--> statement-breakpoint
 CREATE INDEX "idx_pgm_azure_group" ON "partner_group_mappings" USING btree ("azure_group_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "idx_ratings_ticket_unique" ON "ratings" USING btree ("ticket_id");--> statement-breakpoint
