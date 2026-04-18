@@ -396,7 +396,7 @@ MSYS_NO_PATHCONV=1 docker run --rm -e K6_BASE_URL=http://host.docker.internal:30
 - **Database**: `docker compose exec server npx drizzle-kit studio`
 - **Zustand state**: Redux DevTools browser extension
 - **Prometheus**: Metrics at `http://localhost:9090`
-- **Grafana**: Dashboards at `http://localhost:3001`
+- **Grafana**: Dashboards at `http://localhost:3000`
 - **API docs**: Swagger at `/api/v1/docs/`, tRPC reference at `/api/v1/trpc-reference`
 
 # context-mode — MANDATORY routing rules
