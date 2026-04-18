@@ -20,6 +20,18 @@ import { webhooks, webhookLogs } from '../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import logger from '../utils/logger.js';
 import { decrypt } from './encryption.js';
+import { webhookDeliveriesTotal, webhookDeliveryDuration } from '../utils/metrics.js';
+
+// Maps an HTTP status code or transport failure into the stable Prometheus
+// outcome label. Keeping the set small (2xx/3xx/4xx/5xx/error) keeps the
+// time-series cardinality bounded and makes alerting thresholds meaningful.
+function outcomeLabel(statusCode: number | null): string {
+  if (statusCode === null) return 'error';
+  if (statusCode >= 500) return '5xx';
+  if (statusCode >= 400) return '4xx';
+  if (statusCode >= 300) return '3xx';
+  return '2xx';
+}
 
 /**
  * Check whether an IP address falls in private, reserved, or loopback ranges.
@@ -224,6 +236,9 @@ async function deliverOne(
 
     const responseBody = await res.text().catch(() => '');
     const durationMs = Date.now() - start;
+    const outcome = outcomeLabel(res.status);
+    webhookDeliveriesTotal.inc({ event, outcome });
+    webhookDeliveryDuration.observe({ event, outcome }, durationMs / 1000);
 
     await db.insert(webhookLogs).values({
       id: logId,
@@ -245,6 +260,8 @@ async function deliverOne(
   } catch (err: unknown) {
     const durationMs = Date.now() - start;
     const errorMsg = err instanceof Error ? err.message : String(err);
+    webhookDeliveriesTotal.inc({ event, outcome: 'error' });
+    webhookDeliveryDuration.observe({ event, outcome: 'error' }, durationMs / 1000);
 
     await db.insert(webhookLogs).values({
       id: logId,

@@ -1,0 +1,111 @@
+global:
+  # Time to wait before declaring a silent receiver endpoint dead. Short enough
+  # that a flaky Slack/PagerDuty shim doesn't queue pages behind it forever.
+  resolve_timeout: 5m
+
+# Routes fan out to named receivers. `continue: true` on a leaf means its
+# siblings can also match — useful for tee'ing a tamper alert to both oncall
+# and the compliance channel without duplicating the rule in prometheus.
+route:
+  receiver: default
+  group_by: ['alertname', 'subsystem']
+  group_wait: 10s
+  group_interval: 1m
+  # A firing alert re-pages every 4h while active. Tune down for flaky alerts,
+  # up for stable-but-ignored ones.
+  repeat_interval: 4h
+  routes:
+    # Audit-chain tampers are compliance incidents. They always page oncall AND
+    # land in the compliance receiver so the compliance officer sees the same
+    # signal in their audit channel.
+    - matchers:
+        - subsystem="audit"
+        - severity="critical"
+      receiver: audit-critical
+      group_wait: 0s
+      repeat_interval: 30m
+      continue: true
+
+    # Warning-level audit: service errors (db timeout during verify, etc).
+    # Goes to oncall only — not a compliance event.
+    - matchers:
+        - subsystem="audit"
+        - severity="warning"
+      receiver: oncall
+
+    # Webhook delivery failures are partner-integration issues, not platform
+    # incidents. Route to the integrations channel instead of oncall.
+    - matchers:
+        - subsystem="webhooks"
+      receiver: integrations
+
+receivers:
+  # Default sink — env-controlled webhook. Keep a valid receiver here so
+  # Alertmanager doesn't reject the config at startup when a specific
+  # matcher fails to fire. `send_resolved` so the same channel sees the
+  # recovery notification.
+  - name: default
+    webhook_configs:
+      - url: ${ALERTMANAGER_DEFAULT_WEBHOOK_URL:-http://localhost:9999/alerts/default}
+        send_resolved: true
+
+  # Critical audit alerts. Dual-teed: Slack incident channel + a generic
+  # webhook that ops can point at PagerDuty / Opsgenie / etc. Both are
+  # env-driven so the file ships without secrets.
+  - name: audit-critical
+    slack_configs:
+      - api_url: ${ALERTMANAGER_SLACK_WEBHOOK_URL:-}
+        channel: '#incidents'
+        send_resolved: true
+        title: '[{{ .Status | toUpper }}] Audit chain tamper detected'
+        text: |
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Severity:* {{ .Labels.severity }}
+          *Started:* {{ .StartsAt }}
+          {{ end }}
+    webhook_configs:
+      - url: ${ALERTMANAGER_PAGER_WEBHOOK_URL:-http://localhost:9999/alerts/audit-critical}
+        send_resolved: true
+
+  # Non-paging oncall. Slack only — no pager. Operators should see these in
+  # the morning; they are actionable but not bedside-alarm material.
+  - name: oncall
+    slack_configs:
+      - api_url: ${ALERTMANAGER_SLACK_WEBHOOK_URL:-}
+        channel: '#oncall'
+        send_resolved: true
+        title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  # Partner-integration failures. Kept separate from oncall so the
+  # integrations team can triage without noise from platform alerts.
+  - name: integrations
+    slack_configs:
+      - api_url: ${ALERTMANAGER_SLACK_WEBHOOK_URL:-}
+        channel: '#integrations'
+        send_resolved: true
+        title: '[{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+        text: |
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+# Silence a resolved alert for longer than the default to avoid flapping
+# alerts during a rolling deploy.
+inhibit_rules:
+  # When the chain is broken at `critical`, don't also page on the `warn`
+  # service-error rule for the same subsystem — the critical signal supersedes.
+  - source_matchers:
+      - subsystem="audit"
+      - severity="critical"
+    target_matchers:
+      - subsystem="audit"
+      - severity="warning"
+    equal: ['subsystem']

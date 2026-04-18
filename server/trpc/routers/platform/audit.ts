@@ -6,17 +6,10 @@ import { eq, desc, gte, lte, ilike, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
-import { auditChainVerifyFailures } from '../../../utils/metrics.js';
-import { broadcastWebhook } from '../../../services/webhookDispatch.js';
+import { runChainVerify, LAST_VERIFY_KEY, VERIFY_HISTORY_KEY } from '../../../services/chainVerifySchedule.js';
 
 const VERIFY_CHAIN_WINDOW_SECS = 60;
 const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
-const LAST_VERIFY_KEY = 'audit_chain_last_verify';
-const VERIFY_HISTORY_KEY = 'audit_chain_verify_history';
-// Keep a rolling window of chain-verify runs for the compliance trail. 50 is
-// enough for a multi-month review window even at one run per day; old entries
-// are dropped from the head when the cap is hit.
-const VERIFY_HISTORY_MAX = 50;
 
 // Union of every targetType platform operators can see — partner-scoped rows
 // bubble up here too. Keep in sync with `targetType:` literals emitted by both
@@ -30,6 +23,7 @@ const PLATFORM_TARGET_TYPES = [
   'kb_article',
   'webhook',
   'system',
+  'ticket',
 ] as const;
 
 // Union of audit actions a platform operator can filter by. Partner-scoped
@@ -80,6 +74,13 @@ const PLATFORM_ACTIONS = [
   'system.chain_broken_detected',
   'system.chain_verify_error',
   'system.gdpr_purge',
+  // ticket lifecycle (emitted by socket handlers via services/ticketAudit.ts)
+  'ticket.created',
+  'ticket.closed',
+  'ticket.assigned',
+  'ticket.transferred',
+  'ticket.returned_to_queue',
+  'ticket.reopened',
   // user
   'user.deleted',
   'user.login',
@@ -284,8 +285,6 @@ export const platformAuditRouter = router({
   verifyAuditChain: platformProcedure
     .mutation(async ({ ctx }) => {
       await assertVerifyChainAllowed(ctx.user.id);
-      const { verifyAuditChain } = await import('../../../services/archive.js');
-      const result = await verifyAuditChain();
       // Resolve actor name at write time so the persisted record is readable
       // without a join. If the operator is later deleted, the record still
       // carries the name at time-of-run — useful for compliance review.
@@ -294,76 +293,10 @@ export const platformAuditRouter = router({
         .from(users)
         .where(eq(users.id, ctx.user.id))
         .limit(1);
-      const record = {
-        ranAt: new Date().toISOString(),
-        ranBy: ctx.user.id,
-        ranByName: actor[0]?.name ?? null,
-        ...result,
-      };
-      // Persist so all operators see the same last-verified state, not just the
-      // one who clicked the button. system_settings is keyed, so we upsert.
-      await db
-        .insert(systemSettings)
-        .values({ key: LAST_VERIFY_KEY, value: record })
-        .onConflictDoUpdate({
-          target: systemSettings.key,
-          set: { value: record, updatedAt: new Date().toISOString() },
-        });
-
-      // Append to the rolling history so compliance review can see the trail
-      // of runs, not just the latest. Read-modify-write is fine here because
-      // the route is rate-limited to 1 call per minute per operator.
-      const historyRows = await db
-        .select({ value: systemSettings.value })
-        .from(systemSettings)
-        .where(eq(systemSettings.key, VERIFY_HISTORY_KEY))
-        .limit(1);
-      const existingHistory = Array.isArray(historyRows[0]?.value) ? historyRows[0]!.value as unknown[] : [];
-      const nextHistory = [record, ...existingHistory].slice(0, VERIFY_HISTORY_MAX);
-      await db
-        .insert(systemSettings)
-        .values({ key: VERIFY_HISTORY_KEY, value: nextHistory })
-        .onConflictDoUpdate({
-          target: systemSettings.key,
-          set: { value: nextHistory, updatedAt: new Date().toISOString() },
-        });
-
-      // Alerting: a broken chain means the WORM archive has been tampered with
-      // (or the hash implementation regressed). Either is a high-severity
-      // incident — leave a loud, queryable trail in audit_log so the existing
-      // PlatformAuditLog surfaces it and any downstream webhook/alert consumer
-      // can react. Service-level errors (e.g. db timeout) are distinct from
-      // tampering and get a separate, lower-severity action.
-      if (!result.valid) {
-        const severity: 'warn' | 'critical' = result.error ? 'warn' : 'critical';
-        auditChainVerifyFailures.inc({ severity });
-        await db.insert(auditLog).values({
-          action: result.error ? 'system.chain_verify_error' : 'system.chain_broken_detected',
-          actorId: ctx.user.id,
-          targetType: 'system',
-          targetId: result.brokenAt ?? null,
-          metadata: {
-            checked: result.checked,
-            brokenAt: result.brokenAt ?? null,
-            error: result.error ?? null,
-            severity,
-          },
-        });
-        // Only broadcast actual tampers — `warn` is a transient service error
-        // (db read timeout, etc) and doesn't warrant paging every partner's
-        // compliance contact. Fire-and-forget; delivery is best-effort.
-        if (severity === 'critical') {
-          broadcastWebhook('audit.chain_broken', {
-            checked: result.checked,
-            brokenAt: result.brokenAt ?? null,
-            ranAt: record.ranAt,
-            ranBy: record.ranBy,
-            ranByName: record.ranByName,
-          });
-        }
-      }
-
-      return record;
+      // Delegate to the shared runner so manual and scheduled paths persist
+      // identical record shapes to the same system_settings keys and share
+      // the same alert / webhook side-effects.
+      return runChainVerify({ id: ctx.user.id, name: actor[0]?.name ?? null });
     }),
 
   getLastChainVerify: platformProcedure

@@ -31,3 +31,31 @@ groups:
             Unlike `critical`, this signals an infrastructure issue (db read timeout,
             redis outage) — not a tamper. Operators cannot complete compliance runs
             until this is resolved. Check db/redis health.
+
+  - name: webhook-delivery
+    interval: 30s
+    rules:
+      # Fires when the sustained error/5xx share of webhook deliveries exceeds
+      # 25% over the last 10m and at least 5 attempts were recorded in that
+      # window. The floor guards against an empty system flipping 0/0 into NaN
+      # and paging pre-prod. Partner misconfiguration (bad TLS, stale url) is
+      # the usual culprit — check `webhook_logs` in AdminWebhooks.
+      - alert: WebhookDeliveryFailureRate
+        expr: |
+          (
+            sum(rate(guichet_webhook_deliveries_total{outcome=~"5xx|error"}[10m]))
+            /
+            sum(rate(guichet_webhook_deliveries_total[10m]))
+          ) > 0.25
+          and sum(increase(guichet_webhook_deliveries_total[10m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+          subsystem: webhooks
+        annotations:
+          summary: 'Webhook delivery failure rate >25% over 10m'
+          description: |
+            Over 25% of webhook deliveries failed (5xx or transport error) across
+            the platform in the last 10m. Check AdminWebhooks delivery logs and
+            the guichet_webhook_deliveries_total metric by event/outcome to
+            identify which partner endpoint is failing.

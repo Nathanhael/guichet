@@ -12,6 +12,15 @@ const source = readFileSync(
   'utf-8',
 );
 
+// The persistence + record-shape logic lives in the shared runner so both
+// the operator-triggered mutation (platform/audit.ts) and the daily scheduler
+// produce identical system_settings writes. These invariants are asserted
+// against the shared runner's source.
+const schedulerSource = readFileSync(
+  join(__dirname, '../../../services/chainVerifySchedule.ts'),
+  'utf-8',
+);
+
 describe('verifyAuditChain — per-operator rate limit', () => {
   it('defines a per-operator throttle with a sub-5-minute window', () => {
     expect(source).toMatch(/VERIFY_CHAIN_WINDOW_SECS\s*=\s*60\b/);
@@ -23,11 +32,19 @@ describe('verifyAuditChain — per-operator rate limit', () => {
   });
 
   it('invokes the guard before running the (expensive) scan', () => {
+    // The mutation now delegates to the shared runner in
+    // services/chainVerifySchedule.ts, but the guard must still fire first so
+    // a spammed click cannot reach the scan. Assert both: the guard runs
+    // before the shared runner is invoked, and the runner is what hits the
+    // actual verify logic.
     const guardIdx = source.indexOf('assertVerifyChainAllowed(ctx.user.id)');
-    const importIdx = source.indexOf("import('../../../services/archive.js')");
+    const runnerIdx = source.indexOf('runChainVerify(');
     expect(guardIdx).toBeGreaterThan(-1);
-    expect(importIdx).toBeGreaterThan(-1);
-    expect(guardIdx).toBeLessThan(importIdx);
+    expect(runnerIdx).toBeGreaterThan(-1);
+    expect(guardIdx).toBeLessThan(runnerIdx);
+    // And the runner must actually invoke verifyAuditChain from the archive.
+    expect(schedulerSource).toMatch(/from ['"]\.\/archive\.js['"]/);
+    expect(schedulerSource).toMatch(/verifyAuditChain\(\)/);
   });
 
   it('throws TOO_MANY_REQUESTS with a retry hint when exceeded', () => {
@@ -52,16 +69,27 @@ describe('verifyAuditChain — per-operator rate limit', () => {
 
 describe('verifyAuditChain — persists last run to system_settings', () => {
   it('writes the run record so every operator sees the same last-verified state', () => {
-    // Upsert pattern — keyed by LAST_VERIFY_KEY
-    expect(source).toMatch(/LAST_VERIFY_KEY\s*=\s*'audit_chain_last_verify'/);
-    expect(source).toMatch(/insert\(systemSettings\)/);
-    expect(source).toMatch(/onConflictDoUpdate/);
-    expect(source).toMatch(/target:\s*systemSettings\.key/);
+    // Upsert pattern — keyed by LAST_VERIFY_KEY. The runner owns persistence
+    // now so both operator-triggered and scheduler-triggered runs land in the
+    // same shape. The mutation file just has to reference the shared key.
+    expect(schedulerSource).toMatch(/LAST_VERIFY_KEY\s*=\s*'audit_chain_last_verify'/);
+    expect(schedulerSource).toMatch(/insert\(systemSettings\)/);
+    expect(schedulerSource).toMatch(/onConflictDoUpdate/);
+    expect(schedulerSource).toMatch(/target:\s*systemSettings\.key/);
+    // And the mutation still threads through these constants so a future
+    // refactor can't silently drop the persistence contract.
+    expect(source).toMatch(/LAST_VERIFY_KEY/);
   });
 
   it('stamps the actor (ranBy) and ran-at timestamp on every run', () => {
-    expect(source).toMatch(/ranAt:\s*new Date\(\)\.toISOString\(\)/);
-    expect(source).toMatch(/ranBy:\s*ctx\.user\.id/);
+    // Record stamping is now centralised in the runner — the mutation passes
+    // the actor { id, name } and the runner fills ranAt/ranBy/ranByName so
+    // the manual and scheduled paths cannot drift apart.
+    expect(schedulerSource).toMatch(/ranAt:\s*new Date\(\)\.toISOString\(\)/);
+    expect(schedulerSource).toMatch(/ranBy:\s*actor\.id/);
+    // Mutation must still pass through ctx.user.id so the runner has the
+    // real operator identity, not a synthetic one.
+    expect(source).toMatch(/id:\s*ctx\.user\.id/);
   });
 
   it('is a mutation — it writes to the DB, so GET caching would be wrong', () => {
