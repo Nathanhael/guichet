@@ -39,26 +39,33 @@ export async function bootstrapPlatformOperator(): Promise<void> {
       .limit(1);
 
     if (byEmail.length > 0) {
-      // Promote existing user to platform operator
+      // Promote existing user to platform operator.
+      // Security-flag mutation + audit MUST commit atomically — otherwise a
+      // crash between the two writes leaves a silent promotion with no trail
+      // (same family as H-2 from the 2026-04-18 post-ship review).
       const userId = byEmail[0].id;
 
-      await db
-        .update(users)
-        .set({ isPlatformOperator: true, updatedAt: new Date().toISOString() })
-        .where(eq(users.id, userId));
+      await db.transaction(async (tx) => {
+        await tx
+          .update(users)
+          .set({ isPlatformOperator: true, updatedAt: new Date().toISOString() })
+          .where(eq(users.id, userId));
 
-      await db.insert(auditLog).values({
-        action: 'platform_operator_bootstrap',
-        actorId: null,
-        partnerId: null,
-        targetType: 'user',
-        targetId: userId,
-        metadata: { email, bootstrapAction: 'promoted' },
+        await tx.insert(auditLog).values({
+          action: 'platform_operator_bootstrap',
+          actorId: null,
+          partnerId: null,
+          targetType: 'user',
+          targetId: userId,
+          metadata: { email, bootstrapAction: 'promoted' },
+        });
       });
 
       logger.info(`Existing user promoted to platform operator: ${email}`);
     } else {
-      // Create a new platform operator user
+      // Create a new platform operator user.
+      // User insert + audit in a single transaction — a crash between them
+      // would leave an operator with no bootstrap audit row.
       const userId = `u_${randomUUID().replace(/-/g, '').substring(0, 12)}`;
 
       // Derive display name from the local part of the email
@@ -68,23 +75,25 @@ export async function bootstrapPlatformOperator(): Promise<void> {
           ? localPart.charAt(0).toUpperCase() + localPart.slice(1)
           : email;
 
-      await db.insert(users).values({
-        id: userId,
-        email,
-        name,
-        isPlatformOperator: true,
-        lang: 'en',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      });
+      await db.transaction(async (tx) => {
+        await tx.insert(users).values({
+          id: userId,
+          email,
+          name,
+          isPlatformOperator: true,
+          lang: 'en',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
 
-      await db.insert(auditLog).values({
-        action: 'platform_operator_bootstrap',
-        actorId: null,
-        partnerId: null,
-        targetType: 'user',
-        targetId: userId,
-        metadata: { email, bootstrapAction: 'created' },
+        await tx.insert(auditLog).values({
+          action: 'platform_operator_bootstrap',
+          actorId: null,
+          partnerId: null,
+          targetType: 'user',
+          targetId: userId,
+          metadata: { email, bootstrapAction: 'created' },
+        });
       });
 
       logger.info(`Platform operator bootstrapped: ${email}`);
