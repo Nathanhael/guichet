@@ -254,16 +254,26 @@ export default function PlatformSystemHealth() {
               <div>
                 <p className="mono-label mb-2">Last Verified</p>
                 <p className="font-mono text-sm">{new Date(lastVerify.ranAt).toLocaleString()}</p>
-                {lastVerify.ranByName && (
+                {/* Scheduler runs surface with a dedicated SCHEDULED chip so
+                    reviewers can tell automation-driven runs from operator-
+                    driven ones at a glance — the actor id is a stable synthetic
+                    (`system-scheduler`) set in services/chainVerifySchedule.ts. */}
+                {lastVerify.ranBy === 'system-scheduler' ? (
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] mt-1">
+                    <span className="inline-block border border-[var(--color-border)] px-1.5 py-0.5 mr-1 text-[9px] bg-bg-elevated">
+                      Scheduled
+                    </span>
+                    {lastVerify.ranByName || 'Daily scheduler'}
+                  </p>
+                ) : lastVerify.ranByName ? (
                   <p className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] mt-1">
                     By {lastVerify.ranByName}
                   </p>
-                )}
-                {!lastVerify.ranByName && lastVerify.ranBy && (
+                ) : lastVerify.ranBy ? (
                   <p className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] mt-1">
                     By {lastVerify.ranBy}
                   </p>
-                )}
+                ) : null}
               </div>
               {lastVerify.brokenAt && (
                 <div className="md:col-span-3 pt-4 border-t border-[var(--color-border)]">
@@ -319,7 +329,16 @@ export default function PlatformSystemHealth() {
                         </td>
                         <td className="p-2 text-[10px] font-mono">{h.checked.toLocaleString()}</td>
                         <td className="p-2 text-[10px] font-mono uppercase text-[var(--color-text-secondary)]">
-                          {h.ranByName || h.ranBy || '—'}
+                          {h.ranBy === 'system-scheduler' ? (
+                            <span data-testid="history-scheduler-badge">
+                              <span className="inline-block border border-[var(--color-border)] px-1 py-0.5 mr-1 text-[8px] bg-bg-elevated">
+                                Scheduled
+                              </span>
+                              {h.ranByName || 'Daily scheduler'}
+                            </span>
+                          ) : (
+                            h.ranByName || h.ranBy || '—'
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -11,6 +11,7 @@
 import { db } from '../db.js';
 import { auditLog } from '../db/schema.js';
 import logger from '../utils/logger.js';
+import { ticketAuditEventsTotal } from '../utils/metrics.js';
 
 interface BaseArgs {
   ticketId: string;
@@ -23,6 +24,12 @@ async function writeTicketAudit(
   args: BaseArgs,
   metadata: Record<string, unknown>,
 ) {
+  // Increment the Prometheus counter first. Even if the DB write fails below,
+  // the metric reflects the fact that the lifecycle transition happened — the
+  // grafana graph should match user-observable reality, not the audit-log
+  // success rate. A separate error counter would be needed if we wanted to
+  // alert on audit-write failures; for now the logger.error is sufficient.
+  ticketAuditEventsTotal.inc({ action });
   try {
     await db.insert(auditLog).values({
       action,

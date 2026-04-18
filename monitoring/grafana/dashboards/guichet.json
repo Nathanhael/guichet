@@ -168,6 +168,18 @@
           "legendFormat": "p95"
         }
       ]
+    },
+    {
+      "title": "Ticket Lifecycle Events/s",
+      "description": "Rate of ticket lifecycle audit rows written by services/ticketAudit.ts, split by action (ticket.created / .reopened / .closed / .assigned / .transferred / .returned_to_queue). Mirrors the audit_log `ticket.*` rows so this graph stays valid even if the audit drawer is empty — the metric is incremented before the DB write.",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum by (action) (rate(guichet_ticket_audit_events_total[5m]))",
+          "legendFormat": "{{action}}"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

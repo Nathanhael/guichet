@@ -84,4 +84,15 @@ export const webhookDeliveryDuration = new client.Histogram({
   buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
 });
 
+// Ticket lifecycle audit-event counter. Mirrors the rows written by
+// services/ticketAudit.ts so Grafana can graph create/close/transfer rates
+// without doing an `audit_log` full-scan. `action` cardinality is bounded —
+// only the 6 `ticket.*` actions enumerated in PARTNER_ACTIONS are ever
+// emitted here.
+export const ticketAuditEventsTotal = new client.Counter({
+  name: 'guichet_ticket_audit_events_total',
+  help: 'Ticket lifecycle audit rows written, grouped by action',
+  labelNames: ['action'],
+});
+
 export const register = client.register;
