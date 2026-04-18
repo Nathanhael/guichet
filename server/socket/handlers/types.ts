@@ -128,7 +128,7 @@ export type MessageReactPayload = z.infer<typeof messageReactSchema>;
 export const ratingSubmitSchema = z.object({
   ticketId: z.string().min(1),
   rating: z.number().int().min(1).max(5),
-  comment: z.string().max(2000).optional(),
+  comment: z.string().max(2000).nullish(),
 });
 export type RatingSubmitPayload = z.infer<typeof ratingSubmitSchema>;
 
