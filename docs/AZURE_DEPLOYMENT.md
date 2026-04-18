@@ -29,7 +29,6 @@ Pre-deployment checklist and configuration for running Guichet on Azure.
 
 | Variable | Default | Notes |
 |----------|---------|-------|
-| `REQUIRE_PLATFORM_STEP_UP` | `false` | Set `true` for production TOTP enforcement |
 | `FIELD_ENCRYPTION_SECRET` | — | 64-char hex for encrypted fields |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | — | For web push notifications |
 | `AI_ENABLED` | `false` | Enable AI features (requires provider config) |

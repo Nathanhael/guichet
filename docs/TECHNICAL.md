@@ -47,15 +47,14 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 
 ---
 
-## 5. Hybrid Identity Model
+## 5. SSO-Only Identity Model
 
-- **OIDC (Azure Managed)**: Users invited via email are linked to their corporate Azure account upon first SSO login. No local password management is required.
-- **Local (Password Access)**: Supports external partners/consultants via email/password authentication using `Argon2id` password hashing.
-- **Pre-Provisioning**: Operators define authorization (roles/partners) before the user ever arrives, ensuring a zero-trust "Day One" experience.
-- **Secure Recovery**: Implemented a token-based password reset flow for local users using SHA-256 hashed tokens and a 1-hour strict expiry.
-- **Platform Operator Bootstrap**: On first startup, the server checks for existing platform operators. If none exist and `PLATFORM_ADMIN_EMAIL` is set, it auto-creates (or promotes) the initial operator. Supports both local auth (with `PLATFORM_ADMIN_PASSWORD`) and SSO (password omitted). Race-safe for multi-replica deployments.
+- **Azure Entra SSO (sole login path)**: All users — platform operators, partner admins, support, agents — authenticate through Azure OIDC. The `users` table carries no password, MFA, lockout, or step-up columns.
+- **Dev-login (non-prod only)**: `/api/v1/auth/dev-login` mints JWTs by `userId` for the demo picker and Playwright suite. Returns 404 when `NODE_ENV=production`.
+- **Break-glass CLI**: Emergency access when SSO is down. `server/scripts/break_glass.ts` mints a short-lived JWT (1–60m, default 15m) for a platform operator, enforces `isPlatformOperator`, and writes an `auth.break_glass` audit row. See `docs/BREAK_GLASS_RUNBOOK.md`.
+- **Pre-Provisioning**: Operators define authorization (roles/partners) before the user ever arrives; the first SSO login stamps `users.external_id` from the Azure OID.
+- **Platform Operator Bootstrap**: On first startup, the server checks for existing platform operators. If none exist and `PLATFORM_ADMIN_EMAIL` is set, it auto-creates (or promotes) the initial operator. Race-safe for multi-replica deployments. Subsequent logins go through SSO.
 - **Implicit Partner Access**: Platform operators can enter any active partner's admin view without an explicit membership, via a dedicated `/enter-partner` endpoint that issues a partner-scoped JWT with admin role.
-- **SSO-Only Tenants**: All partners authenticate via SSO. Local auth is reserved for platform operators (gated by `users.is_platform_operator`). Per-partner auth mode and the `auth_method` enum were removed in migration `0007_drop_auth_method.sql`.
 - **SSO Group Mapping**: `partner_group_mappings` table automatically maps SSO group memberships to tenant roles and departments during login.
 - **Azure B2B Guests**: Partner employees can be invited as B2B guests in our Azure tenant and authenticate via their home IdP. The SSO callback detects them from the `acct === 1` or `idp` claim and sets `users.is_external`. Guests are enforced single-partner (fail-closed audit at login) and blocked from destructive partner-admin mutations (webhook secrets, member management, department edits) via the `destructiveAdminProcedure` tRPC middleware. A `GUEST` badge surfaces in the UI. See `docs/superpowers/specs/partner-sso-b2b-guest.md`.
 - **Tenant Mapping**: The current platform treats `partners` as tenants and `memberships` as the authorization link from internal users to one or more tenants. See `docs/TENANT_IDENTITY_SPEC.md`.
@@ -64,24 +63,22 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 
 ## 6. Security Hardening
 
-- **Multi-Factor Authentication (MFA)**: Per-user TOTP setup/enable/disable via tRPC. Login challenge returns `{ mfaRequired: true }` and waits for TOTP code or recovery code. 8 SHA-256 hashed recovery codes generated on enable.
-- **Account Lockout**: 5 failed login attempts triggers 15-minute lockout. State tracked in `failedLoginAttempts` + `lockedUntil` columns. Email notification on lockout.
-- **Advanced Password Policies**: Min 10 chars, max 128 chars, upper/lower/digit/special required, common password blocking (~160 entries), email/name inclusion check. Last 5 passwords checked for reuse (Argon2id verified).
-- **Platform Step-Up**: Time-limited TOTP elevation for platform operators. Configurable via `REQUIRE_PLATFORM_STEP_UP` flag.
+- **SSO-Only Auth**: Identity outsourced to Azure Entra. No password hashes, MFA secrets, lockout state, or step-up TOTP stored locally. Break-glass JWT mints are audited.
+- **HttpOnly Cookie JWT**: Access tokens transported via `guichet_token` HttpOnly SameSite=Lax cookie. No Bearer header support.
+- **Rotating Refresh Tokens**: Short-lived access tokens paired with `guichet_refresh` HttpOnly cookie (path-restricted to `/api/v1/auth/refresh`). Family-based reuse detection revokes the entire token family on replay.
+- **Session Revocation**: Security-sensitive changes (partner status flip, SSO link removal, break-glass mint) revoke all sessions and refresh tokens for the affected user.
 - **WORM Audit Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Ticket archiving with message count summary.
 - **JWT Algorithm Pinning**: All `jwt.verify()` calls specify `{ algorithms: ['HS256'] }` to prevent algorithm confusion attacks.
 - **CSP Headers**: Helmet configured with Content Security Policy for XSS mitigation.
-- **Rate Limiting**: Express rate limits on auth endpoints. Per-email forgot-password throttle (3 requests per 15 minutes).
+- **Rate Limiting**: Express rate limits on auth endpoints (Redis-backed).
 
 ---
 
 ## 7. Communication & Activity
 
-- **Dynamic Mail Service**: A centralized `MailService` that retrieves provider settings (SMTP, Resend, SendGrid) from the database at runtime, allowing for hot-swapping email providers without redeploys.
-- **Centralized Mail Templates**: B&W branded HTML templates for lockout, MFA enabled, MFA disabled by admin, password reset, invite, and reminder emails. XSS-safe escaping via `escapeHtml()`.
 - **Canned Responses**: Per-partner response templates with title, body, shortcut key, and category. CRUD management for admins, `/` picker in chat for support agents.
-- **User Activity Lifecycle**: The system tracks `last_active_at` for all users across both Local and SSO login paths, providing real-time visibility into platform adoption.
-- **Notification Preferences**: Per-user opt-out for email notification types (account lockout, MFA changes, password changes). Opt-out model — everything on by default.
+- **User Activity Lifecycle**: The system tracks `last_active_at` for all users at every SSO login and dev-login, providing real-time visibility into platform adoption.
+- **Notification Preferences**: Per-user opt-out for in-app/push notification categories. Opt-out model — everything on by default.
 
 ---
 
@@ -119,4 +116,4 @@ Guichet is 100% data-driven. Hardcoded constants for departments have been remov
 - **State Synchronization**: Strict single-page-app behaviors using Zustand for global state and tRPC for seamless query invalidation and refetching.
 - **Window Event Architecture**: To avoid deep prop-drilling or complex handle-passing for UI modals, the system uses a producer/consumer pattern based on `window` CustomEvents. Components like `SupportNav` or the keyboard hook dispatch events (e.g., `support:open-label-picker`), which are consumed by the component owning the modal state (`ChatHeader`).
 - **PWA**: Progressive Web App with `manifest.json`, service worker (`sw.js` with build-hash cache busting), and icons. Installable on Android/iOS. Network-first strategy for API calls.
-- **Test Coverage**: Vitest + React Testing Library covering platform components, auth middleware, socket handlers, account lockout, message mapping, and security utilities. Tests mock tRPC at the hook level using `vi.hoisted()` for clean isolation.
+- **Test Coverage**: Vitest + React Testing Library covering platform components, auth middleware, socket handlers, message mapping, and security utilities. Tests mock tRPC at the hook level using `vi.hoisted()` for clean isolation.

@@ -32,19 +32,18 @@ Authentication and tenant access are separate concerns.
 
 Production default:
 
-- internal users authenticate with Guichet-controlled identity
-- preferred path is Microsoft Entra / Azure SSO
-- local passwords are allowed for development, testing, break-glass accounts, or external agents without Azure AD access
+- all users — platform operators, tenant admins, support, agents — authenticate via Microsoft Entra / Azure SSO
+- partner employees without a corporate Azure tenant join via Azure B2B guest invites and sign in with their home IdP
+- the `users` table stores no password, MFA, lockout, or step-up state
 
 Auth method per partner:
 
-- All partners are SSO-only. The per-partner `auth_method` column and `auth_method` enum were removed in migration `0008_drop_auth_method.sql`. The per-user `users.auth_method` override followed in `0009_drop_users_auth_method.sql` — no code path read it after the partner-level drop.
-- Local auth (email/password) is reserved for platform operators, gated by `users.is_platform_operator`.
+- All partners are SSO-only. The per-partner `auth_method` column and `auth_method` enum were removed in migration `0008_drop_auth_method.sql`. The per-user `users.auth_method` override followed in `0009_drop_users_auth_method.sql`. The full local-auth column set (`password`, `mfa_*`, `platform_totp_*`, `reset_password_*`, `failed_login_attempts`, `locked_until`, `password_history`, `password_changed_at`) was dropped in `0013_drop_local_auth.sql`.
 
-Local password policy:
+Non-SSO login paths:
 
-- new local passwords are hashed with `Argon2id`
-- `bcrypt` is not supported for new development
+- `/api/v1/auth/dev-login` mints JWTs by `userId` for the demo picker and Playwright suite. The route returns 404 when `NODE_ENV=production`.
+- The break-glass CLI (`server/scripts/break_glass.ts`) mints a short-lived JWT (1–60m) for a platform operator when SSO is unavailable. Writes an `auth.break_glass` audit row. See `docs/BREAK_GLASS_RUNBOOK.md`.
 
 ### Authorization
 
@@ -148,27 +147,31 @@ Current intended behavior:
 
 ## Auth Flow
 
-### Local auth
+### SSO auth (sole production path)
 
-1. User authenticates with email/password.
-2. Password is verified with `Argon2id`.
-3. Memberships are loaded.
-4. If the user has multiple memberships, the client selects a tenant context.
-5. The issued JWT carries:
+1. User authenticates through Microsoft Entra / Azure.
+2. Existing user is matched by `external_id` (Azure OID) or email.
+3. Optional group mapping provisions tenant memberships for SSO-managed tenants (via `partner_group_mappings`).
+4. Memberships are loaded.
+5. If the user has multiple memberships, the client selects a tenant context.
+6. The issued JWT carries:
    - `userId`
    - `role`
    - `partnerId`
    - `membershipId`
    - `isPlatformOperator`
-   - `platformStepUpAt` when platform TOTP verification has been completed
 
-### SSO auth
+### Dev-login (non-prod only)
 
-1. User authenticates through Microsoft Entra / Azure.
-2. Existing user is matched by external subject or email.
-3. Optional group mapping provisions tenant memberships for SSO-managed tenants (via `partner_group_mappings`).
-4. Memberships are loaded using the same session builder as local auth.
-5. The same JWT/session shape is returned as local auth.
+1. Client calls `/api/v1/auth/dev-login` with `{ userId }`.
+2. Route returns 404 when `NODE_ENV=production`; otherwise mints a JWT using the same session builder as the SSO path.
+3. Used by the demo picker and the Playwright suite.
+
+### Break-glass
+
+1. Operator runs `docker compose exec server npx tsx server/scripts/break_glass.ts <email> [ttlMinutes]`.
+2. CLI enforces `isPlatformOperator`, mints a JWT with TTL clamped to 1–60 minutes.
+3. Writes an `auth.break_glass` audit row with `{ actorId, ttlMinutes, exp }`.
 
 ### SSO auth — Azure B2B guest federation
 
@@ -214,40 +217,21 @@ Platform admins are the highest-risk internal identities in the system.
 
 Recommended controls:
 
-- require TOTP-based MFA for all platform admins
+- enforce MFA at the Azure tenant level for all platform admins
 - keep the number of platform admins small
 - audit all platform-admin actions that cross tenant boundaries
 - require explicit tenant entry before platform admins operate inside a tenant
-- avoid permanent break-glass use in day-to-day operations
+- avoid break-glass use in day-to-day operations
 
-### Current Step-Up Enforcement
+### Break-Glass Access
 
-The current implementation enforces platform-admin step-up in code:
+When SSO is unavailable, a platform operator can mint a short-lived JWT via the break-glass CLI (`server/scripts/break_glass.ts`):
 
-- platform admins configure a TOTP secret on their `users` record
-- local login and Entra SSO still establish the base session
-- privileged platform actions require a recent TOTP verification
-- the verification result is carried in the JWT as `platformStepUpAt`
-- the active step-up window is controlled by `PLATFORM_STEP_UP_WINDOW_MINUTES`
-
-Protected paths now include:
-
-- all `platformProcedure` tRPC operations
-- platform-user session revocation
-- explicit tenant entry through `POST /api/v1/auth/enter-partner`
-
-`isPlatformOperator` alone is no longer sufficient for privileged platform actions.
-
-### Break-Glass Accounts
-
-If break-glass accounts are needed:
-
-- keep them local to Guichet, not dependent on external SSO availability
-- store passwords with `Argon2id`
-- keep them separate from normal daily accounts
-- protect them with strong secrets and out-of-band storage procedures
-- monitor and audit every login and tenant entry
-- review and rotate them on a schedule
+- CLI runs inside the server container — no external network dependency
+- TTL is clamped to 1–60 minutes (default 15)
+- target user must exist with `is_platform_operator = true`
+- every mint writes an `auth.break_glass` audit row
+- no passwords, recovery codes, or secondary secrets are stored — access is gated by shell/container access to production
 
 See `docs/BREAK_GLASS_RUNBOOK.md` for the operational procedure.
 
