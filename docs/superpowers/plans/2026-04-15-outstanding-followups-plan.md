@@ -10,10 +10,10 @@
 | P1 E2E fixture conflict | ✅ Shipped | `0fea728`, `549e014`, `4f9c86d`, `992dc01`, `37798a2` — two-round E2E restoration; fixture isolation in place |
 | P2 push-and-idle coverage | ✅ Shipped | `c07eb90` — spec tightened; silent `test.skip` paths replaced with strict assertions, 6 tests pass in 7.4s |
 | P3 npm audit sweep | ✅ Shipped | Resolved during v4.2.0 security cycle |
-| P4 SSO locale residuals | 📝 Cosmetic | 5-min doc closes, deferred per [cosmetic_work_deferral memory] |
+| P4 SSO locale residuals | ✅ Closed | Both open questions resolved in `docs/superpowers/specs/2026-04-15-sso-locale-sync-design.md` on 2026-04-18 |
 | P5 ssoAttributeMap UI | ⏸️ Deferred | Customer-triggered; no partner has requested yet |
 | P6 Ops tasks | ⏸️ Out of code scope | Deploy-time ops, not a code change |
-| P7 Long-tail cleanup | 📝 Cosmetic | Trivial branch pruning, non-blocking |
+| P7 Long-tail cleanup | ✅ Partial | P7c (merged branch prune) done 2026-04-18 — 19 branches deleted. P7a/P7b were already filed. |
 
 Only P2 is a genuine open runtime gap. Rest is cosmetic / out-of-scope / customer-gated.
 

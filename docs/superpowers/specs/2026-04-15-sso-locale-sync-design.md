@@ -296,10 +296,10 @@ If flag emojis in `LoginView` eventually trigger the same panic (chunk byte offs
 3. **Login page flag emojis** — leave as-is. The login chunk has different byte layout from the panicking post-auth chunk. Add `build` step to `scripts/ci.ps1` so future regressions fail fast; replace with text labels only if the login chunk ever panics.
 4. **Attribute map UI** — JSON textarea in partner config, validated with Zod on submit. Graduate to a dedicated form if the shape grows beyond 5 keys or platform operators request it.
 
-## Remaining open questions
+## Resolved open questions (closed 2026-04-18)
 
-- **Audit verbosity**: log every SSO-driven locale sync, or only transitions where `users.lang` actually changes? Recommending: log only changes (claim matched current value is noise).
-- **Rate limiting on `setLocale`**: any need to cap how often a user can flip lang? Recommending: no — the switcher already requires manual click, no automated abuse vector.
+- **Audit verbosity**: ✅ Final — log only on actual transitions where `users.lang` changes. The existing `if (nextLang)` guard in `server/routes/sso.ts` already implements this; every entry in `audit_log` with `action = 'user.locale.sso_sync'` represents a real change, not a redundant claim-matched-current-value noise row. Matches the "audit security-relevant state changes, not every read" principle in CLAUDE.md.
+- **Rate limiting on `setLocale`**: ✅ Final — no rate limit. `setLocale` is a user-gated action driven by a manual click on `LanguageSwitcher`. No automated abuse vector exists; adding a limiter would trade zero real protection for an extra Redis round-trip on every language change. Platform limiter (`trpcLimiter`, 200 req/min) is a sufficient backstop against accidental client loops.
 
 ---
 
