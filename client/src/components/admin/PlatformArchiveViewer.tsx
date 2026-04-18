@@ -117,7 +117,7 @@ function AuditArchivePanel() {
     dateTo: dateTo || undefined,
   });
 
-  const chainQuery = trpc.platform.verifyAuditChain.useQuery(undefined, { enabled: false });
+  const chainQuery = trpc.platform.verifyAuditChain.useMutation();
   const archiveMutation = trpc.platform.runArchive.useMutation();
 
   const data = query.data as { items?: AuditArchiveEntry[]; nextCursor?: string } | undefined;
@@ -170,11 +170,11 @@ function AuditArchivePanel() {
         )}
         <div className="ml-auto flex gap-2">
           <button
-            onClick={() => chainQuery.refetch()}
-            disabled={chainQuery.isFetching}
+            onClick={() => chainQuery.mutate()}
+            disabled={chainQuery.isPending}
             className="btn-secondary disabled:opacity-30"
           >
-            {chainQuery.isFetching ? 'Verifying…' : 'Verify Chain'}
+            {chainQuery.isPending ? 'Verifying…' : 'Verify Chain'}
           </button>
           <button
             onClick={() => archiveMutation.mutate()}

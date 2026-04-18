@@ -1,9 +1,42 @@
 import { z } from 'zod';
 import { router, platformProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
-import { auditLog, auditArchive, archivedTickets, users } from '../../../db/schema.js';
+import { auditLog, auditArchive, archivedTickets, users, systemSettings } from '../../../db/schema.js';
 import { eq, desc, gte, lte, ilike, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import { getRedisClients } from '../../../utils/redis.js';
+import logger from '../../../utils/logger.js';
+
+const VERIFY_CHAIN_WINDOW_SECS = 60;
+const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
+const LAST_VERIFY_KEY = 'audit_chain_last_verify';
+
+// Per-operator throttle for verifyAuditChain — a full verify scans the entire
+// audit_archive and recomputes every SHA-256 chain hash. One operator spamming
+// the button (or a compromised session) could saturate CPU+DB. Fails open on
+// Redis outages: the procedure is already gated by platformProcedure, so the
+// blast radius without Redis is small and we'd rather keep ops unblocked.
+async function assertVerifyChainAllowed(userId: string): Promise<void> {
+  try {
+    const { pubClient } = getRedisClients();
+    if (!pubClient) return;
+    const key = `rate:verify-audit-chain:${userId}`;
+    const count = await pubClient.incr(key);
+    if (count === 1) await pubClient.expire(key, VERIFY_CHAIN_WINDOW_SECS);
+    if (count > VERIFY_CHAIN_MAX_PER_WINDOW) {
+      const ttl = await pubClient.ttl(key);
+      const retryAfter = ttl > 0 ? ttl : VERIFY_CHAIN_WINDOW_SECS;
+      logger.warn({ userId, count }, '[audit] verify-chain rate limit exceeded');
+      throw new TRPCError({
+        code: 'TOO_MANY_REQUESTS',
+        message: `Chain verification is rate-limited. Retry in ${retryAfter}s.`,
+      });
+    }
+  } catch (err) {
+    if (err instanceof TRPCError) throw err;
+    logger.warn({ err }, '[audit] verify-chain rate-limit check failed, allowing');
+  }
+}
 
 export const platformAuditRouter = router({
   getAuditLog: platformProcedure
@@ -161,9 +194,35 @@ export const platformAuditRouter = router({
     }),
 
   verifyAuditChain: platformProcedure
-    .query(async () => {
+    .mutation(async ({ ctx }) => {
+      await assertVerifyChainAllowed(ctx.user.id);
       const { verifyAuditChain } = await import('../../../services/archive.js');
-      return verifyAuditChain();
+      const result = await verifyAuditChain();
+      const record = {
+        ranAt: new Date().toISOString(),
+        ranBy: ctx.user.id,
+        ...result,
+      };
+      // Persist so all operators see the same last-verified state, not just the
+      // one who clicked the button. system_settings is keyed, so we upsert.
+      await db
+        .insert(systemSettings)
+        .values({ key: LAST_VERIFY_KEY, value: record })
+        .onConflictDoUpdate({
+          target: systemSettings.key,
+          set: { value: record, updatedAt: new Date().toISOString() },
+        });
+      return record;
+    }),
+
+  getLastChainVerify: platformProcedure
+    .query(async () => {
+      const rows = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(eq(systemSettings.key, LAST_VERIFY_KEY))
+        .limit(1);
+      return rows[0]?.value ?? null;
     }),
 
   runArchive: platformProcedure
