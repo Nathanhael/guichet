@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import PlatformView from '../PlatformView';
 
-/* ------------------------------------------------------------------ */
-/*  Mocks                                                              */
-/* ------------------------------------------------------------------ */
-
 const mockLogout = vi.hoisted(() => vi.fn());
 
 vi.mock('../../store/useStore', () => {
@@ -19,19 +15,6 @@ vi.mock('../../i18n', () => ({
   useT: () => (key: string) => key,
 }));
 
-const mockSecurityStatus = { mfaEnabled: true, mfaPending: false, stepUpSatisfied: true, stepUpExpiresAt: null };
-
-vi.mock('../../utils/trpc', () => ({
-  trpc: {
-    platformSecurity: {
-      getStatus: {
-        useQuery: () => ({ data: mockSecurityStatus }),
-      },
-    },
-  },
-}));
-
-// Mock all child components to isolate PlatformView shell logic
 vi.mock('../../components/DarkModeToggle', () => ({
   default: () => <div data-testid="dark-mode-toggle" />,
 }));
@@ -54,14 +37,6 @@ vi.mock('../../components/admin/PlatformSystemHealth', () => ({
 
 vi.mock('../../components/admin/PlatformAuditLog', () => ({
   default: () => <div data-testid="audit-log" />,
-}));
-
-vi.mock('../../components/admin/PlatformSecurityOps', () => ({
-  default: () => <div data-testid="security-ops" />,
-}));
-
-vi.mock('../../components/admin/PlatformSystemSettings', () => ({
-  default: () => <div data-testid="system-settings" />,
 }));
 
 vi.mock('../../components/platform/PartnerList', () => ({
@@ -104,13 +79,13 @@ vi.mock('../../components/platform/EditUserProfileModal', () => ({
   default: () => null,
 }));
 
+vi.mock('../../components/platform/GroupMappingsPanel', () => ({
+  default: () => <div data-testid="group-mappings" />,
+}));
+
 vi.mock('../../components/admin/PlatformArchiveViewer', () => ({
   default: () => <div data-testid="archive-viewer" />,
 }));
-
-/* ------------------------------------------------------------------ */
-/*  Tests                                                              */
-/* ------------------------------------------------------------------ */
 
 describe('PlatformView', () => {
   beforeEach(() => {
@@ -131,8 +106,7 @@ describe('PlatformView', () => {
   it('tab buttons have role="tab" and aria-selected attributes', () => {
     render(<PlatformView />);
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.length).toBe(8);
-    // First tab (partners) should be selected by default
+    expect(tabs.length).toBe(6);
     const partnersTab = tabs.find(t => t.textContent === 'partners_tab');
     expect(partnersTab).toHaveAttribute('aria-selected', 'true');
   });
@@ -146,9 +120,8 @@ describe('PlatformView', () => {
     render(<PlatformView />);
     expect(screen.getByText('partners_tab')).toBeInTheDocument();
     expect(screen.getByText('users_tab')).toBeInTheDocument();
-    expect(screen.getByText('security_tab')).toBeInTheDocument();
+    expect(screen.getByText('sso_tab')).toBeInTheDocument();
     expect(screen.getByText('health_tab')).toBeInTheDocument();
-    expect(screen.getByText('config_tab')).toBeInTheDocument();
     expect(screen.getByText('audit_tab')).toBeInTheDocument();
     expect(screen.getByText('archive_tab')).toBeInTheDocument();
   });
@@ -169,12 +142,6 @@ describe('PlatformView', () => {
     render(<PlatformView />);
     fireEvent.click(screen.getByText('health_tab'));
     expect(screen.getByTestId('system-health')).toBeInTheDocument();
-  });
-
-  it('switches to config tab', () => {
-    render(<PlatformView />);
-    fireEvent.click(screen.getByText('config_tab'));
-    expect(screen.getByTestId('system-settings')).toBeInTheDocument();
   });
 
   it('switches to audit tab', () => {
@@ -209,9 +176,9 @@ describe('PlatformView', () => {
     expect(screen.getByTestId('archive-viewer')).toBeInTheDocument();
   });
 
-  it('switches to security tab', () => {
+  it('switches to sso tab', () => {
     render(<PlatformView />);
-    fireEvent.click(screen.getByText('security_tab'));
-    expect(screen.getByTestId('security-ops')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('sso_tab'));
+    expect(screen.getByTestId('group-mappings')).toBeInTheDocument();
   });
 });

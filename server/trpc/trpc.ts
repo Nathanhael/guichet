@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm';
 import { Context } from './context.js';
 import { UserRole } from '../types/index.js';
 import { isPlatformAdmin, isTenantAdmin } from '../services/roles.js';
-import { isPlatformStepUpSatisfied } from '../services/platformStepUp.js';
 import { DISABLED_FEATURES, type DisabledFeature } from '../constants.js';
 import { db } from '../db.js';
 import { users } from '../db/schema.js';
@@ -25,23 +24,9 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
-/**
- * Platform operator check WITHOUT step-up TOTP verification.
- * Intentionally for low-risk read-only operations and for the step-up
- * authentication flow itself (getStatus, beginSetup, enable, verify)
- * which must work before step-up is satisfied.
- * For sensitive platform mutations, use `platformProcedure` instead.
- */
-export const platformBaseProcedure = protectedProcedure.use(({ ctx, next }) => {
+export const platformProcedure = protectedProcedure.use(({ ctx, next }) => {
   if (!isPlatformAdmin(ctx.user.isPlatformOperator)) {
     throw new TRPCError({ code: 'FORBIDDEN', message: 'Platform Operator role required' });
-  }
-  return next();
-});
-
-export const platformProcedure = platformBaseProcedure.use(({ ctx, next }) => {
-  if (!isPlatformStepUpSatisfied(ctx.user.platformStepUpAt)) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'Platform step-up required' });
   }
   return next();
 });

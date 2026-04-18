@@ -72,7 +72,7 @@ export default function SupportNav({ partnerName }: SupportNavProps) {
           showAccessibility
           showNotifications
         />
-        <UserMenu showSecurity />
+        <UserMenu />
       </div>
     </nav>
   );

@@ -354,7 +354,6 @@ export async function purgeAbandonedInvites(): Promise<number> {
     .from(users)
     .where(and(
       isNull(users.externalId),
-      isNull(users.password),
       lt(users.createdAt, cutoff),
     ))
     .limit(500);

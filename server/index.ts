@@ -1,7 +1,7 @@
 import { httpServer } from './app.js';
 import config from './config.js';
 import logger from './utils/logger.js';
-import { bootstrapPlatformOperator, upgradeMailConfigEncryption } from './services/bootstrap.js';
+import { bootstrapPlatformOperator } from './services/bootstrap.js';
 
 if (process.env.NODE_ENV === 'production' && config.JWT_SECRET.startsWith('super-secret-key-replace-in-prod')) {
   logger.fatal('Cannot start server in production with default JWT_SECRET. Please set JWT_SECRET in environment.');
@@ -12,7 +12,7 @@ const PORT = config.PORT || 3001;
 
 bootstrapPlatformOperator().catch(err => {
   logger.error({ err }, 'Failed to bootstrap platform operator');
-}).then(() => upgradeMailConfigEncryption()).then(() => {
+}).then(() => {
   const server = httpServer.listen(PORT, () => {
     logger.info(`Server running on http://localhost:${PORT}`);
   });

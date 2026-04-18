@@ -13,7 +13,6 @@ import { test, expect, type Page } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
-const DEMO_PASSWORD = 'password123';
 
 /** Wait for a platform tab to become enabled (security status query resolved) then click it */
 async function clickPlatformTab(page: Page, tabName: RegExp, timeout = 15000) {
@@ -132,18 +131,6 @@ test.describe('Tab Navigation', () => {
     await page.waitForTimeout(1500);
     const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
-  });
-
-  test('security tab shows step-up verification', async ({ page }) => {
-    await page.waitForTimeout(2000);
-    const securityTab = page.getByRole('button', { name: /security/i }).first();
-    if (await securityTab.isVisible().catch(() => false)) {
-      await securityTab.click();
-      await page.waitForTimeout(1500);
-      const hasSecurityContent = await page.getByText(/security|totp|step.up|verification|mfa/i).first().isVisible().catch(() => false);
-      const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-      expect(errorVisible).toBeFalsy();
-    }
   });
 
   test('SSO/group mappings tab loads', async ({ page }) => {

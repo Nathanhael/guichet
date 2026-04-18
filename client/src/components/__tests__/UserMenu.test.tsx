@@ -25,14 +25,6 @@ vi.mock('../../i18n', () => ({
 }));
 
 /* ------------------------------------------------------------------ */
-/*  UserSecurityModal mock                                             */
-/* ------------------------------------------------------------------ */
-
-vi.mock('../UserSecurityModal', () => ({
-  default: () => <div data-testid="user-security-modal" />,
-}));
-
-/* ------------------------------------------------------------------ */
 /*  Tests                                                               */
 /* ------------------------------------------------------------------ */
 
@@ -74,12 +66,6 @@ describe('UserMenu', () => {
     render(<UserMenu />);
     fireEvent.click(screen.getByRole('button', { name: 'user_menu' }));
     expect(screen.queryByText('feedback')).not.toBeInTheDocument();
-  });
-
-  it('shows account_security button when showSecurity=true', () => {
-    render(<UserMenu showSecurity />);
-    fireEvent.click(screen.getByRole('button', { name: 'user_menu' }));
-    expect(screen.getByText('account_security')).toBeInTheDocument();
   });
 
   it('closes dropdown on outside click', () => {

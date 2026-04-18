@@ -17,7 +17,6 @@ export interface AuthRequest extends Request {
     membershipId?: string;
     departments?: unknown[];
     isPlatformOperator: boolean;
-    platformStepUpAt?: number;
     tokenJti?: string;
     tokenExp?: number;
     tokenIat?: number;
@@ -45,7 +44,6 @@ export const auth = async (req: AuthRequest, res: Response, next: NextFunction) 
       membershipId: decoded.membershipId,
       departments: decoded.departments,
       isPlatformOperator: isPlatformAdmin(!!decoded.isPlatformOperator),
-      platformStepUpAt: decoded.platformStepUpAt,
       tokenJti: decoded.jti,
       tokenExp: decoded.exp,
       tokenIat: decoded.iat,

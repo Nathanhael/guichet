@@ -68,10 +68,6 @@ vi.mock('../../../utils/logger.js', () => ({
   default: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('../../../services/platformStepUp.js', () => ({
-  isPlatformStepUpSatisfied: vi.fn().mockReturnValue(true),
-}));
-
 vi.mock('../../../services/sessionRevocation.js', () => ({
   isRevoked: vi.fn().mockResolvedValue(false),
 }));

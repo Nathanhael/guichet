@@ -93,7 +93,7 @@ export default function AdminView() {
         <div className="flex items-center gap-4 shrink-0">
           <PartnerSwitcher />
           <SettingsPopover showAccessibility />
-          <UserMenu showSecurity />
+          <UserMenu />
         </div>
       </nav>
 

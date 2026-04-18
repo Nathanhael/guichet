@@ -12,10 +12,6 @@ interface UserTableProps {
   onManageAccess: (user: GlobalUser) => void;
 }
 
-function isLocked(u: GlobalUser): boolean {
-  return !!u.lockedUntil && new Date(u.lockedUntil) > new Date();
-}
-
 export default function UserTable({ onInviteClick, onEditProfile, onManageAccess }: UserTableProps) {
   const t = useT();
   const utils = trpc.useUtils();
@@ -37,21 +33,6 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
   const revokeSessions = trpc.user.revokeSessions.useMutation({
     onSuccess: () => showToast('Sessions revoked'),
     onError: (err) => showError(`Failed to revoke sessions: ${err.message}`),
-  });
-
-  const resendInvite = trpc.platform.resendInvite.useMutation({
-    onSuccess: () => showToast(t('invite_resent_success')),
-    onError: (err) => showError(`${t('invite_resent_error')}: ${err.message}`),
-  });
-
-  const disableMfa = trpc.platform.disableUserMfa.useMutation({
-    onSuccess: () => { utils.platform.listGlobalUsers.invalidate(); showToast('MFA disabled'); },
-    onError: (err) => showError(`Failed to disable MFA: ${err.message}`),
-  });
-
-  const unlockUser = trpc.platform.unlockUser.useMutation({
-    onSuccess: () => { utils.platform.listGlobalUsers.invalidate(); showToast('User unlocked'); },
-    onError: (err) => showError(`Failed to unlock user: ${err.message}`),
   });
 
   const filteredUsers = (globalUsers || []).filter(u => {
@@ -109,42 +90,17 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
                     <p className="mono-id text-[var(--color-text-faint)]">{t('id_label')}: {u.id}</p>
                   </td>
                   <td className="p-4 border-r border-[var(--color-border)]">
-                    <div className="flex flex-col gap-1.5">
-                      {/* Connection status */}
-                      {u.externalId || u.lastActiveAt ? (
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-1.5 h-1.5 bg-[var(--color-accent-green)]" />
-                          <span className="text-[9px] font-bold uppercase tracking-widest font-mono">{u.externalId ? t('status_linked_sso') : t('status_active_local')}</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-1.5 opacity-40">
-                            <div className="w-1.5 h-1.5 border border-[var(--color-border)]" />
-                            <span className="text-[9px] font-bold uppercase tracking-widest font-mono">{t('status_pending')}</span>
-                          </div>
-                          <button onClick={() => {
-                            const membershipsArr = u.partnerMemberships || [];
-                            const resolvedPartnerId: string | undefined = selectedPartnerId !== 'all' ? selectedPartnerId : membershipsArr.length === 1 ? membershipsArr[0].partnerId : undefined;
-                            if (!resolvedPartnerId) { showError(t('select_partner_for_resend')); return; }
-                            setConfirmDialog({
-                              title: t('resend_invite'),
-                              message: t('confirm_resend_invite').replace('{email}', u.email || ''),
-                              confirmLabel: t('resend_invite'),
-                              onConfirm: () => { resendInvite.mutate({ userId: u.id, partnerId: resolvedPartnerId }); setConfirmDialog(null); }
-                            });
-                          }} className="text-[8px] font-bold uppercase tracking-widest underline underline-offset-2 hover:opacity-60 text-left font-mono">{t('resend_invite')}</button>
-                        </div>
-                      )}
-                      {/* Security badges */}
-                      <div className="flex flex-wrap gap-1">
-                        {u.mfaEnabledAt && (
-                          <span className="badge bg-[var(--color-accent-blue)] text-white">MFA</span>
-                        )}
-                        {isLocked(u) && (
-                          <span className="badge bg-[var(--color-accent-red)] text-white">LOCKED</span>
-                        )}
+                    {u.externalId ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-1.5 h-1.5 bg-[var(--color-accent-green)]" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest font-mono">{t('status_linked_sso')}</span>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 opacity-40">
+                        <div className="w-1.5 h-1.5 border border-[var(--color-border)]" />
+                        <span className="text-[9px] font-bold uppercase tracking-widest font-mono">{t('status_pending')}</span>
+                      </div>
+                    )}
                   </td>
                   <td className="p-4 border-r border-[var(--color-border)] mono-timestamp text-[var(--color-text-secondary)]">{u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleString() : t('never')}</td>
                   <td className="p-4 border-r border-[var(--color-border)]">
@@ -159,26 +115,6 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
                     <div className="flex flex-wrap justify-end gap-2">
                       <button onClick={() => onEditProfile(u)} className="btn-secondary text-[10px] uppercase tracking-widest px-3 py-1.5">{t('edit_profile')}</button>
                       <button onClick={() => onManageAccess(u)} className="btn-secondary text-[10px] uppercase tracking-widest px-3 py-1.5 opacity-60 hover:opacity-100">{t('manage_access')}</button>
-                      {u.mfaEnabledAt && (
-                        <button onClick={() => setConfirmDialog({
-                          title: 'Disable MFA',
-                          message: `Force-disable two-factor authentication for ${u.name}? They will be able to log in with password only.`,
-                          confirmLabel: 'Disable MFA',
-                          onConfirm: () => { disableMfa.mutate(u.id); setConfirmDialog(null); }
-                        })} className="btn-secondary text-[10px] uppercase tracking-widest px-3 py-1.5 opacity-60 hover:opacity-100">
-                          Disable MFA
-                        </button>
-                      )}
-                      {isLocked(u) && (
-                        <button onClick={() => setConfirmDialog({
-                          title: 'Unlock User',
-                          message: `Unlock ${u.name}'s account immediately? This clears the lockout and resets failed login attempts.`,
-                          confirmLabel: 'Unlock',
-                          onConfirm: () => { unlockUser.mutate(u.id); setConfirmDialog(null); }
-                        })} className="btn-secondary text-[10px] uppercase tracking-widest px-3 py-1.5 opacity-60 hover:opacity-100">
-                          Unlock
-                        </button>
-                      )}
                       <button onClick={() => setConfirmDialog({
                         title: 'Revoke Sessions',
                         message: `Force sign-out all active sessions for ${u.name}?`,

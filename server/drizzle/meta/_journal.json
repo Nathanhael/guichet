@@ -85,6 +85,20 @@
       "when": 1776520000000,
       "tag": "0011_users_lang_locked_partners_sso_attribute_map",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1776540000000,
+      "tag": "0012_drop_mail_infra",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1776560000000,
+      "tag": "0013_drop_local_auth",
+      "breakpoints": true
     }
   ]
 }

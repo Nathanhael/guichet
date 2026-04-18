@@ -1,42 +1,24 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import { LogOut, MessageSquare, Shield } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { LogOut, MessageSquare } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useT } from '../i18n';
 import GuestBadge from './GuestBadge';
 
-const UserSecurityModal = lazy(() => import('./UserSecurityModal'));
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                             */
-/* ------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------ */
-/*  Props                                                               */
-/* ------------------------------------------------------------------ */
-
 export interface UserMenuProps {
   /** Show feedback button — agent view only. Default false. */
   showFeedback?: boolean;
-  /** Show account security button — support/agent only. Default false. */
-  showSecurity?: boolean;
   /** Called when user clicks the feedback item. */
   onFeedback?: () => void;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Component                                                           */
-/* ------------------------------------------------------------------ */
-
-export default function UserMenu({ showFeedback = false, showSecurity = false, onFeedback }: UserMenuProps) {
+export default function UserMenu({ showFeedback = false, onFeedback }: UserMenuProps) {
   const user = useStore((s) => s.user);
   const logout = useStore((s) => s.logout);
   const t = useT();
 
   const [open, setOpen] = useState(false);
-  const [securityOpen, setSecurityOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside mousedown
   useEffect(() => {
     if (!open) return;
     function handleMouseDown(e: MouseEvent) {
@@ -48,7 +30,6 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
     return () => document.removeEventListener('mousedown', handleMouseDown);
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     function handleKeyDown(e: KeyboardEvent) {
@@ -65,14 +46,8 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
     onFeedback?.();
   }
 
-  function handleSecurity() {
-    setOpen(false);
-    setSecurityOpen(true);
-  }
-
   return (
     <div ref={containerRef} className="relative">
-      {/* Name button — full user name in mono, replaces the old initials square. */}
       <button
         onClick={() => setOpen((v) => !v)}
         aria-label={t('user_menu')}
@@ -84,10 +59,8 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
         {user.name}
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-[var(--color-bg-surface)] border border-[var(--color-border-heavy)]">
-          {/* Header */}
           <div className="px-3 py-2.5 border-b border-[var(--color-border)]">
             <div className="text-[11px] font-bold uppercase tracking-tight text-[var(--color-text-primary)] flex items-center gap-2">
               <span className="truncate">{user.name}</span>
@@ -96,7 +69,6 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
             <div className="text-[9px] text-[var(--color-text-muted)] mt-0.5">{user.email}</div>
           </div>
 
-          {/* Feedback (optional) */}
           {showFeedback && (
             <button
               onClick={handleFeedback}
@@ -107,18 +79,6 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
             </button>
           )}
 
-          {/* Account Security — platform operators only (SSO users manage security at their IdP) */}
-          {showSecurity && user?.isPlatformOperator && (
-            <button
-              onClick={handleSecurity}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] border-b border-[var(--color-border)]"
-            >
-              <Shield className="h-3.5 w-3.5 shrink-0" />
-              {t('account_security')}
-            </button>
-          )}
-
-          {/* Sign out (always) */}
           <button
             onClick={() => {
               setOpen(false);
@@ -130,13 +90,6 @@ export default function UserMenu({ showFeedback = false, showSecurity = false, o
             {t('sign_out')}
           </button>
         </div>
-      )}
-
-      {/* UserSecurityModal (lazy) */}
-      {securityOpen && (
-        <Suspense fallback={null}>
-          <UserSecurityModal onClose={() => setSecurityOpen(false)} />
-        </Suspense>
       )}
     </div>
   );

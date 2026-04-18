@@ -10,13 +10,10 @@
 import { db } from './db.js';
 import * as schema from './db/schema.js';
 import { sql } from 'drizzle-orm';
-import { hashPassword } from './utils/passwords.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration
 // ─────────────────────────────────────────────────────────────────────────────
-
-const DEFAULT_PASSWORD = 'password123';
 
 const PARTNER_ID = 'acme';
 
@@ -223,7 +220,6 @@ async function wipeDatabase() {
 
 async function seedMinimal() {
   console.log('🌱 Seeding minimal fixture...');
-  const hash = await hashPassword(DEFAULT_PASSWORD);
 
   // Partner
   await db.insert(schema.partners).values({
@@ -244,7 +240,6 @@ async function seedMinimal() {
     name: 'Bart Operator',
     email: 'bart@guichet.io',
     lang: 'en',
-    password: hash,
     isPlatformOperator: true,
     accessibilityPrefs: {},
   });
@@ -266,7 +261,6 @@ async function seedMinimal() {
       name: u.name,
       email: u.email,
       lang: u.lang,
-      password: hash,
       isPlatformOperator: false,
       isExternal: u.isExternal ?? false,
       accessibilityPrefs: {},
@@ -315,8 +309,7 @@ async function seedMinimal() {
 
   console.log('✅ Seed complete.');
   console.log('');
-  console.log('  Partner: ' + PARTNER_ID + ' (auth: local)');
-  console.log('  Password for all users: ' + DEFAULT_PASSWORD);
+  console.log('  Partner: ' + PARTNER_ID + ' (auth: SSO / dev-login)');
   console.log('');
   console.log('  Platform operator:');
   console.log('    - bart@guichet.io             (platform_bart)');

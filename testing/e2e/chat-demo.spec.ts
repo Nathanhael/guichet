@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
-const DEMO_PASSWORD = 'password123';
 
 /** Enable AI features via platform API */
 async function enableAiFeatures(page: Page) {
@@ -12,16 +11,16 @@ async function enableAiFeatures(page: Page) {
   await page.goto(BASE);
   await page.waitForLoadState('load');
 
-  // Login as platform operator first
-  const loginData = await page.evaluate(async ({ pw }) => {
-    const res = await fetch('/api/v1/auth/login', {
+  // Login as platform operator via dev-login (passwordless, non-prod only)
+  const loginData = await page.evaluate(async () => {
+    const res = await fetch('/api/v1/auth/dev-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ id: 'platform_bart', password: pw }),
+      body: JSON.stringify({ userId: 'platform_bart' }),
     });
     return { ok: res.ok };
-  }, { pw: DEMO_PASSWORD });
+  });
 
   if (!loginData.ok) return false;
 

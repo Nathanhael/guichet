@@ -64,9 +64,6 @@ const configSchema = z.object({
       z.string().length(64).regex(/^[0-9a-f]+$/i, 'Must be 64-character hex string').optional(),
     ),
     PLATFORM_ADMIN_EMAIL: z.preprocess(v => v === '' ? undefined : v, z.string().email().optional()),
-    PLATFORM_ADMIN_PASSWORD: z.preprocess(v => v === '' ? undefined : v, z.string().min(10).optional()),
-    REQUIRE_PLATFORM_STEP_UP: z.preprocess(v => v === 'true' || v === '1' || v === true, z.boolean()).default(false),
-    PLATFORM_STEP_UP_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
     // Azure Entra ID (SSO)
     AZURE_AD_TENANT_ID: z.string().optional(),
     AZURE_AD_CLIENT_ID: z.string().optional(),
@@ -119,9 +116,6 @@ const parseResult = configSchema.safeParse({
     AI_KEY_ENCRYPTION_SECRET: process.env.AI_KEY_ENCRYPTION_SECRET,
     FIELD_ENCRYPTION_SECRET: process.env.FIELD_ENCRYPTION_SECRET,
     PLATFORM_ADMIN_EMAIL: process.env.PLATFORM_ADMIN_EMAIL,
-    PLATFORM_ADMIN_PASSWORD: process.env.PLATFORM_ADMIN_PASSWORD,
-    REQUIRE_PLATFORM_STEP_UP: process.env.REQUIRE_PLATFORM_STEP_UP,
-    PLATFORM_STEP_UP_WINDOW_MINUTES: process.env.PLATFORM_STEP_UP_WINDOW_MINUTES,
     AZURE_AD_TENANT_ID: process.env.AZURE_AD_TENANT_ID,
     AZURE_AD_CLIENT_ID: process.env.AZURE_AD_CLIENT_ID,
     AZURE_AD_CLIENT_SECRET: process.env.AZURE_AD_CLIENT_SECRET,
@@ -159,8 +153,6 @@ if (config.NODE_ENV === 'production') {
         fatal.push('FRONTEND_URL contains localhost — set to your production URL');
     if (!config.REDIS_URL.includes('@'))
         warn.push('REDIS_URL has no authentication — set a password for production');
-    if (!config.REQUIRE_PLATFORM_STEP_UP)
-        warn.push('REQUIRE_PLATFORM_STEP_UP is false — platform admin has no MFA step-up');
     if (!config.COOKIE_DOMAIN)
         warn.push('COOKIE_DOMAIN is not set — cookies will be scoped to the exact hostname, which may cause issues with subdomains. Set to your root domain (e.g., "example.com")');
     if (!config.FIELD_ENCRYPTION_SECRET && !config.AI_KEY_ENCRYPTION_SECRET && config.AI_ENABLED)

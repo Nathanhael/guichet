@@ -53,12 +53,6 @@ vi.mock('../../socket/handlers.js', () => ({
   broadcastPartnerDeactivation: vi.fn(),
 }));
 
-vi.mock('../../services/mail.js', () => ({
-  MailService: {
-    sendMail: vi.fn(async () => true),
-  },
-}));
-
 describe('platform router tenant and sso audit logging', () => {
   beforeEach(() => {
     selectQueue.length = 0;
@@ -81,7 +75,6 @@ describe('platform router tenant and sso audit logging', () => {
         id: 'platform-1',
         role: 'admin',
         isPlatformOperator: true,
-        platformStepUpAt: Math.floor(Date.now() / 1000),
       },
     } as any);
 
@@ -116,7 +109,6 @@ describe('platform router tenant and sso audit logging', () => {
         id: 'platform-1',
         role: 'admin',
         isPlatformOperator: true,
-        platformStepUpAt: Math.floor(Date.now() / 1000),
       },
     } as any);
 
@@ -141,7 +133,6 @@ describe('platform router tenant and sso audit logging', () => {
         id: 'platform-1',
         role: 'admin',
         isPlatformOperator: true,
-        platformStepUpAt: Math.floor(Date.now() / 1000),
       },
     } as any);
 

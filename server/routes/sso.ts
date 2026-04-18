@@ -255,47 +255,30 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       user = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
 
       if (user) {
-        // Security: Only link SSO identity to accounts that don't have a local password set.
-        // If the user has a password, they are a local-auth account and linking a new SSO
-        // identity to them would allow account takeover — an attacker who controls an SSO
-        // identity with the same email could hijack the local account.
-        if (user.password) {
-          logger.warn({ userId: user.id, oid, email }, '[SSO] Email conflict: SSO identity matches existing local-auth account — rejecting login');
+        // Bound the claim-by-email window to INVITE_TTL_DAYS — an invite row older than
+        // that is treated as abandoned and deleted rather than silently claimed.
+        const INVITE_TTL_DAYS = 7;
+        const ageMs = Date.now() - new Date(user.createdAt).getTime();
+        if (ageMs > INVITE_TTL_DAYS * 86_400_000) {
+          logger.warn({ userId: user.id, oid, email, ageMs }, '[SSO] Invite expired — rejecting claim and deleting stale row');
           await db.insert(auditLog).values({
-            action: 'sso.email_conflict',
-            actorId: user.id,
-            targetType: 'user',
-            targetId: user.id,
-            metadata: { email, oid },
-          });
-          return res.redirect(`${clientOrigin}/login?sso_error=email_conflict`);
-        } else {
-          // Safe to link: account has no password (SSO-only or uninitialised invite).
-          // Bound the claim-by-email window to INVITE_TTL_DAYS — an invite row older than
-          // that is treated as abandoned and deleted rather than silently claimed.
-          const INVITE_TTL_DAYS = 7;
-          const ageMs = Date.now() - new Date(user.createdAt).getTime();
-          if (ageMs > INVITE_TTL_DAYS * 86_400_000) {
-            logger.warn({ userId: user.id, oid, email, ageMs }, '[SSO] Invite expired — rejecting claim and deleting stale row');
-            await db.insert(auditLog).values({
-              action: 'sso.invite_expired',
-              targetType: 'user',
-              targetId: user.id,
-              metadata: { email, oid, ageMs },
-            });
-            await db.delete(users).where(eq(users.id, user.id));
-            return res.redirect(`${clientOrigin}/login?sso_error=invite_expired`);
-          }
-          await db.update(users).set({ externalId: oid, name, isExternal }).where(eq(users.id, user.id));
-          await db.insert(auditLog).values({
-            action: 'sso.invite_claimed',
-            actorId: user.id,
+            action: 'sso.invite_expired',
             targetType: 'user',
             targetId: user.id,
             metadata: { email, oid, ageMs },
           });
-          logger.info({ userId: user.id, oid, isExternal, ageMs }, '[SSO] Linked existing user to Azure OID');
+          await db.delete(users).where(eq(users.id, user.id));
+          return res.redirect(`${clientOrigin}/login?sso_error=invite_expired`);
         }
+        await db.update(users).set({ externalId: oid, name, isExternal }).where(eq(users.id, user.id));
+        await db.insert(auditLog).values({
+          action: 'sso.invite_claimed',
+          actorId: user.id,
+          targetType: 'user',
+          targetId: user.id,
+          metadata: { email, oid, ageMs },
+        });
+        logger.info({ userId: user.id, oid, isExternal, ageMs }, '[SSO] Linked existing user to Azure OID');
       } else {
         // Brand new SSO user
         const newId = crypto.randomUUID();
@@ -304,7 +287,6 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           email,
           name,
           externalId: oid,
-          password: null,
           isExternal,
           ...(azureLang && { lang: azureLang }),
         });

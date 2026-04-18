@@ -7,7 +7,6 @@ export default defineConfig({
       JWT_SECRET: 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
       NODE_ENV: 'test',
       DATABASE_URL: 'postgres://user:password@localhost:5432/guichet',
-      PLATFORM_ADMIN_PASSWORD: '',
     },
     testTimeout: 15000,
     hookTimeout: 15000,
