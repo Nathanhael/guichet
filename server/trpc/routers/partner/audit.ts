@@ -22,6 +22,7 @@ const PARTNER_ACTIONS = [
 const baseInput = z.object({
   action: z.string().optional(),
   actorId: z.string().optional(),
+  targetType: z.string().optional(),
   wasExternal: z.boolean().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
@@ -34,6 +35,7 @@ function buildConditions(
   const conditions = [eq(auditLog.partnerId, partnerId)];
   if (input.action) conditions.push(eq(auditLog.action, input.action));
   if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
+  if (input.targetType) conditions.push(eq(auditLog.targetType, input.targetType));
   if (input.dateFrom) conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
   if (input.dateTo) conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
   if (input.wasExternal === true) {
@@ -42,9 +44,25 @@ function buildConditions(
   return conditions;
 }
 
+// Target types that the app emits on partner-scoped audit rows. Keep in sync
+// with the `targetType` literals passed to db.insert(auditLog).values(...)
+// for this tenant's actions (see `PARTNER_ACTIONS` above).
+const PARTNER_TARGET_TYPES = [
+  'user',
+  'membership',
+  'partner',
+  'label',
+  'kb_article',
+  'webhook',
+] as const;
+
 export const partnerAuditRouter = router({
   listActions: partnerAdminProcedure.query(() => {
     return PARTNER_ACTIONS.slice();
+  }),
+
+  listTargetTypes: partnerAdminProcedure.query(() => {
+    return PARTNER_TARGET_TYPES.slice();
   }),
 
   getAuditLog: partnerAdminProcedure

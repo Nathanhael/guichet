@@ -40,6 +40,7 @@ export default function AdminAuditLog() {
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const [filterAction, setFilterAction] = useState('');
   const [filterActorId, setFilterActorId] = useState('');
+  const [filterTargetType, setFilterTargetType] = useState('');
   const [filterWasExternal, setFilterWasExternal] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -52,15 +53,17 @@ export default function AdminAuditLog() {
 
   useEffect(() => {
     resetCursor();
-  }, [filterAction, filterActorId, filterWasExternal, dateFrom, dateTo, resetCursor]);
+  }, [filterAction, filterActorId, filterTargetType, filterWasExternal, dateFrom, dateTo, resetCursor]);
 
   const { data: actionList } = trpc.partner.audit.listActions.useQuery();
+  const { data: targetTypeList } = trpc.partner.audit.listTargetTypes.useQuery();
 
   const queryParams = {
     limit: LIMIT,
     cursor,
     action: filterAction || undefined,
     actorId: filterActorId || undefined,
+    targetType: filterTargetType || undefined,
     wasExternal: filterWasExternal || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
@@ -80,6 +83,7 @@ export default function AdminAuditLog() {
       const rows = await utils.partner.audit.exportAuditLog.fetch({
         action: filterAction || undefined,
         actorId: filterActorId || undefined,
+        targetType: filterTargetType || undefined,
         wasExternal: filterWasExternal || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
@@ -129,7 +133,7 @@ export default function AdminAuditLog() {
       </div>
 
       <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="space-y-1">
             <label className="mono-label ml-1">Action</label>
             <select
@@ -154,6 +158,21 @@ export default function AdminAuditLog() {
               <option value="">All actors</option>
               {actors.map(([id, name]) => (
                 <option key={id!} value={id!}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="mono-label ml-1">Target type</label>
+            <select
+              id="target-type-filter"
+              value={filterTargetType}
+              onChange={e => setFilterTargetType(e.target.value)}
+              className="input-field w-full"
+            >
+              <option value="">All targets</option>
+              {(targetTypeList || []).map(tt => (
+                <option key={tt} value={tt}>{tt}</option>
               ))}
             </select>
           </div>

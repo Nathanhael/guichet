@@ -273,3 +273,53 @@ describe('partnerAuditRouter.listActions', () => {
     await expect(caller.listActions()).rejects.toThrow();
   });
 });
+
+describe('partnerAuditRouter.getAuditLog — targetType filter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedConditions.length = 0;
+    limitMock.mockResolvedValue([]);
+  });
+
+  it('does NOT add an eq(targetType) condition when omitted', async () => {
+    await makeCaller().getAuditLog({ limit: 50 });
+    const conditions = capturedConditions[0] as { __op: string; col?: unknown }[];
+    // Only the partnerId eq() should be present (no action/actorId/targetType/etc.)
+    expect(conditions.filter(c => c.__op === 'eq')).toHaveLength(1);
+  });
+
+  it('adds eq(auditLog.targetType, input.targetType) when provided', async () => {
+    await makeCaller().getAuditLog({ limit: 50, targetType: 'webhook' });
+
+    const conditions = capturedConditions[0] as { __op: string; col?: unknown; val?: unknown }[];
+    const match = conditions.find(c => c.__op === 'eq' && c.col === auditLog.targetType);
+    expect(match).toBeDefined();
+    expect(match?.val).toBe('webhook');
+  });
+
+  it('targetType filter NEVER replaces the partnerId scope', async () => {
+    await makeCaller({ partnerId: 'p-tenant-z' }).getAuditLog({ limit: 50, targetType: 'membership' });
+    const conditions = capturedConditions[0] as { __op: string; col?: unknown; val?: unknown }[];
+    // partnerId must still be the FIRST condition — tenant isolation is non-negotiable
+    expect(conditions[0].__op).toBe('eq');
+    expect(conditions[0].col).toBe(auditLog.partnerId);
+    expect(conditions[0].val).toBe('p-tenant-z');
+  });
+});
+
+describe('partnerAuditRouter.listTargetTypes', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('returns the partner-scoped target-type allow-list', async () => {
+    const result = await makeCaller().listTargetTypes();
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toContain('webhook');
+    expect(result).toContain('membership');
+    expect(result).toContain('user');
+  });
+
+  it('rejects non-admin on listTargetTypes', async () => {
+    const caller = makeCaller({ role: 'agent' });
+    await expect(caller.listTargetTypes()).rejects.toThrow();
+  });
+});
