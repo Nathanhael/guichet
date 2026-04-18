@@ -59,7 +59,7 @@ export default function AdminTeam() {
       total: all.length,
       agents: all.filter(m => m.role === 'agent').length,
       support: all.filter(m => m.role === 'support').length,
-      unconfigured: all.filter(m => !m.departments || !Array.isArray(m.departments) || m.departments.length === 0).length,
+      unconfigured: all.filter(m => m.role === 'support' && (!m.departments || !Array.isArray(m.departments) || m.departments.length === 0)).length,
       online: all.filter(m => onlineStatusMap.has(m.userId)).length,
     };
   }, [allData, onlineStatusMap]);
@@ -70,7 +70,7 @@ export default function AdminTeam() {
       result = result.filter(m => onlineStatusMap.has(m.userId));
     }
     if (unconfiguredOnly) {
-      result = result.filter(m => !m.departments || !Array.isArray(m.departments) || m.departments.length === 0);
+      result = result.filter(m => m.role === 'support' && (!m.departments || !Array.isArray(m.departments) || m.departments.length === 0));
     }
     return result;
   }, [filteredData, onlineOnly, unconfiguredOnly, onlineStatusMap]);
@@ -416,7 +416,7 @@ export default function AdminTeam() {
 
 function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdded: () => void }) {
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'agent'|'support'>('agent');
+  const [role, setRole] = useState<'support'|'admin'>('support');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -461,14 +461,14 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
             <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Operational Role</label>
             <select
               value={role}
-              onChange={e => setRole(e.target.value as 'agent' | 'support')}
+              onChange={e => setRole(e.target.value as 'support' | 'admin')}
               className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm font-bold uppercase tracking-widest focus:border-accent-blue outline-none transition-all"
             >
-              <option value="agent">Agent (Generates Tickets)</option>
-              <option value="support">Support (Processes Tickets)</option>
+              <option value="support">External Support</option>
+              <option value="admin">Partner Manager / SPOC</option>
             </select>
           </div>
-          {role !== 'agent' && departments.length > 0 && (
+          {role === 'support' && departments.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Departmental Assignments</label>
@@ -517,7 +517,7 @@ function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdd
 function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, onInvited: () => void }) {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'agent'|'support'>('agent');
+  const [role, setRole] = useState<'support'|'admin'>('support');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -579,14 +579,14 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
             <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">System Role</label>
             <select
               value={role}
-              onChange={e => setRole(e.target.value as 'agent' | 'support')}
+              onChange={e => setRole(e.target.value as 'support' | 'admin')}
               className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm font-bold uppercase tracking-widest focus:border-accent-blue outline-none transition-all"
             >
-              <option value="agent">Agent (Generative Access)</option>
-              <option value="support">Support (Analytical Access)</option>
+              <option value="support">External Support</option>
+              <option value="admin">Partner Manager / SPOC</option>
             </select>
           </div>
-          {role !== 'agent' && departments.length > 0 && (
+          {role === 'support' && departments.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Assigned Departments</label>

@@ -6,6 +6,8 @@ import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../../utils/logger.js';
 import { canAssignTenantRole } from '../../../services/roles.js';
+import { revokeUserSessions } from '../../../services/sessionRevocation.js';
+import { revokeAllUserRefreshTokens } from '../../../services/refreshToken.js';
 
 export const partnerMembersRouter = router({
   listMembers: adminProcedure
@@ -90,7 +92,7 @@ export const partnerMembersRouter = router({
   addMemberByEmail: destructiveAdminProcedure
     .input(z.object({
       email: z.string().email(),
-      role: z.enum(['agent', 'support']),
+      role: z.enum(['support', 'admin']),
       departments: z.array(z.string()).optional()
     }))
     .mutation(async ({ input, ctx }) => {
@@ -98,7 +100,7 @@ export const partnerMembersRouter = router({
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
         if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins can only assign agent or support roles' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins cannot assign this role' });
         }
 
         if (input.role === 'support' && (!input.departments || input.departments.length === 0)) {
@@ -126,7 +128,7 @@ export const partnerMembersRouter = router({
           userId: userId,
           partnerId: partnerId,
           role: input.role,
-          departments: input.role === 'agent' ? [] : (input.departments || []),
+          departments: input.role === 'support' ? (input.departments || []) : [],
           source: 'manual'
         });
 
@@ -150,7 +152,7 @@ export const partnerMembersRouter = router({
     .input(z.object({
       email: z.string().email(),
       name: z.string().min(1),
-      role: z.enum(['agent', 'support']),
+      role: z.enum(['support', 'admin']),
       departments: z.array(z.string()).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -158,7 +160,7 @@ export const partnerMembersRouter = router({
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
         if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins can only assign agent or support roles' });
+          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins cannot assign this role' });
         }
 
         if (input.role === 'support' && (!input.departments || input.departments.length === 0)) {
@@ -189,6 +191,7 @@ export const partnerMembersRouter = router({
             id: newUserId,
             email: input.email,
             name: input.name,
+            isExternal: true,
           });
 
           newMembershipId = crypto.randomUUID();
@@ -197,7 +200,7 @@ export const partnerMembersRouter = router({
             userId: newUserId,
             partnerId: partnerId,
             role: input.role,
-            departments: input.role === 'agent' ? [] : (input.departments || []),
+            departments: input.role === 'support' ? (input.departments || []) : [],
             source: 'manual'
           });
 
@@ -287,16 +290,30 @@ export const partnerMembersRouter = router({
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove yourself' });
         }
 
+        const targetUser = await db.select({ id: users.id, isExternal: users.isExternal })
+          .from(users).where(eq(users.id, membership[0].userId)).limit(1);
+
+        if (targetUser.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Target user not found' });
+        }
+
+        const wasExternal = targetUser[0].isExternal;
+
         await db.transaction(async (tx) => {
           const userMemberships = await tx.select().from(memberships)
             .where(eq(memberships.userId, membership[0].userId));
 
-          if (userMemberships.length <= 1) {
-            throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove user\'s last membership. Platform Operator must handle this.' });
+          if (userMemberships.length <= 1 && !wasExternal) {
+            throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove internal user\'s last membership. Platform Operator must handle this.' });
           }
 
           await tx.delete(memberships).where(eq(memberships.id, input.membershipId));
         });
+
+        if (wasExternal) {
+          await revokeUserSessions(membership[0].userId);
+          await revokeAllUserRefreshTokens(membership[0].userId);
+        }
 
         await db.insert(auditLog).values({
           action: 'member.removed',
@@ -304,7 +321,7 @@ export const partnerMembersRouter = router({
           partnerId: partnerId,
           targetType: 'user',
           targetId: membership[0].userId,
-          metadata: {}
+          metadata: { wasExternal }
         });
 
         return { success: true };
