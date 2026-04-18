@@ -8,7 +8,7 @@
 | P | State | Evidence |
 |---|---|---|
 | P1 E2E fixture conflict | ✅ Shipped | `0fea728`, `549e014`, `4f9c86d`, `992dc01`, `37798a2` — two-round E2E restoration; fixture isolation in place |
-| P2 push-and-idle coverage | 🟡 Open | No test file for `useIdleStatus` / `utils/notifications` yet; low priority, no runtime breakage reported |
+| P2 push-and-idle coverage | ✅ Shipped | `c07eb90` — spec tightened; silent `test.skip` paths replaced with strict assertions, 6 tests pass in 7.4s |
 | P3 npm audit sweep | ✅ Shipped | Resolved during v4.2.0 security cycle |
 | P4 SSO locale residuals | 📝 Cosmetic | 5-min doc closes, deferred per [cosmetic_work_deferral memory] |
 | P5 ssoAttributeMap UI | ⏸️ Deferred | Customer-triggered; no partner has requested yet |
@@ -48,7 +48,7 @@ Only P2 is a genuine open runtime gap. Rest is cosmetic / out-of-scope / custome
 
 ---
 
-## Priority 2 — `push-and-idle.spec.ts` coverage restoration — 🟡 OPEN (only real runtime gap)
+## Priority 2 — `push-and-idle.spec.ts` coverage restoration — ✅ SHIPPED (`c07eb90`)
 
 Currently skips rather than fails when the bell doesn't render. Root question: does the bell *actually* render for agents in E2E?
 
