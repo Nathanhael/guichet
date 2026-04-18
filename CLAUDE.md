@@ -88,6 +88,9 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `pushNotification.ts` — Web push notification dispatch (VAPID-based)
 - `systemMessage.ts` — System/whisper message insertion (used by transfers, auto-actions)
 - `linkPreview.ts` — URL metadata extraction for link preview cards
+- `ticketAudit.ts` — Ticket lifecycle audit emitter (created / assigned / transferred / closed / reopened). Writes `ticket.*` actions into `audit_log`; partner audit router and platform audit view filter them out by default to keep security-relevant rows uncluttered.
+- `chainVerifySchedule.ts` — Scheduled daily WORM chain-integrity verification. Results persist to the chain-verify history table for CSV compliance-attestation export (UI in `PlatformSystemHealth`).
+- `ticketReclaim.ts` — Crash-recovery path for tickets left mid-assign; behavioral coverage in `ticketReclaim` test.
 - `messageQueries.ts` / `partnerQueries.ts` / `ticketQueries.ts` / `userQueries.ts` — Data-access query helpers (shared by tRPC routers and services)
 
 **AI Service Layer** (`server/services/ai/`):
@@ -208,6 +211,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **Azure B2B Guest Support**: Partner employees can be invited into our Azure tenant as B2B guests and log into Guichet via the existing SSO flow. The callback detects guests via the `acct === 1` or `idp` claim and stamps `users.isExternal = true`. Guests are strictly single-partner: if Azure groups resolve to more than one partner the login is rejected with `sso_error=guest_multi_partner_mapping` (audited). Destructive admin mutations (webhook CRUD + secret rotation + test, partner-member add/update/remove/invite, partner department edits) use `destructiveAdminProcedure` which throws FORBIDDEN when `isExternal=true`. UI surfaces a GUEST badge in `UserMenu`, `AdminTeam`, and `SidebarFooter` team panel. Full runbook at `docs/superpowers/specs/partner-sso-b2b-guest.md`.
 - **Audit Logging**: All significant actions (partner lifecycle, user management, GDPR purges, break-glass JWT mints) recorded in `audit_log`.
 - **WORM Archive**: Tamper-evident SHA-256 hash chain for audit log. Automatic archival before GDPR purge. Chain integrity verification endpoint. Tickets archived with message count summary.
+- **Audit Observability**: Multi-axis filtering (targetType / targetId / actor / date / partner) in platform + partner audit views; metadata drawer with diff + severity + deep-linkable URL params; cross-partner activity rollup (`trpc.platform.getCrossPartnerActivity`); ticket-scoped audit drawer via `services/ticketAudit.ts`; chain-verify UI with server-persisted history + CSV export; chain-broken webhook side-channel. Alert rules: `AuditChainTamperDetected`, `AuditChainVerifyServiceError`, `AuditChainStaleness`, `TicketAuditEmitterSilenced` (self-arming), `GdprPurgeMissing`, `GdprPurgeChainAborted`. Metrics: `guichet_audit_chain_verify_runs_total`, `guichet_audit_chain_broken_total`, `guichet_ticket_audit_events_total`, `guichet_gdpr_purge_runs_total`, `guichet_gdpr_rows_purged_total`. Runbook: `docs/AUDIT_RUNBOOK.md`.
 - **Cursor-Based Pagination**: Ticket list and audit archive use keyset pagination (`createdAt|id` composite cursor). Pattern: fetch `limit+1`, detect hasMore, return `{ items, nextCursor }`.
 - **Platform Operator Bootstrap**: On first startup with no platform operators, auto-creates one from `PLATFORM_ADMIN_EMAIL` env var. Runs before server accepts traffic. Race-safe, non-fatal. Subsequent logins for that operator go through SSO.
 - **Platform Operator Partner Access**: Platform operators can enter any active partner's admin view via `POST /enter-partner` without needing a membership. Socket auth bypasses membership check for operators.
@@ -221,6 +225,8 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users).
 - **Agent Status Visibility**: 2 statuses (online/away) with color tokens (`accent-green` for online, `accent-amber` for away). Auto-away after 5 minutes idle (via `useIdleStatus` hook), auto-online on activity. Status persists in Redis across reconnects (Lua script preserves status on re-identify). Visible in QueueSidebar (team panel), AdminTeam (status column), SupportNav (capacity badge). Time-in-status tracked in `agent_status_log`, rolled up hourly to `daily_agent_status` (`onlineSeconds`, `awaySeconds`). Stats via `trpc.status.*` (getTeamStatus, getAgentStats, getTeamStats). GDPR: log purged at 30 days, daily rollup retained as aggregate.
 - **Push Notifications**: VAPID-based web push via `pushNotification.ts` service, `push.ts` Express route, and `push_subscriptions` table. Client subscribes via `utils/notifications.ts`. Type definitions in `server/types/web-push.d.ts`.
+- **Field-Level Encryption**: `services/encryption.ts` provides AES-GCM helpers keyed off `FIELD_ENCRYPTION_SECRET`. Used for SMTP / mail-provider credentials in `partners.mail_config` JSONB — DB dumps don't leak credentials. Read-through + write-through in the service layer; schema stays opaque JSONB.
+- **Invite Flow**: Admins can invite `admin` / `support` / `agent` roles (not `platform_operator` — host-provisioning only). Pending invites surfaced in `AdminTeam` > Pending Invites tab with Revoke action (`platform.revokePendingInvite`). 30-day claim window with scheduled abandoned-invite purge. Removing an external (B2B guest) user from a partner revokes their sessions + refresh-token family immediately. SSO-provisioned — no invite email.
 - **Department Transfer**: Tickets transfer between department queues (not individual agents). Socket event `ticket:transfer` accepts `{ ticketId, departmentId?, note? }`. Optional whisper note for context handoff. Clears support assignment, re-opens ticket, removes all support sockets from room. Service layer: `transferService.ts` + `insertWhisperMessage` in `systemMessage.ts`.
 
 ## Production Hardening
@@ -331,6 +337,7 @@ guichet/
 │   │   └── utils/                 # trpc.ts, dateUtils.ts, markdown.ts, fileUtils.ts, statusColors.ts, etc.
 │   └── Dockerfile
 ├── docs/
+│   ├── AUDIT_RUNBOOK.md           # Audit chain / GDPR purge / ticket emitter oncall runbook
 │   ├── BREAK_GLASS_RUNBOOK.md     # Emergency operations runbook
 │   ├── BRUTALIST_DESIGN_SPEC.md   # Brutalist design system token reference
 │   ├── TECHNICAL.md               # Technical architecture deep-dive
