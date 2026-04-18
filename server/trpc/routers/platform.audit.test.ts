@@ -5,7 +5,13 @@ const insertValuesMock = vi.fn();
 const updateWhereMock = vi.fn();
 const deleteWhereMock = vi.fn();
 
-const dbMock = {
+const dbMock: {
+  select: ReturnType<typeof vi.fn>;
+  insert: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
+  transaction: ReturnType<typeof vi.fn>;
+} = {
   select: vi.fn(() => ({
     from: vi.fn(() => ({
       where: vi.fn(() => ({
@@ -24,6 +30,12 @@ const dbMock = {
   delete: vi.fn(() => ({
     where: deleteWhereMock,
   })),
+  // updateMembership and removeMember now wrap writes in a transaction.
+  // The callback receives the same dbMock shape as `tx` so existing
+  // assertions on insert/update/delete mocks continue to cover them.
+  transaction: vi.fn(async (cb: (tx: unknown) => unknown) => {
+    return cb(dbMock);
+  }),
 };
 
 vi.mock('../../db.js', () => ({
