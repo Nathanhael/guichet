@@ -80,9 +80,15 @@ export default function AdminTickets() {
   );
 
   useEffect(() => {
-    if (ticketsQuery.data && Array.isArray(ticketsQuery.data)) {
-      setTickets(ticketsQuery.data as Ticket[]);
-    }
+    const payload = ticketsQuery.data;
+    if (!payload) return;
+    // ticket.list returns either a plain array (when `limit` is omitted) or a
+    // `{ tickets, nextCursor }` pagination envelope (when `limit` is set).
+    // We always pass `limit` here, so the envelope branch is what we hit —
+    // but the inferred type is a union, so we narrow at runtime to satisfy
+    // both TypeScript and any future caller that drops the limit.
+    const list = Array.isArray(payload) ? payload : payload.tickets;
+    setTickets(list as Ticket[]);
   }, [ticketsQuery.data, setTickets]);
 
   const atMaxChats = supportOpenTickets.length >= 4;

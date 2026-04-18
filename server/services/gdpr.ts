@@ -7,6 +7,7 @@ import { computeLiveDayStats } from './stats.js';
 import { Ticket, Rating, Message } from '../types/index.js';
 import { archiveAuditLog, archiveTickets, verifyAuditChain } from './archive.js';
 import { tickets, ratings as ratingsTable, messages as messagesTable, auditLog as auditLogTable, dailyStats, dailyAiUsage, aiUsageLog, archivedTickets, agentStatusLog, pushSubscriptions, users } from '../db/schema.js';
+import { gdprPurgeRunsTotal, gdprRowsPurgedTotal } from '../utils/metrics.js';
 
 /**
  * Error message thrown when the audit chain integrity check fails during a
@@ -34,6 +35,10 @@ export async function runDailyPurge() {
       ? '[purge] Audit chain verification failed due to infrastructure error — aborting purge as precaution'
       : '[purge] AUDIT CHAIN INTEGRITY VIOLATION — hash chain is broken';
     logger.error({ brokenAt: chainResult.brokenAt, checked: chainResult.checked, isInfraError }, message);
+    // Count the chain-aborted run BEFORE throwing — the metric must reflect
+    // that purge attempted and bailed, so a missing-run alert doesn't
+    // double-fire on top of a chain-integrity alert.
+    gdprPurgeRunsTotal.inc({ outcome: 'chain_aborted' });
     throw new Error(AUDIT_CHAIN_VERIFY_FAIL_MSG);
   } else if (chainResult.checked > 0) {
     logger.info({ checked: chainResult.checked }, '[purge] Audit chain integrity verified');
@@ -282,8 +287,15 @@ export async function runDailyPurge() {
     });
 
     logger.info(`[purge] GDPR purge complete for data older than ${cutoffDate}.`);
+    gdprPurgeRunsTotal.inc({ outcome: 'success' });
+    // Record rolled-up row counts so Grafana can graph retention enforcement.
+    // Only known-scalar counts are stamped — the many-table anonymization paths
+    // don't return row counts so we don't fabricate them.
+    if (aiPurged > 0) gdprRowsPurgedTotal.inc({ scope: 'ai_usage_log' }, aiPurged);
+    if (invitesPurged > 0) gdprRowsPurgedTotal.inc({ scope: 'invites' }, invitesPurged);
   } catch (err) {
     logger.error({ err }, '[purge] Error during daily purge');
+    gdprPurgeRunsTotal.inc({ outcome: 'error' });
   }
 }
 

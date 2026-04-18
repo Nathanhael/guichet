@@ -3,6 +3,7 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
+import CrossPartnerActivityPanel from './CrossPartnerActivityPanel';
 import { useUrlParam } from '../../hooks/useUrlState';
 import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
 
@@ -255,6 +256,19 @@ export default function PlatformAuditLog() {
           </button>
         </div>
       </div>
+
+      {/* Cross-partner activity rollup — surfaces the top-N partners by
+          audit volume within the selected date window. Clicking a row
+          scopes the audit log below to that partner, turning a broad
+          "who's noisy right now?" question into a one-click investigation. */}
+      <CrossPartnerActivityPanel
+        dateFrom={dateFrom || undefined}
+        dateTo={dateTo || undefined}
+        onSelectPartner={(partnerId) => {
+          setFilterPartnerId(partnerId);
+          resetCursor();
+        }}
+      />
 
       <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
