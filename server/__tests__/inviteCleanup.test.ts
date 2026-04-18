@@ -95,6 +95,16 @@ describe('Abandoned-invite cleanup (GDPR daily purge)', () => {
       // guarantees we only touch unclaimed rows.
       expect(fnBody).toMatch(/isNull\(users\.externalId\)/);
     });
+
+    it('does NOT match platform operators (bootstrap-safe)', () => {
+      // The bootstrap service creates the initial platform operator with
+      // externalId=null until they complete their first SSO login. Without
+      // this guard, a staging/restored env where the bootstrap op has not
+      // logged in for 30 days would get the operator permanently deleted
+      // by the daily purge (and memberships would cascade-delete too).
+      // See post-ship review 2026-04-18, finding H-1.
+      expect(fnBody).toMatch(/eq\(users\.isPlatformOperator,\s*false\)/);
+    });
   });
 
   describe('schema cascade (documented, not asserted at runtime)', () => {
