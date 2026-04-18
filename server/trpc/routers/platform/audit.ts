@@ -45,6 +45,7 @@ export const platformAuditRouter = router({
       partnerId: z.string().optional(),
       actorId: z.string().optional(),
       targetId: z.string().optional(),
+      targetType: z.string().optional(),
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
       limit: z.number().min(1).max(100).default(50),
@@ -57,6 +58,7 @@ export const platformAuditRouter = router({
         if (input.partnerId) conditions.push(eq(auditLog.partnerId, input.partnerId));
         if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
         if (input.targetId) conditions.push(eq(auditLog.targetId, input.targetId));
+        if (input.targetType) conditions.push(eq(auditLog.targetType, input.targetType));
 
         if (input.dateFrom) {
           conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
@@ -112,6 +114,7 @@ export const platformAuditRouter = router({
       partnerId: z.string().optional(),
       actorId: z.string().optional(),
       targetId: z.string().optional(),
+      targetType: z.string().optional(),
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
     }))
@@ -122,6 +125,7 @@ export const platformAuditRouter = router({
         if (input.partnerId) conditions.push(eq(auditLog.partnerId, input.partnerId));
         if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
         if (input.targetId) conditions.push(eq(auditLog.targetId, input.targetId));
+        if (input.targetType) conditions.push(eq(auditLog.targetType, input.targetType));
         if (input.dateFrom) {
           conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
         }
@@ -198,9 +202,18 @@ export const platformAuditRouter = router({
       await assertVerifyChainAllowed(ctx.user.id);
       const { verifyAuditChain } = await import('../../../services/archive.js');
       const result = await verifyAuditChain();
+      // Resolve actor name at write time so the persisted record is readable
+      // without a join. If the operator is later deleted, the record still
+      // carries the name at time-of-run — useful for compliance review.
+      const actor = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, ctx.user.id))
+        .limit(1);
       const record = {
         ranAt: new Date().toISOString(),
         ranBy: ctx.user.id,
+        ranByName: actor[0]?.name ?? null,
         ...result,
       };
       // Persist so all operators see the same last-verified state, not just the

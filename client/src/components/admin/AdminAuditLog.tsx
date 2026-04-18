@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import Toast from '../Toast';
+import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 
 function formatDetails(log: { action: string; metadata?: unknown; targetId: string | null }) {
   const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
@@ -45,6 +46,7 @@ export default function AdminAuditLog() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
 
   const resetCursor = useCallback(() => {
     setCursor(undefined);
@@ -235,12 +237,27 @@ export default function AdminAuditLog() {
                 </tr>
               )}
               {items.map(log => (
-                <tr key={log.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                <tr
+                  key={log.id}
+                  onClick={() => setSelectedEntry({
+                    id: log.id,
+                    action: log.action,
+                    actorId: log.actorId,
+                    actorName: log.actorName,
+                    partnerId: log.partnerId,
+                    targetType: log.targetType,
+                    targetId: log.targetId,
+                    metadata: log.metadata,
+                    createdAt: log.createdAt,
+                  })}
+                  className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer"
+                  data-audit-row-id={log.id}
+                >
                   <td className="p-3 text-[10px] font-mono whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
                   <td className="p-3 text-xs font-bold uppercase">{log.action}</td>
                   <td className="p-3 text-xs uppercase">{log.actorName || <span className="text-[var(--color-text-muted)]">System</span>}</td>
                   <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.targetId || '-'}</td>
-                  <td className="p-3 text-[10px] text-[var(--color-text-secondary)] max-w-xs" title={JSON.stringify(log.metadata)}>
+                  <td className="p-3 text-[10px] text-[var(--color-text-secondary)] max-w-xs">
                     <div className="font-bold uppercase tracking-wide">{formatDetails(log)}</div>
                   </td>
                 </tr>
@@ -291,6 +308,7 @@ export default function AdminAuditLog() {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <AuditMetadataDrawer entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
     </div>
   );
 }
