@@ -178,10 +178,14 @@ const PARTNER_USERS: SeedUser[] = [
   { id: 'support_qa',     name: 'QA Support',     email: 'support_qa@acme.test', lang: 'en', role: 'support', departments: ['DSC', 'FOT', 'TEC'] },
   { id: 'agent_qa',       name: 'QA Agent',       email: 'agent_qa@acme.test',   lang: 'en', role: 'agent',   departments: [] },
   // Second QA fixture pair dedicated to chat-flow.spec.ts. Isolated from
-  // agent_qa/support_qa (used by chat-enhancements + view-modes) so parallel
-  // workers don't race on ticket open/close for the same agent row.
+  // agent_qa/support_qa (used by chat-enhancements) so parallel workers
+  // don't race on ticket open/close for the same agent row.
   { id: 'support_flow',   name: 'Flow Support',   email: 'support_flow@acme.test', lang: 'en', role: 'support', departments: ['DSC', 'FOT', 'TEC'] },
   { id: 'agent_flow',     name: 'Flow Agent',     email: 'agent_flow@acme.test',   lang: 'en', role: 'agent',   departments: [] },
+  // Dedicated to view-modes.spec.ts. Its `releaseAllSupportClaims()` cleanup
+  // is now scoped to this user, so parallel specs that claim tickets as
+  // lucas/sophie/qa no longer lose their support_id mid-test.
+  { id: 'support_vm',     name: 'ViewModes Support', email: 'support_vm@acme.test', lang: 'en', role: 'support', departments: ['DSC', 'FOT', 'TEC'] },
   // Azure B2B guest admin fixture — same admin permissions as Emma, but
   // `users.isExternal = true` trips `destructiveAdminProcedure` and the UI
   // visible-disable treatment. Used by guest-admin-visible-disable.spec.ts.
@@ -335,6 +339,7 @@ async function seedMinimal() {
   console.log('    - agent_qa@acme.test          (agent_qa,  no tickets)');
   console.log('    - support_flow@acme.test      (support_flow, depts: DSC, FOT, TEC)');
   console.log('    - agent_flow@acme.test        (agent_flow, no tickets)');
+  console.log('    - support_vm@acme.test        (support_vm, depts: DSC, FOT, TEC)');
 }
 
 async function main() {
