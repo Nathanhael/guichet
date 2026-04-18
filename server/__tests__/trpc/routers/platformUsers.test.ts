@@ -48,9 +48,15 @@ describe('platform users — deleteUser guards', () => {
   });
 
   it('deleteUser revokes sessions before soft-deleting', () => {
-    // revokeUserSessions must appear before the soft-delete UPDATE
-    const revokeIdx = source.indexOf('await revokeUserSessions(input)');
-    const deleteIdx = source.indexOf("set({ deletedAt:");
+    // Scope the ordering check to deleteUser's body — other mutations (e.g.
+    // revokePendingInvite) also call set({ deletedAt: ... }) to soft-delete
+    // orphaned guest users, and a whole-file indexOf would match those first.
+    const startIdx = source.indexOf('deleteUser: platformProcedure');
+    expect(startIdx, 'deleteUser block not found').toBeGreaterThan(-1);
+    const body = source.slice(startIdx);
+
+    const revokeIdx = body.indexOf('await revokeUserSessions(input)');
+    const deleteIdx = body.indexOf('set({ deletedAt:');
     expect(revokeIdx).toBeGreaterThan(-1);
     expect(deleteIdx).toBeGreaterThan(-1);
     expect(revokeIdx).toBeLessThan(deleteIdx);
