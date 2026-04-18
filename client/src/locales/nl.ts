@@ -153,6 +153,7 @@ const nl: Record<string, string> = {
     // Platform
     partners_tab: 'Partners',
     users_tab: 'Gebruikers',
+    invites_tab: 'Uitnodigingen',
     sso_tab: 'SSO',
     security_tab: 'Beveiliging',
     health_tab: 'Gezondheid',

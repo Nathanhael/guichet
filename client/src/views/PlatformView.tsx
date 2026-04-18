@@ -14,6 +14,7 @@ import InviteUserModal from '../components/platform/InviteUserModal';
 import ManageAccessModal from '../components/platform/ManageAccessModal';
 import EditUserProfileModal from '../components/platform/EditUserProfileModal';
 import GroupMappingsPanel from '../components/platform/GroupMappingsPanel';
+import PendingInvitesTab from '../components/platform/PendingInvitesTab';
 import PlatformArchiveViewer from '../components/admin/PlatformArchiveViewer';
 import type { PlatformTab, Partner, GlobalUser } from '../components/platform/types';
 import { APP_NAME } from '../constants';
@@ -49,7 +50,7 @@ export default function PlatformView() {
       </nav>
 
       <div role="tablist" aria-label={t('platform')} className="flex border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] px-8 overflow-x-auto">
-        {(['partners', 'users', 'sso', 'health', 'audit', 'archive'] as const).map((tab) => (
+        {(['partners', 'users', 'invites', 'sso', 'health', 'audit', 'archive'] as const).map((tab) => (
           <button
             key={tab}
             role="tab"
@@ -82,6 +83,7 @@ export default function PlatformView() {
               onManageAccess={setEditingUser}
             />
           )}
+          {activeTab === 'invites' && <PendingInvitesTab />}
           {activeTab === 'sso' && <GroupMappingsPanel />}
           {activeTab === 'health' && <PlatformSystemHealth />}
           {activeTab === 'audit' && <PlatformAuditLog />}
