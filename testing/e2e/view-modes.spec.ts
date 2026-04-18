@@ -16,17 +16,18 @@ import { loginAsDemo } from './helpers/auth';
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 
 /**
- * Un-join every support claim in the DB so all seeded tickets return to the
- * queue as unassigned-open. Called from each `describe`'s `beforeAll` so
- * tests don't steal each other's fixtures — without this, the first
- * `openFirstQueueTicket` call drains the queue for every test that follows.
+ * Un-join only this spec's own claims (support_vm) so each test starts with
+ * the queue tickets unassigned. Previously this was a GLOBAL wipe that reset
+ * every support_id in the DB, which raced with parallel specs that had just
+ * claimed tickets as lucas/sophie/qa. Scoping to support_vm keeps this spec
+ * self-isolating without clobbering anyone else's state.
  * Silent on failure so the real assertion still surfaces the underlying issue.
  */
-function releaseAllSupportClaims(): void {
+function releaseOwnClaims(): void {
   try {
     execSync(
       `docker compose exec -T db psql -U user -d guichet -c ` +
-      `"UPDATE tickets SET support_id = NULL, status = 'open' WHERE support_id IS NOT NULL AND status <> 'closed';"`,
+      `"UPDATE tickets SET support_id = NULL, status = 'open' WHERE support_id = 'support_vm' AND status <> 'closed';"`,
       { stdio: 'ignore' }
     );
   } catch { /* non-fatal */ }
@@ -72,10 +73,10 @@ async function openFirstQueueTicket(page: Page): Promise<boolean> {
 test.describe('ViewModeDropdown', () => {
   let loginOk = false;
 
-  test.beforeAll(() => releaseAllSupportClaims());
+  test.beforeAll(() => releaseOwnClaims());
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
+    const res = await loginAsDemo(page, 'support_vm');
     loginOk = !!res.ok;
     await page.waitForTimeout(2000);
     // ViewModeDropdown is rendered inside ChatTabBar (see
@@ -146,8 +147,8 @@ test.describe('ViewModeDropdown', () => {
 // ---------------------------------------------------------------------------
 //
 // Focus Mode runs before Split View because Split View's 2-tab test claims
-// multiple queue tickets as support_qa, draining the shared seeded queue.
-// Focus Mode uses support_lucas and only needs one queue ticket to mount
+// multiple queue tickets as support_vm, draining the shared seeded queue.
+// Focus Mode uses support_vm and only needs one queue ticket to mount
 // ChatTabBar — placing it first keeps it deterministic.
 //
 // NOTE: A previous `Preview Mode` describe block was deleted here. It tested
@@ -161,11 +162,11 @@ test.describe('Focus Mode', () => {
   let loginOk = false;
   let tabBarMounted = false;
 
-  test.beforeAll(() => releaseAllSupportClaims());
-  test.beforeEach(() => releaseAllSupportClaims());
+  test.beforeAll(() => releaseOwnClaims());
+  test.beforeEach(() => releaseOwnClaims());
 
   test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
+    const res = await loginAsDemo(page, 'support_vm');
     loginOk = !!res.ok;
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.waitForTimeout(2000);
@@ -273,14 +274,14 @@ test.describe('Split View', () => {
   let loginOk = false;
   let tabBarMounted = false;
 
-  test.beforeAll(() => releaseAllSupportClaims());
-  test.beforeEach(() => releaseAllSupportClaims());
+  test.beforeAll(() => releaseOwnClaims());
+  test.beforeEach(() => releaseOwnClaims());
 
   test.beforeEach(async ({ page }) => {
-    // support_qa covers all three departments (DSC/FOT/TEC), so every queue
-    // ticket is in its view regardless of routing. Replaces the retired
-    // support_thomas fixture from the previous seed.
-    const res = await loginAsDemo(page, 'support_qa');
+    // support_vm covers all three departments (DSC/FOT/TEC). Dedicated to
+    // this spec so Split View's multi-ticket claim doesn't race with
+    // chat-enhancements (which owns support_qa).
+    const res = await loginAsDemo(page, 'support_vm');
     loginOk = !!res.ok;
     await page.setViewportSize({ width: 1600, height: 900 });
     await page.waitForTimeout(2000);
@@ -341,7 +342,7 @@ test.describe('Split View', () => {
     test.skip(!loginOk, 'Demo login failed — user may not be seeded');
 
     // This test requires 2+ tickets in the user's queue.
-    // support_qa is a generalist across DSC/FOT/TEC and has the seeded ticket.
+    // support_vm is a generalist across DSC/FOT/TEC and has the seeded ticket.
     // The test gracefully skips when the queue is empty.
     await page.waitForTimeout(1500);
 
