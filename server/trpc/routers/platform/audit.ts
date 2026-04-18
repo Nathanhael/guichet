@@ -7,6 +7,7 @@ import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
 import { auditChainVerifyFailures } from '../../../utils/metrics.js';
+import { broadcastWebhook } from '../../../services/webhookDispatch.js';
 
 const VERIFY_CHAIN_WINDOW_SECS = 60;
 const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
@@ -29,6 +30,61 @@ const PLATFORM_TARGET_TYPES = [
   'kb_article',
   'webhook',
   'system',
+] as const;
+
+// Union of audit actions a platform operator can filter by. Partner-scoped
+// actions bubble up here too since platform ops see cross-tenant rows. Keep
+// alphabetised within each group — grouping is purely for human reviewers.
+// Adding a new action emitter elsewhere in the codebase should be mirrored
+// here; missing entries silently widen the "all" bucket instead of breaking
+// the query.
+const PLATFORM_ACTIONS = [
+  // auth / security
+  'auth.break_glass',
+  'security.account_locked',
+  'security.mfa_disabled',
+  'security.mfa_disabled_by_admin',
+  'security.mfa_enabled',
+  'security.mfa_recovery_codes_regenerated',
+  'security.user_unlocked_by_admin',
+  // content
+  'kb.created',
+  'label.created',
+  'webhook.created',
+  // members
+  'member.added',
+  'member.invited',
+  'member.removed',
+  'member.updated',
+  // partner
+  'partner.created',
+  'partner.config_updated',
+  'partner.deactivated',
+  'partner.reactivated',
+  'partner.deleted',
+  // platform
+  'platform.enter_partner',
+  'platform_operator_bootstrap',
+  // sso
+  'sso.email_conflict',
+  'sso.group_mapping_added',
+  'sso.group_mapping_updated',
+  'sso.group_mapping_removed',
+  'sso.guest_multi_partner_rejected',
+  'sso.membership_auto_created',
+  'sso.membership_revoked',
+  'sso.no_matching_groups',
+  'sso.role_synced',
+  // system
+  'system.archive_run',
+  'system.chain_broken_detected',
+  'system.chain_verify_error',
+  'system.gdpr_purge',
+  // user
+  'user.deleted',
+  'user.login',
+  'user.profile_updated',
+  'user.sessions_revoked',
 ] as const;
 
 // Per-operator throttle for verifyAuditChain — a full verify scans the entire
@@ -221,6 +277,10 @@ export const platformAuditRouter = router({
     return PLATFORM_TARGET_TYPES.slice();
   }),
 
+  listActions: platformProcedure.query(() => {
+    return PLATFORM_ACTIONS.slice();
+  }),
+
   verifyAuditChain: platformProcedure
     .mutation(async ({ ctx }) => {
       await assertVerifyChainAllowed(ctx.user.id);
@@ -289,6 +349,18 @@ export const platformAuditRouter = router({
             severity,
           },
         });
+        // Only broadcast actual tampers — `warn` is a transient service error
+        // (db read timeout, etc) and doesn't warrant paging every partner's
+        // compliance contact. Fire-and-forget; delivery is best-effort.
+        if (severity === 'critical') {
+          broadcastWebhook('audit.chain_broken', {
+            checked: result.checked,
+            brokenAt: result.brokenAt ?? null,
+            ranAt: record.ranAt,
+            ranBy: record.ranBy,
+            ranByName: record.ranByName,
+          });
+        }
       }
 
       return record;

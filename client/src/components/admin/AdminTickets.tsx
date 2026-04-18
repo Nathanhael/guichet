@@ -3,6 +3,7 @@ import { useStoreShallow } from '../../store/useStore';
 import { trpc } from '../../utils/trpc';
 import ChatWindow from '../ChatWindow';
 import TicketPreview from '../TicketPreview';
+import TicketAuditDrawer from './TicketAuditDrawer';
 import { Ticket } from '../../types';
 import { useT } from '../../i18n';
 import { usePartner } from '../../hooks/usePartner';
@@ -57,6 +58,7 @@ export default function AdminTickets() {
 
   const [activeTab, setActiveTab] = useState<string | null>(null);
   const [previewTicketId, setPreviewTicketId] = useState<string | null>(null);
+  const [auditTicketId, setAuditTicketId] = useState<string | null>(null);
 
   const activeFilter = useMemo(
     () => QUEUE_FILTERS.find((f) => f.key === queueFilter) ?? QUEUE_FILTERS[0],
@@ -265,6 +267,7 @@ export default function AdminTickets() {
               ticket={tickets.find((t) => t.id === previewTicketId)!}
               onJoin={() => joinOpenTicket(tickets.find((t) => t.id === previewTicketId)!)}
               onClose={() => setPreviewTicketId(null)}
+              onViewAudit={() => setAuditTicketId(previewTicketId)}
             />
           </div>
         ) : openTabTickets.length === 0 ? (
@@ -327,6 +330,12 @@ export default function AdminTickets() {
           </div>
         )}
       </main>
+
+      <TicketAuditDrawer
+        ticketId={auditTicketId}
+        ticketLabel={(auditTicketId && tickets.find((t) => t.id === auditTicketId)?.agentName) || undefined}
+        onClose={() => setAuditTicketId(null)}
+      />
     </div>
   );
 }

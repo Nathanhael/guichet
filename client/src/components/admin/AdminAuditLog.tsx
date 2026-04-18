@@ -130,7 +130,7 @@ export default function AdminAuditLog() {
     ? Array.from(new Map(items.filter(l => l.actorId && l.actorName).map(l => [l.actorId, l.actorName])).entries())
     : [];
 
-  async function handleExport() {
+  async function handleExport(format: 'csv' | 'json') {
     try {
       const rows = await utils.partner.audit.exportAuditLog.fetch({
         action: filterAction || undefined,
@@ -147,23 +147,35 @@ export default function AdminAuditLog() {
         return;
       }
 
-      const headers = ['Time', 'Action', 'Actor', 'Target type', 'Target id', 'Metadata'];
-      const csv = [
-        headers.join(','),
-        ...rows.map(l => [
-          new Date(l.createdAt).toISOString(),
-          l.action,
-          l.actorName || 'System',
-          l.targetType || '',
-          l.targetId || '',
-          JSON.stringify(l.metadata).replace(/"/g, '""'),
-        ].map(c => `"${c}"`).join(',')),
-      ].join('\n');
+      const stamp = new Date().toISOString().slice(0, 10);
+      let blob: Blob;
+      let filename: string;
+      if (format === 'json') {
+        // Raw array of rows keeps the JSON structurally identical to what the
+        // tRPC query returned — downstream compliance tools can diff by id
+        // without reshuffling keys. Pretty-printed for grep-ability.
+        blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json;charset=utf-8;' });
+        filename = `guichet_audit_${stamp}.json`;
+      } else {
+        const headers = ['Time', 'Action', 'Actor', 'Target type', 'Target id', 'Metadata'];
+        const csv = [
+          headers.join(','),
+          ...rows.map(l => [
+            new Date(l.createdAt).toISOString(),
+            l.action,
+            l.actorName || 'System',
+            l.targetType || '',
+            l.targetId || '',
+            JSON.stringify(l.metadata).replace(/"/g, '""'),
+          ].map(c => `"${c}"`).join(',')),
+        ].join('\n');
+        blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        filename = `guichet_audit_${stamp}.csv`;
+      }
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', `guichet_audit_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -182,7 +194,10 @@ export default function AdminAuditLog() {
             Security-relevant actions in this tenant. Export for compliance review.
           </p>
         </div>
-        <button onClick={handleExport} className="btn-primary">Export CSV</button>
+        <div className="flex gap-2">
+          <button onClick={() => handleExport('csv')} className="btn-primary">Export CSV</button>
+          <button onClick={() => handleExport('json')} className="btn-secondary">Export JSON</button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">

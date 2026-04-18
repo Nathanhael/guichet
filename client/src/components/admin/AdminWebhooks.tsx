@@ -19,6 +19,10 @@ const ALL_EVENTS = [
   'rating.submitted',
   'user.created',
   'user.deleted',
+  // Cross-tenant compliance signal. Fires when verifyAuditChain detects a
+  // hash mismatch in the WORM archive — subscribe the partner's on-call or
+  // compliance channel so the incident reaches the right humans.
+  'audit.chain_broken',
   '*',
 ] as const;
 

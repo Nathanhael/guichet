@@ -105,6 +105,41 @@
           "legendFormat": "{{type}}"
         }
       ]
+    },
+    {
+      "title": "Audit Chain Verify Failures (total)",
+      "description": "Chain-integrity verification failures since process start. `critical` = hash tamper detected. `warn` = transient service-level error (db read timeout, etc). A non-zero critical counter is a compliance incident.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum by (severity) (guichet_audit_chain_verify_failures_total)",
+          "legendFormat": "{{severity}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Audit Chain Verify Failure Rate",
+      "description": "Rate of verification failures in the last 15m. A sustained non-zero rate means operators are repeatedly hitting a bad chain — investigate archive integrity.",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(guichet_audit_chain_verify_failures_total[15m])",
+          "legendFormat": "{{severity}}"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,

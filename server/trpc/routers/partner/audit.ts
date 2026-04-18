@@ -115,6 +115,47 @@ export const partnerAuditRouter = router({
       }
     }),
 
+  // Audit history for a single ticket. Matches on targetId for rows stamped
+  // with targetType='ticket' *and* rows where metadata.ticketId carries the id
+  // (legacy/adjacent emitters that don't set targetType). Partner-scoped via
+  // partnerId so cross-tenant leakage is impossible even if a caller guesses
+  // another tenant's ticket id.
+  getForTicket: partnerAdminProcedure
+    .input(z.object({
+      ticketId: z.string(),
+      limit: z.number().min(1).max(200).default(100),
+    }))
+    .query(async ({ input, ctx }) => {
+      try {
+        const results = await db.select({
+          id: auditLog.id,
+          action: auditLog.action,
+          actorId: auditLog.actorId,
+          actorName: users.name,
+          partnerId: auditLog.partnerId,
+          targetType: auditLog.targetType,
+          targetId: auditLog.targetId,
+          metadata: auditLog.metadata,
+          createdAt: auditLog.createdAt,
+        })
+          .from(auditLog)
+          .leftJoin(users, eq(auditLog.actorId, users.id))
+          .where(and(
+            eq(auditLog.partnerId, ctx.user.partnerId),
+            sql`(
+              (${auditLog.targetType} = 'ticket' AND ${auditLog.targetId} = ${input.ticketId})
+              OR ${auditLog.metadata}->>'ticketId' = ${input.ticketId}
+            )`,
+          ))
+          .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
+          .limit(input.limit);
+
+        return results;
+      } catch (err: unknown) {
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
+    }),
+
   exportAuditLog: partnerAdminProcedure
     .input(baseInput)
     .query(async ({ input, ctx }) => {
