@@ -3,6 +3,7 @@ import { trpc } from '../../utils/trpc';
 import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 import { useUrlParam } from '../../hooks/useUrlState';
+import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
 
 function formatDetails(log: { action: string; metadata?: unknown; targetId: string | null }) {
   const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
@@ -60,6 +61,12 @@ export default function AdminAuditLog() {
   const [dateTo, setDateTo] = useUrlParam('to', '', 'a');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
+  // Mirror the open drawer's row id into ?a.open=<id> so an operator can
+  // share a direct link to a specific audit entry. On mount we look up the
+  // row in the current page; if it isn't loaded (e.g. deep page), we leave
+  // the drawer closed rather than silently fetching — the filters in the
+  // URL usually pin the row on page 1 of a shared view.
+  const [openId, setOpenId] = useUrlParam('open', '', 'a');
 
   const resetCursor = useCallback(() => {
     setCursor(undefined);
@@ -97,6 +104,26 @@ export default function AdminAuditLog() {
   const { data, isLoading } = trpc.partner.audit.getAuditLog.useQuery(queryParams);
   const utils = trpc.useUtils();
   const items = data?.items || [];
+
+  // Open-from-URL: when the current page of rows arrives, promote the one
+  // whose id matches ?a.open=<id>. Runs once per items-array identity.
+  useEffect(() => {
+    if (!openId || selectedEntry) return;
+    const match = items.find(l => l.id === openId);
+    if (match) {
+      setSelectedEntry({
+        id: match.id,
+        action: match.action,
+        actorId: match.actorId,
+        actorName: match.actorName,
+        partnerId: match.partnerId,
+        targetType: match.targetType,
+        targetId: match.targetId,
+        metadata: match.metadata,
+        createdAt: match.createdAt,
+      });
+    }
+  }, [items, openId, selectedEntry]);
   const page = cursorStack.length;
 
   const actors = items.length
@@ -275,19 +302,23 @@ export default function AdminAuditLog() {
               {items.map(log => (
                 <tr
                   key={log.id}
-                  onClick={() => setSelectedEntry({
-                    id: log.id,
-                    action: log.action,
-                    actorId: log.actorId,
-                    actorName: log.actorName,
-                    partnerId: log.partnerId,
-                    targetType: log.targetType,
-                    targetId: log.targetId,
-                    metadata: log.metadata,
-                    createdAt: log.createdAt,
-                  })}
-                  className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer"
+                  onClick={() => {
+                    setSelectedEntry({
+                      id: log.id,
+                      action: log.action,
+                      actorId: log.actorId,
+                      actorName: log.actorName,
+                      partnerId: log.partnerId,
+                      targetType: log.targetType,
+                      targetId: log.targetId,
+                      metadata: log.metadata,
+                      createdAt: log.createdAt,
+                    });
+                    setOpenId(log.id);
+                  }}
+                  className={`hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer ${severityRowClass(auditSeverity(log.action))}`}
                   data-audit-row-id={log.id}
+                  data-audit-severity={auditSeverity(log.action)}
                 >
                   <td className="p-3 text-[10px] font-mono whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
                   <td className="p-3 text-xs font-bold uppercase">{log.action}</td>
@@ -346,7 +377,10 @@ export default function AdminAuditLog() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <AuditMetadataDrawer
         entry={selectedEntry}
-        onClose={() => setSelectedEntry(null)}
+        onClose={() => {
+          setSelectedEntry(null);
+          setOpenId('');
+        }}
         onFilterBy={(field, value) => {
           if (field === 'actorId') setFilterActorId(value);
           else if (field === 'targetType') setFilterTargetType(value);

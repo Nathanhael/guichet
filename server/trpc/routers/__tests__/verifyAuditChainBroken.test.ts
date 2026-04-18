@@ -18,6 +18,7 @@ const {
   onConflictDoUpdateMock,
   verifyAuditChainServiceMock,
   getRowsMock,
+  chainFailuresIncMock,
 } = vi.hoisted(() => {
   const redisStore = new Map<string, { count: number; ttl: number }>();
   const pubClientMock = {
@@ -55,6 +56,7 @@ const {
   const dbInsertMock = vi.fn().mockReturnValue({ values: valuesMock });
 
   const verifyAuditChainServiceMock = vi.fn();
+  const chainFailuresIncMock = vi.fn();
 
   return {
     redisStore,
@@ -65,6 +67,7 @@ const {
     onConflictDoUpdateMock,
     verifyAuditChainServiceMock,
     getRowsMock,
+    chainFailuresIncMock,
   };
 });
 
@@ -111,6 +114,10 @@ vi.mock('../../../services/archive.js', () => ({
   archiveTickets: vi.fn(),
 }));
 
+vi.mock('../../../utils/metrics.js', () => ({
+  auditChainVerifyFailures: { inc: chainFailuresIncMock },
+}));
+
 vi.mock('../../../config.js', () => ({
   default: { JWT_SECRET: 'test-secret-key-that-is-long-enough-for-hs256' },
 }));
@@ -144,6 +151,7 @@ describe('verifyAuditChain — broken chain result flows through persist + retur
     onConflictDoUpdateMock.mockClear();
     verifyAuditChainServiceMock.mockReset();
     getRowsMock.mockClear();
+    chainFailuresIncMock.mockClear();
   });
 
   it('persists valid:false + brokenAt + checked and returns the full record to the caller', async () => {
@@ -198,6 +206,11 @@ describe('verifyAuditChain — broken chain result flows through persist + retur
     expect(alertPayload.targetId).toBe('tampered-archive-row-id');
     expect(alertPayload.metadata.severity).toBe('critical');
     expect(alertPayload.metadata.brokenAt).toBe('tampered-archive-row-id');
+
+    // Prometheus counter ticks with severity=critical so Grafana can page on
+    // actual tamper events separately from transient service errors.
+    expect(chainFailuresIncMock).toHaveBeenCalledTimes(1);
+    expect(chainFailuresIncMock).toHaveBeenCalledWith({ severity: 'critical' });
   });
 
   it('listTargetTypes returns the platform-scope allow-list with partner + platform types', async () => {
@@ -245,5 +258,9 @@ describe('verifyAuditChain — broken chain result flows through persist + retur
     expect(alertCall).toBeDefined();
     const alertPayload = alertCall![0] as { metadata: { severity: string } };
     expect(alertPayload.metadata.severity).toBe('warn');
+
+    // Service-level errors tick the counter with severity=warn — a lower
+    // pager priority than a critical tamper.
+    expect(chainFailuresIncMock).toHaveBeenCalledWith({ severity: 'warn' });
   });
 });

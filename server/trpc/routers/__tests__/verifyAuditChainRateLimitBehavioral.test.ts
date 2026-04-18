@@ -116,6 +116,10 @@ vi.mock('../../../services/archive.js', () => ({
   archiveTickets: vi.fn(),
 }));
 
+vi.mock('../../../utils/metrics.js', () => ({
+  auditChainVerifyFailures: { inc: vi.fn() },
+}));
+
 vi.mock('../../../config.js', () => ({
   default: { JWT_SECRET: 'test-secret-key-that-is-long-enough-for-hs256' },
 }));
