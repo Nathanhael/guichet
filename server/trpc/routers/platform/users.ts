@@ -311,6 +311,33 @@ export const platformUsersRouter = router({
       return { success: true };
     }),
 
+  listPendingGuestInvites: platformProcedure
+    .query(async () => {
+      const rows = await db
+        .select({
+          userId: users.id,
+          email: users.email,
+          name: users.name,
+          userCreatedAt: users.createdAt,
+          membershipId: memberships.id,
+          partnerId: memberships.partnerId,
+          partnerName: partners.name,
+          role: memberships.role,
+          membershipCreatedAt: memberships.createdAt,
+        })
+        .from(users)
+        .innerJoin(memberships, eq(memberships.userId, users.id))
+        .innerJoin(partners, eq(memberships.partnerId, partners.id))
+        .where(and(
+          eq(users.isExternal, true),
+          isNull(users.externalId),
+          isNull(users.deletedAt),
+          isNull(partners.deletedAt),
+        ))
+        .orderBy(desc(memberships.createdAt));
+      return rows;
+    }),
+
   deleteUser: platformProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {

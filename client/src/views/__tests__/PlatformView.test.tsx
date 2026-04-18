@@ -106,7 +106,7 @@ describe('PlatformView', () => {
   it('tab buttons have role="tab" and aria-selected attributes', () => {
     render(<PlatformView />);
     const tabs = screen.getAllByRole('tab');
-    expect(tabs.length).toBe(6);
+    expect(tabs.length).toBe(7);
     const partnersTab = tabs.find(t => t.textContent === 'partners_tab');
     expect(partnersTab).toHaveAttribute('aria-selected', 'true');
   });
@@ -120,6 +120,7 @@ describe('PlatformView', () => {
     render(<PlatformView />);
     expect(screen.getByText('partners_tab')).toBeInTheDocument();
     expect(screen.getByText('users_tab')).toBeInTheDocument();
+    expect(screen.getByText('invites_tab')).toBeInTheDocument();
     expect(screen.getByText('sso_tab')).toBeInTheDocument();
     expect(screen.getByText('health_tab')).toBeInTheDocument();
     expect(screen.getByText('audit_tab')).toBeInTheDocument();

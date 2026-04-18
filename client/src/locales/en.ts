@@ -159,6 +159,7 @@ const en: Record<string, string> = {
     // Platform
     partners_tab: 'Partners',
     users_tab: 'Users',
+    invites_tab: 'Invites',
     sso_tab: 'SSO',
     security_tab: 'Security',
     health_tab: 'Health',
