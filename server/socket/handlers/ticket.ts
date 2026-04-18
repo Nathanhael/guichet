@@ -24,6 +24,12 @@ import { insertSystemMessage, insertWhisperMessage } from '../../services/system
 import { findPartnerDepartments, transferTicketToDepartment } from '../../services/transferService.js';
 import { sendPush } from '../../services/pushNotification.js';
 import {
+  auditTicketCreated,
+  auditTicketClosed,
+  auditTicketTransferred,
+  auditTicketReturnedToQueue,
+} from '../../services/ticketAudit.js';
+import {
   MAX_NOTE_LENGTH,
   MAX_LABELS_PER_TICKET,
   RECENT_CLOSED_TICKETS_LIMIT,
@@ -126,6 +132,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         const agentUser = await findUserName(agentId);
         const ticket: Ticket = { id: crypto.randomUUID(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
         await createTicket({ id: ticket.id, partnerId, dept: ticket.dept, agentId: ticket.agentId, agentName: ticket.agentName, agentLang: ticket.agentLang, references, status: ticket.status, createdAt: ticket.createdAt, participants: [], reopened, reopenCount });
+        auditTicketCreated({ ticketId: ticket.id, partnerId, actorId: agentId, dept, reopened, reopenCount });
 
         let message = null;
         if (text?.trim()) {
@@ -177,6 +184,13 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         // Limit closing notes length to prevent abuse
         const sanitizedNotes = closingNotes ? closingNotes.slice(0, MAX_NOTE_LENGTH) : '';
         const now = await closeTicket(ticketId, senderName || 'System', sanitizedNotes);
+        auditTicketClosed({
+          ticketId,
+          partnerId: ticket.partnerId,
+          actorId: senderId,
+          closedBy: senderName || 'System',
+          hadSupport: !!ticket.supportId,
+        });
         ctx.io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System', supportId: ticket.supportId ?? undefined, supportName: ticket.supportName ?? undefined });
         await broadcastQueuePositions(ticket.partnerId);
         if (ticket.agentId) {
@@ -233,6 +247,15 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
           // Update ticket: new department, clear support assignment, re-open
           await transferTicketToDepartment(ticketId, departmentId);
+          auditTicketTransferred({
+            ticketId,
+            partnerId: callerPartnerId,
+            actorId: senderId,
+            toDepartmentId: departmentId,
+            toDepartmentName: targetDept.name,
+            fromSupportId: ticket.supportId ?? null,
+            note: note?.trim() || undefined,
+          });
 
           // System message
           const sysText = `Ticket transferred to ${targetDept.name} by ${senderName}`;
@@ -263,6 +286,12 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         } else {
           // Return to queue — same department, unassign support
           await returnTicketToQueue(ticketId);
+          auditTicketReturnedToQueue({
+            ticketId,
+            partnerId: callerPartnerId,
+            actorId: senderId,
+            fromSupportId: ticket.supportId ?? null,
+          });
 
           const sysText = `${senderName} returned ticket to queue`;
           const sysMsg = await insertSystemMessage(ticketId, sysText);

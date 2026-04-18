@@ -127,10 +127,37 @@ export async function archiveAuditLog(archiveDelayDays?: number): Promise<number
  */
 const VERIFY_BATCH_SIZE = 10_000;
 
-export async function verifyAuditChain(): Promise<{ valid: boolean; checked: number; brokenAt?: string; error?: string }> {
+export interface VerifyAuditChainResult {
+  valid: boolean;
+  /** Total rows walked across the archive (global, always full-scan). */
+  checked: number;
+  /** Rows belonging to `options.partnerId` walked during this run. Present only when a partner filter was passed. */
+  partnerChecked?: number;
+  /** First row id whose recomputed hash did not match the stored `chain_hash`. */
+  brokenAt?: string;
+  /** Partner id attached to the broken row (null when it was a global/system row). Only populated when `options.partnerId` is passed. */
+  brokenPartnerId?: string | null;
+  /** `true` when the broken row belongs to the partner filter. Only populated when `options.partnerId` is passed. */
+  brokenInPartnerScope?: boolean;
+  /** Sentinel set on infrastructure failures (db read timeout, etc) — distinct from an actual tamper. */
+  error?: string;
+}
+
+/**
+ * Verify the hash chain over audit_archive.
+ *
+ * The chain is global (one monotonic sequence across all tenants) so the walk
+ * itself is always global — partner isolation at the row level cannot be
+ * checked in isolation. When `options.partnerId` is passed, the result carries
+ * extra partner-scoped counters (`partnerChecked`, `brokenInPartnerScope`) so
+ * a tenant admin can see "my rows were verified and the chain was intact" or
+ * "the chain broke — here's whether the break lives in my slice".
+ */
+export async function verifyAuditChain(options?: { partnerId?: string }): Promise<VerifyAuditChainResult> {
   try {
     let prevHash = '0'.repeat(64);
     let checked = 0;
+    let partnerChecked = 0;
     let lastSequence = -1;
 
     while (true) {
@@ -154,10 +181,18 @@ export async function verifyAuditChain(): Promise<{ valid: boolean; checked: num
 
         const expected = computeChainHash(prevHash, rowData);
         checked++;
+        const rowBelongsToPartner = options?.partnerId && row.partnerId === options.partnerId;
+        if (rowBelongsToPartner) partnerChecked++;
 
         if (expected !== row.chainHash) {
           logger.warn({ id: row.id, expected, actual: row.chainHash }, '[archive] Hash chain integrity violation');
-          return { valid: false, checked, brokenAt: row.id };
+          const out: VerifyAuditChainResult = { valid: false, checked, brokenAt: row.id };
+          if (options?.partnerId) {
+            out.partnerChecked = partnerChecked;
+            out.brokenPartnerId = row.partnerId ?? null;
+            out.brokenInPartnerScope = row.partnerId === options.partnerId;
+          }
+          return out;
         }
 
         prevHash = row.chainHash;
@@ -169,8 +204,10 @@ export async function verifyAuditChain(): Promise<{ valid: boolean; checked: num
       }
     }
 
-    logger.info({ checked }, '[archive] Hash chain verified OK');
-    return { valid: true, checked };
+    logger.info({ checked, partnerId: options?.partnerId }, '[archive] Hash chain verified OK');
+    const out: VerifyAuditChainResult = { valid: true, checked };
+    if (options?.partnerId) out.partnerChecked = partnerChecked;
+    return out;
   } catch (err) {
     logger.error({ err }, '[archive] Failed to verify audit chain (infrastructure error, not a tamper event)');
     return { valid: false, checked: 0, error: 'verification_failed' };

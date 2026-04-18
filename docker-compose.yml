@@ -114,6 +114,28 @@ services:
     depends_on:
       server:
         condition: service_healthy
+      alertmanager:
+        condition: service_started
+
+  # Alertmanager: receives fired alerts from Prometheus, groups/dedupes them,
+  # and dispatches to Slack/webhook receivers per monitoring/alertmanager.yml.
+  # Env-interpolated webhook URLs are expanded at container start via
+  # `--config.expand-env` so the file can ship secret-free.
+  alertmanager:
+    image: prom/alertmanager:latest
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--config.expand-env=true'
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    environment:
+      - ALERTMANAGER_DEFAULT_WEBHOOK_URL=${ALERTMANAGER_DEFAULT_WEBHOOK_URL:-http://localhost:9999/alerts/default}
+      - ALERTMANAGER_SLACK_WEBHOOK_URL=${ALERTMANAGER_SLACK_WEBHOOK_URL:-}
+      - ALERTMANAGER_PAGER_WEBHOOK_URL=${ALERTMANAGER_PAGER_WEBHOOK_URL:-http://localhost:9999/alerts/audit-critical}
+    ports:
+      - "127.0.0.1:9093:9093"
 
   grafana:
     image: grafana/grafana:latest
@@ -131,6 +153,7 @@ services:
 volumes:
   postgres_data:
   prometheus_data:
+  alertmanager_data:
   grafana_data:
   server_node_modules:
   client_node_modules:

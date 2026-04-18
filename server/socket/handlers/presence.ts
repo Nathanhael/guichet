@@ -18,6 +18,7 @@ import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { sendPush } from '../../services/pushNotification.js';
 import { findUserName } from '../../services/userQueries.js';
+import { auditTicketAssigned } from '../../services/ticketAudit.js';
 import {
   requireIdentified,
   socketioEventsTotal,
@@ -68,6 +69,13 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         supportLang,
         !!joinerInfo?.isExternal,
       );
+      auditTicketAssigned({
+        ticketId,
+        partnerId: callerPartnerId,
+        actorId: supportId,
+        supportId,
+        supportName,
+      });
 
       // Read back updated participants for broadcast
       const participants = (await findUpdatedParticipants(ticketId)) || [];

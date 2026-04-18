@@ -66,4 +66,22 @@ export const auditChainVerifyFailures = new client.Counter({
   labelNames: ['severity'],
 });
 
+// Webhook delivery outcomes. `outcome` is one of:
+//   - `2xx` / `3xx` / `4xx` / `5xx` — bucketed response code class
+//   - `error` — transport failure (timeout, DNS, SSRF reject, abort)
+// `event` is the webhook event name (e.g. ticket.created). Cardinality stays
+// bounded because events come from a fixed enum in webhookDispatch.ts.
+export const webhookDeliveriesTotal = new client.Counter({
+  name: 'guichet_webhook_deliveries_total',
+  help: 'Webhook delivery attempts grouped by event and outcome class',
+  labelNames: ['event', 'outcome'],
+});
+
+export const webhookDeliveryDuration = new client.Histogram({
+  name: 'guichet_webhook_delivery_duration_seconds',
+  help: 'Webhook delivery wall-clock duration in seconds',
+  labelNames: ['event', 'outcome'],
+  buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10],
+});
+
 export const register = client.register;

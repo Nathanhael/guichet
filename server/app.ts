@@ -30,6 +30,7 @@ import { setIo as setPresenceIo, flushPresenceOnStartup } from './services/prese
 import { runDailyPurge } from './services/gdpr.js';
 import { rollupDay } from './services/statusTracking.js';
 import { cleanupExpiredTokens } from './services/refreshToken.js';
+import { scheduleDailyChainVerify } from './services/chainVerifySchedule.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { createTaskRunner } from './utils/taskRunner.js';
@@ -496,6 +497,11 @@ setTimeout(() => {
   }, TOKEN_CLEANUP_INTERVAL_MS);
 }, Math.floor(Math.random() * 30 * 60 * 1000)); // 0-30min startup jitter
 
+// Daily audit-chain verify — system-triggered run with 10-40min startup jitter
+// and 24h ± 2h interval. Complements the operator-triggered verify mutation so
+// a broken chain is detected even if no operator logs in.
+const stopChainVerifyScheduler = scheduleDailyChainVerify();
+
 // Daily agent status rollup — runs every hour, rolls up yesterday's data
 setInterval(async () => {
   try {
@@ -533,6 +539,7 @@ async function gracefulShutdown(signal: string) {
 
   // 0. Stop scheduled tasks
   if (reclaimIntervalHandle) clearInterval(reclaimIntervalHandle);
+  stopChainVerifyScheduler();
 
   // 1. Stop accepting new connections
   httpServer.close(() => {
