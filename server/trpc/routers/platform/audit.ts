@@ -10,6 +10,11 @@ import logger from '../../../utils/logger.js';
 const VERIFY_CHAIN_WINDOW_SECS = 60;
 const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
 const LAST_VERIFY_KEY = 'audit_chain_last_verify';
+const VERIFY_HISTORY_KEY = 'audit_chain_verify_history';
+// Keep a rolling window of chain-verify runs for the compliance trail. 50 is
+// enough for a multi-month review window even at one run per day; old entries
+// are dropped from the head when the cap is hit.
+const VERIFY_HISTORY_MAX = 50;
 
 // Union of every targetType platform operators can see — partner-scoped rows
 // bubble up here too. Keep in sync with `targetType:` literals emitted by both
@@ -243,6 +248,46 @@ export const platformAuditRouter = router({
           target: systemSettings.key,
           set: { value: record, updatedAt: new Date().toISOString() },
         });
+
+      // Append to the rolling history so compliance review can see the trail
+      // of runs, not just the latest. Read-modify-write is fine here because
+      // the route is rate-limited to 1 call per minute per operator.
+      const historyRows = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(eq(systemSettings.key, VERIFY_HISTORY_KEY))
+        .limit(1);
+      const existingHistory = Array.isArray(historyRows[0]?.value) ? historyRows[0]!.value as unknown[] : [];
+      const nextHistory = [record, ...existingHistory].slice(0, VERIFY_HISTORY_MAX);
+      await db
+        .insert(systemSettings)
+        .values({ key: VERIFY_HISTORY_KEY, value: nextHistory })
+        .onConflictDoUpdate({
+          target: systemSettings.key,
+          set: { value: nextHistory, updatedAt: new Date().toISOString() },
+        });
+
+      // Alerting: a broken chain means the WORM archive has been tampered with
+      // (or the hash implementation regressed). Either is a high-severity
+      // incident — leave a loud, queryable trail in audit_log so the existing
+      // PlatformAuditLog surfaces it and any downstream webhook/alert consumer
+      // can react. Service-level errors (e.g. db timeout) are distinct from
+      // tampering and get a separate, lower-severity action.
+      if (!result.valid) {
+        await db.insert(auditLog).values({
+          action: result.error ? 'system.chain_verify_error' : 'system.chain_broken_detected',
+          actorId: ctx.user.id,
+          targetType: 'system',
+          targetId: result.brokenAt ?? null,
+          metadata: {
+            checked: result.checked,
+            brokenAt: result.brokenAt ?? null,
+            error: result.error ?? null,
+            severity: result.error ? 'warn' : 'critical',
+          },
+        });
+      }
+
       return record;
     }),
 
@@ -254,6 +299,17 @@ export const platformAuditRouter = router({
         .where(eq(systemSettings.key, LAST_VERIFY_KEY))
         .limit(1);
       return rows[0]?.value ?? null;
+    }),
+
+  getChainVerifyHistory: platformProcedure
+    .query(async () => {
+      const rows = await db
+        .select({ value: systemSettings.value })
+        .from(systemSettings)
+        .where(eq(systemSettings.key, VERIFY_HISTORY_KEY))
+        .limit(1);
+      const value = rows[0]?.value;
+      return Array.isArray(value) ? (value as unknown[]) : [];
     }),
 
   runArchive: platformProcedure

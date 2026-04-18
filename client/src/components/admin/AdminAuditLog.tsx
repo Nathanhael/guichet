@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
+import { useUrlParam } from '../../hooks/useUrlState';
 
 function formatDetails(log: { action: string; metadata?: unknown; targetId: string | null }) {
   const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
@@ -39,14 +40,24 @@ export default function AdminAuditLog() {
   const LIMIT = 50;
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<string[]>([]);
-  const [filterAction, setFilterAction] = useState('');
-  const [filterActorId, setFilterActorId] = useState('');
-  const [filterTargetType, setFilterTargetType] = useState('');
-  const [filterTargetId, setFilterTargetId] = useState('');
-  const [debouncedTargetId, setDebouncedTargetId] = useState('');
-  const [filterWasExternal, setFilterWasExternal] = useState(false);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  // Filters are mirrored into ?a.* so an operator can bookmark/share a
+  // specific triage view. The `a.` namespace keeps us clear of the platform
+  // view, which uses `p.` (see PlatformAuditLog).
+  const [filterAction, setFilterAction] = useUrlParam('action', '', 'a');
+  const [filterActorId, setFilterActorId] = useUrlParam('actor', '', 'a');
+  const [filterTargetType, setFilterTargetType] = useUrlParam('ttype', '', 'a');
+  const [filterTargetId, setFilterTargetId] = useUrlParam('tid', '', 'a');
+  // Seed debounced value from URL so a deep-linked ?tid=… query fires on
+  // first render instead of waiting 500ms for the debounce effect.
+  const [debouncedTargetId, setDebouncedTargetId] = useState(() => filterTargetId);
+  const [filterWasExternalStr, setFilterWasExternalStr] = useUrlParam('guest', '', 'a');
+  const filterWasExternal = filterWasExternalStr === '1';
+  const setFilterWasExternal = useCallback(
+    (v: boolean) => setFilterWasExternalStr(v ? '1' : ''),
+    [setFilterWasExternalStr],
+  );
+  const [dateFrom, setDateFrom] = useUrlParam('from', '', 'a');
+  const [dateTo, setDateTo] = useUrlParam('to', '', 'a');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
 
@@ -333,7 +344,15 @@ export default function AdminAuditLog() {
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <AuditMetadataDrawer entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      <AuditMetadataDrawer
+        entry={selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+        onFilterBy={(field, value) => {
+          if (field === 'actorId') setFilterActorId(value);
+          else if (field === 'targetType') setFilterTargetType(value);
+          else if (field === 'targetId') setFilterTargetId(value);
+        }}
+      />
     </div>
   );
 }

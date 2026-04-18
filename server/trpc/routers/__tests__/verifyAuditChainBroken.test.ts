@@ -164,17 +164,40 @@ describe('verifyAuditChain — broken chain result flows through persist + retur
     expect(result.ranBy).toBe('op-broken-1');
     expect(result.ranByName).toBe('Op Broken');
 
-    // Persisted value must mirror the result — the getLastChainVerify query
-    // reads from this same row, so dashboards across operators stay in sync.
-    expect(valuesMock).toHaveBeenCalledTimes(1);
-    const persisted = valuesMock.mock.calls[0][0] as {
+    // A broken chain results in three writes via insert().values():
+    //   1. audit_chain_last_verify      (singleton row with the latest run)
+    //   2. audit_chain_verify_history   (rolling history array)
+    //   3. audit_log                    (system.chain_broken_detected — the
+    //      high-severity trail that PlatformAuditLog surfaces to operators)
+    expect(valuesMock).toHaveBeenCalledTimes(3);
+    const lastVerifyCall = valuesMock.mock.calls.find(
+      c => (c[0] as { key?: string }).key === 'audit_chain_last_verify',
+    );
+    expect(lastVerifyCall).toBeDefined();
+    const persisted = lastVerifyCall![0] as {
       key: string;
       value: { valid: boolean; brokenAt: string; checked: number };
     };
-    expect(persisted.key).toBe('audit_chain_last_verify');
     expect(persisted.value.valid).toBe(false);
     expect(persisted.value.brokenAt).toBe('tampered-archive-row-id');
     expect(persisted.value.checked).toBe(3);
+
+    // The audit_log write marks the incident loudly so existing dashboards +
+    // any downstream webhook/alert consumer see it without extra wiring.
+    const alertCall = valuesMock.mock.calls.find(
+      c => (c[0] as { action?: string }).action === 'system.chain_broken_detected',
+    );
+    expect(alertCall).toBeDefined();
+    const alertPayload = alertCall![0] as {
+      action: string;
+      targetType: string;
+      targetId: string | null;
+      metadata: { severity: string; brokenAt: string | null };
+    };
+    expect(alertPayload.targetType).toBe('system');
+    expect(alertPayload.targetId).toBe('tampered-archive-row-id');
+    expect(alertPayload.metadata.severity).toBe('critical');
+    expect(alertPayload.metadata.brokenAt).toBe('tampered-archive-row-id');
   });
 
   it('listTargetTypes returns the platform-scope allow-list with partner + platform types', async () => {
@@ -204,9 +227,23 @@ describe('verifyAuditChain — broken chain result flows through persist + retur
     expect(result.error).toBe('archive read timeout');
     expect(result.checked).toBe(0);
 
-    const persisted = valuesMock.mock.calls[0][0] as {
+    const lastVerifyCall = valuesMock.mock.calls.find(
+      c => (c[0] as { key?: string }).key === 'audit_chain_last_verify',
+    );
+    expect(lastVerifyCall).toBeDefined();
+    const persisted = lastVerifyCall![0] as {
       value: { error?: string; valid: boolean };
     };
     expect(persisted.value.error).toBe('archive read timeout');
+
+    // Service-level failures are marked separately from tampering — a db
+    // read timeout is not the same signal as a broken hash chain and
+    // should not page the same way.
+    const alertCall = valuesMock.mock.calls.find(
+      c => (c[0] as { action?: string }).action === 'system.chain_verify_error',
+    );
+    expect(alertCall).toBeDefined();
+    const alertPayload = alertCall![0] as { metadata: { severity: string } };
+    expect(alertPayload.metadata.severity).toBe('warn');
   });
 });

@@ -164,11 +164,14 @@ describe('verifyAuditChain — behavioural rate limit', () => {
     expect(result.ranByName).toBe('Test Operator');
     expect(typeof result.ranAt).toBe('string');
 
-    // Persisted via insert().values().onConflictDoUpdate()
-    expect(valuesMock).toHaveBeenCalledTimes(1);
-    expect(onConflictDoUpdateMock).toHaveBeenCalledTimes(1);
-    const persisted = valuesMock.mock.calls[0][0] as { key: string; value: unknown };
-    expect(persisted.key).toBe('audit_chain_last_verify');
+    // Persisted via insert().values().onConflictDoUpdate() twice — once for
+    // the latest-run singleton (audit_chain_last_verify) and once for the
+    // rolling history (audit_chain_verify_history).
+    expect(valuesMock).toHaveBeenCalledTimes(2);
+    expect(onConflictDoUpdateMock).toHaveBeenCalledTimes(2);
+    const keys = valuesMock.mock.calls.map(c => (c[0] as { key: string }).key);
+    expect(keys).toContain('audit_chain_last_verify');
+    expect(keys).toContain('audit_chain_verify_history');
 
     // Scanner ran exactly once.
     expect(verifyAuditChainServiceMock).toHaveBeenCalledTimes(1);
@@ -195,8 +198,10 @@ describe('verifyAuditChain — behavioural rate limit', () => {
 
     // The expensive scan must NOT have been invoked a second time.
     expect(verifyAuditChainServiceMock).toHaveBeenCalledTimes(1);
-    // No second persist write either.
-    expect(valuesMock).toHaveBeenCalledTimes(1);
+    // No additional persist writes beyond the first run's two (last_verify +
+    // history). The second (rate-limited) call must short-circuit before any
+    // db.insert().values() fires.
+    expect(valuesMock).toHaveBeenCalledTimes(2);
   });
 
   it('two different operators do not collide — limiter is keyed by userId', async () => {
