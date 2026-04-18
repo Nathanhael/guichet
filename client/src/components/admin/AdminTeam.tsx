@@ -29,6 +29,7 @@ export default function AdminTeam() {
   const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | ''>('');
   const [unconfiguredOnly, setUnconfiguredOnly] = useState(false);
   const [onlineOnly, setOnlineOnly] = useState(false);
+  const [showAdmins, setShowAdmins] = useState(false);
   const LIMIT = 20;
 
   const utils = trpc.useUtils();
@@ -39,17 +40,18 @@ export default function AdminTeam() {
       offset: page * LIMIT,
       search: search.trim() || undefined,
       role: roleFilter || undefined,
-      excludeAdmin: true,
+      excludeAdmin: !showAdmins,
     },
     { enabled: !!activeMembershipId }
   );
 
-  // Data comes pre-filtered from server (admins excluded, role filter applied)
+  // Data comes pre-filtered from server (admins excluded unless toggled, role filter applied)
   const filteredData = data ?? [];
 
-  // Summary counts — uses full unfiltered (but admin-excluded) query for card stats
+  // Summary counts — mirrors the table's admin visibility so the "All Members"
+  // card agrees with the row count when admins are toggled on.
   const { data: allData } = trpc.partner.listMembers.useQuery(
-    { limit: 100, offset: 0, excludeAdmin: true },
+    { limit: 100, offset: 0, excludeAdmin: !showAdmins },
     { enabled: !!activeMembershipId }
   );
   const stats = useMemo(() => {
@@ -146,6 +148,16 @@ export default function AdminTeam() {
               </button>
             )}
           </div>
+          <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer select-none whitespace-nowrap">
+            <input
+              type="checkbox"
+              id="show-admins-toggle"
+              checked={showAdmins}
+              onChange={(e) => { setShowAdmins(e.target.checked); setPage(0); }}
+              className="accent-accent-blue h-3.5 w-3.5 cursor-pointer"
+            />
+            <span className={showAdmins ? 'text-accent-blue' : 'text-text-muted'}>Show admins</span>
+          </label>
           <div className="flex gap-2">
             <button
               onClick={() => setShowInviteModal(true)}
