@@ -338,6 +338,88 @@ export const platformUsersRouter = router({
       return rows;
     }),
 
+  revokePendingInvite: platformProcedure
+    .input(z.object({ membershipId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const mem = await db.select({
+          id: memberships.id,
+          userId: memberships.userId,
+          partnerId: memberships.partnerId,
+          role: memberships.role,
+        }).from(memberships).where(eq(memberships.id, input.membershipId)).limit(1);
+
+        if (!mem[0]) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
+        }
+
+        const user = await db.select({
+          id: users.id,
+          email: users.email,
+          isExternal: users.isExternal,
+          externalId: users.externalId,
+        }).from(users).where(eq(users.id, mem[0].userId)).limit(1);
+
+        if (!user[0]) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+        }
+
+        // Pending invite = external user that never completed Entra SSO.
+        // Anything else must be revoked through the partner's team screen.
+        if (!user[0].isExternal || user[0].externalId) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Not a pending invite (user has already linked to Entra)',
+          });
+        }
+
+        let orphaned = false;
+        await db.transaction(async (tx) => {
+          await tx.delete(memberships).where(eq(memberships.id, input.membershipId));
+
+          const remaining = await tx.select({ id: memberships.id })
+            .from(memberships)
+            .where(eq(memberships.userId, mem[0].userId))
+            .limit(1);
+
+          if (remaining.length === 0) {
+            await tx.update(users)
+              .set({ deletedAt: new Date().toISOString() })
+              .where(eq(users.id, mem[0].userId));
+            orphaned = true;
+          }
+        });
+
+        await db.insert(auditLog).values({
+          id: randomUUID(),
+          action: 'member.removed',
+          actorId: ctx.user.id,
+          partnerId: mem[0].partnerId,
+          targetType: 'user',
+          targetId: mem[0].userId,
+          metadata: {
+            membershipId: input.membershipId,
+            role: mem[0].role,
+            wasExternal: true,
+            reason: 'pending_invite_revoked',
+            email: user[0].email,
+            userSoftDeleted: orphaned,
+          },
+        });
+
+        logger.info({
+          membershipId: input.membershipId,
+          userId: mem[0].userId,
+          orphaned,
+        }, '[revokePendingInvite] Revoked');
+
+        return { success: true, userSoftDeleted: orphaned };
+      } catch (err: unknown) {
+        if (err instanceof TRPCError) throw err;
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
+    }),
+
   deleteUser: platformProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {

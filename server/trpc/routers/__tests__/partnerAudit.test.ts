@@ -4,10 +4,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const {
   dbSelectMock,
-  fromMock,
-  leftJoinMock,
-  whereMock,
-  orderByMock,
   limitMock,
   eqMock,
   andMock,
