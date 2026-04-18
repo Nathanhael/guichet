@@ -192,4 +192,49 @@ test.describe('Invite → Audit Log → Pending Invites worklist', () => {
     const copyBtn = row.getByRole('button', { name: /copy email/i }).first();
     await expect(copyBtn).toBeVisible();
   });
+
+  test('platform operator can revoke a pending invite → row disappears, mutation returns 200', async ({ page }) => {
+    // Seed a pending invite as admin_emma.
+    const loginEmma = await loginAsDemo(page, 'admin_emma');
+    test.skip(!loginEmma.ok, `Dev login admin_emma failed (${loginEmma.status})`);
+
+    const email = uniqueEmail();
+    await gotoAdminTab(page, /^team$/i);
+    await inviteGuest(page, email, 'E2E Revoke Me', 'admin');
+
+    // Switch to platform operator.
+    await page.evaluate(() => sessionStorage.clear());
+    const loginBart = await loginAsDemo(page, 'platform_bart', { lang: 'en' });
+    test.skip(!loginBart.ok, `Dev login platform_bart failed (${loginBart.status})`);
+    await page.waitForTimeout(2000);
+
+    await gotoPlatformTab(page, /invites|uitnodigingen|invitations/i);
+    await expect(page.getByText(/pending entra invites/i).first()).toBeVisible({ timeout: 10_000 });
+
+    const row = page.locator('tbody tr', { hasText: email }).first();
+    await expect(row).toBeVisible({ timeout: 10_000 });
+
+    // Click the Revoke button inside that row.
+    await row.getByRole('button', { name: /^revoke$/i }).click();
+
+    // Custom ConfirmDialog (role="dialog" aria-modal="true") opens. Click its
+    // Revoke button and wait for the tRPC mutation response.
+    const dialog = page.getByRole('dialog').first();
+    await dialog.waitFor({ state: 'visible', timeout: 5_000 });
+
+    const revokePromise = page.waitForResponse(
+      r => /trpc\/platform\.revokePendingInvite/.test(r.url()) && r.request().method() === 'POST',
+      { timeout: 15_000 },
+    );
+    await dialog.getByRole('button', { name: /^revoke$/i }).click();
+    const revokeResp = await revokePromise;
+    if (revokeResp.status() !== 200) {
+      const body = await revokeResp.text().catch(() => '<no body>');
+      throw new Error(`revokePendingInvite returned ${revokeResp.status()}: ${body.slice(0, 500)}`);
+    }
+
+    // Row for that email must be gone after the list invalidates.
+    const removedRow = page.locator('tbody tr', { hasText: email });
+    await expect(removedRow).toHaveCount(0, { timeout: 10_000 });
+  });
 });
