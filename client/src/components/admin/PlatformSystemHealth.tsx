@@ -1,6 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
+
+const CHAIN_VERIFY_STORAGE_KEY = 'platform.lastChainVerify';
+
+type ChainVerifyRecord = {
+  ranAt: string;
+  valid: boolean;
+  checked: number;
+  brokenAt?: string;
+  error?: string;
+};
 
 export default function PlatformSystemHealth() {
   const t = useT();
@@ -9,6 +19,35 @@ export default function PlatformSystemHealth() {
     retry: 1
   });
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+
+  // Chain-integrity verification is manually triggered (enabled:false +
+  // refetch()) — a full verify scans the entire audit_archive and isn't
+  // something we want to run on every page load.
+  const chainVerify = trpc.platform.verifyAuditChain.useQuery(undefined, {
+    enabled: false,
+    retry: false,
+  });
+  const [lastVerify, setLastVerify] = useState<ChainVerifyRecord | null>(() => {
+    try {
+      const raw = localStorage.getItem(CHAIN_VERIFY_STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as ChainVerifyRecord) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (!chainVerify.data || chainVerify.isFetching) return;
+    const record: ChainVerifyRecord = {
+      ranAt: new Date().toISOString(),
+      valid: chainVerify.data.valid,
+      checked: chainVerify.data.checked,
+      brokenAt: chainVerify.data.brokenAt,
+      error: chainVerify.data.error,
+    };
+    setLastVerify(record);
+    try { localStorage.setItem(CHAIN_VERIFY_STORAGE_KEY, JSON.stringify(record)); } catch { /* quota — ignore */ }
+  }, [chainVerify.data, chainVerify.isFetching]);
 
   const alerts: { id: string; message: string }[] = [];
   if (health) {
@@ -111,6 +150,75 @@ export default function PlatformSystemHealth() {
               <p className="font-mono text-sm">{new Date(health.gdprNextPurge).toLocaleString()}</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div>
+        <h2 className="text-lg font-bold uppercase tracking-wide mb-4">Audit Chain Integrity</h2>
+        <div className="surface-card p-6">
+          <div className="flex items-start justify-between gap-6 mb-6 pb-6 border-b border-[var(--color-border)]">
+            <div className="flex-1">
+              <p className="font-bold uppercase tracking-wide mb-1">WORM Archive Verification</p>
+              <p className="text-xs text-[var(--color-text-secondary)] uppercase">
+                Scans every archived audit entry and recomputes its SHA-256 chain hash. Run after
+                any suspected tampering or before compliance review.
+              </p>
+            </div>
+            <button
+              onClick={() => chainVerify.refetch()}
+              disabled={chainVerify.isFetching}
+              className="btn-primary text-[10px] uppercase tracking-widest px-4 py-2 whitespace-nowrap"
+            >
+              {chainVerify.isFetching ? 'Verifying…' : 'Verify Now'}
+            </button>
+          </div>
+
+          {chainVerify.isFetching && !lastVerify && (
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-muted)] animate-pulse">
+              Scanning archive…
+            </p>
+          )}
+
+          {lastVerify && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div>
+                <p className="mono-label mb-2">Status</p>
+                {lastVerify.error ? (
+                  <p className="font-mono text-lg text-[var(--color-accent-amber)]">ERROR</p>
+                ) : lastVerify.valid ? (
+                  <p className="font-mono text-lg text-[var(--color-accent-green)]">VALID</p>
+                ) : (
+                  <p className="font-mono text-lg text-[var(--color-accent-red)]">BROKEN</p>
+                )}
+              </div>
+              <div>
+                <p className="mono-label mb-2">Entries Checked</p>
+                <p className="font-mono text-lg">{lastVerify.checked.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="mono-label mb-2">Last Verified</p>
+                <p className="font-mono text-sm">{new Date(lastVerify.ranAt).toLocaleString()}</p>
+              </div>
+              {lastVerify.brokenAt && (
+                <div className="md:col-span-3 pt-4 border-t border-[var(--color-border)]">
+                  <p className="mono-label mb-2 text-[var(--color-accent-red)]">Broken At (archive id)</p>
+                  <p className="font-mono text-xs break-all">{lastVerify.brokenAt}</p>
+                </div>
+              )}
+              {lastVerify.error && (
+                <div className="md:col-span-3 pt-4 border-t border-[var(--color-border)]">
+                  <p className="mono-label mb-2 text-[var(--color-accent-amber)]">Error</p>
+                  <p className="font-mono text-xs break-all">{lastVerify.error}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {!lastVerify && !chainVerify.isFetching && (
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
+              No verification has been run yet.
+            </p>
+          )}
         </div>
       </div>
 
