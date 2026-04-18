@@ -1,7 +1,8 @@
 # Department-Based Ticket Transfer
 
 **Date:** 2026-04-02
-**Status:** Approved
+**Status:** ✅ Shipped (stamped 2026-04-18)
+**Evidence:** `server/services/transferService.ts`, `ticket:transfer` socket handler in `server/socket/handlers/ticket.ts`, whisper-note via `insertWhisperMessage` in `systemMessage.ts`. Covered in CLAUDE.md under "Department Transfer".
 
 ## Summary
 

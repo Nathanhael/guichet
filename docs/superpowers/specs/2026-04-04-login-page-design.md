@@ -1,8 +1,9 @@
 # Guichet Login Page — Design Spec
 
 **Date:** 2026-04-04
-**Status:** Approved
+**Status:** ✅ Shipped (stamped 2026-04-18)
 **Scope:** Login/welcome page with email-first auth flow, light/dark theme support
+**Evidence:** `client/src/views/LoginView.tsx` — SSO-first flow now (email-first form was superseded by the 2026-04-17 local-auth rip; LoginView now shows Azure SSO button + dev-login picker only).
 
 ## Overview
 

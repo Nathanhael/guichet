@@ -1,8 +1,9 @@
 # ChatWindow Enhancements — Design Spec
 
 **Date:** 2026-04-06
-**Status:** Approved
+**Status:** ✅ Shipped (stamped 2026-04-18)
 **Scope:** 8 tracks (1 refactor + 7 features) enhancing the ChatWindow/MessageBubble experience
+**Evidence:** Decomposed sub-components live in `client/src/components/chat/`: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LinkPreviewCard, QuoteBlock, SearchBar, EmojiSuggestion.
 
 ## Overview
 
