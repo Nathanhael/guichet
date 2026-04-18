@@ -427,7 +427,11 @@ export const platformAuditRouter = router({
           .leftJoin(partners, eq(auditLog.partnerId, partners.id))
           .where(and(...conditions))
           .groupBy(auditLog.partnerId, partners.name)
-          .orderBy(sql`total_events DESC`)
+          // Order by inline aggregate rather than the SELECT-clause alias —
+          // Drizzle's sql-template orderBy does not always propagate aliases
+          // through its query builder. Safer to sort by the expression
+          // itself. Source: post-ship review 2026-04-18 M-2.
+          .orderBy(sql`COUNT(*) DESC`)
           .limit(input.limit);
 
         return totals;

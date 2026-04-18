@@ -299,6 +299,11 @@ export const partnerMembersRouter = router({
 
         const wasExternal = targetUser[0].isExternal;
 
+        // Removal and audit commit atomically. Previously the audit insert
+        // ran outside the transaction — a crash between commit and audit
+        // insert left the removal permanent but unlogged. Session/refresh
+        // revocation stays outside (idempotent; safe to retry).
+        // Source: post-ship review 2026-04-18 M-1.
         await db.transaction(async (tx) => {
           const userMemberships = await tx.select().from(memberships)
             .where(eq(memberships.userId, membership[0].userId));
@@ -308,21 +313,21 @@ export const partnerMembersRouter = router({
           }
 
           await tx.delete(memberships).where(eq(memberships.id, input.membershipId));
+
+          await tx.insert(auditLog).values({
+            action: 'member.removed',
+            actorId: ctx.user.id,
+            partnerId: partnerId,
+            targetType: 'user',
+            targetId: membership[0].userId,
+            metadata: { wasExternal }
+          });
         });
 
         if (wasExternal) {
           await revokeUserSessions(membership[0].userId);
           await revokeAllUserRefreshTokens(membership[0].userId);
         }
-
-        await db.insert(auditLog).values({
-          action: 'member.removed',
-          actorId: ctx.user.id,
-          partnerId: partnerId,
-          targetType: 'user',
-          targetId: membership[0].userId,
-          metadata: { wasExternal }
-        });
 
         return { success: true };
       } catch (err: unknown) {

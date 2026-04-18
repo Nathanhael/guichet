@@ -265,15 +265,21 @@ export const platformUsersRouter = router({
         }
       }
 
-      await db.update(memberships)
-        .set({
-          role: input.data.role,
-          departments: input.data.departments || []
-        })
-        .where(eq(memberships.id, input.id));
+      // Atomic: role change, audit log, and isPlatformOperator flag must all
+      // commit together. Previously these were three separate DB calls with
+      // a silent try/catch on the audit insert — a platform_operator
+      // promotion could complete with zero audit trail, and a crash between
+      // writes left the user-flag inconsistent with the membership role.
+      // Source: post-ship review 2026-04-18 H-2.
+      await db.transaction(async (tx) => {
+        await tx.update(memberships)
+          .set({
+            role: input.data.role,
+            departments: input.data.departments || []
+          })
+          .where(eq(memberships.id, input.id));
 
-      try {
-        await db.insert(auditLog).values({
+        await tx.insert(auditLog).values({
           id: randomUUID(),
           action: 'member.updated',
           actorId: ctx.user.id,
@@ -286,27 +292,26 @@ export const platformUsersRouter = router({
             newRole: input.data.role
           }
         });
-      } catch (auditErr) {
-        logger.error({ err: auditErr }, '[updateMembership] Audit log failed');
-      }
 
-      const mem = await db.select().from(memberships).where(eq(memberships.id, input.id)).limit(1);
-      if (mem[0]) {
         if (willBePlatformOperator) {
-          await db.update(users).set({ isPlatformOperator: true }).where(eq(users.id, mem[0].userId));
+          await tx.update(users).set({ isPlatformOperator: true }).where(eq(users.id, memBefore[0].userId));
         } else {
-          const otherPlatformMemberships = await db.select({ id: memberships.id })
+          // Only clear the user-level flag if NO other platform_operator
+          // membership remains for this user across any partner.
+          const otherPlatformMemberships = await tx.select({ id: memberships.id })
             .from(memberships)
             .where(and(
-              eq(memberships.userId, mem[0].userId),
-              eq(memberships.role, 'platform_operator')
+              eq(memberships.userId, memBefore[0].userId),
+              eq(memberships.role, 'platform_operator'),
+              // Exclude the membership we just changed — its role is already updated.
+              sql`${memberships.id} <> ${input.id}`
             ))
             .limit(1);
           if (otherPlatformMemberships.length === 0) {
-            await db.update(users).set({ isPlatformOperator: false }).where(eq(users.id, mem[0].userId));
+            await tx.update(users).set({ isPlatformOperator: false }).where(eq(users.id, memBefore[0].userId));
           }
         }
-      }
+      });
 
       return { success: true };
     }),
