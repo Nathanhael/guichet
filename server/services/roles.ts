@@ -21,7 +21,7 @@ export function canAssignTenantRole(actorRole: UserRole, actorIsPlatformOperator
     return false;
   }
 
-  return targetRole === 'agent' || targetRole === 'support';
+  return targetRole === 'agent' || targetRole === 'support' || targetRole === 'admin';
 }
 
 export function canManageTenant(actorRole: UserRole, actorIsPlatformOperator: boolean): boolean {

@@ -30,11 +30,12 @@ describe('role policy helpers', () => {
     expect(canUseSupportWorkflows('agent', true)).toBe(true);
   });
 
-  it('allows tenant admins to assign only agent and support roles', () => {
+  it('allows tenant admins to assign agent, support, and admin roles', () => {
     expect(canAssignTenantRole('admin', false, 'agent')).toBe(true);
     expect(canAssignTenantRole('admin', false, 'support')).toBe(true);
-    expect(canAssignTenantRole('admin', false, 'admin')).toBe(false);
-    expect(canAssignTenantRole('support', false, 'agent')).toBe(false);
+    expect(canAssignTenantRole('admin', false, 'admin')).toBe(true);
+    expect(canAssignTenantRole('admin', false, 'platform_operator')).toBe(false);
+    expect(canAssignTenantRole('support', false, 'support')).toBe(false);
     expect(canAssignTenantRole('agent', true, 'admin')).toBe(true);
     expect(canAssignTenantRole('agent', true, 'platform_operator')).toBe(true);
   });
