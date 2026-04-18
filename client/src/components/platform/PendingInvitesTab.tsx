@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import Toast from '../Toast';
+import ConfirmDialog from '../ConfirmDialog';
 
 function relativeAge(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -14,7 +15,19 @@ function relativeAge(iso: string): string {
 
 export default function PendingInvitesTab() {
   const { data, isLoading } = trpc.platform.listPendingGuestInvites.useQuery();
+  const utils = trpc.useUtils();
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState<
+    { membershipId: string; email: string; partnerName: string } | null
+  >(null);
+
+  const revokeMutation = trpc.platform.revokePendingInvite.useMutation({
+    onSuccess: () => {
+      setToast({ message: 'Invite revoked', type: 'success' });
+      utils.platform.listPendingGuestInvites.invalidate();
+    },
+    onError: (err) => setToast({ message: err.message, type: 'error' }),
+  });
 
   const rows = data || [];
 
@@ -70,18 +83,43 @@ export default function PendingInvitesTab() {
                     {relativeAge(row.membershipCreatedAt)}
                   </td>
                   <td className="p-3">
-                    <button
-                      onClick={() => copyEmail(row.email)}
-                      className="btn-secondary text-[10px]"
-                    >
-                      Copy email
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => copyEmail(row.email)}
+                        className="btn-secondary text-[10px]"
+                      >
+                        Copy email
+                      </button>
+                      <button
+                        onClick={() => setConfirmRevoke({
+                          membershipId: row.membershipId,
+                          email: row.email || '(no email)',
+                          partnerName: row.partnerName,
+                        })}
+                        className="btn-secondary text-[10px] text-[var(--color-accent-red)] hover:border-[var(--color-accent-red)]"
+                      >
+                        Revoke
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {confirmRevoke && (
+        <ConfirmDialog
+          title="Revoke pending invite"
+          message={`Revoke the invite for ${confirmRevoke.email} at ${confirmRevoke.partnerName}? The membership will be deleted. If this is their only membership, the user record will be soft-deleted so the email can be re-invited.`}
+          confirmLabel="Revoke"
+          onConfirm={() => {
+            revokeMutation.mutate({ membershipId: confirmRevoke.membershipId });
+            setConfirmRevoke(null);
+          }}
+          onCancel={() => setConfirmRevoke(null)}
+        />
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
