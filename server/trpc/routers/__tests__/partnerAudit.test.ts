@@ -307,6 +307,39 @@ describe('partnerAuditRouter.getAuditLog — targetType filter', () => {
   });
 });
 
+describe('partnerAuditRouter.getAuditLog — targetId filter', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    capturedConditions.length = 0;
+    limitMock.mockResolvedValue([]);
+  });
+
+  it('does NOT add eq(targetId) when omitted', async () => {
+    await makeCaller().getAuditLog({ limit: 50 });
+    const conditions = capturedConditions[0] as { __op: string; col?: unknown }[];
+    const targetIdConds = conditions.filter(
+      (c) => c.__op === 'eq' && c.col === auditLog.targetId,
+    );
+    expect(targetIdConds).toHaveLength(0);
+  });
+
+  it('adds eq(auditLog.targetId, input.targetId) when provided', async () => {
+    await makeCaller().getAuditLog({ limit: 50, targetId: 'user-42' });
+    const conditions = capturedConditions[0] as { __op: string; col?: unknown; val?: unknown }[];
+    const match = conditions.find((c) => c.__op === 'eq' && c.col === auditLog.targetId);
+    expect(match).toBeDefined();
+    expect(match?.val).toBe('user-42');
+  });
+
+  it('targetId filter does not replace the partnerId scope (tenant isolation preserved)', async () => {
+    await makeCaller({ partnerId: 'p-tenant-q' }).getAuditLog({ limit: 50, targetId: 'user-42' });
+    const conditions = capturedConditions[0] as { __op: string; col?: unknown; val?: unknown }[];
+    expect(conditions[0].__op).toBe('eq');
+    expect(conditions[0].col).toBe(auditLog.partnerId);
+    expect(conditions[0].val).toBe('p-tenant-q');
+  });
+});
+
 describe('partnerAuditRouter.listTargetTypes', () => {
   beforeEach(() => vi.clearAllMocks());
 

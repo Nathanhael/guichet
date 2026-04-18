@@ -11,6 +11,20 @@ const VERIFY_CHAIN_WINDOW_SECS = 60;
 const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
 const LAST_VERIFY_KEY = 'audit_chain_last_verify';
 
+// Union of every targetType platform operators can see — partner-scoped rows
+// bubble up here too. Keep in sync with `targetType:` literals emitted by both
+// `trpc/routers/partner/*` and `trpc/routers/platform/*`.
+const PLATFORM_TARGET_TYPES = [
+  'user',
+  'partner',
+  'membership',
+  'group_mapping',
+  'label',
+  'kb_article',
+  'webhook',
+  'system',
+] as const;
+
 // Per-operator throttle for verifyAuditChain — a full verify scans the entire
 // audit_archive and recomputes every SHA-256 chain hash. One operator spamming
 // the button (or a compromised session) could saturate CPU+DB. Fails open on
@@ -196,6 +210,10 @@ export const platformAuditRouter = router({
 
       return { items, nextCursor };
     }),
+
+  listTargetTypes: platformProcedure.query(() => {
+    return PLATFORM_TARGET_TYPES.slice();
+  }),
 
   verifyAuditChain: platformProcedure
     .mutation(async ({ ctx }) => {

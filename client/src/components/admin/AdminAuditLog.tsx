@@ -42,6 +42,8 @@ export default function AdminAuditLog() {
   const [filterAction, setFilterAction] = useState('');
   const [filterActorId, setFilterActorId] = useState('');
   const [filterTargetType, setFilterTargetType] = useState('');
+  const [filterTargetId, setFilterTargetId] = useState('');
+  const [debouncedTargetId, setDebouncedTargetId] = useState('');
   const [filterWasExternal, setFilterWasExternal] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -57,6 +59,15 @@ export default function AdminAuditLog() {
     resetCursor();
   }, [filterAction, filterActorId, filterTargetType, filterWasExternal, dateFrom, dateTo, resetCursor]);
 
+  // Debounce the target ID search so every keystroke doesn't fire a query.
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedTargetId(filterTargetId);
+      resetCursor();
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [filterTargetId, resetCursor]);
+
   const { data: actionList } = trpc.partner.audit.listActions.useQuery();
   const { data: targetTypeList } = trpc.partner.audit.listTargetTypes.useQuery();
 
@@ -66,6 +77,7 @@ export default function AdminAuditLog() {
     action: filterAction || undefined,
     actorId: filterActorId || undefined,
     targetType: filterTargetType || undefined,
+    targetId: debouncedTargetId || undefined,
     wasExternal: filterWasExternal || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
@@ -86,6 +98,7 @@ export default function AdminAuditLog() {
         action: filterAction || undefined,
         actorId: filterActorId || undefined,
         targetType: filterTargetType || undefined,
+        targetId: debouncedTargetId || undefined,
         wasExternal: filterWasExternal || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
@@ -135,7 +148,7 @@ export default function AdminAuditLog() {
       </div>
 
       <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="space-y-1">
             <label className="mono-label ml-1">Action</label>
             <select
@@ -177,6 +190,18 @@ export default function AdminAuditLog() {
                 <option key={tt} value={tt}>{tt}</option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="mono-label ml-1">Target id</label>
+            <input
+              id="target-id-filter"
+              type="text"
+              placeholder="Search target id"
+              value={filterTargetId}
+              onChange={e => setFilterTargetId(e.target.value)}
+              className="input-field w-full"
+            />
           </div>
 
           <div className="space-y-1">

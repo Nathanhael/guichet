@@ -166,6 +166,7 @@ export default function PlatformAuditLog() {
   }, [dateFrom, dateTo, resetCursor]);
 
   const { data: partners } = trpc.platform.listPartners.useQuery();
+  const { data: targetTypeList } = trpc.platform.listTargetTypes.useQuery();
 
   const queryParams = {
     limit: LIMIT,
@@ -303,7 +304,7 @@ export default function PlatformAuditLog() {
               className="input-field w-full"
             >
               <option value="">All types</option>
-              {['user', 'partner', 'membership', 'group_mapping', 'label', 'kb_article', 'webhook', 'system'].map(tt => (
+              {(targetTypeList || []).map(tt => (
                 <option key={tt} value={tt}>{tt}</option>
               ))}
             </select>
