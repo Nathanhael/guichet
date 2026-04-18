@@ -172,25 +172,31 @@ export const platformPartnersRouter = router({
     .input(z.object({ partnerId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
-        await db.update(partners).set({ status: 'inactive' }).where(eq(partners.id, input.partnerId));
+        // Destructive action — partner status + bulk ticket close + audit
+        // must commit atomically. See patterns/audit-insert-atomicity.
+        // broadcastPartnerDeactivation runs AFTER commit; a rollback
+        // otherwise would broadcast a state change that never persisted.
+        await db.transaction(async (tx) => {
+          await tx.update(partners).set({ status: 'inactive' }).where(eq(partners.id, input.partnerId));
 
-        const now = new Date().toISOString();
-        await db.update(tickets)
-          .set({ status: 'closed', closedAt: now, closedBy: 'System', closingNotes: 'Partner deactivated' })
-          .where(and(
-            eq(tickets.partnerId, input.partnerId),
-            inArray(tickets.status, ['open', 'pending'])
-          ));
+          const now = new Date().toISOString();
+          await tx.update(tickets)
+            .set({ status: 'closed', closedAt: now, closedBy: 'System', closingNotes: 'Partner deactivated' })
+            .where(and(
+              eq(tickets.partnerId, input.partnerId),
+              inArray(tickets.status, ['open', 'pending'])
+            ));
+
+          await tx.insert(auditLog).values({
+            action: 'partner.deactivated',
+            actorId: ctx.user.id,
+            partnerId: input.partnerId,
+            targetType: 'partner',
+            targetId: input.partnerId,
+          });
+        });
 
         broadcastPartnerDeactivation(input.partnerId);
-
-        await db.insert(auditLog).values({
-          action: 'partner.deactivated',
-          actorId: ctx.user.id,
-          partnerId: input.partnerId,
-          targetType: 'partner',
-          targetId: input.partnerId,
-        });
 
         return { success: true };
       } catch (err: unknown) {
@@ -202,14 +208,17 @@ export const platformPartnersRouter = router({
     .input(z.object({ partnerId: z.string() }))
     .mutation(async ({ input, ctx }) => {
       try {
-        await db.update(partners).set({ status: 'active' }).where(eq(partners.id, input.partnerId));
+        // Destructive-inverse action; audit must commit with the status flip.
+        await db.transaction(async (tx) => {
+          await tx.update(partners).set({ status: 'active' }).where(eq(partners.id, input.partnerId));
 
-        await db.insert(auditLog).values({
-          action: 'partner.reactivated',
-          actorId: ctx.user.id,
-          partnerId: input.partnerId,
-          targetType: 'partner',
-          targetId: input.partnerId,
+          await tx.insert(auditLog).values({
+            action: 'partner.reactivated',
+            actorId: ctx.user.id,
+            partnerId: input.partnerId,
+            targetType: 'partner',
+            targetId: input.partnerId,
+          });
         });
 
         return { success: true };
@@ -221,27 +230,33 @@ export const platformPartnersRouter = router({
   deletePartner: platformProcedure
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
-      const now = new Date().toISOString();
-      await db.update(tickets)
-        .set({ status: 'closed', closedAt: now, closedBy: 'System', closingNotes: 'Partner deleted' })
-        .where(and(
-          eq(tickets.partnerId, input),
-          inArray(tickets.status, ['open', 'pending'])
-        ));
+      // Destructive action — soft-delete partner + bulk ticket close + audit
+      // must commit atomically. Without a transaction, a crash between the
+      // ticket close and the audit insert leaves a deleted partner with no
+      // audit row describing who deleted it.
+      await db.transaction(async (tx) => {
+        const now = new Date().toISOString();
+        await tx.update(tickets)
+          .set({ status: 'closed', closedAt: now, closedBy: 'System', closingNotes: 'Partner deleted' })
+          .where(and(
+            eq(tickets.partnerId, input),
+            inArray(tickets.status, ['open', 'pending'])
+          ));
 
-      await db.update(partners)
-        .set({ deletedAt: now })
-        .where(eq(partners.id, input));
+        await tx.update(partners)
+          .set({ deletedAt: now })
+          .where(eq(partners.id, input));
+
+        await tx.insert(auditLog).values({
+          action: 'partner.deleted',
+          actorId: ctx.user.id,
+          partnerId: input,
+          targetType: 'partner',
+          targetId: input,
+        });
+      });
 
       broadcastPartnerDeactivation(input);
-
-      await db.insert(auditLog).values({
-        action: 'partner.deleted',
-        actorId: ctx.user.id,
-        partnerId: input,
-        targetType: 'partner',
-        targetId: input,
-      });
 
       return { success: true };
     }),

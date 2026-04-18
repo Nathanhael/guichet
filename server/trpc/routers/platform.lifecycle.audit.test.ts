@@ -30,6 +30,7 @@ const dbMock = {
   delete: vi.fn(() => ({
     where: deleteWhereMock,
   })),
+  transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(dbMock)),
   execute: vi.fn(),
 };
 
