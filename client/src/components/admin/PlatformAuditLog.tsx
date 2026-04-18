@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import Toast from '../Toast';
+import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 
 const ACTION_OPTIONS = [
   // Partner
@@ -135,11 +136,13 @@ export default function PlatformAuditLog() {
   const [filterPartnerId, setFilterPartnerId] = useState('');
   const [filterActorId, setFilterActorId] = useState('');
   const [filterTargetId, setFilterTargetId] = useState('');
+  const [filterTargetType, setFilterTargetType] = useState('');
   const [debouncedTargetId, setDebouncedTargetId] = useState('');
   // Date filtering state
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
 
   const LIMIT = 50;
 
@@ -171,6 +174,7 @@ export default function PlatformAuditLog() {
     partnerId: filterPartnerId || undefined,
     actorId: filterActorId || undefined,
     targetId: debouncedTargetId || undefined,
+    targetType: filterTargetType || undefined,
     dateFrom: dateFrom || undefined,
     dateTo: dateTo || undefined,
   };
@@ -188,6 +192,7 @@ export default function PlatformAuditLog() {
         partnerId: filterPartnerId || undefined,
         actorId: filterActorId || undefined,
         targetId: debouncedTargetId || undefined,
+        targetType: filterTargetType || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
       };
@@ -246,7 +251,7 @@ export default function PlatformAuditLog() {
       </div>
 
       <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="space-y-1">
             <label className="mono-label ml-1">{t('action_type')}</label>
             <select
@@ -285,6 +290,21 @@ export default function PlatformAuditLog() {
               <option value="">{t('all_actors')}</option>
               {actors.map(([id, name]) => (
                 <option key={id!} value={id!}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="mono-label ml-1">{t('col_target_type')}</label>
+            <select
+              id="platform-target-type-filter"
+              value={filterTargetType}
+              onChange={e => { setFilterTargetType(e.target.value); resetCursor(); }}
+              className="input-field w-full"
+            >
+              <option value="">All types</option>
+              {['user', 'partner', 'membership', 'group_mapping', 'label', 'kb_article', 'webhook', 'system'].map(tt => (
+                <option key={tt} value={tt}>{tt}</option>
               ))}
             </select>
           </div>
@@ -371,7 +391,22 @@ export default function PlatformAuditLog() {
                 </tr>
               )}
               {visibleData?.map((log) => (
-                <tr key={log.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
+                <tr
+                  key={log.id}
+                  onClick={() => setSelectedEntry({
+                    id: log.id,
+                    action: log.action,
+                    actorId: log.actorId,
+                    actorName: log.actorName,
+                    partnerId: log.partnerId,
+                    targetType: log.targetType,
+                    targetId: log.targetId,
+                    metadata: log.metadata,
+                    createdAt: log.createdAt,
+                  })}
+                  className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer"
+                  data-audit-row-id={log.id}
+                >
                   <td className="p-3 text-[10px] font-mono whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
@@ -379,7 +414,7 @@ export default function PlatformAuditLog() {
                   <td className="p-3 text-xs uppercase">{log.actorName || <span className="text-[var(--color-text-muted)]">{t('system')}</span>}</td>
                   <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.partnerId || '-'}</td>
                   <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.targetId || '-'}</td>
-                  <td className="p-3 text-[10px] text-[var(--color-text-secondary)] max-w-xs" title={JSON.stringify(log.metadata)}>
+                  <td className="p-3 text-[10px] text-[var(--color-text-secondary)] max-w-xs">
                     <div className="font-bold uppercase tracking-wide">{formatAuditDetails(log)}</div>
                     <div className="font-mono text-[var(--color-text-muted)] truncate">{JSON.stringify(log.metadata)}</div>
                   </td>
@@ -431,6 +466,7 @@ export default function PlatformAuditLog() {
         </div>
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <AuditMetadataDrawer entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
     </div>
   );
 }

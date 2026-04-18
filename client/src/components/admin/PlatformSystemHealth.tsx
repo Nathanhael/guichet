@@ -5,6 +5,7 @@ import { useT } from '../../i18n';
 type ChainVerifyRecord = {
   ranAt: string;
   ranBy?: string;
+  ranByName?: string | null;
   valid: boolean;
   checked: number;
   brokenAt?: string;
@@ -191,6 +192,16 @@ export default function PlatformSystemHealth() {
               <div>
                 <p className="mono-label mb-2">Last Verified</p>
                 <p className="font-mono text-sm">{new Date(lastVerify.ranAt).toLocaleString()}</p>
+                {lastVerify.ranByName && (
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] mt-1">
+                    By {lastVerify.ranByName}
+                  </p>
+                )}
+                {!lastVerify.ranByName && lastVerify.ranBy && (
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-[var(--color-text-muted)] mt-1">
+                    By {lastVerify.ranBy}
+                  </p>
+                )}
               </div>
               {lastVerify.brokenAt && (
                 <div className="md:col-span-3 pt-4 border-t border-[var(--color-border)]">
