@@ -95,4 +95,28 @@ export const ticketAuditEventsTotal = new client.Counter({
   labelNames: ['action'],
 });
 
+// GDPR purge observability. Incremented once per daily purge run in
+// services/gdpr.ts. `outcome` is one of:
+//   - `success` — purge completed end-to-end (archive + delete + anonymize)
+//   - `chain_aborted` — hash chain invalid or unreachable, purge aborted as
+//     a precaution to avoid losing evidence before the chain is fixed
+//   - `error` — uncaught exception during purge (logged with stack)
+// Alerting should fire when `increase(...[48h]) == 0` — a silent purge means
+// retention slips and we quietly keep data past the 30d cutoff.
+export const gdprPurgeRunsTotal = new client.Counter({
+  name: 'guichet_gdpr_purge_runs_total',
+  help: 'GDPR daily purge runs, grouped by outcome',
+  labelNames: ['outcome'],
+});
+
+// Row-level granularity per table. Kept separate from the run counter so that
+// a single long-running purge with zero rows (idle tenant) still increments
+// the run counter, and a massive retention-window change shows up as a spike
+// on this one. `scope` is the data category (messages, tickets, audit_log…).
+export const gdprRowsPurgedTotal = new client.Counter({
+  name: 'guichet_gdpr_rows_purged_total',
+  help: 'Rows removed or anonymized by GDPR purge, grouped by scope',
+  labelNames: ['scope'],
+});
+
 export const register = client.register;

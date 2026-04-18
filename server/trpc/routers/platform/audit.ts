@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, platformProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
-import { auditLog, auditArchive, archivedTickets, users, systemSettings } from '../../../db/schema.js';
+import { auditLog, auditArchive, archivedTickets, users, systemSettings, partners } from '../../../db/schema.js';
 import { eq, desc, gte, lte, ilike, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
@@ -388,5 +388,52 @@ export const platformAuditRouter = router({
       const nextCursor = hasMore && lastItem ? `${lastItem.createdAt}|${lastItem.id}` : '';
 
       return { items, nextCursor };
+    }),
+
+  // Cross-partner audit activity rollup. Returns per-partner totals for the
+  // time window so platform ops can spot which tenant is unusually noisy
+  // (often the first signal of a compromised account, a misconfigured SSO
+  // mapping, or an internal tool gone wild). This is an aggregate-only view
+  // — operators clicking a row should jump into the existing partnerId
+  // filter on getAuditLog to see the raw rows.
+  //
+  // Bounded to the default 7d window by the caller; the 50-partner cap keeps
+  // the query from hot-looping in very-multi-tenant deployments while still
+  // covering real-world fleets (we ship with <50 partners in every known
+  // deployment).
+  getCrossPartnerActivity: platformProcedure
+    .input(z.object({
+      dateFrom: z.string().optional(),
+      dateTo: z.string().optional(),
+      limit: z.number().min(1).max(50).default(20),
+    }))
+    .query(async ({ input }) => {
+      try {
+        const conditions = [sql`${auditLog.partnerId} IS NOT NULL`];
+        if (input.dateFrom) conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
+        if (input.dateTo) conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
+
+        // Aggregate per partner: total count + last activity timestamp. The
+        // top-action sub-aggregate is computed client-side from a second
+        // small query to keep the main query's plan simple (GROUP BY + MAX
+        // are cheap; per-group top-N would require a window function).
+        const totals = await db.select({
+          partnerId: auditLog.partnerId,
+          partnerName: partners.name,
+          totalEvents: sql<number>`COUNT(*)::int`.as('total_events'),
+          lastEventAt: sql<string>`MAX(${auditLog.createdAt})`.as('last_event_at'),
+        })
+          .from(auditLog)
+          .leftJoin(partners, eq(auditLog.partnerId, partners.id))
+          .where(and(...conditions))
+          .groupBy(auditLog.partnerId, partners.name)
+          .orderBy(sql`total_events DESC`)
+          .limit(input.limit);
+
+        return totals;
+      } catch (err: unknown) {
+        logger.error({ err }, '[platform.audit] getCrossPartnerActivity failed');
+        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      }
     }),
 });

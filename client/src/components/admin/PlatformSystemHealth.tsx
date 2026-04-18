@@ -25,6 +25,37 @@ type ChainVerifyRecord = {
   error?: string;
 };
 
+// RFC 4180 CSV field escaping — wrap in quotes and double any embedded quotes.
+// We escape every field unconditionally so auditors can ingest the file into
+// any spreadsheet tool without a dialect negotiation step.
+function csvField(v: string | number | boolean | null | undefined): string {
+  const s = v === null || v === undefined ? '' : String(v);
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
+function exportChainHistoryCsv(history: ChainVerifyRecord[]): void {
+  const header = ['ran_at', 'status', 'checked', 'ran_by', 'ran_by_name', 'broken_at', 'error'];
+  const rows = history.map((h) => [
+    h.ranAt,
+    h.error ? 'ERROR' : h.valid ? 'VALID' : 'BROKEN',
+    h.checked,
+    h.ranBy ?? '',
+    h.ranByName ?? '',
+    h.brokenAt ?? '',
+    h.error ?? '',
+  ]);
+  const csv = [header, ...rows].map((r) => r.map(csvField).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `audit-chain-verify-history-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export default function PlatformSystemHealth() {
   const t = useT();
   const utils = trpc.useUtils();
@@ -298,7 +329,22 @@ export default function PlatformSystemHealth() {
 
           {chainHistory && chainHistory.length > 1 && (
             <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
-              <p className="mono-label mb-3">Run History</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="mono-label">Run History</p>
+                {/* CSV export for compliance attestation. Auditors want a flat
+                    dump of every verify run — this keeps it client-side (no new
+                    endpoint) because the full history is already in memory
+                    from the getVerifyHistory query. */}
+                <button
+                  type="button"
+                  onClick={() => exportChainHistoryCsv(chainHistory)}
+                  data-testid="export-chain-history-csv"
+                  className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 border border-[var(--color-border)] bg-bg-elevated hover:bg-[var(--color-accent-blue)] hover:text-white hover:border-[var(--color-accent-blue)]"
+                  title="Download full chain verification history as CSV for compliance attestation"
+                >
+                  Export CSV
+                </button>
+              </div>
               <div className="overflow-x-auto">
                 <table
                   className="w-full text-left border-collapse"

@@ -32,6 +32,78 @@ groups:
             redis outage) — not a tamper. Operators cannot complete compliance runs
             until this is resolved. Check db/redis health.
 
+  - name: ticket-lifecycle
+    interval: 60s
+    rules:
+      # Catches a broken services/ticketAudit.ts wiring after a deploy. The
+      # emitter is invoked from the happy path of ticket create/close/transfer;
+      # if it silently stops emitting, the lifecycle panel goes dark and the
+      # ticket audit drawer starts rendering empty for every ticket, but no
+      # user-facing error surfaces. This rule fires when the total rate of
+      # ticket.* audit events drops to zero for 30m AFTER having been nonzero
+      # in the prior 1h — the `offset 30m` lookback makes the alert self-arm
+      # (it won't page a cluster that was idle overnight) and silences in
+      # quiet environments without manual tuning.
+      - alert: TicketAuditEmitterSilenced
+        expr: |
+          sum(rate(guichet_ticket_audit_events_total[30m])) == 0
+          and
+          sum(rate(guichet_ticket_audit_events_total[1h] offset 30m)) > 0
+        for: 10m
+        labels:
+          severity: warning
+          subsystem: audit
+        annotations:
+          summary: 'Ticket lifecycle audit emitter has gone silent'
+          description: |
+            services/ticketAudit.ts has not emitted a ticket.* audit row for the
+            last 30m despite being active in the prior hour. Likely causes:
+              - A recent deploy broke the emitter call site (ticket router or
+                socket handler no longer invokes auditTicket*()).
+              - The db.insert(auditLog) write is hard-failing — check the
+                `[ticketAudit]` error logs and the db health.
+            Verify by opening an admin ticket audit drawer — if rows are
+            missing, the emitter wiring is the root cause.
+
+  - name: gdpr-retention
+    interval: 5m
+    rules:
+      # The daily purge runs once every 24h (with jitter). A 48h window means
+      # one missed run is tolerable (maintenance/restart) but two consecutive
+      # misses always page. Silent purge failure → data retained past the 30d
+      # GDPR cutoff with no user-visible signal, which is a compliance risk.
+      - alert: GdprPurgeMissing
+        expr: increase(guichet_gdpr_purge_runs_total[48h]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          subsystem: gdpr
+        annotations:
+          summary: 'GDPR daily purge has not run in 48h'
+          description: |
+            No GDPR purge runs recorded in the last 48h. Retention is slipping —
+            data older than GDPR_RETENTION_DAYS is being retained. Check the
+            scheduler arming logs (`[purge] Purge scheduled with jitter`) and
+            that the server process stayed up. The scheduler is armed at boot,
+            so a crash loop also silences this counter.
+
+      - alert: GdprPurgeChainAborted
+        expr: increase(guichet_gdpr_purge_runs_total{outcome="chain_aborted"}[24h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          subsystem: gdpr
+        annotations:
+          summary: 'GDPR purge aborted because audit chain failed verification'
+          description: |
+            The daily purge refused to delete data because the audit chain
+            could not be verified. Either the hash chain is broken (see the
+            AuditChainTamperDetected rule) or the verify service errored out
+            (see AuditChainVerifyServiceError). The purge will keep failing
+            until the underlying chain issue is fixed — restore chain
+            integrity first, THEN re-run the purge manually via the
+            Platform admin tools.
+
   - name: webhook-delivery
     interval: 30s
     rules:

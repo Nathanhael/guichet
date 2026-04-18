@@ -180,6 +180,35 @@
           "legendFormat": "{{action}}"
         }
       ]
+    },
+    {
+      "title": "GDPR Purge Runs (24h)",
+      "description": "Counts of GDPR purge runs grouped by outcome. `success` = purge completed end-to-end. `chain_aborted` = audit chain failed verification and purge was halted as a safety measure. `error` = uncaught exception during purge (logs contain stack trace). This panel pairs with the GdprPurgeMissing + GdprPurgeChainAborted alerts — a healthy cluster shows one `success` bar every 24h.",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 36 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "expr": "sum by (outcome) (increase(guichet_gdpr_purge_runs_total[24h]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    },
+    {
+      "title": "GDPR Rows Purged (24h)",
+      "description": "Rolling 24h count of rows removed or anonymized by the GDPR purge, grouped by scope (ai_usage_log, invites). Zero on a healthy idle tenant is expected — this panel is a retention-audit artifact rather than a liveness check (use GDPR Purge Runs for liveness).",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 36 },
+      "targets": [
+        {
+          "expr": "sum by (scope) (increase(guichet_gdpr_rows_purged_total[24h]))",
+          "legendFormat": "{{scope}}"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,
