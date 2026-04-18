@@ -18,16 +18,14 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
   test.describe.configure({ retries: 1 });
   test.setTimeout(90_000);
 
-  // Make this spec independent of sibling-file ordering. Playwright runs
-  // spec files in parallel workers, so chat-enhancements.spec.ts's
-  // afterAll cleanup cannot be relied on to complete before we start.
-  // Defensively close any open tickets for agent_qa so the 1-ticket-per-agent
-  // guard doesn't bounce our creation (and the `alreadyInChat` probe doesn't
-  // race a stale chat surface from a parallel spec).
+  // This spec uses the dedicated agent_flow/support_flow fixture pair so it
+  // does not race with chat-enhancements (agent_qa) or view-modes (support_qa)
+  // when Playwright runs files in parallel. Defensive close-all is kept in
+  // case a prior run aborted mid-flight and left an open ticket.
   test.beforeAll(() => {
     try {
       execSync(
-        `docker compose exec -T db psql -U user -d guichet -c "UPDATE tickets SET status='closed' WHERE agent_id='agent_qa' AND status <> 'closed';"`,
+        `docker compose exec -T db psql -U user -d guichet -c "UPDATE tickets SET status='closed' WHERE agent_id='agent_flow' AND status <> 'closed';"`,
         { stdio: 'ignore' }
       );
     } catch {
@@ -45,12 +43,12 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
 
     try {
       // ── Phase 1: Login both users ──────────────────────────────────────
-      // Use agent_qa — the E2E-only fixture with no pre-seeded tickets, so
-      // the ticket:new event below isn't rejected by the server's
-      // 1-ticket-per-agent guard. support_qa (DSC/FOT/TEC) is the paired
-      // support fixture so the resulting ticket lands in a queue it can see.
-      const agentLogin = await loginAsDemo(agentPage, 'agent_qa');
-      const supportLogin = await loginAsDemo(supportPage, 'support_qa');
+      // Use agent_flow/support_flow — dedicated fixtures for this spec that
+      // no other parallel spec touches. agent_flow has no pre-seeded tickets
+      // (1-ticket-per-agent guard stays happy) and support_flow covers
+      // DSC/FOT/TEC so the created ticket always lands in its queue.
+      const agentLogin = await loginAsDemo(agentPage, 'agent_flow');
+      const supportLogin = await loginAsDemo(supportPage, 'support_flow');
       test.skip(!agentLogin.ok || !supportLogin.ok, 'Demo login failed — seed data may be missing');
 
       // ── Phase 2: Agent creates a new ticket ────────────────────────────
@@ -86,10 +84,10 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
 
       // ── Phase 3: Support sees ticket in queue and joins ────────────────
       // Wait for the ticket to appear in the queue (socket push or 30s poll)
-      // Was `/E2E Agent A/i` for the retired e2e-agent-a fixture. After the
-      // fixture-rename migration this spec uses agent_qa whose display name
-      // is "QA Agent" (see server/seed.ts PARTNER_USERS).
-      const agentNameInQueue = supportPage.getByText(/QA Agent/i).first();
+      // agent_flow's display name is "Flow Agent" (see server/seed.ts
+      // PARTNER_USERS). Dedicated fixture = no cross-spec races on the
+      // ticket appearing/disappearing in the queue.
+      const agentNameInQueue = supportPage.getByText(/Flow Agent/i).first();
       await expect(agentNameInQueue).toBeVisible({ timeout: 30000 });
 
       // Click the ticket row in the sidebar
