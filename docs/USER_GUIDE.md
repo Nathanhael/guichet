@@ -13,48 +13,20 @@ Welcome to Guichet. This guide explains the core chat functionality, dynamic org
 
 ---
 
-## 2. Authentication & Recovery
+## 2. Authentication
 
 ### Standard Login
 - Access the platform via `http://localhost:3001` (or your production URL).
-- Depending on your organization's configuration, the login page may show:
-  - **Local only**: Email and password fields
-  - **SSO only**: "Sign in with Microsoft" button
-  - **Both**: Email/password fields and SSO button — choose either method
-- For corporate accounts, use the **"Sign in with Microsoft"** button.
-- For local accounts (invited with a temporary password), use email and password.
+- Click **"Sign in with Microsoft"** and complete the Azure OIDC flow.
+- Partner employees without a corporate tenant can be invited as Azure B2B guests and sign in with their home IdP (Microsoft, Google, or another federated provider).
+- No local passwords. MFA is enforced at the Azure tenant level, not by Guichet.
 
-### Password Recovery
-- If you forget your local password, click **"Forgot password?"** on the login screen.
-- Enter your registered email to receive a secure reset link.
-- Reset links are valid for **1 hour** and can only be used once.
-
-### Multi-Factor Authentication (MFA)
-- Click the **shield icon** (bottom-right of any screen) to open the Security Modal.
-- Under **Two-Factor Authentication**, click **"Set up"** to begin TOTP enrollment.
-- Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.).
-- Enter the 6-digit code to confirm and enable MFA.
-- **Save your recovery codes** — 8 one-time codes are shown. Store them securely.
-- When MFA is enabled, login will prompt for a TOTP code after entering your password.
-- You can also log in with a recovery code if you lose access to your authenticator app.
-
-### Password Change
-- Open the Security Modal via the shield icon.
-- Enter your current password and a new password meeting the strength requirements:
-  - Minimum 10 characters
-  - At least 1 uppercase, 1 lowercase, 1 digit, and 1 special character
-  - Cannot be one of your last 5 passwords
-  - Cannot contain your email prefix or name
-- All other sessions are automatically signed out after a password change.
-
-### Account Lockout
-- After **5 failed login attempts**, your account is temporarily locked for **15 minutes**.
-- You will receive an email notification when your account is locked.
-- Platform operators can manually unlock your account if needed.
+### Lost Access
+- If you cannot log in, contact your platform operator. They will verify your Azure account is provisioned and that your partner membership is active.
+- If SSO itself is down, platform operators can use the break-glass CLI (`docs/BREAK_GLASS_RUNBOOK.md`) to mint a short-lived JWT for emergency administration.
 
 ### Notification Preferences
-- Open the Security Modal and scroll to **Notifications**.
-- Toggle email notifications on/off for: account lockout alerts, MFA changes, and password changes.
+- Open the Settings popover (gear icon in the navbar) to toggle in-app and push notification categories.
 - All notifications are enabled by default (opt-out model).
 
 ---
@@ -63,16 +35,16 @@ Welcome to Guichet. This guide explains the core chat functionality, dynamic org
 
 Platform Operators use the **PlatformView** to manage the entire ecosystem.
 
-**Access Note**: The platform administrator login is hidden on the main SSO page to maintain a clean interface. To reveal it, **triple-click** the **"GUICHET"** logo at the top of the login card.
+**Access Note**: Platform operators sign in through the same Azure SSO button as everyone else — the `is_platform_operator` flag on their user row unlocks PlatformView after login. Emergency access uses the break-glass CLI; see `docs/BREAK_GLASS_RUNBOOK.md`.
 
 ### Partners Tab
 
 - Manage Active vs Inactive tenants. Inactive partners block logins and gracefully close open sessions.
 
 ### Users Tab
-- **Onboarding Status**: Track users as **Linked (SSO)**, **Active (Local)**, or **Pending Invite**.
+- **Onboarding Status**: Track users as **Linked (SSO)** (an Azure OID is stamped on the user) or **Pending** (invited but not yet signed in).
 - **Activity Monitoring**: The **Last Active** column shows the precise time of each user's last interaction.
-- **Resend Invite**: For pending users, use this button to regenerate a temporary password and resend the welcome email.
+- **Revoke Sessions**: Force sign-out all active sessions (and refresh tokens) for a user.
 - **Global Search & Management**: Edit profiles, manage cross-tenant access, or perform global deletions.
 
 ### Health Tab
@@ -80,15 +52,7 @@ Platform Operators use the **PlatformView** to manage the entire ecosystem.
 - **GDPR Monitoring**: View the last-run time and success status of the automated data purge.
 
 ### Config Tab
-- **Mail Infrastructure**: Manage the global email provider (SMTP, Resend, or SendGrid).
-- **Sender Details**: Configure the global "From" address and display name for all system emails.
-- **Verification**: Use the **"Send Test"** button to confirm your mail settings are working correctly.
-
-### Security Tab
-- **MFA Management**: View MFA status badges per user (green shield = enabled, grey = not enabled).
-- **Disable MFA**: Force-disable MFA for a locked-out user (sends email notification).
-- **Unlock Account**: Manually unlock a user whose account was locked due to failed login attempts.
-- **Revoke Sessions**: Force sign-out all active sessions for a user.
+- **System settings**: Global toggles and tuning parameters that apply to every partner.
 
 ### Audit Log
 - **Traceability**: Track every administrative change with granular `from -> to` diffs.
@@ -107,7 +71,7 @@ Platform Operators use the **PlatformView** to manage the entire ecosystem.
 ## 4. Partner Administration
 
 Partner Admins use the **AdminView** to manage their local workspace:
-- **Team Tab**: Manage users specific to the partner. Invite existing platform users or invite new external users. When inviting, choose auth method (local or SSO) per user. External (Azure B2B guest) admins show a `GUEST` badge next to their name — they have read access to every admin panel but are blocked from destructive mutations (webhook secrets, department edits, team-member add/remove/update). Have a full-rights admin perform those actions or promote the user internally if that's the intent.
+- **Team Tab**: Manage users specific to the partner. Invite existing platform users or invite new external users — all invites are SSO-only; the user's first Microsoft sign-in links their Azure OID to the invited row. External (Azure B2B guest) admins show a `GUEST` badge next to their name — they have read access to every admin panel but are blocked from destructive mutations (webhook secrets, department edits, team-member add/remove/update). Have a full-rights admin perform those actions or promote the user internally if that's the intent.
 - **Departments Tab**: Create and update the names and descriptions of support departments.
 - **Tickets Tab**: Browse and manage all partner tickets.
 - **Business Hours Tab**: Configure operating hours per day. Outside hours, agents see a "business hours" guard and queue position.
