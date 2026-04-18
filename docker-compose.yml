@@ -130,9 +130,15 @@ services:
       - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
     environment:
-      - ALERTMANAGER_DEFAULT_WEBHOOK_URL=${ALERTMANAGER_DEFAULT_WEBHOOK_URL:-http://localhost:9999/alerts/default}
-      - ALERTMANAGER_SLACK_WEBHOOK_URL=${ALERTMANAGER_SLACK_WEBHOOK_URL:-}
-      - ALERTMANAGER_PAGER_WEBHOOK_URL=${ALERTMANAGER_PAGER_WEBHOOK_URL:-http://localhost:9999/alerts/audit-critical}
+      # Single generic webhook URL — set in .env when you wire a real receiver
+      # (ntfy.sh, pipedream, custom ops endpoint). Until then alerts fire but
+      # POST to a dead localhost URL and fail silently.
+      - ALERTMANAGER_WEBHOOK_URL=${ALERTMANAGER_WEBHOOK_URL:-}
+      # Optional per-receiver overrides — take precedence over ALERTMANAGER_WEBHOOK_URL
+      - ALERTMANAGER_DEFAULT_WEBHOOK_URL=${ALERTMANAGER_DEFAULT_WEBHOOK_URL:-}
+      - ALERTMANAGER_AUDIT_WEBHOOK_URL=${ALERTMANAGER_AUDIT_WEBHOOK_URL:-}
+      - ALERTMANAGER_ONCALL_WEBHOOK_URL=${ALERTMANAGER_ONCALL_WEBHOOK_URL:-}
+      - ALERTMANAGER_INTEGRATIONS_WEBHOOK_URL=${ALERTMANAGER_INTEGRATIONS_WEBHOOK_URL:-}
     ports:
       - "127.0.0.1:9093:9093"
 
