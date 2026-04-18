@@ -3,6 +3,7 @@ import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
+import { useUrlParam } from '../../hooks/useUrlState';
 
 const ACTION_OPTIONS = [
   // Partner
@@ -132,15 +133,18 @@ export default function PlatformAuditLog() {
   const t = useT();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<string[]>([]); // stack of previous cursors for back-nav
-  const [filterAction, setFilterAction] = useState('');
-  const [filterPartnerId, setFilterPartnerId] = useState('');
-  const [filterActorId, setFilterActorId] = useState('');
-  const [filterTargetId, setFilterTargetId] = useState('');
-  const [filterTargetType, setFilterTargetType] = useState('');
-  const [debouncedTargetId, setDebouncedTargetId] = useState('');
+  // Filters are mirrored into ?p.* so platform operators can bookmark/share
+  // a cross-tenant triage view. Namespace `p` keeps us clear of the partner
+  // view (`a.` — see AdminAuditLog).
+  const [filterAction, setFilterAction] = useUrlParam('action', '', 'p');
+  const [filterPartnerId, setFilterPartnerId] = useUrlParam('partner', '', 'p');
+  const [filterActorId, setFilterActorId] = useUrlParam('actor', '', 'p');
+  const [filterTargetId, setFilterTargetId] = useUrlParam('tid', '', 'p');
+  const [filterTargetType, setFilterTargetType] = useUrlParam('ttype', '', 'p');
+  const [debouncedTargetId, setDebouncedTargetId] = useState(() => filterTargetId);
   // Date filtering state
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useUrlParam('from', '', 'p');
+  const [dateTo, setDateTo] = useUrlParam('to', '', 'p');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
 
@@ -467,7 +471,15 @@ export default function PlatformAuditLog() {
         </div>
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <AuditMetadataDrawer entry={selectedEntry} onClose={() => setSelectedEntry(null)} />
+      <AuditMetadataDrawer
+        entry={selectedEntry}
+        onClose={() => setSelectedEntry(null)}
+        onFilterBy={(field, value) => {
+          if (field === 'actorId') { setFilterActorId(value); resetCursor(); }
+          else if (field === 'targetType') { setFilterTargetType(value); resetCursor(); }
+          else if (field === 'targetId') setFilterTargetId(value);
+        }}
+      />
     </div>
   );
 }

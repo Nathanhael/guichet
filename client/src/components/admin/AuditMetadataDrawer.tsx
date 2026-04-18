@@ -15,9 +15,15 @@ export type AuditEntry = {
 interface Props {
   entry: AuditEntry | null;
   onClose: () => void;
+  /**
+   * Called when the operator clicks a "filter by this actor/target" action in
+   * the drawer. The parent wires each field to the corresponding filter state
+   * so the drawer becomes a lightweight triage pivot. Omit to hide the buttons.
+   */
+  onFilterBy?: (field: 'actorId' | 'targetId' | 'targetType', value: string) => void;
 }
 
-export default function AuditMetadataDrawer({ entry, onClose }: Props) {
+export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Props) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -75,9 +81,52 @@ export default function AuditMetadataDrawer({ entry, onClose }: Props) {
         </div>
 
         <div className="p-6 space-y-4 border-b border-[var(--color-border)]">
-          <Field label="Actor" value={entry.actorName || entry.actorId || 'System'} />
-          <Field label="Target type" value={entry.targetType || '—'} />
-          <Field label="Target id" value={entry.targetId || '—'} mono />
+          <Field
+            label="Actor"
+            value={entry.actorName || entry.actorId || 'System'}
+            action={
+              onFilterBy && entry.actorId
+                ? {
+                    label: 'Filter by actor',
+                    onClick: () => {
+                      onFilterBy('actorId', entry.actorId!);
+                      onClose();
+                    },
+                  }
+                : undefined
+            }
+          />
+          <Field
+            label="Target type"
+            value={entry.targetType || '—'}
+            action={
+              onFilterBy && entry.targetType
+                ? {
+                    label: 'Filter',
+                    onClick: () => {
+                      onFilterBy('targetType', entry.targetType!);
+                      onClose();
+                    },
+                  }
+                : undefined
+            }
+          />
+          <Field
+            label="Target id"
+            value={entry.targetId || '—'}
+            mono
+            action={
+              onFilterBy && entry.targetId
+                ? {
+                    label: 'Filter',
+                    onClick: () => {
+                      onFilterBy('targetId', entry.targetId!);
+                      onClose();
+                    },
+                  }
+                : undefined
+            }
+          />
           {entry.partnerId !== undefined && (
             <Field label="Partner id" value={entry.partnerId || '—'} mono />
           )}
@@ -107,10 +156,31 @@ export default function AuditMetadataDrawer({ entry, onClose }: Props) {
   );
 }
 
-function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function Field({
+  label,
+  value,
+  mono,
+  action,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  action?: { label: string; onClick: () => void };
+}) {
   return (
     <div>
-      <p className="mono-label mb-1">{label}</p>
+      <div className="flex justify-between items-center mb-1 gap-2">
+        <p className="mono-label">{label}</p>
+        {action && (
+          <button
+            type="button"
+            onClick={action.onClick}
+            className="mono-label underline hover:text-[var(--color-text-primary)]"
+          >
+            {action.label}
+          </button>
+        )}
+      </div>
       <p className={mono ? 'font-mono text-xs break-all' : 'text-sm'}>{value}</p>
     </div>
   );

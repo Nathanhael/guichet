@@ -33,11 +33,21 @@ export default function PlatformSystemHealth() {
     retry: false,
   }) as { data: ChainVerifyRecord | null | undefined };
 
+  // Rolling history of chain-verify runs. Rendered as a small compliance trail
+  // below the latest-status card so reviewers don't need to page through
+  // audit_log to reconstruct the sequence.
+  const { data: chainHistory } = trpc.platform.getChainVerifyHistory.useQuery(undefined, {
+    retry: false,
+  }) as { data: ChainVerifyRecord[] | undefined };
+
   // Chain-integrity verification is a mutation — it mutates system_settings
   // (writing the run record) and a full scan walks the entire audit_archive,
   // so it must never run automatically on mount.
   const chainVerify = trpc.platform.verifyAuditChain.useMutation({
-    onSuccess: () => { utils.platform.getLastChainVerify.invalidate(); },
+    onSuccess: () => {
+      utils.platform.getLastChainVerify.invalidate();
+      utils.platform.getChainVerifyHistory.invalidate();
+    },
   });
 
   // Live countdown while the operator is rate-limited. Parsed out of the
@@ -253,6 +263,49 @@ export default function PlatformSystemHealth() {
             <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
               No verification has been run yet.
             </p>
+          )}
+
+          {chainHistory && chainHistory.length > 1 && (
+            <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
+              <p className="mono-label mb-3">Run History</p>
+              <div className="overflow-x-auto">
+                <table
+                  className="w-full text-left border-collapse"
+                  data-testid="chain-verify-history"
+                >
+                  <thead>
+                    <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
+                      <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">When</th>
+                      <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Status</th>
+                      <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Checked</th>
+                      <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">By</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[var(--color-border)]">
+                    {chainHistory.map((h, i) => (
+                      <tr key={`${h.ranAt}-${i}`}>
+                        <td className="p-2 text-[10px] font-mono whitespace-nowrap">
+                          {new Date(h.ranAt).toLocaleString()}
+                        </td>
+                        <td className="p-2 text-[10px] font-mono">
+                          {h.error ? (
+                            <span className="text-[var(--color-accent-amber)]">ERROR</span>
+                          ) : h.valid ? (
+                            <span className="text-[var(--color-accent-green)]">VALID</span>
+                          ) : (
+                            <span className="text-[var(--color-accent-red)]">BROKEN</span>
+                          )}
+                        </td>
+                        <td className="p-2 text-[10px] font-mono">{h.checked.toLocaleString()}</td>
+                        <td className="p-2 text-[10px] font-mono uppercase text-[var(--color-text-secondary)]">
+                          {h.ranByName || h.ranBy || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           )}
         </div>
       </div>
