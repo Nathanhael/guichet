@@ -104,6 +104,14 @@ export async function loginAsDemo(
       if (shouldSeedMembership && json.memberships && json.memberships.length > 0) {
         sessionStorage.setItem('activeMembershipId', json.memberships[0].id);
         sessionStorage.setItem('activePartnerId', json.memberships[0].partnerId);
+      } else {
+        // Not seeding → actively clear any stale values left by a previous
+        // login in the same Playwright context. Without this, back-to-back
+        // logins (e.g. tenant admin → platform operator) would hydrate
+        // Zustand with the previous user's active partner and mis-route the
+        // new user into AdminView.
+        sessionStorage.removeItem('activeMembershipId');
+        sessionStorage.removeItem('activePartnerId');
       }
       return { ok: true, ...json } as LoginResult;
     },
