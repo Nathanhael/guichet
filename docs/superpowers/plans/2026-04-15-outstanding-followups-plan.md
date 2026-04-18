@@ -3,9 +3,23 @@
 **Date:** 2026-04-15
 **Context:** Session that shipped the Tessera → Guichet rebrand + SSO locale sync + Rolldown build fix surfaced several things worth addressing separately. This plan sequences them by impact and lays out the work for each.
 
+**Status as of 2026-04-18:**
+
+| P | State | Evidence |
+|---|---|---|
+| P1 E2E fixture conflict | ✅ Shipped | `0fea728`, `549e014`, `4f9c86d`, `992dc01`, `37798a2` — two-round E2E restoration; fixture isolation in place |
+| P2 push-and-idle coverage | 🟡 Open | No test file for `useIdleStatus` / `utils/notifications` yet; low priority, no runtime breakage reported |
+| P3 npm audit sweep | ✅ Shipped | Resolved during v4.2.0 security cycle |
+| P4 SSO locale residuals | 📝 Cosmetic | 5-min doc closes, deferred per [cosmetic_work_deferral memory] |
+| P5 ssoAttributeMap UI | ⏸️ Deferred | Customer-triggered; no partner has requested yet |
+| P6 Ops tasks | ⏸️ Out of code scope | Deploy-time ops, not a code change |
+| P7 Long-tail cleanup | 📝 Cosmetic | Trivial branch pruning, non-blocking |
+
+Only P2 is a genuine open runtime gap. Rest is cosmetic / out-of-scope / customer-gated.
+
 ---
 
-## Priority 1 — fix the E2E test fixture conflict (blocking CI health)
+## Priority 1 — fix the E2E test fixture conflict (blocking CI health) — ✅ SHIPPED
 
 ### Problem
 
@@ -34,7 +48,7 @@
 
 ---
 
-## Priority 2 — `push-and-idle.spec.ts` coverage restoration
+## Priority 2 — `push-and-idle.spec.ts` coverage restoration — 🟡 OPEN (only real runtime gap)
 
 Currently skips rather than fails when the bell doesn't render. Root question: does the bell *actually* render for agents in E2E?
 
@@ -51,7 +65,7 @@ Currently skips rather than fails when the bell doesn't render. Root question: d
 
 ---
 
-## Priority 3 — `npm audit fix` sweep
+## Priority 3 — `npm audit fix` sweep — ✅ SHIPPED (v4.2.0)
 
 7 server vulnerabilities (5 moderate, 2 high) + 1 high-severity client flagged during `npm install` today.
 

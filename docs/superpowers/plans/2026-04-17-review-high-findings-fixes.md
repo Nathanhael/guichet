@@ -1,8 +1,20 @@
 # Fix 6 HIGH findings from 2026-04-17 review
 
-**Status:** Proposed
+**Status:** Shipped 2026-04-18
 **Source:** [2026-04-17-full-review.md](../reviews/2026-04-17-full-review.md)
 **Strategy:** 5 focused PRs, sequenced by blast radius + dependency. Each phase ships independently.
+
+## Shipped commits
+
+| PR | Commit |
+|---|---|
+| PR1 — dev-login mount gate | `1f4afe4` |
+| PR2 — soft-delete blob cleanup | `c24386e` |
+| PR3 — archive snapshot transaction | `f7e5a3e` |
+| PR4 — Drizzle journal rebuild | `0d835a8` |
+| PR5 — Redis-backed authLimiter | `ca58c5a` |
+
+Wiki page: [guichet-review-remediation-sweep-2026-04-17](../../../../wiki/wiki/learnings/guichet-review-remediation-sweep-2026-04-17.md).
 
 ## PR order at a glance
 

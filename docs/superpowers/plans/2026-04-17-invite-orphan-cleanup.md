@@ -3,7 +3,7 @@
 **Date**: 2026-04-17
 **Branch**: `fix/invite-orphan-cleanup`
 **Finding**: Review M2 — `inviteExternalUser` creates DB row with no password/externalId, SSO callback claims it by email-match. Orphan rows persist forever; claim window is unbounded.
-**Status**: Proposed
+**Status**: Shipped 2026-04-18 — `b96842f` (fix(auth): bound SSO invite claim-by-email window + purge abandoned invites). Wiki: [guichet-invite-flow-hardening](../../../../wiki/wiki/decisions/guichet-invite-flow-hardening.md).
 
 ---
 
