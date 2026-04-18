@@ -1,22 +1,18 @@
 # Post-Ship Review Fix Sweep — 2026-04-18
 
 **Source:** [2026-04-18-post-ship-review.md](../reviews/2026-04-18-post-ship-review.md)
-**Status:** H-1 Shipped 2026-04-18 (`5eb6d24`). H-2 / M-1 / M-2 pending.
-**Strategy:** Bundle remaining 3 findings as a single sweep PR. All low-blast-radius, single-file edits + tests.
+**Status:** Shipped 2026-04-18. All 4 findings closed.
 
 ## Shipped
 
 | # | Finding | Commit |
 |---|---|---|
 | H-1 | `purgeAbandonedInvites` excludes platform operators | `5eb6d24` |
+| H-2 | `updateMembership` atomic (db.transaction + no silent catch) | `052cef1` |
+| M-1 | `removeMember` audit inside transaction | `052cef1` |
+| M-2 | `getCrossPartnerActivity` inline aggregate orderBy | `052cef1` |
 
-## Pending
-
-| # | Finding | Effort | Risk |
-|---|---|---|---|
-| H-2 | `updateMembership` atomicity + audit-trail | S | medium (schema untouched, behavior changes) |
-| M-1 | `removeMember` audit row inside transaction | XS | trivial |
-| M-2 | `getCrossPartnerActivity` orderBy inline aggregate | XS | trivial |
+Test count went from 683 → 685 (new `updateMembershipAtomic.test.ts` covers rollback path).
 
 ---
 
