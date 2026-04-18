@@ -23,6 +23,7 @@ const baseInput = z.object({
   action: z.string().optional(),
   actorId: z.string().optional(),
   targetType: z.string().optional(),
+  targetId: z.string().optional(),
   wasExternal: z.boolean().optional(),
   dateFrom: z.string().optional(),
   dateTo: z.string().optional(),
@@ -36,6 +37,7 @@ function buildConditions(
   if (input.action) conditions.push(eq(auditLog.action, input.action));
   if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));
   if (input.targetType) conditions.push(eq(auditLog.targetType, input.targetType));
+  if (input.targetId) conditions.push(eq(auditLog.targetId, input.targetId));
   if (input.dateFrom) conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
   if (input.dateTo) conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
   if (input.wasExternal === true) {

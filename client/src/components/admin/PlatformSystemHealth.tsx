@@ -1,6 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
+
+function parseRetryAfter(message: string | undefined): number | null {
+  if (!message) return null;
+  const m = message.match(/retry in\s+(\d+)\s*s/i);
+  return m ? parseInt(m[1], 10) : null;
+}
 
 type ChainVerifyRecord = {
   ranAt: string;
@@ -33,6 +39,24 @@ export default function PlatformSystemHealth() {
   const chainVerify = trpc.platform.verifyAuditChain.useMutation({
     onSuccess: () => { utils.platform.getLastChainVerify.invalidate(); },
   });
+
+  // Live countdown while the operator is rate-limited. Parsed out of the
+  // server's error message ("Retry in Ns"), stored absolute so it remains
+  // correct across re-renders, and ticked down once per second.
+  const [retryRemaining, setRetryRemaining] = useState<number>(0);
+  useEffect(() => {
+    if (chainVerify.error?.data?.code !== 'TOO_MANY_REQUESTS') return;
+    const secs = parseRetryAfter(chainVerify.error.message);
+    if (secs === null || secs <= 0) return;
+    const deadline = Date.now() + secs * 1000;
+    setRetryRemaining(secs);
+    const id = setInterval(() => {
+      const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setRetryRemaining(left);
+      if (left === 0) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [chainVerify.error]);
 
   const alerts: { id: string; message: string }[] = [];
   if (health) {
@@ -151,18 +175,25 @@ export default function PlatformSystemHealth() {
             </div>
             <button
               onClick={() => chainVerify.mutate()}
-              disabled={chainVerify.isPending}
+              disabled={chainVerify.isPending || retryRemaining > 0}
               className="btn-primary text-[10px] uppercase tracking-widest px-4 py-2 whitespace-nowrap"
               id="verify-audit-chain-btn"
+              data-retry-remaining={retryRemaining}
             >
-              {chainVerify.isPending ? 'Verifying…' : 'Verify Now'}
+              {chainVerify.isPending
+                ? 'Verifying…'
+                : retryRemaining > 0
+                  ? `Retry in ${retryRemaining}s`
+                  : 'Verify Now'}
             </button>
           </div>
 
           {chainVerify.error && (
             <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-accent-red)] mb-4">
               {chainVerify.error.data?.code === 'TOO_MANY_REQUESTS'
-                ? chainVerify.error.message
+                ? retryRemaining > 0
+                  ? `Rate limited — retry in ${retryRemaining}s`
+                  : chainVerify.error.message
                 : 'Verification failed — check server logs.'}
             </p>
           )}
