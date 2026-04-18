@@ -89,6 +89,31 @@ export default function AdminAuditLog() {
   const { data: actionList } = trpc.partner.audit.listActions.useQuery();
   const { data: targetTypeList } = trpc.partner.audit.listTargetTypes.useQuery();
 
+  // Partner-scoped chain verify. The mutation walks the full WORM archive
+  // (the hash chain is global) but returns only this partner's slice counts
+  // and whether the break — if any — lives in scope. Cross-tenant row ids
+  // are never leaked back (the server nulls `brokenAt` when the broken row
+  // belongs to another partner).
+  const verifyChain = trpc.partner.audit.verifyChain.useMutation({
+    onSuccess: (r) => {
+      if (r.error) {
+        setToast({ message: `Chain verify failed: ${r.error}`, type: 'error' });
+        return;
+      }
+      if (!r.valid) {
+        const where = r.brokenInScope
+          ? `in your tenant (row ${r.brokenAt})`
+          : 'outside your tenant';
+        setToast({ message: `Chain broken ${where} — ${r.partnerChecked} of your rows checked`, type: 'error' });
+        return;
+      }
+      setToast({ message: `Chain OK — ${r.partnerChecked} of your rows verified`, type: 'success' });
+    },
+    onError: (err) => {
+      setToast({ message: err.message || 'Chain verify failed', type: 'error' });
+    },
+  });
+
   const queryParams = {
     limit: LIMIT,
     cursor,
@@ -195,6 +220,14 @@ export default function AdminAuditLog() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => verifyChain.mutate()}
+            disabled={verifyChain.isPending}
+            className="btn-secondary disabled:opacity-30"
+            data-testid="verify-chain-btn"
+          >
+            {verifyChain.isPending ? 'Verifying…' : 'Verify Chain'}
+          </button>
           <button onClick={() => handleExport('csv')} className="btn-primary">Export CSV</button>
           <button onClick={() => handleExport('json')} className="btn-secondary">Export JSON</button>
         </div>
