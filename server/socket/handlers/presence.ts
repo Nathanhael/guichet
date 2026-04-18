@@ -16,7 +16,6 @@ import { broadcastQueuePositions } from '../../services/businessHours.js';
 import { insertSystemMessage } from '../../services/systemMessage.js';
 import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/messageQueries.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
-import { sendPush } from '../../services/pushNotification.js';
 import { findUserName } from '../../services/userQueries.js';
 import { auditTicketAssigned } from '../../services/ticketAudit.js';
 import {
@@ -97,15 +96,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))
         .emit('support:joined', { ticketId, supportId, supportName, participants });
       await broadcastQueuePositions(callerPartnerId);
-      if (ticket.agentId) {
-        sendPush(ticket.agentId, {
-          title: 'Support joined your ticket',
-          body: `${socket.data.name} joined your conversation`,
-          ticketId,
-          type: 'joined',
-          tag: `ticket-${ticketId}`,
-        });
-      }
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
   });
 

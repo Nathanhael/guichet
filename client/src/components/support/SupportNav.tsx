@@ -70,7 +70,6 @@ export default function SupportNav({ partnerName }: SupportNavProps) {
 
         <SettingsPopover
           showAccessibility
-          showNotifications
         />
         <UserMenu />
       </div>

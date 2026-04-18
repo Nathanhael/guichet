@@ -18,8 +18,6 @@ import uploadRoutes from './routes/uploads.js';
 import authRoutes from './routes/auth/index.js';
 import ssoRoutes from './routes/sso.js';
 import ticketRoutes from './routes/tickets.js'; // Kept for export route support
-import pushRoutes from './routes/push.js';
-import { getVapidPublicKey } from './services/pushNotification.js';
 import { db } from './db.js';
 import { sql, eq } from 'drizzle-orm';
 import config from './config.js';
@@ -270,14 +268,6 @@ v1Router.use('/uploads', uploadLimiter, uploadRoutes);
 
 v1Router.use('/auth', authLimiter, authRoutes);
 v1Router.use('/auth/sso', authLimiter, ssoRoutes);
-
-// Push notifications — vapid key is public, subscribe/unsubscribe require auth
-v1Router.get('/push/vapid-key', (_req, res) => {
-  const key = getVapidPublicKey();
-  if (!key) return res.status(503).json({ error: 'Push notifications not configured' });
-  res.json({ vapidPublicKey: key });
-});
-v1Router.use('/push', authMiddleware, pushRoutes);
 
 // tRPC v1
 v1Router.use(

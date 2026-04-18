@@ -50,9 +50,7 @@ function buildProvider(
       return new AzureOpenAiProvider(baseUrl, apiKey, deployment);
     }
 
-    case 'openai-compatible':
-    case 'gemini':
-    case 'anthropic': {
+    case 'openai-compatible': {
       const baseUrl = opts.baseUrl || config.AI_BASE_URL;
       if (!baseUrl) throw new Error('AI_BASE_URL is required for openai-compatible provider');
       return new OpenAiCompatibleProvider(

@@ -1,5 +1,5 @@
 {
-  "id": "711dcd50-04f4-4980-ac78-4c58393a5861",
+  "id": "d77c00e8-b056-4b6e-b8a1-458a36187d54",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -797,6 +797,21 @@
           "method": "btree",
           "with": {}
         },
+        "idx_audit_archive_target_id": {
+          "name": "idx_audit_archive_target_id",
+          "columns": [
+            {
+              "expression": "target_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "idx_audit_archive_sequence": {
           "name": "idx_audit_archive_sequence",
           "columns": [
@@ -938,6 +953,21 @@
           "columns": [
             {
               "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_audit_log_target_id": {
+          "name": "idx_audit_log_target_id",
+          "columns": [
+            {
+              "expression": "target_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1144,36 +1174,15 @@
           "primaryKey": false,
           "notNull": true
         },
-        "available_seconds": {
-          "name": "available_seconds",
+        "online_seconds": {
+          "name": "online_seconds",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
-        "break_seconds": {
-          "name": "break_seconds",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "lunch_seconds": {
-          "name": "lunch_seconds",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "meeting_seconds": {
-          "name": "meeting_seconds",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "training_seconds": {
-          "name": "training_seconds",
+        "away_seconds": {
+          "name": "away_seconds",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -1507,15 +1516,8 @@
           "notNull": false,
           "default": 0
         },
-        "sla_resolved": {
-          "name": "sla_resolved",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "sla_compliant": {
-          "name": "sla_compliant",
+        "response_count": {
+          "name": "response_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
@@ -1878,6 +1880,14 @@
           "notNull": false,
           "default": "'[]'::jsonb"
         },
+        "source": {
+          "name": "source",
+          "type": "membership_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'sso'"
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1983,6 +1993,13 @@
           "primaryKey": false,
           "notNull": false
         },
+        "sender_is_external": {
+          "name": "sender_is_external",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "text": {
           "name": "text",
           "type": "text",
@@ -2050,6 +2067,30 @@
         "deleted_at": {
           "name": "deleted_at",
           "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "link_previews": {
+          "name": "link_previews",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attachments": {
+          "name": "attachments",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reply_to_id": {
+          "name": "reply_to_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "search_vector": {
+          "name": "search_vector",
+          "type": "tsvector",
           "primaryKey": false,
           "notNull": false
         }
@@ -2125,6 +2166,36 @@
           "isUnique": false,
           "concurrently": false,
           "method": "btree",
+          "with": {}
+        },
+        "idx_messages_reply_to_id": {
+          "name": "idx_messages_reply_to_id",
+          "columns": [
+            {
+              "expression": "reply_to_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_messages_search_vector": {
+          "name": "idx_messages_search_vector",
+          "columns": [
+            {
+              "expression": "search_vector",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "gin",
           "with": {}
         }
       },
@@ -2327,21 +2398,6 @@
           "notNull": true,
           "default": "'active'"
         },
-        "auth_method": {
-          "name": "auth_method",
-          "type": "auth_method",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'local'"
-        },
-        "sla_config": {
-          "name": "sla_config",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'{}'::jsonb"
-        },
         "ai_enabled": {
           "name": "ai_enabled",
           "type": "boolean",
@@ -2375,6 +2431,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'{}'::jsonb"
+        },
+        "sso_attribute_map": {
+          "name": "sso_attribute_map",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -2425,13 +2487,13 @@
           "name": "ticket_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "agent_id": {
           "name": "agent_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "support_id": {
           "name": "support_id",
@@ -2448,6 +2510,18 @@
         "comment": {
           "name": "comment",
           "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dept": {
+          "name": "dept",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },
@@ -2551,7 +2625,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "ratings_agent_id_users_id_fk": {
@@ -2564,7 +2638,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "ratings_support_id_users_id_fk": {
@@ -2577,7 +2651,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -3047,25 +3121,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": 0
-        },
-        "sla_response_due_at": {
-          "name": "sla_response_due_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sla_resolution_due_at": {
-          "name": "sla_resolution_due_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sla_breached": {
-          "name": "sla_breached",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": false,
-          "default": false
         }
       },
       "indexes": {
@@ -3435,11 +3490,12 @@
           "notNull": false,
           "default": "'nl'"
         },
-        "password": {
-          "name": "password",
-          "type": "text",
+        "lang_locked": {
+          "name": "lang_locked",
+          "type": "boolean",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": false
         },
         "avatar_url": {
           "name": "avatar_url",
@@ -3454,82 +3510,6 @@
           "notNull": false,
           "default": false
         },
-        "platform_totp_secret": {
-          "name": "platform_totp_secret",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "platform_totp_enabled_at": {
-          "name": "platform_totp_enabled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reset_password_token": {
-          "name": "reset_password_token",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reset_password_expires": {
-          "name": "reset_password_expires",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "password_changed_at": {
-          "name": "password_changed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "password_history": {
-          "name": "password_history",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'[]'::jsonb"
-        },
-        "failed_login_attempts": {
-          "name": "failed_login_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mfa_secret": {
-          "name": "mfa_secret",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mfa_enabled_at": {
-          "name": "mfa_enabled_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mfa_recovery_codes": {
-          "name": "mfa_recovery_codes",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'[]'::jsonb"
-        },
-        "notification_preferences": {
-          "name": "notification_preferences",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "'{}'::jsonb"
-        },
         "accessibility_prefs": {
           "name": "accessibility_prefs",
           "type": "jsonb",
@@ -3537,11 +3517,12 @@
           "notNull": true,
           "default": "'{}'::jsonb"
         },
-        "auth_method": {
-          "name": "auth_method",
-          "type": "text",
+        "is_external": {
+          "name": "is_external",
+          "type": "boolean",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": false
         },
         "last_active_at": {
           "name": "last_active_at",
@@ -3881,13 +3862,12 @@
         "resolved"
       ]
     },
-    "public.auth_method": {
-      "name": "auth_method",
+    "public.membership_source": {
+      "name": "membership_source",
       "schema": "public",
       "values": [
-        "local",
         "sso",
-        "both"
+        "manual"
       ]
     },
     "public.user_role": {

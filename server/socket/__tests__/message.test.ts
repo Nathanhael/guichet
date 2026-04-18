@@ -139,10 +139,6 @@ vi.mock('../../services/guards.js', () => ({
   guardRepetition: vi.fn(async () => null),
 }));
 
-vi.mock('../../services/pushNotification.js', () => ({
-  sendPush: vi.fn(async () => {}),
-}));
-
 vi.mock('../../services/linkPreview.js', () => ({
   unfurlLinks: vi.fn(async () => []),
 }));

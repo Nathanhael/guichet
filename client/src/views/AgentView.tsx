@@ -11,7 +11,6 @@ import RatingModal from '../components/RatingModal';
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import AgentNav from '../components/agent/AgentNav';
 import TicketForm from '../components/agent/TicketForm';
-import PwaInstallPrompt from '../components/PwaInstallPrompt';
 import { trpc } from '../utils/trpc';
 import { Ticket } from '../types';
 
@@ -41,27 +40,6 @@ export default function AgentView() {
 
   // Keep business hours store fresh even when TicketForm is unmounted (agent in active chat)
   useBusinessHours();
-
-  // Handle service worker postMessage for notification click navigation
-  useEffect(() => {
-    function handleSwMessage(event: MessageEvent) {
-      if (event.data?.type === 'NAVIGATE_TICKET' && event.data.ticketId) {
-        setActiveTicketId(event.data.ticketId as string);
-      }
-    }
-    navigator.serviceWorker?.addEventListener('message', handleSwMessage);
-    return () => navigator.serviceWorker?.removeEventListener('message', handleSwMessage);
-  }, [setActiveTicketId]);
-
-  // Handle ?ticket= URL param on load (e.g. opened from push notification when app was closed)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const ticketId = params.get('ticket');
-    if (ticketId) {
-      setActiveTicketId(ticketId);
-      window.history.replaceState({}, '', window.location.pathname);
-    }
-  }, [setActiveTicketId]);
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
   const manifest = useMemo(
@@ -153,7 +131,6 @@ export default function AgentView() {
       </div>
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
-      <PwaInstallPrompt />
     </BusinessHoursGuard>
     <RatingModal />
     </ErrorBoundary>

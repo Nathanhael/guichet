@@ -19,7 +19,6 @@ Real-time, multi-tenant chat platform for BPO and outsourced helpdesk teams. Eac
 - **GDPR Compliance** — 30-day retention purge with automatic archival, daily stats aggregation, and notification preferences. Purge observability via `guichet_gdpr_purge_runs_total{outcome}` and `guichet_gdpr_rows_purged_total{scope}`; aborts if the audit chain fails verification (fail-closed).
 - **Canned Responses** — Per-partner templates with shortcut keys and `/` picker in chat
 - **Customer Satisfaction** — Auto-prompted ratings on ticket close, follow-up reminders, per-agent CSAT reporting
-- **PWA Ready** — Installable on mobile with offline support and push notifications
 
 ## Screenshots
 

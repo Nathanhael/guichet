@@ -98,7 +98,6 @@ vi.mock('../db/schema.js', () => ({
   aiUsageLog: { createdAt: 'created_at' },
   appFeedback: 'app_feedback_table',
   agentStatusLog: { startedAt: 'started_at' },
-  pushSubscriptions: { createdAt: 'created_at', userId: 'user_id' },
   users: { id: 'id', email: 'email', externalId: 'external_id', password: 'password', createdAt: 'created_at' },
 }));
 

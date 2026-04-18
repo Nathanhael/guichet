@@ -4,12 +4,10 @@ import { useT } from '../i18n';
 import { useStoreShallow } from '../store/useStore';
 import LanguageSwitcher from './LanguageSwitcher';
 import DarkModeToggle from './DarkModeToggle';
-import NotificationToggle from './NotificationToggle';
 import ViewModeDropdown from './support/ViewModeDropdown';
 
 export interface SettingsPopoverProps {
   showAccessibility?: boolean;
-  showNotifications?: boolean;
   showViewMode?: boolean;
 }
 
@@ -42,7 +40,6 @@ function ToggleSwitch({ enabled, onToggle }: { enabled: boolean; onToggle: () =>
 
 export default function SettingsPopover({
   showAccessibility = false,
-  showNotifications = false,
   showViewMode = false,
 }: SettingsPopoverProps) {
   const t = useT();
@@ -145,13 +142,6 @@ export default function SettingsPopover({
             </>
           )}
 
-          {/* Notifications — conditional */}
-          {showNotifications && (
-            <div className={ROW}>
-              <span className={LABEL}>{t('notifications')}</span>
-              <NotificationToggle />
-            </div>
-          )}
         </div>
       )}
     </div>

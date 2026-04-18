@@ -39,7 +39,7 @@ export default function AgentNav({
             lose the user's work. Prompt before we drop them. */}
         <PartnerSwitcher confirmBeforeSwitch />
         <ConnectionStatus />
-        <SettingsPopover showAccessibility showNotifications />
+        <SettingsPopover showAccessibility />
         <UserMenu showFeedback onFeedback={onShowFeedback} />
       </div>
     </nav>

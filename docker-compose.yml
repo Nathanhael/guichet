@@ -36,13 +36,12 @@ services:
       - DEMO_MODE=${DEMO_MODE:-false}
       - REQUIRE_PLATFORM_STEP_UP=${REQUIRE_PLATFORM_STEP_UP:-false}
       - PLATFORM_ADMIN_EMAIL=${PLATFORM_ADMIN_EMAIL:-}
-      - PLATFORM_ADMIN_PASSWORD=${PLATFORM_ADMIN_PASSWORD:-}
       - AI_ENABLED=${AI_ENABLED:-false}
       # Field encryption key loaded from .env — DO NOT hardcode.
       # FIELD_ENCRYPTION_SECRET is the canonical name; AI_KEY_ENCRYPTION_SECRET is a legacy alias.
       # encryption.ts reads `FIELD_ENCRYPTION_SECRET || AI_KEY_ENCRYPTION_SECRET` so either works.
-      - FIELD_ENCRYPTION_SECRET=${FIELD_ENCRYPTION_SECRET:-}
-      - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:?AI_KEY_ENCRYPTION_SECRET or FIELD_ENCRYPTION_SECRET must be set in .env}
+      - FIELD_ENCRYPTION_SECRET=${FIELD_ENCRYPTION_SECRET:?FIELD_ENCRYPTION_SECRET must be set in .env}
+      - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:-}
       # METRICS_TOKEN — shared secret between /metrics and Prometheus scraper.
       # Dev default matches the value in monitoring/prometheus.yml so scraping works out of the box.
       - METRICS_TOKEN=${METRICS_TOKEN:-dev-only-metrics-token-replace-in-prod}
