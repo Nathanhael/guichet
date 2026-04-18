@@ -14,7 +14,6 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
-const DEMO_PASSWORD = 'password123';
 
 /** Click the first ticket in the support queue sidebar */
 async function openFirstTicket(page: Page): Promise<boolean> {

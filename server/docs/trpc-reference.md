@@ -81,19 +81,6 @@ Client access: `trpc.<router>.<procedure>`
 | `list` | query | platform | List all users (platform-wide) |
 | `demoList` | query | public | List demo users (only when DEMO_MODE=true) |
 | `revokeSessions` | mutation | platform | Force sign-out all sessions for a user. Input: `{ userId }` |
-| `changePassword` | mutation | protected | Change own password. Input: `{ currentPassword, newPassword }`. Validates strength, checks history (last 5), revokes all sessions |
-| `getNotificationPrefs` | query | protected | Get current user's notification preferences |
-| `updateNotificationPrefs` | mutation | protected | Update notification preferences (partial merge). Input: `{ accountLocked?, mfaEnabled?, mfaDisabled?, passwordChanged? }` |
-
-## mfa
-
-| Procedure | Type | Auth | Description |
-|-----------|------|------|-------------|
-| `getStatus` | query | protected | Check if MFA is enabled for current user |
-| `beginSetup` | mutation | protected | Generate TOTP secret and QR URI |
-| `enable` | mutation | protected | Enable MFA with TOTP verification code. Returns 8 recovery codes |
-| `disable` | mutation | protected | Disable MFA (requires valid TOTP code) |
-| `regenerateRecoveryCodes` | mutation | protected | Generate new recovery codes (requires TOTP verification) |
 
 ## partner
 
@@ -129,12 +116,8 @@ Client access: `trpc.<router>.<procedure>`
 | `deactivatePartner` | mutation | platform | Deactivate a partner (blocks logins + tickets) |
 | `reactivatePartner` | mutation | platform | Reactivate a deactivated partner |
 | `deletePartner` | mutation | platform | Soft-delete a partner |
-| `listGlobalUsers` | query | platform | List all users with MFA/lockout status and memberships |
+| `listGlobalUsers` | query | platform | List all users with memberships |
 | `inviteUser` | mutation | platform | Invite a new user to a partner |
-| `resendInvite` | mutation | platform | Resend invitation email |
-| `sendTestEmail` | mutation | platform | Send a test email to verify mail config |
-| `disableUserMfa` | mutation | platform | Force-disable MFA for a user (sends notification email) |
-| `unlockUser` | mutation | platform | Unlock a locked-out user account |
 | `deleteUser` | mutation | platform | Soft-delete a user |
 | `removeMembership` | mutation | platform | Remove a user's membership from a partner |
 | `updateMembership` | mutation | platform | Update a user's membership role/departments |
@@ -150,15 +133,6 @@ Client access: `trpc.<router>.<procedure>`
 | `verifyAuditChain` | query | platform | Verify SHA-256 hash chain integrity |
 | `runArchive` | mutation | platform | Manually trigger audit + ticket archival |
 | `getArchivedTickets` | query | platform | Query archived tickets with cursor pagination |
-
-## platformSecurity
-
-| Procedure | Type | Auth | Description |
-|-----------|------|------|-------------|
-| `getStatus` | query | platformBase | Check step-up TOTP status. Auto-satisfied when `REQUIRE_PLATFORM_STEP_UP=false` |
-| `beginSetup` | mutation | platformBase | Generate platform TOTP secret for step-up setup |
-| `enable` | mutation | platformBase | Enable platform step-up with TOTP verification |
-| `verify` | mutation | platformBase | Verify step-up TOTP code (unlocks platform tabs for 15 min) |
 
 ## ai
 

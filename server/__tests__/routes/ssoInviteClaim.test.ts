@@ -6,12 +6,12 @@ import path from 'path';
  * Source-level assertions for the bounded invite-claim window added in
  * docs/superpowers/plans/2026-04-17-invite-orphan-cleanup.md.
  *
- * Rationale: the pre-existing SSO callback claimed any unclaimed (no externalId,
- * no password) user row whose email matched the Azure token — with no upper
- * bound on row age. This meant an invite created months ago could still be
- * silently claimed by someone who later controlled the matching Azure identity.
- * The fix caps that window to INVITE_TTL_DAYS and deletes the stale row on
- * expiry rather than linking.
+ * Rationale: the pre-existing SSO callback claimed any unclaimed (no externalId)
+ * user row whose email matched the Azure token — with no upper bound on row
+ * age. This meant an invite created months ago could still be silently claimed
+ * by someone who later controlled the matching Azure identity. The fix caps
+ * that window to INVITE_TTL_DAYS and deletes the stale row on expiry rather
+ * than linking.
  *
  * We match the `ssoAuditTrim.test.ts` / `ssoGuestB2b.test.ts` pattern of regex
  * assertions on the sso.ts source — no live Azure / DB stack required.
@@ -77,14 +77,13 @@ describe('SSO invite claim bounded TTL window', () => {
   });
 
   describe('ordering invariants', () => {
-    it('TTL check happens inside the !user.password branch (not the conflict branch)', () => {
-      // Must run AFTER the `if (user.password)` rejection and BEFORE the link update —
-      // otherwise a local-auth account could trigger the delete-and-redirect path.
-      const conflictIdx = ssoSource.search(/sso_error=email_conflict/);
+    it('TTL check happens before the link update', () => {
+      // The TTL gate must run BEFORE we stamp externalId onto the row,
+      // otherwise a stale invite row would be silently claimed rather than
+      // deleted.
       const ttlIdx = ssoSource.search(/INVITE_TTL_DAYS/);
       const linkUpdateIdx = ssoSource.search(/db\.update\(users\)\.set\(\{[^}]*externalId:\s*oid/s);
-      expect(conflictIdx).toBeGreaterThan(-1);
-      expect(ttlIdx).toBeGreaterThan(conflictIdx);
+      expect(ttlIdx).toBeGreaterThan(-1);
       expect(linkUpdateIdx).toBeGreaterThan(ttlIdx);
     });
   });

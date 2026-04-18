@@ -1,4 +1,4 @@
-export type PlatformTab = 'partners' | 'users' | 'sso' | 'security' | 'health' | 'config' | 'audit' | 'archive';
+export type PlatformTab = 'partners' | 'users' | 'sso' | 'health' | 'audit' | 'archive';
 export type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 export interface PartnerMembership {
@@ -43,11 +43,7 @@ export interface GlobalUser {
   deletedAt?: string | null;
   lastActiveAt?: string | null;
   externalId?: string | null;
-  password?: string | null;
   lang?: string | null;
-  mfaEnabledAt?: string | null;
-  lockedUntil?: string | null;
-  failedLoginAttempts?: number | null;
   createdAt?: string;
   updatedAt?: string;
   partnerMemberships?: PartnerMembership[];

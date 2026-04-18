@@ -16,7 +16,6 @@ const ACTION_OPTIONS = [
   // Members
   'member.added',
   'member.invited',
-  'member.invite_resent',
   'member.removed',
   'member.updated',
   // Users
@@ -41,7 +40,6 @@ const ACTION_OPTIONS = [
   // System
   'system.archive_run',
   'system.gdpr_purge',
-  'system.mail_config_updated',
   // Content
   'kb.created',
   'label.created',
@@ -73,8 +71,6 @@ function formatAuditDetails(log: { action: string; metadata?: unknown; targetId:
       return `Added member ${String(metadata.email || log.targetId || '-')}`;
     case 'member.invited':
       return `Invited ${String(metadata.email || log.targetId || '-')}`;
-    case 'member.invite_resent':
-      return `Resent invite to ${String(metadata.email || log.targetId || '-')}`;
     case 'member.removed':
       return `Removed membership ${String(metadata.membershipId || log.targetId || '-')}`;
     case 'member.updated':
@@ -119,8 +115,6 @@ function formatAuditDetails(log: { action: string; metadata?: unknown; targetId:
       return `Archived ${String(metadata.count || '?')} records`;
     case 'system.gdpr_purge':
       return `Purged ${String(metadata.ticketsPurged || '?')} tickets, ${String(metadata.messagesPurged || '?')} messages`;
-    case 'system.mail_config_updated':
-      return 'Mail configuration updated';
     // Content
     case 'kb.created':
       return `KB article: ${String(metadata.title || '-')}`;

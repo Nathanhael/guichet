@@ -1,11 +1,9 @@
 import { randomUUID } from 'crypto';
 import { eq } from 'drizzle-orm';
 import { db } from '../db/postgres.js';
-import { users, auditLog, systemSettings } from '../db/schema.js';
+import { users, auditLog } from '../db/schema.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
-import { hashPassword } from '../utils/passwords.js';
-import { encrypt } from './encryption.js';
 
 // PostgreSQL unique-violation error code
 const PG_UNIQUE_VIOLATION = '23505';
@@ -70,16 +68,10 @@ export async function bootstrapPlatformOperator(): Promise<void> {
           ? localPart.charAt(0).toUpperCase() + localPart.slice(1)
           : email;
 
-      // Hash password only if one is configured; otherwise null (SSO path)
-      const hashedPassword = config.PLATFORM_ADMIN_PASSWORD
-        ? await hashPassword(config.PLATFORM_ADMIN_PASSWORD)
-        : null;
-
       await db.insert(users).values({
         id: userId,
         email,
         name,
-        password: hashedPassword,
         isPlatformOperator: true,
         lang: 'en',
         createdAt: new Date().toISOString(),
@@ -113,71 +105,3 @@ export async function bootstrapPlatformOperator(): Promise<void> {
   }
 }
 
-/**
- * One-shot migration: re-encrypt any plaintext smtpPass / apiKey values in the
- * `mail_config` row of `system_settings`. Idempotent — rows that already have
- * only ciphertext fields are left alone.
- *
- * Guarded on the encryption key being configured, so dev machines without
- * FIELD_ENCRYPTION_SECRET / AI_KEY_ENCRYPTION_SECRET still boot cleanly
- * (the encrypt() helper would otherwise throw). The production hardening
- * check in config.ts already refuses to boot prod without the secret.
- */
-export async function upgradeMailConfigEncryption(): Promise<void> {
-  try {
-    if (!config.FIELD_ENCRYPTION_SECRET && !config.AI_KEY_ENCRYPTION_SECRET) {
-      // Skip silently on dev without a key — encrypt() would throw.
-      return;
-    }
-
-    const rows = await db
-      .select()
-      .from(systemSettings)
-      .where(eq(systemSettings.key, 'mail_config'))
-      .limit(1);
-
-    if (rows.length === 0) return;
-
-    const stored = (rows[0].value as Record<string, unknown>) || {};
-    const legacySmtpPass = typeof stored.smtpPass === 'string' ? stored.smtpPass : undefined;
-    const legacyApiKey = typeof stored.apiKey === 'string' ? stored.apiKey : undefined;
-
-    // Nothing to upgrade.
-    if (!legacySmtpPass && !legacyApiKey) return;
-
-    const upgraded: Record<string, unknown> = { ...stored };
-    let smtpUpgraded = false;
-    let apiUpgraded = false;
-
-    if (legacySmtpPass && !stored.encryptedSmtpPass) {
-      upgraded.encryptedSmtpPass = encrypt(legacySmtpPass);
-      smtpUpgraded = true;
-    }
-    if (legacyApiKey && !stored.encryptedApiKey) {
-      upgraded.encryptedApiKey = encrypt(legacyApiKey);
-      apiUpgraded = true;
-    }
-
-    // Belt-and-braces: drop the plaintext keys regardless of which one existed.
-    delete upgraded.smtpPass;
-    delete upgraded.apiKey;
-
-    await db
-      .update(systemSettings)
-      .set({ value: upgraded, updatedAt: new Date().toISOString() })
-      .where(eq(systemSettings.key, 'mail_config'));
-
-    await db.insert(auditLog).values({
-      action: 'system.mail_config_encrypted_upgrade',
-      actorId: null,
-      partnerId: null,
-      targetType: 'system',
-      targetId: 'mail_config',
-      metadata: { smtpUpgraded, apiUpgraded },
-    });
-
-    logger.info({ smtpUpgraded, apiUpgraded }, '[bootstrap] mail_config plaintext secrets re-encrypted');
-  } catch (err) {
-    logger.error({ err }, '[bootstrap] upgradeMailConfigEncryption failed — leaving row untouched');
-  }
-}

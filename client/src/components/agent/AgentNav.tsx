@@ -40,7 +40,7 @@ export default function AgentNav({
         <PartnerSwitcher confirmBeforeSwitch />
         <ConnectionStatus />
         <SettingsPopover showAccessibility showNotifications />
-        <UserMenu showFeedback showSecurity onFeedback={onShowFeedback} />
+        <UserMenu showFeedback onFeedback={onShowFeedback} />
       </div>
     </nav>
   );

@@ -3,8 +3,6 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useT } from '../i18n';
 import PlatformSystemHealth from '../components/admin/PlatformSystemHealth';
 import PlatformAuditLog from '../components/admin/PlatformAuditLog';
-import PlatformSecurityOps from '../components/admin/PlatformSecurityOps';
-import PlatformSystemSettings from '../components/admin/PlatformSystemSettings';
 import SettingsPopover from '../components/SettingsPopover';
 import UserMenu from '../components/UserMenu';
 import PartnerList from '../components/platform/PartnerList';
@@ -18,17 +16,12 @@ import EditUserProfileModal from '../components/platform/EditUserProfileModal';
 import GroupMappingsPanel from '../components/platform/GroupMappingsPanel';
 import PlatformArchiveViewer from '../components/admin/PlatformArchiveViewer';
 import type { PlatformTab, Partner, GlobalUser } from '../components/platform/types';
-import { trpc } from '../utils/trpc';
 import { APP_NAME } from '../constants';
 
 export default function PlatformView() {
   const t = useT();
   const [activeTab, setActiveTab] = useState<PlatformTab>('partners');
-  const { data: securityStatus, isLoading: securityStatusLoading } = trpc.platformSecurity.getStatus.useQuery();
-  const stepUpLocked = securityStatusLoading || (securityStatus ? !securityStatus.stepUpSatisfied : true);
-  const effectiveTab: PlatformTab = stepUpLocked ? 'security' : activeTab;
 
-  // Modal visibility state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [partnerToDelete, setPartnerToDelete] = useState<Partner | null>(null);
@@ -51,62 +44,48 @@ export default function PlatformView() {
         </div>
         <div className="flex items-center gap-4">
           <SettingsPopover />
-          <UserMenu showSecurity />
+          <UserMenu />
         </div>
       </nav>
 
       <div role="tablist" aria-label={t('platform')} className="flex border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] px-8 overflow-x-auto">
-        {(['partners', 'users', 'sso', 'security', 'health', 'config', 'audit', 'archive'] as const).map((tab) => (
+        {(['partners', 'users', 'sso', 'health', 'audit', 'archive'] as const).map((tab) => (
           <button
             key={tab}
             role="tab"
-            aria-selected={effectiveTab === tab}
-            aria-disabled={stepUpLocked && tab !== 'security'}
-            onClick={() => {
-              if (stepUpLocked && tab !== 'security') {
-                return;
-              }
-              setActiveTab(tab);
-            }}
-            disabled={stepUpLocked && tab !== 'security'}
+            aria-selected={activeTab === tab}
+            onClick={() => setActiveTab(tab)}
             className={`px-8 py-4 text-[10px] font-bold font-mono uppercase tracking-widest border-b-2 whitespace-nowrap ${
-              effectiveTab === tab
+              activeTab === tab
                 ? 'border-[var(--color-accent-blue)] text-[var(--color-accent-blue)]'
                 : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
-            } ${stepUpLocked && tab !== 'security' ? 'cursor-not-allowed opacity-20 hover:text-[var(--color-text-muted)]' : ''}`}
+            }`}
           >
             {t(`${tab}_tab`)}
           </button>
         ))}
       </div>
 
-      <main role="tabpanel" aria-label={t(`${effectiveTab}_tab`)} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+      <main role="tabpanel" aria-label={t(`${activeTab}_tab`)} className="flex-1 overflow-y-auto p-8 custom-scrollbar">
         <div className="max-w-6xl mx-auto">
-          {stepUpLocked && effectiveTab === 'security' && (
-            <div className="mb-6 border border-[var(--color-border-heavy)] p-4 text-[10px] font-bold font-mono uppercase tracking-widest text-[var(--color-text-secondary)]">
-              Platform admin tabs are locked until you complete TOTP step-up verification in the security panel.
-            </div>
-          )}
-          {effectiveTab === 'partners' && (
+          {activeTab === 'partners' && (
             <PartnerList
               onCreateClick={() => setShowCreateModal(true)}
               onEditPartner={setEditingPartner}
               onDeletePartner={setPartnerToDelete}
             />
           )}
-          {effectiveTab === 'users' && (
+          {activeTab === 'users' && (
             <UserTable
               onInviteClick={() => setShowInviteModal(true)}
               onEditProfile={setEditingUserProfile}
               onManageAccess={setEditingUser}
             />
           )}
-          {effectiveTab === 'sso' && <GroupMappingsPanel />}
-          {effectiveTab === 'security' && <PlatformSecurityOps />}
-          {effectiveTab === 'health' && <PlatformSystemHealth />}
-          {effectiveTab === 'config' && <PlatformSystemSettings />}
-          {effectiveTab === 'audit' && <PlatformAuditLog />}
-          {effectiveTab === 'archive' && <PlatformArchiveViewer />}
+          {activeTab === 'sso' && <GroupMappingsPanel />}
+          {activeTab === 'health' && <PlatformSystemHealth />}
+          {activeTab === 'audit' && <PlatformAuditLog />}
+          {activeTab === 'archive' && <PlatformArchiveViewer />}
         </div>
       </main>
 

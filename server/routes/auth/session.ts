@@ -9,7 +9,6 @@ import { AuthRequest } from '../../middleware/auth.js';
 import { buildAuthToken, getEnterPartnerContext, listUserMemberships, setAuthCookie, clearAuthCookie, parseExpiryToSeconds } from '../../services/authSession.js';
 import { canAccessPartnerContext, isPlatformAdmin } from '../../services/roles.js';
 import { revokeToken } from '../../services/sessionRevocation.js';
-import { isPlatformStepUpSatisfied } from '../../services/platformStepUp.js';
 import { createRefreshToken, rotateRefreshToken, revokeAllUserRefreshTokens } from '../../services/refreshToken.js';
 import { refreshRateLimit, setRefreshCookie, clearRefreshCookie } from './rateLimit.js';
 
@@ -48,11 +47,6 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 return res.status(403).json({ error: 'Partner is currently inactive' });
             }
 
-            // Re-check platform step-up freshness — don't carry stale step-up across partner switch
-            const stepUpStillValid = req.user.isPlatformOperator
-                ? isPlatformStepUpSatisfied(req.user.platformStepUpAt)
-                : false;
-
             const token = await buildAuthToken({
                 userId,
                 role: membership.role,
@@ -60,7 +54,6 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 partnerId: membership.partnerId,
                 membershipId: membership.id,
                 isPlatformOperator: req.user.isPlatformOperator,
-                platformStepUpAt: stepUpStillValid ? req.user.platformStepUpAt : undefined,
             });
 
             setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
@@ -188,10 +181,6 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 return res.status(403).json({ error: 'Platform operators only' });
             }
 
-            if (!isPlatformStepUpSatisfied(req.user.platformStepUpAt)) {
-                return res.status(403).json({ error: 'Platform step-up required' });
-            }
-
             if (!partnerId) {
                 return res.status(400).json({ error: 'partnerId is required' });
             }
@@ -217,7 +206,6 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 partnerId: partner.id,
                 membershipId: `platform_${userId}_${partner.id}`,
                 isPlatformOperator: true,
-                platformStepUpAt: req.user.platformStepUpAt,
             });
 
             logger.info({ userId, partnerId: partner.id }, '[Auth] Platform operator entered partner');

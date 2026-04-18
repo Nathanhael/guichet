@@ -23,7 +23,7 @@ export const openapiSpec = {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'JWT token obtained from /auth/login-local or /auth/login',
+        description: 'JWT token obtained from /auth/login (SSO) or /auth/dev-login',
       },
     },
     schemas: {
@@ -68,164 +68,9 @@ export const openapiSpec = {
           },
         },
       },
-      MfaChallengeResponse: {
-        type: 'object',
-        properties: {
-          mfaRequired: { type: 'boolean', example: true },
-        },
-      },
     },
   },
   paths: {
-    '/auth/forgot-password': {
-      post: {
-        summary: 'Request a password reset email',
-        tags: ['Authentication'],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['email'],
-                properties: {
-                  email: { type: 'string', format: 'email' },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'Always returns success to prevent user enumeration',
-            content: {
-              'application/json': {
-                schema: {
-                  type: 'object',
-                  properties: {
-                    success: { type: 'boolean' },
-                    message: { type: 'string' },
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    '/auth/reset-password': {
-      post: {
-        summary: 'Reset password using a reset token',
-        tags: ['Authentication'],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['token', 'password'],
-                properties: {
-                  token: { type: 'string', description: 'Token from reset email' },
-                  password: {
-                    type: 'string',
-                    minLength: 10,
-                    description: 'Must meet strength requirements (upper/lower/digit/special)',
-                  },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          '200': { description: 'Password updated and all sessions revoked' },
-          '400': { description: 'Invalid/expired token or password too weak' },
-        },
-      },
-    },
-    '/auth/login-local': {
-      post: {
-        summary: 'Authenticate with email and password',
-        tags: ['Authentication'],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['email', 'password'],
-                properties: {
-                  email: { type: 'string', format: 'email' },
-                  password: { type: 'string' },
-                  totpCode: {
-                    type: 'string',
-                    description: '6-digit TOTP or recovery code (required if MFA enabled)',
-                  },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'JWT token + user profile, or MFA challenge',
-            content: {
-              'application/json': {
-                schema: {
-                  oneOf: [
-                    { $ref: '#/components/schemas/LoginResponse' },
-                    { $ref: '#/components/schemas/MfaChallengeResponse' },
-                  ],
-                },
-              },
-            },
-          },
-          '401': { description: 'Invalid credentials or invalid MFA code' },
-          '423': { description: 'Account locked due to failed attempts' },
-        },
-      },
-    },
-    '/auth/login': {
-      post: {
-        summary: 'Authenticate with user ID and password (demo mode)',
-        tags: ['Authentication'],
-        requestBody: {
-          required: true,
-          content: {
-            'application/json': {
-              schema: {
-                type: 'object',
-                required: ['id', 'password'],
-                properties: {
-                  id: { type: 'string', description: 'User ID' },
-                  password: { type: 'string' },
-                  totpCode: {
-                    type: 'string',
-                    description: '6-digit TOTP or recovery code (required if MFA enabled)',
-                  },
-                },
-              },
-            },
-          },
-        },
-        responses: {
-          '200': {
-            description: 'JWT token + user profile, or MFA challenge',
-            content: {
-              'application/json': {
-                schema: {
-                  oneOf: [
-                    { $ref: '#/components/schemas/LoginResponse' },
-                    { $ref: '#/components/schemas/MfaChallengeResponse' },
-                  ],
-                },
-              },
-            },
-          },
-          '401': { description: 'Invalid credentials' },
-          '423': { description: 'Account locked' },
-        },
-      },
-    },
     '/auth/switch-partner': {
       post: {
         summary: 'Switch active partner context',

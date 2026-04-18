@@ -1,19 +1,12 @@
 import { Request, Response } from 'express';
-import crypto from 'crypto';
 import config from '../../config.js';
 import logger from '../../utils/logger.js';
 import { getRedisClients } from '../../utils/redis.js';
-
-// Constant-time login: pre-computed Argon2 hash for timing-safe rejection of unknown users.
-// This ensures "user not found" takes the same time as "wrong password".
-export const DUMMY_ARGON2_HASH = '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgt3ub+b+daw';
 
 // ---------------------------------------------------------------------------
 // IP-based rate limiter for auth endpoints (Redis-backed, multi-instance safe)
 // ---------------------------------------------------------------------------
 const AUTH_RATE_WINDOW_SECS = 15 * 60; // 15 minutes
-const AUTH_RATE_MAX_LOGIN = 20; // max login attempts per IP per window
-const AUTH_RATE_MAX_RESET = 10; // max reset-password attempts per IP per window
 const AUTH_RATE_MAX_REFRESH = 30; // max refresh attempts per IP per window
 
 // In-memory fallback rate limiter when Redis is unavailable
@@ -43,9 +36,6 @@ function fallbackRateLimit(key: string, maxAttempts: number, windowSecs: number)
   return { allowed: true, retryAfterSecs: 0 };
 }
 
-/**
- * Generic Redis-backed IP rate limiter. Falls back to in-memory rate limiting if Redis is unavailable.
- */
 async function redisRateLimit(
   req: Request,
   res: Response,
@@ -61,7 +51,6 @@ async function redisRateLimit(
   try {
     const { pubClient } = getRedisClients();
     if (!pubClient) {
-      // Redis unavailable — use in-memory fallback to still enforce rate limiting
       const fallbackKey = `rate:${prefix}:${ip}`;
       const result = fallbackRateLimit(fallbackKey, maxAttempts, AUTH_RATE_WINDOW_SECS);
       if (!result.allowed) {
@@ -87,7 +76,6 @@ async function redisRateLimit(
       return;
     }
   } catch (err) {
-    // Redis error — use in-memory fallback to still enforce rate limiting
     logger.warn({ err }, '[Auth] Redis rate limit check failed, using in-memory fallback');
     const fallbackKey = `rate:${prefix}:${ip}`;
     const result = fallbackRateLimit(fallbackKey, maxAttempts, AUTH_RATE_WINDOW_SECS);
@@ -99,14 +87,6 @@ async function redisRateLimit(
     }
   }
   next();
-}
-
-export function loginRateLimit(req: Request, res: Response, next: () => void): void {
-  redisRateLimit(req, res, next, 'login', AUTH_RATE_MAX_LOGIN);
-}
-
-export function resetPasswordRateLimit(req: Request, res: Response, next: () => void): void {
-  redisRateLimit(req, res, next, 'reset-pw', AUTH_RATE_MAX_RESET);
 }
 
 export function refreshRateLimit(req: Request, res: Response, next: () => void): void {
@@ -133,30 +113,3 @@ export function clearRefreshCookie(res: Response): void {
     ...(config.COOKIE_DOMAIN ? { domain: config.COOKIE_DOMAIN } : {}),
   });
 }
-
-export function maskEmail(email: string): string {
-  const [local, domain] = email.split('@');
-  if (!domain) return '***';
-  return `${local[0]}***@${domain}`;
-}
-
-/**
- * M-02: Timing-safe recovery code lookup.
- * Compares codeHash against all stored hashes using timingSafeEqual
- * to avoid leaking which index matched via timing side-channel.
- */
-export function findRecoveryCodeIndex(recoveryCodes: string[], codeHash: string): number {
-  const codeBuffer = Buffer.from(codeHash, 'hex');
-  let foundIdx = -1;
-  for (let i = 0; i < recoveryCodes.length; i++) {
-    const storedBuffer = Buffer.from(recoveryCodes[i], 'hex');
-    if (codeBuffer.length === storedBuffer.length && crypto.timingSafeEqual(codeBuffer, storedBuffer)) {
-      foundIdx = i;
-      // Don't break — continue checking all codes to maintain constant time
-    }
-  }
-  return foundIdx;
-}
-
-export const FORGOT_PW_WINDOW_SECS = 60;
-export const FORGOT_PW_MAX_PER_EMAIL = 3;

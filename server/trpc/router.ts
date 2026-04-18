@@ -9,10 +9,8 @@ import { savedViewRouter } from './routers/savedView.js';
 import { statsRouter } from './routers/stats.js';
 import { userRouter } from './routers/user.js';
 import { platformRouter } from './routers/platform/index.js';
-import { platformSecurityRouter } from './routers/platformSecurity.js';
 import { partnerRouter } from './routers/partner/index.js';
 import { alertsRouter } from './routers/alerts.js';
-import { mfaRouter } from './routers/mfa.js';
 import { cannedResponseRouter } from './routers/cannedResponse.js';
 import { kbRouter } from './routers/kb.js';
 import { webhookRouter } from './routers/webhook.js';
@@ -35,10 +33,8 @@ export const appRouter = router({
   stats: statsRouter,
   user: userRouter,
   platform: platformRouter,
-  platformSecurity: platformSecurityRouter,
   partner: partnerRouter,
   alerts: alertsRouter,
-  mfa: mfaRouter,
   webhook: webhookRouter,
   linkPreview: linkPreviewRouter,
 });

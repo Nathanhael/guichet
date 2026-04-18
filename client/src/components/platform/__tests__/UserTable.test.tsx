@@ -3,11 +3,11 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import UserTable from '../UserTable';
 import type { GlobalUser, Partner } from '../types';
 
-const { mockDeleteUser, mockResendInvite, mockRevokeSessions, mockDisableMfa, mockUnlockUser, activeUser, pendingUser, deletedUser, partner } = vi.hoisted(() => {
+const { mockDeleteUser, mockRevokeSessions, activeUser, pendingUser, deletedUser, partner } = vi.hoisted(() => {
   const activeUser: GlobalUser = {
     id: 'u1', name: 'Alice', email: 'alice@example.com',
     isPlatformOperator: false, deletedAt: null,
-    lastActiveAt: '2025-06-01T12:00:00Z', externalId: null,
+    lastActiveAt: '2025-06-01T12:00:00Z', externalId: 'ext-1',
     partnerMemberships: [{ id: 'm1', partnerId: 'p1', partnerName: 'Acme', role: 'admin' }],
   };
   const pendingUser: GlobalUser = {
@@ -27,10 +27,7 @@ const { mockDeleteUser, mockResendInvite, mockRevokeSessions, mockDisableMfa, mo
   };
   return {
     mockDeleteUser: { mutate: vi.fn(), isPending: false },
-    mockResendInvite: { mutate: vi.fn(), isPending: false },
     mockRevokeSessions: { mutate: vi.fn(), isPending: false },
-    mockDisableMfa: { mutate: vi.fn(), isPending: false },
-    mockUnlockUser: { mutate: vi.fn(), isPending: false },
     activeUser, pendingUser, deletedUser, partner,
   };
 });
@@ -58,24 +55,6 @@ vi.mock('../../../utils/trpc', () => ({
         useMutation: (opts: { onSuccess?: () => void }) => {
           mockDeleteUser.mutate.mockImplementation(() => opts.onSuccess?.());
           return mockDeleteUser;
-        },
-      },
-      resendInvite: {
-        useMutation: (opts: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
-          mockResendInvite.mutate.mockImplementation(() => opts.onSuccess?.());
-          return mockResendInvite;
-        },
-      },
-      disableUserMfa: {
-        useMutation: (opts: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
-          mockDisableMfa.mutate.mockImplementation(() => opts.onSuccess?.());
-          return mockDisableMfa;
-        },
-      },
-      unlockUser: {
-        useMutation: (opts: { onSuccess?: () => void; onError?: (err: Error) => void }) => {
-          mockUnlockUser.mutate.mockImplementation(() => opts.onSuccess?.());
-          return mockUnlockUser;
         },
       },
     },
@@ -149,9 +128,9 @@ describe('UserTable', () => {
     expect(screen.getByText('status_pending')).toBeInTheDocument();
   });
 
-  it('shows active status for users with lastActiveAt', () => {
+  it('shows linked-sso status for users with an externalId', () => {
     renderComponent();
-    expect(screen.getByText('status_active_local')).toBeInTheDocument();
+    expect(screen.getByText('status_linked_sso')).toBeInTheDocument();
   });
 
   it('filters users by search input', () => {
@@ -173,11 +152,6 @@ describe('UserTable', () => {
 
     fireEvent.click(screen.getByText('clear'));
     expect(searchInput).toHaveValue('');
-  });
-
-  it('shows resend invite button for pending users', () => {
-    renderComponent();
-    expect(screen.getByText('resend_invite')).toBeInTheDocument();
   });
 
   it('shows delete confirmation when delete is clicked', () => {

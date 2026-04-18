@@ -15,7 +15,6 @@ import { test, expect, type Page } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
-const DEMO_PASSWORD = 'password123';
 
 async function openFirstTicket(page: Page) {
   const ticketItem = page.locator('aside li, aside button').first();

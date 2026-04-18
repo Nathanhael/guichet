@@ -13,7 +13,6 @@ import { test, expect } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
-const DEMO_PASSWORD = 'password123';
 
 test.describe('Admin Dashboard', () => {
   test.beforeEach(async ({ page }) => {

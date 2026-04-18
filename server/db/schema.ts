@@ -53,21 +53,8 @@ export const users = pgTable('users', {
   // When true, SSO login does NOT overwrite `lang` — user's manual choice wins.
   // Set by `trpc.user.setLocale({ lockFromSso: true })`. Cleared by unlock.
   langLocked: boolean('lang_locked').notNull().default(false),
-  password: text('password'), // Optional legacy/local login
   avatarUrl: text('avatar_url'),
   isPlatformOperator: boolean('is_platform_operator').default(false),
-  platformTotpSecret: text('platform_totp_secret'),
-  platformTotpEnabledAt: timestamp('platform_totp_enabled_at', { mode: 'string' }),
-  resetPasswordToken: text('reset_password_token'),
-  resetPasswordExpires: timestamp('reset_password_expires', { mode: 'string' }),
-  passwordChangedAt: timestamp('password_changed_at', { mode: 'string' }),
-  passwordHistory: jsonb('password_history').default([]),
-  failedLoginAttempts: integer('failed_login_attempts').default(0),
-  lockedUntil: timestamp('locked_until', { mode: 'string' }),
-  mfaSecret: text('mfa_secret'),
-  mfaEnabledAt: timestamp('mfa_enabled_at', { mode: 'string' }),
-  mfaRecoveryCodes: jsonb('mfa_recovery_codes').default([]),
-  notificationPreferences: jsonb('notification_preferences').default({}),
   accessibilityPrefs: jsonb('accessibility_prefs').default({}).notNull().$type<{
     dyslexicMode?: boolean;
     bionicReading?: boolean;

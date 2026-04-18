@@ -7,10 +7,12 @@ import path from 'path';
  * docs/superpowers/plans/2026-04-17-invite-orphan-cleanup.md.
  *
  * The job runs daily as part of runDailyPurge and deletes user rows that look
- * like abandoned invites: no externalId (never claimed via SSO), no password
- * (never a local-auth account, so bootstrap operators are safe), and
- * createdAt older than 30 days. Memberships are cleaned up automatically by
- * the FK ON DELETE CASCADE on memberships.userId.
+ * like abandoned invites: no externalId (never claimed via SSO) and
+ * createdAt older than 30 days. Local auth has been removed, so there are no
+ * password rows to preserve — the bootstrap operator is created with an
+ * externalId by the SSO callback on first login and is therefore naturally
+ * excluded by the externalId filter. Memberships are cleaned up automatically
+ * by the FK ON DELETE CASCADE on memberships.userId.
  *
  * We follow the source-inspection pattern used by other non-integration tests
  * in this repo (see ssoAuditTrim / ssoGuestB2b / drizzleJournal) — runtime
@@ -40,9 +42,8 @@ describe('Abandoned-invite cleanup (GDPR daily purge)', () => {
       expect(fnBody).toMatch(/30\s*\*\s*86_?400_?000/);
     });
 
-    it('filters on externalId IS NULL AND password IS NULL AND createdAt < cutoff', () => {
+    it('filters on externalId IS NULL AND createdAt < cutoff', () => {
       expect(fnBody).toMatch(/isNull\(users\.externalId\)/);
-      expect(fnBody).toMatch(/isNull\(users\.password\)/);
       expect(fnBody).toMatch(/lt\(users\.createdAt,\s*cutoff\)/);
     });
 
@@ -89,12 +90,6 @@ describe('Abandoned-invite cleanup (GDPR daily purge)', () => {
   });
 
   describe('safety invariants', () => {
-    it('does NOT match rows with a password (bootstrap operator preserved)', () => {
-      // The bootstrap platform operator is created with a password — the
-      // isNull(password) filter must remain to avoid wiping admin accounts.
-      expect(fnBody).toMatch(/isNull\(users\.password\)/);
-    });
-
     it('does NOT match rows with an externalId (claimed accounts preserved)', () => {
       // Once an invite is claimed the row has externalId set. The filter
       // guarantees we only touch unclaimed rows.

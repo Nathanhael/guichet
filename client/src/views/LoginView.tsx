@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
@@ -10,11 +10,6 @@ import SystemBackground from '../components/SystemBackground';
 import LegalModal from '../components/LegalModal';
 import { getRoleDisplayName } from '../utils/roles';
 
-// Sub-components
-import LocalLoginForm from './login/LocalLoginForm';
-import ForgotPasswordForm from './login/ForgotPasswordForm';
-import ResetPasswordForm from './login/ResetPasswordForm';
-import MfaChallenge from './login/MfaChallenge';
 import DemoUserPicker from './login/DemoUserPicker';
 
 type PartnerSelection = {
@@ -22,7 +17,7 @@ type PartnerSelection = {
   memberships: Membership[];
 };
 
-type AuthViewMode = 'sso-selection' | 'platform-login' | 'demo' | 'forgot' | 'reset' | 'mfa';
+type AuthViewMode = 'sso-selection' | 'demo';
 
 export default function LoginView() {
   const { setUser, setMemberships, setActiveMembershipId } = useStoreShallow((s) => ({
@@ -36,37 +31,8 @@ export default function LoginView() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [viewMode, setViewMode] = useState<AuthViewMode>('sso-selection');
-  const [logoClicks, setLogoClicks] = useState(0);
-  const [showAdminLoginLink, setShowAdminLoginLink] = useState(false);
-  const logoClickTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleLogoClick = () => {
-    if (logoClickTimeoutRef.current) clearTimeout(logoClickTimeoutRef.current);
-    const next = logoClicks + 1;
-    if (next >= 3) {
-      setShowAdminLoginLink(true);
-      setLogoClicks(0);
-    } else {
-      setLogoClicks(next);
-      logoClickTimeoutRef.current = setTimeout(() => setLogoClicks(0), 500);
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      if (logoClickTimeoutRef.current) clearTimeout(logoClickTimeoutRef.current);
-    };
-  }, []);
-
-  const [resetToken, setResetToken] = useState('');
   const [legalModal, setLegalModal] = useState<'privacy' | 'terms' | null>(null);
-
-  // Pending MFA login context
-  const mfaPasswordRef = useRef<string>('');
-  const [mfaPending, setMfaPending] = useState<{
-    endpoint: string;
-    body: Record<string, unknown>;
-  } | null>(null);
 
   const [isSsoVerifying, setIsSsoVerifying] = useState(false);
 
@@ -83,16 +49,8 @@ export default function LoginView() {
   }, [setUser, setMemberships, setActiveMembershipId]);
 
   useEffect(() => {
-    // Handle password reset token from URL query
     const params = new URLSearchParams(window.location.search);
-    const token = params.get('token');
-    if (token) {
-      setResetToken(token);
-      setViewMode('reset');
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
 
-    // Handle SSO error from URL query
     const ssoError = params.get('sso_error');
     if (ssoError) {
       const ssoErrorMessages: Record<string, string> = {
@@ -101,16 +59,13 @@ export default function LoginView() {
         'expired': t('login_failed'),
         'unauthorized': t('login_failed'),
         'server_error': t('login_failed'),
-        // Azure B2B guest mapped to >1 partner — fail-closed per strict single-partner rule.
         'guest_multi_partner_mapping': t('sso_guest_multi_partner_message'),
-        // Invite row existed but was older than INVITE_TTL_DAYS at SSO callback time.
         'invite_expired': t('sso_invite_expired_message'),
       };
       setError(ssoErrorMessages[ssoError] || t('login_failed'));
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // Handle SSO callback from URL hash fragment
     const hash = window.location.hash;
     if (hash.startsWith('#sso_callback=')) {
       setIsSsoVerifying(true);
@@ -130,20 +85,6 @@ export default function LoginView() {
         });
     }
   }, [handleLoginSuccess, t]);
-
-  const handleMfaRequired = (endpoint: string, body: Record<string, unknown>, passwordRef: string) => {
-    mfaPasswordRef.current = passwordRef;
-    setMfaPending({ endpoint, body });
-    setViewMode('mfa');
-    setError('');
-  };
-
-  const cancelMfa = () => {
-    setViewMode('sso-selection');
-    setMfaPending(null);
-    mfaPasswordRef.current = '';
-    setError('');
-  };
 
   if (isSsoVerifying) {
     return (
@@ -202,25 +143,14 @@ export default function LoginView() {
           <div className="flex flex-col items-start gap-4">
             <img
               src="/icon-blue.svg"
-              className="w-12 h-12 cursor-pointer select-none"
+              className="w-12 h-12 select-none"
               alt={APP_NAME}
-              role="button"
-              tabIndex={0}
-              onClick={handleLogoClick}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleLogoClick(); } }}
             />
-            <h1
-              className="text-3xl font-mono font-bold uppercase tracking-[4px] relative z-10 cursor-default select-none focus:outline-none"
-            >
+            <h1 className="text-3xl font-mono font-bold uppercase tracking-[4px] relative z-10 cursor-default select-none focus:outline-none">
               {APP_NAME}
             </h1>
             <p className="mono-label relative z-10" style={{ opacity: 0.8 }}>
-              {viewMode === 'sso-selection' ? t('sso_login_description') :
-               viewMode === 'platform-login' ? t('secure_auth') :
-               viewMode === 'forgot' ? t('reset_password_title') :
-               viewMode === 'reset' ? t('create_new_password') :
-               viewMode === 'mfa' ? (t('verify_identity') || 'Verify Identity') :
-               t('select_user')}
+              {viewMode === 'sso-selection' ? t('sso_login_description') : t('select_user')}
             </p>
           </div>
           {viewMode === 'demo' && (
@@ -264,53 +194,8 @@ export default function LoginView() {
               >
                 {t('demo_mode')}
               </button>
-              {showAdminLoginLink && (
-                <button
-                  type="button"
-                  onClick={() => { setViewMode('platform-login'); setError(''); setSuccessMessage(''); }}
-                  className="mono-label text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:underline underline-offset-4"
-                >
-                  {t('platform_admin_login')}
-                </button>
-              )}
             </div>
           </div>
-        )}
-
-        {viewMode === 'platform-login' && (
-          <LocalLoginForm 
-            onLoginSuccess={handleLoginSuccess}
-            onMfaRequired={handleMfaRequired}
-            onForgotClick={() => { setViewMode('forgot'); setError(''); setSuccessMessage(''); }}
-            onBackClick={() => { setViewMode('sso-selection'); setError(''); setSuccessMessage(''); }}
-          />
-        )}
-
-        {viewMode === 'forgot' && (
-          <ForgotPasswordForm 
-            onBackClick={() => { setViewMode('sso-selection'); setError(''); }}
-          />
-        )}
-
-        {viewMode === 'reset' && (
-          <ResetPasswordForm
-            resetToken={resetToken}
-            onSuccess={() => {
-              setSuccessMessage(t('password_updated') || 'Password updated successfully');
-              setViewMode('sso-selection');
-            }}
-            onBackClick={() => { setViewMode('sso-selection'); setError(''); }}
-          />
-        )}
-
-        {viewMode === 'mfa' && mfaPending && (
-          <MfaChallenge
-            endpoint={mfaPending.endpoint}
-            body={mfaPending.body}
-            passwordRef={mfaPasswordRef}
-            onSuccess={handleLoginSuccess}
-            onCancel={cancelMfa}
-          />
         )}
 
         {viewMode === 'demo' && (

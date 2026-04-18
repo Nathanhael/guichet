@@ -16,7 +16,6 @@ import type { Page } from '@playwright/test';
  */
 
 export const BASE = process.env.E2E_BASE_URL ?? 'http://localhost:3001';
-export const DEMO_PASSWORD = 'password123';
 
 export interface LoginResult {
   ok: boolean;
@@ -53,7 +52,7 @@ export interface LoginOptions {
 }
 
 /**
- * Log a demo user in via `/api/v1/auth/login` and seed the expected
+ * Log a demo user in via `/api/v1/auth/dev-login` and seed the expected
  * sessionStorage keys the Zustand auth slice hydrates from. Returns the
  * parsed login response so the caller can assert on it or skip the test
  * when the seed data is missing.

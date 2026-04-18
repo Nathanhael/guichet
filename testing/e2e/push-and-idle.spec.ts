@@ -17,7 +17,6 @@ import { test, expect, type Page } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
-const DEMO_PASSWORD = 'password123';
 
 /**
  * The NotificationToggle bell lives inside the SettingsPopover (gear icon)
