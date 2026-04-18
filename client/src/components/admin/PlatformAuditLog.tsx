@@ -6,49 +6,6 @@ import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 import { useUrlParam } from '../../hooks/useUrlState';
 import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
 
-const ACTION_OPTIONS = [
-  // Partner
-  'partner.created',
-  'partner.config_updated',
-  'partner.deactivated',
-  'partner.reactivated',
-  'partner.deleted',
-  // Platform
-  'platform.enter_partner',
-  'platform_operator_bootstrap',
-  // Members
-  'member.added',
-  'member.invited',
-  'member.removed',
-  'member.updated',
-  // Users
-  'user.deleted',
-  'user.login',
-  'user.profile_updated',
-  'user.sessions_revoked',
-  // Security
-  'security.account_locked',
-  'security.mfa_disabled',
-  'security.mfa_disabled_by_admin',
-  'security.mfa_enabled',
-  'security.mfa_recovery_codes_regenerated',
-  'security.user_unlocked_by_admin',
-  // SSO
-  'sso.email_conflict',
-  'sso.group_mapping_added',
-  'sso.group_mapping_updated',
-  'sso.group_mapping_removed',
-  'sso.membership_auto_created',
-  'sso.no_matching_groups',
-  // System
-  'system.archive_run',
-  'system.gdpr_purge',
-  // Content
-  'kb.created',
-  'label.created',
-  'webhook.created',
-] as const;
-
 function formatAuditDetails(log: { action: string; metadata?: unknown; targetId: string | null; actorName: string | null }) {
   const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
 
@@ -175,6 +132,7 @@ export default function PlatformAuditLog() {
 
   const { data: partners } = trpc.platform.listPartners.useQuery();
   const { data: targetTypeList } = trpc.platform.listTargetTypes.useQuery();
+  const { data: actionList } = trpc.platform.listActions.useQuery();
 
   const queryParams = {
     limit: LIMIT,
@@ -214,7 +172,7 @@ export default function PlatformAuditLog() {
   const visibleData = items;
   const page = cursorStack.length;
 
-  async function handleExport() {
+  async function handleExport(format: 'csv' | 'json') {
     try {
       const currentParams = {
         action: filterAction || undefined,
@@ -230,26 +188,37 @@ export default function PlatformAuditLog() {
 
       if (!fullLog || fullLog.length === 0) { setToast({ message: t('no_data_export'), type: 'error' }); return; }
 
-      const headers = [t('col_time'), t('col_action'), t('col_actor'), t('col_partner_id'), t('col_target_type'), t('col_target_id'), t('col_metadata')];
-      const rows = fullLog.map(l => [
-        new Date(l.createdAt).toISOString(),
-        l.action,
-        l.actorName || t('system'),
-        l.partnerId || '',
-        l.targetType || '',
-        l.targetId || '',
-        JSON.stringify(l.metadata).replace(/"/g, '""')
-      ]);
+      const stamp = new Date().toISOString().slice(0, 10);
+      let blob: Blob;
+      let filename: string;
+      if (format === 'json') {
+        // Raw array keeps the JSON structurally identical to the tRPC query
+        // result — downstream compliance tools can diff by id without
+        // reshuffling keys. Pretty-printed for grep-ability.
+        blob = new Blob([JSON.stringify(fullLog, null, 2)], { type: 'application/json;charset=utf-8;' });
+        filename = `guichet_audit_${stamp}.json`;
+      } else {
+        const headers = [t('col_time'), t('col_action'), t('col_actor'), t('col_partner_id'), t('col_target_type'), t('col_target_id'), t('col_metadata')];
+        const rows = fullLog.map(l => [
+          new Date(l.createdAt).toISOString(),
+          l.action,
+          l.actorName || t('system'),
+          l.partnerId || '',
+          l.targetType || '',
+          l.targetId || '',
+          JSON.stringify(l.metadata).replace(/"/g, '""')
+        ]);
+        const csvContent = [
+          headers.join(','),
+          ...rows.map(r => r.map(cell => `"${cell}"`).join(','))
+        ].join('\n');
+        blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        filename = `guichet_audit_${stamp}.csv`;
+      }
 
-      const csvContent = [
-        headers.join(','),
-        ...rows.map(r => r.map(cell => `"${cell}"`).join(','))
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      link.setAttribute('download', `guichet_audit_${new Date().toISOString().slice(0,10)}.csv`);
+      link.setAttribute('download', filename);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -271,12 +240,20 @@ export default function PlatformAuditLog() {
           <h2 className="text-2xl font-bold uppercase tracking-tight">{t('audit_log_title')}</h2>
           <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)] mt-1 tracking-wide">{t('audit_log_desc')}</p>
         </div>
-        <button
-          onClick={handleExport}
-          className="btn-primary"
-        >
-          {t('export_csv')}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleExport('csv')}
+            className="btn-primary"
+          >
+            {t('export_csv')}
+          </button>
+          <button
+            onClick={() => handleExport('json')}
+            className="btn-secondary"
+          >
+            Export JSON
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
@@ -289,7 +266,7 @@ export default function PlatformAuditLog() {
               className="input-field w-full"
             >
               <option value="">{t('all_actions')}</option>
-              {ACTION_OPTIONS.map((action) => (
+              {(actionList || []).map((action) => (
                 <option key={action} value={action}>{action}</option>
               ))}
             </select>

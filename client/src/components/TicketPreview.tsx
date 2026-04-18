@@ -16,9 +16,10 @@ interface TicketPreviewProps {
   onClose: () => void;
   joinDisabled?: boolean;
   readOnly?: boolean;
+  onViewAudit?: () => void;
 }
 
-export default function TicketPreview({ ticket, messages: propMessages, onJoin, onClose, joinDisabled, readOnly }: TicketPreviewProps) {
+export default function TicketPreview({ ticket, messages: propMessages, onJoin, onClose, joinDisabled, readOnly, onViewAudit }: TicketPreviewProps) {
   const t = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +51,18 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
               {readOnly ? (t('history_mode') || 'HISTORY') : t('preview_mode')}
             </span>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border border-border-heavy font-bold hover:bg-bg-elevated">×</button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onViewAudit && (
+              <button
+                onClick={onViewAudit}
+                className="text-[10px] font-bold uppercase tracking-widest px-3 h-8 border border-border-heavy hover:bg-bg-elevated"
+                title="View audit history for this ticket"
+              >
+                Audit
+              </button>
+            )}
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border border-border-heavy font-bold hover:bg-bg-elevated">×</button>
+          </div>
         </div>
 
         {/* Messages */}

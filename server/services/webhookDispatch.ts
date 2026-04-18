@@ -95,6 +95,11 @@ export type WebhookEvent =
   | 'rating.submitted'
   | 'user.created'
   | 'user.deleted'
+  // Fired when verifyAuditChain detects a hash mismatch. Global signal, not
+  // tenant-specific, but fanned out to every active partner webhook that
+  // subscribes so compliance contacts are paged via the channels they already
+  // configured (PagerDuty, Slack, etc). Payload carries brokenAt + severity.
+  | 'audit.chain_broken'
   | '*';
 
 function signPayload(body: string, encryptedSecret: string): string {
@@ -129,6 +134,36 @@ export function fireWebhooks(partnerId: string, event: WebhookEvent, data: Recor
   dispatchAll(partnerId, event, data).catch((err) => {
     logger.error({ err, partnerId, event }, 'Webhook dispatch top-level error');
   });
+}
+
+/**
+ * Fire a cross-tenant (global) webhook event. Fans out to every active
+ * webhook across all partners that subscribes to the event. Used for
+ * infrastructure-level signals like `audit.chain_broken` — compliance is
+ * partner-agnostic and each tenant's ops contact should be paged through
+ * their own configured channel.
+ *
+ * Non-blocking; individual dispatch failures are logged and swallowed.
+ */
+export function broadcastWebhook(event: WebhookEvent, data: Record<string, unknown>) {
+  dispatchAllPartners(event, data).catch((err) => {
+    logger.error({ err, event }, 'Webhook broadcast top-level error');
+  });
+}
+
+async function dispatchAllPartners(event: WebhookEvent, data: Record<string, unknown>) {
+  const hooks = await db
+    .select()
+    .from(webhooks)
+    .where(eq(webhooks.active, true));
+
+  const matching = hooks.filter((h) => {
+    const events = (h.events as string[]) || [];
+    return events.includes(event) || events.includes('*');
+  });
+
+  if (matching.length === 0) return;
+  await Promise.allSettled(matching.map((hook) => deliverOne(hook, event, data)));
 }
 
 async function dispatchAll(partnerId: string, event: WebhookEvent, data: Record<string, unknown>) {

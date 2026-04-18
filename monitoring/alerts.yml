@@ -1,0 +1,33 @@
+groups:
+  - name: audit-chain-integrity
+    interval: 30s
+    rules:
+      - alert: AuditChainTamperDetected
+        expr: increase(guichet_audit_chain_verify_failures_total{severity="critical"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          subsystem: audit
+        annotations:
+          summary: 'Audit chain hash mismatch — WORM archive may be tampered'
+          description: |
+            verifyAuditChain returned {{ $value }} critical failure(s) in the last 5m.
+            A `critical` signal means the SHA-256 hash chain in `audit_archive` does not
+            reconcile — either rows have been rewritten or the hash implementation has
+            regressed. Treat as a compliance incident: freeze writes to the archive,
+            snapshot the current table, and investigate which rows fail verification
+            (see `system.chain_broken_detected` rows in PlatformAuditLog).
+
+      - alert: AuditChainVerifyServiceError
+        expr: increase(guichet_audit_chain_verify_failures_total{severity="warn"}[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+          subsystem: audit
+        annotations:
+          summary: 'Audit chain verification repeatedly failing with service errors'
+          description: |
+            verifyAuditChain emitted {{ $value }} service-level errors in the last 15m.
+            Unlike `critical`, this signals an infrastructure issue (db read timeout,
+            redis outage) — not a tamper. Operators cannot complete compliance runs
+            until this is resolved. Check db/redis health.
