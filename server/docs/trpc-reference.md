@@ -1,6 +1,6 @@
 # Guichet tRPC API Reference
 
-Reference for all tRPC procedures (18 routers).
+Reference for all tRPC procedures (17 routers).
 Client access: `trpc.<router>.<procedure>`
 
 ## Auth Levels
@@ -10,8 +10,7 @@ Client access: `trpc.<router>.<procedure>`
 | **public** | No authentication required |
 | **protected** | Authenticated user (any role) |
 | **admin** | Admin or platform operator |
-| **platform** | Platform operator with step-up verification |
-| **platformBase** | Platform operator (no step-up required) |
+| **platform** | Platform operator |
 | **role(...)** | Specific roles required (platform operators bypass) |
 
 ---
