@@ -6,6 +6,7 @@ import { eq, desc, gte, lte, ilike, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
+import { auditChainVerifyFailures } from '../../../utils/metrics.js';
 
 const VERIFY_CHAIN_WINDOW_SECS = 60;
 const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
@@ -274,6 +275,8 @@ export const platformAuditRouter = router({
       // can react. Service-level errors (e.g. db timeout) are distinct from
       // tampering and get a separate, lower-severity action.
       if (!result.valid) {
+        const severity: 'warn' | 'critical' = result.error ? 'warn' : 'critical';
+        auditChainVerifyFailures.inc({ severity });
         await db.insert(auditLog).values({
           action: result.error ? 'system.chain_verify_error' : 'system.chain_broken_detected',
           actorId: ctx.user.id,
@@ -283,7 +286,7 @@ export const platformAuditRouter = router({
             checked: result.checked,
             brokenAt: result.brokenAt ?? null,
             error: result.error ?? null,
-            severity: result.error ? 'warn' : 'critical',
+            severity,
           },
         });
       }

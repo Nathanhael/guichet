@@ -8,6 +8,13 @@ function parseRetryAfter(message: string | undefined): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
+// 7 days — compliance baseline. If the last chain-verify is older than this
+// the banner nudges operators to run a fresh scan. Higher than daily so a
+// one-off skipped day doesn't nag, low enough that a full month of silence
+// never goes unnoticed.
+const STALE_AFTER_DAYS = 7;
+const STALE_AFTER_MS = STALE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+
 type ChainVerifyRecord = {
   ranAt: string;
   ranBy?: string;
@@ -197,6 +204,20 @@ export default function PlatformSystemHealth() {
                   : 'Verify Now'}
             </button>
           </div>
+
+          {lastVerify && !chainVerify.isPending && (() => {
+            const ageMs = Date.now() - new Date(lastVerify.ranAt).getTime();
+            if (ageMs < STALE_AFTER_MS) return null;
+            const days = Math.floor(ageMs / (24 * 60 * 60 * 1000));
+            return (
+              <p
+                className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-accent-amber)] mb-4"
+                data-testid="chain-verify-staleness-banner"
+              >
+                Last verification was {days} day{days === 1 ? '' : 's'} ago — run a fresh scan.
+              </p>
+            );
+          })()}
 
           {chainVerify.error && (
             <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-accent-red)] mb-4">

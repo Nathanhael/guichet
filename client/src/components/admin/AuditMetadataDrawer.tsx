@@ -42,6 +42,7 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
   if (!entry) return null;
 
   const pretty = JSON.stringify(entry.metadata ?? {}, null, 2);
+  const diffRows = extractDiffRows(entry.metadata);
 
   async function handleCopy() {
     try {
@@ -133,6 +134,33 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
           <Field label="Audit entry id" value={entry.id} mono />
         </div>
 
+        {diffRows.length > 0 && (
+          <div className="p-6 border-b border-[var(--color-border)]">
+            <p className="mono-label mb-3">Changes</p>
+            <table
+              className="w-full border-collapse"
+              data-testid="audit-diff-table"
+            >
+              <thead>
+                <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
+                  <th className="p-2 text-left font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Field</th>
+                  <th className="p-2 text-left font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Before</th>
+                  <th className="p-2 text-left font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">After</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--color-border)]">
+                {diffRows.map(row => (
+                  <tr key={row.field}>
+                    <td className="p-2 font-mono text-[10px] uppercase tracking-wide">{row.field}</td>
+                    <td className="p-2 font-mono text-[10px] text-[var(--color-text-secondary)] line-through break-all">{row.before}</td>
+                    <td className="p-2 font-mono text-[10px] break-all">{row.after}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div className="p-6 flex-1">
           <div className="flex justify-between items-center mb-3">
             <p className="mono-label">Metadata (JSON)</p>
@@ -154,6 +182,52 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
       </aside>
     </>
   );
+}
+
+type DiffRow = { field: string; before: string; after: string };
+
+// Audit rows that represent a state change (role swap, config edit, etc.)
+// tend to record before/after pairs under either old<Suffix>/new<Suffix> or
+// previous<Suffix>/new<Suffix> keys. Extract those into a proper diff table so
+// the reader doesn't have to parse the raw JSON mentally. Primitives are
+// stringified verbatim and objects/arrays are JSON-dumped so nested values
+// (e.g. a departments array) still render in a single cell.
+function extractDiffRows(metadata: unknown): DiffRow[] {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return [];
+  const obj = metadata as Record<string, unknown>;
+  const rows: DiffRow[] = [];
+  const matchers: Array<[RegExp, string]> = [
+    [/^old([A-Z].*)$/, 'new'],
+    [/^previous([A-Z].*)$/, 'new'],
+  ];
+  const seen = new Set<string>();
+  for (const key of Object.keys(obj)) {
+    for (const [pattern, counterpartPrefix] of matchers) {
+      const m = key.match(pattern);
+      if (!m) continue;
+      const suffix = m[1];
+      const newKey = `${counterpartPrefix}${suffix}`;
+      if (!(newKey in obj) || seen.has(suffix)) continue;
+      seen.add(suffix);
+      rows.push({
+        field: suffix.charAt(0).toLowerCase() + suffix.slice(1),
+        before: renderValue(obj[key]),
+        after: renderValue(obj[newKey]),
+      });
+    }
+  }
+  return rows;
+}
+
+function renderValue(v: unknown): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return String(v);
+  }
 }
 
 function Field({

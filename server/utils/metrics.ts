@@ -56,4 +56,14 @@ export const aiPipelineErrorsTotal = new client.Counter({
   labelNames: ['type'],
 });
 
+// Audit-chain integrity. Incremented from the platform audit router whenever
+// verifyAuditChain returns a non-valid result. Split by severity so Grafana
+// can page on `critical` (actual hash tamper) separately from `warn` (a
+// transient service-level failure like a db read timeout).
+export const auditChainVerifyFailures = new client.Counter({
+  name: 'guichet_audit_chain_verify_failures_total',
+  help: 'Chain-integrity verification failures since process start',
+  labelNames: ['severity'],
+});
+
 export const register = client.register;

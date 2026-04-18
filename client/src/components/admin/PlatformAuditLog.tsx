@@ -4,6 +4,7 @@ import { useT } from '../../i18n';
 import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 import { useUrlParam } from '../../hooks/useUrlState';
+import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
 
 const ACTION_OPTIONS = [
   // Partner
@@ -147,6 +148,9 @@ export default function PlatformAuditLog() {
   const [dateTo, setDateTo] = useUrlParam('to', '', 'p');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
+  // Mirror the open drawer's row id into ?p.open=<id> for shareable links
+  // to a specific cross-tenant audit entry.
+  const [openId, setOpenId] = useUrlParam('open', '', 'p');
 
   const LIMIT = 50;
 
@@ -187,6 +191,26 @@ export default function PlatformAuditLog() {
   const { data, isLoading } = trpc.platform.getAuditLog.useQuery(queryParams);
   const utils = trpc.useUtils();
   const items = data?.items || [];
+
+  // Open-from-URL: promote the row matching ?p.open=<id> when it lands on
+  // the current page. Does not auto-fetch pages beyond cursor position.
+  useEffect(() => {
+    if (!openId || selectedEntry) return;
+    const match = items.find(l => l.id === openId);
+    if (match) {
+      setSelectedEntry({
+        id: match.id,
+        action: match.action,
+        actorId: match.actorId,
+        actorName: match.actorName,
+        partnerId: match.partnerId,
+        targetType: match.targetType,
+        targetId: match.targetId,
+        metadata: match.metadata,
+        createdAt: match.createdAt,
+      });
+    }
+  }, [items, openId, selectedEntry]);
   const visibleData = items;
   const page = cursorStack.length;
 
@@ -398,19 +422,23 @@ export default function PlatformAuditLog() {
               {visibleData?.map((log) => (
                 <tr
                   key={log.id}
-                  onClick={() => setSelectedEntry({
-                    id: log.id,
-                    action: log.action,
-                    actorId: log.actorId,
-                    actorName: log.actorName,
-                    partnerId: log.partnerId,
-                    targetType: log.targetType,
-                    targetId: log.targetId,
-                    metadata: log.metadata,
-                    createdAt: log.createdAt,
-                  })}
-                  className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer"
+                  onClick={() => {
+                    setSelectedEntry({
+                      id: log.id,
+                      action: log.action,
+                      actorId: log.actorId,
+                      actorName: log.actorName,
+                      partnerId: log.partnerId,
+                      targetType: log.targetType,
+                      targetId: log.targetId,
+                      metadata: log.metadata,
+                      createdAt: log.createdAt,
+                    });
+                    setOpenId(log.id);
+                  }}
+                  className={`hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer ${severityRowClass(auditSeverity(log.action))}`}
                   data-audit-row-id={log.id}
+                  data-audit-severity={auditSeverity(log.action)}
                 >
                   <td className="p-3 text-[10px] font-mono whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString()}
@@ -473,7 +501,10 @@ export default function PlatformAuditLog() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <AuditMetadataDrawer
         entry={selectedEntry}
-        onClose={() => setSelectedEntry(null)}
+        onClose={() => {
+          setSelectedEntry(null);
+          setOpenId('');
+        }}
         onFilterBy={(field, value) => {
           if (field === 'actorId') { setFilterActorId(value); resetCursor(); }
           else if (field === 'targetType') { setFilterTargetType(value); resetCursor(); }
