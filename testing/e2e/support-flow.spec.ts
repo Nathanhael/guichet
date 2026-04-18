@@ -8,6 +8,7 @@
  *             agent_kevin (creates tickets on demand)
  */
 
+import { execSync } from 'node:child_process';
 import { test, expect, type BrowserContext } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
@@ -24,64 +25,53 @@ const DEMO_PASSWORD = 'password123';
  * Closes existing tickets via tRPC, then creates a new one via the UI.
  */
 async function ensureAgentTicket(browser: { newContext: () => Promise<BrowserContext> }): Promise<BrowserContext> {
+  // Close any pre-existing non-closed tickets for agent_kevin via SQL.
+  // Doing this directly side-steps the previous UI close-button flow which
+  // was brittle (confirm dialog + rating modal dismissal) and left us in a
+  // half-clean state when any step failed silently.
+  try {
+    execSync(
+      `docker compose exec -T db psql -U user -d guichet -c "UPDATE tickets SET status='closed' WHERE agent_id='agent_kevin' AND status <> 'closed';"`,
+      { stdio: 'ignore' }
+    );
+  } catch { /* non-fatal — the UI login below will surface real problems */ }
+
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   const res = await loginAsDemo(page, 'agent_kevin');
   if (!res.ok) return ctx;
 
-  await page.waitForTimeout(2000);
+  // Kevin lands on a TicketForm with dept buttons — the agent view uses a
+  // plain <textarea> for the message, NOT ProseMirror. Using `.ProseMirror`
+  // in the selector accidentally picked up other editors on the page and
+  // made `keyboard.type` land in the wrong element; switching to a direct
+  // textarea lookup + `.fill()` makes the helper deterministic.
+  const deptBtn = page.getByRole('button', { name: /Dispatch|DSC/i }).first();
+  await deptBtn.waitFor({ state: 'visible', timeout: 10000 });
+  await deptBtn.click();
 
-  // Close existing ticket — the "✓ CLOSE" button is in the ChatHeader.
-  // Target it directly by matching button text containing "close" (CSS uppercases it).
-  const closeBtn = page.locator('button').filter({ hasText: /close/i }).first();
-  if (await closeBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-    await closeBtn.click();
-    await page.waitForTimeout(1000);
-    // Confirm dialog shows "Yes, close" button
-    const confirmBtn = page.locator('[role="dialog"] button').filter({ hasText: /yes|bevestig/i }).first();
-    if (await confirmBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await confirmBtn.click();
-    }
-    await page.waitForTimeout(3000);
-    // Dismiss rating modal if it appears
-    const ratingDismiss = page.locator('button').filter({ hasText: /later|skip|overslaan|not now/i }).first();
-    if (await ratingDismiss.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await ratingDismiss.click();
-    }
-    await page.waitForTimeout(1000);
+  // DSC declares one reference field ("Order ID"). Use `input[type="text"]`
+  // rather than `input[placeholder]` to avoid sweeping up unrelated inputs.
+  const refInputs = page.locator('input[type="text"]');
+  await refInputs.first().waitFor({ state: 'visible', timeout: 5000 });
+  const refCount = await refInputs.count();
+  const stamp = Date.now();
+  for (let i = 0; i < refCount; i++) {
+    await refInputs.nth(i).fill(`E2E-${stamp}-${i + 1}`);
   }
 
-  // Create new ticket via UI — departments show full names
-  const deptBtn = page.getByText(/Dispatch|DSC/i).first();
-  if (await deptBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await deptBtn.click();
-    await page.waitForTimeout(500);
+  const messageBox = page.locator('textarea').first();
+  await messageBox.fill(`Support test ticket ${stamp}`);
 
-    // Fill reference fields (DSC requires "Order ID")
-    const refInputs = page.locator('input[placeholder]');
-    const refCount = await refInputs.count();
-    for (let i = 0; i < refCount; i++) {
-      await refInputs.nth(i).fill(`E2E-${Date.now()}`);
-    }
-    await page.waitForTimeout(300);
+  // Submit button disables on `!text.trim() || !allRefsFilledIn || !canCreateTicket`.
+  // Assert it's enabled before clicking so a future regression fails loud
+  // instead of silently skipping downstream tests.
+  const submitBtn = page.locator('button[type="submit"]').first();
+  await expect(submitBtn).toBeEnabled({ timeout: 5000 });
+  await submitBtn.click();
 
-    // Type message in editor
-    const editor = page.locator('.ProseMirror, textarea, [contenteditable]').first();
-    if (await editor.isVisible()) {
-      await editor.click();
-      await page.keyboard.type(`Support test ticket ${Date.now()}`);
-    }
-    await page.waitForTimeout(500);
-
-    // Submit
-    const submitBtn = page.locator('button[type="submit"]').first();
-    try {
-      await submitBtn.click({ timeout: 5000 });
-      await page.waitForTimeout(3000);
-    } catch {
-      console.warn('[ensureAgentTicket] Submit button not enabled');
-    }
-  }
+  // Wait for the agent to land in chat (server accepted ticket:new).
+  await page.locator('.ProseMirror').first().waitFor({ state: 'visible', timeout: 15000 });
 
   return ctx;
 }
