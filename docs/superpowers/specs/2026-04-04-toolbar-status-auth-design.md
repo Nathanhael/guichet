@@ -1,7 +1,13 @@
 # Toolbar Declutter, Status Simplification & SSO-Only Auth
 
 **Date:** 2026-04-04
-**Status:** Draft
+**Status:** ✅ Shipped (stamped 2026-04-18)
+
+**Evidence:**
+- §1 Navbar + Toolbar: `SettingsPopover.tsx`, `UserMenu.tsx` live; `NavToolbar.tsx` deleted; all 4 views use the unified pattern.
+- §2 Status simplification: `statusEnum` reduced to `online` / `away`; `daily_agent_status` columns renamed to `onlineSeconds` / `awaySeconds`; `useIdleStatus` simplified.
+- §3 SSO-only: shipped **more aggressively** than proposed. The 2026-04-17 local-auth rip (commit `0a3ee29`) removed local auth for **all** users including platform operators. Bootstrap operators now log in via SSO; break-glass CLI (`server/scripts/break_glass.ts`) is the only non-SSO entry. Supersedes §3's "operators keep local auth as bootstrap" plan — see `decisions/guichet-local-auth-removal` wiki page.
+- §4 Notification prefs: moved into `SettingsPopover`.
 
 ---
 
