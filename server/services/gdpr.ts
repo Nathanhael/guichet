@@ -362,10 +362,17 @@ export async function aggregateAndPurgeAiUsage(): Promise<number> {
 
 export async function purgeAbandonedInvites(): Promise<number> {
   const cutoff = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  // HARD GUARD: never purge platform operators. Bootstrap (`bootstrapPlatformOperator`)
+  // creates the initial operator with externalId=null until their first SSO login;
+  // without this guard, a staging/restored env where the bootstrap operator hasn't
+  // logged in for 30 days would get the operator permanently deleted by the daily
+  // purge (and memberships cascade). Platform-operator invites follow a different
+  // re-issuance flow — we do NOT want them swept up by GDPR cleanup.
   const stale = await db.select({ id: users.id, email: users.email })
     .from(users)
     .where(and(
       isNull(users.externalId),
+      eq(users.isPlatformOperator, false),
       lt(users.createdAt, cutoff),
     ))
     .limit(500);
