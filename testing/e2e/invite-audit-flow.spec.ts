@@ -173,11 +173,6 @@ test.describe('Invite → Audit Log → Pending Invites worklist', () => {
     await gotoAdminTab(page, /^team$/i);
     await inviteGuest(page, email, 'E2E Pending', 'admin');
 
-    // Clear prior sessionStorage so the platform operator login starts clean —
-    // otherwise activeMembershipId / activePartnerId from admin_emma leak over
-    // and the router can land on AdminView for platform_bart.
-    await page.evaluate(() => sessionStorage.clear());
-
     const loginBart = await loginAsDemo(page, 'platform_bart', { lang: 'en' });
     test.skip(!loginBart.ok, `Dev login platform_bart failed (${loginBart.status})`);
     await page.waitForTimeout(2000);
