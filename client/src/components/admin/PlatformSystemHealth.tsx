@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 
-const CHAIN_VERIFY_STORAGE_KEY = 'platform.lastChainVerify';
-
 type ChainVerifyRecord = {
   ranAt: string;
+  ranBy?: string;
   valid: boolean;
   checked: number;
   brokenAt?: string;
@@ -14,40 +13,25 @@ type ChainVerifyRecord = {
 
 export default function PlatformSystemHealth() {
   const t = useT();
+  const utils = trpc.useUtils();
   const { data: health, isLoading, isError, error, refetch } = trpc.platform.getSystemHealth.useQuery(undefined, {
     refetchInterval: 10000,
     retry: 1
   });
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
 
-  // Chain-integrity verification is manually triggered (enabled:false +
-  // refetch()) — a full verify scans the entire audit_archive and isn't
-  // something we want to run on every page load.
-  const chainVerify = trpc.platform.verifyAuditChain.useQuery(undefined, {
-    enabled: false,
+  // Last-verified state is persisted in system_settings so every operator sees
+  // the same status, not just the one who clicked the button.
+  const { data: lastVerify } = trpc.platform.getLastChainVerify.useQuery(undefined, {
     retry: false,
-  });
-  const [lastVerify, setLastVerify] = useState<ChainVerifyRecord | null>(() => {
-    try {
-      const raw = localStorage.getItem(CHAIN_VERIFY_STORAGE_KEY);
-      return raw ? (JSON.parse(raw) as ChainVerifyRecord) : null;
-    } catch {
-      return null;
-    }
-  });
+  }) as { data: ChainVerifyRecord | null | undefined };
 
-  useEffect(() => {
-    if (!chainVerify.data || chainVerify.isFetching) return;
-    const record: ChainVerifyRecord = {
-      ranAt: new Date().toISOString(),
-      valid: chainVerify.data.valid,
-      checked: chainVerify.data.checked,
-      brokenAt: chainVerify.data.brokenAt,
-      error: chainVerify.data.error,
-    };
-    setLastVerify(record);
-    try { localStorage.setItem(CHAIN_VERIFY_STORAGE_KEY, JSON.stringify(record)); } catch { /* quota — ignore */ }
-  }, [chainVerify.data, chainVerify.isFetching]);
+  // Chain-integrity verification is a mutation — it mutates system_settings
+  // (writing the run record) and a full scan walks the entire audit_archive,
+  // so it must never run automatically on mount.
+  const chainVerify = trpc.platform.verifyAuditChain.useMutation({
+    onSuccess: () => { utils.platform.getLastChainVerify.invalidate(); },
+  });
 
   const alerts: { id: string; message: string }[] = [];
   if (health) {
@@ -165,15 +149,24 @@ export default function PlatformSystemHealth() {
               </p>
             </div>
             <button
-              onClick={() => chainVerify.refetch()}
-              disabled={chainVerify.isFetching}
+              onClick={() => chainVerify.mutate()}
+              disabled={chainVerify.isPending}
               className="btn-primary text-[10px] uppercase tracking-widest px-4 py-2 whitespace-nowrap"
+              id="verify-audit-chain-btn"
             >
-              {chainVerify.isFetching ? 'Verifying…' : 'Verify Now'}
+              {chainVerify.isPending ? 'Verifying…' : 'Verify Now'}
             </button>
           </div>
 
-          {chainVerify.isFetching && !lastVerify && (
+          {chainVerify.error && (
+            <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-accent-red)] mb-4">
+              {chainVerify.error.data?.code === 'TOO_MANY_REQUESTS'
+                ? chainVerify.error.message
+                : 'Verification failed — check server logs.'}
+            </p>
+          )}
+
+          {chainVerify.isPending && !lastVerify && (
             <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-muted)] animate-pulse">
               Scanning archive…
             </p>
@@ -214,7 +207,7 @@ export default function PlatformSystemHealth() {
             </div>
           )}
 
-          {!lastVerify && !chainVerify.isFetching && (
+          {!lastVerify && !chainVerify.isPending && (
             <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
               No verification has been run yet.
             </p>
