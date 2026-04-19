@@ -14,7 +14,7 @@ The database has been overhauled for type safety and performance:
 - **Azure Identity Prep**: Added `email` and `external_id` columns to support OIDC integration.
 - **System Configuration**: Added `system_settings` table to store global infrastructure parameters (like mail provider credentials) manageable via the Platform UI.
 - **AI & Analytics Tables**: `ai_prompt_templates` (per-partner prompt customization), `ai_usage_log` (provider usage tracking with token counts and latency), `ratings` (ticket CSAT), `app_feedback` (in-app user feedback).
-- **Integration Tables**: `kb_articles` (per-partner knowledge base), `webhooks` + `webhook_logs` (event dispatch with HMAC signing and delivery tracking), `topic_alerts` (SLA/alert rules with configurable thresholds), `partner_group_mappings` (SSO group→role/department mapping).
+- **Integration Tables**: `kb_articles` (per-partner knowledge base), `webhooks` + `webhook_logs` (event dispatch with HMAC signing and delivery tracking), `topic_alerts` (topic/incident-clustering alert rules with configurable thresholds), `partner_group_mappings` (SSO group→role/department mapping).
 - **User Personalization**: `saved_views` (per-user saved ticket filter configurations per partner).
 
 ---
@@ -139,11 +139,11 @@ Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR p
 
 ---
 
-## 9. Knowledge Base, Webhooks & SLA
+## 9. Knowledge Base, Webhooks & Topic Alerts
 
 - **Knowledge Base**: Per-partner `kb_articles` table with title, body, category. Full CRUD via `trpc.kb.*` router. Admin UI in `AdminKnowledgeBase` component.
 - **Webhooks**: Partners configure webhook endpoints (`webhooks` table) with event subscriptions and HMAC signing secrets. `webhookDispatch.ts` delivers events with retry logic. Delivery history in `webhook_logs`. Admin UI in `AdminWebhooks`.
-- **SLA System**: Per-department response and resolution time targets stored in partner config. `sla.ts` service calculates `slaResponseDueAt` / `slaResolutionDueAt` on ticket creation (respecting business hours). `SlaIndicator` component shows countdown (green/yellow/red). `topic_alerts` table defines breach alert rules. `AdminAlerts` UI for configuration.
+- **Topic Alerts**: Configurable incident-detection rules (`topic_alerts` table) firing on conversation-clustering thresholds. Admin UI in `AdminAlerts` lets staff acknowledge / resolve active alerts. (Per-department SLA enforcement is specced in `docs/superpowers/specs/2026-04-19-sla-config-design.md` but not yet implemented.)
 - **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with auto-prompt. Staff satisfaction dashboard with per-agent breakdown and date filtering. In-app feedback via `app_feedback` table and `FeedbackModal`.
 
 ---
@@ -154,7 +154,7 @@ Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR p
 - **Self-Contained Feature Modules**: `PlatformView` is a thin shell (tabs + modal state). Each feature lives in `components/platform/` and owns its own tRPC hooks, mutations, and cache invalidation — no prop-drilling of refetch functions.
 - **Component Organization**: `components/admin/` (21 components — stats, satisfaction, team, departments, tickets, business hours, labels, canned responses, knowledge base, webhooks, alerts, feedback, archive, platform ops), `components/agent/` (3 — nav, sidebar, ticket form), `components/support/` (6 — queue, chat tabs, customer info, AI copilot, saved view picker, nav), `components/chat/` (11 — decomposed chat sub-components: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LabelPicker, LinkPreviewCard, QuoteBlock, SearchBar). Shared components at root level (ChatWindow, MessageBubble, Toast, ConfirmDialog, AccessibilityMenu, NeuroToggle, BionicText, etc.).
 - **Reusable UI Primitives**: Custom `ConfirmDialog` and `Toast` components replace all native `alert()`/`confirm()` calls for consistent UX.
-- **Data Visualization**: Recharts for dashboard charts (AdminStats, SLA compliance).
+- **Data Visualization**: Recharts for dashboard charts (AdminStats).
 - **Full i18n**: All UI strings use `useT()` with translations in English, French, and Dutch (`i18n.ts`). Business hours, admin views, and platform views are fully translated.
 - **State Synchronization**: Strict single-page-app behaviors using Zustand for global state and tRPC for seamless query invalidation and refetching.
 - **Window Event Architecture**: To avoid deep prop-drilling or complex handle-passing for UI modals, the system uses a producer/consumer pattern based on `window` CustomEvents. Components like `SupportNav` or the keyboard hook dispatch events (e.g., `support:open-label-picker`), which are consumed by the component owning the modal state (`ChatHeader`).

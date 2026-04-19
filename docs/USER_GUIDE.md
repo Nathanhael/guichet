@@ -79,9 +79,8 @@ Partner Admins use the **AdminView** to manage their local workspace:
 - **Canned Responses Tab**: Create, edit, and delete response templates for support agents. Each response has a title, body, optional shortcut key, and optional category.
 - **Knowledge Base Tab**: Create and manage help articles organized by category. Articles are available to support staff for reference.
 - **Webhooks Tab**: Configure webhook endpoints that receive events (ticket created, closed, etc.) with HMAC signature verification. View delivery logs.
-- **Alerts Tab**: Set up alert rules for SLA breaches and topic monitoring with configurable thresholds and recipients.
-- **SLA Policies**: Configure per-department response and resolution time targets. Toggle business-hours-only mode to pause the SLA clock outside operating hours.
-- **Stats Tab**: View partner analytics including ticket volumes, response times, and SLA compliance (Recharts dashboards).
+- **Alerts Tab**: Review topic-clustering incident alerts. Acknowledge or resolve active alerts. Alert rules themselves are configured by platform operators; partner admins see and work the resulting alert queue.
+- **Stats Tab**: View partner analytics including ticket volumes, response times, ratings breakdown, and agent workload (Recharts dashboards).
 - **Feedback Tab**: Review in-app user feedback submitted via the feedback modal.
 
 ---
@@ -142,15 +141,6 @@ AI features are controlled per partner by platform admins (Edit Partner → AI F
 ### Collision Detection
 
 When multiple support staff open the same ticket, a banner appears: "👀 Sarah is also viewing this ticket". This prevents duplicate or conflicting responses. The banner updates as viewers join or leave.
-
-### SLA Indicators
-
-Each ticket in the queue shows an SLA countdown timer:
-- 🟢 **Green**: More than 50% of response/resolution time remaining
-- 🟡 **Yellow**: Less than 50% remaining
-- 🔴 **Red**: SLA breached
-
-The chat header also shows the SLA timer for the active ticket.
 
 ---
 
