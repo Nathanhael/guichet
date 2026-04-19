@@ -121,9 +121,8 @@ export async function runDailyPurge() {
       for (const { date, partnerId, tickets: dayTickets } of grouped.values()) {
         const ticketIds = dayTickets.map(t => t.id);
         const dayRatings = ticketIds.flatMap(id => ratingsByTicket.get(id) ?? []);
-        const dayMessages = ticketIds.flatMap(id => messagesByTicket.get(id) ?? []);
 
-        const stats = computeLiveDayStats(dayTickets, dayRatings, 'all', dayMessages);
+        const stats = computeLiveDayStats(dayTickets, dayRatings, 'all');
 
         const avgResponseMs = stats.responseCount > 0 ? Math.round(stats.responseSum / stats.responseCount) : 0;
         const avgDurationMs = stats.durationCount > 0 ? Math.round(stats.durationSum / stats.durationCount) : 0;
@@ -134,7 +133,7 @@ export async function runDailyPurge() {
           total: stats.total, closed: stats.closed, abandoned: stats.abandoned, reopened: stats.reopened,
           avgResponseMs, avgDurationMs, avgRating,
           ratingCount: stats.ratingCount,
-          p95ResponseMs: stats.p95ResponseMs, sentimentSum: stats.sentimentSum, sentimentCount: stats.sentimentCount,
+          p95ResponseMs: stats.p95ResponseMs,
           deptCounts: stats.deptCounts, ratingsByDept: stats.ratingsByDept, hourly: stats.hourly,
         };
 
@@ -145,8 +144,8 @@ export async function runDailyPurge() {
             abandoned: sql`EXCLUDED.abandoned`, reopened: sql`EXCLUDED.reopened`,
             avgResponseMs: sql`EXCLUDED.avg_response_ms`, avgDurationMs: sql`EXCLUDED.avg_duration_ms`,
             avgRating: sql`EXCLUDED.avg_rating`, ratingCount: sql`EXCLUDED.rating_count`,
-            p95ResponseMs: sql`EXCLUDED.p95_response_ms`, sentimentSum: sql`EXCLUDED.sentiment_sum`,
-            sentimentCount: sql`EXCLUDED.sentiment_count`, deptCounts: sql`EXCLUDED.dept_counts`,
+            p95ResponseMs: sql`EXCLUDED.p95_response_ms`,
+            deptCounts: sql`EXCLUDED.dept_counts`,
             ratingsByDept: sql`EXCLUDED.ratings_by_dept`, hourly: sql`EXCLUDED.hourly`,
           },
         });
