@@ -45,6 +45,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
     senderLang: message.senderLang || '',
     viewerLang: user?.lang || 'en',
     enabled: translationEnabled && !message.system && !message.whisper,
+    prewarmed: message.translations?.[user?.lang || 'en'],
   });
 
   // Trigger translation on first render — concurrency limiter in the hook prevents N simultaneous API calls

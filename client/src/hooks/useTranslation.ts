@@ -62,10 +62,15 @@ export function useAutoTranslation(opts: {
   senderLang: string;
   viewerLang: string;
   enabled: boolean;
+  prewarmed?: string;
 }) {
-  const { messageId, text, senderLang, viewerLang, enabled } = opts;
+  const { messageId, text, senderLang, viewerLang, enabled, prewarmed } = opts;
   const needsTranslation = enabled && senderLang && viewerLang && senderLang !== viewerLang;
   const cacheKey = `${messageId}:${viewerLang}`;
+
+  if (prewarmed && !translationCache.has(cacheKey)) {
+    cacheSet(cacheKey, prewarmed);
+  }
 
   const [translated, setTranslated] = useState<string | null>(
     needsTranslation ? (translationCache.get(cacheKey) ?? null) : null,
