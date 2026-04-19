@@ -82,6 +82,13 @@ export default function ChatHeader({
   const t = useT();
   const viewerLang = useLang();
   const isCrossLang = !!ticket.agentLang && ticket.agentLang !== viewerLang && isSupport;
+  // Banner self-dismisses once the current support user has sent their first
+  // non-whisper reply in this ticket — they've demonstrably learned the
+  // auto-translate pathway, so keeping it visible is just noise.
+  const hasSupportReply = useStore(s => {
+    const msgs = s.messages[ticket.id] || [];
+    return msgs.some(m => m.senderId === currentUserId && !m.whisper && !m.system);
+  });
   const { manifest } = usePartner();
 
   const [transferNote, setTransferNote] = useState('');
@@ -531,7 +538,7 @@ export default function ChatHeader({
           )}
         </div>
         </div>
-        {isCrossLang && !focusMode && !compact && !isClosed && (
+        {isCrossLang && !hasSupportReply && !focusMode && !compact && !isClosed && (
           <div
             data-cross-lang-banner
             className="px-4 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] font-mono text-[10px] text-[var(--color-text-muted)]"
