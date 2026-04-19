@@ -204,6 +204,6 @@ Revisit only if option 1 + this spec proves insufficient.
 
 ## Open Questions
 
-- [ ] Should the staffing header be visible to all roles or support-only? Lean: support + admin (admin needs to see imbalance to staff appropriately).
-- [ ] Banner dismissal — per-session (current proposal) vs per-ticket vs never-dismissible? Per-session feels right; revisit on user feedback.
+- [x] ~~Should the staffing header be visible to all roles or support-only?~~ **Resolved 2026-04-20:** support + admin. Admin-only would kill the cross-lang pickup nudge which is the feature's whole point. Shipped in `1535f06` (M-1 review fix).
+- [x] ~~Banner dismissal — per-session (current proposal) vs per-ticket vs never-dismissible?~~ **Resolved 2026-04-20:** self-dismiss after the current support's first non-whisper reply. No user action required, no local state to persist, derives from message history. Shipped in `01cfbc3`.
 - [ ] Integration with the language-aware AI instructions spec ([2026-04-19-partner-ai-instructions-design.md](docs/superpowers/specs/2026-04-19-partner-ai-instructions-design.md)) — when fr support replies in a nl ticket, partner's "house style" instructions should govern the translation, not just literal translation.
