@@ -116,8 +116,6 @@ function makeFakeStats(overrides: Record<string, unknown> = {}) {
     ratingSum: 8,
     ratingCount: 2,
     p95ResponseMs: 9000,
-    sentimentSum: 3,
-    sentimentCount: 2,
     deptCounts: { general: 5 },
     ratingsByDept: {},
     hourly: Array(24).fill(0),

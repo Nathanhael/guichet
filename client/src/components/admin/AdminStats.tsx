@@ -44,12 +44,10 @@ interface DashboardData {
   waitingOver3: number;
   resolutionRate: number;
   deptCounts: Record<string, number>;
-  dailyTrend: { date: string; total: number; sentiment?: number | null }[];
+  dailyTrend: { date: string; total: number }[];
   trendGranularity: string;
   supportStats: { name: string; total: number; today: number; avgRating: number | null }[];
   agentStats: { name: string; total: number; today: number }[];
-  sentimentScore: number;
-  sentimentByDept: Record<string, { avg: number | null; count: number }>;
   previousPeriod?: {
     total?: number;
     avgResponseMinutes?: number;
