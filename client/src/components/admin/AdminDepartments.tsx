@@ -11,19 +11,27 @@ interface RefField {
   optional?: boolean;
 }
 
+interface SlaConfig {
+  enabled: boolean;
+  firstResponseMinutes: number;
+  warnAtPercent: number;
+}
+
 interface Department {
   id: string;
   name: string;
   description: string;
   referenceFields: RefField[];
+  sla?: SlaConfig;
 }
 
-function mapDepts(raw: Array<{ id?: string; name?: string; description?: string; referenceFields?: RefField[] }> | undefined | null): Department[] {
+function mapDepts(raw: Array<{ id?: string; name?: string; description?: string; referenceFields?: RefField[]; sla?: SlaConfig }> | undefined | null): Department[] {
   return (raw || []).map(d => ({
     id: d.id || '',
     name: d.name || '',
     description: d.description || '',
     referenceFields: d.referenceFields || [],
+    sla: d.sla,
   }));
 }
 
@@ -47,6 +55,8 @@ export default function AdminDepartments() {
   const [deletingIdx, setDeletingIdx] = useState<number | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [slaEditingIdx, setSlaEditingIdx] = useState<number | null>(null);
+  const [slaDraft, setSlaDraft] = useState<SlaConfig>({ enabled: true, firstResponseMinutes: 30, warnAtPercent: 75 });
 
   // Sync server data → local state (only when not actively editing)
   const isEditing = editingIdx !== null;
@@ -118,8 +128,48 @@ export default function AdminDepartments() {
     }
   });
 
+  const updateSla = trpc.partner.updateDepartmentSla.useMutation({
+    onSuccess: () => {
+      utils.partner.getManifest.invalidate();
+      setSlaEditingIdx(null);
+      setToast({ message: 'SLA updated', type: 'success' });
+    },
+    onError: (e) => setToast({ message: e.message, type: 'error' }),
+  });
+
+  function startSlaEdit(idx: number) {
+    setDeletingIdx(null);
+    setEditingIdx(null);
+    setEditDraft(null);
+    const existing = departments[idx].sla;
+    setSlaDraft(
+      existing
+        ? { ...existing }
+        : { enabled: true, firstResponseMinutes: 30, warnAtPercent: 75 }
+    );
+    setSlaEditingIdx(idx);
+  }
+
+  function cancelSlaEdit() {
+    setSlaEditingIdx(null);
+  }
+
+  function saveSla() {
+    if (slaEditingIdx === null) return;
+    const dept = departments[slaEditingIdx];
+    if (!dept?.id) {
+      setToast({ message: 'Save department before configuring SLA.', type: 'error' });
+      return;
+    }
+    updateSla.mutate({
+      departmentId: dept.id,
+      sla: slaDraft.enabled ? slaDraft : null,
+    });
+  }
+
   function startEdit(idx: number) {
     setDeletingIdx(null);
+    setSlaEditingIdx(null);
     setEditingIdx(idx);
     setEditDraft({ ...departments[idx], referenceFields: [...departments[idx].referenceFields] });
   }
@@ -250,10 +300,11 @@ export default function AdminDepartments() {
 
       <div className="surface-card">
         {/* Header */}
-        <div className="grid grid-cols-[1fr_1fr_1fr_80px] border-b border-[var(--color-border)] bg-bg-elevated">
+        <div className="grid grid-cols-[1fr_1fr_1fr_140px_80px] border-b border-[var(--color-border)] bg-bg-elevated">
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Name</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Description</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('ref_fields_label') || 'Ref Fields'}</div>
+          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">SLA</div>
           <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide text-center"></div>
         </div>
 
@@ -360,13 +411,94 @@ export default function AdminDepartments() {
               </div>
             ) : (
               /* View mode */
-              <div className={`grid grid-cols-[1fr_1fr_1fr_80px] border-b border-[var(--color-border)] ${deletingIdx === idx ? '' : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'}`}>
+              <div className={`grid grid-cols-[1fr_1fr_1fr_140px_80px] border-b border-[var(--color-border)] ${deletingIdx === idx ? '' : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'}`}>
                 <div className="px-4 py-3 font-bold text-sm uppercase">{dept.name}</div>
                 <div className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">{dept.description || '—'}</div>
                 <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
                   {dept.referenceFields.length > 0
                     ? dept.referenceFields.map(f => f.label).join(', ')
                     : '—'}
+                </div>
+                <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
+                  {slaEditingIdx === idx ? (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <label className="flex items-center gap-1 font-mono text-[9px] uppercase">
+                        <input
+                          type="checkbox"
+                          checked={slaDraft.enabled}
+                          onChange={(e) => setSlaDraft({ ...slaDraft, enabled: e.target.checked })}
+                        />
+                        On
+                      </label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={480}
+                        value={slaDraft.firstResponseMinutes}
+                        onChange={(e) => setSlaDraft({ ...slaDraft, firstResponseMinutes: Number(e.target.value) })}
+                        className="input-field w-14 text-xs px-1 py-0.5"
+                        disabled={!slaDraft.enabled}
+                      />
+                      <span className="font-mono text-[9px] uppercase">m</span>
+                      <select
+                        value={slaDraft.warnAtPercent}
+                        onChange={(e) => setSlaDraft({ ...slaDraft, warnAtPercent: Number(e.target.value) })}
+                        className="input-field text-xs px-1 py-0.5"
+                        disabled={!slaDraft.enabled}
+                      >
+                        <option value={50}>50%</option>
+                        <option value={75}>75%</option>
+                        <option value={90}>90%</option>
+                      </select>
+                      <button
+                        onClick={saveSla}
+                        disabled={isExternal || updateSla.isPending}
+                        aria-disabled={isExternal || undefined}
+                        title={isExternal ? guestTooltip : 'Save'}
+                        data-guest-disabled={isExternal || undefined}
+                        className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <Check className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={cancelSlaEdit}
+                        className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white"
+                        title="Cancel"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : dept.sla && dept.sla.enabled ? (
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs">
+                        {dept.sla.firstResponseMinutes}m / warn {dept.sla.warnAtPercent}%
+                      </span>
+                      <button
+                        onClick={() => startSlaEdit(idx)}
+                        disabled={isExternal}
+                        aria-disabled={isExternal || undefined}
+                        data-guest-disabled={isExternal || undefined}
+                        className="w-6 h-6 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isExternal ? guestTooltip : 'Edit SLA'}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] uppercase text-[var(--color-text-muted)]">OFF</span>
+                      <button
+                        onClick={() => startSlaEdit(idx)}
+                        disabled={isExternal}
+                        aria-disabled={isExternal || undefined}
+                        data-guest-disabled={isExternal || undefined}
+                        className="font-mono text-[9px] uppercase tracking-wide px-2 py-0.5 border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        title={isExternal ? guestTooltip : 'Set SLA'}
+                      >
+                        Set SLA
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div className="px-4 py-3 flex items-center justify-center gap-1">
                   <button
