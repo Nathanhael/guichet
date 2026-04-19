@@ -1,6 +1,7 @@
 import { Socket } from 'socket.io';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
+import { markFirstStaffResponse } from '../../services/sla.js';
 import { isValidMediaUrl } from '../../utils/security.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { requirePartnerScope, requirePartnerScopeWith } from '../partnerScope.js';
@@ -169,6 +170,25 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         replyToId: replyToId || null,
       });
       const messageId = msgPayload.id;
+
+      // SLA: stamp first staff response if applicable
+      try {
+        const slaResult = await markFirstStaffResponse({
+          ticketId,
+          at: msgPayload.createdAt,
+          senderRole: sender.role,
+          isWhisper: !!isWhisper,
+        });
+        if (slaResult.resolvedBreach) {
+          ctx.io.to(Rooms.ticket(ticketId)).emit('sla:resolved', {
+            ticketId,
+            partnerId: slaResult.partnerId,
+            respondedInMinutes: slaResult.respondedInMinutes,
+          });
+        }
+      } catch (slaErr) {
+        logger.error({ err: slaErr instanceof Error ? slaErr.message : String(slaErr), ticketId }, '[message:send] SLA stamp failed (non-fatal)');
+      }
 
       // Resolve reply snippet for broadcast (if replying to a message)
       let broadcastPayload: typeof msgPayload & { localId?: string; replyTo?: { id: string; senderName: string; text: string; mediaUrl: string | null } | null } = localId ? { ...msgPayload, localId } : msgPayload;

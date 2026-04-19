@@ -22,6 +22,7 @@ interface QueueTicketRowProps {
   variant: 'mine' | 'other' | 'queue';
   onClick: () => void;
   disabled?: boolean;
+  className?: string;
 }
 
 export default function QueueTicketRow({
@@ -32,6 +33,7 @@ export default function QueueTicketRow({
   variant,
   onClick,
   disabled = false,
+  className,
 }: QueueTicketRowProps) {
   const isUnread = unreadCount > 0;
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers);
@@ -65,6 +67,7 @@ export default function QueueTicketRow({
     !isActive && isUnread && 'bg-[rgba(59,130,246,0.04)]',
     isActive && isUnread && 'bg-[rgba(59,130,246,0.08)]',
     disabled && 'opacity-40 cursor-not-allowed',
+    className,
   ]
     .filter(Boolean)
     .join(' ');

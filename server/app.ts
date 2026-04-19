@@ -29,6 +29,7 @@ import { runDailyPurge } from './services/gdpr.js';
 import { rollupDay } from './services/statusTracking.js';
 import { cleanupExpiredTokens } from './services/refreshToken.js';
 import { scheduleDailyChainVerify } from './services/chainVerifySchedule.js';
+import { scheduleSlaSweep, setSlaIo } from './services/sla.js';
 import { registerSocketHandlers } from './socket/handlers.js';
 import { metricsMiddleware } from './middleware/metrics.js';
 import { createTaskRunner } from './utils/taskRunner.js';
@@ -503,6 +504,10 @@ registerSocketHandlers(io);
 setBusinessHoursIo(io);
 setPresenceIo(io);
 
+// SLA sweep — every SLA_SWEEP_INTERVAL_MS (default 60s). Set env=0 to disable.
+setSlaIo(io);
+const stopSlaScheduler = scheduleSlaSweep();
+
 // Graceful shutdown — drain connections on SIGTERM/SIGINT (Docker stop, Ctrl+C)
 let shuttingDown = false;
 async function gracefulShutdown(signal: string) {
@@ -513,6 +518,7 @@ async function gracefulShutdown(signal: string) {
   // 0. Stop scheduled tasks
   if (reclaimIntervalHandle) clearInterval(reclaimIntervalHandle);
   stopChainVerifyScheduler();
+  stopSlaScheduler();
 
   // 1. Stop accepting new connections
   httpServer.close(() => {
