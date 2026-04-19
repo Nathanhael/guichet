@@ -559,7 +559,6 @@ const fr: Record<string, string> = {
 
     // AI Copilot
     ai_copilot: 'Copilote IA',
-    ai_sentiment: 'Sentiment',
     ai_summary: 'R\u00e9sum\u00e9',
     ai_analyzing: 'Analyse en cours...',
     ai_unavailable: 'IA indisponible',
@@ -569,7 +568,6 @@ const fr: Record<string, string> = {
     ai_quick_tips: 'Conseils rapides',
     ai_tip_slash: 'Tapez / pour utiliser les r\u00e9ponses pr\u00e9d\u00e9finies',
     ai_tip_sparkle: 'Le bouton \u00e9tincelle am\u00e9liore le ton avec l\'IA',
-    ai_tip_sentiment_drop: 'Sentiment en baisse \u2014 pensez \u00e0 reconna\u00eetre la frustration du client',
 
     // Dashboard Export
     export_pdf: 'PDF',

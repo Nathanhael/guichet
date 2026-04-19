@@ -217,8 +217,7 @@ describe('runDailyPurge', () => {
     expect(computeLiveDayStatsMock).toHaveBeenCalledWith(
       [{ id: 't1', partnerId: 'partner-A', createdAt: '2026-02-01T10:00:00.000Z', status: 'closed' }],
       [],
-      'all',
-      []
+      'all'
     );
 
     // Verify INSERT INTO daily_stats was called via db.insert()

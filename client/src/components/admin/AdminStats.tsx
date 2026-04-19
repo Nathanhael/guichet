@@ -370,12 +370,9 @@ export default function AdminStats() {
                 </div>
               )}
             </Panel>
-            <SentimentSummary stats={stats as DashboardData} />
           </div>
         </div>
       </div>
-
-      <SentimentPanel stats={stats as DashboardData} />
 
       {/* Support & Agent performance */}
       <div className="grid grid-cols-2 gap-4">
@@ -418,132 +415,6 @@ export default function AdminStats() {
         <TeamSatisfaction dateFrom={statsDateFrom} dateTo={statsDateTo} />
         <AgentStatusStats />
       </div>
-    </div>
-  );
-}
-
-function SentimentSummary({ stats }: { stats: DashboardData }) {
-  const score = stats.sentimentScore ?? 0;
-  return (
-    <Panel title="Sentiment Summary">
-      <div className="flex items-center gap-4 h-full">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <SentimentDot score={score} />
-            <span className="text-3xl font-bold tracking-tighter">{score.toFixed(2)}</span>
-          </div>
-          <p className="text-[10px] font-bold uppercase text-[var(--color-text-secondary)]">{sentimentLabel(score)}</p>
-        </div>
-        <div className="w-px h-12 bg-[var(--color-border)]" />
-        <div className="flex-1 text-right">
-          <p className="text-[9px] uppercase font-bold text-[var(--color-text-muted)]">Ratings</p>
-          <p className="text-xl font-bold">{stats.totalRatings}</p>
-        </div>
-      </div>
-    </Panel>
-  );
-}
-
-function SentimentDot({ score }: { score: number }) {
-  const style = score >= 0.3 ? 'bg-[var(--color-text-primary)]' : score >= -0.3 ? 'bg-text-muted' : 'border border-[var(--color-border)] bg-transparent';
-  return <span className={`inline-block w-2.5 h-2.5 rounded-full ${style}`} />;
-}
-
-function sentimentLabel(score: number): string {
-  if (score >= 0.3) return 'Positive';
-  if (score >= -0.3) return 'Neutral';
-  return 'Negative';
-}
-
-function SentimentPanel({ stats }: { stats: DashboardData }) {
-  const { data: negativeTix, error: negativeError } = trpc.ai.getNegativeSentimentTickets.useQuery(
-    { limit: 10 },
-    { refetchInterval: 30000 }
-  );
-
-  const score = stats.sentimentScore ?? 0;
-  const sentimentByDept: Record<string, { avg: number | null; count: number }> = stats.sentimentByDept || {};
-  const trendData = (stats.dailyTrend || [])
-    .filter((d: { date: string; sentiment?: number | null }) => d.sentiment != null)
-    .map((d: { date: string; sentiment?: number | null }) => ({
-      date: d.date,
-      sentiment: d.sentiment,
-    }));
-
-  return (
-    <div className="grid grid-cols-3 gap-4">
-      {/* Overall Sentiment */}
-      <Panel title="Sentiment Score">
-        <div className="flex items-center gap-4 mb-4">
-          <SentimentDot score={score} />
-          <span className="text-3xl font-bold tracking-tighter">{score.toFixed(2)}</span>
-          <span className="text-xs font-bold uppercase text-[var(--color-text-secondary)]">{sentimentLabel(score)}</span>
-        </div>
-
-        {/* Per-department breakdown */}
-        {Object.keys(sentimentByDept).length > 0 && (
-          <div className="mt-3 pt-3 border-t border-[var(--color-border)]">
-            <p className="mono-label text-[var(--color-text-secondary)] mb-2">By Department</p>
-            <div className="space-y-1.5">
-              {Object.entries(sentimentByDept).map(([dept, data]) => (
-                <div key={dept} className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase">{dept}</span>
-                  <div className="flex items-center gap-2">
-                    <SentimentDot score={data.avg ?? 0} />
-                    <span className="text-xs font-bold tabular-nums">{data.avg?.toFixed(2) ?? '—'}</span>
-                    <span className="text-[9px] text-[var(--color-text-muted)]">({data.count})</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </Panel>
-
-      {/* Sentiment Trend */}
-      <Panel title="Sentiment Trend">
-        {trendData.length < 2 ? (
-          <p className="text-sm text-[var(--color-text-secondary)] py-4 text-center">Not enough data for trend</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={trendData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-              <XAxis dataKey="date" tick={{ fontSize: 9 }} interval={Math.ceil(trendData.length / 6)} />
-              <YAxis tick={{ fontSize: 9 }} domain={[-1, 1]} ticks={[-1, -0.5, 0, 0.5, 1]} />
-              <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(v) => [Number(v).toFixed(2), 'Sentiment']} />
-              <Line type="monotone" dataKey="sentiment" stroke="var(--color-text-primary)" strokeWidth={2} dot={false} name="Sentiment" />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </Panel>
-
-      {/* Needs Attention */}
-      <Panel title="Needs Attention">
-        {negativeError ? (
-          <p className="text-xs uppercase font-bold text-[var(--color-accent-red)] py-4 text-center">Failed to load sentiment data</p>
-        ) : !negativeTix || !Array.isArray(negativeTix) || negativeTix.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-secondary)] py-4 text-center">No negative sentiment tickets</p>
-        ) : (
-          <div className="space-y-2 max-h-[200px] overflow-y-auto">
-            {negativeTix.map((t) => (
-              <div
-                key={t.ticketId}
-                className="flex items-center gap-3 p-2 border border-[var(--color-border)] bg-bg-elevated"
-              >
-                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold truncate">{t.agentName}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-bold uppercase px-1 py-0.5 border border-[var(--color-border)]">{t.dept}</span>
-                    <span className="text-[9px] text-[var(--color-text-secondary)]">{t.messageCount} msgs</span>
-                  </div>
-                </div>
-                <span className="text-xs font-bold tabular-nums">{t.avgSentiment.toFixed(2)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </Panel>
     </div>
   );
 }

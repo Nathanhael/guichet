@@ -14,7 +14,6 @@ export interface AiFeatures {
   messageImprovement?: ImprovementMode;
   chatSummarization?: boolean;
   translation?: boolean;
-  sentimentDetection?: boolean;
   autoSummarizeOnClose?: boolean;
 }
 
