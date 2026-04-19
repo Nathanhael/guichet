@@ -290,35 +290,18 @@ v1Router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) 
   if (!req.user?.isPlatformOperator && partnerId !== req.user?.partnerId) {
     return res.status(403).json({ error: 'Not authorized for this partner' });
   }
-  let businessHoursStart: string | null = null;
-  let businessHoursEnd: string | null = null;
-  let businessHoursTimezone = 'Europe/Brussels';
-  let businessHoursSchedule: unknown = null;
+  let businessHoursSchedule: BusinessHoursSchedule | null = null;
 
   const result = await db.select({
     businessHoursSchedule: schema.partners.businessHoursSchedule,
-    businessHoursStart: schema.partners.businessHoursStart,
-    businessHoursEnd: schema.partners.businessHoursEnd,
-    businessHoursTimezone: schema.partners.businessHoursTimezone,
   }).from(schema.partners).where(eq(schema.partners.id, partnerId)).limit(1);
   if (result.length > 0) {
-    businessHoursSchedule = result[0].businessHoursSchedule ?? businessHoursSchedule;
-    businessHoursStart = result[0].businessHoursStart ?? businessHoursStart;
-    businessHoursEnd = result[0].businessHoursEnd ?? businessHoursEnd;
-    businessHoursTimezone = result[0].businessHoursTimezone ?? businessHoursTimezone;
+    businessHoursSchedule = (result[0].businessHoursSchedule as BusinessHoursSchedule | null) ?? null;
   }
 
-  const businessHoursStatus = getBusinessHoursStatus({
-    businessHoursSchedule: businessHoursSchedule as BusinessHoursSchedule | null,
-    businessHoursStart,
-    businessHoursEnd,
-    businessHoursTimezone,
-  });
+  const businessHoursStatus = getBusinessHoursStatus({ businessHoursSchedule });
 
   res.json({
-    businessHoursStart,
-    businessHoursEnd,
-    businessHoursTimezone,
     businessHoursSchedule,
     businessHoursStatus,
     uploadMaxSize: config.UPLOAD_MAX_SIZE,
