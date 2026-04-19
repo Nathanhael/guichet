@@ -322,4 +322,49 @@ export const partnerConfigRouter = router({
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
     }),
+
+  updateDepartmentSla: destructiveAdminProcedure
+    .input(z.object({
+      departmentId: z.string().min(1),
+      sla: z.object({
+        enabled: z.boolean(),
+        firstResponseMinutes: z.number().int().min(1).max(480),
+        warnAtPercent: z.number().int().refine((v) => v === 50 || v === 75 || v === 90, { message: 'warnAtPercent must be 50, 75, or 90' }),
+      }).nullable(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+      return db.transaction(async (tx) => {
+        const [row] = await tx.select({ departments: partners.departments }).from(partners).where(eq(partners.id, partnerId));
+        if (!row) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
+
+        const departments = (row.departments ?? []) as Array<{ id: string; name: string; description?: string; referenceFields?: unknown[]; sla?: unknown }>;
+        const idx = departments.findIndex((d) => d.id === input.departmentId);
+        if (idx === -1) throw new TRPCError({ code: 'NOT_FOUND', message: 'Department not found' });
+
+        const nextDept = { ...departments[idx] };
+        if (input.sla === null) {
+          delete nextDept.sla;
+        } else {
+          nextDept.sla = input.sla;
+        }
+        const nextDepartments = [...departments];
+        nextDepartments[idx] = nextDept;
+
+        await tx.update(partners).set({ departments: nextDepartments }).where(eq(partners.id, partnerId));
+
+        await tx.insert(auditLog).values({
+          action: 'partner.department.sla_updated',
+          actorId: ctx.user.id,
+          partnerId,
+          targetType: 'department',
+          targetId: input.departmentId,
+          metadata: { sla: input.sla },
+        });
+
+        return { success: true };
+      });
+    }),
 });
