@@ -1,6 +1,5 @@
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { Server } from 'socket.io';
-import config from '../config.js';
 import { db } from '../db.js';
 import { tickets } from '../db/schema.js';
 import { eq, ne, and, isNull, asc } from 'drizzle-orm';
@@ -83,11 +82,11 @@ function weekdayKey(now: Date): BusinessHoursDayKey {
   return DAY_KEYS[now.getDay()] ?? 'mon';
 }
 
+// Last-resort fallback when a partner row has no schedule and no legacy
+// start/end columns set. Reachable only for partners predating the required
+// schedule step; new partners must submit a real schedule via createPartner.
 function buildDefaultSchedule(): BusinessHoursSchedule {
-  const defaultWindow = {
-    start: config.BUSINESS_HOURS_START,
-    end: config.BUSINESS_HOURS_END,
-  };
+  const defaultWindow = { start: '00:00', end: '23:59' };
 
   return {
     version: 1,
