@@ -12,6 +12,7 @@ const configSchema = z.object({
     // Default to true (secure). Set COOKIE_SECURE=false only for local dev (no HTTPS).
     COOKIE_SECURE: z.preprocess(v => v === 'false' || v === '0' ? false : v === 'true' || v === '1' || v === true ? true : v, z.boolean()).default(true),
     PURGE_INTERVAL_MS: z.coerce.number().int().positive().default(24 * 60 * 60 * 1000),
+    SLA_SWEEP_INTERVAL_MS: z.coerce.number().int().min(0).default(60000),
     RECLAIM_TIMEOUT_MINS: z.coerce.number().int().min(0).default(5),
     JWT_SECRET: z.string().min(64, 'JWT_SECRET must be at least 64 characters for HS256 security'),
     ACCESS_TOKEN_EXPIRY: z.string().default('15m'),
@@ -88,6 +89,7 @@ const parseResult = configSchema.safeParse({
     COOKIE_DOMAIN: process.env.COOKIE_DOMAIN,
     COOKIE_SECURE: process.env.COOKIE_SECURE,
     PURGE_INTERVAL_MS: process.env.PURGE_INTERVAL_MS,
+    SLA_SWEEP_INTERVAL_MS: process.env.SLA_SWEEP_INTERVAL_MS,
     RECLAIM_TIMEOUT_MINS: process.env.RECLAIM_TIMEOUT_MINS,
     JWT_SECRET: process.env.JWT_SECRET,
     ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY,

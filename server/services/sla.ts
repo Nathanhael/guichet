@@ -10,6 +10,7 @@ import {
   slaSweepDurationSeconds,
 } from '../utils/metrics.js';
 import logger from '../utils/logger.js';
+import config from '../config.js';
 import { resolveSchedule, type BusinessHoursSchedule, type BusinessHoursDayKey } from './businessHours.js';
 import type { Server } from 'socket.io';
 
@@ -256,4 +257,36 @@ export async function runSlaSweep(now: Date = new Date()): Promise<SweepSummary>
   } finally {
     endTimer();
   }
+}
+
+export function scheduleSlaSweep(): () => void {
+  const intervalMs = config.SLA_SWEEP_INTERVAL_MS;
+  if (intervalMs === 0) {
+    logger.warn('[sla] SLA_SWEEP_INTERVAL_MS=0 — sweep disabled');
+    return () => {};
+  }
+
+  let cancelled = false;
+  let nextTimer: ReturnType<typeof setTimeout> | null = null;
+
+  async function tick() {
+    if (cancelled) return;
+    try {
+      const summary = await runSlaSweep();
+      logger.info(summary, '[sla] sweep complete');
+    } catch (err) {
+      logger.error({ err: err instanceof Error ? err.message : String(err) }, '[sla] sweep failed');
+    } finally {
+      if (!cancelled) nextTimer = setTimeout(tick, intervalMs);
+    }
+  }
+
+  // First sweep after 30s to let server warm up
+  nextTimer = setTimeout(tick, 30_000);
+  logger.info({ intervalMs }, '[sla] sweep scheduler armed');
+
+  return () => {
+    cancelled = true;
+    if (nextTimer) clearTimeout(nextTimer);
+  };
 }
