@@ -253,6 +253,21 @@ export const topicAlerts = pgTable('topic_alerts', {
   index('idx_alerts_partner_status').on(table.partnerId, table.status),
 ]);
 
+export const slaBreaches = pgTable('sla_breaches', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  dept: text('dept').notNull(),
+  breachedAt: timestamp('breached_at', { mode: 'string' }).notNull().defaultNow(),
+  thresholdMinutes: integer('threshold_minutes').notNull(),
+  resolvedAt: timestamp('resolved_at', { mode: 'string' }),
+  resolvedReason: text('resolved_reason'), // 'first_response' | 'ticket_closed_without_response'
+}, (table) => [
+  uniqueIndex('idx_sla_breaches_ticket_unique').on(table.ticketId),
+  index('idx_sla_breaches_partner_status').on(table.partnerId, table.resolvedAt),
+  index('idx_sla_breaches_breached_at').on(table.breachedAt),
+]);
+
 export const partnerGroupMappings = pgTable('partner_group_mappings', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
