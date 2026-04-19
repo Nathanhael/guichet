@@ -6,6 +6,20 @@ export interface ThemeConfig {
   accentColor?: string;
 }
 
+export interface DepartmentSlaConfig {
+  enabled: boolean;
+  firstResponseMinutes: number;
+  warnAtPercent: number; // 50 | 75 | 90
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  description?: string;
+  referenceFields?: Array<{ label: string; optional?: boolean }>;
+  sla?: DepartmentSlaConfig;
+}
+
 export interface PartnerManifest {
   industry: string;
   logoUrl?: string;
@@ -95,10 +109,7 @@ export interface User {
 }
 
 export interface AppConfig {
-  businessHoursStart: string | null;
-  businessHoursEnd: string | null;
-  businessHoursTimezone: string;
-  businessHoursSchedule?: BusinessHoursSchedule;
+  businessHoursSchedule: BusinessHoursSchedule | null;
   businessHoursStatus?: BusinessHoursStatus;
   uploadMaxSize: number;
   uploadAllowedTypes: string[];

@@ -236,9 +236,6 @@ async function seedMinimal() {
     name: 'Acme',
     industry: 'Technology',
     departments: DEPARTMENTS,
-    businessHoursStart: '00:00',
-    businessHoursEnd: '23:59',
-    businessHoursTimezone: 'Europe/Brussels',
     businessHoursSchedule: BUSINESS_HOURS_SCHEDULE,
     status: 'active',
   });

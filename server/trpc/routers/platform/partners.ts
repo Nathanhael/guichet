@@ -64,7 +64,6 @@ export const platformPartnersRouter = router({
           departments: input.departments,
           status: 'active',
           businessHoursSchedule: buildOpenAlwaysSchedule(),
-          businessHoursTimezone: 'Europe/Brussels',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });

@@ -21,9 +21,6 @@ export const partners = pgTable('partners', {
   industry: text('industry').default('general'),
   departments: jsonb('departments').default([]),
   businessHoursSchedule: jsonb('business_hours_schedule'),
-  businessHoursStart: text('business_hours_start'),
-  businessHoursEnd: text('business_hours_end'),
-  businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   status: text('status').notNull().default('active'),
   // AI configuration
   aiEnabled: boolean('ai_enabled').default(false),
@@ -105,6 +102,7 @@ export const tickets = pgTable('tickets', {
   supportName: text('support_name'),
   supportLang: text('support_lang'),
   supportJoinedAt: timestamp('support_joined_at', { mode: 'string' }),
+  firstStaffResponseAt: timestamp('first_staff_response_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { mode: 'string' }),
@@ -124,6 +122,7 @@ export const tickets = pgTable('tickets', {
   index('idx_tickets_support_id').on(table.supportId),
   index('idx_tickets_participants_gin').using('gin', table.participants),
   index('idx_tickets_open_unassigned').on(table.partnerId, table.createdAt).where(sql`status = 'open' AND support_id IS NULL`),
+  index('idx_tickets_open_unresponded').on(table.partnerId, table.createdAt).where(sql`status IN ('open','pending') AND first_staff_response_at IS NULL`),
 ]);
 
 export const messages = pgTable('messages', {
@@ -249,6 +248,21 @@ export const topicAlerts = pgTable('topic_alerts', {
   resolvedAt: timestamp('resolved_at', { mode: 'string' }),
 }, (table) => [
   index('idx_alerts_partner_status').on(table.partnerId, table.status),
+]);
+
+export const slaBreaches = pgTable('sla_breaches', {
+  id: text('id').primaryKey(),
+  ticketId: text('ticket_id').notNull().references(() => tickets.id, { onDelete: 'cascade' }),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  dept: text('dept').notNull(),
+  breachedAt: timestamp('breached_at', { mode: 'string' }).notNull().defaultNow(),
+  thresholdMinutes: integer('threshold_minutes').notNull(),
+  resolvedAt: timestamp('resolved_at', { mode: 'string' }),
+  resolvedReason: text('resolved_reason'), // 'first_response' | 'ticket_closed_without_response'
+}, (table) => [
+  uniqueIndex('idx_sla_breaches_ticket_unique').on(table.ticketId),
+  index('idx_sla_breaches_partner_status').on(table.partnerId, table.resolvedAt),
+  index('idx_sla_breaches_breached_at').on(table.breachedAt),
 ]);
 
 export const partnerGroupMappings = pgTable('partner_group_mappings', {
