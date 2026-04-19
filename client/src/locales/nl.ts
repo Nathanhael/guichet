@@ -647,6 +647,6 @@ const nl: Record<string, string> = {
     queue_staffing_online: '{n} online',
     queue_staffing_waiting: '{n} wachtend',
     queue_staffing_oldest: 'oudste {duration}',
-    chat_cross_lang_banner: 'Antwoorden worden automatisch vertaald naar {lang} voor de klant.',
+    chat_cross_lang_banner: 'Antwoorden worden automatisch vertaald naar {lang} voor de agent.',
 };
 export default nl;

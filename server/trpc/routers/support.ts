@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { router, protectedProcedure } from '../trpc.js';
+import { router, roleProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { partners, tickets, memberships } from '../../db/schema.js';
 import { and, eq, isNull, inArray } from 'drizzle-orm';
@@ -36,7 +36,6 @@ export function classifyImbalance(input: ImbalanceInput): ImbalanceLevel {
   }
   const ratio = waiting / online;
   if (ratio >= 10) return 'thin';
-  if (ratio <= 5) return 'ok';
   return 'ok';
 }
 
@@ -47,7 +46,7 @@ export interface StaffingRow {
   lang: SupportedLang;
   onlineSupport: number;
   unclaimedTickets: number;
-  averageWaitMinutes: number | null;
+  oldestWaitMinutes: number | null;
   imbalanceLevel: ImbalanceLevel;
 }
 
@@ -62,7 +61,7 @@ async function assertMembership(userId: string, partnerId: string, isPlatformOpe
 }
 
 export const supportRouter = router({
-  getStaffingByLanguage: protectedProcedure
+  getStaffingByLanguage: roleProcedure(['support', 'admin'])
     .input(z.object({ partnerId: z.string() }))
     .query(async ({ input, ctx }): Promise<StaffingRow[]> => {
       await assertMembership(ctx.user.id, input.partnerId, !!ctx.user.isPlatformOperator);
@@ -109,12 +108,11 @@ export const supportRouter = router({
       const result: StaffingRow[] = SUPPORTED_LANGS.map((lang) => {
         const waiting = rowsByLang[lang].count;
         const oldest = rowsByLang[lang].oldestMinutes;
-        const avg = waiting > 0 ? Math.round(rowsByLang[lang].totalMinutes / waiting) : null;
         return {
           lang,
           onlineSupport: staffByLang[lang],
           unclaimedTickets: waiting,
-          averageWaitMinutes: avg,
+          oldestWaitMinutes: waiting > 0 ? oldest : null,
           imbalanceLevel: classifyImbalance({ online: staffByLang[lang], waiting, oldestWaitMinutes: oldest }),
         };
       });

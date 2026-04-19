@@ -80,9 +80,9 @@ export default function StaffingHeader({ partnerId, filterLang, onToggleLang }: 
               </div>
               <span className="font-mono text-[9px] tabular-nums">{interpolate(t('queue_staffing_online'), { n: row.onlineSupport })}</span>
               <span className="font-mono text-[9px] tabular-nums">{interpolate(t('queue_staffing_waiting'), { n: row.unclaimedTickets })}</span>
-              {row.averageWaitMinutes !== null && (
+              {row.oldestWaitMinutes !== null && (
                 <span className="font-mono text-[9px] tabular-nums opacity-70">
-                  {interpolate(t('queue_staffing_oldest'), { duration: `${row.averageWaitMinutes}m` })}
+                  {interpolate(t('queue_staffing_oldest'), { duration: `${row.oldestWaitMinutes}m` })}
                 </span>
               )}
             </button>
