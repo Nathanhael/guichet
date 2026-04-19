@@ -641,5 +641,12 @@ const fr: Record<string, string> = {
     // System messages
     agent_disconnected: "L'agent s'est déconnecté.",
     agent_reconnected: "L'agent s'est reconnecté.",
+
+    // File d'attente multilingue
+    queue_staffing_heading: 'Personnel par langue',
+    queue_staffing_online: '{n} en ligne',
+    queue_staffing_waiting: '{n} en attente',
+    queue_staffing_oldest: 'le plus ancien : {duration}',
+    chat_cross_lang_banner: 'Vos réponses sont traduites automatiquement en {lang} pour le client.',
 };
 export default fr;
