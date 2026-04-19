@@ -9,6 +9,7 @@ import { Ticket, Membership, OnlineSupport } from '../../types';
 import QueueTicketRow from './QueueTicketRow';
 import ArchiveTicketRow from './ArchiveTicketRow';
 import SidebarFooter from './SidebarFooter';
+import { getSocket } from '../../hooks/useSocket';
 
 interface QueueSidebarProps {
   activeMembership: Membership;
@@ -78,6 +79,26 @@ export default function QueueSidebar({
     },
     { enabled: sidebarTab === 'archive' },
   );
+
+  // SLA active-breach list — drives the red left-border on queue rows. Socket
+  // events (sla:breach/sla:resolved) invalidate the query so rows react live.
+  const trpcUtils = trpc.useUtils();
+  const { data: slaBreaches } = trpc.sla.listBreaches.useQuery({ status: 'active', limit: 100 });
+  const breachedTicketIds = useMemo(
+    () => new Set((slaBreaches?.items ?? []).map((b) => b.ticketId)),
+    [slaBreaches],
+  );
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+    const onChange = () => { trpcUtils.sla.listBreaches.invalidate(); };
+    socket.on('sla:breach', onChange);
+    socket.on('sla:resolved', onChange);
+    return () => {
+      socket.off('sla:breach', onChange);
+      socket.off('sla:resolved', onChange);
+    };
+  }, [trpcUtils]);
 
   // Reset accumulated archive state. Called inline from filter-chip handlers
   // and the sidebar-tab toggle. NOT placed in a useEffect because effect-based
@@ -254,6 +275,7 @@ export default function QueueSidebar({
                           unreadCount={Number(unreadTickets[ticket.id]) || 0}
                           currentUserId={user?.id || ''}
                           onClick={() => onSelectTicket(ticket)}
+                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-accent-red)]' : undefined}
                         />
                       ))}
                     </>
@@ -279,6 +301,7 @@ export default function QueueSidebar({
                           currentUserId={user?.id || ''}
                           onClick={() => (!atMaxChats ? onSelectTicket(ticket) : undefined)}
                           disabled={atMaxChats}
+                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-accent-red)]' : undefined}
                         />
                       ))}
                     </>
@@ -308,6 +331,7 @@ export default function QueueSidebar({
                           currentUserId={user?.id || ''}
                           onClick={() => (!atMaxChats ? onSelectTicket(ticket) : undefined)}
                           disabled={atMaxChats}
+                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-accent-red)]' : undefined}
                         />
                       ))}
                     </>

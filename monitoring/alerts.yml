@@ -131,3 +131,51 @@ groups:
             the platform in the last 10m. Check AdminWebhooks delivery logs and
             the guichet_webhook_deliveries_total metric by event/outcome to
             identify which partner endpoint is failing.
+
+  - name: sla
+    interval: 30s
+    rules:
+      - alert: SlaBreachRateHigh
+        expr: |
+          sum by (partnerId, department) (
+            rate(guichet_sla_breaches_total[1h])
+          ) * 3600 > 10
+        for: 30m
+        labels:
+          severity: warning
+          subsystem: sla
+        annotations:
+          summary: 'SLA breach rate > 10/h for {{ $labels.partnerId }}/{{ $labels.department }}'
+          description: |
+            Sustained high SLA breach rate indicates understaffing or misconfigured
+            threshold. Check on-call rota and review the department SLA config in
+            AdminDepartments.
+
+      - alert: SlaWorkerDown
+        expr: |
+          increase(guichet_sla_sweep_runs_total[5m]) == 0
+          and
+          increase(guichet_sla_sweep_runs_total[1h] offset 5m) > 0
+        for: 5m
+        labels:
+          severity: critical
+          subsystem: sla
+        annotations:
+          summary: 'SLA sweep worker has stopped running'
+          description: |
+            guichet_sla_sweep_runs_total has not increased in the last 5m, but the
+            worker was running within the prior hour. Breaches will not fire.
+            Check server logs for `[sla] sweep failed` lines and SLA_SWEEP_INTERVAL_MS.
+
+      - alert: SlaResolutionLag
+        expr: |
+          histogram_quantile(0.5, rate(guichet_sla_first_response_minutes_bucket[1h])) > 30
+        for: 1h
+        labels:
+          severity: warning
+          subsystem: sla
+        annotations:
+          summary: 'Median first-response time > 30m for 1h'
+          description: |
+            Even after breaches are recorded, resolution median exceeds 30m.
+            Consider scaling support capacity or tightening SLA thresholds per department.
