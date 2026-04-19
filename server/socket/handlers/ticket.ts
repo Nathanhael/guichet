@@ -71,9 +71,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
         const partnerHours = partnerRow ? {
           businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null,
-          businessHoursStart: partnerRow.businessHoursStart,
-          businessHoursEnd: partnerRow.businessHoursEnd,
-          businessHoursTimezone: partnerRow.businessHoursTimezone,
         } : undefined;
 
         const businessHoursStatus = getBusinessHoursStatus(partnerHours);

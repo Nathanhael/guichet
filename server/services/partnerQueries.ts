@@ -11,9 +11,6 @@ export async function findPartnerConfig(partnerId: string) {
     .select({
       status: partners.status,
       businessHoursSchedule: partners.businessHoursSchedule,
-      businessHoursStart: partners.businessHoursStart,
-      businessHoursEnd: partners.businessHoursEnd,
-      businessHoursTimezone: partners.businessHoursTimezone,
     })
     .from(partners)
     .where(eq(partners.id, partnerId));

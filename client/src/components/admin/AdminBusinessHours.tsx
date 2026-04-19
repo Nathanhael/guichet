@@ -91,11 +91,6 @@ export default function AdminBusinessHours() {
 
   if (isLoading) return <div className="p-8 mono-label text-[var(--color-text-muted)]">{t('loading')}</div>;
 
-  const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri'] as const;
-  const primaryWindow = weekdays
-    .map((day) => schedule.weekly[day].windows[0])
-    .find(Boolean);
-
   return (
     <div className="min-w-[1120px] max-w-5xl space-y-6">
       <div className="flex items-end justify-between gap-6 border-b border-[var(--color-border)] pb-4">
@@ -122,9 +117,6 @@ export default function AdminBusinessHours() {
                   ...schedule,
                   exceptions: sortBusinessHoursExceptions(schedule.exceptions),
                 },
-                businessHoursStart: primaryWindow?.start ?? null,
-                businessHoursEnd: primaryWindow?.end ?? null,
-                businessHoursTimezone: schedule.timezone,
               });
             }}
             className="btn-primary disabled:opacity-30"

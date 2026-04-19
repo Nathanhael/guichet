@@ -19,31 +19,6 @@ function makeSlug(text: string) {
     .replace(/-+$/, '');
 }
 
-function scheduleFromLegacyBusinessHours(input: {
-  businessHoursStart: string | null;
-  businessHoursEnd: string | null;
-  businessHoursTimezone: string | null;
-}): BusinessHoursSchedule {
-  const timezone = input.businessHoursTimezone || 'Europe/Brussels';
-  const start = input.businessHoursStart || '07:30';
-  const end = input.businessHoursEnd || '22:30';
-
-  return {
-    version: 1,
-    timezone,
-    weekly: {
-      mon: { closed: false, windows: [{ start, end }] },
-      tue: { closed: false, windows: [{ start, end }] },
-      wed: { closed: false, windows: [{ start, end }] },
-      thu: { closed: false, windows: [{ start, end }] },
-      fri: { closed: false, windows: [{ start, end }] },
-      sat: { closed: true, windows: [] },
-      sun: { closed: true, windows: [] },
-    },
-    exceptions: [],
-  };
-}
-
 const businessHoursWindowSchema = z.object({
   start: z.string().regex(/^\d{2}:\d{2}$/),
   end: z.string().regex(/^\d{2}:\d{2}$/),
@@ -238,21 +213,12 @@ export const partnerConfigRouter = router({
 
       const result = await db.select({
         businessHoursSchedule: partners.businessHoursSchedule,
-        businessHoursStart: partners.businessHoursStart,
-        businessHoursEnd: partners.businessHoursEnd,
-        businessHoursTimezone: partners.businessHoursTimezone,
       }).from(partners).where(eq(partners.id, partnerId)).limit(1);
 
       if (result.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
 
-      const row = result[0];
-      const schedule = (row.businessHoursSchedule as BusinessHoursSchedule | null) ?? null;
-      const status = getBusinessHoursStatus({
-        businessHoursSchedule: schedule,
-        businessHoursStart: row.businessHoursStart,
-        businessHoursEnd: row.businessHoursEnd,
-        businessHoursTimezone: row.businessHoursTimezone,
-      });
+      const schedule = (result[0].businessHoursSchedule as BusinessHoursSchedule | null) ?? null;
+      const status = getBusinessHoursStatus({ businessHoursSchedule: schedule });
 
       return {
         schedule,
@@ -266,34 +232,17 @@ export const partnerConfigRouter = router({
 
   updateBusinessHours: adminProcedure
     .input(z.object({
-      schedule: validatedBusinessHoursScheduleSchema.optional(),
-      businessHoursStart: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
-      businessHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).nullable().optional(),
-      businessHoursTimezone: z.string().min(1).nullable().optional(),
+      schedule: validatedBusinessHoursScheduleSchema,
     }))
     .mutation(async ({ input, ctx }) => {
       try {
         const partnerId = ctx.user.partnerId;
         if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
-        const schedule = input.schedule ?? scheduleFromLegacyBusinessHours({
-          businessHoursStart: input.businessHoursStart ?? null,
-          businessHoursEnd: input.businessHoursEnd ?? null,
-          businessHoursTimezone: input.businessHoursTimezone ?? null,
-        });
-
-        const weekdays = ['mon', 'tue', 'wed', 'thu', 'fri'] as const;
-        const primaryWindow = weekdays
-          .map((day) => schedule.weekly[day].windows[0])
-          .find(Boolean);
+        const schedule = input.schedule;
 
         await db.update(partners)
-          .set({
-            businessHoursSchedule: schedule,
-            businessHoursStart: primaryWindow?.start ?? null,
-            businessHoursEnd: primaryWindow?.end ?? null,
-            businessHoursTimezone: schedule.timezone,
-          })
+          .set({ businessHoursSchedule: schedule })
           .where(eq(partners.id, partnerId));
 
         await db.insert(auditLog).values({

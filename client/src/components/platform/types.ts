@@ -27,8 +27,6 @@ export interface Partner {
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
-  businessHoursStart?: string | null;
-  businessHoursEnd?: string | null;
   aiEnabled?: boolean | null;
   aiFeatures?: AiFeatures | unknown;
   [key: string]: unknown;

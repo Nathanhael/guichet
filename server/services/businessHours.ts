@@ -82,9 +82,9 @@ function weekdayKey(now: Date): BusinessHoursDayKey {
   return DAY_KEYS[now.getDay()] ?? 'mon';
 }
 
-// Last-resort fallback when a partner row has no schedule and no legacy
-// start/end columns set. Reachable only for partners predating the required
-// schedule step; new partners must submit a real schedule via createPartner.
+// Last-resort fallback when a partner row has no schedule set. Reachable only
+// for partners predating the required schedule step; new partners must submit
+// a real schedule via createPartner.
 function buildDefaultSchedule(): BusinessHoursSchedule {
   const defaultWindow = { start: '00:00', end: '23:59' };
 
@@ -122,37 +122,13 @@ function normalizeSchedule(schedule?: BusinessHoursSchedule | null): BusinessHou
   };
 }
 
-function fromLegacyBusinessHours(partner?: {
-  businessHoursStart?: string | null;
-  businessHoursEnd?: string | null;
-  businessHoursTimezone?: string | null;
+export function resolveSchedule(partner?: {
   businessHoursSchedule?: BusinessHoursSchedule | null;
 }): BusinessHoursSchedule {
   if (partner?.businessHoursSchedule) {
     return normalizeSchedule(partner.businessHoursSchedule);
   }
-
-  if (!partner?.businessHoursStart || !partner?.businessHoursEnd) {
-    return buildDefaultSchedule();
-  }
-
-  const timezone = partner.businessHoursTimezone && isValidTimezone(partner.businessHoursTimezone)
-    ? partner.businessHoursTimezone
-    : 'Europe/Brussels';
-
-  const schedule = buildDefaultSchedule();
-  schedule.timezone = timezone;
-  schedule.weekly = WEEKDAY_KEYS.reduce((acc, key) => {
-    acc[key] = {
-      closed: key === 'sat' || key === 'sun',
-      windows: key === 'sat' || key === 'sun'
-        ? []
-        : [{ start: partner.businessHoursStart!, end: partner.businessHoursEnd! }],
-    };
-    return acc;
-  }, {} as Record<BusinessHoursDayKey, BusinessHoursDaySchedule>);
-
-  return schedule;
+  return buildDefaultSchedule();
 }
 
 function windowsForDate(schedule: BusinessHoursSchedule, now: Date) {
@@ -241,12 +217,9 @@ function nextBoundary(schedule: BusinessHoursSchedule, now: Date, kind: 'open' |
 }
 
 export function getBusinessHoursStatus(partner?: {
-  businessHoursStart?: string | null;
-  businessHoursEnd?: string | null;
-  businessHoursTimezone?: string | null;
   businessHoursSchedule?: BusinessHoursSchedule | null;
 }, now = new Date()): BusinessHoursStatus {
-  const schedule = fromLegacyBusinessHours(partner);
+  const schedule = resolveSchedule(partner);
   const zonedNow = toZonedTime(now, schedule.timezone);
   const currentMinutes = startOfToday(zonedNow);
   const todayWindows = windowsForDate(schedule, now);
@@ -282,9 +255,6 @@ export function getBusinessHoursStatus(partner?: {
 }
 
 export function isWithinBusinessHours(partner?: {
-  businessHoursStart?: string | null;
-  businessHoursEnd?: string | null;
-  businessHoursTimezone?: string | null;
   businessHoursSchedule?: BusinessHoursSchedule | null;
 }): boolean {
   return getBusinessHoursStatus(partner).isOpen;

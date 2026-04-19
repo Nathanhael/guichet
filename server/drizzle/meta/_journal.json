@@ -8,6 +8,13 @@
       "when": 1776545041562,
       "tag": "0000_initial",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776596303366,
+      "tag": "0001_sla_schema_and_drop_legacy_business_hours",
+      "breakpoints": true
     }
   ]
 }
