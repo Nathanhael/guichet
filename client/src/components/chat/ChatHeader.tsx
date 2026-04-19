@@ -7,6 +7,7 @@ import { getSocket } from '../../hooks/useSocket';
 import { Search, X, Check } from 'lucide-react';
 import { COLOR_BG_MAP } from '../../utils/labelColors';
 import UserAvatar from '../UserAvatar';
+import SlaIndicator from '../SlaIndicator';
 
 interface ChatHeaderProps {
   ticket: Ticket;
@@ -49,6 +50,7 @@ export default function ChatHeader({
   }));
   const currentUserId = useStore(s => s.user?.id);
   const currentUserIsExternal = useStore(s => !!s.user?.isExternal);
+  const currentRole = useStore(s => s.user?.role);
   // Map of userId -> live status, used to light up support avatars and keep them in sync with presence changes.
   const supportStatusById = new Map<string, 'online' | 'away'>();
   for (const u of (onlineSupportUsers || [])) {
@@ -380,6 +382,11 @@ export default function ChatHeader({
             <span className="text-[8px] font-mono font-bold uppercase tracking-widest px-1.5 py-px border shrink-0 border-border text-text-muted">
               {t('status_closed') || 'closed'}
             </span>
+          )}
+
+          {/* SLA indicator — staff only; hidden for external agents */}
+          {!focusMode && !compact && (
+            <SlaIndicator ticketId={ticket.id} hidden={currentRole === 'agent'} />
           )}
 
         </div>
