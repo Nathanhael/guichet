@@ -3,6 +3,8 @@ import type { Ticket } from '../../types';
 import { formatChatDuration, formatQueueWait } from '../../utils/dateUtils';
 import useStore from '../../store/useStore';
 import AgentBadges from './AgentBadges';
+import LangBadge from './LangBadge';
+import { useLang } from '../../i18n';
 
 /**
  * Warm the lazy-loaded ComposeArea chunk before the user clicks. The dynamic
@@ -39,6 +41,7 @@ export default function QueueTicketRow({
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers);
   const onlineAgentIds = useStore((s) => s.onlineAgentIds);
   const agentOnline = onlineAgentIds.includes(ticket.agentId);
+  const viewerLang = useLang();
 
   // Tick timers every 30s so durations update while the sidebar is visible.
   // Skip for "other agents" rows — those timestamps are low-value and the
@@ -105,6 +108,7 @@ export default function QueueTicketRow({
         <span className="font-mono text-[7px] font-bold uppercase tracking-[0.5px] px-[5px] py-px border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] shrink-0">
           {ticket.dept}
         </span>
+        <LangBadge lang={ticket.agentLang} viewerLang={viewerLang} />
         {agentOnline && (
           <span
             data-agent-online
