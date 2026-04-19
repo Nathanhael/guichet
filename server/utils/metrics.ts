@@ -143,9 +143,13 @@ export const slaSweepDurationSeconds = new client.Histogram({
   buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30],
 });
 
+// Wall-clock minutes between ticket creation and first staff response. UI shows
+// business-hours-adjusted time via computeSlaState.met.respondedInMinutes, but
+// this histogram stays wall-clock so it's comparable across partners with
+// different business-hours schedules.
 export const slaFirstResponseMinutes = new client.Histogram({
   name: 'guichet_sla_first_response_minutes',
-  help: 'First-response time in business-hours-adjusted minutes',
+  help: 'First-response time in wall-clock minutes (ticket created → first staff reply)',
   labelNames: ['partner_id', 'department'],
   buckets: [1, 5, 10, 15, 30, 60, 120, 240, 480],
 });

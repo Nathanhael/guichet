@@ -280,8 +280,15 @@ describe('markFirstStaffResponse', () => {
     h.ticketsUpdateReturnQueue.push([{ partnerId: PARTNER_ID, dept: DEPT, createdAt: CREATED_AT }]);
     h.breachesUpdateReturnQueue.push([]);
 
-    const result = await markFirstStaffResponse({ ticketId: TICKET_ID, at: '2026-04-20T10:05:00Z', senderRole: 'platform_operator', isWhisper: false });
+    const at = '2026-04-20T10:05:00Z';
+    const result = await markFirstStaffResponse({ ticketId: TICKET_ID, at, senderRole: 'platform_operator', isWhisper: false });
 
     expect(result.stamped).toBe(true);
+    expect(h.ticketsSetCalls).toHaveLength(1);
+    expect(h.ticketsSetCalls[0]).toEqual({ firstStaffResponseAt: at });
+    expect(h.firstResponseObserveMock).toHaveBeenCalledWith(
+      { partner_id: PARTNER_ID, department: DEPT },
+      5,
+    );
   });
 });
