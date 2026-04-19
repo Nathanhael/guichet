@@ -62,6 +62,16 @@ export function useT() {
 }
 
 /**
+ * Returns the active 2-letter language code, matching the resolution logic of useT().
+ */
+export function useLang(): string {
+  const user = useStore(s => s.user);
+  const selectedLang = useStore(s => s.selectedLang);
+  const browserLang = typeof navigator !== 'undefined' ? navigator.language.slice(0, 2) : 'en';
+  return selectedLang || user?.lang || browserLang || 'en';
+}
+
+/**
  * Standalone translation for non-React contexts (e.g. error handlers).
  * Uses English only since async loading isn't practical outside React.
  */

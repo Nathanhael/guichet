@@ -89,7 +89,6 @@ const en: Record<string, string> = {
     email_label: 'Email Address',
     placeholder_email: 'name@company.com',
     password_label: 'Password',
-    remember_me: 'Stay signed in for 30 days',
     forgot_password: 'Forgot password?',
     reset_password_title: 'Reset Password',
     reset_password_desc: 'Enter your email address and we\'ll send you a link to reset your password.',
@@ -119,7 +118,7 @@ const en: Record<string, string> = {
     support_link: 'Support',
 
     // Legal
-    legal_last_updated: 'Last updated: March 2026',
+    legal_last_updated: 'Last updated: April 2026',
     legal_footer: 'Guichet Platform \u2014 All rights reserved.',
 
     // Privacy Policy
@@ -136,7 +135,7 @@ const en: Record<string, string> = {
     legal_privacy_s6_title: 'Third-Party Processors',
     legal_privacy_s6_body: 'Guichet may utilize the following categories of third-party processors for service delivery:\n\n\u2022 Email delivery providers (SMTP, Resend, or SendGrid) for system notifications and password recovery\n\u2022 Cloud infrastructure providers for hosting and data storage\n\nAll third-party processors are contractually bound to process data solely on our instructions and in compliance with applicable data protection regulations. We do not sell, trade, or otherwise transfer your personal data to third parties.',
     legal_privacy_s7_title: 'Cookies & Authentication',
-    legal_privacy_s7_body: 'Guichet uses JSON Web Tokens (JWT) for session authentication. When you select \u201cStay signed in,\u201d an extended token validity period of 30 days is applied. No third-party tracking cookies, analytics scripts, or advertising pixels are deployed. Session data is stored temporarily in Redis for real-time functionality and is automatically cleared upon session termination.',
+    legal_privacy_s7_body: 'Guichet uses JSON Web Tokens (JWT) transported exclusively via HttpOnly SameSite=Lax cookies for session authentication. Sessions rely on short-lived access tokens (default 15 minutes) paired with rotating refresh tokens (default 7 days) that rotate on every refresh and include family-based reuse detection. No third-party tracking cookies, analytics scripts, or advertising pixels are deployed. Session data is stored temporarily in Redis for real-time functionality and is automatically cleared upon session termination.',
     legal_privacy_s8_title: 'Your Rights',
     legal_privacy_s8_body: 'Under the General Data Protection Regulation (GDPR) and applicable national legislation, you have the right to:\n\n\u2022 Request a complete copy of your personal data in a portable format\n\u2022 Correct any inaccurate or incomplete personal information\n\u2022 Request permanent deletion of your account and associated data\n\u2022 Lodge a complaint with your national data protection supervisory authority\n\nAll requests are processed within 30 calendar days of receipt.',
 
@@ -146,7 +145,7 @@ const en: Record<string, string> = {
     legal_terms_s2_title: 'Acceptable Use',
     legal_terms_s2_body: 'You agree to use the Guichet platform in a professional and lawful manner. The platform employs automated content moderation filters that enforce the following standards:\n\n\u2022 All communication must be professional and respectful\n\u2022 Offensive, threatening, or discriminatory language is prohibited and will be blocked\n\u2022 Repeated abuse of the messaging system (spam, flooding) is not permitted\n\u2022 Attempts to circumvent security controls or inject malicious content are strictly forbidden\n\nViolations are logged in the platform audit trail and may result in immediate account suspension or termination.',
     legal_terms_s3_title: 'Account & Access Management',
-    legal_terms_s3_body: 'Access to Guichet is managed through your organization\u2019s administrator. Users may hold memberships across multiple partner organizations, each with independently assigned roles and department scopes. You are responsible for maintaining the confidentiality of your login credentials. Shared or transferred accounts are not permitted. The platform supports both local authentication and enterprise Single Sign-On (SSO) integration.',
+    legal_terms_s3_body: 'Access to Guichet is managed through your organization\u2019s administrator. Users may hold memberships across multiple partner organizations, each with independently assigned roles and department scopes. You are responsible for maintaining the confidentiality of your login credentials. Shared or transferred accounts are not permitted. Production authentication is handled exclusively through enterprise Single Sign-On (SSO) with Microsoft Entra ID (Azure AD); Guichet does not store passwords.',
     legal_terms_s4_title: 'Service Availability',
     legal_terms_s4_body: 'Guichet is provided on a best-effort availability basis. While we strive for continuous uptime, no formal Service Level Agreement (SLA) is offered during the current platform phase. Scheduled maintenance windows will be communicated in advance. Real-time system health monitoring is available to platform operators. We reserve the right to modify, suspend, or discontinue any feature with reasonable notice.',
     legal_terms_s5_title: 'Termination & Deactivation',
