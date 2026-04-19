@@ -107,6 +107,7 @@ export const platformPartnersRouter = router({
           chatSummarization: z.boolean().optional(),
           translation: z.boolean().optional(),
           autoSummarizeOnClose: z.boolean().optional(),
+          queueLangAwareness: z.boolean().optional(),
         }).optional(),
         aiConfig: z.object({
           baseUrl: z.string().url().optional(),
