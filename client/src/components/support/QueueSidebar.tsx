@@ -9,6 +9,7 @@ import { Ticket, Membership, OnlineSupport } from '../../types';
 import QueueTicketRow from './QueueTicketRow';
 import ArchiveTicketRow from './ArchiveTicketRow';
 import SidebarFooter from './SidebarFooter';
+import StaffingHeader from './StaffingHeader';
 import { getSocket } from '../../hooks/useSocket';
 
 interface QueueSidebarProps {
@@ -49,6 +50,7 @@ export default function QueueSidebar({
   const [hasMoreArchive, setHasMoreArchive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [otherAgentsExpanded, setOtherAgentsExpanded] = useState(false);
+  const [filterLang, setFilterLang] = useState<'nl' | 'fr' | 'en' | null>(null);
 
   const departments = (activeMembership.manifest?.departments || []) as { id: string; name: string }[];
   const assignedDepartmentIds = activeMembership.departments || [];
@@ -148,9 +150,10 @@ export default function QueueSidebar({
         (tk) =>
           tk.status !== 'closed' &&
           (filterDept === 'all' || tk.dept === filterDept) &&
+          (!filterLang || tk.agentLang === filterLang) &&
           ticketDeptAllowed(tk.dept),
       ),
-    [tickets, filterDept, ticketDeptAllowed],
+    [tickets, filterDept, filterLang, ticketDeptAllowed],
   );
 
   const myChats = useMemo(
@@ -244,6 +247,12 @@ export default function QueueSidebar({
           />
         </div>
       )}
+
+      <StaffingHeader
+        partnerId={activeMembership.partnerId}
+        filterLang={filterLang}
+        onToggleLang={setFilterLang}
+      />
 
       {/* Ticket list */}
       <div className="flex-1 overflow-y-auto">
