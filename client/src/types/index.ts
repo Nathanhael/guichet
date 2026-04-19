@@ -231,7 +231,6 @@ export interface SupportStat {
   depts?: string[];
   deptRatings?: Record<string, number>;
   trend?: StatsTrend[];
-  sentiment?: string;
   load?: number;
 }
 
@@ -249,13 +248,6 @@ export interface HourlyStat {
   demand?: number;
   count?: number; // for distribution
   avgResolutionTime?: number;
-}
-
-export interface LLMSummaryData {
-  sentiment: 'Positive' | 'Neutral' | 'Negative' | 'Frustrated' | 'Mixed';
-  summary: string;
-  questions?: string[];
-  updatedAt: string;
 }
 
 export interface SupportRatingStat {
@@ -287,8 +279,6 @@ export interface AdminStats {
   avgDurationMinutes: number;
   p95ResponseMinutes?: number;
   reopenRate?: number;
-  sentimentScore?: number;
-  sentimentByDept?: Record<string, { avg: number | null; count: number }>;
   avgRating: number;
   abandonedCount: number;
   oldestWaitMinutes: number;

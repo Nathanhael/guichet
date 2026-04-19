@@ -12,7 +12,6 @@ interface EditPartnerModalProps {
 const BOOLEAN_FEATURES: { key: Exclude<keyof AiFeatures, 'messageImprovement'>; label: string; description: string }[] = [
   { key: 'chatSummarization', label: 'Chat Summarization', description: 'Generate summaries of support conversations' },
   { key: 'translation', label: 'Auto-Translation', description: 'Automatically translate messages between nl/en/fr based on user language' },
-  { key: 'sentimentDetection', label: 'Sentiment Detection', description: 'Analyze message sentiment to flag issues' },
   { key: 'autoSummarizeOnClose', label: 'Auto-Summarize on Close', description: 'Generate summary when ticket is closed' },
 ];
 

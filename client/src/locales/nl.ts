@@ -559,7 +559,6 @@ const nl: Record<string, string> = {
 
     // AI Copilot
     ai_copilot: 'AI-copiloot',
-    ai_sentiment: 'Sentiment',
     ai_summary: 'Samenvatting',
     ai_analyzing: 'Analyseren...',
     ai_unavailable: 'AI niet beschikbaar',
@@ -569,7 +568,6 @@ const nl: Record<string, string> = {
     ai_quick_tips: 'Snelle tips',
     ai_tip_slash: 'Typ / in het berichtveld om standaardantwoorden te gebruiken',
     ai_tip_sparkle: 'De sparkle-knop verbetert de toon met AI',
-    ai_tip_sentiment_drop: 'Sentiment daalt \u2014 overweeg de frustratie van de klant te erkennen',
 
     // Dashboard Export
     export_pdf: 'PDF',

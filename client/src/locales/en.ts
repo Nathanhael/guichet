@@ -586,7 +586,6 @@ const en: Record<string, string> = {
 
     // AI Copilot
     ai_copilot: 'AI Copilot',
-    ai_sentiment: 'Sentiment',
     ai_summary: 'Summary',
     ai_analyzing: 'Analyzing...',
     ai_unavailable: 'AI unavailable',
@@ -596,7 +595,6 @@ const en: Record<string, string> = {
     ai_quick_tips: 'Quick Tips',
     ai_tip_slash: 'Type / in the message box to use canned responses',
     ai_tip_sparkle: 'Sparkle button improves message tone with AI',
-    ai_tip_sentiment_drop: 'Sentiment dropping — consider acknowledging the customer\'s frustration',
 
     // Dashboard Export
     export_pdf: 'PDF',
