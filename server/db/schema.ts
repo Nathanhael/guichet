@@ -105,6 +105,7 @@ export const tickets = pgTable('tickets', {
   supportName: text('support_name'),
   supportLang: text('support_lang'),
   supportJoinedAt: timestamp('support_joined_at', { mode: 'string' }),
+  firstStaffResponseAt: timestamp('first_staff_response_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { mode: 'string' }),
@@ -124,6 +125,7 @@ export const tickets = pgTable('tickets', {
   index('idx_tickets_support_id').on(table.supportId),
   index('idx_tickets_participants_gin').using('gin', table.participants),
   index('idx_tickets_open_unassigned').on(table.partnerId, table.createdAt).where(sql`status = 'open' AND support_id IS NULL`),
+  index('idx_tickets_open_unresponded').on(table.partnerId, table.createdAt).where(sql`status IN ('open','pending') AND first_staff_response_at IS NULL`),
 ]);
 
 export const messages = pgTable('messages', {
