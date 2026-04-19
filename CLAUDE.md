@@ -82,7 +82,6 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `sessionRevocation.ts` — Session revocation on security changes (also revokes refresh tokens)
 - `refreshToken.ts` — Rotating refresh token lifecycle (create, rotate, revoke family, reuse detection)
 - `repetitionStore.ts` — Message repetition detection for guards
-- `sla.ts` — SLA enforcement with per-department config and alerting
 - `webhookDispatch.ts` — Webhook event dispatch to partner-configured endpoints
 - `encryption.ts` — Field-level encryption utilities
 - `systemMessage.ts` — System/whisper message insertion (used by transfers, auto-actions)
@@ -150,7 +149,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 | `ratings` | Ticket CSAT ratings | `ticketId`, `rating`, `comment` |
 | `app_feedback` | In-app user feedback | `userId`, `partnerId`, `type`, `body` |
 | `system_settings` | Global system configuration | `key`, `value` (singleton KV store) |
-| `topic_alerts` | SLA/topic alert rules | `partnerId`, `type`, `threshold`, `recipients` |
+| `topic_alerts` | Topic alert rules (incident clustering) | `partnerId`, `type`, `threshold`, `recipients` |
 | `partner_group_mappings` | SSO group→role mappings | `partnerId`, `ssoGroup`, `role`, `departments` |
 | `kb_articles` | Knowledge base articles | `partnerId`, `title`, `body`, `category`, `createdBy` |
 | `webhooks` | Partner webhook configs | `partnerId`, `url`, `events`, `secret`, `active` |
@@ -189,7 +188,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
 - `components/chat/` — Decomposed chat sub-components: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LabelPicker, LinkPreviewCard, QuoteBlock, SearchBar
 - `utils/` — `statusColors.ts`, `dateUtils.ts`, `markdown.ts`, `fileUtils.ts`, `exportDashboard.ts`, `labelColors.ts`, `highlightText.tsx`, `businessHours.ts`, `notifications.ts`, `notificationSound.ts`, `roles.ts`, `uploadLogo.ts`, `trpc.ts`
-- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
+- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SettingsPopover, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
 
 **Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
 
@@ -215,7 +214,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **AI Provider Abstraction**: Multi-provider AI via factory pattern (`server/services/ai/`). Uses `AiContext` dependency injection (wired at boot) — all AI modules import from the barrel `index.ts`, never directly. Supports Ollama, Azure OpenAI, and OpenAI-compatible APIs. Per-partner AI config (`aiEnabled`, `aiFeatures` JSONB) controls feature availability. Features: message improvement (optional/forced modes with revert), chat summarization (Redis-cached), translation, auto-summarize on close. Rate limiting and usage logging per partner.
 - **Knowledge Base**: Per-partner KB articles (`kb_articles` table). CRUD via `trpc.kb.*`. Admin UI in `AdminKnowledgeBase`.
 - **Webhooks**: Per-partner webhook endpoints (`webhooks` table) with event subscriptions, HMAC signing, delivery logs (`webhook_logs`). Dispatch via `webhookDispatch.ts`. Admin UI in `AdminWebhooks`.
-- **Alerts & SLA**: Topic alerts with configurable thresholds (`topic_alerts` table). Per-department SLA config with `SlaIndicator` component. Admin UI in `AdminAlerts`.
+- **Topic Alerts**: Topic alerts with configurable thresholds (`topic_alerts` table) for incident detection via conversation clustering. Admin UI in `AdminAlerts`. (Per-department SLA enforcement is specced in `docs/superpowers/specs/2026-04-19-sla-config-design.md` but not yet implemented.)
 - **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with staff-facing analytics and date filtering. Feedback system (`app_feedback` table) for in-app user feedback.
 - **Collision Detection**: `ticket:viewing` / `ticket:left` socket events track who's viewing a ticket. Viewer badges and typing indicators prevent duplicate responses.
 - **Notification Preferences**: Per-user opt-out for email types (`notification_preferences` JSONB on users).
@@ -287,7 +286,6 @@ guichet/
 │   │   ├── businessHours.ts       # Business hours + queue position
 │   │   ├── presence.ts            # Redis-backed online/offline tracking
 │   │   ├── stats.ts               # Dashboard statistics
-│   │   ├── sla.ts                 # SLA enforcement + per-dept config
 │   │   ├── authSession.ts         # Auth session management
 │   │   ├── roles.ts               # Role hierarchy/permissions
 │   │   ├── sessionRevocation.ts   # Session revocation on security changes
