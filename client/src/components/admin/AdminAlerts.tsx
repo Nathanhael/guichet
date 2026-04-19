@@ -165,7 +165,7 @@ function SlaBreachList({ status }: { status: SlaStatus }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="mono-label text-[var(--color-text-secondary)]">{b.dept} · threshold {b.thresholdMinutes}m</div>
-              <div className="text-sm">Ticket <a href={`#/tickets/${b.ticketId}`} className="underline">{b.ticketId}</a></div>
+              <div className="text-sm">Ticket <span className="font-mono">{b.ticketId}</span></div>
               <div className="text-xs text-[var(--color-text-secondary)]">breached at {new Date(b.breachedAt).toLocaleString()}</div>
               {b.resolvedAt && (
                 <div className="text-xs text-[var(--color-accent-green)]">resolved {new Date(b.resolvedAt).toLocaleString()}</div>
