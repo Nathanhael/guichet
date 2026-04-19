@@ -119,4 +119,35 @@ export const gdprRowsPurgedTotal = new client.Counter({
   labelNames: ['scope'],
 });
 
+// SLA metrics
+export const slaBreachesTotal = new client.Counter({
+  name: 'guichet_sla_breaches_total',
+  help: 'Total number of SLA breaches recorded',
+  labelNames: ['partnerId', 'department'],
+});
+
+export const slaResolutionsTotal = new client.Counter({
+  name: 'guichet_sla_resolutions_total',
+  help: 'Total number of SLA breaches resolved by staff response',
+  labelNames: ['partnerId', 'department'],
+});
+
+export const slaSweepRunsTotal = new client.Counter({
+  name: 'guichet_sla_sweep_runs_total',
+  help: 'Number of SLA sweep runs completed',
+});
+
+export const slaSweepDurationSeconds = new client.Histogram({
+  name: 'guichet_sla_sweep_duration_seconds',
+  help: 'Duration of a single SLA sweep run in seconds',
+  buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30],
+});
+
+export const slaFirstResponseMinutes = new client.Histogram({
+  name: 'guichet_sla_first_response_minutes',
+  help: 'First-response time in business-hours-adjusted minutes',
+  labelNames: ['partnerId', 'department'],
+  buckets: [1, 5, 10, 15, 30, 60, 120, 240, 480],
+});
+
 export const register = client.register;
