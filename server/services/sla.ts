@@ -1,10 +1,17 @@
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../db.js';
-import { tickets, slaBreaches } from '../db/schema.js';
-import { slaResolutionsTotal, slaFirstResponseMinutes } from '../utils/metrics.js';
+import { tickets, slaBreaches, partners, topicAlerts } from '../db/schema.js';
+import {
+  slaResolutionsTotal,
+  slaFirstResponseMinutes,
+  slaBreachesTotal,
+  slaSweepRunsTotal,
+  slaSweepDurationSeconds,
+} from '../utils/metrics.js';
 import logger from '../utils/logger.js';
-import type { BusinessHoursSchedule, BusinessHoursDayKey } from './businessHours.js';
+import { resolveSchedule, type BusinessHoursSchedule, type BusinessHoursDayKey } from './businessHours.js';
+import type { Server } from 'socket.io';
 
 export interface DepartmentSlaConfig {
   enabled: boolean;
@@ -136,4 +143,110 @@ export async function markFirstStaffResponse(input: StaffResponseInput): Promise
   logger.info({ ticketId: input.ticketId, partnerId, dept, resolvedBreach }, '[sla] first staff response stamped');
 
   return { stamped: true, resolvedBreach, partnerId, department: dept, respondedInMinutes };
+}
+
+// ─── SLA sweep ──────────────────────────────────────────────────────────────
+
+let io: Server | null = null;
+export function setSlaIo(socketIo: Server) { io = socketIo; }
+
+export type SweepSummary = {
+  partnersChecked: number;
+  ticketsChecked: number;
+  breachesInserted: number;
+};
+
+type DepartmentRecord = { id: string; name: string; sla?: DepartmentSlaConfig };
+
+export async function runSlaSweep(now: Date = new Date()): Promise<SweepSummary> {
+  const endTimer = slaSweepDurationSeconds.startTimer();
+  const summary: SweepSummary = { partnersChecked: 0, ticketsChecked: 0, breachesInserted: 0 };
+
+  const activePartners = await db.select().from(partners).where(eq(partners.status, 'active'));
+
+  for (const partner of activePartners as Array<{
+    id: string;
+    departments: DepartmentRecord[] | null;
+    businessHoursSchedule?: BusinessHoursSchedule | null;
+  }>) {
+    summary.partnersChecked++;
+    const departments = (partner.departments ?? []) as DepartmentRecord[];
+    const slaDepts = departments.filter((d) => d.sla?.enabled);
+    if (slaDepts.length === 0) continue;
+
+    const schedule = resolveSchedule(partner);
+
+    const openTickets = await db.select({
+      id: tickets.id,
+      dept: tickets.dept,
+      createdAt: tickets.createdAt,
+    })
+      .from(tickets)
+      .where(and(
+        eq(tickets.partnerId, partner.id),
+        isNull(tickets.firstStaffResponseAt),
+      ));
+
+    for (const ticket of openTickets as Array<{ id: string; dept: string; createdAt: string }>) {
+      summary.ticketsChecked++;
+      const dept = slaDepts.find((d) => d.id === ticket.dept);
+      if (!dept || !dept.sla) continue;
+
+      const state = computeSlaState({
+        ticketCreatedAt: ticket.createdAt,
+        firstStaffResponseAt: null,
+        sla: dept.sla,
+        schedule,
+        now,
+      });
+
+      if (state.status !== 'breached') continue;
+
+      // Idempotent insert keyed off unique(ticket_id). onConflictDoNothing
+      // → returning() gives us [] on conflict, one row on fresh insert.
+      const inserted = await db.insert(slaBreaches).values({
+        id: `sla_${crypto.randomUUID()}`,
+        ticketId: ticket.id,
+        partnerId: partner.id,
+        dept: ticket.dept,
+        thresholdMinutes: dept.sla.firstResponseMinutes,
+        breachedAt: now.toISOString(),
+      }).onConflictDoNothing({ target: slaBreaches.ticketId }).returning({ id: slaBreaches.id });
+
+      if (inserted.length > 0) {
+        summary.breachesInserted++;
+        slaBreachesTotal.inc({ partner_id: partner.id, department: ticket.dept });
+
+        // Denormalized projection into topic_alerts (spec §Data Model).
+        await db.insert(topicAlerts).values({
+          id: `alert_sla_${crypto.randomUUID()}`,
+          partnerId: partner.id,
+          dept: ticket.dept,
+          topic: 'SLA breach',
+          summary: `Ticket ${ticket.id} exceeded ${dept.sla.firstResponseMinutes}m first-response SLA by ${state.overdueMinutes}m`,
+          severity: 'high',
+          ticketCount: 1,
+          status: 'active',
+        }).onConflictDoNothing();
+
+        // Socket broadcast — short-circuits when io is null (tests that
+        // don't opt-in via setSlaIo never hit emit).
+        io?.to(`ticket:${ticket.id}`).emit('sla:breach', {
+          ticketId: ticket.id,
+          partnerId: partner.id,
+          department: ticket.dept,
+          overdueMinutes: state.overdueMinutes,
+        });
+
+        logger.info(
+          { ticketId: ticket.id, partnerId: partner.id, dept: ticket.dept, overdueMinutes: state.overdueMinutes },
+          '[sla] breach recorded',
+        );
+      }
+    }
+  }
+
+  slaSweepRunsTotal.inc();
+  endTimer();
+  return summary;
 }
