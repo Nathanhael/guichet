@@ -290,8 +290,8 @@ v1Router.get('/config', authMiddleware, async (req: AuthRequest, res: Response) 
   if (!req.user?.isPlatformOperator && partnerId !== req.user?.partnerId) {
     return res.status(403).json({ error: 'Not authorized for this partner' });
   }
-  let businessHoursStart = config.BUSINESS_HOURS_START;
-  let businessHoursEnd = config.BUSINESS_HOURS_END;
+  let businessHoursStart: string | null = null;
+  let businessHoursEnd: string | null = null;
   let businessHoursTimezone = 'Europe/Brussels';
   let businessHoursSchedule: unknown = null;
 

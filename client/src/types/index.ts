@@ -95,8 +95,8 @@ export interface User {
 }
 
 export interface AppConfig {
-  businessHoursStart: string;
-  businessHoursEnd: string;
+  businessHoursStart: string | null;
+  businessHoursEnd: string | null;
   businessHoursTimezone: string;
   businessHoursSchedule?: BusinessHoursSchedule;
   businessHoursStatus?: BusinessHoursStatus;

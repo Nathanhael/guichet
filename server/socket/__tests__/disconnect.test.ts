@@ -5,8 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../../config.js', () => ({
   default: {
     JWT_SECRET: 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
-    BUSINESS_HOURS_START: '00:00',
-    BUSINESS_HOURS_END: '23:59',
   },
 }));
 

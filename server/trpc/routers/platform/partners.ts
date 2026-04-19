@@ -9,7 +9,27 @@ import logger from '../../../utils/logger.js';
 import { broadcastPartnerDeactivation } from '../../../socket/handlers.js';
 import { validateWebhookUrl } from '../../../services/webhookDispatch.js';
 import { encrypt } from '../../../services/encryption.js';
+import { type BusinessHoursSchedule } from '../../../services/businessHours.js';
 import config from '../../../config.js';
+
+// 24/7 schedule seeded for new partners. Admins personalize via AdminBusinessHours.
+function buildOpenAlwaysSchedule(): BusinessHoursSchedule {
+  const allDay = { start: '00:00', end: '23:59' };
+  return {
+    version: 1,
+    timezone: 'Europe/Brussels',
+    weekly: {
+      mon: { closed: false, windows: [allDay] },
+      tue: { closed: false, windows: [allDay] },
+      wed: { closed: false, windows: [allDay] },
+      thu: { closed: false, windows: [allDay] },
+      fri: { closed: false, windows: [allDay] },
+      sat: { closed: false, windows: [allDay] },
+      sun: { closed: false, windows: [allDay] },
+    },
+    exceptions: [],
+  };
+}
 
 export const platformPartnersRouter = router({
   listPartners: platformProcedure.query(async () => {
@@ -43,6 +63,8 @@ export const platformPartnersRouter = router({
           industry: input.industry,
           departments: input.departments,
           status: 'active',
+          businessHoursSchedule: buildOpenAlwaysSchedule(),
+          businessHoursTimezone: 'Europe/Brussels',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
