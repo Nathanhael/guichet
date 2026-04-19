@@ -240,7 +240,7 @@ Partner-scoped (filtered via `partnerScope.ts`).
 
 - Remove `SLA_THRESHOLD_MS` line from `.env.example` — the env ghost is misleading once real SLA ships with no such env var.
 - Remove stale "Alerts & SLA: Per-department SLA config with `SlaIndicator` component" line from CLAUDE.md (current text describes infra that doesn't exist).
-- The follow-up task chip "Migrate business hours + SLA to partner admin config" is now superseded — re-chip as **business hours only** (remove `BUSINESS_HOURS_START/END` env fallbacks, require schedule at partner creation).
+- ~~The follow-up task chip "Migrate business hours + SLA to partner admin config" is now superseded — re-chip as **business hours only** (remove `BUSINESS_HOURS_START/END` env fallbacks, require schedule at partner creation).~~ Shipped: env fallbacks removed; new partners auto-seed a 24/7 schedule in `platform.createPartner` and admins personalize via `AdminBusinessHours`. SLA work remains scoped to this spec.
 
 ## Open Questions
 
