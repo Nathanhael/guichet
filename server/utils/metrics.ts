@@ -123,13 +123,13 @@ export const gdprRowsPurgedTotal = new client.Counter({
 export const slaBreachesTotal = new client.Counter({
   name: 'guichet_sla_breaches_total',
   help: 'Total number of SLA breaches recorded',
-  labelNames: ['partnerId', 'department'],
+  labelNames: ['partner_id', 'department'],
 });
 
 export const slaResolutionsTotal = new client.Counter({
   name: 'guichet_sla_resolutions_total',
   help: 'Total number of SLA breaches resolved by staff response',
-  labelNames: ['partnerId', 'department'],
+  labelNames: ['partner_id', 'department'],
 });
 
 export const slaSweepRunsTotal = new client.Counter({
@@ -146,7 +146,7 @@ export const slaSweepDurationSeconds = new client.Histogram({
 export const slaFirstResponseMinutes = new client.Histogram({
   name: 'guichet_sla_first_response_minutes',
   help: 'First-response time in business-hours-adjusted minutes',
-  labelNames: ['partnerId', 'department'],
+  labelNames: ['partner_id', 'department'],
   buckets: [1, 5, 10, 15, 30, 60, 120, 240, 480],
 });
 
