@@ -6,6 +6,7 @@ import type { Ticket } from '../../../types';
 
 vi.mock('../../../i18n', () => ({
   useT: () => (key: string) => key,
+  useLang: () => 'en',
 }));
 
 const baseTicket: Ticket = {
