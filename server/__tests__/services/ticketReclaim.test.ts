@@ -28,14 +28,31 @@ describe('reclaimAbandonedTickets — crash-recovery wiring', () => {
     expect(source).toMatch(/ne\(\s*tickets\.status\s*,\s*['"]closed['"]\s*\)/);
   });
 
-  it('derives the cutoff timestamp from timeoutMins (minutes → ms)', () => {
-    expect(source).toMatch(/new\s+Date\(\s*Date\.now\(\)\s*-\s*timeoutMins\s*\*\s*60\s*\*\s*1000\s*\)/);
+  it('derives the offline cutoff timestamp from timeoutMins (minutes → ms)', () => {
+    expect(source).toMatch(/offlineThresholdMs\s*=\s*timeoutMins\s*\*\s*60\s*\*\s*1000/);
+    expect(source).toMatch(/new\s+Date\(\s*now\s*-\s*offlineThresholdMs\s*\)/);
   });
 
   it('skips reclaim when the agent has any active presence', () => {
     // Only reclaim when getUserStatus returns null (fully offline).
     expect(source).toMatch(/getUserStatus\(\s*ticket\.supportId\s*,\s*ticket\.partnerId\s*\)/);
     expect(source).toMatch(/if\s*\(\s*status\s*!==\s*null\s*\)\s*continue/);
+  });
+
+  it('measures abandonment from getOfflineAt, not from supportJoinedAt', () => {
+    // The whole point of this iteration: a long-held ticket that briefly
+    // disconnects must NOT be reclaimed. Source must consult the offline
+    // marker before deciding.
+    expect(source).toMatch(/getOfflineAt\(\s*ticket\.supportId\s*,\s*ticket\.partnerId\s*\)/);
+    expect(source).toMatch(/offlineForMs\s*<\s*offlineThresholdMs[\s\S]*?continue/);
+  });
+
+  it('falls back to a wider supportJoinedAt window when the offline marker is absent', () => {
+    // Restart fallback: if Redis lost the marker, we still eventually clean
+    // up genuinely stale tickets — but only after a much wider window so we
+    // do not aggressively reclaim every assigned ticket on each server boot.
+    expect(source).toMatch(/RESTART_FALLBACK_MULTIPLIER/);
+    expect(source).toMatch(/offlineThresholdMs\s*\*\s*RESTART_FALLBACK_MULTIPLIER/);
   });
 
   it('uses an atomic update race-guarded on supportId to avoid clobbering a just-reassigned ticket', () => {

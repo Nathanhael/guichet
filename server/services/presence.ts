@@ -24,6 +24,7 @@ let io: Server | null = null;
 const HASH_PREFIX = 'presence:';
 const SET_PREFIX = 'partner:presence:';
 const SOCKETS_SUFFIX = ':sockets';
+const OFFLINE_AT_PREFIX = 'presence:offline_at:';
 const TTL_SECONDS = 86400;
 
 function hashKey(partnerId: string, userId: string): string {
@@ -36,6 +37,51 @@ function socketsKey(partnerId: string, userId: string): string {
 
 function setKey(partnerId: string): string {
   return `${SET_PREFIX}${partnerId}`;
+}
+
+function offlineAtKey(partnerId: string, userId: string): string {
+  return `${OFFLINE_AT_PREFIX}${partnerId}:${userId}`;
+}
+
+/**
+ * Record the moment a user fully went offline (no remaining sockets).
+ * Used by the ticket-reclaim service to measure abandonment from
+ * "actually offline since X" instead of "joined this ticket at Y".
+ */
+export async function setOfflineAt(userId: string, partnerId: string, when: Date = new Date()): Promise<void> {
+  const { pubClient } = getRedisClients();
+  if (!pubClient) return;
+  try {
+    await pubClient.set(offlineAtKey(partnerId, userId), when.toISOString(), { EX: TTL_SECONDS });
+  } catch (err) {
+    logger.error({ err, userId }, 'Failed to set offlineAt in Redis');
+  }
+}
+
+/** Clear the offline marker — called on identifyUser when the user reconnects. */
+export async function clearOfflineAt(userId: string, partnerId: string): Promise<void> {
+  const { pubClient } = getRedisClients();
+  if (!pubClient) return;
+  try {
+    await pubClient.del(offlineAtKey(partnerId, userId));
+  } catch (err) {
+    logger.error({ err, userId }, 'Failed to clear offlineAt in Redis');
+  }
+}
+
+/** Read the offline-at marker. Returns null if absent (server restart, never tracked, or user is online). */
+export async function getOfflineAt(userId: string, partnerId: string): Promise<Date | null> {
+  const { pubClient } = getRedisClients();
+  if (!pubClient) return null;
+  try {
+    const val = await pubClient.get(offlineAtKey(partnerId, userId));
+    if (!val) return null;
+    const d = new Date(val);
+    return Number.isFinite(d.getTime()) ? d : null;
+  } catch (err) {
+    logger.error({ err, userId }, 'Failed to get offlineAt from Redis');
+    return null;
+  }
 }
 
 export function setIo(socketIo: Server) {
@@ -185,6 +231,11 @@ export async function identifyUser(userId: string, role: string, name: string, p
       ],
     });
 
+    // The user has at least one live socket again — clear any stale
+    // offline-at marker so the reclaim service does not misread a brief
+    // disconnect as a permanent abandonment.
+    await clearOfflineAt(userId, partnerId);
+
     if (canUseSupportWorkflows(role as UserRole, isPlatformOperator)) {
       await broadcastOnlineSupport(partnerId);
     }
@@ -275,6 +326,9 @@ export async function decrementUserCount(userId: string, partnerId: string, sock
 
     const [removed, role, pid, isPlatOp] = result;
     if (removed) {
+      // Last socket gone — record the moment so ticket-reclaim can measure
+      // abandonment from "actually offline since" instead of join time.
+      await setOfflineAt(userId, partnerId);
       if (canUseSupportWorkflows(role as UserRole, isPlatOp === '1')) {
         await broadcastOnlineSupport(partnerId);
       }

@@ -14,7 +14,7 @@ const configSchema = z.object({
     // Default to true (secure). Set COOKIE_SECURE=false only for local dev (no HTTPS).
     COOKIE_SECURE: z.preprocess(v => v === 'false' || v === '0' ? false : v === 'true' || v === '1' || v === true ? true : v, z.boolean()).default(true),
     PURGE_INTERVAL_MS: z.coerce.number().int().positive().default(24 * 60 * 60 * 1000),
-    RECLAIM_TIMEOUT_MINS: z.coerce.number().int().min(0).default(30),
+    RECLAIM_TIMEOUT_MINS: z.coerce.number().int().min(0).default(5),
     JWT_SECRET: z.string().min(64, 'JWT_SECRET must be at least 64 characters for HS256 security'),
     ACCESS_TOKEN_EXPIRY: z.string().default('15m'),
     REFRESH_TOKEN_EXPIRY: z.string().default('7d'),
