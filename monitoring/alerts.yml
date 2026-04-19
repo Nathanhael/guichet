@@ -179,3 +179,25 @@ groups:
           description: |
             Even after breaches are recorded, resolution median exceeds 30m.
             Consider scaling support capacity or tightening SLA thresholds per department.
+
+  - name: queue-lang-awareness
+    interval: 30s
+    rules:
+      - alert: QueueLangCritical
+        expr: max by (partner_id, lang) (guichet_queue_staffing_imbalance) >= 2
+        for: 10m
+        labels:
+          severity: warning
+          subsystem: routing
+        annotations:
+          summary: 'No staffing for {{ $labels.lang }} queue at {{ $labels.partner_id }}'
+          description: |
+            support.getStaffingByLanguage reports imbalance=critical for partner
+            {{ $labels.partner_id }}, language {{ $labels.lang }} for >=10 minutes.
+            Zero online support users speak this language AND there are >=3
+            waiting tickets (or the oldest wait exceeds 5 minutes). Expected
+            behavior is that cross-language support pick up from the queue via
+            the per-viewer translation pipeline; a persistent critical signal
+            means the queue language awareness UI is not surfacing the
+            imbalance OR no cross-language support is online. Check the
+            StaffingHeader in the support sidebar and nudge staffing.

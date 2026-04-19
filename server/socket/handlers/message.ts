@@ -28,6 +28,7 @@ import { getRedisClients } from '../../utils/redis.js';
 import { db } from '../../db.js';
 import { partners } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { crossLangPickupTotal } from '../../utils/metrics.js';
 import {
   MAX_MESSAGE_LENGTH,
   MAX_EDIT_WINDOW_MS,
@@ -131,6 +132,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
       logger.info({ senderFound: !!sender, role: sender?.role }, '[message:send] Sender lookup');
       if (!sender) return logger.error({ senderId }, '[message:send] sender not found or no membership for ticket partner');
+
+      if (sender.lang && ticket.agentLang && sender.lang !== ticket.agentLang && socket.data.isSupport) {
+        crossLangPickupTotal.inc({ partner_id: ticket.partnerId, support_lang: sender.lang, ticket_lang: ticket.agentLang });
+      }
 
       // Authorization: only support/admin can send whispers
       const isWhisper = whisper && socket.data.isSupport;
