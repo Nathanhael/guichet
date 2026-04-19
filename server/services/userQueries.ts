@@ -8,7 +8,7 @@ import { users, memberships } from '../db/schema.js';
  */
 export async function findUserById(userId: string) {
   const rows = await db
-    .select({ name: users.name, isPlatformOperator: users.isPlatformOperator })
+    .select({ name: users.name, isPlatformOperator: users.isPlatformOperator, lang: users.lang })
     .from(users)
     .where(eq(users.id, userId));
   return rows[0];

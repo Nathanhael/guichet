@@ -647,6 +647,6 @@ const fr: Record<string, string> = {
     queue_staffing_online: '{n} en ligne',
     queue_staffing_waiting: '{n} en attente',
     queue_staffing_oldest: 'le plus ancien : {duration}',
-    chat_cross_lang_banner: 'Vos réponses sont traduites automatiquement en {lang} pour le client.',
+    chat_cross_lang_banner: 'Vos réponses sont traduites automatiquement en {lang} pour l\'agent.',
 };
 export default fr;

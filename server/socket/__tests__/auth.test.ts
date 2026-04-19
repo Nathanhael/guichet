@@ -253,7 +253,7 @@ describe('socket:identify', () => {
   });
 
   it('identifies successfully with valid membership', async () => {
-    findUserByIdMock.mockResolvedValueOnce({ name: 'Test User', isPlatformOperator: false });
+    findUserByIdMock.mockResolvedValueOnce({ name: 'Test User', isPlatformOperator: false, lang: 'fr' });
     findMembershipMock.mockResolvedValueOnce({ role: 'support' });
     findActiveTicketsForSupportMock.mockResolvedValueOnce([]);
 
@@ -263,6 +263,9 @@ describe('socket:identify', () => {
     expect(socket.data.userId).toBe('u1');
     expect(socket.data.role).toBe('support');
     expect(socket.data.partnerId).toBe('partner-1');
+    // H-1 regression: viewer lang must be stored on socket.data so the
+    // message:send pre-warm can fan out per-viewer translations.
+    expect(socket.data.lang).toBe('fr');
     // identifyUser signature gained a 6th `socketId` arg — the handler
     // now passes socket.id through so presence can track per-socket.
     expect(identifyUserMock).toHaveBeenCalledWith(

@@ -229,55 +229,59 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
       // Pre-warm cross-lang translations for the agent(s) watching this
       // ticket in a different language. Gated on partner aiFeatures so
-      // non-translating tenants skip the AI call entirely. Non-fatal: on
-      // any provider error, client-side useAutoTranslation still catches
-      // up on render (old behavior, minus the pre-warm).
-      try {
-        const partnerRow = await db
-          .select({ aiFeatures: partners.aiFeatures })
-          .from(partners)
-          .where(eq(partners.id, ticket.partnerId))
-          .limit(1);
-        const aiFeatures = (partnerRow[0]?.aiFeatures as Record<string, unknown>) || {};
-        const roomSockets = await ctx.io.in(Rooms.ticket(ticketId)).fetchSockets();
-        const viewerLangs = new Set<string>();
-        for (const s of roomSockets) {
-          if (s.id === socket.id) continue;
-          const lg = (s.data.lang as string) || '';
-          if (lg) viewerLangs.add(lg);
-        }
-        const targets = computePrewarmTargets({
-          senderLang: sender.lang,
-          ticketAgentLang: ticket.agentLang ?? null,
-          viewerLangs,
-          aiFeatures: aiFeatures as { translation?: boolean; queueLangAwareness?: boolean },
-        });
-        if (targets.length > 0 && guardedText) {
-          const translations: Record<string, string> = {};
-          const langLabel = (l: string) =>
-            l === 'nl' ? 'Dutch' : l === 'fr' ? 'French' : 'English';
-          await Promise.all(targets.map(async (tl) => {
-            try {
-              const res = await runAiAction({
-                partnerId: ticket.partnerId,
-                userId: senderId,
-                feature: 'translation',
-                action: 'translate',
-                vars: { text: guardedText, targetLang: langLabel(tl) },
-                temperature: 0.3,
-                maxTokens: 1024,
-              });
-              if (res.content) translations[tl] = res.content.trim();
-            } catch (err) {
-              logger.debug({ err: err instanceof Error ? err.message : String(err), tl }, '[message:send] pre-warm translate failed (non-fatal)');
-            }
-          }));
-          if (Object.keys(translations).length > 0) {
-            broadcastPayload = { ...broadcastPayload, translations };
+      // non-translating tenants skip the AI call entirely. Raced against a
+      // 250ms budget so a slow provider never delays message delivery — on
+      // timeout or error the client-side useAutoTranslation still catches up.
+      if (ticket.agentLang && ticket.agentLang !== sender.lang) {
+        try {
+          const partnerRow = await db
+            .select({ aiFeatures: partners.aiFeatures })
+            .from(partners)
+            .where(eq(partners.id, ticket.partnerId))
+            .limit(1);
+          const aiFeatures = (partnerRow[0]?.aiFeatures as Record<string, unknown>) || {};
+          const roomSockets = await ctx.io.in(Rooms.ticket(ticketId)).fetchSockets();
+          const viewerLangs = new Set<string>();
+          for (const s of roomSockets) {
+            if (s.id === socket.id) continue;
+            const lg = (s.data.lang as string) || '';
+            if (lg) viewerLangs.add(lg);
           }
+          const targets = computePrewarmTargets({
+            senderLang: sender.lang,
+            ticketAgentLang: ticket.agentLang ?? null,
+            viewerLangs,
+            aiFeatures: aiFeatures as { translation?: boolean; queueLangAwareness?: boolean },
+          });
+          if (targets.length > 0 && guardedText) {
+            const translations: Record<string, string> = {};
+            const langLabel = (l: string) =>
+              l === 'nl' ? 'Dutch' : l === 'fr' ? 'French' : 'English';
+            const translateAll = Promise.all(targets.map(async (tl) => {
+              try {
+                const res = await runAiAction({
+                  partnerId: ticket.partnerId,
+                  userId: senderId,
+                  feature: 'translation',
+                  action: 'translate',
+                  vars: { text: guardedText, targetLang: langLabel(tl) },
+                  temperature: 0.3,
+                  maxTokens: 1024,
+                });
+                if (res.content) translations[tl] = res.content.trim();
+              } catch (err) {
+                logger.debug({ err: err instanceof Error ? err.message : String(err), tl }, '[message:send] pre-warm translate failed (non-fatal)');
+              }
+            }));
+            const PREWARM_BUDGET_MS = 250;
+            await Promise.race([translateAll, new Promise<void>((resolve) => setTimeout(resolve, PREWARM_BUDGET_MS))]);
+            if (Object.keys(translations).length > 0) {
+              broadcastPayload = { ...broadcastPayload, translations };
+            }
+          }
+        } catch (err) {
+          logger.debug({ err: err instanceof Error ? err.message : String(err) }, '[message:send] pre-warm skipped (non-fatal)');
         }
-      } catch (err) {
-        logger.debug({ err: err instanceof Error ? err.message : String(err) }, '[message:send] pre-warm skipped (non-fatal)');
       }
 
       if (isWhisper) {

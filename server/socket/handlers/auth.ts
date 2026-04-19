@@ -246,6 +246,7 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
       socket.data.name = name;
       socket.data.partnerId = partnerId;
       socket.data.isSupport = isSupport;
+      socket.data.lang = userRow.lang || 'en';
       socket.data.identified = true;
 
       await presenceService.identifyUser(userId, effectiveRole, name, partnerId, isPlatformOp, socket.id);

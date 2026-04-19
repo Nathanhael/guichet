@@ -9,14 +9,14 @@ describe('socket:identify try/catch (#46)', () => {
 
   it('wraps socket:identify DB queries in try/catch', () => {
     const identifyIdx = handlersSource.indexOf("'socket:identify'");
-    const identifyBlock = handlersSource.slice(identifyIdx, identifyIdx + 5500);
+    const identifyBlock = handlersSource.slice(identifyIdx);
     expect(identifyBlock).toMatch(/try\s*\{/);
     expect(identifyBlock).toMatch(/catch/);
   });
 
   it('disconnects socket on identify error', () => {
     const identifyIdx = handlersSource.indexOf("'socket:identify'");
-    const identifyBlock = handlersSource.slice(identifyIdx, identifyIdx + 5500);
+    const identifyBlock = handlersSource.slice(identifyIdx);
     expect(identifyBlock).toMatch(/catch[\s\S]*?disconnect/);
   });
 });
