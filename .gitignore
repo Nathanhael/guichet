@@ -73,9 +73,9 @@ conductor/
 # Git hooks (solo project)
 .husky/
 
-# E2E testing — config tracked, test results ignored
+# E2E testing & testing config — local only
 playwright.config.ts
-testing/e2e/test-results/
+testing/
 
 # Video recordings
 docs/videos/

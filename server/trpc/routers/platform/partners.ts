@@ -85,7 +85,6 @@ export const platformPartnersRouter = router({
           messageImprovement: z.enum(['off', 'optional', 'forced']).optional(),
           chatSummarization: z.boolean().optional(),
           translation: z.boolean().optional(),
-          sentimentDetection: z.boolean().optional(),
           autoSummarizeOnClose: z.boolean().optional(),
         }).optional(),
         aiConfig: z.object({
