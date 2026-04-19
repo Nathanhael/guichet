@@ -13,6 +13,7 @@ const BOOLEAN_FEATURES: { key: Exclude<keyof AiFeatures, 'messageImprovement'>; 
   { key: 'chatSummarization', label: 'Chat Summarization', description: 'Generate summaries of support conversations' },
   { key: 'translation', label: 'Auto-Translation', description: 'Automatically translate messages between nl/en/fr based on user language' },
   { key: 'autoSummarizeOnClose', label: 'Auto-Summarize on Close', description: 'Generate summary when ticket is closed' },
+  { key: 'queueLangAwareness', label: 'Queue Language Awareness', description: 'Show per-language staffing header + cross-lang banner; pre-warm translations for cross-lang tickets' },
 ];
 
 const IMPROVEMENT_OPTIONS: { value: ImprovementMode; label: string }[] = [

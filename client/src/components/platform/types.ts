@@ -15,6 +15,7 @@ export interface AiFeatures {
   chatSummarization?: boolean;
   translation?: boolean;
   autoSummarizeOnClose?: boolean;
+  queueLangAwareness?: boolean;
 }
 
 export interface Partner {
