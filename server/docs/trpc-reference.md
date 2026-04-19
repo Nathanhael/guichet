@@ -140,9 +140,6 @@ Client access: `trpc.<router>.<procedure>`
 | `improveMessage` | mutation | protected | Rewrite a message for clarity and professionalism |
 | `translateMessage` | mutation | protected | Translate a message to a target language (nl/en/fr) |
 | `summarizeChat` | mutation | role(support,admin) | Summarize a ticket's chat conversation (Redis-cached) |
-| `getTicketSentiment` | query | role(support,admin) | Get average sentiment, trend, and scored message count for a ticket |
-| `getTicketSentiments` | query | role(support,admin) | Get average sentiment per open ticket for the current partner |
-| `getNegativeSentimentTickets` | query | role(support,admin) | List open tickets with negative average sentiment below -0.3 |
 
 ## kb
 

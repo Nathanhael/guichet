@@ -31,16 +31,15 @@ Each ticket row has two lines:
     - This week → `Mon 15:05`
     - Older → `08 Mar`
 
-**Row 2 (bottom):** `[agent badges] [sentiment dot] .............. [unread count]`
+**Row 2 (bottom):** `[agent badges] .............. [unread count]`
 - Agent monogram badges: 20px circles, overlapping with -6px margin
   - Current user ("You"): blue background (`accent-blue`), white text
   - Other agents: `bg-elevated` background, `text-secondary` text
   - Hover shows tooltip with full name (positioned above badge)
   - Order: current user first, then others alphabetically
   - Only show badges for agents who have **joined** the ticket (from `ticket.participants` where role is support-like)
-- Sentiment dot: 6px circle, existing `SentimentDot` component (compact mode)
 - Unread count: monospace 8px bold, blue background pill, right-aligned. Only visible when unread > 0.
-- If no agents joined and no unread: row 2 still renders (for consistent spacing) but is empty except sentiment dot if present.
+- If no agents joined and no unread: row 2 still renders (for consistent spacing) but is empty.
 
 **Row states:**
 - **Active** (selected tab): 3px blue left border + subtle blue background tint (`rgba(59,130,246,0.06)`)
@@ -122,7 +121,7 @@ Same 2-row layout as queue, with differences:
 The `QueueSidebar.tsx` file is currently 430 lines. The redesign touches most of it but doesn't add significant new complexity — it replaces elements more than adding them.
 
 Suggested extraction to keep things focused:
-- **`QueueTicketRow.tsx`** — new component for the ticket row (queue variant). Receives ticket, isActive, isUnread, currentUserId, sentimentScore. ~60 lines.
+- **`QueueTicketRow.tsx`** — new component for the ticket row (queue variant). Receives ticket, isActive, isUnread, currentUserId. ~60 lines.
 - **`ArchiveTicketRow.tsx`** — archive variant of the row. Similar props minus unread. ~50 lines.
 - **`SidebarFooter.tsx`** — footer with collapsed/expanded team panel. Receives queueCount, onlineSupportUsers, sidebarTab. ~80 lines.
 - **`AgentBadges.tsx`** — shared component for rendering overlapping monogram badges with tooltips. Used in ticket rows and footer. ~40 lines.
