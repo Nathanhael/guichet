@@ -22,9 +22,12 @@ import {
   updateMessageLinkPreviews,
 } from '../../services/messageQueries.js';
 import { runSyncGuards, guardRepetition } from '../../services/guards.js';
-import { invalidateSummary } from '../../services/ai/index.js';
+import { invalidateSummary, runAiAction } from '../../services/ai/index.js';
 import { unfurlLinks } from '../../services/linkPreview.js';
 import { getRedisClients } from '../../utils/redis.js';
+import { db } from '../../db.js';
+import { partners } from '../../db/schema.js';
+import { eq } from 'drizzle-orm';
 import {
   MAX_MESSAGE_LENGTH,
   MAX_EDIT_WINDOW_MS,
@@ -46,6 +49,24 @@ import {
   type HandlerContext,
   type SenderInfo,
 } from './types.js';
+
+export interface PrewarmInput {
+  senderLang: string;
+  ticketAgentLang: string | null;
+  viewerLangs: Set<string>;
+  aiFeatures: { translation?: boolean; queueLangAwareness?: boolean } | null | undefined;
+}
+
+export function computePrewarmTargets(input: PrewarmInput): string[] {
+  const f = input.aiFeatures || {};
+  if (!f.translation || !f.queueLangAwareness) return [];
+  if (!input.ticketAgentLang || input.ticketAgentLang === input.senderLang) return [];
+  const targets = new Set<string>();
+  for (const vl of input.viewerLangs) {
+    if (vl && vl !== input.senderLang) targets.add(vl);
+  }
+  return Array.from(targets);
+}
 
 export function register(socket: Socket, ctx: HandlerContext): void {
   // ── message:loadMore ────────────────────────────────────────────────────────
@@ -191,10 +212,67 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       }
 
       // Resolve reply snippet for broadcast (if replying to a message)
-      let broadcastPayload: typeof msgPayload & { localId?: string; replyTo?: { id: string; senderName: string; text: string; mediaUrl: string | null } | null } = localId ? { ...msgPayload, localId } : msgPayload;
+      let broadcastPayload: typeof msgPayload & {
+        localId?: string;
+        replyTo?: { id: string; senderName: string; text: string; mediaUrl: string | null } | null;
+        translations?: Record<string, string>;
+      } = localId ? { ...msgPayload, localId } : msgPayload;
       if (replyToId) {
         const snippet = await resolveReplySnippet(replyToId);
         broadcastPayload = { ...broadcastPayload, replyTo: snippet };
+      }
+
+      // Pre-warm cross-lang translations for the agent(s) watching this
+      // ticket in a different language. Gated on partner aiFeatures so
+      // non-translating tenants skip the AI call entirely. Non-fatal: on
+      // any provider error, client-side useAutoTranslation still catches
+      // up on render (old behavior, minus the pre-warm).
+      try {
+        const partnerRow = await db
+          .select({ aiFeatures: partners.aiFeatures })
+          .from(partners)
+          .where(eq(partners.id, ticket.partnerId))
+          .limit(1);
+        const aiFeatures = (partnerRow[0]?.aiFeatures as Record<string, unknown>) || {};
+        const roomSockets = await ctx.io.in(Rooms.ticket(ticketId)).fetchSockets();
+        const viewerLangs = new Set<string>();
+        for (const s of roomSockets) {
+          if (s.id === socket.id) continue;
+          const lg = (s.data.lang as string) || '';
+          if (lg) viewerLangs.add(lg);
+        }
+        const targets = computePrewarmTargets({
+          senderLang: sender.lang,
+          ticketAgentLang: ticket.agentLang ?? null,
+          viewerLangs,
+          aiFeatures: aiFeatures as { translation?: boolean; queueLangAwareness?: boolean },
+        });
+        if (targets.length > 0 && guardedText) {
+          const translations: Record<string, string> = {};
+          const langLabel = (l: string) =>
+            l === 'nl' ? 'Dutch' : l === 'fr' ? 'French' : 'English';
+          await Promise.all(targets.map(async (tl) => {
+            try {
+              const res = await runAiAction({
+                partnerId: ticket.partnerId,
+                userId: senderId,
+                feature: 'translation',
+                action: 'translate',
+                vars: { text: guardedText, targetLang: langLabel(tl) },
+                temperature: 0.3,
+                maxTokens: 1024,
+              });
+              if (res.content) translations[tl] = res.content.trim();
+            } catch (err) {
+              logger.debug({ err: err instanceof Error ? err.message : String(err), tl }, '[message:send] pre-warm translate failed (non-fatal)');
+            }
+          }));
+          if (Object.keys(translations).length > 0) {
+            broadcastPayload = { ...broadcastPayload, translations };
+          }
+        }
+      } catch (err) {
+        logger.debug({ err: err instanceof Error ? err.message : String(err) }, '[message:send] pre-warm skipped (non-fatal)');
       }
 
       if (isWhisper) {

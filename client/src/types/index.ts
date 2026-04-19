@@ -201,6 +201,7 @@ export interface Message {
   replyTo?: { id: string; senderName: string; text: string; mediaUrl?: string | null } | null;
   reactions: Record<string, string[]>;
   linkPreviews?: Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }> | null;
+  translations?: Record<string, string>;
   pending?: boolean;
   /** Client-generated ID echoed back by server for optimistic reconciliation */
   localId?: string;
