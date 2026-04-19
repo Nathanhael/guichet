@@ -1537,20 +1537,6 @@
           "notNull": false,
           "default": 0
         },
-        "sentiment_sum": {
-          "name": "sentiment_sum",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
-        "sentiment_count": {
-          "name": "sentiment_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "default": 0
-        },
         "dept_counts": {
           "name": "dept_counts",
           "type": "jsonb",
@@ -2051,12 +2037,6 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'{}'::jsonb"
-        },
-        "sentiment": {
-          "name": "sentiment",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false
         },
         "edited_at": {
           "name": "edited_at",

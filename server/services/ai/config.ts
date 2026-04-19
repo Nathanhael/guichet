@@ -6,7 +6,6 @@ const DEFAULT_CONFIG: PartnerAiConfig = {
   messageImprovement: 'off',
   chatSummarization: false,
   translation: false,
-  sentimentDetection: false,
   autoSummarizeOnClose: false,
 };
 
@@ -45,7 +44,6 @@ export async function getPartnerAiConfig(partnerId: string): Promise<PartnerAiCo
     messageImprovement: improvementMode,
     chatSummarization: features.chatSummarization === true,
     translation: features.translation === true,
-    sentimentDetection: features.sentimentDetection === true,
     autoSummarizeOnClose: features.autoSummarizeOnClose === true,
   };
 }
@@ -56,7 +54,7 @@ export async function getPartnerAiConfig(partnerId: string): Promise<PartnerAiCo
  */
 export async function isFeatureEnabled(
   partnerId: string,
-  feature: 'messageImprovement' | 'chatSummarization' | 'translation' | 'sentimentDetection' | 'autoSummarizeOnClose',
+  feature: 'messageImprovement' | 'chatSummarization' | 'translation' | 'autoSummarizeOnClose',
 ): Promise<boolean> {
   const aiConfig = await getPartnerAiConfig(partnerId);
   const val = aiConfig[feature];

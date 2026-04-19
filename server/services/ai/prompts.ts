@@ -45,13 +45,6 @@ Text:
 {{text}}
 </user_content>`,
 
-  sentiment: `Analyze the sentiment of this message on a scale from -1.0 (very negative) to 1.0 (very positive). Reply with ONLY a number, nothing else.
-
-Message:
-<user_content>
-{{text}}
-</user_content>`,
-
   match_canned: `Given these canned responses:
 {{responses}}
 

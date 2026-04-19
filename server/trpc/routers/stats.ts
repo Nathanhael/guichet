@@ -7,7 +7,7 @@ import { Ticket, UserRole } from '../../types/index.js';
 import { isPlatformAdmin } from '../../services/roles.js';
 import {
   fetchHistoricalStats, fetchLiveTickets, fetchRatings,
-  fetchTicketSentiment, fetchDeptSentiment, fetchWaitingTickets,
+  fetchWaitingTickets,
   fetchPreviousPeriodStats, fetchLabelSummary, fetchSupportUserNames,
   type HistoricalStatRow,
 } from '../../services/statsQueries.js';
@@ -26,8 +26,6 @@ interface DayData {
   ratingSum: number;
   ratingCount: number;
   ratingsByDept: Record<string, { sum: number; count: number }>;
-  sentimentSum: number;
-  sentimentCount: number;
   deptResolved: Record<string, number>;
   hourly: number[];
   hourlyStaffing?: HourlyStaffingItem[];
@@ -51,7 +49,6 @@ interface PerDayEntry {
   date: string;
   total: number;
   deptCounts: Record<string, number>;
-  sentiment?: number | null;
   p95?: number | null;
 }
 
@@ -160,17 +157,11 @@ export const statsRouter = router({
         // JOIN-based queries — avoids unbounded IN clause with large ticket ID lists (#14)
         const liveRatings = await fetchRatings(partnerId!, rangeStart, rangeEnd, dept);
 
-        // SQL AVG aggregates — avoids loading all message rows into memory (#13)
-        const ticketSentimentAvgs = await fetchTicketSentiment(partnerId!, rangeStart, rangeEnd, dept);
-
-        const deptSentimentAvgs = await fetchDeptSentiment(partnerId!, rangeStart, rangeEnd);
-
         let totalCount = 0, totalClosed = 0, totalAbandoned = 0, totalReopened = 0;
         const totalDeptCounts: Record<string, number> = {};
         let totalResponseSum = 0, totalResponseCount = 0;
         let totalDurationSum = 0, totalDurationCount = 0;
         let totalRatingSum = 0, totalRatingCount = 0;
-        let totalSentimentSum = 0, totalSentimentCount = 0;
         const allResponseTimes: number[] = [];
         const hourlyMap = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
         const hourlyStaffingMap: Record<number, HourlyStaffingAccumulator> = {};

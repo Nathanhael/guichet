@@ -147,7 +147,6 @@ export const messages = pgTable('messages', {
   deliveredAt: timestamp('delivered_at', { mode: 'string' }),
   readAt: timestamp('read_at', { mode: 'string' }),
   reactions: jsonb('reactions').$type<Record<string, string[]>>().default({}),
-  sentiment: real('sentiment'),
   editedAt: timestamp('edited_at', { mode: 'string' }),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
   linkPreviews: jsonb('link_previews').$type<Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }>>(),
@@ -230,8 +229,6 @@ export const dailyStats = pgTable('daily_stats', {
   responseCount: integer('response_count').default(0),
   p95ResponseMs: integer('p95_response_ms').default(0),
   reopened: integer('reopened').default(0),
-  sentimentSum: real('sentiment_sum').default(0),
-  sentimentCount: integer('sentiment_count').default(0),
   deptCounts: jsonb('dept_counts').default({}),
   ratingsByDept: jsonb('ratings_by_dept').default({}),
   hourly: jsonb('hourly').default({}),
@@ -409,7 +406,7 @@ export const webhookLogs = pgTable('webhook_logs', {
 export const aiPromptTemplates = pgTable('ai_prompt_templates', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
   partnerId: text('partner_id').references(() => partners.id, { onDelete: 'cascade' }),
-  action: text('action').notNull(),  // classify, suggest, summarize, improve, translate, sentiment, match_canned
+  action: text('action').notNull(),  // classify, suggest, summarize, improve, translate, match_canned
   template: text('template').notNull(),
   model: text('model'),              // override model per action
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),

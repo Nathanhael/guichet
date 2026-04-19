@@ -1,13 +1,8 @@
-import { Ticket, Rating, Message } from '../types/index.js';
+import { Ticket, Rating } from '../types/index.js';
 
 /** Extended ticket with DB columns not on the base Ticket interface */
 interface TicketWithReopened extends Ticket {
   reopened?: boolean;
-}
-
-/** Extended message with sentiment score from AI analysis */
-interface MessageWithSentiment extends Message {
-  sentiment?: number | null;
 }
 
 export function calculatePercentile(values: number[], percentile: number): number {
@@ -17,16 +12,14 @@ export function calculatePercentile(values: number[], percentile: number): numbe
   return sorted[index];
 }
 
-export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings: Rating[], deptFilter?: string, dayMessages: MessageWithSentiment[] = []) {
+export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings: Rating[], deptFilter?: string) {
   let tickets = dayTickets;
   let ratings = dayRatings;
-  let messages = dayMessages;
 
   if (deptFilter && deptFilter !== 'all') {
     tickets = tickets.filter(t => t.dept === deptFilter);
     const tIds = new Set(tickets.map(t => t.id));
     ratings = ratings.filter(r => tIds.has(r.ticketId));
-    messages = messages.filter(m => tIds.has(m.ticketId));
   }
 
   const deptCounts: Record<string, number> = {};
@@ -80,9 +73,6 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
     ratingsByDept[d].count++;
   });
 
-  const sentimentSum = messages.reduce((s, m) => s + (m.sentiment || 0), 0);
-  const sentimentCount = messages.filter(m => m.sentiment !== undefined && m.sentiment !== null).length;
-
   return {
     total: tickets.length,
     deptCounts,
@@ -97,8 +87,6 @@ export function computeLiveDayStats(dayTickets: TicketWithReopened[], dayRatings
     ratingSum: ratings.reduce((s, r) => s + r.rating, 0),
     ratingCount: ratings.length,
     ratingsByDept,
-    sentimentSum,
-    sentimentCount,
     deptResolved,
     supportIds: Array.from(supportIds),
     hourly,

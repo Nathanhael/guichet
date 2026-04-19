@@ -35,21 +35,6 @@ function parseRows<T extends z.ZodTypeAny>(
   return result.data;
 }
 
-const ticketSentimentSchema = z.object({
-  ticketId: z.string(),
-  sentimentAvg: z.coerce.number().nullable(),
-  sentimentCount: z.coerce.number(),
-});
-export type TicketSentimentAvg = z.infer<typeof ticketSentimentSchema>;
-
-const deptSentimentSchema = z.object({
-  // tickets.dept is NOT NULL in schema.ts, so GROUP BY t.dept cannot yield null
-  dept: z.string(),
-  sentimentAvg: z.coerce.number().nullable(),
-  sentimentCount: z.coerce.number(),
-});
-export type DeptSentimentAvg = z.infer<typeof deptSentimentSchema>;
-
 const historicalStatSchema = z.object({
   date: z.string(),
   total: z.coerce.number(),
@@ -62,8 +47,6 @@ const historicalStatSchema = z.object({
   responseCount: z.coerce.number(),
   p95ResponseMs: z.coerce.number(),
   reopened: z.coerce.number(),
-  sentimentSum: z.coerce.number(),
-  sentimentCount: z.coerce.number(),
   deptCounts: z.string(),
   ratingsByDept: z.string(),
   hourly: z.string(),
@@ -102,7 +85,7 @@ const waitingSchema = z.object({
 });
 
 export async function fetchHistoricalStats(partnerId: string, rangeStart: string, rangeEnd: string): Promise<HistoricalStatRow[]> {
-  const result = await db.execute(sql`SELECT date, total, closed, abandoned, avg_response_ms AS "avgResponseMs", avg_duration_ms AS "avgDurationMs", avg_rating AS "avgRating", rating_count AS "ratingCount", response_count AS "responseCount", p95_response_ms AS "p95ResponseMs", reopened, sentiment_sum AS "sentimentSum", sentiment_count AS "sentimentCount", dept_counts AS "deptCounts", ratings_by_dept AS "ratingsByDept", hourly FROM daily_stats WHERE date >= ${rangeStart} AND date <= ${rangeEnd} AND partner_id = ${partnerId}`);
+  const result = await db.execute(sql`SELECT date, total, closed, abandoned, avg_response_ms AS "avgResponseMs", avg_duration_ms AS "avgDurationMs", avg_rating AS "avgRating", rating_count AS "ratingCount", response_count AS "responseCount", p95_response_ms AS "p95ResponseMs", reopened, dept_counts AS "deptCounts", ratings_by_dept AS "ratingsByDept", hourly FROM daily_stats WHERE date >= ${rangeStart} AND date <= ${rangeEnd} AND partner_id = ${partnerId}`);
   return parseRows(result.rows, historicalStatSchema, 'fetchHistoricalStats');
 }
 
@@ -128,27 +111,6 @@ export async function fetchRatings(partnerId: string, rangeStart: string, rangeE
        FROM ratings r JOIN tickets t ON r.ticket_id = t.id
        WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}`);
   return parseRows(result.rows, ratingSchema, 'fetchRatings');
-}
-
-export async function fetchTicketSentiment(partnerId: string, rangeStart: string, rangeEnd: string, dept?: string): Promise<TicketSentimentAvg[]> {
-  const result = dept && dept !== 'all'
-    ? await db.execute(sql`SELECT m.ticket_id AS "ticketId", AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
-       FROM messages m JOIN tickets t ON m.ticket_id = t.id
-       WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND t.dept = ${dept} AND m.sentiment IS NOT NULL
-       GROUP BY m.ticket_id`)
-    : await db.execute(sql`SELECT m.ticket_id AS "ticketId", AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
-       FROM messages m JOIN tickets t ON m.ticket_id = t.id
-       WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND m.sentiment IS NOT NULL
-       GROUP BY m.ticket_id`);
-  return parseRows(result.rows, ticketSentimentSchema, 'fetchTicketSentiment');
-}
-
-export async function fetchDeptSentiment(partnerId: string, rangeStart: string, rangeEnd: string): Promise<DeptSentimentAvg[]> {
-  const result = await db.execute(sql`SELECT t.dept, AVG(m.sentiment) AS "sentimentAvg", COUNT(m.sentiment) AS "sentimentCount"
-     FROM messages m JOIN tickets t ON m.ticket_id = t.id
-     WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND m.sentiment IS NOT NULL
-     GROUP BY t.dept`);
-  return parseRows(result.rows, deptSentimentSchema, 'fetchDeptSentiment');
 }
 
 export async function fetchWaitingTickets(partnerId: string, thirtyMinsAgo: string): Promise<{ createdAt: string }[]> {
@@ -188,8 +150,6 @@ export async function fetchSupportUserNames(supportIds: string[]): Promise<{ id:
 export const __schemas = {
   historicalStatSchema,
   ratingSchema,
-  ticketSentimentSchema,
-  deptSentimentSchema,
   waitingSchema,
   prevHistSchema,
   labelCountSchema,

@@ -29,7 +29,6 @@ export type AiAction =
   | 'summarize'
   | 'improve'
   | 'translate'
-  | 'sentiment'
   | 'match_canned';
 
 export interface PromptTemplate {
@@ -65,7 +64,6 @@ export interface PartnerAiConfig {
   chatSummarization?: boolean;
   /** When true, messages are auto-translated based on senderLang vs viewerLang */
   translation?: boolean;
-  sentimentDetection?: boolean;
   autoSummarizeOnClose?: boolean;
   rateLimits?: {
     perMinute?: number;

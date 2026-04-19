@@ -21,7 +21,7 @@ import {
   updateMessageLinkPreviews,
 } from '../../services/messageQueries.js';
 import { runSyncGuards, guardRepetition } from '../../services/guards.js';
-import { invalidateSummary, scoreSentiment } from '../../services/ai/index.js';
+import { invalidateSummary } from '../../services/ai/index.js';
 import { unfurlLinks } from '../../services/linkPreview.js';
 import { getRedisClients } from '../../utils/redis.js';
 import {
@@ -191,11 +191,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       logger.info({ messageId, whisper: !!isWhisper }, '[message:send] Emitted message:new');
       // Invalidate cached AI summary for this ticket (fire-and-forget)
       invalidateSummary(ticketId).catch(() => {});
-      // Fire-and-forget sentiment scoring (skip whispers — internal notes shouldn't affect sentiment)
-      // ME-01 fix: Score on guardedText (what's stored/displayed), not raw pre-guard text
-      if (!isWhisper) {
-        scoreSentiment(ticket.partnerId, senderId, messageId, guardedText).catch(() => {});
-      }
       // Fire-and-forget: unfurl link previews
       if (guardedText && !isWhisper) {
         unfurlLinks(guardedText).then(async (previews) => {
