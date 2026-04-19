@@ -63,7 +63,7 @@ export default function AdminDepartments() {
   const prevDepsRef = useRef<string>('');
   useEffect(() => {
     if (isEditing || isSaving) return;
-    const serverDepts = mapDepts((manifest?.departments ?? []) as Array<{ id: string; name: string; description?: string }>);
+    const serverDepts = mapDepts((manifest?.departments ?? []) as Array<{ id?: string; name?: string; description?: string; referenceFields?: RefField[]; sla?: SlaConfig }>);
     const key = JSON.stringify(serverDepts);
     if (key !== prevDepsRef.current) {
       prevDepsRef.current = key;
