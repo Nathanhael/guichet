@@ -18,6 +18,7 @@ import { aiRouter } from './routers/ai.js';
 import { statusRouter } from './routers/status.js';
 import { linkPreviewRouter } from './routers/linkPreview.js';
 import { slaRouter } from './routers/sla.js';
+import { supportRouter } from './routers/support.js';
 
 export const appRouter = router({
   status: statusRouter,
@@ -32,6 +33,7 @@ export const appRouter = router({
   rating: ratingRouter,
   savedView: savedViewRouter,
   stats: statsRouter,
+  support: supportRouter,
   user: userRouter,
   platform: platformRouter,
   partner: partnerRouter,
