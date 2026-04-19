@@ -129,11 +129,10 @@ Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR p
 ## 8. AI Service Layer
 
 - **Provider Abstraction**: `server/services/ai/` implements a factory pattern supporting Ollama (local/free), Azure OpenAI, and any OpenAI-compatible API (LM Studio, Groq, Together AI). Switch with one env var (`AI_PROVIDER`). All AI modules use `AiContext` dependency injection (wired at boot) and import via the barrel `index.ts` — never directly.
-- **Per-Tenant Configuration**: Each partner has `aiEnabled` flag and `aiFeatures` JSONB controlling which AI capabilities are active (message improvement, summarization, translation, sentiment, auto-summarize on close). Platform admins toggle features in the Edit Partner modal.
+- **Per-Tenant Configuration**: Each partner has `aiEnabled` flag and `aiFeatures` JSONB controlling which AI capabilities are active (message improvement, summarization, translation, auto-summarize on close). Platform admins toggle features in the Edit Partner modal.
 - **Message Improvement**: Role-aware rewriting — agents get clarity-focused rewrites, support gets actionable step-by-step rewrites. Optional or forced modes with revert-to-original.
 - **Chat Summarization**: On-demand summaries via `ai.summarizeChat`, cached in Redis. AI Copilot Sidebar in SupportView for quick context.
 - **Translation**: Per-message translation between nl/en/fr via `ai.translateMessage`. Auto-detects source language.
-- **Sentiment Detection**: Fire-and-forget scoring (-1.0 to 1.0) on every message. Aggregated in QueueSidebar (colored dots) and AdminStats (sentiment trends).
 - **Auto-Summarize on Close**: When tickets close, AI generates a summary stored in closing notes. Feeds into the GDPR-safe archive.
 - **Rate Limiting**: Per-partner Redis counters (requests/min, requests/day). Configurable via partner AI config.
 - **Usage Logging**: Every AI call logged to `ai_usage_log` with provider, model, token counts, latency, and success/failure.
@@ -155,7 +154,7 @@ Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR p
 - **Self-Contained Feature Modules**: `PlatformView` is a thin shell (tabs + modal state). Each feature lives in `components/platform/` and owns its own tRPC hooks, mutations, and cache invalidation — no prop-drilling of refetch functions.
 - **Component Organization**: `components/admin/` (21 components — stats, satisfaction, team, departments, tickets, business hours, labels, canned responses, knowledge base, webhooks, alerts, feedback, archive, platform ops), `components/agent/` (3 — nav, sidebar, ticket form), `components/support/` (6 — queue, chat tabs, customer info, AI copilot, saved view picker, nav), `components/chat/` (11 — decomposed chat sub-components: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LabelPicker, LinkPreviewCard, QuoteBlock, SearchBar). Shared components at root level (ChatWindow, MessageBubble, Toast, ConfirmDialog, AccessibilityMenu, NeuroToggle, BionicText, etc.).
 - **Reusable UI Primitives**: Custom `ConfirmDialog` and `Toast` components replace all native `alert()`/`confirm()` calls for consistent UX.
-- **Data Visualization**: Recharts for dashboard charts (AdminStats, sentiment trends, SLA compliance).
+- **Data Visualization**: Recharts for dashboard charts (AdminStats, SLA compliance).
 - **Full i18n**: All UI strings use `useT()` with translations in English, French, and Dutch (`i18n.ts`). Business hours, admin views, and platform views are fully translated.
 - **State Synchronization**: Strict single-page-app behaviors using Zustand for global state and tRPC for seamless query invalidation and refetching.
 - **Window Event Architecture**: To avoid deep prop-drilling or complex handle-passing for UI modals, the system uses a producer/consumer pattern based on `window` CustomEvents. Components like `SupportNav` or the keyboard hook dispatch events (e.g., `support:open-label-picker`), which are consumed by the component owning the modal state (`ChatHeader`).

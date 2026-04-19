@@ -81,7 +81,7 @@ Partner Admins use the **AdminView** to manage their local workspace:
 - **Webhooks Tab**: Configure webhook endpoints that receive events (ticket created, closed, etc.) with HMAC signature verification. View delivery logs.
 - **Alerts Tab**: Set up alert rules for SLA breaches and topic monitoring with configurable thresholds and recipients.
 - **SLA Policies**: Configure per-department response and resolution time targets. Toggle business-hours-only mode to pause the SLA clock outside operating hours.
-- **Stats Tab**: View partner analytics including ticket volumes, response times, SLA compliance, and sentiment trends (Recharts dashboards).
+- **Stats Tab**: View partner analytics including ticket volumes, response times, and SLA compliance (Recharts dashboards).
 - **Feedback Tab**: Review in-app user feedback submitted via the feedback modal.
 
 ---
@@ -137,7 +137,6 @@ AI features are controlled per partner by platform admins (Edit Partner → AI F
 - **Message Improvement**: Click the ✨ sparkle button next to the message input to have AI rewrite your message for clarity. The original text is preserved — click "Revert" to undo. Agents get clarity-focused rewrites; support gets actionable step-by-step rewrites.
 - **Chat Summarization**: Click **"Summarize"** in the chat header to generate a 2-3 sentence summary of the conversation. The summary card appears at the top of the chat. The **AI Copilot Sidebar** (right panel) provides quick context for support staff.
 - **Translation**: Click the translate button on any message bubble to translate it to your preferred language (nl/en/fr). The translation appears below the original text.
-- **Sentiment Indicators**: Colored dots on tickets in the queue sidebar reflect customer sentiment (red = frustrated, green = satisfied). Sentiment trends are visible in the Admin Stats dashboard.
 - **Auto-Summarize on Close**: When a ticket is closed, AI automatically generates a summary stored in closing notes. This summary survives GDPR purges in the ticket archive.
 
 ### Collision Detection

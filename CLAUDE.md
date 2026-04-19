@@ -96,8 +96,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `factory.ts` — Provider factory (Ollama, Azure OpenAI, OpenAI-compatible)
 - `ollama.ts` / `azure-openai.ts` / `openai-compatible.ts` — Provider implementations with streaming
 - `config.ts` / `types.ts` — AI configuration and shared types
-- `prompts.ts` — Prompt templates for improvement, summarization, translation, sentiment
-- `sentiment.ts` — Fire-and-forget sentiment scoring for tickets
+- `prompts.ts` — Prompt templates for improvement, summarization, translation
 - `autoSummarize.ts` — Auto-summarize on ticket close
 - `runAction.ts` — Unified action runner with error handling
 - `rateLimit.ts` — Per-partner AI rate limiting
@@ -190,7 +189,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
 - `components/chat/` — Decomposed chat sub-components: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LabelPicker, LinkPreviewCard, QuoteBlock, SearchBar
 - `utils/` — `statusColors.ts`, `dateUtils.ts`, `markdown.ts`, `fileUtils.ts`, `exportDashboard.ts`, `labelColors.ts`, `highlightText.tsx`, `businessHours.ts`, `notifications.ts`, `notificationSound.ts`, `roles.ts`, `uploadLogo.ts`, `trpc.ts`
-- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SentimentDot, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
+- Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SettingsPopover, SlaIndicator, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
 
 **Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
 
@@ -213,7 +212,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - **Cursor-Based Pagination**: Ticket list and audit archive use keyset pagination (`createdAt|id` composite cursor). Pattern: fetch `limit+1`, detect hasMore, return `{ items, nextCursor }`.
 - **Platform Operator Bootstrap**: On first startup with no platform operators, auto-creates one from `PLATFORM_ADMIN_EMAIL` env var. Runs before server accepts traffic. Race-safe, non-fatal. Subsequent logins for that operator go through SSO.
 - **Platform Operator Partner Access**: Platform operators can enter any active partner's admin view via `POST /enter-partner` without needing a membership. Socket auth bypasses membership check for operators.
-- **AI Provider Abstraction**: Multi-provider AI via factory pattern (`server/services/ai/`). Uses `AiContext` dependency injection (wired at boot) — all AI modules import from the barrel `index.ts`, never directly. Supports Ollama, Azure OpenAI, and OpenAI-compatible APIs. Per-partner AI config (`aiEnabled`, `aiFeatures` JSONB) controls feature availability. Features: message improvement (optional/forced modes with revert), chat summarization (Redis-cached), translation, sentiment detection (fire-and-forget), auto-summarize on close. Rate limiting and usage logging per partner.
+- **AI Provider Abstraction**: Multi-provider AI via factory pattern (`server/services/ai/`). Uses `AiContext` dependency injection (wired at boot) — all AI modules import from the barrel `index.ts`, never directly. Supports Ollama, Azure OpenAI, and OpenAI-compatible APIs. Per-partner AI config (`aiEnabled`, `aiFeatures` JSONB) controls feature availability. Features: message improvement (optional/forced modes with revert), chat summarization (Redis-cached), translation, auto-summarize on close. Rate limiting and usage logging per partner.
 - **Knowledge Base**: Per-partner KB articles (`kb_articles` table). CRUD via `trpc.kb.*`. Admin UI in `AdminKnowledgeBase`.
 - **Webhooks**: Per-partner webhook endpoints (`webhooks` table) with event subscriptions, HMAC signing, delivery logs (`webhook_logs`). Dispatch via `webhookDispatch.ts`. Admin UI in `AdminWebhooks`.
 - **Alerts & SLA**: Topic alerts with configurable thresholds (`topic_alerts` table). Per-department SLA config with `SlaIndicator` component. Admin UI in `AdminAlerts`.
@@ -280,7 +279,7 @@ guichet/
 │   │   ├── uploads.ts             # /api/v1/uploads (file attachments)
 │   │   ├── tickets.ts             # /api/v1/tickets (REST ticket endpoints)
 │   ├── services/                  # Business logic
-│   │   ├── ai/                    # AI provider abstraction (factory, providers, prompts, sentiment)
+│   │   ├── ai/                    # AI provider abstraction (factory, providers, prompts)
 │   │   ├── bootstrap.ts           # First-run platform operator creation
 │   │   ├── gdpr.ts                # GDPR purge + aggregation
 │   │   ├── archive.ts             # WORM audit archive

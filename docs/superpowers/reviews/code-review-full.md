@@ -172,7 +172,7 @@ The codebase demonstrates **strong security fundamentals** across all four revie
 #### LOW: Stats router is very large (~32KB)
 **File**: `server/trpc/routers/stats.ts`
 **Detail**: The stats router at ~32KB is by far the largest single file. It contains many complex SQL queries with raw `sql` template literals. While each query is correctly partner-scoped, the size makes it harder to review and maintain.
-**Recommendation**: Consider splitting into sub-modules (e.g., `stats/tickets.ts`, `stats/sentiment.ts`, `stats/historical.ts`).
+**Recommendation**: Consider splitting into sub-modules (e.g., `stats/tickets.ts`, `stats/historical.ts`).
 
 #### INFO: Webhook router correctly validates URL targets
 **Detail**: `validateWebhookUrl` is called on create/update. Webhook ownership is verified per-operation via `verifyWebhookOwnership(id, partnerId)`. HMAC signing with per-webhook secrets is handled in the dispatch service.
@@ -281,6 +281,6 @@ a refactor risks subtle regressions in dashboard data.
 
 **Recommended approach**:
 1. Add integration test for `trpc.stats.getGlobalStats` — snapshot the response shape with known seed data
-2. Extract SQL queries into `server/services/statsQueries.ts` (ticket stats, sentiment, ratings, SLA, historical)
+2. Extract SQL queries into `server/services/statsQueries.ts` (ticket stats, ratings, SLA, historical)
 3. Keep the single `getGlobalStats` procedure as an orchestrator that calls the extracted helpers
 4. Verify the snapshot test still passes after refactoring

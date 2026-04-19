@@ -5,7 +5,7 @@
 
 ## Problem
 
-The SupportView right side has two separate panels (`CustomerInfoPanel` at 272px + `AiCopilotSidebar` at ~280px) that duplicate information already visible in the ChatWindow header (agent name, status, department, labels, references) and contain disabled features (KB search, sentiment, quick tips). This wastes horizontal space and adds visual noise.
+The SupportView right side has two separate panels (`CustomerInfoPanel` at 272px + `AiCopilotSidebar` at ~280px) that duplicate information already visible in the ChatWindow header (agent name, status, department, labels, references) and contain disabled features (KB search, quick tips). This wastes horizontal space and adds visual noise.
 
 ## Solution
 
@@ -37,7 +37,6 @@ Merge both panels into a single `TicketSidebar` component. Keep only actionable,
 | Labels | Visible in ChatWindow header |
 | KB Search | Feature-gated (`knowledgeBase` in `DISABLED_FEATURES`) |
 | Quick Tips | Static filler content, no value |
-| Sentiment indicator | Feature disabled per partner AI config |
 
 ## Collapsed State (Default)
 
@@ -93,6 +92,5 @@ interface TicketSidebarProps {
 ## Out of Scope
 
 - KB search (feature-gated)
-- Sentiment indicator (disabled)
 - Agent notes / scratchpad (future feature)
 - Conversation timeline (future feature)
