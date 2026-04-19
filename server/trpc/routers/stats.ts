@@ -196,8 +196,6 @@ export const statsRouter = router({
                 ratingSum: deptRating ? deptRating.sum : 0,
                 ratingCount: deptRating ? deptRating.count : 0,
                 ratingsByDept: deptRating ? { [dept]: deptRating } : {},
-                sentimentSum: hist.sentimentSum * deptRatio,
-                sentimentCount: hist.sentimentCount * deptRatio,
                 deptResolved: { [dept]: deptRatio * (hist.responseCount || 0) },
                 hourly: histHourly.map((h: number) => h * deptRatio),
               } as DayData;
@@ -216,8 +214,6 @@ export const statsRouter = router({
                 ratingSum: hist.avgRating ? hist.avgRating * hist.ratingCount : 0,
                 ratingCount: hist.ratingCount,
                 ratingsByDept: histRatingsByDept,
-                sentimentSum: hist.sentimentSum,
-                sentimentCount: hist.sentimentCount,
                 deptResolved: Object.fromEntries(
                   Object.entries(histDeptCounts).map(([d, count]) => [
                     d, (hist.total > 0 ? (count as number) / hist.total : 0) * (hist.responseCount || 0)
@@ -230,23 +226,13 @@ export const statsRouter = router({
             const dayTickets = liveTickets.filter(t => t.createdAt && t.createdAt.startsWith(date));
             const dayTicketIdSet = new Set<string>(dayTickets.map(t => t.id));
             const dayRatings = liveRatings.filter(r => dayTicketIdSet.has(r.ticketId));
-            // Build synthetic per-message sentiment rows from ticket-level AVG aggregates.
-            // computeLiveDayStats only uses .sentiment and .ticketId, so expanding AVG back
-            // to a single synthetic row per ticket preserves the sum/count contract exactly.
-            const daySentimentMessages = ticketSentimentAvgs
-              .filter(row => dayTicketIdSet.has(row.ticketId) && row.sentimentAvg != null)
-              .map(row => ({
-                ticketId: row.ticketId,
-                sentiment: row.sentimentAvg as number,
-              }));
-            dayData = computeLiveDayStats(dayTickets, dayRatings, dept, daySentimentMessages as unknown[] as Parameters<typeof computeLiveDayStats>[3]) as unknown as DayData;
+            dayData = computeLiveDayStats(dayTickets, dayRatings, dept) as unknown as DayData;
           }
 
           perDayData.push({
             date,
             total: dayData.total,
             deptCounts: dayData.deptCounts,
-            sentiment: dayData.sentimentCount > 0 ? Math.round((dayData.sentimentSum / dayData.sentimentCount) * 100) / 100 : null,
             p95: Math.round(dayData.p95ResponseMs / 60000)
           });
           totalCount += dayData.total;
@@ -260,8 +246,6 @@ export const statsRouter = router({
           totalDurationCount += dayData.durationCount;
           totalRatingSum += dayData.ratingSum;
           totalRatingCount += dayData.ratingCount;
-          totalSentimentSum += dayData.sentimentSum;
-          totalSentimentCount += dayData.sentimentCount;
 
           // Collect response times for global p95
           if (!hist) {
@@ -367,15 +351,6 @@ export const statsRouter = router({
           ratingsByDeptOut[d] = { avg: stats.count > 0 ? Math.round((stats.sum / stats.count) * 10) / 10 : null, count: stats.count };
         });
 
-        // Sentiment by dept — built from SQL AVG aggregates (no message rows in memory)
-        const sentimentByDeptOut: Record<string, { avg: number | null; count: number }> = {};
-        deptSentimentAvgs.forEach(row => {
-          sentimentByDeptOut[row.dept] = {
-            avg: row.sentimentAvg != null ? Math.round(Number(row.sentimentAvg) * 100) / 100 : null,
-            count: Number(row.sentimentCount),
-          };
-        });
-
         const supportMap: Record<string, SupportMapEntry> = {};
         allLiveTickets.forEach(t => {
           if (!t.supportName || !t.supportId) return;
@@ -471,7 +446,6 @@ export const statsRouter = router({
           p95ResponseMinutes: Math.round(globalP95 / 60000),
           abandonedCount: totalAbandoned,
           reopenRate: totalCount > 0 ? Math.round((totalReopened / totalCount) * 100) : 0,
-          sentimentScore: totalSentimentCount > 0 ? Math.round((totalSentimentSum / totalSentimentCount) * 100) / 100 : 0,
           total: totalCount,
           hourlyDistribution: hourlyMap.map(h => ({ ...h, count: allDays.length > 0 ? Math.round((h.count / allDays.length) * 10) / 10 : 0 })),
           hourlyStaffing: Object.values(hourlyStaffingMap).map(h => ({
@@ -479,7 +453,7 @@ export const statsRouter = router({
             tickets: h.dayCount > 0 ? Math.round((h.tickets / h.dayCount) * 10) / 10 : 0,
             support: h.dayCount > 0 ? Math.round((h.support / h.dayCount) * 10) / 10 : 0,
           })).sort((a, b) => a.hour - b.hour),
-          dailyTrend, trendGranularity, supportStats, agentStats, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, sentimentByDept: sentimentByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
+          dailyTrend, trendGranularity, supportStats, agentStats, avgRating, totalRatings: totalRatingCount, ratingsByDept: ratingsByDeptOut, oldestWaitMinutes: Math.round(oldest / 60000),
           waitingOver3: waitingTickets.filter(t => t.createdAt && (now.getTime() - new Date(t.createdAt).getTime()) > 3 * 60 * 1000).length,
           deptCounts: totalDeptCounts, resolutionRate: totalCount > 0 ? Math.round((totalClosed / totalCount) * 100) : 0,
           avgConcurrency: supportIdsAgg.size > 0 ? Math.round((totalCount / supportIdsAgg.size) * 10) / 10 : 0,

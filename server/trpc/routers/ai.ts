@@ -9,9 +9,6 @@ import {
   verifyTicketOwnership,
   fetchTicketMessages,
 } from '../../services/ai/index.js';
-import { db } from '../../db.js';
-import { messages as messagesTable, tickets } from '../../db/schema.js';
-import { eq, and, asc, isNull, isNotNull, ne, sql, avg, inArray } from 'drizzle-orm';
 import { canUseSupportWorkflows } from '../../services/roles.js';
 
 export const aiRouter = router({
