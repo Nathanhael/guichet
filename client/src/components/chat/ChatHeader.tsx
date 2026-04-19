@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import useStore, { useStoreShallow } from '../../store/useStore';
-import { useT } from '../../i18n';
+import { useT, useLang } from '../../i18n';
 import { Ticket } from '../../types';
 import { usePartner } from '../../hooks/usePartner';
 import { getSocket } from '../../hooks/useSocket';
@@ -80,6 +80,8 @@ export default function ChatHeader({
     return false;
   };
   const t = useT();
+  const viewerLang = useLang();
+  const isCrossLang = !!ticket.agentLang && ticket.agentLang !== viewerLang && isSupport;
   const { manifest } = usePartner();
 
   const [transferNote, setTransferNote] = useState('');
@@ -178,6 +180,10 @@ export default function ChatHeader({
   function handleTransfer(departmentId?: string) {
     onTransfer(departmentId, transferNote.trim() || undefined);
     setTransferNote('');
+  }
+
+  function interpolate(template: string, vars: Record<string, string>): string {
+    return template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
   }
 
   return (
@@ -525,6 +531,14 @@ export default function ChatHeader({
           )}
         </div>
         </div>
+        {isCrossLang && !focusMode && !compact && !isClosed && (
+          <div
+            data-cross-lang-banner
+            className="px-4 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] font-mono text-[10px] text-[var(--color-text-muted)]"
+          >
+            {interpolate(t('chat_cross_lang_banner'), { lang: (ticket.agentLang ?? '').toUpperCase() })}
+          </div>
+        )}
       </div>
 
       {/* Collision Detection bar intentionally removed — viewer names are surfaced elsewhere (queue sidebar, avatars). */}
