@@ -25,6 +25,21 @@ export function getSocket(): Socket {
   return socket;
 }
 
+/**
+ * Tear down the module-level socket. Call on logout so re-login does not
+ * reuse a socket whose handshake was rejected (no cookie) and which is
+ * stuck in an indefinite CONNECT_ERROR retry loop. Without this, users who
+ * log in without a page refresh land on a view that shows them as offline
+ * until they hard-refresh the page.
+ */
+export function disconnectSocket(): void {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+  listenersAttached = false;
+}
+
 export function useSocket(): Socket {
   const {
     user, 
@@ -63,6 +78,11 @@ export function useSocket(): Socket {
   }, [user, activePartnerId]);
 
   useEffect(() => {
+    // Do not create the socket on the login screen. A pre-auth socket fails
+    // the server's JWT middleware (no cookie), enters a CONNECT_ERROR retry
+    // loop, and doesn't cleanly recover when the user logs in — leaving the
+    // first-login UI showing the user as offline until a hard refresh.
+    if (!user) return;
     const s = getSocket();
 
     if (listenersAttached) return;
@@ -472,7 +492,15 @@ export function useSocket(): Socket {
       s.off('auth:expired', handleAuthExpired);
       listenersAttached = false;
     };
-  }, [addMessage, addTicket, setMessages, setOnlineSupportUsers, setOnlineAgentIds, setTyping, updateTicket, setBusinessHoursStatus, addTopicAlert, setActiveTicketId]);
+    // `user` MUST be in the dep array. The early-return above means the effect
+    // is a no-op while logged out; without `user` in the deps, the effect never
+    // re-runs after login and listeners stay un-attached — the UI receives no
+    // socket events until a hard refresh.
+  }, [user, addMessage, addTicket, setMessages, setOnlineSupportUsers, setOnlineAgentIds, setTyping, updateTicket, setBusinessHoursStatus, addTopicAlert, setActiveTicketId]);
 
-  return getSocket();
+  // Only construct the singleton socket once we have a user, so the login
+  // screen does not spin up a pre-auth socket that fails JWT middleware and
+  // gets stuck in a polling-handshake retry loop. Consumers (chat panels,
+  // ticket UI) only render after login, so they will always see a real socket.
+  return user ? getSocket() : (null as unknown as Socket);
 }

@@ -4,11 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const setupRevocationPubSubMock = vi.fn();
 const setupJwtMiddlewareMock = vi.fn();
+const setupIdentityMiddlewareMock = vi.fn();
 const registerAuthMock = vi.fn();
 
 vi.mock('../handlers/auth.js', () => ({
   setupRevocationPubSub: setupRevocationPubSubMock,
   setupJwtMiddleware: setupJwtMiddlewareMock,
+  setupIdentityMiddleware: setupIdentityMiddlewareMock,
   register: registerAuthMock,
 }));
 
