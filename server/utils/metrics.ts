@@ -154,4 +154,32 @@ export const slaFirstResponseMinutes = new client.Histogram({
   buckets: [1, 5, 10, 15, 30, 60, 120, 240, 480],
 });
 
+// Language-aware queue routing. Emitted on every support.getStaffingByLanguage
+// query (once per poll per connected support session). The imbalance gauge is
+// a numeric code (0=ok, 1=thin, 2=critical) so Grafana can page on >=2 for a
+// (partner, lang) pair.
+export const queueUnclaimedByLang = new client.Gauge({
+  name: 'guichet_queue_unclaimed_by_lang',
+  help: 'Unclaimed tickets per language, last sampled by the staffing endpoint',
+  labelNames: ['partner_id', 'lang'],
+});
+
+export const queueOldestUnclaimedSeconds = new client.Gauge({
+  name: 'guichet_queue_oldest_unclaimed_seconds',
+  help: 'Age in seconds of the oldest unclaimed ticket per language',
+  labelNames: ['partner_id', 'lang'],
+});
+
+export const queueStaffingImbalance = new client.Gauge({
+  name: 'guichet_queue_staffing_imbalance',
+  help: 'Imbalance severity per language, coded 0=ok / 1=thin / 2=critical',
+  labelNames: ['partner_id', 'lang'],
+});
+
+export const crossLangPickupTotal = new client.Counter({
+  name: 'guichet_cross_lang_pickup_total',
+  help: 'Messages sent by support into a ticket whose agentLang differs from support lang',
+  labelNames: ['partner_id', 'support_lang', 'ticket_lang'],
+});
+
 export const register = client.register;
