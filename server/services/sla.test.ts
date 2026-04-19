@@ -165,6 +165,7 @@ vi.mock('../db/schema.js', () => ({
 vi.mock('drizzle-orm', () => ({
   and: (...args: unknown[]) => ({ op: 'and', args }),
   eq: (a: unknown, b: unknown) => ({ op: 'eq', a, b }),
+  inArray: (a: unknown, values: unknown[]) => ({ op: 'inArray', a, values }),
   isNull: (a: unknown) => ({ op: 'isNull', a }),
 }));
 
