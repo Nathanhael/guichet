@@ -109,10 +109,7 @@ export interface User {
 }
 
 export interface AppConfig {
-  businessHoursStart: string | null;
-  businessHoursEnd: string | null;
-  businessHoursTimezone: string;
-  businessHoursSchedule?: BusinessHoursSchedule;
+  businessHoursSchedule: BusinessHoursSchedule | null;
   businessHoursStatus?: BusinessHoursStatus;
   uploadMaxSize: number;
   uploadAllowedTypes: string[];

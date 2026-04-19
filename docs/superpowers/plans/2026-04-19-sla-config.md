@@ -757,12 +757,11 @@ Append to `server/services/sla.ts`:
 
 ```ts
 import { partners, topicAlerts } from '../db/schema.js';
-import { fromLegacyBusinessHoursLocal, type Partner as PartnerRow } from './businessHours.js';
+import { resolveSchedule, type Partner as PartnerRow } from './businessHours.js';
 import { slaBreachesTotal, slaSweepRunsTotal, slaSweepDurationSeconds } from '../utils/metrics.js';
 import { Server } from 'socket.io';
 
-// NOTE: `fromLegacyBusinessHoursLocal` is re-exported from businessHours.ts —
-// see Step 4 of this task.
+// NOTE: `resolveSchedule` is exported from businessHours.ts — see Step 4 of this task.
 
 let io: Server | null = null;
 export function setSlaIo(socketIo: Server) { io = socketIo; }
@@ -781,7 +780,7 @@ export async function runSlaSweep(now: Date = new Date()): Promise<SweepSummary>
     const slaDepts = departments.filter((d) => d.sla?.enabled);
     if (slaDepts.length === 0) continue;
 
-    const schedule = fromLegacyBusinessHoursLocal(partner);
+    const schedule = resolveSchedule(partner);
 
     const openTickets = await db.select({
       id: tickets.id,
@@ -852,15 +851,13 @@ export async function runSlaSweep(now: Date = new Date()): Promise<SweepSummary>
 }
 ```
 
-- [ ] **Step 4: Re-export `fromLegacyBusinessHoursLocal` from businessHours.ts**
+- [ ] **Step 4: Export `resolveSchedule` from businessHours.ts**
 
-In `server/services/businessHours.ts`, locate the existing `fromLegacyBusinessHours` function (around line 125) and add an exported alias below it:
+In `server/services/businessHours.ts`, mark the existing `resolveSchedule` helper as exported:
 
 ```ts
-export { fromLegacyBusinessHours as fromLegacyBusinessHoursLocal };
+export function resolveSchedule(partner?: { businessHoursSchedule?: BusinessHoursSchedule | null }): BusinessHoursSchedule { … }
 ```
-
-(Or simply change the existing `function fromLegacyBusinessHours(…)` to `export function fromLegacyBusinessHours(…)` and import that name.)
 
 - [ ] **Step 5: Run — expect PASS**
 
@@ -1135,7 +1132,7 @@ import { tickets, partners, slaBreaches } from '../../db/schema.js';
 import { and, eq, desc, lt, isNull, isNotNull } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { computeSlaState, type DepartmentSlaConfig } from '../../services/sla.js';
-import { fromLegacyBusinessHoursLocal } from '../../services/businessHours.js';
+import { resolveSchedule } from '../../services/businessHours.js';
 
 export const slaRouter = router({
   getTicketState: protectedProcedure
@@ -1166,7 +1163,7 @@ export const slaRouter = router({
         ticketCreatedAt: ticket.createdAt,
         firstStaffResponseAt: ticket.firstStaffResponseAt,
         sla: dept?.sla,
-        schedule: fromLegacyBusinessHoursLocal(partner),
+        schedule: resolveSchedule(partner),
         now: new Date(),
       });
     }),

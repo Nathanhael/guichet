@@ -17,7 +17,7 @@ CREATE INDEX "idx_sla_breaches_partner_status" ON "sla_breaches" USING btree ("p
 CREATE INDEX "idx_sla_breaches_breached_at" ON "sla_breaches" USING btree ("breached_at");--> statement-breakpoint
 CREATE INDEX "idx_tickets_open_unresponded" ON "tickets" USING btree ("partner_id","created_at") WHERE status IN ('open','pending') AND first_staff_response_at IS NULL;--> statement-breakpoint
 -- Backfill: materialize business_hours_schedule from legacy start/end/timezone columns
--- before dropping them. Matches the logic of services/businessHours.ts:fromLegacyBusinessHours.
+-- before dropping them. Mon-Fri windows open, Sat/Sun closed.
 UPDATE "partners"
 SET "business_hours_schedule" = jsonb_build_object(
     'version', 1,

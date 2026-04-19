@@ -21,9 +21,6 @@ export const partners = pgTable('partners', {
   industry: text('industry').default('general'),
   departments: jsonb('departments').default([]),
   businessHoursSchedule: jsonb('business_hours_schedule'),
-  businessHoursStart: text('business_hours_start'),
-  businessHoursEnd: text('business_hours_end'),
-  businessHoursTimezone: text('business_hours_timezone').default('Europe/Brussels'),
   status: text('status').notNull().default('active'),
   // AI configuration
   aiEnabled: boolean('ai_enabled').default(false),
