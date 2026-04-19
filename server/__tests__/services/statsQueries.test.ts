@@ -25,8 +25,6 @@ describe('statsQueries — row-shape validation', () => {
   const {
     historicalStatSchema,
     ratingSchema,
-    ticketSentimentSchema,
-    deptSentimentSchema,
     prevHistSchema,
     labelCountSchema,
     parseRows,
@@ -40,7 +38,7 @@ describe('statsQueries — row-shape validation', () => {
         avgResponseMs: '34000', avgDurationMs: '120000',
         avgRating: '4.3', ratingCount: '5',
         responseCount: '8', p95ResponseMs: '80000',
-        reopened: '1', sentimentSum: '3.4', sentimentCount: '4',
+        reopened: '1',
         deptCounts: '{}', ratingsByDept: '{}', hourly: '[]',
       };
       const parsed = historicalStatSchema.parse(row);
@@ -55,7 +53,7 @@ describe('statsQueries — row-shape validation', () => {
         // closed intentionally omitted — old cast would have let this through
         abandoned: 2, avgResponseMs: 0, avgDurationMs: 0,
         avgRating: null, ratingCount: 0, responseCount: 0,
-        p95ResponseMs: 0, reopened: 0, sentimentSum: 0, sentimentCount: 0,
+        p95ResponseMs: 0, reopened: 0,
         deptCounts: '{}', ratingsByDept: '{}', hourly: '[]',
       };
       expect(() => historicalStatSchema.parse(row)).toThrow();
@@ -67,7 +65,6 @@ describe('statsQueries — row-shape validation', () => {
         avgResponseMs: 0, avgDurationMs: 0,
         avgRating: null, ratingCount: 0,
         responseCount: 0, p95ResponseMs: 0, reopened: 0,
-        sentimentSum: 0, sentimentCount: 0,
         deptCounts: '{}', ratingsByDept: '{}', hourly: '[]',
       };
       expect(() => historicalStatSchema.parse(row)).not.toThrow();
@@ -99,36 +96,6 @@ describe('statsQueries — row-shape validation', () => {
     });
   });
 
-  describe('ticketSentimentSchema', () => {
-    it('coerces stringified AVG/COUNT to numbers', () => {
-      const parsed = ticketSentimentSchema.parse({
-        ticketId: 't1', sentimentAvg: '0.42', sentimentCount: '3',
-      });
-      expect(parsed.sentimentAvg).toBe(0.42);
-      expect(parsed.sentimentCount).toBe(3);
-    });
-
-    it('allows null sentimentAvg (no sentiment-scored messages)', () => {
-      expect(() => ticketSentimentSchema.parse({
-        ticketId: 't1', sentimentAvg: null, sentimentCount: '0',
-      })).not.toThrow();
-    });
-
-    it('rejects when ticketId is missing', () => {
-      expect(() => ticketSentimentSchema.parse({
-        sentimentAvg: null, sentimentCount: '0',
-      })).toThrow();
-    });
-  });
-
-  describe('deptSentimentSchema', () => {
-    it('requires a non-null dept (tickets.dept is NOT NULL)', () => {
-      expect(() => deptSentimentSchema.parse({
-        dept: null, sentimentAvg: 0.5, sentimentCount: 2,
-      })).toThrow();
-    });
-  });
-
   describe('prevHistSchema', () => {
     it('allows every aggregate to be null (empty previous window)', () => {
       const row = {
@@ -149,12 +116,12 @@ describe('statsQueries — row-shape validation', () => {
   describe('parseRows helper', () => {
     it('throws a context-tagged error on shape mismatch', () => {
       expect(() =>
-        parseRows([{ bad: true }], ticketSentimentSchema, 'fetchTicketSentiment'),
-      ).toThrow(/fetchTicketSentiment/);
+        parseRows([{ bad: true }], labelCountSchema, 'fetchLabelSummary'),
+      ).toThrow(/fetchLabelSummary/);
     });
 
     it('treats null rows as an empty array', () => {
-      expect(parseRows(null, ticketSentimentSchema, 'fetchTicketSentiment')).toEqual([]);
+      expect(parseRows(null, labelCountSchema, 'fetchLabelSummary')).toEqual([]);
     });
   });
 });
@@ -163,8 +130,6 @@ describe('statsQueries — every raw SELECT routes through parseRows', () => {
   const guardedFns = [
     'fetchHistoricalStats',
     'fetchRatings',
-    'fetchTicketSentiment',
-    'fetchDeptSentiment',
     'fetchWaitingTickets',
     'fetchPreviousPeriodStats',
     'fetchLabelSummary',
