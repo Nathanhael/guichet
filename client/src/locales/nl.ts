@@ -83,7 +83,6 @@ const nl: Record<string, string> = {
     email_label: 'E-mailadres',
     placeholder_email: 'naam@bedrijf.com',
     password_label: 'Wachtwoord',
-    remember_me: '30 dagen ingelogd blijven',
     forgot_password: 'Wachtwoord vergeten?',
     reset_password_title: 'Wachtwoord Herstellen',
     reset_password_desc: 'Voer je e-mailadres in en we sturen je een link om je wachtwoord te herstellen.',
@@ -113,7 +112,7 @@ const nl: Record<string, string> = {
     support_link: 'Support',
 
     // Legal
-    legal_last_updated: 'Laatste update: maart 2026',
+    legal_last_updated: 'Laatste update: april 2026',
     legal_footer: 'Guichet Platform \u2014 Alle rechten voorbehouden.',
 
     // Privacy Policy
@@ -130,7 +129,7 @@ const nl: Record<string, string> = {
     legal_privacy_s6_title: 'Externe verwerkers',
     legal_privacy_s6_body: 'Guichet kan gebruik maken van de volgende categorie\u00ebn externe verwerkers voor de dienstverlening:\n\n\u2022 E-mailleveranciers (SMTP, Resend of SendGrid) voor systeemmeldingen en wachtwoordherstel\n\u2022 Cloudinfrastructuurproviders voor hosting en gegevensopslag\n\nAlle externe verwerkers zijn contractueel verplicht gegevens uitsluitend te verwerken volgens onze instructies en in overeenstemming met de toepasselijke gegevensbeschermingsregelgeving. Wij verkopen, verhandelen of overdragen uw persoonsgegevens niet aan derden.',
     legal_privacy_s7_title: 'Cookies en authenticatie',
-    legal_privacy_s7_body: 'Guichet gebruikt JSON Web Tokens (JWT) voor sessieauthenticatie. Wanneer u \u201eAangemeld blijven\u201c selecteert, wordt een verlengde tokengeldigheidsperiode van 30 dagen toegepast. Er worden geen tracking cookies van derden, analysescripts of reclamepixels ingezet. Sessiegegevens worden tijdelijk opgeslagen in Redis voor realtime functionaliteit en worden automatisch gewist bij het be\u00ebindigen van de sessie.',
+    legal_privacy_s7_body: 'Guichet gebruikt JSON Web Tokens (JWT) die uitsluitend via HttpOnly SameSite=Lax cookies worden getransporteerd voor sessieauthenticatie. Sessies maken gebruik van kortlopende toegangstokens (standaard 15 minuten) in combinatie met roterende ververstokens (standaard 7 dagen) die bij elke vernieuwing roteren en voorzien zijn van familiegebaseerde hergebruikdetectie. Er worden geen tracking cookies van derden, analysescripts of reclamepixels ingezet. Sessiegegevens worden tijdelijk opgeslagen in Redis voor realtime functionaliteit en worden automatisch gewist bij het be\u00ebindigen van de sessie.',
     legal_privacy_s8_title: 'Uw rechten',
     legal_privacy_s8_body: 'Op grond van de Algemene Verordening Gegevensbescherming (AVG) en de toepasselijke nationale wetgeving heeft u het recht om:\n\n\u2022 Een volledige kopie van uw persoonsgegevens in een overdraagbaar formaat op te vragen\n\u2022 Onjuiste of onvolledige persoonsgegevens te laten corrigeren\n\u2022 Permanente verwijdering van uw account en bijbehorende gegevens te verzoeken\n\u2022 Een klacht in te dienen bij uw nationale toezichthoudende autoriteit voor gegevensbescherming\n\nAlle verzoeken worden behandeld binnen 30 kalenderdagen na ontvangst.',
 
@@ -140,7 +139,7 @@ const nl: Record<string, string> = {
     legal_terms_s2_title: 'Aanvaardbaar gebruik',
     legal_terms_s2_body: 'U stemt ermee in het Guichet-platform op een professionele en wettelijke wijze te gebruiken. Het platform maakt gebruik van geautomatiseerde inhoudsmoderatiefilt ers die de volgende normen handhaven:\n\n\u2022 Alle communicatie moet professioneel en respectvol zijn\n\u2022 Aanstootgevend, bedreigend of discriminerend taalgebruik is verboden en wordt geblokkeerd\n\u2022 Herhaald misbruik van het berichtensysteem (spam, overstroming) is niet toegestaan\n\u2022 Pogingen om beveiligingscontroles te omzeilen of kwaadaardige inhoud te injecteren zijn strikt verboden\n\nOvertredingen worden geregistreerd in het auditlogboek van het platform en kunnen leiden tot onmiddellijke accountopschorting of -be\u00ebindiging.',
     legal_terms_s3_title: 'Account- en toegangsbeheer',
-    legal_terms_s3_body: 'Toegang tot Guichet wordt beheerd door de beheerder van uw organisatie. Gebruikers kunnen lid zijn van meerdere partnerorganisaties, elk met onafhankelijk toegewezen rollen en afdelingsscopes. U bent verantwoordelijk voor het vertrouwelijk houden van uw aanmeldingsgegevens. Gedeelde of overgedragen accounts zijn niet toegestaan. Het platform ondersteunt zowel lokale authenticatie als enterprise Single Sign-On (SSO)-integratie.',
+    legal_terms_s3_body: 'Toegang tot Guichet wordt beheerd door de beheerder van uw organisatie. Gebruikers kunnen lid zijn van meerdere partnerorganisaties, elk met onafhankelijk toegewezen rollen en afdelingsscopes. U bent verantwoordelijk voor het vertrouwelijk houden van uw aanmeldingsgegevens. Gedeelde of overgedragen accounts zijn niet toegestaan. In productie verloopt de authenticatie uitsluitend via enterprise Single Sign-On (SSO) met Microsoft Entra ID (Azure AD); Guichet slaat geen wachtwoorden op.',
     legal_terms_s4_title: 'Beschikbaarheid van de dienst',
     legal_terms_s4_body: 'Guichet wordt aangeboden op basis van best-effort beschikbaarheid. Hoewel wij streven naar continue uptime, wordt er in de huidige platformfase geen formele Service Level Agreement (SLA) aangeboden. Geplande onderhoudsvensters worden vooraf gecommuniceerd. Realtime systeemgezondheidsmonitoring is beschikbaar voor platformoperators. Wij behouden ons het recht voor om functies te wijzigen, op te schorten of te be\u00ebindigen met redelijke kennisgeving.',
     legal_terms_s5_title: 'Be\u00ebindiging en deactivering',
