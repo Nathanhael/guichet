@@ -1,5 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, User, Membership } from '../../types';
+import { disconnectSocket } from '../../hooks/useSocket';
 
 export interface AuthSlice {
   user: User | null;
@@ -202,6 +203,11 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       if ('caches' in window) {
         caches.keys().then((keys) => keys.forEach((key) => caches.delete(key))).catch(() => {});
       }
+
+      // Tear down the socket so the next login starts from a clean slate
+      // instead of reusing a module-singleton socket whose handshake may be
+      // stuck in CONNECT_ERROR retry.
+      disconnectSocket();
 
       clearAuthState(set);
     },

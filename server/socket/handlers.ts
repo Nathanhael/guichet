@@ -3,7 +3,7 @@ import logger from '../utils/logger.js';
 import { socketioConnectionsActive } from '../utils/metrics.js';
 import { Rooms } from '../utils/rooms.js';
 import type { HandlerContext } from './handlers/types.js';
-import { setupRevocationPubSub, setupJwtMiddleware, register as registerAuth } from './handlers/auth.js';
+import { setupRevocationPubSub, setupJwtMiddleware, setupIdentityMiddleware, register as registerAuth } from './handlers/auth.js';
 import { register as registerTicket } from './handlers/ticket.js';
 import { register as registerMessage } from './handlers/message.js';
 import { register as registerPresence } from './handlers/presence.js';
@@ -32,6 +32,7 @@ export function registerSocketHandlers(io: Server) {
 
   setupRevocationPubSub(io);
   setupJwtMiddleware(io);
+  setupIdentityMiddleware(io);
 
   io.on('connection', (socket) => {
     socketioConnectionsActive.inc();

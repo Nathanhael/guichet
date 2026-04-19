@@ -16,6 +16,70 @@ import { isRevoked } from '../../services/sessionRevocation.js';
 import { UserRole } from '../../types/index.js';
 import { type HandlerContext } from './types.js';
 
+/**
+ * Install a middleware that pre-joins partner/staff/user/ticket rooms using
+ * the JWT-verified identity BEFORE `connect` resolves on the client.
+ *
+ * Without this, there is a race window between socket connect and the
+ * client-emitted `socket:identify` round-trip during which broadcasts (e.g.
+ * `ticket:created` fanned out to `Rooms.staff(partnerId)`) miss support
+ * sockets that are connected but not yet in the staff room. The symptom is
+ * "agent creates ticket, support doesn't see it until both refresh."
+ *
+ * Identity resolution here is intentionally minimal — just enough to decide
+ * room membership. Full identity (name, presence, status restore) remains in
+ * the `socket:identify` handler. Duplicate `socket.join` calls are no-ops, so
+ * the two paths are idempotent.
+ */
+export function setupIdentityMiddleware(io: Server): void {
+  io.use(async (socket, next) => {
+    const userId = socket.data.authedUserId as string | undefined;
+    const partnerId = socket.data.authedPartnerId as string | undefined;
+    const isPlatformOp = !!socket.data.authedIsPlatformOperator;
+
+    if (!userId || !partnerId) {
+      // No partner context (e.g. platform operator pre-enter-partner) — skip
+      // room pre-join; `socket:identify` handler will reject if identity is
+      // truly missing.
+      return next();
+    }
+
+    try {
+      const membership = await findMembership(userId, partnerId);
+      const effectiveRole: UserRole | null = membership
+        ? (membership.role as UserRole)
+        : (isPlatformAdmin(isPlatformOp) ? 'admin' : null);
+
+      if (!effectiveRole) {
+        // No membership and not a platform operator — let the identify
+        // handler emit `auth:expired` and disconnect (familiar UX path).
+        return next();
+      }
+
+      const isSupport = canUseSupportWorkflows(effectiveRole, isPlatformOp);
+
+      socket.join(Rooms.partner(partnerId));
+      socket.join(Rooms.user(userId));
+      if (isSupport) socket.join(Rooms.staff(partnerId));
+
+      let activeTickets: { id: string }[] = [];
+      if (effectiveRole === 'agent') {
+        activeTickets = await findActiveTicketsForAgent(userId, partnerId);
+      } else if (isSupport) {
+        activeTickets = await findActiveTicketsForSupport(userId, partnerId);
+      }
+      for (const t of activeTickets) socket.join(Rooms.ticket(t.id));
+
+      logger.info({ socketId: socket.id, userId, partnerId, role: effectiveRole, isSupport, ticketRooms: activeTickets.length }, '[socket identity mw] rooms pre-joined');
+      next();
+    } catch (err) {
+      // Non-fatal: degrade to identify-only behavior on DB errors.
+      logger.error({ err: err instanceof Error ? err.message : String(err), socketId: socket.id }, '[socket identity mw] failed — falling back to socket:identify');
+      next();
+    }
+  });
+}
+
 const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 
 /**
