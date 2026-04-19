@@ -5,7 +5,7 @@ import { tickets, partners, slaBreaches } from '../../db/schema.js';
 import { and, eq, desc, lt, isNull, isNotNull } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { computeSlaState, type DepartmentSlaConfig } from '../../services/sla.js';
-import { resolveSchedule } from '../../services/businessHours.js';
+import { resolveSchedule, type BusinessHoursSchedule } from '../../services/businessHours.js';
 
 export const slaRouter = router({
   getTicketState: protectedProcedure
@@ -39,7 +39,7 @@ export const slaRouter = router({
         ticketCreatedAt: ticket.createdAt,
         firstStaffResponseAt: ticket.firstStaffResponseAt,
         sla: dept?.sla,
-        schedule: resolveSchedule({ businessHoursSchedule: partner.businessHoursSchedule as any }),
+        schedule: resolveSchedule({ businessHoursSchedule: partner.businessHoursSchedule as BusinessHoursSchedule | null }),
         now: new Date(),
       });
     }),
