@@ -641,5 +641,12 @@ const nl: Record<string, string> = {
     // System messages
     agent_disconnected: 'Agent is losgekoppeld.',
     agent_reconnected: 'Agent is opnieuw verbonden.',
+
+    // Taalbewuste wachtrij
+    queue_staffing_heading: 'Bezetting per taal',
+    queue_staffing_online: '{n} online',
+    queue_staffing_waiting: '{n} wachtend',
+    queue_staffing_oldest: 'oudste {duration}',
+    chat_cross_lang_banner: 'Antwoorden worden automatisch vertaald naar {lang} voor de klant.',
 };
 export default nl;

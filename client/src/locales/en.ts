@@ -668,5 +668,12 @@ const en: Record<string, string> = {
     // System messages
     agent_disconnected: 'Agent has disconnected.',
     agent_reconnected: 'Agent has reconnected.',
+
+    // Language-aware queue routing
+    queue_staffing_heading: 'Staffing by language',
+    queue_staffing_online: '{n} online',
+    queue_staffing_waiting: '{n} waiting',
+    queue_staffing_oldest: 'oldest {duration}',
+    chat_cross_lang_banner: 'Replies are auto-translated to {lang} for the agent.',
 };
 export default en;
