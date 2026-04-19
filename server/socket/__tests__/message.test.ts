@@ -68,7 +68,6 @@ vi.mock('../../services/roles.js', () => ({
 vi.mock('../../services/ai/index.js', () => ({
   invalidateSummary: vi.fn(async () => {}),
   autoSummarizeOnClose: vi.fn(async () => {}),
-  scoreSentiment: vi.fn(async () => {}),
 }));
 
 vi.mock('../../services/statusTracking.js', () => ({

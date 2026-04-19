@@ -74,6 +74,7 @@ conductor/
 .husky/
 
 # E2E testing — config tracked, test results ignored
+playwright.config.ts
 testing/e2e/test-results/
 
 # Video recordings

@@ -22,7 +22,6 @@ type AiFeature =
   | 'messageImprovement'
   | 'chatSummarization'
   | 'translation'
-  | 'sentimentDetection'
   | 'autoSummarizeOnClose';
 
 interface RunAiActionOpts {
