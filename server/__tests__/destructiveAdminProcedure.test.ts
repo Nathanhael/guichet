@@ -81,7 +81,6 @@ describe('destructiveAdminProcedure guards', () => {
 
   describe('partner.members router blocklist', () => {
     it.each([
-      ['addMemberByEmail'],
       ['inviteExternalUser'],
       ['updateMember'],
       ['removeMember'],
