@@ -8,16 +8,14 @@ import { trpc } from '../../utils/trpc';
  * first signal of a compromised account, a misconfigured SSO mapping, or an
  * internal tool gone wild. Purely an aggregate view; clicking a row scopes
  * the main audit log below by partnerId for the raw investigation.
- *
- * Respects whatever dateFrom/dateTo the operator already has applied in the
- * audit log — the server defaults are intentionally absent so ops can zoom
- * all the way out to "since the beginning of time" if they need to.
  */
 type Props = {
   dateFrom?: string;
   dateTo?: string;
   onSelectPartner: (partnerId: string) => void;
 };
+
+const COL_HEAD = 'px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPartner }: Props) {
   const { data, isLoading } = trpc.platform.getCrossPartnerActivity.useQuery(
@@ -27,8 +25,8 @@ export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPa
 
   if (isLoading) {
     return (
-      <div className="bg-bg-elevated p-4 border border-[var(--color-border)]">
-        <p className="mono-label">Loading cross-partner activity…</p>
+      <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-5">
+        <p className="text-[13px] text-[var(--color-ink-muted)]">Loading cross-partner activity…</p>
       </div>
     );
   }
@@ -41,12 +39,12 @@ export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPa
 
   return (
     <div
-      className="bg-bg-elevated p-4 border border-[var(--color-border)]"
+      className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-5"
       data-testid="cross-partner-activity-panel"
     >
-      <div className="flex items-center justify-between mb-3">
-        <p className="mono-label">Cross-partner activity (top {data.length})</p>
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
+      <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
+        <p className="text-[13px] font-semibold text-[var(--color-ink)]">Cross-partner activity (top {data.length})</p>
+        <p className="text-[12px] text-[var(--color-ink-muted)] tabular-nums">
           {total.toLocaleString()} total events
         </p>
       </div>
@@ -54,11 +52,11 @@ export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPa
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-[var(--color-border)]">
-              <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Partner</th>
-              <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] text-right">Events</th>
-              <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] text-right">% of total</th>
-              <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Last activity</th>
-              <th className="p-2 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]" />
+              <th className={COL_HEAD}>Partner</th>
+              <th className={`${COL_HEAD} text-right`}>Events</th>
+              <th className={`${COL_HEAD} text-right`}>% of total</th>
+              <th className={COL_HEAD}>Last activity</th>
+              <th className={COL_HEAD} />
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border)]">
@@ -67,25 +65,25 @@ export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPa
               if (!partnerId) return null;
               const pct = total > 0 ? ((row.totalEvents / total) * 100).toFixed(1) : '0.0';
               return (
-                <tr key={partnerId}>
-                  <td className="p-2 text-[11px] font-bold">
-                    {row.partnerName || <span className="font-mono text-[var(--color-text-muted)]">{partnerId}</span>}
+                <tr key={partnerId} className="hover:bg-[var(--color-hover)]">
+                  <td className="px-3 py-2.5 text-[13px] font-medium text-[var(--color-ink)]">
+                    {row.partnerName || <span className="font-mono text-[12px] text-[var(--color-ink-muted)]">{partnerId}</span>}
                   </td>
-                  <td className="p-2 text-[11px] font-mono text-right">
+                  <td className="px-3 py-2.5 text-[13px] font-medium text-right tabular-nums text-[var(--color-ink)]">
                     {row.totalEvents.toLocaleString()}
                   </td>
-                  <td className="p-2 text-[10px] font-mono text-right text-[var(--color-text-secondary)]">
+                  <td className="px-3 py-2.5 text-[12px] text-right tabular-nums text-[var(--color-ink-muted)]">
                     {pct}%
                   </td>
-                  <td className="p-2 text-[10px] font-mono whitespace-nowrap text-[var(--color-text-secondary)]">
+                  <td className="px-3 py-2.5 text-[12px] whitespace-nowrap text-[var(--color-ink-muted)]">
                     {row.lastEventAt ? new Date(row.lastEventAt).toLocaleString() : '—'}
                   </td>
-                  <td className="p-2 text-right">
+                  <td className="px-3 py-2.5 text-right">
                     <button
                       type="button"
                       onClick={() => onSelectPartner(partnerId)}
                       data-testid={`cross-partner-activity-select-${partnerId}`}
-                      className="font-mono text-[9px] uppercase tracking-widest px-2 py-1 border border-[var(--color-border)] bg-[var(--color-bg-base)] hover:bg-[var(--color-accent-blue)] hover:text-white hover:border-[var(--color-accent-blue)]"
+                      className="text-[12px] font-medium px-2.5 h-7 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)] text-[var(--color-ink-soft)] transition-colors"
                     >
                       Filter →
                     </button>

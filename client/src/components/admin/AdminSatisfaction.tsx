@@ -24,6 +24,19 @@ interface AnalyticsData {
   summary: { avg: number; total: number; withComment: number };
 }
 
+const CHART_TICK = { fontSize: 11, fontFamily: 'Inter, sans-serif', fill: 'var(--color-ink-muted)' };
+const TOOLTIP_STYLE = {
+  backgroundColor: 'var(--color-bg-surface)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 8,
+  fontFamily: 'Inter, sans-serif',
+  fontSize: 12,
+  color: 'var(--color-ink)',
+  boxShadow: 'var(--shadow-modal)',
+};
+const COL_HEAD = 'text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)] pb-3';
+const DATE_INPUT = 'px-2.5 py-1 text-[12px] rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none text-[var(--color-ink)]';
+
 function applyPreset(
   key: string,
   setDateFrom: (v: string) => void,
@@ -52,9 +65,24 @@ function applyPreset(
 }
 
 function barFill(rating: number): string {
-  if (rating >= 4) return 'var(--color-text-primary)';
-  if (rating === 3) return 'var(--color-text-secondary)';
-  return 'var(--color-text-muted)';
+  if (rating >= 4) return 'var(--color-accent)';
+  if (rating === 3) return 'var(--color-accent-amber)';
+  return 'var(--color-urgent)';
+}
+
+function ChipButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1 rounded-[var(--radius-pill)] text-[12px] font-medium transition-colors ${
+        active
+          ? 'bg-[var(--color-bg-surface)] text-[var(--color-ink)] shadow-[var(--shadow-soft)]'
+          : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+      }`}
+    >
+      {children}
+    </button>
+  );
 }
 
 export default function AdminSatisfaction() {
@@ -105,70 +133,45 @@ export default function AdminSatisfaction() {
     <div className="space-y-4 pb-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-mono text-[10px] uppercase tracking-widest text-[var(--color-text-muted)]">
-          Satisfaction Analytics
-        </h1>
-        <div className="flex flex-wrap items-center gap-1.5 border border-[var(--color-border)] p-1 bg-[var(--color-bg-surface)]">
-          {/* Department chips */}
-          <button
-            onClick={() => setDept('all')}
-            className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wide border ${
-              dept === 'all'
-                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
-            }`}
-          >
-            All Depts
-          </button>
+        <div>
+          <h1 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">Satisfaction Analytics</h1>
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">Ticket ratings, trends and per-staff comparison</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)]">
+          <ChipButton active={dept === 'all'} onClick={() => setDept('all')}>All Depts</ChipButton>
           {departments.map(d => (
-            <button
-              key={d.id}
-              onClick={() => setDept(d.id)}
-              className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wide border ${
-                dept === d.id
-                  ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                  : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
-              }`}
-            >
-              {d.name}
-            </button>
+            <ChipButton key={d.id} active={dept === d.id} onClick={() => setDept(d.id)}>{d.name}</ChipButton>
           ))}
 
           <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
 
-          {/* Date presets */}
           <div className="flex items-center gap-0.5">
             {presets.map(p => (
-              <button
+              <ChipButton
                 key={p.key}
+                active={activePreset === p.key}
                 onClick={() => applyPreset(p.key, setDateFrom, setDateTo, setActivePreset)}
-                className={`px-2 py-1 font-mono text-[9px] uppercase tracking-wide border ${
-                  activePreset === p.key
-                    ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                    : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
-                }`}
               >
                 {p.label}
-              </button>
+              </ChipButton>
             ))}
           </div>
 
           <div className="w-px h-4 bg-[var(--color-border)] mx-1" />
 
-          {/* Custom date range */}
           <div className="flex items-center gap-1 px-1">
             <input
               type="date"
               value={dateFrom}
               onChange={e => { setDateFrom(e.target.value); setActivePreset(null); }}
-              className="px-2 py-0.5 font-mono text-[9px] bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] w-[105px]"
+              className={DATE_INPUT}
             />
-            <span className="font-mono text-[9px] text-[var(--color-text-muted)]">–</span>
+            <span className="text-[12px] text-[var(--color-ink-muted)]">→</span>
             <input
               type="date"
               value={dateTo}
               onChange={e => { setDateTo(e.target.value); setActivePreset(null); }}
-              className="px-2 py-0.5 font-mono text-[9px] bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-text-primary)] w-[105px]"
+              className={DATE_INPUT}
             />
           </div>
         </div>
@@ -183,27 +186,14 @@ export default function AdminSatisfaction() {
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4">
-          <StatCard
-            label="Average Rating"
-            value={stats ? stats.summary.avg.toFixed(2) : '—'}
-            color="dark"
-          />
-          <StatCard
-            label="Total Ratings"
-            value={stats ? stats.summary.total : '—'}
-            color="dark"
-          />
-          <StatCard
-            label="Comment Rate"
-            value={stats ? `${commentRate}%` : '—'}
-            color="dark"
-          />
+          <StatCard label="Average Rating" value={stats ? stats.summary.avg.toFixed(2) : '—'} color="dark" />
+          <StatCard label="Total Ratings" value={stats ? stats.summary.total : '—'} color="dark" />
+          <StatCard label="Comment Rate" value={stats ? `${commentRate}%` : '—'} color="dark" />
         </div>
       )}
 
       {/* Charts row */}
       <div className="grid grid-cols-2 gap-4">
-        {/* Rating Trend */}
         <Panel title="Rating Trend">
           {isLoading ? (
             <Skeleton className="h-48" />
@@ -211,34 +201,21 @@ export default function AdminSatisfaction() {
             <ResponsiveContainer width="100%" height={200}>
               <LineChart data={stats?.trend || []} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontFamily: 'monospace', fontSize: 9 }}
-                  tickLine={false}
-                />
+                <XAxis dataKey="date" tick={CHART_TICK} tickLine={false} axisLine={{ stroke: 'var(--color-border)' }} />
                 <YAxis
                   domain={[0, 5]}
                   ticks={[1, 2, 3, 4, 5]}
-                  tick={{ fontFamily: 'monospace', fontSize: 9 }}
+                  tick={CHART_TICK}
                   tickLine={false}
+                  axisLine={{ stroke: 'var(--color-border)' }}
                 />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--color-bg-elevated)',
-                    border: '1px solid var(--color-text-secondary)',
-                    borderRadius: 0,
-                    color: 'var(--color-text-primary)',
-                    fontFamily: 'monospace',
-                    fontSize: 10,
-                  }}
-                  labelStyle={{ color: 'var(--color-text-primary)' }}
-                />
-                <Legend wrapperStyle={{ fontFamily: 'monospace', fontSize: 9 }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: 'var(--color-ink)' }} />
+                <Legend wrapperStyle={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: 'var(--color-ink-soft)' }} />
                 <Line
                   type="monotone"
                   dataKey="avg"
                   name="Avg Rating"
-                  stroke="var(--color-text-primary)"
+                  stroke="var(--color-accent)"
                   strokeWidth={2}
                   dot={false}
                 />
@@ -247,7 +224,6 @@ export default function AdminSatisfaction() {
           )}
         </Panel>
 
-        {/* Rating Distribution */}
         <Panel title="Rating Distribution">
           {isLoading ? (
             <Skeleton className="h-48" />
@@ -255,24 +231,10 @@ export default function AdminSatisfaction() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={fullDist} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontFamily: 'monospace', fontSize: 9 }}
-                  tickLine={false}
-                />
-                <YAxis tick={{ fontFamily: 'monospace', fontSize: 9 }} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--color-bg-elevated)',
-                    border: '1px solid var(--color-text-secondary)',
-                    borderRadius: 0,
-                    color: 'var(--color-text-primary)',
-                    fontFamily: 'monospace',
-                    fontSize: 10,
-                  }}
-                  labelStyle={{ color: 'var(--color-text-primary)' }}
-                />
-                <Bar dataKey="count" name="Count">
+                <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={{ stroke: 'var(--color-border)' }} />
+                <YAxis tick={CHART_TICK} tickLine={false} axisLine={{ stroke: 'var(--color-border)' }} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: 'var(--color-ink)' }} />
+                <Bar dataKey="count" name="Count" radius={[4, 4, 0, 0]}>
                   {fullDist.map(entry => (
                     <Cell key={entry.rating} fill={barFill(entry.rating)} />
                   ))}
@@ -291,24 +253,24 @@ export default function AdminSatisfaction() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Department</th>
-                <th className="text-left font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Avg</th>
-                <th className="text-left font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Stars</th>
-                <th className="text-right font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Total</th>
+                <th className={COL_HEAD}>Department</th>
+                <th className={COL_HEAD}>Avg</th>
+                <th className={COL_HEAD}>Stars</th>
+                <th className={`${COL_HEAD} text-right`}>Total</th>
               </tr>
             </thead>
             <tbody>
               {(stats?.byDept || []).length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-[var(--color-text-muted)] font-mono text-[10px] py-4">No data</td>
+                  <td colSpan={4} className="text-[var(--color-ink-muted)] text-[13px] py-4">No data</td>
                 </tr>
               ) : (
                 (stats?.byDept || []).map(row => (
-                  <tr key={row.dept} className="border-b border-[var(--color-border)]">
-                    <td className="py-2 text-sm font-bold">{row.dept || '—'}</td>
-                    <td className="py-2 text-sm font-bold">{row.avg.toFixed(2)}</td>
+                  <tr key={row.dept} className="border-b border-[var(--color-border)] last:border-b-0">
+                    <td className="py-2 text-[14px] font-medium text-[var(--color-ink)]">{row.dept || '—'}</td>
+                    <td className="py-2 text-[14px] font-medium text-[var(--color-ink)] tabular-nums">{row.avg.toFixed(2)}</td>
                     <td className="py-2"><Stars value={Math.round(row.avg)} /></td>
-                    <td className="py-2 text-right font-mono text-[10px] text-[var(--color-text-secondary)]">{row.count}</td>
+                    <td className="py-2 text-right text-[12px] text-[var(--color-ink-muted)] tabular-nums">{row.count}</td>
                   </tr>
                 ))
               )}
@@ -325,29 +287,29 @@ export default function AdminSatisfaction() {
           <table className="w-full">
             <thead>
               <tr>
-                <th className="text-left font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Rank</th>
-                <th className="text-left font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Name</th>
-                <th className="text-left font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Avg</th>
-                <th className="text-left font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Stars</th>
-                <th className="text-right font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] pb-3">Total</th>
+                <th className={COL_HEAD}>Rank</th>
+                <th className={COL_HEAD}>Name</th>
+                <th className={COL_HEAD}>Avg</th>
+                <th className={COL_HEAD}>Stars</th>
+                <th className={`${COL_HEAD} text-right`}>Total</th>
               </tr>
             </thead>
             <tbody>
               {(stats?.byStaff || []).length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-[var(--color-text-muted)] font-mono text-[10px] py-4">No data</td>
+                  <td colSpan={5} className="text-[var(--color-ink-muted)] text-[13px] py-4">No data</td>
                 </tr>
               ) : (
                 (stats?.byStaff || [])
                   .slice()
                   .sort((a, b) => b.avg - a.avg)
                   .map((row, idx) => (
-                    <tr key={row.supportId ?? row.name} className="border-b border-[var(--color-border)]">
-                      <td className="py-2 font-mono text-[10px] text-[var(--color-text-muted)]">#{idx + 1}</td>
-                      <td className="py-2 text-sm font-bold">{row.name}</td>
-                      <td className="py-2 text-sm font-bold">{row.avg.toFixed(2)}</td>
+                    <tr key={row.supportId ?? row.name} className="border-b border-[var(--color-border)] last:border-b-0">
+                      <td className="py-2 text-[12px] text-[var(--color-ink-muted)] tabular-nums">#{idx + 1}</td>
+                      <td className="py-2 text-[14px] font-medium text-[var(--color-ink)]">{row.name}</td>
+                      <td className="py-2 text-[14px] font-medium text-[var(--color-ink)] tabular-nums">{row.avg.toFixed(2)}</td>
                       <td className="py-2"><Stars value={Math.round(row.avg)} /></td>
-                      <td className="py-2 text-right font-mono text-[10px] text-[var(--color-text-secondary)]">{row.count}</td>
+                      <td className="py-2 text-right text-[12px] text-[var(--color-ink-muted)] tabular-nums">{row.count}</td>
                     </tr>
                   ))
               )}

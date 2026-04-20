@@ -2,13 +2,21 @@ import { useState, useMemo } from 'react';
 import { trpc } from '../../utils/trpc';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, Check, X, Search, Users, Shield, User, UserX } from 'lucide-react';
+import { Pencil, Check, X, Search, Users, Shield, User, UserX, Trash2, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
 import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
 import GuestBadge from '../GuestBadge';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import { OnlineSupport } from '../../types';
 import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
+
+// Shared Soft Product style constants — mirrors the other admin panels.
+const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
+const INPUT = 'h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all';
+const SECONDARY_BTN = 'h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
+const FIELD_LABEL = 'block text-[11px] font-medium text-[var(--color-ink-muted)] mb-1.5';
+const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 export default function AdminTeam() {
   const t = useT();
@@ -115,143 +123,146 @@ export default function AdminTeam() {
   };
 
   return (
-    <div className="flex flex-col min-h-full space-y-6">
+    <div className="flex flex-col min-h-full space-y-5">
       {/* Header & Main Controls */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 border-b-2 border-border-heavy pb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <Users className="h-6 w-6 text-accent-blue" />
-            <h2 className="text-3xl font-bold uppercase tracking-tighter">Team Management</h2>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-1">
+        <div className="flex items-center gap-3">
+          <Users className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <div>
+            <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">Team management</h2>
+            <p className="text-[13px] text-[var(--color-ink-soft)] mt-0.5">
+              Define roles and departmental access for your organization.
+            </p>
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-secondary)] opacity-60">
-            Define roles and departmental access for your organization.
-          </p>
         </div>
-        
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-          <div className="relative group min-w-[280px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted group-focus-within:text-accent-blue transition-colors" />
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+          <div className="relative min-w-[280px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-ink-muted)] pointer-events-none" aria-hidden />
             <input
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              placeholder="Filter by name, role, or department..."
-              className="w-full bg-bg-surface border-2 border-border px-9 py-2.5 text-xs font-bold uppercase placeholder:opacity-30 focus:border-accent-blue outline-none transition-all"
+              placeholder="Filter by name, role, or department…"
+              className={`${INPUT} pl-8 pr-8 w-full`}
             />
             {search && (
-              <button 
+              <button
                 onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-accent-red p-1 transition-colors"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
+                aria-label="Clear search"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden />
               </button>
             )}
           </div>
-          <label className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest cursor-pointer select-none whitespace-nowrap">
+          <label className="flex items-center gap-2 text-[12px] cursor-pointer select-none whitespace-nowrap text-[var(--color-ink-soft)]">
             <input
               type="checkbox"
               id="show-admins-toggle"
               checked={showAdmins}
               onChange={(e) => { setShowAdmins(e.target.checked); setPage(0); }}
-              className="accent-accent-blue h-3.5 w-3.5 cursor-pointer"
+              className="w-3.5 h-3.5 accent-[var(--color-accent)] cursor-pointer"
             />
-            <span className={showAdmins ? 'text-accent-blue' : 'text-text-muted'}>Show admins</span>
+            <span>Show admins</span>
           </label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowInviteModal(true)}
-              disabled={isExternal}
-              aria-disabled={isExternal || undefined}
-              title={isExternal ? guestTooltip : undefined}
-              data-guest-disabled={isExternal || undefined}
-              className="flex-1 sm:flex-none px-4 py-2.5 text-[10px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] border-2 border-accent-blue hover:bg-accent-blue/90 active:scale-[0.98] transition-all shadow-[4px_4px_0px_0px_rgba(59,130,246,0.2)] whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Invite External
-            </button>
-          </div>
+          <button
+            onClick={() => setShowInviteModal(true)}
+            disabled={isExternal}
+            aria-disabled={isExternal || undefined}
+            title={isExternal ? guestTooltip : undefined}
+            data-guest-disabled={isExternal || undefined}
+            className={`${PRIMARY_BTN} whitespace-nowrap`}
+          >
+            <UserPlus className="h-3.5 w-3.5" aria-hidden />
+            Invite external
+          </button>
         </div>
       </div>
 
-      {/* Stats Bar — each card doubles as a filter */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      {/* Stats row — each card is a filter. Active card gets accent-soft bg. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { label: 'All Members', value: stats.total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !onlineOnly && !unconfiguredOnly },
-          { label: 'Support Staff', value: stats.support, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', color: 'text-accent-purple' },
-          { label: 'Agents', value: stats.agents, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', color: 'text-accent-blue' },
-          { label: 'Unconfigured', value: stats.unconfigured, icon: UserX, handler: handleUnconfiguredFilter, active: unconfiguredOnly, color: 'text-accent-amber' },
-          { label: 'Currently Online', value: stats.online, icon: Check, handler: handleOnlineFilter, active: onlineOnly, color: 'text-accent-green' },
+          { label: 'All members', value: stats.total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !onlineOnly && !unconfiguredOnly, tint: 'text-[var(--color-ink)]' },
+          { label: 'Support staff', value: stats.support, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', tint: 'text-[var(--color-accent)]' },
+          { label: 'Agents', value: stats.agents, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', tint: 'text-[var(--color-accent)]' },
+          { label: 'Unconfigured', value: stats.unconfigured, icon: UserX, handler: handleUnconfiguredFilter, active: unconfiguredOnly, tint: 'text-[var(--color-accent-amber)]' },
+          { label: 'Online now', value: stats.online, icon: Check, handler: handleOnlineFilter, active: onlineOnly, tint: 'text-[var(--color-accent-green)]' },
         ].map((stat) => (
           <button
             key={stat.label}
             onClick={stat.handler}
-            className={`flex flex-col p-4 bg-bg-surface border ${stat.active ? 'border-accent-blue bg-accent-blue/5' : 'border-border'} hover:border-accent-blue group transition-all text-left relative overflow-hidden`}
+            className={`rounded-[var(--radius-card)] p-3.5 text-left transition-all ${
+              stat.active
+                ? 'bg-[var(--color-accent-soft)] shadow-[var(--shadow-card)] ring-1 ring-[var(--color-accent)]'
+                : 'bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-card)]'
+            }`}
           >
-            <div className="flex justify-between items-start mb-2 relative z-10">
-              <span className="text-[9px] font-bold uppercase tracking-widest text-text-muted group-hover:text-text-primary transition-colors">{stat.label}</span>
-              <stat.icon className={`h-4 w-4 ${stat.color || 'text-text-muted'} opacity-40 group-hover:opacity-100 transition-all`} />
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-[11px] font-medium text-[var(--color-ink-muted)]">{stat.label}</span>
+              <stat.icon className={`h-4 w-4 ${stat.tint} opacity-80`} aria-hidden />
             </div>
-            <span className="text-2xl font-bold font-mono tracking-tighter relative z-10">{stat.value}</span>
-            <div className="absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full bg-accent-blue transition-all duration-300" />
+            <span className="text-2xl font-semibold text-[var(--color-ink)] tabular-nums tracking-tight">{stat.value}</span>
           </button>
         ))}
       </div>
 
       {isLoading ? (
-        <div className="flex-1 flex flex-col items-center justify-center py-32 border-2 border-dashed border-border opacity-30">
-          <div className="animate-spin h-8 w-8 border-2 border-accent-blue border-t-transparent mb-4" />
-          <p className="text-[10px] font-bold uppercase tracking-widest font-mono">Querying directory...</p>
+        <div className={`${CARD} flex-1 flex flex-col items-center justify-center py-24`}>
+          <div className="w-8 h-8 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin mb-3" aria-hidden />
+          <p className="text-[12px] text-[var(--color-ink-muted)]">Loading directory…</p>
         </div>
       ) : (
-        <div className="bg-bg-surface border-2 border-border-heavy overflow-hidden shadow-[8px_8px_0px_0px_rgba(0,0,0,0.1)]">
+        <div className={`${CARD} overflow-hidden`}>
           <div className="overflow-x-auto">
-            <table className="w-full text-xs border-collapse">
+            <table className="w-full border-collapse">
               <thead>
-                <tr className="border-b-2 border-border-heavy bg-bg-elevated text-left font-mono text-[9px] uppercase text-[var(--color-text-muted)]">
-                  <th className="px-6 py-4 font-bold tracking-widest">Identity</th>
-                  <th className="px-6 py-4 font-bold tracking-widest">Permission Level</th>
-                  <th className="px-6 py-4 font-bold tracking-widest text-center">Status</th>
-                  <th className="px-6 py-4 font-bold tracking-widest">Department Access</th>
-                  <th className="px-6 py-4 font-bold tracking-widest text-right">Control</th>
+                <tr className="border-b border-[var(--color-border)]">
+                  <th className={COL_HEAD}>Identity</th>
+                  <th className={COL_HEAD}>Role</th>
+                  <th className={`${COL_HEAD} text-center`}>Status</th>
+                  <th className={COL_HEAD}>Department access</th>
+                  <th className={`${COL_HEAD} text-right`}></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/60">
+              <tbody className="divide-y divide-[var(--color-border)]">
                 {displayData.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-24 text-center">
-                      <div className="flex flex-col items-center opacity-30">
-                        <Search className="h-8 w-8 mb-4" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest">No match detected for "{search}"</p>
-                        <button 
+                    <td colSpan={5} className="py-20 text-center">
+                      <Search className="h-9 w-9 mx-auto text-[var(--color-ink-muted)] opacity-50 mb-3" aria-hidden />
+                      <p className="text-[13px] font-medium text-[var(--color-ink)]">No members match {search ? `"${search}"` : 'the current filters'}</p>
+                      {search && (
+                        <button
                           onClick={() => setSearch('')}
-                          className="mt-4 text-[9px] underline underline-offset-4 hover:text-accent-blue"
+                          className="mt-3 text-[12px] text-[var(--color-accent)] hover:underline"
                         >
-                          Reset Filter
+                          Clear search
                         </button>
-                      </div>
+                      )}
                     </td>
                   </tr>
                 ) : displayData.map((member) => (
-                  <tr key={member.membershipId} className="hover:bg-bg-elevated/40 transition-colors group/row">
-                    <td className="px-6 py-4">
+                  <tr key={member.membershipId} className="hover:bg-[var(--color-hover)] transition-colors group/row">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full border-2 border-border-heavy flex items-center justify-center font-bold text-[10px] uppercase bg-bg-elevated">
-                          {member.name?.slice(0, 2)}
+                        <div className="w-8 h-8 rounded-full bg-[var(--color-bg-elevated)] flex items-center justify-center font-semibold text-[11px] text-[var(--color-ink)] shrink-0">
+                          {member.name?.slice(0, 2).toUpperCase()}
                         </div>
-                        <div className="flex flex-col">
+                        <div className="flex flex-col min-w-0">
                           <div className="flex items-center gap-2">
-                            <span title={member.email || undefined} className="font-bold uppercase tracking-tight text-[13px] group-hover/row:text-accent-blue transition-colors">{member.name}</span>
+                            <span title={member.email || undefined} className="text-[13px] font-medium text-[var(--color-ink)] truncate">{member.name}</span>
                             <GuestBadge isExternal={member.isExternal} />
                           </div>
                           <div className="flex flex-col gap-0.5 mt-0.5">
                             {member.isExternal && (
-                              <span className="text-[10px] font-mono opacity-40">{member.email}</span>
+                              <span className="text-[11px] font-mono text-[var(--color-ink-muted)] truncate">{member.email}</span>
                             )}
                             <div className="flex items-center gap-2">
                               {member.isExternal && !member.externalId && !member.lastActiveAt ? (
-                                <span className="text-[7px] font-bold uppercase text-accent-purple tracking-tighter">[INVITE PENDING]</span>
+                                <span className="inline-flex items-center px-1.5 h-4 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[10px] font-medium text-[var(--color-accent)]">Invite pending</span>
                               ) : member.lastActiveAt && (
-                                <span className="text-[7px] font-mono opacity-30 uppercase tracking-tighter">
-                                  Last Activity: {new Date(member.lastActiveAt).toLocaleDateString()}
+                                <span className="text-[11px] text-[var(--color-ink-muted)]">
+                                  Last active {new Date(member.lastActiveAt).toLocaleDateString()}
                                 </span>
                               )}
                             </div>
@@ -259,37 +270,32 @@ export default function AdminTeam() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <User className="h-3 w-3 text-text-muted" />
-                        <span className="px-2 py-0.5 border text-[9px] font-bold uppercase tracking-widest border-border bg-bg-elevated">
-                          {member.role}
-                        </span>
-                      </div>
+                    <td className="px-4 py-3">
+                      <span className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] font-medium text-[var(--color-ink)] capitalize">
+                        {member.role}
+                      </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-4 py-3 text-center">
                       {(() => {
                         const onlineStatus = onlineStatusMap.get(member.userId);
                         const colors = getStatusColors(onlineStatus);
                         const label = onlineStatus ? t(getStatusI18nKey(onlineStatus)) : t('status_offline');
                         return (
-                          <div className="inline-flex flex-col items-center gap-1" title={label}>
-                            <div className={`w-2 h-2 rounded-full border border-black/20 ${colors.dot} ${onlineStatus ? 'animate-pulse' : ''}`} />
-                            <span className={`text-[8px] font-bold uppercase tracking-tighter ${colors.text}`}>{label}</span>
+                          <div className="inline-flex items-center gap-1.5" title={label}>
+                            <span className={`w-2 h-2 rounded-full ${colors.dot}`} aria-hidden />
+                            <span className={`text-[11px] ${colors.text}`}>{label}</span>
                           </div>
                         );
                       })()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       {member.role === 'agent' ? (
-                        <div className="flex items-center gap-2 text-text-muted opacity-30 group-hover/row:opacity-100 transition-opacity">
-                          <span className="text-[9px] font-bold uppercase tracking-widest italic">Selects per ticket</span>
-                        </div>
+                        <span className="text-[12px] text-[var(--color-ink-muted)] italic">Selects per ticket</span>
                       ) : editingMembershipId === member.membershipId ? (
-                        <div className="space-y-2 bg-bg-surface p-3 border-2 border-accent-blue shadow-[4px_4px_0px_0px_rgba(59,130,246,0.1)] min-w-[200px]">
-                          <div className="max-h-40 overflow-y-auto pr-2 space-y-1 custom-scrollbar">
+                        <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] shadow-[var(--shadow-soft)] p-3 min-w-[220px] space-y-2">
+                          <div className="max-h-40 overflow-y-auto pr-1 space-y-0.5">
                             {departments.map(d => (
-                              <label key={d.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 hover:bg-bg-elevated transition-colors border border-transparent hover:border-border">
+                              <label key={d.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 rounded-[var(--radius-btn)] hover:bg-[var(--color-hover)] transition-colors">
                                 <input
                                   type="checkbox"
                                   checked={editDepts.includes(d.id)}
@@ -297,29 +303,29 @@ export default function AdminTeam() {
                                     if (e.target.checked) setEditDepts([...editDepts, d.id]);
                                     else setEditDepts(editDepts.filter(id => id !== d.id));
                                   }}
-                                  className="w-3.5 h-3.5 accent-accent-blue"
+                                  className="w-3.5 h-3.5 accent-[var(--color-accent)]"
                                 />
-                                <span className="text-[10px] font-bold uppercase tracking-tighter">{d.name}</span>
+                                <span className="text-[12px] text-[var(--color-ink)]">{d.name}</span>
                               </label>
                             ))}
                           </div>
                           {member.role === 'support' && editDepts.length === 0 && (
-                            <p className="text-[8px] font-bold uppercase text-accent-red tracking-widest">Support requires at least one department</p>
+                            <p className="text-[11px] text-[var(--color-urgent)]">Support requires at least one department</p>
                           )}
-                          <div className="flex items-center gap-2 pt-2 border-t border-border mt-2">
+                          <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
                             <button
                               onClick={() => updateMemberMutation.mutate({ membershipId: member.membershipId, departments: editDepts })}
                               disabled={isExternal || updateMemberMutation.isPending || (member.role === 'support' && editDepts.length === 0)}
                               aria-disabled={isExternal || undefined}
                               title={isExternal ? guestTooltip : undefined}
                               data-guest-disabled={isExternal || undefined}
-                              className="flex-1 py-1.5 text-[9px] font-bold bg-accent-blue text-[var(--color-btn-text-inverse)] uppercase border border-accent-blue hover:bg-accent-blue/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              className={`${PRIMARY_BTN} flex-1 justify-center h-8`}
                             >
-                              {updateMemberMutation.isPending ? '...' : 'Save'}
+                              {updateMemberMutation.isPending ? '…' : 'Save'}
                             </button>
                             <button
                               onClick={() => setEditingMembershipId(null)}
-                              className="flex-1 py-1.5 text-[9px] font-bold border-2 border-border-heavy uppercase hover:bg-bg-elevated transition-all"
+                              className={`${SECONDARY_BTN} flex-1 justify-center h-8`}
                             >
                               Cancel
                             </button>
@@ -330,7 +336,7 @@ export default function AdminTeam() {
                           aria-disabled={isExternal || undefined}
                           title={isExternal ? guestTooltip : undefined}
                           data-guest-disabled={isExternal || undefined}
-                          className={`group/dept flex flex-wrap gap-1.5 items-center min-h-[32px] p-1 -m-1 transition-colors border border-transparent ${isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-bg-elevated/50 hover:border-border'}`}
+                          className={`group/dept flex flex-wrap gap-1.5 items-center min-h-[28px] rounded-[var(--radius-btn)] p-1 -m-1 transition-colors ${isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[var(--color-hover)]'}`}
                           onClick={() => {
                             if (isExternal) return;
                             setEditingMembershipId(member.membershipId);
@@ -341,26 +347,27 @@ export default function AdminTeam() {
                             ? (member.departments as string[]).map((dId: string) => {
                                 const dInfo = departments.find(d => d.id === dId);
                                 return (
-                                  <span key={dId} className="text-[9px] font-bold border-2 border-border px-2 py-0.5 bg-bg-surface uppercase tracking-tighter group-hover/dept:border-accent-blue transition-colors">
+                                  <span key={dId} className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[11px] font-medium text-[var(--color-accent)]">
                                     {dInfo ? dInfo.name : dId}
                                   </span>
                                 );
                               })
-                            : <span className="text-[10px] font-bold uppercase tracking-widest opacity-20 italic group-hover/dept:opacity-100 transition-opacity">No departments assigned</span>}
-                          <Pencil className="h-3 w-3 opacity-0 group-hover/row:opacity-100 transition-opacity ml-auto text-accent-blue" />
+                            : <span className="text-[12px] text-[var(--color-ink-muted)] italic">No departments assigned</span>}
+                          <Pencil className="h-3 w-3 opacity-0 group-hover/row:opacity-60 transition-opacity ml-auto text-[var(--color-ink-muted)]" aria-hidden />
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       <button
                         onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
                         disabled={isExternal}
                         aria-disabled={isExternal || undefined}
                         title={isExternal ? guestTooltip : undefined}
                         data-guest-disabled={isExternal || undefined}
-                        className="p-2 text-[9px] font-bold uppercase tracking-widest text-text-muted hover:text-accent-red hover:bg-accent-red/5 transition-all opacity-40 hover:opacity-100 disabled:cursor-not-allowed"
+                        className="w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
+                        aria-label={`Remove ${member.name}`}
                       >
-                        Remove
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
                       </button>
                     </td>
                   </tr>
@@ -368,32 +375,33 @@ export default function AdminTeam() {
               </tbody>
             </table>
           </div>
-          
-          <div className="px-6 py-4 border-t-2 border-border-heavy flex flex-col sm:flex-row items-center justify-between gap-4 bg-bg-elevated/20">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                Showing <span className="text-text-primary">{displayData.length}</span> identities
+
+          <div className="px-4 py-3 border-t border-[var(--color-border)] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-[12px] text-[var(--color-ink-muted)]">
+              <span>
+                Showing <span className="text-[var(--color-ink)] tabular-nums">{displayData.length}</span> {displayData.length === 1 ? 'member' : 'members'}
               </span>
-              <div className="h-4 w-px bg-border hidden sm:block" />
-              <div className="flex items-center gap-2">
-                <span className="text-[9px] font-bold uppercase tracking-tighter opacity-40">Limit:</span>
-                <span className="px-2 py-0.5 bg-bg-elevated text-[9px] font-mono font-bold border border-border">{LIMIT}</span>
-              </div>
+              <span className="text-[var(--color-border)]">|</span>
+              <span>
+                Limit <span className="text-[var(--color-ink)] tabular-nums">{LIMIT}</span>
+              </span>
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 disabled={page === 0}
                 onClick={() => setPage(p => p - 1)}
-                className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest border-2 border-border-heavy hover:bg-bg-elevated active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed"
+                className={SECONDARY_BTN}
               >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
                 Previous
               </button>
               <button
                 disabled={displayData.length < LIMIT}
                 onClick={() => setPage(p => p + 1)}
-                className="px-6 py-2 text-[10px] font-bold uppercase tracking-widest bg-border-heavy text-white hover:bg-black active:scale-95 transition-all disabled:opacity-20 disabled:cursor-not-allowed shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)]"
+                className={SECONDARY_BTN}
               >
-                Next Page
+                Next
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
               </button>
             </div>
           </div>
@@ -403,7 +411,7 @@ export default function AdminTeam() {
       {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); invalidate(); }} />}
       {confirmRemove && (
         <ConfirmDialog
-          title={t('remove_member_title') || 'Remove Member'}
+          title={t('remove_member_title') || 'Remove member'}
           message={`Remove ${confirmRemove.name} from this partner? They will lose access to all partner resources.`}
           confirmLabel={t('remove') || 'Remove'}
           onConfirm={() => {
@@ -447,64 +455,68 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
-      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border-2 border-border-heavy p-8 w-full max-w-[520px] relative z-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.2)]">
-        <h3 className="text-2xl font-bold uppercase tracking-tighter mb-6 flex items-center gap-3">
-          <Shield className="h-6 w-6 text-accent-blue" />
-          Invite External Identity
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Legal Name</label>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] p-6 w-full max-w-[520px] relative z-10 animate-[v2p-pop_180ms_ease-out]"
+      >
+        <div className="flex items-center gap-2.5 mb-5">
+          <Shield className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+          <h3 className="text-lg font-semibold text-[var(--color-ink)]">Invite external user</h3>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={FIELD_LABEL}>Name</label>
               <input
                 type="text"
                 required
-                placeholder="FULL NAME"
+                placeholder="Full name"
                 value={name}
                 onChange={e => setName(e.target.value)}
-                className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm font-bold uppercase tracking-tighter focus:border-accent-blue outline-none transition-all"
+                className={`${INPUT} w-full`}
               />
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Target Email</label>
+            <div>
+              <label className={FIELD_LABEL}>Email</label>
               <input
                 type="email"
                 required
-                placeholder="EMAIL@DOMAIN.COM"
+                placeholder="user@domain.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm focus:border-accent-blue outline-none transition-all font-mono"
+                className={`${INPUT} w-full font-mono text-[12px]`}
               />
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">System Role</label>
+          <div>
+            <label className={FIELD_LABEL}>Role</label>
             <select
               value={role}
               onChange={e => setRole(e.target.value as 'support' | 'admin')}
-              className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm font-bold uppercase tracking-widest focus:border-accent-blue outline-none transition-all"
+              className={`${INPUT} w-full`}
             >
-              <option value="support">External Support</option>
-              <option value="admin">Partner Manager / SPOC</option>
+              <option value="support">External support</option>
+              <option value="admin">Partner manager / SPOC</option>
             </select>
           </div>
           {role === 'support' && departments.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Assigned Departments</label>
+                <label className={FIELD_LABEL}>Assigned departments</label>
                 <button
                   type="button"
                   onClick={() => setSelectedDepts(selectedDepts.length === departments.length ? [] : departments.map(d => d.id))}
-                  className="text-[8px] font-bold uppercase tracking-widest text-accent-blue hover:underline"
+                  className="text-[12px] text-[var(--color-accent)] hover:underline"
                 >
                   {selectedDepts.length === departments.length ? 'Deselect all' : 'Select all'}
                 </button>
               </div>
-              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border-2 border-border p-3 bg-bg-elevated/30">
+              <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] p-2">
                 {departments.map(d => (
-                  <label key={d.id} className="flex items-center gap-3 text-[10px] font-bold uppercase cursor-pointer hover:text-accent-blue transition-colors py-1">
+                  <label key={d.id} className="flex items-center gap-2 text-[12px] text-[var(--color-ink)] cursor-pointer rounded-[var(--radius-btn)] px-2 py-1 hover:bg-[var(--color-hover)] transition-colors">
                     <input
                       type="checkbox"
                       checked={selectedDepts.includes(d.id)}
@@ -512,21 +524,25 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
                         if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
                         else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
                       }}
-                      className="w-4 h-4 accent-accent-blue"
+                      className="w-3.5 h-3.5 accent-[var(--color-accent)]"
                     />
-                    {d.name}
+                    <span>{d.name}</span>
                   </label>
                 ))}
               </div>
               {role === 'support' && selectedDepts.length === 0 && (
-                <p className="text-[8px] font-bold uppercase text-accent-red tracking-widest">Support requires at least one department</p>
+                <p className="text-[11px] text-[var(--color-urgent)]">Support requires at least one department</p>
               )}
             </div>
           )}
-          <div className="flex gap-4 pt-6 border-t border-border">
-            <button type="button" onClick={onClose} className="flex-1 py-3 text-[11px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all">Abort</button>
-            <button type="submit" disabled={inviteMutation.isPending || (role === 'support' && selectedDepts.length === 0)} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/90 disabled:opacity-50 transition-all shadow-[6px_6px_0px_0px_rgba(59,130,246,0.1)]">
-              {inviteMutation.isPending ? 'Encrypting...' : 'Provision User'}
+          <div className="flex gap-2 pt-3 border-t border-[var(--color-border)]">
+            <button type="button" onClick={onClose} className={`${SECONDARY_BTN} flex-1 justify-center`}>Cancel</button>
+            <button
+              type="submit"
+              disabled={inviteMutation.isPending || (role === 'support' && selectedDepts.length === 0)}
+              className={`${PRIMARY_BTN} flex-1 justify-center`}
+            >
+              {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
             </button>
           </div>
         </form>

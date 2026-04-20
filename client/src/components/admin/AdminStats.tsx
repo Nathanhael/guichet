@@ -18,16 +18,26 @@ import {
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { exportDashboardCSV, exportDashboardPDF, DashboardStats } from '../../utils/exportDashboard';
-import { Download, FileText, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Download, FileText, AlertTriangle, RefreshCw, X, Star } from 'lucide-react';
 
-/** Shared Recharts tooltip styles using brutalist design tokens */
+// Shared Soft Product style constants — mirror the other admin panels.
+const INPUT = 'h-8 px-2.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[12px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none';
+const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] transition-all';
+const SECONDARY_BTN = 'h-8 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[12px] font-medium transition-colors';
+
+// Recharts tooltip styled with Soft Product tokens. Inter everywhere — no
+// mono in data-viz chrome per the typography spec.
 const tooltipStyle: React.CSSProperties = {
-  backgroundColor: 'var(--color-bg-elevated)',
-  border: '1px solid var(--color-text-secondary)',
-  borderRadius: 0,
-  color: 'var(--color-text-primary)',
+  backgroundColor: 'var(--color-bg-surface)',
+  border: '1px solid var(--color-border)',
+  borderRadius: 8,
+  boxShadow: 'var(--shadow-card)',
+  color: 'var(--color-ink)',
+  fontFamily: 'Inter, system-ui, sans-serif',
+  fontSize: 12,
 };
-const tooltipLabelStyle: React.CSSProperties = { color: 'var(--color-text-primary)' };
+const tooltipLabelStyle: React.CSSProperties = { color: 'var(--color-ink)', fontWeight: 500 };
+const CHART_TICK = { fontSize: 11, fill: 'var(--color-ink-muted)', fontFamily: 'Inter, system-ui, sans-serif' } as const;
 
 /** Typed shape of the getGlobalStats tRPC response for safe property access */
 interface DashboardData {
@@ -113,17 +123,20 @@ export default function AdminStats() {
   if (statsError) {
     return (
       <div className="min-w-[1280px] max-w-7xl mx-auto p-4">
-        <div className="border-2 border-[var(--color-accent-red)] bg-[var(--color-bg-surface)] p-8 flex flex-col items-center justify-center gap-4">
-          <AlertTriangle className="h-10 w-10 text-[var(--color-accent-red)]" />
+        <div
+          className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-8 flex flex-col items-center justify-center gap-4 border-l-4 border-[var(--color-urgent)]"
+          role="alert"
+        >
+          <AlertTriangle className="h-10 w-10 text-[var(--color-urgent)]" aria-hidden />
           <div className="text-center">
-            <h2 className="text-lg font-bold uppercase tracking-wide text-[var(--color-accent-red)]">Failed to load dashboard</h2>
-            <p className="text-xs uppercase font-mono text-[var(--color-text-muted)] mt-2 max-w-md">{statsError.message}</p>
+            <h2 className="text-lg font-semibold text-[var(--color-ink)]">Failed to load dashboard</h2>
+            <p className="text-[12px] text-[var(--color-ink-soft)] mt-1 max-w-md">{statsError.message}</p>
           </div>
           <button
             onClick={() => refetchStats()}
-            className="btn-primary flex items-center gap-2"
+            className={PRIMARY_BTN}
           >
-            <RefreshCw className="h-3.5 w-3.5" /> Retry
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Retry
           </button>
         </div>
       </div>
@@ -155,23 +168,24 @@ export default function AdminStats() {
   const totalTickets = stats.total || 1;
 
   return (
-    <div className="space-y-4 min-w-[1280px] max-w-screen-2xl mx-auto pb-6">
+    <div className="space-y-5 min-w-[1280px] max-w-screen-2xl mx-auto pb-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-baseline gap-3">
-          <h2 className="text-xl font-bold uppercase tracking-tight">Dashboard</h2>
-          <p className="text-[10px] font-mono uppercase text-[var(--color-text-muted)]">Real-time metrics</p>
+          <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">Dashboard</h2>
+          <p className="text-[12px] text-[var(--color-ink-muted)]">Real-time metrics</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 border border-[var(--color-border)] p-1 bg-[var(--color-bg-surface)]">
+        <div className="flex items-center gap-2">
+          {/* Filter cluster: soft card holding dept select, date presets, and range */}
+          <div className="flex items-center gap-2 rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)] px-2 py-1.5">
             {/* Department filter */}
             <select
               value={statsDept}
               onChange={(e) => setStatsDept(e.target.value)}
-              className="input-field py-1 text-[10px] font-bold uppercase min-w-[110px]"
+              className={`${INPUT} min-w-[120px]`}
               aria-label="Filter by department"
             >
-              <option value="all">All Depts</option>
+              <option value="all">All departments</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -179,23 +193,23 @@ export default function AdminStats() {
               ))}
             </select>
 
-            <div className="w-px h-5 bg-[var(--color-border)] mx-0.5" />
+            <div className="w-px h-5 bg-[var(--color-border)]" />
 
-            {/* Date presets */}
-            <div className="flex gap-0.5">
+            {/* Date presets — segmented pill group */}
+            <div className="flex items-center gap-0.5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] p-0.5">
               {[
                 { key: 'today', label: 'Today' },
-                { key: '7d', label: '7D' },
-                { key: '14d', label: '14D' },
-                { key: '30d', label: '30D' },
+                { key: '7d', label: '7d' },
+                { key: '14d', label: '14d' },
+                { key: '30d', label: '30d' },
               ].map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() => applyPreset(key)}
-                  className={`px-2 py-1 text-[10px] font-bold uppercase border ${
+                  className={`px-2.5 h-7 inline-flex items-center rounded-[var(--radius-pill)] text-[12px] font-medium transition-colors ${
                     activePreset === key
-                      ? 'border-[var(--color-border)] bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-                      : 'border-transparent text-[var(--color-text-muted)] hover:opacity-100'
+                      ? 'bg-[var(--color-bg-surface)] text-[var(--color-ink)] shadow-[var(--shadow-soft)]'
+                      : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
                   }`}
                 >
                   {label}
@@ -203,53 +217,52 @@ export default function AdminStats() {
               ))}
             </div>
 
-            <div className="w-px h-5 bg-[var(--color-border)] mx-0.5" />
+            <div className="w-px h-5 bg-[var(--color-border)]" />
 
             {/* Date range */}
-            <div className="flex items-center gap-1.5 px-1">
+            <div className="flex items-center gap-1.5">
               <input
                 type="date"
                 aria-label="Start date"
                 value={statsDateFrom}
                 onChange={(e) => { setStatsDateFrom(e.target.value); setActivePreset(null); }}
-                className="input-field py-1 text-[10px] w-[105px]"
+                className={`${INPUT} w-[122px]`}
               />
-              <span className="text-[10px] text-[var(--color-text-muted)]">→</span>
+              <span className="text-[11px] text-[var(--color-ink-muted)]">→</span>
               <input
                 type="date"
                 aria-label="End date"
                 value={statsDateTo}
                 onChange={(e) => { setStatsDateTo(e.target.value); setActivePreset(null); }}
-                className="input-field py-1 text-[10px] w-[105px]"
+                className={`${INPUT} w-[122px]`}
               />
               {(statsDept !== 'all' || statsDateFrom || statsDateTo) && (
                 <button
                   onClick={() => { setStatsDept('all'); setStatsDateFrom(''); setStatsDateTo(''); setActivePreset(null); }}
-                  className="p-1 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:opacity-100"
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
                   title="Clear all filters"
+                  aria-label="Clear all filters"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="h-3.5 w-3.5" aria-hidden />
                 </button>
               )}
             </div>
           </div>
 
-          <div className="flex gap-1 shrink-0">
+          <div className="flex gap-1.5 shrink-0">
             <button
               onClick={() => exportDashboardCSV(stats as DashboardStats)}
-              className="btn-secondary py-1 text-[10px]"
+              className={SECONDARY_BTN}
               title="Export as CSV"
             >
-              <Download className="h-3 w-3" /> CSV
+              <Download className="h-3.5 w-3.5" aria-hidden /> CSV
             </button>
             <button
               onClick={() => exportDashboardPDF(stats as DashboardStats)}
-              className="btn-secondary py-1 text-[10px]"
+              className={SECONDARY_BTN}
               title="Export as PDF"
             >
-              <FileText className="h-3 w-3" /> PDF
+              <FileText className="h-3.5 w-3.5" aria-hidden /> PDF
             </button>
           </div>
         </div>
@@ -280,15 +293,15 @@ export default function AdminStats() {
         <div className="col-span-4 space-y-4">
           <Panel title="Queue health">
             <div className="grid grid-cols-2 gap-3">
-              <div className={`border p-3 ${stats.oldestWaitMinutes > 3 ? 'border-[var(--color-border)]' : 'border-[var(--color-border)]'}`}>
-                <p className="text-[9px] uppercase font-bold text-[var(--color-text-secondary)]">Oldest waiting</p>
-                <p className={`text-xl font-bold mt-0.5 ${stats.oldestWaitMinutes > 3 ? '' : 'text-[var(--color-text-muted)]'}`}>
+              <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] p-3">
+                <p className="text-[11px] text-[var(--color-ink-muted)]">Oldest waiting</p>
+                <p className={`text-xl font-semibold tabular-nums mt-0.5 ${stats.oldestWaitMinutes > 3 ? 'text-[var(--color-urgent)]' : stats.oldestWaitMinutes > 0 ? 'text-[var(--color-ink)]' : 'text-[var(--color-ink-muted)]'}`}>
                   {stats.oldestWaitMinutes > 0 ? `${stats.oldestWaitMinutes}m` : '—'}
                 </p>
               </div>
-              <div className={`border p-3 ${stats.waitingOver3 > 0 ? 'border-[var(--color-border)]' : 'border-[var(--color-border)]'}`}>
-                <p className="text-[9px] uppercase font-bold text-[var(--color-text-secondary)]">Waiting &gt;3 min</p>
-                <p className={`text-xl font-bold mt-0.5 ${stats.waitingOver3 > 0 ? '' : 'text-[var(--color-text-muted)]'}`}>
+              <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] p-3">
+                <p className="text-[11px] text-[var(--color-ink-muted)]">Waiting &gt;3 min</p>
+                <p className={`text-xl font-semibold tabular-nums mt-0.5 ${stats.waitingOver3 > 0 ? 'text-[var(--color-urgent)]' : 'text-[var(--color-ink-muted)]'}`}>
                   {stats.waitingOver3}
                 </p>
               </div>
@@ -297,31 +310,31 @@ export default function AdminStats() {
 
           <Panel title="Online now" badge={`${totalOnline}`}>
             {onlineError ? (
-              <p className="text-xs uppercase font-bold text-[var(--color-accent-red)] py-2 text-center">Failed to load team status</p>
+              <p className="text-[12px] text-[var(--color-urgent)] py-2 text-center">Failed to load team status</p>
             ) : onlineUsers.length === 0 ? (
-              <p className="text-sm text-text-muted py-2 text-center">{t('no_data') || 'No agents online'}</p>
+              <p className="text-[13px] text-[var(--color-ink-muted)] py-2 text-center">{t('no_data') || 'No agents online'}</p>
             ) : (
               <>
                 <div className="mb-3">
-                  <div className="flex justify-between text-[9px] font-mono font-bold uppercase text-text-muted mb-1">
+                  <div className="flex justify-between text-[11px] text-[var(--color-ink-muted)] mb-1.5">
                     <span>{t('team_capacity') || 'Team capacity'}</span>
-                    <span className="text-text-primary">{availableCount} / {totalOnline} ({capacityPct}%)</span>
+                    <span className="text-[var(--color-ink)] tabular-nums">{availableCount} / {totalOnline} ({capacityPct}%)</span>
                   </div>
-                  <div className="h-1.5 bg-bg-elevated w-full">
-                    <div className="h-full bg-accent-green" style={{ width: `${capacityPct}%` }} />
+                  <div className="h-1.5 rounded-full bg-[var(--color-bg-elevated)] w-full overflow-hidden">
+                    <div className="h-full rounded-full bg-[var(--color-accent-green)] transition-all" style={{ width: `${capacityPct}%` }} />
                   </div>
                 </div>
-                <div className="flex flex-col gap-1 max-h-[200px] overflow-y-auto pr-1">
+                <div className="flex flex-col gap-1.5 max-h-[200px] overflow-y-auto pr-1">
                   {onlineUsers.map((agent) => {
                     const colors = getStatusColors(agent.status);
                     return (
                       <div key={agent.userId} className="flex items-center gap-2 py-0.5">
-                        <div className="w-5 h-5 rounded-full bg-bg-elevated flex items-center justify-center text-[8px] font-bold text-text-primary shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-[var(--color-bg-elevated)] flex items-center justify-center text-[9px] font-semibold text-[var(--color-ink)] shrink-0">
                           {agent.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
                         </div>
-                        <span className="text-[10px] font-semibold text-text-primary truncate flex-1">{agent.name}</span>
-                        <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
-                        <span className={`text-[8px] font-bold uppercase ${colors.text}`}>{t(getStatusI18nKey(agent.status))}</span>
+                        <span className="text-[12px] text-[var(--color-ink)] truncate flex-1">{agent.name}</span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} aria-hidden />
+                        <span className={`text-[10px] ${colors.text}`}>{t(getStatusI18nKey(agent.status))}</span>
                       </div>
                     );
                   })}
@@ -333,15 +346,15 @@ export default function AdminStats() {
 
         {/* Center/Right: Trends & Distribution */}
         <div className="col-span-8 space-y-4">
-          <Panel title={`Tickets Trend (${stats.trendGranularity})`}>
+          <Panel title={`Tickets trend (${stats.trendGranularity})`}>
             <ResponsiveContainer width="100%" height={240}>
               <LineChart data={stats.dailyTrend} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} interval={Math.ceil(stats.dailyTrend.length / 12)} />
-                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-                <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                <Line type="monotone" dataKey="total" stroke="var(--color-text-primary)" strokeWidth={2} dot={false} name="Total" />
+                <XAxis dataKey="date" tick={CHART_TICK} interval={Math.ceil(stats.dailyTrend.length / 12)} />
+                <YAxis tick={CHART_TICK} allowDecimals={false} />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ stroke: 'var(--color-border)' }} />
+                <Legend iconSize={10} wrapperStyle={{ fontSize: 11, fontFamily: 'Inter, system-ui, sans-serif' }} />
+                <Line type="monotone" dataKey="total" stroke="var(--color-accent)" strokeWidth={2} dot={false} name="Total" />
               </LineChart>
             </ResponsiveContainer>
           </Panel>
@@ -349,20 +362,20 @@ export default function AdminStats() {
           <div className="grid grid-cols-2 gap-4">
             <Panel title="Dept distribution">
               {departments.length === 0 ? (
-                <p className="text-sm text-text-muted py-2">No departments</p>
+                <p className="text-[13px] text-[var(--color-ink-muted)] py-2">No departments</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {departments.map((dept) => {
                     const count = deptCounts[dept.id] || 0;
                     const pct = Math.round((count / totalTickets) * 100);
                     return (
                       <div key={dept.id}>
-                        <div className="flex justify-between mb-0.5">
-                          <span className="text-[9px] font-bold uppercase">{dept.name}</span>
-                          <span className="text-[9px] font-bold text-[var(--color-text-secondary)]">{count} ({pct}%)</span>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-[12px] text-[var(--color-ink)]">{dept.name}</span>
+                          <span className="text-[11px] text-[var(--color-ink-muted)] tabular-nums">{count} ({pct}%)</span>
                         </div>
-                        <div className="h-1 w-full bg-bg-elevated">
-                          <div className="h-full bg-[var(--color-text-primary)]" style={{ width: `${pct}%` }} />
+                        <div className="h-1.5 w-full rounded-full bg-[var(--color-bg-elevated)] overflow-hidden">
+                          <div className="h-full rounded-full bg-[var(--color-accent)] transition-all" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -378,16 +391,16 @@ export default function AdminStats() {
       <div className="grid grid-cols-2 gap-4">
         <Panel title="Support performance">
           {stats.supportStats.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-secondary)]">No data yet</p>
+            <p className="text-[13px] text-[var(--color-ink-muted)]">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.supportStats.length * 35)}>
               <BarChart data={stats.supportStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
-                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-                <Bar dataKey="total" fill="var(--color-text-primary)" name="Total Tasks" />
-                <Bar dataKey="today" fill="var(--color-text-secondary)" name="Today" />
+                <XAxis type="number" tick={CHART_TICK} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={CHART_TICK} width={80} />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: 'var(--color-hover)' }} />
+                <Bar dataKey="total" fill="var(--color-accent)" name="Total" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="today" fill="var(--color-accent-soft)" name="Today" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -395,16 +408,16 @@ export default function AdminStats() {
 
         <Panel title="Agent performance">
           {stats.agentStats.length === 0 ? (
-            <p className="text-sm text-[var(--color-text-secondary)]">No data yet</p>
+            <p className="text-[13px] text-[var(--color-ink-muted)]">No data yet</p>
           ) : (
             <ResponsiveContainer width="100%" height={Math.max(160, stats.agentStats.length * 35)}>
               <BarChart data={stats.agentStats} layout="vertical" margin={{ top: 0, right: 8, left: 8, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={80} />
-                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
-                <Bar dataKey="total" fill="var(--color-text-primary)" name="Total Tickets" />
-                <Bar dataKey="today" fill="var(--color-text-secondary)" name="Today" />
+                <XAxis type="number" tick={CHART_TICK} allowDecimals={false} />
+                <YAxis type="category" dataKey="name" tick={CHART_TICK} width={80} />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: 'var(--color-hover)' }} />
+                <Bar dataKey="total" fill="var(--color-accent)" name="Total" radius={[0, 4, 4, 0]} />
+                <Bar dataKey="today" fill="var(--color-accent-soft)" name="Today" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -420,22 +433,21 @@ export default function AdminStats() {
 }
 
 function StarRating({ value }: { value: number }) {
-  const stars = [];
-  for (let i = 1; i <= 5; i++) {
-    const filled = i <= Math.round(value);
-    stars.push(
-      <svg
-        key={i}
-        xmlns="http://www.w3.org/2000/svg"
-        className={`h-4 w-4 inline-block ${filled ? 'text-[var(--color-text-primary)]' : 'text-black/20 dark:text-white/20'}`}
-        viewBox="0 0 24 24"
-        fill="currentColor"
-      >
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-      </svg>
-    );
-  }
-  return <span className="inline-flex gap-0.5">{stars}</span>;
+  const rounded = Math.round(value);
+  return (
+    <span className="inline-flex gap-0.5" aria-label={`${value.toFixed(1)} out of 5`}>
+      {[1, 2, 3, 4, 5].map((i) => {
+        const filled = i <= rounded;
+        return (
+          <Star
+            key={i}
+            className={`h-3.5 w-3.5 ${filled ? 'text-[var(--color-accent-amber)] fill-[var(--color-accent-amber)]' : 'text-[var(--color-ink-muted)] opacity-40'}`}
+            aria-hidden
+          />
+        );
+      })}
+    </span>
+  );
 }
 
 function TeamSatisfaction({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
@@ -448,37 +460,37 @@ function TeamSatisfaction({ dateFrom, dateTo }: { dateFrom: string; dateTo: stri
   );
 
   return (
-    <Panel title="Team Satisfaction">
+    <Panel title="Team satisfaction">
       {ratingsError ? (
-        <p className="text-xs uppercase font-bold text-[var(--color-accent-red)] py-4 text-center">Failed to load ratings</p>
+        <p className="text-[12px] text-[var(--color-urgent)] py-4 text-center">Failed to load ratings</p>
       ) : isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : !staffRatings || staffRatings.length === 0 ? (
-        <p className="text-sm text-[var(--color-text-secondary)]">No ratings yet</p>
+        <p className="text-[13px] text-[var(--color-ink-muted)]">No ratings yet</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
               <tr className="border-b border-[var(--color-border)]">
-                <th className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide py-2 pr-4">Support Staff</th>
-                <th className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide py-2 pr-4">Avg Rating</th>
-                <th className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide py-2 pr-4">Stars</th>
-                <th className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide py-2 text-right">Total Ratings</th>
+                <th className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)] py-2 pr-4">Support staff</th>
+                <th className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)] py-2 pr-4">Avg rating</th>
+                <th className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)] py-2 pr-4">Stars</th>
+                <th className="text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)] py-2 text-right">Total ratings</th>
               </tr>
             </thead>
             <tbody>
               {staffRatings.map((staff) => {
                 const avg = Number(staff.avgRating) || 0;
                 const colorClass =
-                  avg >= 4 ? '' :
-                  avg >= 3 ? 'text-[var(--color-text-secondary)]' :
-                  'text-[var(--color-text-muted)]';
+                  avg >= 4 ? 'text-[var(--color-ok)]' :
+                  avg >= 3 ? 'text-[var(--color-accent-amber)]' :
+                  'text-[var(--color-urgent)]';
                 return (
-                  <tr key={staff.supportId} className="border-b border-[var(--color-border)]">
-                    <td className="py-2 pr-4 text-sm font-bold">{staff.supportName}</td>
-                    <td className={`py-2 pr-4 text-sm font-bold tabular-nums ${colorClass}`}>{avg.toFixed(1)}</td>
-                    <td className="py-2 pr-4"><StarRating value={avg} /></td>
-                    <td className="py-2 text-sm font-bold text-[var(--color-text-secondary)] text-right">{staff.totalRatings}</td>
+                  <tr key={staff.supportId} className="border-b border-[var(--color-border)] last:border-0">
+                    <td className="py-2.5 pr-4 text-[13px] text-[var(--color-ink)]">{staff.supportName}</td>
+                    <td className={`py-2.5 pr-4 text-[13px] font-semibold tabular-nums ${colorClass}`}>{avg.toFixed(1)}</td>
+                    <td className="py-2.5 pr-4"><StarRating value={avg} /></td>
+                    <td className="py-2.5 text-[13px] text-[var(--color-ink-soft)] tabular-nums text-right">{staff.totalRatings}</td>
                   </tr>
                 );
               })}
