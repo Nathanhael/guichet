@@ -87,7 +87,6 @@ export default function AdminTeam() {
     onError: (err) => setToast({ message: err.message, type: 'error' })
   });
 
-  const [showAddModal, setShowAddModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
@@ -240,19 +239,16 @@ export default function AdminTeam() {
                         </div>
                         <div className="flex flex-col">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold uppercase tracking-tight text-[13px] group-hover/row:text-accent-blue transition-colors">{member.name}</span>
+                            <span title={member.email || undefined} className="font-bold uppercase tracking-tight text-[13px] group-hover/row:text-accent-blue transition-colors">{member.name}</span>
                             <GuestBadge isExternal={member.isExternal} />
-                            {member.externalId ? (
-                              <span className="text-[7px] bg-accent-blue/10 text-accent-blue border border-accent-blue/20 px-1 font-mono font-bold tracking-tighter">SSO SYNC</span>
-                            ) : member.lastActiveAt && (
-                              <span className="text-[7px] border border-border px-1 font-mono opacity-40">LOCAL</span>
-                            )}
                           </div>
                           <div className="flex flex-col gap-0.5 mt-0.5">
-                            <span className="text-[10px] font-mono opacity-40">{member.email}</span>
+                            {member.isExternal && (
+                              <span className="text-[10px] font-mono opacity-40">{member.email}</span>
+                            )}
                             <div className="flex items-center gap-2">
-                              {!member.externalId && !member.lastActiveAt ? (
-                                <span className="text-[7px] font-bold uppercase text-accent-purple animate-pulse tracking-tighter">[INVITE PENDING]</span>
+                              {member.isExternal && !member.externalId && !member.lastActiveAt ? (
+                                <span className="text-[7px] font-bold uppercase text-accent-purple tracking-tighter">[INVITE PENDING]</span>
                               ) : member.lastActiveAt && (
                                 <span className="text-[7px] font-mono opacity-30 uppercase tracking-tighter">
                                   Last Activity: {new Date(member.lastActiveAt).toLocaleDateString()}
@@ -269,9 +265,6 @@ export default function AdminTeam() {
                         <span className="px-2 py-0.5 border text-[9px] font-bold uppercase tracking-widest border-border bg-bg-elevated">
                           {member.role}
                         </span>
-                        {member.source === 'manual' && (
-                          <span className="text-[7px] border border-accent-amber/30 text-accent-amber px-1 font-mono font-bold tracking-tighter">MANUAL</span>
-                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -407,7 +400,6 @@ export default function AdminTeam() {
         </div>
       )}
 
-      {showAddModal && <AddExistingUserModal onClose={() => setShowAddModal(false)} onAdded={() => { setShowAddModal(false); invalidate(); }} />}
       {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); invalidate(); }} />}
       {confirmRemove && (
         <ConfirmDialog
@@ -422,106 +414,6 @@ export default function AdminTeam() {
         />
       )}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
-  );
-}
-
-function AddExistingUserModal({ onClose, onAdded }: { onClose: () => void, onAdded: () => void }) {
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState<'support'|'admin'>('support');
-  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-
-  const { activeMembershipId, memberships } = useStoreShallow((s) => ({
-    activeMembershipId: s.activeMembershipId,
-    memberships: s.memberships,
-  }));
-  const activeMembership = memberships.find(m => m.id === activeMembershipId);
-  const departments = activeMembership?.manifest?.departments || [];
-
-  const addMutation = trpc.partner.addMemberByEmail.useMutation({
-    onSuccess: onAdded,
-    onError: (err) => setToast({ message: err.message, type: 'error' })
-  });
-
-  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    addMutation.mutate({ email, role, departments: selectedDepts });
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
-      <div role="dialog" aria-modal="true" className="bg-[var(--color-bg-base)] border-2 border-border-heavy p-8 w-full max-w-[480px] relative z-10 shadow-[12px_12px_0px_0px_rgba(0,0,0,0.2)]">
-        <h3 className="text-2xl font-bold uppercase tracking-tighter mb-6 flex items-center gap-3">
-          <Users className="h-6 w-6 text-accent-blue" />
-          Add Existing User
-        </h3>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Direct Email Identification</label>
-            <input
-              type="email"
-              required
-              placeholder="USER@EXAMPLE.COM"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm focus:border-accent-blue outline-none transition-all uppercase font-mono"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Operational Role</label>
-            <select
-              value={role}
-              onChange={e => setRole(e.target.value as 'support' | 'admin')}
-              className="w-full bg-bg-surface border-2 border-border px-4 py-3 text-sm font-bold uppercase tracking-widest focus:border-accent-blue outline-none transition-all"
-            >
-              <option value="support">External Support</option>
-              <option value="admin">Partner Manager / SPOC</option>
-            </select>
-          </div>
-          {role === 'support' && departments.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Departmental Assignments</label>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDepts(selectedDepts.length === departments.length ? [] : departments.map(d => d.id))}
-                  className="text-[8px] font-bold uppercase tracking-widest text-accent-blue hover:underline"
-                >
-                  {selectedDepts.length === departments.length ? 'Deselect all' : 'Select all'}
-                </button>
-              </div>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto border-2 border-border p-3 bg-bg-elevated/30">
-                {departments.map(d => (
-                  <label key={d.id} className="flex items-center gap-3 text-xs font-bold uppercase cursor-pointer hover:text-accent-blue transition-colors py-1">
-                    <input
-                      type="checkbox"
-                      checked={selectedDepts.includes(d.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
-                        else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
-                      }}
-                      className="w-4 h-4 accent-accent-blue"
-                    />
-                    {d.name}
-                  </label>
-                ))}
-              </div>
-              {role === 'support' && selectedDepts.length === 0 && (
-                <p className="text-[8px] font-bold uppercase text-accent-red tracking-widest">Support requires at least one department</p>
-              )}
-            </div>
-          )}
-          <div className="flex gap-4 pt-4">
-            <button type="button" onClick={onClose} className="flex-1 py-3 text-[11px] font-bold uppercase border-2 border-border-heavy hover:bg-bg-elevated transition-all">Cancel</button>
-            <button type="submit" disabled={addMutation.isPending || (role === 'support' && selectedDepts.length === 0)} className="flex-1 py-3 text-[11px] font-bold uppercase bg-accent-blue text-[var(--color-btn-text-inverse)] hover:bg-accent-blue/90 disabled:opacity-50 transition-all">
-              {addMutation.isPending ? 'Processing...' : 'Verify & Add'}
-            </button>
-          </div>
-        </form>
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      </div>
     </div>
   );
 }

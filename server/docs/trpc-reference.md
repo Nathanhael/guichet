@@ -90,7 +90,6 @@ Client access: `trpc.<router>.<procedure>`
 | `updateBusinessHours` | mutation | admin | Update business hours schedule |
 | `updateDepartments` | mutation | admin | Update department definitions |
 | `listMembers` | query | admin | List partner team members with memberships |
-| `addMemberByEmail` | mutation | admin | Add existing user to partner by email |
 | `inviteExternalUser` | mutation | admin | Invite new external user to partner |
 | `updateMember` | mutation | admin | Update member role/departments |
 | `removeMember` | mutation | admin | Remove member from partner |

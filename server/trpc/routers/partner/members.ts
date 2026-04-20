@@ -89,65 +89,6 @@ export const partnerMembersRouter = router({
       }
     }),
 
-  addMemberByEmail: destructiveAdminProcedure
-    .input(z.object({
-      email: z.string().email(),
-      role: z.enum(['support', 'admin']),
-      departments: z.array(z.string()).optional()
-    }))
-    .mutation(async ({ input, ctx }) => {
-      try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-        if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins cannot assign this role' });
-        }
-
-        if (input.role === 'support' && (!input.departments || input.departments.length === 0)) {
-          throw new TRPCError({ code: 'BAD_REQUEST', message: 'Support role requires at least one department' });
-        }
-
-        const targetUser = await db.select().from(users).where(eq(users.email, input.email)).limit(1);
-        if (targetUser.length === 0) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
-        }
-
-        const userId = targetUser[0].id;
-
-        const existingMembership = await db.select().from(memberships)
-          .where(and(eq(memberships.userId, userId), eq(memberships.partnerId, partnerId))).limit(1);
-
-        if (existingMembership.length > 0) {
-          throw new TRPCError({ code: 'CONFLICT', message: 'User already on this partner' });
-        }
-
-        const newMembershipId = crypto.randomUUID();
-
-        await db.insert(memberships).values({
-          id: newMembershipId,
-          userId: userId,
-          partnerId: partnerId,
-          role: input.role,
-          departments: input.role === 'support' ? (input.departments || []) : [],
-          source: 'manual'
-        });
-
-        await db.insert(auditLog).values({
-          action: 'member.added',
-          actorId: ctx.user.id,
-          partnerId: partnerId,
-          targetType: 'user',
-          targetId: userId,
-          metadata: { role: input.role, departments: input.departments }
-        });
-
-        return { success: true };
-      } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
-      }
-    }),
-
   inviteExternalUser: destructiveAdminProcedure
     .input(z.object({
       email: z.string().email(),
