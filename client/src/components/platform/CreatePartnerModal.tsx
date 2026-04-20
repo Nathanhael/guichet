@@ -2,11 +2,17 @@ import { useState, useCallback } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import Toast from '../Toast';
+import Modal, { ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
+import Button from '../ui/Button';
 
 interface CreatePartnerModalProps {
   open: boolean;
   onClose: () => void;
 }
+
+const FIELD_LABEL = 'block text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5';
+const INPUT =
+  'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
 
 export default function CreatePartnerModal({ open, onClose }: CreatePartnerModalProps) {
   const t = useT();
@@ -24,46 +30,47 @@ export default function CreatePartnerModal({ open, onClose }: CreatePartnerModal
     onError: (err) => showError(err.message),
   });
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-      <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black/80" />
-      <div role="dialog" aria-modal="true" className="w-full max-w-xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8">
-        <h2 className="text-2xl font-bold uppercase tracking-wide font-mono mb-6 border-b border-[var(--color-border)] pb-2">{t('create_new_partner')}</h2>
-        <div className="space-y-4">
+    <>
+      <Modal open={open} onClose={onClose} id="create-partner" maxWidth={560}>
+        <ModalHeader onClose={onClose} title={t('create_new_partner')} />
+        <ModalBody>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mono-label">{t('partner_id')}</label>
+              <label className={FIELD_LABEL}>{t('partner_id')}</label>
               <input
                 type="text"
                 placeholder={t('placeholder_partner_id')}
-                className="input-field w-full font-mono"
+                className={`${INPUT} font-mono`}
                 value={form.id}
                 onChange={e => setForm({ ...form, id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
               />
             </div>
             <div>
-              <label className="mono-label">{t('display_name')}</label>
+              <label className={FIELD_LABEL}>{t('display_name')}</label>
               <input
                 type="text"
                 placeholder={t('placeholder_partner_name')}
-                className="input-field w-full"
+                className={INPUT}
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
           </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
-            <button onClick={onClose} className="btn-secondary px-6 py-2 text-[10px] uppercase tracking-widest">{t('cancel')}</button>
-            <button onClick={() => createPartner.mutate(form)}
-              disabled={!form.id || !form.name || createPartner.isPending}
-              className="btn-primary px-6 py-2 text-[10px] uppercase tracking-widest disabled:opacity-20"
-            >{t('create_new_partner')}</button>
-          </div>
-        </div>
-      </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="secondary" size="md" onClick={onClose}>{t('cancel')}</Button>
+          <Button
+            variant="primary"
+            size="md"
+            disabled={!form.id || !form.name || createPartner.isPending}
+            onClick={() => createPartner.mutate(form)}
+          >
+            {t('create_new_partner')}
+          </Button>
+        </ModalFooter>
+      </Modal>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
+    </>
   );
 }

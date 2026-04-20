@@ -87,7 +87,7 @@ describe('CreatePartnerModal', () => {
 
   it('calls onClose when backdrop is clicked', () => {
     render(<CreatePartnerModal open={true} onClose={onClose} />);
-    const backdrop = document.querySelector('.absolute.inset-0.bg-black\\/80');
+    const backdrop = screen.getByRole('dialog').parentElement;
     if (backdrop) fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalled();
   });

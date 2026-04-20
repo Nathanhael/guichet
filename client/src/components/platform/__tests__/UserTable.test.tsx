@@ -145,12 +145,12 @@ describe('UserTable', () => {
   it('shows clear button when search has value and clears on click', () => {
     renderComponent();
     const searchInput = screen.getByPlaceholderText('search_users_placeholder');
-    expect(screen.queryByText('clear')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('clear')).not.toBeInTheDocument();
 
     fireEvent.change(searchInput, { target: { value: 'test' } });
-    expect(screen.getByText('clear')).toBeInTheDocument();
+    expect(screen.getByLabelText('clear')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('clear'));
+    fireEvent.click(screen.getByLabelText('clear'));
     expect(searchInput).toHaveValue('');
   });
 
