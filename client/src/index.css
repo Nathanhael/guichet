@@ -161,16 +161,18 @@ html, body, [data-theme-transition] {
 }
 
 /* ===== MONOCHROME MODE =====
-   Collapse accent + semantic colors to ink; hierarchy comes from shadow +
-   border + weight (which the soft design already relies on). */
+   Collapse accent + semantic *hues* to ink, but preserve lightness/value
+   differences — state highlights, selected rows, and hover tints must
+   still be visible. Hierarchy comes from shadow + border + weight. */
 
 :root.monochrome-mode {
   --color-accent: var(--color-ink);
-  --color-accent-soft: var(--color-elevated);
+  --color-accent-soft: var(--color-hover);
   --color-urgent: var(--color-ink);
-  --color-urgent-soft: var(--color-elevated);
+  --color-urgent-soft: var(--color-hover);
   --color-ok: var(--color-ink);
-  --color-ok-soft: var(--color-elevated);
+  --color-ok-soft: var(--color-hover);
+  --color-whisper: var(--color-elevated);
   --color-whisper-ink: var(--color-ink-soft);
   --color-accent-amber: var(--color-ink);
   --color-accent-orange: var(--color-ink);
