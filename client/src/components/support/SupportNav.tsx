@@ -23,35 +23,31 @@ export default function SupportNav({ partnerName }: SupportNavProps) {
 
   return (
     <nav
-      className={`px-8 flex items-center justify-between sticky top-0 z-50 border-b border-[var(--color-border)] ${
-        focusMode ? 'py-2 bg-bg-base border-border' : 'py-4 bg-[var(--color-bg-surface)]'
+      className={`px-6 flex items-center justify-between sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] ${
+        focusMode ? 'py-2' : 'py-3'
       }`}
     >
-      {/* Left side: hamburger + brand + SUPPORT + partner name */}
-      <div className="flex items-center gap-2">
-        <img src="/icon-blue.svg" className="w-5 h-5 mr-1" alt="" />
-        <span className="text-[13px] font-mono font-bold uppercase tracking-[3px] text-[var(--color-text-primary)]">{APP_NAME}</span>
+      {/* Left: GUICHET | SUPPORT | partner name */}
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="text-[15px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{APP_NAME}</span>
         {!focusMode && (
           <>
-            <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono ml-2">
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
               {t('support')}
             </span>
-            <div className="h-6 w-px bg-[var(--color-border)] mx-2" />
-            <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
+            <span className="h-5 w-px bg-[var(--color-border)]" />
+            <span className="text-[13px] font-medium text-[var(--color-ink-soft)] truncate">{partnerName}</span>
           </>
         )}
       </div>
 
-      {/* Right side: partner switcher + status + capacity + Ctrl+K + gear + avatar */}
-      <div className="flex items-center gap-4">
-        {/* Confirm on switch: SupportView keeps active chat tabs with open
-            compose state held in component memory. Flipping tenants reconnects
-            the socket and drops those tabs, so warn first. */}
+      {/* Right: partner switcher + status + capacity + Ctrl+K + gear + avatar */}
+      <div className="flex items-center gap-2">
         {!focusMode && <PartnerSwitcher confirmBeforeSwitch />}
         <StatusPicker />
 
         {totalOnline > 0 && !focusMode && (
-          <span className="text-[9px] font-mono font-bold text-[var(--color-text-muted)]">
+          <span className="text-[11px] font-medium text-[var(--color-ink-muted)] tabular-nums px-1.5">
             {availableCount} / {totalOnline}
           </span>
         )}
@@ -60,17 +56,15 @@ export default function SupportNav({ partnerName }: SupportNavProps) {
           <button
             type="button"
             onClick={() => window.dispatchEvent(new CustomEvent('support:open-palette'))}
-            className="text-[9px] font-mono px-1.5 py-0.5 border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-text-muted)] select-none cursor-pointer bg-transparent"
+            className="h-8 px-2 flex items-center gap-1 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
             title={t('cmd_palette_title') || 'Command Palette'}
             aria-label={t('cmd_palette_title') || 'Command Palette'}
           >
-            Ctrl+K
+            <kbd className="font-mono text-[11px]">Ctrl+K</kbd>
           </button>
         )}
 
-        <SettingsPopover
-          showAccessibility
-        />
+        <SettingsPopover showAccessibility />
         <UserMenu />
       </div>
     </nav>

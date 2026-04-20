@@ -21,22 +21,19 @@ export default function AgentNav({
   if (!user) return null;
 
   return (
-    <nav className="relative z-50 px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] text-[var(--color-text-primary)] flex items-center justify-between">
-      {/* Left side: brand + AGENT + partner name */}
-      <div className="flex items-center gap-3">
-        <span className="font-bold text-2xl uppercase tracking-tighter">{APP_NAME}</span>
-        <span className="text-[10px] bg-[var(--color-text-primary)] text-[var(--color-bg-base)] px-2.5 py-1 font-bold uppercase tracking-wide font-mono">
+    <nav className="relative z-50 px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] text-[var(--color-ink)] flex items-center justify-between">
+      {/* Left: GUICHET | AGENT | partner name */}
+      <div className="flex items-center gap-3 min-w-0">
+        <span className="text-[15px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{APP_NAME}</span>
+        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
           {t('agent')}
         </span>
-        <div className="h-6 w-px bg-[var(--color-border)]" />
-        <span className="text-sm font-bold uppercase tracking-wide font-mono">{partnerName}</span>
+        <span className="h-5 w-px bg-[var(--color-border)]" />
+        <span className="text-[13px] font-medium text-[var(--color-ink-soft)] truncate">{partnerName}</span>
       </div>
 
-      {/* Right side: partner switcher (when multi-tenant) + connection status + gear + avatar */}
-      <div className="flex items-center gap-4">
-        {/* Confirm on switch: AgentView holds unsaved ticket drafts in local
-            component state, so flipping tenants mid-session would silently
-            lose the user's work. Prompt before we drop them. */}
+      {/* Right: partner switcher + connection status + gear + avatar */}
+      <div className="flex items-center gap-2">
         <PartnerSwitcher confirmBeforeSwitch />
         <ConnectionStatus />
         <SettingsPopover showAccessibility />

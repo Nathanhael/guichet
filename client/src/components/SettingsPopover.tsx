@@ -11,9 +11,9 @@ export interface SettingsPopoverProps {
   showViewMode?: boolean;
 }
 
-const ROW = 'flex items-center justify-between gap-4 px-3 py-2 border-b border-[var(--color-border)] last:border-b-0';
-const LABEL = 'text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-primary)] shrink-0';
-const SECTION = 'text-[8px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] px-3 pt-2 pb-1';
+const ROW = 'flex items-center justify-between gap-4 px-3.5 py-2.5 border-b border-[var(--color-border)] last:border-b-0';
+const LABEL = 'text-[12px] font-medium text-[var(--color-ink)] shrink-0';
+const SECTION = 'text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] px-3.5 pt-3 pb-1';
 
 function ToggleSwitch({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
   return (
@@ -21,17 +21,15 @@ function ToggleSwitch({ enabled, onToggle }: { enabled: boolean; onToggle: () =>
       role="switch"
       aria-checked={enabled}
       onClick={onToggle}
-      className={`relative w-7 h-4 border shrink-0 ${
+      className={`relative w-9 h-5 rounded-[var(--radius-pill)] shrink-0 transition-colors ${
         enabled
-          ? 'border-[var(--color-accent-blue)] bg-[var(--color-accent-blue)]/20'
-          : 'border-[var(--color-border)] bg-transparent'
+          ? 'bg-[var(--color-accent)]'
+          : 'bg-[var(--color-bg-elevated)]'
       }`}
     >
       <span
-        className={`absolute top-[1px] w-3 h-3 ${
-          enabled
-            ? 'right-[2px] bg-[var(--color-accent-blue)]'
-            : 'left-[2px] bg-[var(--color-text-muted)]'
+        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-[var(--shadow-soft)] transition-[left] ${
+          enabled ? 'left-[18px]' : 'left-0.5'
         }`}
       />
     </button>
@@ -61,7 +59,6 @@ export default function SettingsPopover({
     toggleMonochromeMode: s.toggleMonochromeMode,
   }));
 
-  // Close on outside mousedown
   useEffect(() => {
     if (!open) return;
     function handleMouseDown(e: MouseEvent) {
@@ -73,7 +70,6 @@ export default function SettingsPopover({
     return () => document.removeEventListener('mousedown', handleMouseDown);
   }, [open]);
 
-  // Close on Escape
   useEffect(() => {
     if (!open) return;
     function handleKeyDown(e: KeyboardEvent) {
@@ -91,7 +87,7 @@ export default function SettingsPopover({
         aria-label={t('settings')}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] text-[var(--color-text-primary)] hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-btn-text-inverse)]"
+        className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
       >
         <Settings className="h-4 w-4" />
       </button>
@@ -99,17 +95,15 @@ export default function SettingsPopover({
       {/* Popover */}
       {open && (
         <div
-          className="absolute right-0 top-full mt-1 z-50 min-w-[220px] bg-[var(--color-bg-surface)] border-2 border-[var(--color-border-heavy)]"
+          className="absolute right-0 top-full mt-1.5 z-50 min-w-[240px] bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] overflow-hidden"
           role="dialog"
           aria-label={t('settings')}
         >
-          {/* Language — always visible */}
           <div className={ROW}>
             <span className={LABEL}>{t('language')}</span>
             <LanguageSwitcher />
           </div>
 
-          {/* View Mode — conditional */}
           {showViewMode && (
             <div className={ROW}>
               <span className={LABEL}>{t('view_mode')}</span>
@@ -117,13 +111,11 @@ export default function SettingsPopover({
             </div>
           )}
 
-          {/* Dark Mode — always visible */}
           <div className={ROW}>
             <span className={LABEL}>{darkMode ? (t('light_mode') || 'Light Mode') : (t('dark_mode') || 'Dark Mode')}</span>
             <DarkModeToggle />
           </div>
 
-          {/* Accessibility toggles — conditional */}
           {showAccessibility && (
             <>
               <div className={SECTION}>{t('accessibility')}</div>
