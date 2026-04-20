@@ -4,7 +4,7 @@ Guidance for Claude Code when working with the Guichet codebase.
 
 ## Project Overview
 
-Guichet is a real-time, multi-tenant live chat platform with a brutalist design system. CSS custom property tokens drive the entire UI (light/dark mode), self-hosted JetBrains Mono + Inter fonts, zero external CDN dependencies.
+Guichet is a real-time, multi-tenant live chat platform with a soft-product design system (calm, polished, dense; three-panel workspace). CSS custom property tokens drive the entire UI (light/dark mode), self-hosted Inter + JetBrains Mono + Lexend fonts, zero external CDN dependencies.
 
 ## Commands
 
@@ -190,7 +190,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `utils/` — `statusColors.ts`, `dateUtils.ts`, `markdown.ts`, `fileUtils.ts`, `exportDashboard.ts`, `labelColors.ts`, `highlightText.tsx`, `businessHours.ts`, `notifications.ts`, `notificationSound.ts`, `roles.ts`, `uploadLogo.ts`, `trpc.ts`
 - Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SettingsPopover, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
 
-**Aesthetics**: Raw/Exposed Brutalist design. Zinc+Blue dark theme (#09090b base) and Warm Stone light theme (#fafaf9 base). JetBrains Mono for UI chrome (nav, labels, badges, buttons), Inter for content text (messages, descriptions). Minimal functional motion (150ms fade-in only). Functional layout transitions (sidebar collapse, tab switch) are permitted at ≤150ms. No decorative slides, bounces, or spring animations. No gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements). Design tokens defined as CSS custom properties in `index.css`. See `docs/BRUTALIST_DESIGN_SPEC.md` for full spec.
+**Aesthetics**: Soft Product design (calm, polished, dense). Indigo accent (`#5b5bd6` light / `#8b8cff` dark) as v1 fixed accent; future work exposes a per-user or per-partner accent picker. Inter is the default font everywhere; JetBrains Mono is scoped to code blocks, inline code, and ticket IDs only. Subtle shadows (`--shadow-soft` / `--shadow-card` / `--shadow-modal`), soft radii (14 card / 8 button / 999 pill / 12 bubble). Purposeful motion only: `fade-in` 150ms, `v2p-slide-in` 260ms (new messages, toasts), `v2p-pop` 180ms (modal cards), `v2p-pulse` 1.8s (unread badges), `v2p-dot` 1s (typing), theme transition 200ms. Respect `prefers-reduced-motion`. Tokens in `client/src/index.css`; full spec at `docs/SOFT_PRODUCT_DESIGN_SPEC.md`.
 
 ## Key Conventions
 
@@ -238,8 +238,11 @@ The seed script truncates all tables. The platform operator is auto-created by t
 
 ## Critical Mandates
 
-- **BRUTALIST TOKENS**: Use CSS custom property design tokens from index.css. No inline colors, no gradients, no shadows. No border-radius except avatar circles (`rounded-full` on user monogram elements).
-- **MINIMAL MOTION**: Only fade-in (150ms) for panels/modals. Functional layout transitions (sidebar collapse, tab switch) permitted at ≤150ms. No decorative slides, bounces, or spring animations. Respect prefers-reduced-motion.
+- **SOFT PRODUCT TOKENS**: Use CSS custom property design tokens from `index.css`. No hex literals in components — reference `var(--color-*)`, `var(--shadow-*)`, `var(--radius-*)`. Shadows and radii are required (card 14, btn 8, pill 999, bubble 12). See `docs/SOFT_PRODUCT_DESIGN_SPEC.md`.
+- **TYPOGRAPHY**: Inter is default everywhere. JetBrains Mono is **scoped** to code blocks, inline code, and ticket IDs (`#4421`). Never use mono for button chrome, labels, placeholders, badges, or timestamps in prose.
+- **COMPOSE FROM PRIMITIVES**: Build new UI from `components/ui/` (`<Button>`, `<Card>`, `<Pill>`, `<Modal>`, `<Avatar>`, `<Toast>`) — don't hand-roll styling. (Primitives land in phase 2 of the redesign; until then, redefined `@utility` classes in `index.css` hold the line.)
+- **MOTION**: Use documented keyframes only (`fade-in`, `v2p-slide-in`, `v2p-pop`, `v2p-pulse`, `v2p-dot`). Theme transitions at 200ms on `bg`/`color`/`border-color`. No decorative slides, bounces, or spring animations. Always respect `prefers-reduced-motion`.
+- **THEME PARITY**: Every new component must render correctly in both `.dark` and default. Monochrome + dyslexic modes inherit for free when you use tokens.
 - **DOCKER ONLY**: Never run `npm`/`node`/`npx` on the host.
 - **TYPE SAFETY**: No `any` types. Zod on backend, TypeScript on frontend.
 - **MULTI-TENANCY**: Every query must filter by `partner_id`.
@@ -331,7 +334,7 @@ guichet/
 ├── docs/
 │   ├── AUDIT_RUNBOOK.md           # Audit chain / GDPR purge / ticket emitter oncall runbook
 │   ├── BREAK_GLASS_RUNBOOK.md     # Emergency operations runbook
-│   ├── BRUTALIST_DESIGN_SPEC.md   # Brutalist design system token reference
+│   ├── SOFT_PRODUCT_DESIGN_SPEC.md # Soft-product design system token reference + mandates
 │   ├── TECHNICAL.md               # Technical architecture deep-dive
 │   ├── TENANT_IDENTITY_SPEC.md    # Multi-tenant identity specification
 │   ├── USER_GUIDE.md              # End-user guide (roles, auth, features)
