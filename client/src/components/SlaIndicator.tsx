@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { trpc } from '../utils/trpc';
 import { getSocket } from '../hooks/useSocket';
+import Pill from './ui/Pill';
 
 interface Props {
   ticketId: string;
@@ -27,16 +28,26 @@ export default function SlaIndicator({ ticketId, hidden }: Props) {
   if (!data || data.status === 'disabled') return null;
 
   if (data.status === 'met') {
-    return <span className="mono-label px-2 py-0.5 border border-[var(--color-accent-green)] text-[var(--color-accent-green)]">SLA MET</span>;
+    return <Pill tone="ok">SLA met</Pill>;
   }
   if (data.status === 'ok') {
-    return <span className="mono-label px-2 py-0.5 text-[var(--color-text-secondary)]">SLA: {data.remainingMinutes}m left</span>;
+    return <Pill tone="muted">SLA: {data.remainingMinutes}m left</Pill>;
   }
   if (data.status === 'warning') {
-    return <span className="mono-label px-2 py-0.5 border border-[var(--color-accent-amber)] text-[var(--color-accent-amber)]">SLA: {data.remainingMinutes}m left</span>;
+    return (
+      <span
+        className="inline-flex items-center rounded-[var(--radius-pill)] px-2 py-0.5 text-[11px] font-semibold leading-none"
+        style={{
+          backgroundColor: 'color-mix(in srgb, var(--color-accent-amber) 14%, transparent)',
+          color: 'var(--color-accent-amber)',
+        }}
+      >
+        SLA: {data.remainingMinutes}m left
+      </span>
+    );
   }
   if (data.status === 'breached') {
-    return <span className="mono-label px-2 py-0.5 border border-[var(--color-accent-red)] text-[var(--color-accent-red)]">SLA: {data.overdueMinutes}m over</span>;
+    return <Pill tone="urgent">SLA: {data.overdueMinutes}m over</Pill>;
   }
   return null;
 }

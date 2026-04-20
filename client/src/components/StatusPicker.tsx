@@ -10,8 +10,8 @@ interface StatusOption {
 }
 
 const STATUSES: StatusOption[] = [
-  { key: 'online', label: 'status_online', dot: 'bg-accent-green' },
-  { key: 'away', label: 'status_away', dot: 'bg-accent-amber' },
+  { key: 'online', label: 'status_online', dot: 'bg-[var(--color-ok)]' },
+  { key: 'away', label: 'status_away', dot: 'bg-[var(--color-accent-amber)]' },
 ];
 
 /**
@@ -26,7 +26,6 @@ export default function StatusPicker() {
   const ref = useRef<HTMLDivElement>(null);
   const t = useT();
 
-  // Close dropdown on outside click
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -35,8 +34,6 @@ export default function StatusPicker() {
     return () => document.removeEventListener('mousedown', onOutsideClick);
   }, []);
 
-  // Global shortcut: Ctrl+. dispatches `support:open-status-picker` on
-  // SupportView. Listening here keeps the picker self-contained.
   useEffect(() => {
     function openPicker() {
       setOpen(true);
@@ -61,7 +58,6 @@ export default function StatusPicker() {
     setAgentStatus(newStatus);
     setOpen(false);
 
-    // Emit status to server so it's visible to admins / other support
     if (user) {
       getSocket().emit('status:set', { status: newStatus });
     }
@@ -75,28 +71,26 @@ export default function StatusPicker() {
         onClick={() => setOpen((v) => !v)}
         aria-label={`Status: ${t(current.label)}`}
         aria-expanded={open}
-        className="flex items-center gap-2 bg-bg-surface border border-border px-2.5 py-1.5 group hover:bg-bg-elevated"
+        className="inline-flex items-center gap-2 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius-btn)] px-2.5 py-1.5 text-[12px] font-medium text-[var(--color-ink)] hover:bg-[var(--color-hover)] transition-colors"
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${current.dot}`} />
-        <span className="text-[10px] font-bold uppercase text-text-primary">
-          {t(current.label)}
-        </span>
+        <span>{t(current.label)}</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-40 bg-bg-surface border border-border-heavy z-50">
+        <div className="absolute right-0 top-full mt-1 w-40 bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-card)] overflow-hidden z-50">
           {STATUSES.map((s) => (
             <button
               key={s.key}
               onClick={() => handleChange(s.key)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-[10px] font-bold uppercase ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-[12px] font-medium transition-colors ${
                 s.key === value
-                  ? 'bg-accent-blue text-[var(--color-btn-text-inverse)]'
-                  : 'text-text-primary hover:bg-bg-elevated'
+                  ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
+                  : 'text-[var(--color-ink)] hover:bg-[var(--color-hover)]'
               }`}
             >
               <span className={`w-2 h-2 rounded-full shrink-0 ${s.dot}`} />
-              {t(s.label)}
+              <span>{t(s.label)}</span>
             </button>
           ))}
         </div>

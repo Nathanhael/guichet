@@ -33,13 +33,13 @@ export default function PlatformView() {
   return (
     <ErrorBoundary>
     <div className="h-screen flex flex-col bg-[var(--color-bg-base)] text-[var(--color-text-primary)] overflow-hidden font-sans">
-      <nav className="px-8 py-4 border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
+      <nav className="px-8 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <img src="/icon-blue.svg" className="w-5 h-5 mr-1" alt="" />
-            <span className="text-[13px] font-mono font-bold uppercase tracking-[3px] text-[var(--color-text-primary)]">{APP_NAME}</span>
+            <span className="text-[14px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{APP_NAME}</span>
           </div>
-          <span className="text-[10px] font-bold px-2.5 py-1 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] uppercase tracking-wide font-mono ml-2">
+          <span className="inline-flex items-center rounded-[var(--radius-pill)] bg-[var(--color-accent)] text-white text-[11px] font-semibold px-2 py-0.5 ml-2 leading-none">
             {t('platform')}
           </span>
         </div>
@@ -49,17 +49,17 @@ export default function PlatformView() {
         </div>
       </nav>
 
-      <div role="tablist" aria-label={t('platform')} className="flex border-b border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)] px-8 overflow-x-auto">
+      <div role="tablist" aria-label={t('platform')} className="flex border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-8 overflow-x-auto">
         {(['partners', 'users', 'invites', 'sso', 'health', 'audit', 'archive'] as const).map((tab) => (
           <button
             key={tab}
             role="tab"
             aria-selected={activeTab === tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-8 py-4 text-[10px] font-bold font-mono uppercase tracking-widest border-b-2 whitespace-nowrap ${
+            className={`px-6 py-3 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
               activeTab === tab
-                ? 'border-[var(--color-accent-blue)] text-[var(--color-accent-blue)]'
-                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'
+                ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
+                : 'border-transparent text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
             }`}
           >
             {t(`${tab}_tab`)}

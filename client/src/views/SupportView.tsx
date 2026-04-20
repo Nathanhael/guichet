@@ -454,7 +454,7 @@ export default function SupportView() {
                     const pt = previewTicket;
                     const isTerminal = pt.status === 'closed';
                     return (
-                      <div className="absolute inset-0 z-10 bg-bg-base">
+                      <div className="absolute inset-0 z-10 bg-[var(--color-bg-base)]">
                         <TicketPreview
                           ticket={pt}
                           onJoin={isTerminal ? undefined : () => joinTicket(pt)}

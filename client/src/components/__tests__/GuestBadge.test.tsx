@@ -47,15 +47,15 @@ describe('GuestBadge', () => {
   it('uses the compact inline class set by default', () => {
     render(<GuestBadge isExternal />);
     const el = screen.getByTestId('guest-badge');
-    expect(el.className).toContain('text-[9px]');
-    expect(el.className).not.toContain('text-[10px]');
+    expect(el.className).toContain('text-[10px]');
+    expect(el.className).toContain('px-1.5');
   });
 
   it('uses the prominent class set when size="prominent"', () => {
     render(<GuestBadge isExternal size="prominent" />);
     const el = screen.getByTestId('guest-badge');
-    expect(el.className).toContain('text-[10px]');
-    expect(el.className).toContain('tracking-[2px]');
+    expect(el.className).toContain('text-[11px]');
+    expect(el.className).toContain('px-2');
   });
 
   it('appends caller-supplied className', () => {
@@ -64,14 +64,15 @@ describe('GuestBadge', () => {
     expect(el.className).toContain('ml-2');
   });
 
-  it('applies brutalist token palette (amber border + amber text, no radius)', () => {
+  it('applies soft-product amber pill palette (amber border + amber text + rounded pill)', () => {
     render(<GuestBadge isExternal />);
     const el = screen.getByTestId('guest-badge');
     expect(el.className).toContain('border-[var(--color-accent-amber)]');
     expect(el.className).toContain('text-[var(--color-accent-amber)]');
-    expect(el.className).toContain('uppercase');
-    expect(el.className).toContain('font-mono');
-    // Brutalist: no border-radius on the badge
-    expect(el.className).not.toMatch(/\brounded/);
+    expect(el.className).toContain('rounded-[var(--radius-pill)]');
+    expect(el.className).toContain('font-semibold');
+    // Soft product: Inter default, not mono, not uppercase
+    expect(el.className).not.toContain('font-mono');
+    expect(el.className).not.toContain('uppercase');
   });
 });

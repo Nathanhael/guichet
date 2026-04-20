@@ -4,6 +4,8 @@ import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 import { useUrlParam } from '../../hooks/useUrlState';
 import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
+import Button from '../ui/Button';
+import SectionLabel from '../ui/SectionLabel';
 
 function formatDetails(log: { action: string; metadata?: unknown; targetId: string | null }) {
   const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
@@ -37,19 +39,17 @@ function formatDetails(log: { action: string; metadata?: unknown; targetId: stri
   }
 }
 
+const inputClass =
+  'w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2 text-[13px] text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors';
+
 export default function AdminAuditLog() {
   const LIMIT = 50;
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<string[]>([]);
-  // Filters are mirrored into ?a.* so an operator can bookmark/share a
-  // specific triage view. The `a.` namespace keeps us clear of the platform
-  // view, which uses `p.` (see PlatformAuditLog).
   const [filterAction, setFilterAction] = useUrlParam('action', '', 'a');
   const [filterActorId, setFilterActorId] = useUrlParam('actor', '', 'a');
   const [filterTargetType, setFilterTargetType] = useUrlParam('ttype', '', 'a');
   const [filterTargetId, setFilterTargetId] = useUrlParam('tid', '', 'a');
-  // Seed debounced value from URL so a deep-linked ?tid=… query fires on
-  // first render instead of waiting 500ms for the debounce effect.
   const [debouncedTargetId, setDebouncedTargetId] = useState(() => filterTargetId);
   const [filterWasExternalStr, setFilterWasExternalStr] = useUrlParam('guest', '', 'a');
   const filterWasExternal = filterWasExternalStr === '1';
@@ -61,11 +61,6 @@ export default function AdminAuditLog() {
   const [dateTo, setDateTo] = useUrlParam('to', '', 'a');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<AuditEntry | null>(null);
-  // Mirror the open drawer's row id into ?a.open=<id> so an operator can
-  // share a direct link to a specific audit entry. On mount we look up the
-  // row in the current page; if it isn't loaded (e.g. deep page), we leave
-  // the drawer closed rather than silently fetching — the filters in the
-  // URL usually pin the row on page 1 of a shared view.
   const [openId, setOpenId] = useUrlParam('open', '', 'a');
 
   const resetCursor = useCallback(() => {
@@ -77,7 +72,6 @@ export default function AdminAuditLog() {
     resetCursor();
   }, [filterAction, filterActorId, filterTargetType, filterWasExternal, dateFrom, dateTo, resetCursor]);
 
-  // Debounce the target ID search so every keystroke doesn't fire a query.
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedTargetId(filterTargetId);
@@ -89,11 +83,6 @@ export default function AdminAuditLog() {
   const { data: actionList } = trpc.partner.audit.listActions.useQuery();
   const { data: targetTypeList } = trpc.partner.audit.listTargetTypes.useQuery();
 
-  // Partner-scoped chain verify. The mutation walks the full WORM archive
-  // (the hash chain is global) but returns only this partner's slice counts
-  // and whether the break — if any — lives in scope. Cross-tenant row ids
-  // are never leaked back (the server nulls `brokenAt` when the broken row
-  // belongs to another partner).
   const verifyChain = trpc.partner.audit.verifyChain.useMutation({
     onSuccess: (r) => {
       if (r.error) {
@@ -130,8 +119,6 @@ export default function AdminAuditLog() {
   const utils = trpc.useUtils();
   const items = data?.items || [];
 
-  // Open-from-URL: when the current page of rows arrives, promote the one
-  // whose id matches ?a.open=<id>. Runs once per items-array identity.
   useEffect(() => {
     if (!openId || selectedEntry) return;
     const match = items.find(l => l.id === openId);
@@ -176,9 +163,6 @@ export default function AdminAuditLog() {
       let blob: Blob;
       let filename: string;
       if (format === 'json') {
-        // Raw array of rows keeps the JSON structurally identical to what the
-        // tRPC query returned — downstream compliance tools can diff by id
-        // without reshuffling keys. Pretty-printed for grep-ability.
         blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json;charset=utf-8;' });
         filename = `guichet_audit_${stamp}.json`;
       } else {
@@ -211,36 +195,37 @@ export default function AdminAuditLog() {
   }
 
   return (
-    <div className="max-w-6xl space-y-6 pb-12">
+    <div className="max-w-6xl space-y-6 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-2xl font-bold uppercase tracking-tight">Audit Log</h2>
-          <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)] mt-1 tracking-wide">
+          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">Audit log</h2>
+          <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">
             Security-relevant actions in this tenant. Export for compliance review.
           </p>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="secondary"
+            size="md"
             onClick={() => verifyChain.mutate()}
             disabled={verifyChain.isPending}
-            className="btn-secondary disabled:opacity-30"
             data-testid="verify-chain-btn"
           >
-            {verifyChain.isPending ? 'Verifying…' : 'Verify Chain'}
-          </button>
-          <button onClick={() => handleExport('csv')} className="btn-primary">Export CSV</button>
-          <button onClick={() => handleExport('json')} className="btn-secondary">Export JSON</button>
+            {verifyChain.isPending ? 'Verifying…' : 'Verify chain'}
+          </Button>
+          <Button variant="primary" size="md" onClick={() => handleExport('csv')}>Export CSV</Button>
+          <Button variant="secondary" size="md" onClick={() => handleExport('json')}>Export JSON</Button>
         </div>
       </div>
 
-      <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
+      <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-soft)] p-4 flex flex-col gap-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="space-y-1">
-            <label className="mono-label ml-1">Action</label>
+            <SectionLabel>Action</SectionLabel>
             <select
               value={filterAction}
               onChange={e => setFilterAction(e.target.value)}
-              className="input-field w-full"
+              className={inputClass}
             >
               <option value="">All actions</option>
               {(actionList || []).map(a => (
@@ -250,11 +235,11 @@ export default function AdminAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <label className="mono-label ml-1">Actor</label>
+            <SectionLabel>Actor</SectionLabel>
             <select
               value={filterActorId}
               onChange={e => setFilterActorId(e.target.value)}
-              className="input-field w-full"
+              className={inputClass}
             >
               <option value="">All actors</option>
               {actors.map(([id, name]) => (
@@ -264,12 +249,12 @@ export default function AdminAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <label className="mono-label ml-1">Target type</label>
+            <SectionLabel>Target type</SectionLabel>
             <select
               id="target-type-filter"
               value={filterTargetType}
               onChange={e => setFilterTargetType(e.target.value)}
-              className="input-field w-full"
+              className={inputClass}
             >
               <option value="">All targets</option>
               {(targetTypeList || []).map(tt => (
@@ -279,35 +264,35 @@ export default function AdminAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <label className="mono-label ml-1">Target id</label>
+            <SectionLabel>Target id</SectionLabel>
             <input
               id="target-id-filter"
               type="text"
               placeholder="Search target id"
               value={filterTargetId}
               onChange={e => setFilterTargetId(e.target.value)}
-              className="input-field w-full"
+              className={inputClass}
             />
           </div>
 
           <div className="space-y-1">
-            <label className="mono-label ml-1">From</label>
+            <SectionLabel>From</SectionLabel>
             <input
               type="date"
               value={dateFrom}
               onChange={e => setDateFrom(e.target.value)}
-              className="input-field w-full"
+              className={inputClass}
             />
           </div>
 
           <div className="space-y-1">
-            <label className="mono-label ml-1">To</label>
+            <SectionLabel>To</SectionLabel>
             <input
               type="date"
               value={dateTo}
               min={dateFrom}
               onChange={e => setDateTo(e.target.value)}
-              className="input-field w-full"
+              className={inputClass}
             />
           </div>
         </div>
@@ -318,32 +303,33 @@ export default function AdminAuditLog() {
             type="checkbox"
             checked={filterWasExternal}
             onChange={e => setFilterWasExternal(e.target.checked)}
+            className="rounded border-[var(--color-border)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
           />
-          <label htmlFor="was-external-filter" className="mono-label cursor-pointer">
+          <label htmlFor="was-external-filter" className="text-[12px] text-[var(--color-ink-soft)] cursor-pointer">
             Guest (external) actions only
           </label>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center uppercase font-bold text-[var(--color-text-muted)]">Loading</div>
+        <div className="py-8 text-center text-[13px] text-[var(--color-ink-muted)]">Loading…</div>
       ) : (
-        <div className="surface-card overflow-x-auto flex-1 mb-[72px]">
+        <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[720px]">
             <thead>
-              <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Time</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Action</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Actor</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Target</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Details</th>
+              <tr className="bg-[var(--color-bg-elevated)] border-b border-[var(--color-border)]">
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Time</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Action</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Actor</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Target</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
               {items.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-16 text-center">
-                    <p className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">No entries</p>
+                    <p className="text-[13px] text-[var(--color-ink-muted)]">No entries</p>
                   </td>
                 </tr>
               )}
@@ -364,16 +350,16 @@ export default function AdminAuditLog() {
                     });
                     setOpenId(log.id);
                   }}
-                  className={`hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer ${severityRowClass(auditSeverity(log.action))}`}
+                  className={`hover:bg-[var(--color-hover)] cursor-pointer transition-colors ${severityRowClass(auditSeverity(log.action))}`}
                   data-audit-row-id={log.id}
                   data-audit-severity={auditSeverity(log.action)}
                 >
-                  <td className="p-3 text-[10px] font-mono whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
-                  <td className="p-3 text-xs font-bold uppercase">{log.action}</td>
-                  <td className="p-3 text-xs uppercase">{log.actorName || <span className="text-[var(--color-text-muted)]">System</span>}</td>
-                  <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.targetId || '-'}</td>
-                  <td className="p-3 text-[10px] text-[var(--color-text-secondary)] max-w-xs">
-                    <div className="font-bold uppercase tracking-wide">{formatDetails(log)}</div>
+                  <td className="p-3 text-[11px] font-mono text-[var(--color-ink-soft)] whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
+                  <td className="p-3 text-[12px] font-semibold text-[var(--color-ink)]">{log.action}</td>
+                  <td className="p-3 text-[12px] text-[var(--color-ink)]">{log.actorName || <span className="text-[var(--color-ink-muted)]">System</span>}</td>
+                  <td className="p-3 text-[11px] font-mono text-[var(--color-ink-soft)]">{log.targetId || '-'}</td>
+                  <td className="p-3 text-[12px] text-[var(--color-ink-soft)] max-w-xs">
+                    <div>{formatDetails(log)}</div>
                   </td>
                 </tr>
               ))}
@@ -384,17 +370,19 @@ export default function AdminAuditLog() {
 
       <div className="fixed bottom-0 left-0 right-0 bg-[var(--color-bg-base)] border-t border-[var(--color-border)] p-4 z-20">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
+          <div className="flex items-center gap-4 text-[11px] text-[var(--color-ink-muted)]">
             <div className="flex items-center gap-2">
               <span>Records per page</span>
-              <span className="border-b border-current pb-0.5">{LIMIT}</span>
+              <span className="font-medium text-[var(--color-ink-soft)]">{LIMIT}</span>
             </div>
-            <span>|</span>
+            <span className="text-[var(--color-border-strong)]">·</span>
             <span>Page {page + 1}</span>
           </div>
 
-          <div className="flex gap-4">
-            <button
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="md"
               disabled={cursorStack.length === 0}
               onClick={() => {
                 const stack = [...cursorStack];
@@ -402,11 +390,12 @@ export default function AdminAuditLog() {
                 setCursorStack(stack);
                 setCursor(prev || undefined);
               }}
-              className="btn-secondary disabled:opacity-30"
             >
-              &larr; Newer
-            </button>
-            <button
+              ← Newer
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
               disabled={!data?.nextCursor}
               onClick={() => {
                 if (data?.nextCursor) {
@@ -414,10 +403,9 @@ export default function AdminAuditLog() {
                   setCursor(data.nextCursor);
                 }
               }}
-              className="btn-secondary disabled:opacity-30"
             >
-              Older &rarr;
-            </button>
+              Older →
+            </Button>
           </div>
         </div>
       </div>

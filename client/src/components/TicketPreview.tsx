@@ -1,13 +1,11 @@
 import { useRef, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { useT } from '../i18n';
 import MessageBubble from './MessageBubble';
 import { trpc } from '../utils/trpc';
 import { Ticket, Message } from '../types';
-
-const DEPT_COLOR: Record<string, string> = {
-  DSC: 'bg-accent-blue text-[var(--color-btn-text-inverse)]',
-  FOT: 'bg-bg-elevated text-text-primary border border-border',
-};
+import Button from './ui/Button';
+import Pill from './ui/Pill';
 
 interface TicketPreviewProps {
   ticket: Ticket;
@@ -23,7 +21,6 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
   const t = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Fetch messages for preview if none provided
   const messageQuery = trpc.message.list.useQuery(
     { ticketId: ticket.id },
     { enabled: !!ticket.id && (!propMessages || propMessages.length === 0) }
@@ -31,53 +28,53 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
 
   const messages = (propMessages && propMessages.length > 0) ? propMessages : ((messageQuery.data?.messages as unknown as Message[]) || []);
 
-  // Scroll to bottom when messages load
   useEffect(() => {
     if (messages.length > 0 && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length]);
+
+  const modeLabel = readOnly ? (t('history_mode') || 'History') : (t('preview_mode') || 'Preview');
+
   return (
     <div className="h-full flex flex-col p-4">
-      <div className="bg-bg-surface border border-border-heavy flex flex-col h-full overflow-hidden">
-        {/* Preview header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-bg-surface">
+      <div className="bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] border border-[var(--color-border)] shadow-[var(--shadow-card)] flex flex-col h-full overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-border)]">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-             <span className={`text-[10px] font-bold px-2 py-0.5 uppercase tracking-widest shrink-0 ${DEPT_COLOR[ticket.dept] || DEPT_COLOR[ticket.dept.toUpperCase()] || 'bg-bg-elevated text-text-primary'}`}>
-              {ticket.dept}
-            </span>
-            <span className="text-sm font-bold uppercase tracking-tight text-text-primary truncate">{ticket.agentName}</span>
-            <span className="badge bg-accent-blue text-[var(--color-btn-text-inverse)] shrink-0">
-              {readOnly ? (t('history_mode') || 'HISTORY') : t('preview_mode')}
-            </span>
+            <Pill tone="muted">{ticket.dept}</Pill>
+            <span className="text-[14px] font-semibold text-[var(--color-ink)] truncate">{ticket.agentName}</span>
+            <Pill tone="accent">{modeLabel}</Pill>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {onViewAudit && (
-              <button
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={onViewAudit}
-                className="text-[10px] font-bold uppercase tracking-widest px-3 h-8 border border-border-heavy hover:bg-bg-elevated"
                 title="View audit history for this ticket"
               >
                 Audit
-              </button>
+              </Button>
             )}
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center border border-border-heavy font-bold hover:bg-bg-elevated">×</button>
+            <button
+              onClick={onClose}
+              aria-label={t('close') || 'Close'}
+              className="w-8 h-8 inline-flex items-center justify-center rounded-[var(--radius-btn)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </div>
 
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-1 bg-bg-base">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-1 bg-[var(--color-bg-base)]">
           {messageQuery.isLoading ? (
-            <div className="h-full flex flex-col items-center justify-center opacity-30">
-              <svg className="animate-spin h-6 w-6 mb-3" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-[10px] font-bold uppercase tracking-widest">{t('loading') || 'Loading...'}</p>
+            <div className="h-full flex flex-col items-center justify-center gap-3">
+              <div className="h-6 w-6 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin" />
+              <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading') || 'Loading'}</p>
             </div>
           ) : !messages || messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center opacity-20">
-              <p className="text-sm font-bold uppercase tracking-widest">{t('no_messages')}</p>
+            <div className="h-full flex flex-col items-center justify-center">
+              <p className="text-[13px] text-[var(--color-ink-muted)]">{t('no_messages')}</p>
             </div>
           ) : (
             messages.map((msg, idx) => {
@@ -103,24 +100,16 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
           )}
         </div>
 
-        {/* Join bar — hidden in read-only mode */}
         {!readOnly && (
-          <div className="px-6 py-4 border-t border-border bg-bg-surface flex items-center justify-between gap-4">
+          <div className="px-6 py-4 border-t border-[var(--color-border)] bg-[var(--color-bg-surface)] flex items-center justify-between gap-4">
             {ticket.status === 'closed' ? (
-              <p className="text-sm font-bold uppercase text-text-muted">{t('conversation_closed')}</p>
+              <p className="text-[13px] text-[var(--color-ink-muted)]">{t('conversation_closed')}</p>
             ) : (
               <>
-                <p className="text-xs font-bold uppercase tracking-wide text-text-muted">{t('waiting_for_expert')}</p>
-                <button
-                  onClick={onJoin}
-                  disabled={joinDisabled}
-                  className={`px-8 py-3 text-xs font-bold uppercase tracking-widest ${joinDisabled
-                    ? 'btn-secondary opacity-20 cursor-not-allowed'
-                    : 'btn-primary'
-                    }`}
-                >
+                <p className="text-[12px] text-[var(--color-ink-muted)]">{t('waiting_for_expert')}</p>
+                <Button variant="primary" size="md" onClick={onJoin} disabled={joinDisabled}>
                   {t('join')}
-                </button>
+                </Button>
               </>
             )}
           </div>

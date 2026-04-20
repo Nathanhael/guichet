@@ -107,14 +107,14 @@ describe('QueueTicketRow', () => {
     const { container } = render(
       <QueueTicketRow ticket={baseTicket} isActive={true} unreadCount={0} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
-    expect((container.firstChild as HTMLElement)?.className).toContain('border-l-[var(--color-accent-blue)]');
+    expect((container.firstChild as HTMLElement)?.className).toContain('border-l-[var(--color-accent)]');
   });
 
   it('applies unread tint when unreadCount > 0', () => {
     const { container } = render(
       <QueueTicketRow ticket={baseTicket} isActive={false} unreadCount={2} currentUserId="support-1" variant="mine" onClick={() => {}} />
     );
-    expect((container.firstChild as HTMLElement)?.className).toContain('bg-[rgba(59,130,246,0.04)]');
+    expect((container.firstChild as HTMLElement)?.className).toContain('bg-[var(--color-accent-soft)]');
   });
 
   it('calls onClick when clicked', () => {
@@ -147,7 +147,7 @@ describe('QueueTicketRow', () => {
     );
     const dot = container.querySelector('[data-agent-online]');
     expect(dot).toBeInTheDocument();
-    expect(dot?.className).toContain('accent-green');
+    expect(dot?.className).toContain('bg-[var(--color-ok)]');
   });
 
   it('hides customer dot when agent is offline', () => {

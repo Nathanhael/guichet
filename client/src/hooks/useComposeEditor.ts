@@ -31,7 +31,7 @@ interface UseComposeEditorArgs {
 
 /**
  * Guichet compose editor — a Tiptap instance pre-configured with the
- * brutalist chat subset: Bold, Italic, Strike, Code, Blockquote,
+ * Guichet chat subset: Bold, Italic, Strike, Code, Blockquote,
  * BulletList. No headings, no horizontal rules, no code blocks, no
  * ordered lists. Input rules are on so typing `**bold**` still
  * auto-converts to bold (markdown muscle memory preserved).

@@ -16,9 +16,9 @@ export default function ArchiveTicketRow({
   onClick,
 }: ArchiveTicketRowProps) {
   const rowClasses = [
-    'px-3 py-2.5 border-b border-[var(--color-border)] cursor-pointer opacity-70 hover:opacity-100',
-    'hover:bg-[var(--color-bg-elevated)]',
-    isActive && 'border-l-[3px] border-l-[var(--color-accent-blue)] opacity-100',
+    'px-3 py-2.5 border-b border-[var(--color-border)] cursor-pointer opacity-70 hover:opacity-100 transition-colors',
+    'hover:bg-[var(--color-hover)]',
+    isActive && 'border-l-[3px] border-l-[var(--color-accent)] opacity-100',
   ]
     .filter(Boolean)
     .join(' ');
@@ -27,16 +27,16 @@ export default function ArchiveTicketRow({
     <li className={rowClasses} onClick={onClick}>
       {/* Row 1: dept + closed badge + name + time */}
       <div className="flex items-center gap-1.5 mb-1">
-        <span className="font-mono text-[7px] font-bold uppercase tracking-[0.5px] px-[5px] py-px border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] shrink-0">
+        <span className="inline-flex items-center rounded-[var(--radius-pill)] text-[10px] font-semibold px-1.5 py-0.5 border border-[var(--color-accent)] text-[var(--color-accent)] shrink-0 leading-none">
           {ticket.dept}
         </span>
-        <span className="font-mono text-[7px] font-bold uppercase tracking-[0.5px] px-[5px] py-px border border-[var(--color-text-faint)] text-[var(--color-text-muted)] shrink-0">
+        <span className="inline-flex items-center rounded-[var(--radius-pill)] text-[10px] font-semibold px-1.5 py-0.5 border border-[var(--color-border)] text-[var(--color-ink-muted)] shrink-0 leading-none">
           Closed
         </span>
-        <span className="text-[13px] font-semibold text-[var(--color-text-primary)] truncate flex-1 min-w-0">
+        <span className="text-[13px] font-semibold text-[var(--color-ink)] truncate flex-1 min-w-0">
           {ticket.agentName}
         </span>
-        <span className="font-mono text-[9px] text-[var(--color-text-muted)] shrink-0 ml-auto">
+        <span className="text-[11px] font-medium tabular-nums text-[var(--color-ink-muted)] shrink-0 ml-auto">
           {getSmartTimestamp(ticket.closedAt || ticket.createdAt)}
         </span>
       </div>

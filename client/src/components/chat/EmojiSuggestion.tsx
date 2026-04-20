@@ -7,20 +7,13 @@ interface EmojiSuggestionProps {
   onClose: () => void;
 }
 
-/**
- * Inline emoji suggestion panel — triggered by `:query` in the compose editor.
- * Filters emoji by name/keywords, keyboard-navigable (Up/Down/Enter/Escape).
- */
 export default function EmojiSuggestion({ query, onSelect, onClose }: EmojiSuggestionProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const results = searchEmoji(query);
 
-  // Reset selection when results change
   useEffect(() => { setActiveIndex(0); }, [query]);
 
-  // Keyboard navigation — captured at the document level so it works
-  // even while focus is inside the Tiptap editor.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'ArrowDown') {
@@ -41,7 +34,6 @@ export default function EmojiSuggestion({ query, onSelect, onClose }: EmojiSugge
     return () => document.removeEventListener('keydown', handleKeyDown, true);
   }, [results, activeIndex, onSelect, onClose]);
 
-  // Scroll active item into view
   useEffect(() => {
     const el = listRef.current?.children[activeIndex] as HTMLElement | undefined;
     el?.scrollIntoView({ block: 'nearest' });
@@ -52,21 +44,21 @@ export default function EmojiSuggestion({ query, onSelect, onClose }: EmojiSugge
   return (
     <div
       ref={listRef}
-      className="absolute bottom-full left-0 mb-1 w-56 max-h-48 overflow-y-auto bg-bg-surface border-2 border-border-heavy z-50"
+      className="absolute bottom-full left-0 mb-1 w-60 max-h-48 overflow-y-auto rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] z-50 p-1"
     >
       {results.map((entry, i) => (
         <button
           key={entry.name}
           type="button"
           onMouseDown={(e) => { e.preventDefault(); onSelect(entry.emoji); }}
-          className={`w-full flex items-center gap-2.5 px-3 py-1.5 text-left ${
+          className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left rounded-[var(--radius-btn)] transition-colors ${
             i === activeIndex
-              ? 'bg-accent-blue text-[var(--color-btn-text-inverse)]'
-              : 'text-text-primary hover:bg-bg-elevated'
+              ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
+              : 'text-[var(--color-ink)] hover:bg-[var(--color-hover)]'
           }`}
         >
           <span className="text-base">{entry.emoji}</span>
-          <span className="font-mono text-[10px] font-bold truncate">:{entry.name}</span>
+          <span className="text-[12px] font-medium truncate">:{entry.name}</span>
         </button>
       ))}
     </div>

@@ -6,6 +6,7 @@ import { useTokenRefresh } from './hooks/useTokenRefresh';
 import { initTitleBadgeListener } from './utils/notifications';
 import DarkModeToggle from './components/DarkModeToggle';
 import ErrorBoundary from './components/ErrorBoundary';
+import Button from './components/ui/Button';
 import { isPlatformAdmin, isTenantAdmin } from './utils/roles';
 
 const LoginView = lazy(() => import('./views/LoginView'));
@@ -16,30 +17,30 @@ const AgentView = lazy(() => import('./views/AgentView'));
 
 const LoadingFallback = () => (
   <div className="h-screen w-screen flex items-center justify-center bg-[var(--color-bg-base)]">
-    <div className="mono-label text-[10px]">Loading</div>
+    <div className="flex flex-col items-center gap-3">
+      <div className="h-6 w-6 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin" />
+      <p className="text-[12px] text-[var(--color-ink-muted)]">Loading</p>
+    </div>
   </div>
 );
 
 function NoPartnerState() {
   const logout = useStore((s) => s.logout);
   return (
-    <div className="h-screen flex flex-col items-center justify-center bg-[var(--color-bg-base)] text-[var(--color-text-primary)]">
+    <div className="h-screen flex flex-col items-center justify-center bg-[var(--color-bg-base)] text-[var(--color-ink)]">
       <div className="text-center max-w-md px-8">
-        <div className="w-16 h-16 border border-[var(--color-border-heavy)] flex items-center justify-center mx-auto mb-6">
-          <span className="text-2xl font-bold">!</span>
+        <div className="w-14 h-14 rounded-full bg-[var(--color-urgent-soft)] flex items-center justify-center mx-auto mb-5">
+          <span className="text-2xl text-[var(--color-urgent)]">!</span>
         </div>
-        <h1 className="text-2xl font-bold uppercase tracking-tighter mb-2">No Partner Available</h1>
-        <p className="text-sm font-mono font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-8">
+        <h1 className="text-[22px] font-semibold tracking-[-0.2px] mb-2">No partner available</h1>
+        <p className="text-[13px] text-[var(--color-ink-muted)] mb-8 leading-relaxed">
           Your account is not assigned to any active partner. Contact your administrator.
         </p>
-        <div className="flex items-center justify-center gap-4">
+        <div className="flex items-center justify-center gap-3">
           <DarkModeToggle />
-          <button
-            onClick={logout}
-            className="btn-secondary px-6 py-3 text-[10px] mono-label"
-          >
+          <Button variant="secondary" size="md" onClick={logout}>
             Sign Out
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -57,10 +58,8 @@ export default function App() {
   useSocket();
   useTokenRefresh();
 
-  // Initialize tab title badge listener (clears badge on window focus)
   useEffect(() => { initTitleBadgeListener(); }, []);
 
-  // Auto-clear stale activeMembershipId for non-platform users
   useEffect(() => {
     if (!user || !activeMembershipId || user.isPlatformOperator) return;
     const found = (memberships || []).find(m => m.id === activeMembershipId);
@@ -70,7 +69,6 @@ export default function App() {
   const renderView = () => {
     if (!user) return <ErrorBoundary><Suspense fallback={<LoadingFallback />}><LoginView /></Suspense></ErrorBoundary>;
 
-    // If user is Platform Operator, show Platform View by default
     if (isPlatformAdmin(user) && !activeMembershipId) {
       return (
         <ErrorBoundary>
@@ -84,12 +82,10 @@ export default function App() {
     const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
     const role = activeMembership?.role;
 
-    // Non-platform user with no valid membership — show unavailable state
     if (!isPlatformAdmin(user) && !activeMembership) {
       return <NoPartnerState />;
     }
 
-    // Platform Operators get Admin access to any partner they 'Enter'
     if (isPlatformAdmin(user) || isTenantAdmin(role)) {
       return (
         <ErrorBoundary>
@@ -100,7 +96,6 @@ export default function App() {
       );
     }
 
-    // End-user / customer agent view
     if (role === 'agent') {
       return (
         <ErrorBoundary>
@@ -111,7 +106,6 @@ export default function App() {
       );
     }
 
-    // Support staff view
     return (
       <ErrorBoundary>
         <Suspense fallback={<LoadingFallback />}>

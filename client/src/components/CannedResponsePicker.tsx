@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { trpc } from '../utils/trpc';
 import { useT } from '../i18n';
 import useStore from '../store/useStore';
+import SectionLabel from './ui/SectionLabel';
 
 interface CannedResponse {
   id: string;
@@ -38,7 +39,6 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
-  // Close on click outside (stable ref avoids listener churn from inline callbacks)
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
@@ -54,10 +54,8 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
     { enabled: !!user }
   );
 
-  // Extract search query after "/"
   const query = inputText.startsWith('/') ? inputText.slice(1).toLowerCase() : '';
 
-  // Filter responses by query
   const filtered = (responses || []).filter((r: CannedResponse) => {
     if (!query) return true;
     return (
@@ -67,18 +65,13 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
     );
   });
 
-  // Reset selection when filter changes
   useEffect(() => {
     setSelectedIndex(0);
   }, [query]);
 
-  // Keyboard navigation — scoped to wrapper container to avoid capturing
-  // keystrokes from other focused elements (modals, dialogs, etc.)
   useEffect(() => {
     const wrapper = wrapperRef.current;
     if (!wrapper) return;
-    // Use capture phase on the wrapper's parent (compose area) so we intercept
-    // before the textarea's own keydown.
     const target = wrapper.closest('form');
     if (!target) return;
     function handleKeyDown(e: Event) {
@@ -100,7 +93,6 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
     return () => target.removeEventListener('keydown', handleKeyDown, true);
   }, [filtered, selectedIndex, onSelect, onClose]);
 
-  // Scroll selected item into view
   useEffect(() => {
     const el = listRef.current?.children[selectedIndex] as HTMLElement;
     el?.scrollIntoView({ block: 'nearest' });
@@ -117,8 +109,8 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
   if (filtered.length === 0 && query) {
     return (
       <div ref={wrapperRef} className="relative">
-        <div className="absolute bottom-full left-0 right-0 mb-1 bg-bg-surface border border-border-heavy p-4 z-50">
-          <p className="text-xs text-text-muted italic">{t('no_canned_responses') || 'No matching responses'}</p>
+        <div className="absolute bottom-full left-0 right-0 mb-1 rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] p-4 z-50">
+          <p className="text-[12px] text-[var(--color-ink-muted)] italic">{t('no_canned_responses') || 'No matching responses'}</p>
         </div>
       </div>
     );
@@ -130,38 +122,36 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
     <div ref={wrapperRef} className="relative">
       <div
         ref={listRef}
-        className="absolute bottom-full left-0 right-0 mb-1 bg-bg-surface border border-border-heavy max-h-64 overflow-y-auto z-50"
+        className="absolute bottom-full left-0 right-0 mb-1 rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] max-h-64 overflow-y-auto z-50"
       >
-        <div className="px-3 py-2 border-b border-border">
-          <span className="section-header">
-            {t('canned_responses') || 'Quick replies'}
-          </span>
+        <div className="px-3 py-2 border-b border-[var(--color-border)]">
+          <SectionLabel>{t('canned_responses') || 'Quick replies'}</SectionLabel>
         </div>
         {filtered.map((r: CannedResponse, idx: number) => (
           <button
             key={r.id}
             onClick={() => onSelect(expandVariables(r.body))}
             onMouseEnter={() => setSelectedIndex(idx)}
-            className={`w-full text-left px-4 py-2.5 flex flex-col gap-0.5 ${
+            className={`w-full text-left px-4 py-2.5 flex flex-col gap-0.5 transition-colors ${
               idx === selectedIndex
-                ? 'bg-bg-elevated'
-                : 'hover:bg-bg-elevated'
+                ? 'bg-[var(--color-accent-soft)]'
+                : 'hover:bg-[var(--color-hover)]'
             }`}
           >
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-text-primary">{r.title}</span>
+              <span className="text-[12px] font-semibold text-[var(--color-ink)]">{r.title}</span>
               {r.shortcut && (
-                <span className="text-[9px] font-mono px-1.5 py-0.5 bg-bg-elevated text-text-muted">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)]">
                   /{r.shortcut}
                 </span>
               )}
               {r.dept && (
-                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 border border-border text-text-muted">
+                <span className="text-[10px] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] font-medium">
                   {r.dept}
                 </span>
               )}
             </div>
-            <span className="text-[11px] text-text-secondary truncate">{r.body}</span>
+            <span className="text-[11px] text-[var(--color-ink-soft)] truncate">{r.body}</span>
           </button>
         ))}
       </div>

@@ -113,9 +113,9 @@ describe('CommandPalette', () => {
 
   it('clicking backdrop closes palette', () => {
     render(<CommandPalette commands={commands} onClose={onClose} />);
-    // Backdrop is the first child div with bg-black/80
     const dialog = screen.getByRole('dialog');
-    const backdrop = dialog.querySelector('.bg-black\\/80');
+    const backdrop = dialog.querySelector('[class*="color-scrim"]');
+    expect(backdrop).toBeTruthy();
     if (backdrop) fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalledOnce();
   });

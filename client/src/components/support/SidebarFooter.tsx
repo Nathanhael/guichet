@@ -3,12 +3,11 @@ import { ChevronUp, ChevronDown } from 'lucide-react';
 import { useT } from '../../i18n';
 import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
 import GuestBadge from '../GuestBadge';
+import SectionLabel from '../ui/SectionLabel';
 import type { OnlineSupport } from '../../types';
 
 interface SidebarFooterProps {
   sidebarTab: 'queue' | 'archive';
-  /** Flip between queue and archive mode. Optional for tests that only
-      render the component for layout/i18n assertions. */
   onToggleMode?: () => void;
   queueCount: number;
   onlineSupportUsers: OnlineSupport[];
@@ -36,29 +35,26 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
 
   return (
     <div className="border-t border-[var(--color-border)]">
-      {/* Expanded team panel */}
       {expanded && onlineSupportUsers.length > 0 && (
         <div className="border-b border-[var(--color-border)] px-3 py-3">
-          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-muted)] mb-2">
-            {t('online_team')}
-          </div>
+          <SectionLabel className="mb-2">{t('online_team')}</SectionLabel>
           <div className="flex flex-col gap-1.5">
             {onlineSupportUsers.map((agent) => {
               const colors = getStatusColors(agent.status);
               return (
                 <div key={agent.userId} className="flex items-center gap-2 px-1 py-0.5">
-                  <div className="w-6 h-6 rounded-full bg-[var(--color-bg-elevated)] flex items-center justify-center text-[9px] font-bold text-[var(--color-text-primary)] shrink-0">
+                  <div className="w-6 h-6 rounded-full bg-[var(--color-bg-elevated)] flex items-center justify-center text-[10px] font-semibold text-[var(--color-ink)] shrink-0">
                     {getInitials(agent.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-[11px] font-semibold text-[var(--color-text-primary)] truncate flex items-center gap-1.5">
+                    <div className="text-[12px] font-semibold text-[var(--color-ink)] truncate flex items-center gap-1.5">
                       <span className="truncate">{agent.name}</span>
                       <GuestBadge isExternal={agent.isExternal} />
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className={`w-2 h-2 rounded-full ${colors.dot}`} />
-                    <span className={`text-[9px] font-bold uppercase ${colors.text}`}>
+                    <span className={`text-[11px] font-medium ${colors.text}`}>
                       {t(getStatusI18nKey(agent.status))}
                     </span>
                   </div>
@@ -69,11 +65,6 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
         </div>
       )}
 
-      {/* Collapsed footer bar. We wrap the expand/collapse trigger in a <div>
-          rather than a <button> so the archive-mode-toggle button inside can
-          live as a real <button> without nesting (which is invalid HTML and
-          fires both onClicks). The outer div handles click + keyboard +
-          aria for the team-panel toggle. */}
       <div
         role="button"
         tabIndex={0}
@@ -86,15 +77,13 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
         }}
         aria-label={t('toggle_team_panel')}
         aria-expanded={expanded}
-        className="w-full px-4 py-2 flex items-center justify-between hover:bg-[var(--color-bg-elevated)] cursor-pointer select-none"
+        className="w-full px-4 py-2 flex items-center justify-between hover:bg-[var(--color-hover)] cursor-pointer select-none transition-colors"
       >
         <div className="flex items-center gap-2.5">
-          <span className="font-mono text-[9px] font-medium uppercase tracking-[1px] text-[var(--color-text-muted)]">
-            <span className="tabular-nums text-[var(--color-text-secondary)]">{queueCount}</span>{' '}
+          <span className="text-[11px] font-medium text-[var(--color-ink-muted)]">
+            <span className="tabular-nums text-[var(--color-ink-soft)] font-semibold">{queueCount}</span>{' '}
             {sidebarTab === 'queue' ? t('queued') : t('archived')}
           </span>
-          {/* Archive mode toggle — A2 accent-blue outline. Click flips between
-              queue and archive views without collapsing the team panel. */}
           <button
             type="button"
             onClick={(e) => {
@@ -102,20 +91,19 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
               onToggleMode?.();
             }}
             title={sidebarTab === 'queue' ? (t('view_archive') || 'View archive') : (t('view_queue') || 'Back to queue')}
-            className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] px-2 py-[2px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)]"
+            className="text-[11px] font-semibold rounded-[var(--radius-pill)] px-2 py-0.5 border border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white transition-colors"
           >
             {sidebarTab === 'queue' ? t('archive') : t('queue')}
           </button>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Agent badges — only when someone is actually online */}
           {totalOnline > 0 && (
             <div className="flex items-center">
               {visible.map((agent) => (
                 <div
                   key={agent.userId}
-                  className="w-5 h-5 rounded-full bg-[var(--color-bg-elevated)] border-[1.5px] border-[var(--color-bg-surface)] flex items-center justify-center font-mono text-[7px] font-bold text-[var(--color-text-secondary)] shrink-0 -ml-1.5 first:ml-0"
+                  className="w-5 h-5 rounded-full bg-[var(--color-bg-elevated)] border-[1.5px] border-[var(--color-bg-surface)] flex items-center justify-center text-[8px] font-semibold text-[var(--color-ink-soft)] shrink-0 -ml-1.5 first:ml-0"
                   title={agent.name}
                 >
                   {getInitials(agent.name)}
@@ -123,7 +111,7 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
               ))}
               {overflow.length > 0 && (
                 <div
-                  className="w-5 h-5 rounded-full bg-[var(--color-bg-elevated)] border-[1.5px] border-[var(--color-bg-surface)] flex items-center justify-center font-mono text-[7px] font-bold text-[var(--color-text-muted)] shrink-0 -ml-1.5"
+                  className="w-5 h-5 rounded-full bg-[var(--color-bg-elevated)] border-[1.5px] border-[var(--color-bg-surface)] flex items-center justify-center text-[8px] font-semibold text-[var(--color-ink-muted)] shrink-0 -ml-1.5"
                   title={overflow.map((a) => a.name).join(', ')}
                 >
                   +{overflow.length}
@@ -132,25 +120,21 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
             </div>
           )}
 
-          {/* Capacity — color by actual team state:
-              - 0 online → muted "OFFLINE" chip (no misleading count)
-              - all away → amber dot + count
-              - any available → green dot + count */}
           {totalOnline === 0 ? (
-            <span className="flex items-center gap-1 font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
-              <span className="w-[5px] h-[5px] rounded-full bg-[var(--color-text-muted)] opacity-60" />
+            <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--color-ink-muted)]">
+              <span className="w-[5px] h-[5px] rounded-full bg-[var(--color-ink-muted)] opacity-60" />
               {t('team_offline')}
             </span>
           ) : (
             <div className="flex items-center gap-1">
               <span
                 className={`w-[5px] h-[5px] rounded-full ${
-                  availableCount > 0 ? 'bg-[var(--color-accent-green)]' : 'bg-[var(--color-accent-amber)]'
+                  availableCount > 0 ? 'bg-[var(--color-ok)]' : 'bg-[var(--color-accent-amber)]'
                 }`}
               />
               <span
-                className={`font-mono text-[9px] font-bold tabular-nums ${
-                  availableCount > 0 ? 'text-[var(--color-accent-green)]' : 'text-[var(--color-accent-amber)]'
+                className={`text-[11px] font-semibold tabular-nums ${
+                  availableCount > 0 ? 'text-[var(--color-ok)]' : 'text-[var(--color-accent-amber)]'
                 }`}
               >
                 {availableCount} / {totalOnline}
@@ -158,11 +142,10 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
             </div>
           )}
 
-          {/* Chevron — make the expand/collapse affordance visible */}
           {expanded ? (
-            <ChevronDown className="w-3 h-3 text-[var(--color-text-muted)] opacity-50 shrink-0" />
+            <ChevronDown className="w-3 h-3 text-[var(--color-ink-muted)] shrink-0" strokeWidth={2} />
           ) : (
-            <ChevronUp className="w-3 h-3 text-[var(--color-text-muted)] opacity-50 shrink-0" />
+            <ChevronUp className="w-3 h-3 text-[var(--color-ink-muted)] shrink-0" strokeWidth={2} />
           )}
         </div>
       </div>

@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { trpc } from '../../utils/trpc';
 import { Bookmark, Plus, Trash2, Star, X } from 'lucide-react';
 import { useT } from '../../i18n';
+import Button from '../ui/Button';
+import SectionLabel from '../ui/SectionLabel';
 
 export interface ViewFilters {
   dept?: string;
@@ -48,7 +50,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
   useEffect(() => {
     if (!isOpen) return;
     const close = () => setIsOpen(false);
-    window.addEventListener('scroll', close, true); // capture phase for nested scrolls
+    window.addEventListener('scroll', close, true);
     window.addEventListener('resize', close);
     return () => {
       window.removeEventListener('scroll', close, true);
@@ -104,95 +106,83 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
 
   return (
     <div className="relative">
-      {/* Toggle button */}
       <button
         ref={toggleRef}
         onClick={() => setIsOpen((v) => !v)}
-        className={[
-          'w-7 h-7 flex items-center justify-center border border-[var(--color-border)] ',
+        className={`w-7 h-7 flex items-center justify-center rounded-[var(--radius-btn)] border transition-colors ${
           isOpen
-            ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-            : 'hover:bg-[var(--color-bg-elevated)] text-[var(--color-text-secondary)]',
-        ].join(' ')}
-        title={t('savedViews') || 'Saved Views'}
-        aria-label={t('savedViews') || 'Saved Views'}
+            ? 'border-[var(--color-accent)] text-[var(--color-accent)] bg-[var(--color-accent-soft)]'
+            : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)]'
+        }`}
+        title={t('savedViews') || 'Saved views'}
+        aria-label={t('savedViews') || 'Saved views'}
       >
-        <Bookmark size={12} />
+        <Bookmark size={12} strokeWidth={2} />
       </button>
 
-      {/* Dropdown */}
       {isOpen && createPortal(
         <div
           ref={dropdownRef}
           data-saved-view-dropdown
-          className="fixed w-56 bg-[var(--color-bg-surface)] border border-[var(--color-border)] z-50 animate-fade-in"
+          className="fixed w-60 rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] z-50 overflow-hidden animate-[fade-in_150ms_ease-out]"
           style={{ top: dropdownPos.top, left: dropdownPos.left }}
         >
-          {/* Header */}
           <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
-            <span className="font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
-              {t('savedViews') || 'SAVED VIEWS'}
-            </span>
+            <SectionLabel>{t('savedViews') || 'Saved views'}</SectionLabel>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] "
+              className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
               aria-label={t('close') || 'Close'}
             >
-              <X size={10} />
+              <X size={12} strokeWidth={2} />
             </button>
           </div>
 
-          {/* View list */}
-          <div className="max-h-48 overflow-y-auto">
+          <div className="max-h-56 overflow-y-auto py-1">
             {views.length === 0 ? (
-              <p className="font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-faint)] px-3 py-3">
+              <p className="text-[12px] text-[var(--color-ink-muted)] px-3 py-3">
                 {t('noSavedViews') || 'No saved views'}
               </p>
             ) : (
               views.map((view) => (
                 <div
                   key={view.id}
-                  className="group flex items-center gap-1 px-3 py-2 hover:bg-[var(--color-bg-elevated)] "
+                  className="group flex items-center gap-1 px-3 py-1.5 hover:bg-[var(--color-hover)] transition-colors"
                 >
-                  {/* Apply button */}
                   <button
                     onClick={() => handleApply(view.filters as Record<string, unknown>)}
-                    className="flex-1 text-left text-xs font-bold uppercase truncate text-[var(--color-text-primary)]"
+                    className="flex-1 text-left text-[12px] font-medium truncate text-[var(--color-ink)]"
                     title={view.name}
                   >
                     {view.name}
                   </button>
 
-                  {/* Star / default toggle */}
                   <button
                     onClick={() => handleSetDefault(view.id, view.isDefault)}
-                    className={[
-                      'flex-shrink-0 ',
+                    className={`flex-shrink-0 transition-opacity ${
                       view.isDefault
-                        ? 'text-[var(--color-accent-blue)] opacity-100'
-                        : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100',
-                    ].join(' ')}
+                        ? 'text-[var(--color-accent)] opacity-100'
+                        : 'text-[var(--color-ink-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-accent)]'
+                    }`}
                     title={view.isDefault ? (t('removeDefault') || 'Remove default') : (t('setDefault') || 'Set as default')}
                     aria-label={view.isDefault ? (t('removeDefault') || 'Remove default') : (t('setDefault') || 'Set as default')}
                   >
-                    <Star size={11} fill={view.isDefault ? 'currentColor' : 'none'} />
+                    <Star size={12} strokeWidth={2} fill={view.isDefault ? 'currentColor' : 'none'} />
                   </button>
 
-                  {/* Delete button */}
                   <button
                     onClick={() => deleteMutation.mutate(view.id)}
-                    className="flex-shrink-0 text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-accent-red)] "
+                    className="flex-shrink-0 text-[var(--color-ink-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-urgent)] transition-opacity"
                     title={t('delete') || 'Delete'}
                     aria-label={t('delete') || 'Delete'}
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={12} strokeWidth={2} />
                   </button>
                 </div>
               ))
             )}
           </div>
 
-          {/* Save section */}
           <div className="border-t border-[var(--color-border)] px-3 py-2">
             {showSaveInput ? (
               <div className="flex items-center gap-1">
@@ -208,37 +198,38 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                     }
                   }}
                   placeholder={t('viewName') || 'View name…'}
-                  className="flex-1 min-w-0 bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] text-[10px] px-2 py-1 outline-none focus:border-[var(--color-accent-blue)]"
+                  className="flex-1 min-w-0 rounded-[var(--radius-btn)] bg-[var(--color-bg-base)] border border-[var(--color-border)] text-[var(--color-ink)] text-[12px] px-2 py-1 outline-none focus:border-[var(--color-accent)]"
                   autoFocus
                 />
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={handleSave}
                   disabled={!saveName.trim() || createMutation.isPending}
-                  className="btn-primary text-[8px] px-2 py-1 disabled:opacity-20 disabled:cursor-not-allowed"
                 >
                   {t('save') || 'Save'}
-                </button>
+                </Button>
                 <button
                   onClick={() => {
                     setShowSaveInput(false);
                     setSaveName('');
                   }}
-                  className="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] "
+                  className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
                   aria-label={t('cancel') || 'Cancel'}
                 >
-                  <X size={11} />
+                  <X size={12} strokeWidth={2} />
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setShowSaveInput(true)}
                 disabled={!hasFilters}
-                className="flex items-center gap-1.5 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] disabled:opacity-20 disabled:cursor-not-allowed  w-full"
+                className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-40 disabled:cursor-not-allowed w-full transition-colors"
                 title={!hasFilters ? (t('noActiveFilter') || 'Apply a filter first') : undefined}
               >
-                <Plus size={11} />
-                <span className="font-mono text-[9px] font-bold uppercase tracking-wide">
-                  {t('saveCurrentView') || 'Save Current View'}
+                <Plus size={12} strokeWidth={2} />
+                <span>
+                  {t('saveCurrentView') || 'Save current view'}
                 </span>
               </button>
             )}
