@@ -105,25 +105,23 @@ export default function ResizablePanel({
   if (!isOpen) {
     return (
       <div
-        className={`shrink-0 w-10 bg-[var(--color-bg-surface)] flex flex-col ${
-          side === 'left' ? 'border-r' : 'border-l'
-        } border-[var(--color-border)]`}
+        className="shrink-0 w-10 bg-[var(--color-bg-surface)] flex flex-col rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] overflow-hidden"
       >
         <button
           onClick={onToggle}
-          className="h-full min-w-10 flex flex-col items-center py-3 gap-2 hover:bg-[var(--color-bg-base)]"
+          className="h-full min-w-10 flex flex-col items-center py-3 gap-2 hover:bg-[var(--color-hover)]"
           title={toggleTitle}
         >
-          <ExpandIcon className="h-3.5 w-3.5 opacity-40" />
+          <ExpandIcon className="h-3.5 w-3.5 text-[var(--color-ink-muted)]" />
           {collapsedBadge != null && collapsedBadge > 0 && (
-            <span className="text-[10px] font-bold tabular-nums text-[var(--color-accent-blue)]">
+            <span className="text-[10px] font-semibold tabular-nums text-[var(--color-accent)]">
               {collapsedBadge}
             </span>
           )}
           {collapsedIcon}
           {collapsedLabel && (
             <span
-              className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] opacity-20 mt-1"
+              className="text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--color-ink-muted)] mt-1"
               style={{ writingMode: 'vertical-rl' }}
             >
               {collapsedLabel}
@@ -137,10 +135,8 @@ export default function ResizablePanel({
   // ── Expanded with resize handle ──
   return (
     <div
-      className={`shrink-0 relative bg-[var(--color-bg-surface)] flex flex-col overflow-hidden ${
-        side === 'left'
-          ? 'border-r border-[var(--color-border)] max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40'
-          : 'border-l border-[var(--color-border)]'
+      className={`shrink-0 relative bg-[var(--color-bg-surface)] flex flex-col rounded-[var(--radius-card)] shadow-[var(--shadow-card)] overflow-hidden ${
+        side === 'left' ? 'max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40' : ''
       }`}
       style={{ width }}
     >
@@ -152,7 +148,7 @@ export default function ResizablePanel({
         onDoubleClick={onToggle}
         className={`absolute top-0 bottom-0 w-1 z-10 cursor-col-resize transition-colors duration-75 ${
           side === 'left' ? 'right-0' : 'left-0'
-        } ${isDragging ? 'bg-[var(--color-accent-blue)]' : 'hover:bg-[var(--color-border)]'}`}
+        } ${isDragging ? 'bg-[var(--color-accent)]' : 'hover:bg-[var(--color-border-strong)]'}`}
       />
     </div>
   );
