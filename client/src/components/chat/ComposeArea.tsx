@@ -637,34 +637,34 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   if (isClosed) return null;
 
   return (
-    <form onSubmit={sendMessage} className={`border-t-2 p-4 pb-6 ${whisperMode
-      ? 'bg-bg-elevated border-border-heavy'
-      : 'bg-bg-surface border-border-heavy'
+    <form onSubmit={sendMessage} className={`border-t border-[var(--color-border)] p-4 pb-5 ${whisperMode
+      ? 'bg-[var(--color-whisper)]'
+      : 'bg-[var(--color-bg-surface)]'
       }`}>
       <div className="w-full">
         {replyingTo && (
-          <div className="flex items-start gap-2 px-4 py-2 bg-bg-elevated border-l-[3px] border-accent-blue">
+          <div className="flex items-start gap-2 px-3 py-2 mb-2 bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] border-l-[3px] border-[var(--color-accent)]">
             <div className="flex-1 min-w-0">
-              <div className="font-mono text-[9px] font-bold text-accent-blue truncate">
+              <div className="text-[11px] font-semibold text-[var(--color-accent)] truncate">
                 {t('replying_to') || 'Replying to'} {replyingTo.senderName}
               </div>
-              <div className="text-[11px] text-text-secondary truncate">{replyingTo.text || '[Attachment]'}</div>
+              <div className="text-[12px] text-[var(--color-ink-soft)] truncate">{replyingTo.text || '[Attachment]'}</div>
             </div>
-            <button onClick={onClearReply} className="text-text-secondary hover:text-text-primary p-1 shrink-0"><X size={14} /></button>
+            <button onClick={onClearReply} className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] p-1 shrink-0"><X size={14} /></button>
           </div>
         )}
 
         {/* AI improved -- revert bar */}
         {originalText !== null && (
-          <div className="flex items-center justify-between mb-2 px-3 py-1.5 bg-bg-elevated border border-border-heavy">
-            <span className="text-[10px] font-bold text-text-primary uppercase tracking-wider flex items-center gap-1.5">
+          <div className="flex items-center justify-between mb-2 px-3 py-1.5 bg-[var(--color-accent-soft)] rounded-[var(--radius-btn)]">
+            <span className="text-[11px] font-semibold text-[var(--color-accent)] flex items-center gap-1.5">
               <Sparkles size={12} />
               {t('ai_improved') || 'AI improved'}
             </span>
             <button
               type="button"
               onClick={revertImprove}
-              className="text-[10px] font-bold text-text-primary hover:opacity-60 underline underline-offset-2"
+              className="text-[11px] font-medium text-[var(--color-accent)] hover:opacity-80 underline underline-offset-2"
             >
               {t('revert_to_original') || 'Revert to original'}
             </button>
@@ -673,7 +673,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
         {/* Multi-file preview strip */}
         {pendingFiles.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 mb-2 p-2 bg-bg-elevated border border-border">
+          <div className="flex flex-wrap items-center gap-2 mb-2 p-2 bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)]">
             {pendingFiles.map((pf, idx) => {
               const isImg = pf.file.type.startsWith('image/');
               const ext = pf.file.name.split('.').pop()?.toLowerCase() || '';
@@ -681,17 +681,17 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               return (
                 <div key={idx} className="relative shrink-0">
                   {isImg ? (
-                    <img src={pf.preview} alt={pf.file.name} className="h-16 w-16 object-cover border border-border" />
+                    <img src={pf.preview} alt={pf.file.name} className="h-16 w-16 object-cover rounded-[var(--radius-btn)] shadow-[var(--shadow-soft)]" />
                   ) : (
-                    <div className="h-16 w-16 flex flex-col items-center justify-center border border-border bg-bg-surface">
-                      <FileText size={24} strokeWidth={1.5} className="text-accent-blue" />
-                      <span className="text-[8px] font-mono font-bold text-text-muted mt-0.5">{label}</span>
+                    <div className="h-16 w-16 flex flex-col items-center justify-center rounded-[var(--radius-btn)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)]">
+                      <FileText size={22} strokeWidth={1.5} className="text-[var(--color-accent)]" />
+                      <span className="text-[10px] font-medium text-[var(--color-ink-muted)] mt-0.5">{label}</span>
                     </div>
                   )}
                   <button
                     type="button"
                     onClick={() => removeFile(idx)}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-[var(--color-bg-surface)] rounded-full shadow-[var(--shadow-soft)] text-[var(--color-ink-muted)] hover:text-[var(--color-urgent)]"
                     title={t('remove') || 'Remove'}
                   >
                     <X size={10} />
@@ -700,10 +700,10 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               );
             })}
             <div className="flex flex-col gap-0.5 min-w-0 ml-1">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-text-muted">
+              <span className="text-[11px] font-medium text-[var(--color-ink-soft)]">
                 {pendingFiles.length} file{pendingFiles.length > 1 ? 's' : ''} selected {pendingFiles.length < 5 && `(max 5)`}
               </span>
-              <span className="text-[9px] text-text-muted opacity-40">
+              <span className="text-[11px] text-[var(--color-ink-muted)]">
                 Add a message or press Enter to send
               </span>
             </div>
@@ -727,9 +727,9 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               onClick={() => setDismissedPreviews((prev) => new Set(prev).add(livePreview.url))}
               aria-label={t('dismiss_preview') || 'Dismiss preview'}
               title={t('dismiss_preview') || 'Dismiss preview'}
-              className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-bg-surface border border-border-heavy text-text-muted hover:text-text-primary"
+              className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-[var(--color-bg-surface)] rounded-full shadow-[var(--shadow-soft)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
             >
-              <X size={10} strokeWidth={3} />
+              <X size={10} strokeWidth={2.5} />
             </button>
           </div>
         )}
@@ -753,37 +753,37 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             const files = Array.from(e.dataTransfer.files).filter(Boolean);
             if (files.length > 0) addFiles(files);
           }}
-          className={`relative border-2 ${
-            whisperMode ? 'border-accent-purple compose-whisper' : 'border-border-heavy'
-          } ${isDragOver ? 'outline outline-2 outline-accent-blue outline-offset-0' : ''}`}
+          className={`relative rounded-[var(--radius-card)] overflow-hidden shadow-[var(--shadow-soft)] ${
+            whisperMode ? 'ring-1 ring-[var(--color-whisper-ink)]' : 'ring-1 ring-[var(--color-border)]'
+          } ${isDragOver ? 'outline outline-2 outline-[var(--color-accent)] outline-offset-0' : ''}`}
         >
           {whisperMode && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-accent-purple text-white font-mono text-[9px] font-bold uppercase tracking-[0.14em]">
-              <Ghost size={11} strokeWidth={2.5} />
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-whisper-ink)] text-white text-[11px] font-semibold">
+              <Ghost size={12} strokeWidth={2} />
               <span>{t('whisper_label') || 'Whisper'}</span>
             </div>
           )}
 
           {showFormatToolbar && <FormatToolbar editor={editor} />}
 
-        <div className={`flex items-center ${compact ? 'gap-1 p-1' : 'gap-3 p-1.5'} ${
+        <div className={`flex items-center ${compact ? 'gap-1 p-1' : 'gap-2 p-1.5'} ${
           whisperMode
-            ? 'bg-whisper-bg'
-            : 'bg-bg-elevated'
+            ? 'bg-[var(--color-whisper)]'
+            : 'bg-[var(--color-bg-surface)]'
         }`}>
-        <div className={`flex items-center self-center ${compact ? 'px-0' : 'px-1'}`}>
+        <div className={`flex items-center self-center gap-0.5 ${compact ? 'px-0' : 'px-1'}`}>
           {isSupport && (
             <button
               type="button"
               onClick={() => setWhisperMode((v) => !v)}
               aria-label={t('whisper_mode') || 'Toggle whisper mode'}
               title={t('whisper_mode')}
-              className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center ${whisperMode
-                ? 'bg-accent-blue text-[var(--color-btn-text-inverse)]'
-                : 'text-text-primary opacity-40 hover:opacity-100'
+              className={`${compact ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center rounded-full transition-colors ${whisperMode
+                ? 'bg-[var(--color-whisper-ink)] text-white'
+                : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]'
                 }`}
             >
-              <Ghost size={compact ? 16 : 20} strokeWidth={2.5} />
+              <Ghost size={compact ? 16 : 18} strokeWidth={2} />
             </button>
           )}
 
@@ -793,17 +793,17 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               onClick={() => setShowFormatToolbar((v) => !v)}
               aria-label={t('formatting') || 'Toggle formatting'}
               title={t('formatting') || 'Formatting'}
-              className={`w-10 h-10 flex items-center justify-center ${showFormatToolbar
-                ? 'text-accent-blue opacity-100'
-                : 'text-text-primary opacity-40 hover:opacity-100'
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${showFormatToolbar
+                ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
+                : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]'
                 }`}
             >
-              <ALargeSmall size={20} strokeWidth={2.5} />
+              <ALargeSmall size={18} strokeWidth={2} />
             </button>
           )}
 
-          <label className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 cursor-pointer`} title={t('attach_file') || 'Attach file'}>
-            <ImageIcon size={compact ? 16 : 20} strokeWidth={2.5} />
+          <label className={`${compact ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] cursor-pointer transition-colors`} title={t('attach_file') || 'Attach file'}>
+            <ImageIcon size={compact ? 16 : 18} strokeWidth={2} />
             <input
               ref={fileRef}
               type="file"
@@ -823,16 +823,16 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
               aria-label={t('emoji') || 'Emoji'}
               aria-expanded={showEmojiPicker}
-              className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100"
+              className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
               title={t('emoji') || 'Emoji'}
             >
-              <Smile size={20} />
+              <Smile size={18} />
             </button>
             {showEmojiPicker && (
               <div
                 role="grid"
                 aria-label={t('emoji') || 'Emoji'}
-                className="absolute bottom-full left-0 mb-2 bg-bg-surface border-2 border-border-heavy z-50 p-2 w-[280px]"
+                className="absolute bottom-full left-0 mb-2 bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] z-50 p-2 w-[280px]"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') { setShowEmojiPicker(false); return; }
                   const btns = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
@@ -859,7 +859,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                         editor?.chain().focus().insertContent(emoji).run();
                         setShowEmojiPicker(false);
                       }}
-                      className="w-8 h-8 flex items-center justify-center text-lg hover:bg-bg-elevated"
+                      className="w-8 h-8 flex items-center justify-center text-lg rounded-[var(--radius-btn)] hover:bg-[var(--color-hover)]"
                     >
                       {emoji}
                     </button>
@@ -926,12 +926,12 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             disabled={improving}
             aria-label={t('improve_message') || 'Improve message'}
             title={t('improve_message') || 'Improve message'}
-            className="w-10 h-10 flex items-center justify-center text-text-primary opacity-40 hover:opacity-100 disabled:opacity-30"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] disabled:opacity-40 transition-colors"
           >
             {improving ? (
-              <span className="text-[10px] font-bold opacity-40">...</span>
+              <span className="text-[10px] font-semibold opacity-60">...</span>
             ) : (
-              <Sparkles size={20} />
+              <Sparkles size={18} />
             )}
           </button>
         )}
@@ -940,24 +940,21 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           type="submit"
           disabled={uploading || improving || (!text.trim() && pendingFiles.length === 0)}
           aria-label={t('send') || 'Send'}
-          className={`${compact ? 'w-8 h-8' : 'h-10 px-3'} flex items-center ${compact ? 'justify-center' : 'gap-2'} font-mono text-[10px] font-bold uppercase tracking-[0.12em] text-[var(--color-btn-text-inverse)] disabled:opacity-30 ${
-            whisperMode ? 'bg-accent-purple' : 'bg-accent-blue'
+          className={`${compact ? 'w-9 h-9 rounded-full' : 'h-9 px-3 rounded-[var(--radius-pill)]'} flex items-center ${compact ? 'justify-center' : 'gap-2'} text-[12px] font-semibold text-white disabled:opacity-40 shadow-[var(--shadow-soft)] hover:opacity-90 transition-opacity ${
+            whisperMode ? 'bg-[var(--color-whisper-ink)]' : 'bg-[var(--color-accent)]'
           }`}
           title={improvementMode === 'forced' ? (t('ai_will_improve') || 'AI will improve before sending') : (t('send') || 'Send')}
         >
-          <Send size={compact ? 14 : 14} strokeWidth={2.5} />
+          <Send size={14} strokeWidth={2.25} />
           {!compact && (
-            <>
-              <span>{whisperMode ? (t('whisper_label') || 'Whisper') : (t('send') || 'Send')}</span>
-              <span className="inline-flex items-center text-[8px] font-bold px-1 border border-white/40 opacity-70">⏎</span>
-            </>
+            <span>{whisperMode ? (t('whisper_label') || 'Whisper') : (t('send') || 'Send')}</span>
           )}
         </button>
         </div>
 
         {/* Drag-drop overlay — visible only while a drag is active */}
         {isDragOver && (
-          <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-accent-blue/20 border-2 border-dashed border-accent-blue font-mono text-[11px] font-bold uppercase tracking-[0.14em] text-accent-blue">
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-[var(--color-accent-soft)] rounded-[var(--radius-card)] text-[12px] font-semibold text-[var(--color-accent)]">
             {t('drop_files_to_attach') || 'Drop files to attach'}
           </div>
         )}
@@ -976,8 +973,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           if (count <= 3500) return null;
           return (
             <div className="flex justify-end mt-1 pr-1">
-              <span className={`font-mono text-[9px] font-bold tabular-nums ${
-                count >= 5000 ? 'text-accent-red' : count >= 4500 ? 'text-accent-amber' : 'text-text-muted'
+              <span className={`font-mono text-[11px] tabular-nums ${
+                count >= 5000 ? 'text-[var(--color-urgent)]' : count >= 4500 ? 'text-[var(--color-accent-amber)]' : 'text-[var(--color-ink-muted)]'
               }`}>
                 {count} / 5000
               </span>

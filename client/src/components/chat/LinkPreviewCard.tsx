@@ -26,9 +26,9 @@ export default function LinkPreviewCard({ url, title, description, image, siteNa
       href={safeHref}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex gap-3 bg-bg-elevated border border-border p-2 mt-1.5 hover:bg-bg-surface no-underline"
+      className="flex gap-3 p-2 mt-1.5 no-underline bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] shadow-[var(--shadow-soft)] hover:bg-[var(--color-hover)]"
     >
-      <div className="w-[60px] h-[60px] shrink-0 bg-bg-surface border border-border flex items-center justify-center overflow-hidden">
+      <div className="w-[60px] h-[60px] shrink-0 bg-[var(--color-bg-surface)] rounded-[var(--radius-btn)] flex items-center justify-center overflow-hidden">
         {safeImage ? (
           <img
             src={safeImage}
@@ -37,18 +37,18 @@ export default function LinkPreviewCard({ url, title, description, image, siteNa
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
         ) : (
-          <Link2 size={20} className="text-text-secondary" />
+          <Link2 size={20} className="text-[var(--color-ink-muted)]" />
         )}
       </div>
       <div className="flex flex-col justify-center min-w-0 flex-1">
         {siteName && (
-          <span className="font-mono text-[8px] uppercase tracking-widest text-text-secondary truncate">{siteName}</span>
+          <span className="text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--color-ink-muted)] truncate">{siteName}</span>
         )}
         {title && (
-          <span className="font-bold text-[12px] text-text-primary truncate">{title}</span>
+          <span className="font-semibold text-[13px] text-[var(--color-ink)] truncate">{title}</span>
         )}
         {description && (
-          <span className="text-[11px] text-text-secondary line-clamp-2">{description}</span>
+          <span className="text-[12px] text-[var(--color-ink-soft)] line-clamp-2">{description}</span>
         )}
       </div>
     </a>

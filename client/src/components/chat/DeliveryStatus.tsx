@@ -10,7 +10,7 @@ export default function DeliveryStatus({ deliveredAt, readAt }: DeliveryStatusPr
   const isRead = !!readAt;
   const isDelivered = !!deliveredAt;
   const label = isRead ? (t('status_read') || 'Read') : isDelivered ? (t('status_delivered') || 'Delivered') : (t('status_sent') || 'Sent');
-  const color = isRead ? 'var(--color-accent-blue)' : 'var(--color-text-secondary)';
+  const color = isRead ? 'var(--color-accent)' : 'var(--color-ink-muted)';
   const showDouble = isDelivered || isRead;
 
   return (
@@ -24,11 +24,11 @@ export default function DeliveryStatus({ deliveredAt, readAt }: DeliveryStatusPr
         aria-hidden="true"
       >
         <polyline
-          points={showDouble ? '1,7 4,11 10,3' : '1,7 4,11 10,3'}
+          points="1,7 4,11 10,3"
           stroke={color}
           strokeWidth={1.5}
-          strokeLinecap="square"
-          strokeLinejoin="miter"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           fill="none"
         />
         {showDouble && (
@@ -36,8 +36,8 @@ export default function DeliveryStatus({ deliveredAt, readAt }: DeliveryStatusPr
             points="5,7 8,11 14,3"
             stroke={color}
             strokeWidth={1.5}
-            strokeLinecap="square"
-            strokeLinejoin="miter"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             fill="none"
           />
         )}

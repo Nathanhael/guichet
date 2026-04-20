@@ -68,7 +68,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
       : message.text;
     return (
       <div className="flex justify-center py-2">
-        <span className="text-[10px] uppercase tracking-widest px-4 py-1 font-bold bg-bg-elevated text-text-muted border border-border">
+        <span className="text-[11px] font-medium px-3 py-1 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)]">
           {systemText}
         </span>
       </div>
@@ -128,7 +128,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   // checked `isMine` first, so own-whispers never reached the whisper
   // branch and rendered with the blue sent-bubble style.
   const bubbleClasses = isDeleted
-    ? 'bg-bg-elevated border-l-2 border-border'
+    ? 'bg-[var(--color-bg-elevated)] rounded-[var(--radius-bubble)] text-[var(--color-ink-muted)]'
     : isWhisper
       ? 'bubble-whisper'
       : isMine
@@ -140,7 +140,9 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   return (
     <div
       id={`msg-${message.id}`}
-      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row${isCurrentSearchMatch ? ' bg-accent-amber/25' : isSearchMatch ? ' bg-accent-amber/10' : ''}`}
+      className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row rounded-[var(--radius-btn)] ${
+        isCurrentSearchMatch ? 'bg-[var(--color-accent-soft)]' : isSearchMatch ? 'bg-[var(--color-bg-elevated)]' : ''
+      }`}
       onMouseEnter={() => !isDeleted && !suppressActions && setShowActions(true)}
       onMouseLeave={() => { setShowActions(false); }}
     >
@@ -157,14 +159,14 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
       <div className={`relative max-w-[75%] min-w-[60px] px-3 py-2 ${bubbleClasses}`}>
 
         {!isMine && !isWhisper && isGroupStart && (
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-tight text-text-muted">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[12px] font-semibold text-[var(--color-ink)]">
               {message.senderName}
             </span>
             <GuestBadge isExternal={isSenderExternal} />
             {isSupport && (
-              <span className="text-[8px] font-mono font-bold uppercase tracking-wider px-1 py-px border border-accent-blue text-accent-blue leading-none">
-                {t('support') || 'SUPPORT'}
+              <span className="text-[10px] font-semibold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)] leading-none">
+                {t('support') || 'Support'}
               </span>
             )}
           </div>
@@ -172,11 +174,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
 
         {isWhisper && isGroupStart && (
           <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase tracking-[0.16em] text-accent-purple">
-              <Ghost className="w-[10px] h-[10px]" strokeWidth={2.5} />
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--color-whisper-ink)]">
+              <Ghost className="w-[11px] h-[11px]" strokeWidth={2} />
               {t('whisper_label') || 'Whisper'}
             </span>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-tight text-text-muted">
+            <span className="text-[12px] font-medium text-[var(--color-ink-soft)]">
               {message.senderName}
             </span>
             <GuestBadge isExternal={isSenderExternal} />
@@ -193,21 +195,27 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitEdit(); }
                   if (e.key === 'Escape') setEditing(false);
                 }}
-                className="w-full resize-none bg-bg-surface border border-border px-2 py-1 text-sm"
+                className="w-full resize-none bg-[var(--color-bg-surface)] border border-[var(--color-border-strong)] rounded-[var(--radius-btn)] px-2.5 py-1.5 text-[13px] text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-accent)]"
                 rows={2}
                 autoFocus
               />
-              <div className="flex gap-1 justify-end">
-                <button onClick={() => setEditing(false)} className="text-[9px] font-bold uppercase px-2 py-0.5 text-text-muted hover:text-text-primary">
+              <div className="flex gap-1.5 justify-end">
+                <button
+                  onClick={() => setEditing(false)}
+                  className="text-[12px] font-medium px-2.5 py-1 rounded-[var(--radius-btn)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)]"
+                >
                   {t('cancel') || 'Cancel'}
                 </button>
-                <button onClick={submitEdit} className="text-[9px] font-bold uppercase px-2 py-0.5 bg-accent-blue text-[var(--color-btn-text-inverse)]">
+                <button
+                  onClick={submitEdit}
+                  className="text-[12px] font-medium px-2.5 py-1 rounded-[var(--radius-btn)] bg-[var(--color-accent)] text-white hover:opacity-90"
+                >
                   {t('save') || 'Save'}
                 </button>
               </div>
             </div>
           ) : isDeleted ? (
-            <div className="flex items-center gap-1.5 text-[12px] text-text-muted italic opacity-60">
+            <div className="flex items-center gap-1.5 text-[12px] text-[var(--color-ink-muted)] italic">
               <Ban size={14} strokeWidth={1.5} className="shrink-0" />
               {t('message_deleted') || 'This message was deleted'}
             </div>
@@ -226,14 +234,14 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
         {needsTranslation && !isDeleted && (
           <div className="flex items-center gap-2 mt-1.5 -mb-0.5">
             {translating ? (
-              <span className="text-[9px] font-bold opacity-40 italic flex items-center gap-1">
+              <span className="text-[11px] text-[var(--color-ink-muted)] italic flex items-center gap-1">
                 <Loader2 className="animate-spin" size={10} />
                 {t('translating') || 'translating...'}
               </span>
             ) : translated ? (
               <button
                 onClick={() => setShowOriginal(!showOriginal)}
-                className="text-[9px] font-bold text-text-muted hover:text-text-secondary underline underline-offset-2"
+                className="text-[11px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink-soft)] underline underline-offset-2"
               >
                 {showOriginal ? (t('show_translation') || 'Show translation') : (t('show_original') || `Show original (${message.senderLang})`)}
               </button>
@@ -254,14 +262,14 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                   onClick={() => { const s = getSocket(); if (s?.connected) s.emit('message:react', { ticketId, messageId: message.id, emoji }); }}
                   disabled={isDeleted}
                   aria-label={`${emoji}, ${count} reaction${count !== 1 ? 's' : ''}${iReacted ? ', you reacted' : ''}`}
-                  className={`inline-flex items-center gap-0.5 px-1 py-px font-mono text-[10px] font-bold border ${
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded-[var(--radius-pill)] ${
                     iReacted
-                      ? 'border-accent-blue text-accent-blue bg-bg-elevated'
-                      : 'border-border text-text-muted hover:border-text-muted'
+                      ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
+                      : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)]'
                   } ${isDeleted ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
                 >
                   <span>{emoji}</span>
-                  <span>{count}</span>
+                  <span className="tabular-nums">{count}</span>
                 </button>
               );
             })}
@@ -269,11 +277,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           {/* Spacer pushes timestamp to right */}
           <span className="ml-auto" />
 
-          <span className="flex items-center gap-1.5 opacity-40 shrink-0">
+          <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-muted)] shrink-0">
             {isEdited && !isDeleted && (
-              <span className="text-[9px] font-bold italic">{t('edited') || 'edited'}</span>
+              <span className="italic">{t('edited') || 'edited'}</span>
             )}
-            <span className="mono-timestamp">{time}</span>
+            <span className="tabular-nums">{time}</span>
             {isMine && !isDeleted && !message.system && (
               <DeliveryStatus deliveredAt={message.deliveredAt} readAt={message.readAt} />
             )}
@@ -284,8 +292,8 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
 
       {/* Action buttons — sibling in flex row, to the right of bubble */}
       {showActions && !editing && (
-        <div className="flex flex-col gap-0.5 ml-1 shrink-0 self-start pt-1">
-          <div className="flex items-start gap-0.5">
+        <div className="flex flex-col gap-1 ml-1.5 shrink-0 self-start pt-1">
+          <div className="flex items-start gap-0.5 bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] px-1 py-1">
             {REACTION_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
@@ -293,19 +301,20 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                 disabled={isDeleted}
                 title={`React with ${emoji}`}
                 aria-label={`React with ${emoji}`}
-                className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-[11px] hover:bg-bg-elevated"
+                className="w-6 h-6 flex items-center justify-center rounded-full text-[13px] hover:bg-[var(--color-hover)]"
               >
                 {emoji}
               </button>
             ))}
           </div>
           {(onReply || canEdit || canDelete) && (
-            <div className="flex items-start gap-0.5">
+            <div className="flex items-start gap-0.5 bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] px-1 py-1">
               {onReply && !isDeleted && (
                 <button
                   onClick={() => onReply(message)}
                   title={t('reply') || 'Reply'}
-                  className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
+                  aria-label={t('reply') || 'Reply'}
+                  className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
                 >
                   <CornerUpLeft size={14} />
                 </button>
@@ -314,18 +323,20 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                 <button
                   onClick={startEdit}
                   title={t('edit') || 'Edit'}
-                  className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-blue text-[10px]"
+                  aria-label={t('edit') || 'Edit'}
+                  className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
                 >
-                  <Pencil size={12} />
+                  <Pencil size={13} />
                 </button>
               )}
               {canDelete && (
                 <button
                   onClick={() => { setConfirmDelete(true); setShowActions(false); }}
                   title={t('delete') || 'Delete'}
-                  className="w-6 h-6 flex items-center justify-center bg-bg-surface border border-border text-text-muted hover:text-accent-red text-[10px]"
+                  aria-label={t('delete') || 'Delete'}
+                  className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-urgent)] hover:bg-[var(--color-urgent-soft)]"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={13} />
                 </button>
               )}
             </div>
