@@ -38,22 +38,22 @@ describe('AccessibilityMenu', () => {
 
   it('renders trigger button with accessibility title', () => {
     render(<AccessibilityMenu />);
-    expect(screen.getByTitle('Accessibility Options')).toBeInTheDocument();
+    expect(screen.getByTitle('Accessibility options')).toBeInTheDocument();
   });
 
   it('opens popover on click — shows all 4 toggle labels', () => {
     render(<AccessibilityMenu />);
-    fireEvent.click(screen.getByTitle('Accessibility Options'));
+    fireEvent.click(screen.getByTitle('Accessibility options'));
     expect(screen.getByText('Accessibility')).toBeInTheDocument();
-    expect(screen.getByText('Dyslexic Font')).toBeInTheDocument();
-    expect(screen.getByText('Bionic Reading')).toBeInTheDocument();
+    expect(screen.getByText('Dyslexic font')).toBeInTheDocument();
+    expect(screen.getByText('Bionic reading')).toBeInTheDocument();
     expect(screen.getByText('Monochrome')).toBeInTheDocument();
-    expect(screen.getByText('Focus Mode')).toBeInTheDocument();
+    expect(screen.getByText('Focus mode')).toBeInTheDocument();
   });
 
   it('closes popover on second click', () => {
     render(<AccessibilityMenu />);
-    const trigger = screen.getByTitle('Accessibility Options');
+    const trigger = screen.getByTitle('Accessibility options');
     fireEvent.click(trigger);
     expect(screen.getByText('Accessibility')).toBeInTheDocument();
     fireEvent.click(trigger);
@@ -62,7 +62,7 @@ describe('AccessibilityMenu', () => {
 
   it('calls toggleDyslexicMode when Dyslexic Font switch is clicked', () => {
     render(<AccessibilityMenu />);
-    fireEvent.click(screen.getByTitle('Accessibility Options'));
+    fireEvent.click(screen.getByTitle('Accessibility options'));
     const switches = screen.getAllByRole('switch');
     fireEvent.click(switches[0]);
     expect(mockStore.toggleDyslexicMode).toHaveBeenCalledOnce();
@@ -70,7 +70,7 @@ describe('AccessibilityMenu', () => {
 
   it('calls toggleBionicReading when Bionic Reading switch is clicked', () => {
     render(<AccessibilityMenu />);
-    fireEvent.click(screen.getByTitle('Accessibility Options'));
+    fireEvent.click(screen.getByTitle('Accessibility options'));
     const switches = screen.getAllByRole('switch');
     fireEvent.click(switches[1]);
     expect(mockStore.toggleBionicReading).toHaveBeenCalledOnce();
@@ -78,7 +78,7 @@ describe('AccessibilityMenu', () => {
 
   it('calls toggleMonochromeMode when Monochrome switch is clicked', () => {
     render(<AccessibilityMenu />);
-    fireEvent.click(screen.getByTitle('Accessibility Options'));
+    fireEvent.click(screen.getByTitle('Accessibility options'));
     const switches = screen.getAllByRole('switch');
     fireEvent.click(switches[2]);
     expect(mockStore.toggleMonochromeMode).toHaveBeenCalledOnce();
@@ -86,7 +86,7 @@ describe('AccessibilityMenu', () => {
 
   it('calls toggleFocusMode when Focus Mode switch is clicked', () => {
     render(<AccessibilityMenu />);
-    fireEvent.click(screen.getByTitle('Accessibility Options'));
+    fireEvent.click(screen.getByTitle('Accessibility options'));
     const switches = screen.getAllByRole('switch');
     fireEvent.click(switches[3]);
     expect(mockStore.toggleFocusMode).toHaveBeenCalledOnce();
@@ -95,13 +95,13 @@ describe('AccessibilityMenu', () => {
   it('shows accent border when any feature is active', () => {
     mockStore.dyslexicMode = true;
     render(<AccessibilityMenu />);
-    const trigger = screen.getByTitle('Accessibility Options');
-    expect(trigger.className).toContain('border-[var(--color-accent-blue)]');
+    const trigger = screen.getByTitle('Accessibility options');
+    expect(trigger.className).toContain('border-[var(--color-accent)]');
   });
 
   it('shows default border when no features active', () => {
     render(<AccessibilityMenu />);
-    const trigger = screen.getByTitle('Accessibility Options');
+    const trigger = screen.getByTitle('Accessibility options');
     expect(trigger.className).toContain('border-[var(--color-border)]');
   });
 });

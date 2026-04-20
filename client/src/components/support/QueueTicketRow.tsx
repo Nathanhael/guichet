@@ -6,12 +6,6 @@ import AgentBadges from './AgentBadges';
 import LangBadge from './LangBadge';
 import { useLang } from '../../i18n';
 
-/**
- * Warm the lazy-loaded ComposeArea chunk before the user clicks. The dynamic
- * import is module-cached after the first call, so repeated hovers are no-ops
- * and a network failure is silently ignored (the real load will retry on
- * click). Cuts ~50–100 ms off the perceived chat-open latency on first use.
- */
 function prefetchComposeArea(): void {
   void import('../chat/ComposeArea').catch(() => {});
 }
@@ -43,9 +37,6 @@ export default function QueueTicketRow({
   const agentOnline = onlineAgentIds.includes(ticket.agentId);
   const viewerLang = useLang();
 
-  // Tick timers every 30s so durations update while the sidebar is visible.
-  // Skip for "other agents" rows — those timestamps are low-value and the
-  // intervals add up on busy queues.
   const [, setTick] = useState(0);
   useEffect(() => {
     if (variant === 'other') return;
@@ -53,9 +44,6 @@ export default function QueueTicketRow({
     return () => clearInterval(timer);
   }, [variant]);
 
-  // Soft-filter participants by live presence: ticket.participants is sticky in
-  // the DB (audit/history record) but the queue row should only show supports
-  // who are actually around right now. Self is always kept as a safety net.
   const liveParticipants = useMemo(() => {
     const onlineIds = new Set(onlineSupportUsers.map((u) => u.userId));
     return ticket.participants.filter(
@@ -64,32 +52,30 @@ export default function QueueTicketRow({
   }, [ticket.participants, onlineSupportUsers, currentUserId]);
 
   const rowClasses = [
-    'px-3 py-2.5 border-b border-[var(--color-border)] cursor-pointer',
-    'hover:bg-[var(--color-bg-elevated)]',
-    isActive && 'border-l-[3px] border-l-[var(--color-accent-blue)] bg-[rgba(59,130,246,0.06)]',
-    !isActive && isUnread && 'bg-[rgba(59,130,246,0.04)]',
-    isActive && isUnread && 'bg-[rgba(59,130,246,0.08)]',
+    'px-3 py-2.5 border-b border-[var(--color-border)] cursor-pointer transition-colors',
+    'hover:bg-[var(--color-hover)]',
+    isActive && 'border-l-[3px] border-l-[var(--color-accent)] bg-[var(--color-accent-soft)]',
+    !isActive && isUnread && 'bg-[var(--color-accent-soft)]',
     disabled && 'opacity-40 cursor-not-allowed',
     className,
   ]
     .filter(Boolean)
     .join(' ');
 
-  // Timer for row 2
   const timerContent = variant === 'queue'
     ? (() => {
         const { text, severity } = formatQueueWait(ticket.createdAt);
-        const colorClass = severity === 'red' ? 'text-[var(--color-accent-red)]'
+        const colorClass = severity === 'red' ? 'text-[var(--color-urgent)]'
           : severity === 'amber' ? 'text-[var(--color-accent-amber)]'
-          : 'text-[var(--color-text-muted)]';
+          : 'text-[var(--color-ink-muted)]';
         return (
-          <span className={`font-mono text-[9px] font-bold tracking-wide ml-auto ${colorClass}`}>
+          <span className={`text-[11px] font-semibold tabular-nums ml-auto ${colorClass}`}>
             {text}
           </span>
         );
       })()
     : (
-      <span className="font-mono text-[9px] font-bold tracking-wide text-[var(--color-text-muted)] ml-auto">
+      <span className="text-[11px] font-semibold tabular-nums text-[var(--color-ink-muted)] ml-auto">
         {formatChatDuration(ticket.supportJoinedAt)}
       </span>
     );
@@ -105,7 +91,7 @@ export default function QueueTicketRow({
     >
       {/* Row 1: dept + customer presence + name + unread */}
       <div className="flex items-center gap-1.5 mb-1">
-        <span className="font-mono text-[7px] font-bold uppercase tracking-[0.5px] px-[5px] py-px border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] shrink-0">
+        <span className="inline-flex items-center rounded-[var(--radius-pill)] text-[10px] font-semibold px-1.5 py-0.5 border border-[var(--color-accent)] text-[var(--color-accent)] shrink-0 leading-none">
           {ticket.dept}
         </span>
         <LangBadge lang={ticket.agentLang} viewerLang={viewerLang} />
@@ -113,14 +99,14 @@ export default function QueueTicketRow({
           <span
             data-agent-online
             title="Customer is online"
-            className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--color-accent-green)]"
+            className="w-1.5 h-1.5 rounded-full shrink-0 bg-[var(--color-ok)]"
           />
         )}
-        <span className="text-[13px] font-semibold text-[var(--color-text-primary)] truncate flex-1 min-w-0">
+        <span className="text-[13px] font-semibold text-[var(--color-ink)] truncate flex-1 min-w-0">
           {ticket.agentName}
         </span>
         {isUnread && (
-          <span className="font-mono text-[8px] font-bold bg-[var(--color-accent-blue)] text-white min-w-[16px] h-4 flex items-center justify-center px-1 shrink-0">
+          <span className="inline-flex items-center justify-center rounded-[var(--radius-pill)] text-[10px] font-semibold bg-[var(--color-accent)] text-white min-w-[18px] h-[18px] px-1.5 shrink-0 leading-none">
             {unreadCount}
           </span>
         )}

@@ -67,7 +67,7 @@ describe('AgentBadges', () => {
     const { container } = render(<AgentBadges participants={[participants[0]]} currentUserId="other" />);
     const dot = container.querySelector('[data-presence-dot]');
     expect(dot).toBeInTheDocument();
-    expect(dot?.className).toContain('accent-green');
+    expect(dot?.className).toContain('bg-[var(--color-ok)]');
   });
 
   it('renders amber presence dot for away support', () => {
@@ -75,7 +75,7 @@ describe('AgentBadges', () => {
     const { container } = render(<AgentBadges participants={[participants[0]]} currentUserId="other" />);
     const dot = container.querySelector('[data-presence-dot]');
     expect(dot).toBeInTheDocument();
-    expect(dot?.className).toContain('accent-amber');
+    expect(dot?.className).toContain('bg-[var(--color-accent-amber)]');
   });
 
   it('always shows green dot for self (current user)', () => {
@@ -83,6 +83,6 @@ describe('AgentBadges', () => {
     const { container } = render(<AgentBadges participants={[participants[0]]} currentUserId="user-1" />);
     const dot = container.querySelector('[data-presence-dot]');
     expect(dot).toBeInTheDocument();
-    expect(dot?.className).toContain('accent-green');
+    expect(dot?.className).toContain('bg-[var(--color-ok)]');
   });
 });

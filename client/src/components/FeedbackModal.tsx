@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import { trpc } from '../utils/trpc';
+import Modal, { ModalBody, ModalFooter, ModalHeader } from './ui/Modal';
+import Button from './ui/Button';
 
 interface FeedbackModalProps {
   onClose: () => void;
@@ -23,59 +26,47 @@ export default function FeedbackModal({ onClose }: FeedbackModalProps) {
   function submit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!text.trim() || !user) return;
-    
-    createMutation.mutate({
-      text: text.trim(),
-    });
+    createMutation.mutate({ text: text.trim() });
   }
 
   const sending = createMutation.isPending;
 
   return (
-    <div className="fixed inset-0 bg-bg-base/80 flex items-center justify-center z-50">
-      <div role="dialog" aria-modal="true" className="bg-bg-surface border border-border-heavy p-6 mx-4 max-w-sm w-full">
-        {sent ? (
-          <div className="text-center py-4">
-            <div className="w-12 h-12 border border-border-heavy flex items-center justify-center mx-auto mb-3 text-xl font-bold">✓</div>
-            <p className="text-sm font-medium text-text-primary">{t('feedback_sent')}</p>
+    <Modal open={true} onClose={onClose} id="feedback-modal" maxWidth={440}>
+      {sent ? (
+        <div className="px-6 py-10 text-center">
+          <div className="w-12 h-12 rounded-full bg-[var(--color-ok-soft)] flex items-center justify-center mx-auto mb-3">
+            <CheckCircle2 className="h-6 w-6 text-[var(--color-ok)]" strokeWidth={2} />
           </div>
-        ) : (
-          <form onSubmit={submit}>
-            <h3 className="text-base font-bold uppercase text-text-primary mb-1">
-              {t('feedback')}
-            </h3>
-            <p className="text-sm text-text-secondary mb-4">
-              {t('feedback_desc')}
-            </p>
-
+          <p className="text-[13px] font-medium text-[var(--color-ink)]">{t('feedback_sent')}</p>
+        </div>
+      ) : (
+        <form onSubmit={submit}>
+          <ModalHeader
+            title={t('feedback')}
+            subtitle={t('feedback_desc')}
+            onClose={onClose}
+          />
+          <ModalBody>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder={t('feedback_placeholder')}
               rows={4}
               autoFocus
-              className="input-field mb-4 resize-none"
+              className="w-full resize-none rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-base)] px-3 py-2 text-[13px] text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)]"
             />
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={!text.trim() || sending}
-                className="flex-1 btn-primary py-2 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {sending ? 'Sending...' : t('submit_feedback')}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 btn-secondary py-2"
-              >
-                {t('cancel')}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="secondary" size="md" type="button" onClick={onClose}>
+              {t('cancel')}
+            </Button>
+            <Button variant="primary" size="md" type="submit" disabled={!text.trim() || sending}>
+              {sending ? 'Sending…' : t('submit_feedback')}
+            </Button>
+          </ModalFooter>
+        </form>
+      )}
+    </Modal>
   );
 }

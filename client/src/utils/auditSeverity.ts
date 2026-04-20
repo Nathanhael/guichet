@@ -40,7 +40,7 @@ export function auditSeverity(action: string): AuditSeverity {
 }
 
 /**
- * Returns a left-border class matching severity. Brutalist tokens only —
+ * Returns a left-border class matching severity. Token-driven only —
  * no gradients, no fills, no radius. Just a 2px accent bar so the row
  * stays readable and the rest of the table keeps its rhythm.
  */

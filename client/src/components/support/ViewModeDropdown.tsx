@@ -55,10 +55,10 @@ export default function ViewModeDropdown() {
         aria-label={t('view_mode') || 'View Mode'}
         aria-expanded={open}
         title={t('view_mode') || 'View Mode'}
-        className="flex items-center gap-1.5 bg-bg-surface border border-border px-2 py-1.5 hover:bg-bg-elevated text-text-primary"
+        className="flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] px-2 py-1.5 hover:bg-[var(--color-hover)] text-[var(--color-ink)] transition-colors"
       >
         <span className="text-sm leading-none">{current.icon}</span>
-        <span className="text-[9px] font-mono font-bold uppercase tracking-wide hidden sm:inline">
+        <span className="text-[11px] font-medium hidden sm:inline">
           {t(current.label)}
         </span>
       </button>
@@ -66,7 +66,7 @@ export default function ViewModeDropdown() {
       {open && pos && createPortal(
         <div
           ref={menuRef}
-          className="fixed w-44 bg-bg-surface border-2 border-border-heavy z-[9999]"
+          className="fixed w-44 rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] z-[9999] overflow-hidden p-1"
           style={{ top: pos.top, right: pos.right }}
         >
           {VIEW_MODES.map((mode) => (
@@ -76,10 +76,10 @@ export default function ViewModeDropdown() {
                 setViewMode(mode.key);
                 setOpen(false);
               }}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 text-[10px] font-bold uppercase ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 text-[12px] font-medium rounded-[var(--radius-btn)] transition-colors ${
                 mode.key === viewMode
-                  ? 'bg-accent-blue text-[var(--color-btn-text-inverse)]'
-                  : 'text-text-primary hover:bg-bg-elevated'
+                  ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
+                  : 'text-[var(--color-ink)] hover:bg-[var(--color-hover)]'
               }`}
             >
               <span className="text-sm leading-none w-4 text-center">{mode.icon}</span>

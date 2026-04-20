@@ -18,15 +18,13 @@ export default function ConnectionStatus() {
   }, [connectionStatus]);
 
   if (connectionStatus === 'connected') return null;
-
-  // Don't flash "disconnected" before the socket has ever connected
   if (!hasConnected.current) return null;
 
   return (
-    <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest">
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-[var(--color-ink-soft)]">
       <span
         className={`w-2 h-2 rounded-full shrink-0 ${
-          connectionStatus === 'reconnecting' ? 'bg-[var(--color-accent-blue)]' : 'bg-[var(--color-accent-red)]'
+          connectionStatus === 'reconnecting' ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-urgent)]'
         }`}
       />
       {t(`connection_${connectionStatus}`)}

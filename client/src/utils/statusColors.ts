@@ -1,9 +1,9 @@
 const STATUS_COLORS: Record<string, { dot: string; text: string }> = {
-  online: { dot: 'bg-accent-green', text: 'text-accent-green' },
-  away: { dot: 'bg-accent-amber', text: 'text-accent-amber' },
+  online: { dot: 'bg-[var(--color-ok)]', text: 'text-[var(--color-ok)]' },
+  away: { dot: 'bg-[var(--color-accent-amber)]', text: 'text-[var(--color-accent-amber)]' },
 };
 
-const OFFLINE_COLORS = { dot: 'bg-text-muted', text: 'text-text-muted' };
+const OFFLINE_COLORS = { dot: 'bg-[var(--color-ink-muted)]', text: 'text-[var(--color-ink-muted)]' };
 
 export function getStatusColors(status: string | undefined): { dot: string; text: string } {
   if (!status) return OFFLINE_COLORS;

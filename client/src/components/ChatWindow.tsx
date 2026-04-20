@@ -379,7 +379,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   }
 
   return (
-    <div className="relative flex flex-col h-full bg-bg-surface border-2 border-border-heavy flex-1 min-h-0 overflow-hidden">
+    <div className="relative flex flex-col h-full bg-[var(--color-bg-surface)] border border-[var(--color-border)] flex-1 min-h-0 overflow-hidden">
       <ChatHeader
         ticket={ticket}
         liveTicket={liveTicket}
@@ -424,7 +424,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       <Suspense
         fallback={
           <div
-            className="border-t border-border-strong bg-bg-base px-4 py-3"
+            className="border-t border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3"
             style={{ minHeight: '72px' }}
             aria-hidden="true"
           />

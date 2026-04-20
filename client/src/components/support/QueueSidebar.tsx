@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Shield, ChevronLeft } from 'lucide-react';
+import { Shield, ChevronLeft, Search } from 'lucide-react';
 import { useT } from '../../i18n';
 import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
@@ -10,6 +10,8 @@ import QueueTicketRow from './QueueTicketRow';
 import ArchiveTicketRow from './ArchiveTicketRow';
 import SidebarFooter from './SidebarFooter';
 import StaffingHeader from './StaffingHeader';
+import SectionLabel from '../ui/SectionLabel';
+import Pill from '../ui/Pill';
 import { getSocket } from '../../hooks/useSocket';
 
 interface QueueSidebarProps {
@@ -22,11 +24,6 @@ interface QueueSidebarProps {
   onPreviewArchived: (ticket: Ticket) => void;
 }
 
-/**
- * Left sidebar for SupportView.
- * Two tabs: Queue (open tickets) and Archive (closed tickets).
- * Department filter chips narrow both lists.
- */
 export default function QueueSidebar({
   activeMembership,
   activeTab,
@@ -54,24 +51,20 @@ export default function QueueSidebar({
 
   const departments = (activeMembership.manifest?.departments || []) as { id: string; name: string }[];
   const assignedDepartmentIds = activeMembership.departments || [];
-  // Per spec (CLAUDE.md): empty/null memberships.departments = generalist (sees all partner depts).
   const isGeneralist = assignedDepartmentIds.length === 0;
   const visibleDepartments = isGeneralist
     ? departments
     : departments.filter((d) => assignedDepartmentIds.includes(d.id));
-  // Ticket-level dept gate: generalist → always true, scoped → only assigned depts
   const ticketDeptAllowed = useCallback(
     (deptId: string) => isGeneralist || assignedDepartmentIds.includes(deptId),
     [isGeneralist, assignedDepartmentIds],
   );
 
-  // Search query
   const searchResults = trpc.message.search.useQuery(
     { query: searchQuery, dept: filterDept === 'all' ? undefined : filterDept },
     { enabled: sidebarTab === 'archive' && searchQuery.length >= 2 }
   );
 
-  // Archive query — closed tickets (resolved status is deprecated)
   const archiveQuery = trpc.ticket.list.useQuery(
     {
       status: ['closed'],
@@ -82,8 +75,6 @@ export default function QueueSidebar({
     { enabled: sidebarTab === 'archive' },
   );
 
-  // SLA active-breach list — drives the red left-border on queue rows. Socket
-  // events (sla:breach/sla:resolved) invalidate the query so rows react live.
   const trpcUtils = trpc.useUtils();
   const { data: slaBreaches } = trpc.sla.listBreaches.useQuery({ status: 'active', limit: 100 });
   const breachedTicketIds = useMemo(
@@ -102,21 +93,12 @@ export default function QueueSidebar({
     };
   }, [trpcUtils]);
 
-  // Reset accumulated archive state. Called inline from filter-chip handlers
-  // and the sidebar-tab toggle. NOT placed in a useEffect because effect-based
-  // resets race the populate effect: when tRPC returns cached data with an
-  // unchanged reference (e.g. toggling queue→archive→queue→archive), the
-  // populate effect's deps don't change so it never re-fires, and a reset
-  // effect would clear the list with no follow-up populate to refill it.
   function resetArchive() {
     setArchivedTickets([]);
     setArchiveCursor(undefined);
     setHasMoreArchive(false);
   }
 
-  // Populate from query data. Depends on sidebarTab so that toggling back to
-  // archive re-runs the effect and fills from the cached query data even when
-  // the data reference itself hasn't changed since last visit.
   useEffect(() => {
     if (sidebarTab !== 'archive') return;
     if (!archiveQuery.data) return;
@@ -129,7 +111,6 @@ export default function QueueSidebar({
     }
   }, [archiveQuery.data, archiveCursor, sidebarTab]);
 
-  // Per-department open ticket counts (for pill badges)
   const deptCounts = useMemo(() => {
     const open = tickets.filter(
       (tk) =>
@@ -143,7 +124,6 @@ export default function QueueSidebar({
     return counts;
   }, [tickets, ticketDeptAllowed]);
 
-  // Filter queue tickets and split into 3 sections
   const queueFiltered = useMemo(
     () =>
       tickets.filter(
@@ -169,62 +149,59 @@ export default function QueueSidebar({
     [queueFiltered],
   );
 
+  const deptChipClass = (active: boolean) =>
+    `shrink-0 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-2.5 py-1 text-[11px] font-semibold border transition-colors ${
+      active
+        ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]'
+        : 'border-[var(--color-border)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)]'
+    }`;
+
   return (
     <>
       {departments.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <Shield className="h-8 w-8 text-text-muted opacity-30 mb-4" />
-          <p className="text-sm font-bold uppercase tracking-tight mb-2">No departments configured</p>
-          <p className="text-[10px] uppercase tracking-widest text-text-muted opacity-60">Contact your administrator to configure partner departments.</p>
+          <Shield className="h-8 w-8 text-[var(--color-ink-muted)] opacity-40 mb-4" />
+          <p className="text-[14px] font-semibold mb-2 text-[var(--color-ink)]">No departments configured</p>
+          <p className="text-[12px] text-[var(--color-ink-muted)]">Contact your administrator to configure partner departments.</p>
         </div>
       ) : (
       <>
-      {/* Header: mode title + collapse chevron + dept chips.
-          Archive was demoted — tab pills are gone. The current mode is shown
-          as a title; the switcher now lives in the SidebarFooter as a
-          compact accent-blue outline button next to the count. */}
       <div className="px-4 py-3 border-b border-[var(--color-border)]">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="mono-label text-text-primary">
+          <SectionLabel>
             {sidebarTab === 'queue' ? t('queue') : t('archive')}
-          </h2>
+          </SectionLabel>
           <button
             onClick={onToggle}
             title="Ctrl+B"
             aria-label="Collapse sidebar"
-            className="shrink-0 w-7 h-[26px] flex items-center justify-center border border-[var(--color-border)] opacity-40 hover:opacity-100"
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-[var(--radius-btn)] border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)] transition-colors"
           >
-            <ChevronLeft className="h-3.5 w-3.5" />
+            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
           </button>
         </div>
 
-        {/* Department filter chips — 3-char dept codes (DSC/FOT/TEC)
-            instead of full names, flex-wrap so no horizontal scrollbar. */}
         <div className="flex items-center gap-1 flex-wrap py-1">
           <button
             onClick={() => { setFilterDept('all'); setSearchQuery(''); resetArchive(); }}
-            className={`shrink-0 px-2.5 py-1 text-[9px] font-bold uppercase border flex items-center gap-1.5 tracking-[0.1em] ${
-              filterDept === 'all'
-                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                : 'border-[var(--color-border)] opacity-50 hover:opacity-100'
-            }`}
+            className={deptChipClass(filterDept === 'all')}
           >
             {t('all')}
-            {sidebarTab === 'queue' && <span className="text-[8px] tabular-nums text-[var(--color-accent-blue)]">{deptCounts.all || 0}</span>}
+            {sidebarTab === 'queue' && (
+              <span className={`text-[10px] tabular-nums ${filterDept === 'all' ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{deptCounts.all || 0}</span>
+            )}
           </button>
           {visibleDepartments.map((dept) => (
             <button
               key={dept.id}
               onClick={() => { setFilterDept(dept.id); setSearchQuery(''); resetArchive(); }}
               title={dept.name}
-              className={`shrink-0 px-2.5 py-1 text-[9px] font-bold uppercase border flex items-center gap-1.5 tracking-[0.1em] ${
-                filterDept === dept.id
-                  ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                  : 'border-[var(--color-border)] opacity-50 hover:opacity-100'
-              }`}
+              className={deptChipClass(filterDept === dept.id)}
             >
               {dept.id}
-              {sidebarTab === 'queue' && <span className="text-[8px] tabular-nums text-[var(--color-accent-blue)]">{deptCounts[dept.id] || 0}</span>}
+              {sidebarTab === 'queue' && (
+                <span className={`text-[10px] tabular-nums ${filterDept === dept.id ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{deptCounts[dept.id] || 0}</span>
+              )}
             </button>
           ))}
         </div>
@@ -232,18 +209,15 @@ export default function QueueSidebar({
 
       {sidebarTab === 'archive' && (
         <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--color-border)]">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2">
-            <circle cx="11" cy="11" r="8" />
-            <line x1="21" y1="21" x2="16.65" y2="16.65" />
-          </svg>
+          <Search className="h-3.5 w-3.5 text-[var(--color-ink-muted)] shrink-0" strokeWidth={2} />
           <input
             type="text"
             aria-label="Search tickets"
             data-queue-search
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('search_messages') || 'Search messages...'}
-            className="flex-1 bg-[var(--color-bg-base)] border border-[var(--color-border)] px-2.5 py-1.5 font-mono text-[10px] text-[var(--color-text-primary)] outline-none placeholder:text-[var(--color-text-muted)] placeholder:uppercase placeholder:text-[9px]"
+            placeholder={t('search_messages') || 'Search messages…'}
+            className="flex-1 rounded-[var(--radius-btn)] bg-[var(--color-bg-base)] border border-[var(--color-border)] px-2.5 py-1.5 text-[12px] text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink-muted)] focus:border-[var(--color-accent)]"
           />
         </div>
       )}
@@ -254,27 +228,24 @@ export default function QueueSidebar({
         onToggleLang={setFilterLang}
       />
 
-      {/* Ticket list */}
       <div className="flex-1 overflow-y-auto">
         <ul>
           {sidebarTab === 'queue'
             ? (
               queueFiltered.length === 0 ? (
                 <li className="p-8 text-center">
-                  <p className="mono-label opacity-20">{t('queue_empty') || 'Queue empty'}</p>
+                  <p className="text-[12px] text-[var(--color-ink-muted)]">{t('queue_empty') || 'Queue empty'}</p>
                 </li>
               ) : (
                 <>
-                  {/* MY CHATS */}
                   {myChats.length > 0 && (
                     <>
-                      <li className="px-3 pt-2.5 pb-1 flex items-center gap-1.5">
-                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-blue)]">
-                          {t('my_chats') || 'My Chats'}
-                        </span>
-                        <span className="font-mono text-[9px] font-bold bg-[var(--color-accent-blue)] text-[var(--color-bg-base)] px-1">{myChats.length}</span>
+                      <li className="px-3 pt-3 pb-1 flex items-center gap-1.5">
+                        <SectionLabel className="text-[var(--color-accent)]">
+                          {t('my_chats') || 'My chats'}
+                        </SectionLabel>
+                        <Pill tone="accent">{myChats.length}</Pill>
                       </li>
-                      <li className="mx-3 mb-1 h-[2px] bg-[var(--color-accent-blue)]" />
                       {myChats.map((ticket) => (
                         <QueueTicketRow
                           key={ticket.id}
@@ -284,22 +255,20 @@ export default function QueueSidebar({
                           unreadCount={Number(unreadTickets[ticket.id]) || 0}
                           currentUserId={user?.id || ''}
                           onClick={() => onSelectTicket(ticket)}
-                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-accent-red)]' : undefined}
+                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-urgent)]' : undefined}
                         />
                       ))}
                     </>
                   )}
 
-                  {/* QUEUE — unassigned tickets, priority after your chats */}
                   {unassigned.length > 0 && (
                     <>
-                      <li className="px-3 pt-2.5 pb-1 flex items-center gap-1.5">
-                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+                      <li className="px-3 pt-3 pb-1 flex items-center gap-1.5">
+                        <SectionLabel>
                           {t('queue') || 'Queue'}
-                        </span>
-                        <span className="font-mono text-[9px] font-bold bg-[var(--color-text-muted)] text-[var(--color-bg-base)] px-1">{unassigned.length}</span>
+                        </SectionLabel>
+                        <Pill tone="muted">{unassigned.length}</Pill>
                       </li>
-                      <li className="mx-3 mb-1 h-[2px] bg-[var(--color-border)]" />
                       {unassigned.map((ticket) => (
                         <QueueTicketRow
                           key={ticket.id}
@@ -310,26 +279,24 @@ export default function QueueSidebar({
                           currentUserId={user?.id || ''}
                           onClick={() => (!atMaxChats ? onSelectTicket(ticket) : undefined)}
                           disabled={atMaxChats}
-                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-accent-red)]' : undefined}
+                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-urgent)]' : undefined}
                         />
                       ))}
                     </>
                   )}
 
-                  {/* OTHER AGENTS — collapsible, below queue */}
                   {otherAgents.length > 0 && (
                     <>
                       <li
-                        className="px-3 pt-2.5 pb-1 flex items-center gap-1.5 cursor-pointer hover:opacity-80"
+                        className="px-3 pt-3 pb-1 flex items-center gap-1.5 cursor-pointer hover:opacity-80"
                         onClick={() => setOtherAgentsExpanded((v) => !v)}
                       >
-                        <span className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-[var(--color-accent-purple)]">
-                          {t('other_agents') || 'Other Agents'}
-                        </span>
-                        <span className="font-mono text-[9px] font-bold bg-[var(--color-accent-purple)] text-[var(--color-bg-base)] px-1">{otherAgents.length}</span>
-                        <span className="font-mono text-[9px] text-[var(--color-accent-purple)] ml-auto">{otherAgentsExpanded ? '\u25B4' : '\u25BE'}</span>
+                        <SectionLabel>
+                          {t('other_agents') || 'Other agents'}
+                        </SectionLabel>
+                        <Pill tone="muted">{otherAgents.length}</Pill>
+                        <span className="text-[10px] text-[var(--color-ink-muted)] ml-auto">{otherAgentsExpanded ? '▴' : '▾'}</span>
                       </li>
-                      <li className="mx-3 mb-1 h-[2px] bg-[var(--color-accent-purple)]" />
                       {otherAgentsExpanded && otherAgents.map((ticket) => (
                         <QueueTicketRow
                           key={ticket.id}
@@ -340,7 +307,7 @@ export default function QueueSidebar({
                           currentUserId={user?.id || ''}
                           onClick={() => (!atMaxChats ? onSelectTicket(ticket) : undefined)}
                           disabled={atMaxChats}
-                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-accent-red)]' : undefined}
+                          className={breachedTicketIds.has(ticket.id) ? 'border-l-4 border-l-[var(--color-urgent)]' : undefined}
                         />
                       ))}
                     </>
@@ -351,14 +318,14 @@ export default function QueueSidebar({
             : sidebarTab === 'archive' && searchQuery.length >= 2 ? (
               searchResults.isLoading ? (
                 <li className="p-8 text-center">
-                  <svg className="h-5 w-5 mx-auto mb-2 opacity-30" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5 mx-auto mb-2 opacity-30 animate-spin" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
                 </li>
               ) : !searchResults.data?.length ? (
                 <li className="p-8 text-center">
-                  <p className="mono-label opacity-20">{t('no_results') || 'No results'}</p>
+                  <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_results') || 'No results'}</p>
                 </li>
               ) : (searchResults.data || []).map((result: { messageId: string; ticketId: string; text: string | null; createdAt: string; ticketDept: string; ticketStatus: string; agentName: string | null; senderName: string | null }) => (
                 <li
@@ -373,15 +340,15 @@ export default function QueueSidebar({
                       }
                     }
                   }}
-                  className="p-3 cursor-pointer hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)]"
+                  className="p-3 cursor-pointer hover:bg-[var(--color-hover)] border-b border-[var(--color-border)]"
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-[8px] border border-[var(--color-accent-blue)] text-[var(--color-accent-blue)] px-1.5 py-0.5 uppercase">{result.ticketDept}</span>
-                    <span className="text-[9px] font-bold truncate">{result.agentName}</span>
-                    <span className={`text-[9px] uppercase ${result.ticketStatus === 'closed' ? 'opacity-40' : ''}`}>{result.ticketStatus}</span>
+                    <Pill tone="accent">{result.ticketDept}</Pill>
+                    <span className="text-[12px] font-semibold text-[var(--color-ink)] truncate">{result.agentName}</span>
+                    <span className={`text-[11px] text-[var(--color-ink-muted)] ${result.ticketStatus === 'closed' ? 'opacity-60' : ''}`}>{result.ticketStatus}</span>
                   </div>
-                  <p className="text-[11px] opacity-70 truncate">{result.text}</p>
-                  <span className="mono-timestamp">{result.senderName} · {getTicketTime(result.createdAt)}</span>
+                  <p className="text-[12px] text-[var(--color-ink-soft)] truncate mb-1">{result.text}</p>
+                  <span className="text-[10px] text-[var(--color-ink-muted)]">{result.senderName} · {getTicketTime(result.createdAt)}</span>
                 </li>
               ))
             )
@@ -389,15 +356,15 @@ export default function QueueSidebar({
               <>
                 {archiveQuery.isLoading && archivedTickets.length === 0 ? (
                   <li className="p-8 text-center">
-                    <svg className="h-5 w-5 mx-auto mb-2 opacity-30" viewBox="0 0 24 24">
+                    <svg className="h-5 w-5 mx-auto mb-2 opacity-30 animate-spin" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <p className="mono-label opacity-20">{t('loading') || 'Loading...'}</p>
+                    <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading') || 'Loading…'}</p>
                   </li>
                 ) : archivedTickets.length === 0 ? (
                   <li className="p-8 text-center">
-                    <p className="mono-label opacity-20">{t('no_archived') || 'No archived tickets'}</p>
+                    <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_archived') || 'No archived tickets'}</p>
                   </li>
                 ) : archivedTickets.map((ticket) => (
                   <ArchiveTicketRow
@@ -408,7 +375,6 @@ export default function QueueSidebar({
                     onClick={() => onPreviewArchived(ticket)}
                   />
                 ))}
-                {/* Load more button */}
                 {hasMoreArchive && (
                   <li className="p-3">
                     <button
@@ -417,9 +383,9 @@ export default function QueueSidebar({
                         if (data?.nextCursor) setArchiveCursor(data.nextCursor);
                       }}
                       disabled={archiveQuery.isFetching}
-                      className="w-full py-2 text-[9px] font-bold uppercase tracking-wide border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)] disabled:opacity-30"
+                      className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] px-3 py-2 text-[12px] font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {archiveQuery.isFetching ? (t('loading') || 'Loading...') : (t('load_more') || 'Load more')}
+                      {archiveQuery.isFetching ? (t('loading') || 'Loading…') : (t('load_more') || 'Load more')}
                     </button>
                   </li>
                 )}
