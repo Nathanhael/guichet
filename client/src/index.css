@@ -44,7 +44,9 @@
   font-display: swap;
 }
 
-/* ===== THEME TOKENS ===== */
+/* ===== THEME TOKENS (Soft Product — light, default) =====
+   Full token reference: docs/SOFT_PRODUCT_DESIGN_SPEC.md
+   .dark block below overrides for dark theme. */
 
 @theme {
   /* Fonts */
@@ -52,87 +54,134 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
   --font-lexend: 'Lexend', sans-serif;
 
-  /* Light mode colors (default) */
-  --color-bg-base: #fafaf9;
-  --color-bg-surface: #ffffff;
-  --color-bg-elevated: #f5f5f4;
-  --color-border: #d6d3d1;
-  --color-border-heavy: #1c1917;
-  --color-text-primary: #1c1917;
-  --color-text-secondary: #57534e;
-  --color-text-muted: #a8a29e;
-  --color-text-faint: #d6d3d1;
-  --color-accent-blue: #2563eb;
-  --color-accent-blue-light: #3b82f6;
-  --color-accent-purple: #7c3aed;
-  --color-accent-red: #ef4444;
-  --color-accent-green: #16a34a;
-  --color-accent-amber: #d97706;
+  /* --- Surfaces --- */
+  --color-bg: #f5f6fa;
+  --color-surface: #ffffff;
+  --color-elevated: #f7f8fb;
+  --color-hover: #eef0f6;
+
+  /* --- Borders --- */
+  --color-border: #e6e8ef;
+  --color-border-strong: #d4d7e0;
+
+  /* --- Ink --- */
+  --color-ink: #14162b;
+  --color-ink-soft: #4d5069;
+  --color-ink-muted: #878ba1;
+
+  /* --- Semantic --- */
+  --color-whisper: #fff4e6;
+  --color-whisper-ink: #a15c1f;
+  --color-urgent: #d64545;
+  --color-urgent-soft: #fde9e9;
+  --color-ok: #2f9e5f;
+  --color-ok-soft: #e4f5ea;
+  --color-scrim: rgba(16, 20, 45, 0.35);
+
+  /* --- Accent (indigo, v1 fixed) --- */
+  --color-accent: #5b5bd6;
+  --color-accent-soft: #eef0ff;
+
+  /* --- Legacy token aliases (pre-soft-product; remove in phase 8) --- */
+  --color-bg-base: var(--color-bg);
+  --color-bg-surface: var(--color-surface);
+  --color-bg-elevated: var(--color-elevated);
+  --color-border-heavy: var(--color-border-strong);
+  --color-text-primary: var(--color-ink);
+  --color-text-secondary: var(--color-ink-soft);
+  --color-text-muted: var(--color-ink-muted);
+  --color-text-faint: var(--color-border-strong);
+  --color-accent-blue: var(--color-accent);
+  --color-accent-blue-light: var(--color-accent-soft);
+  --color-accent-purple: var(--color-whisper-ink);
+  --color-accent-red: var(--color-urgent);
+  --color-accent-green: var(--color-ok);
+  --color-accent-amber: #b45309;
   --color-accent-orange: #ea580c;
-  --color-own-msg-bg: #eff6ff;
-  --color-whisper-bg: #faf5ff;
+  --color-own-msg-bg: var(--color-accent-soft);
+  --color-whisper-bg: var(--color-whisper);
   --color-btn-text-inverse: #ffffff;
 
-  /* Animation */
+  /* --- Shadows --- */
+  --shadow-soft: 0 1px 2px rgba(16, 20, 45, 0.04), 0 1px 1px rgba(16, 20, 45, 0.03);
+  --shadow-card: 0 1px 3px rgba(16, 20, 45, 0.06), 0 8px 24px rgba(16, 20, 45, 0.04);
+  --shadow-modal: 0 20px 48px rgba(16, 20, 45, 0.24), 0 4px 12px rgba(16, 20, 45, 0.1);
+
+  /* --- Radii --- */
+  --radius-card: 14px;
+  --radius-btn: 8px;
+  --radius-pill: 999px;
+  --radius-bubble: 12px;
+  --radius-whisper: 10px;
+
+  /* --- Animations --- */
   --animate-fade-in: fade-in 150ms ease-out;
+  --animate-slide-in: v2p-slide-in 260ms ease-out;
+  --animate-pop: v2p-pop 180ms ease-out;
+  --animate-pulse-soft: v2p-pulse 1.8s ease-in-out infinite;
+  --animate-dot: v2p-dot 1s ease-in-out infinite;
 }
 
 /* ===== DARK MODE OVERRIDES ===== */
 
 .dark {
-  --color-bg-base: #09090b;
-  --color-bg-surface: #18181b;
-  --color-bg-elevated: #2d2d30;
-  --color-border: #27272a;
-  --color-border-heavy: #3f3f46;
-  --color-text-primary: #e4e4e7;
-  --color-text-secondary: #a1a1aa;
-  --color-text-muted: #52525b;
-  --color-text-faint: #3f3f46;
-  --color-accent-blue: #3b82f6;
-  --color-accent-blue-light: #60a5fa;
-  --color-accent-purple: #a855f7;
-  --color-accent-red: #ef4444;
-  --color-accent-green: #22c55e;
+  --color-bg: #0e1020;
+  --color-surface: #171a30;
+  --color-elevated: #1e2139;
+  --color-hover: #262a44;
+  --color-border: #252840;
+  --color-border-strong: #373c5a;
+  --color-ink: #eceef5;
+  --color-ink-soft: #a8acc3;
+  --color-ink-muted: #6f7391;
+  --color-whisper: #3a2a1a;
+  --color-whisper-ink: #e8b88a;
+  --color-urgent: #ff7a7a;
+  --color-urgent-soft: #3a1e1e;
+  --color-ok: #5fd08a;
+  --color-ok-soft: #1a2e23;
+  --color-scrim: rgba(0, 0, 0, 0.55);
+  --color-accent: #8b8cff;
+  --color-accent-soft: #2a2b52;
+
+  /* Legacy amber/orange keep brighter dark variants — used by non-brutalist warnings */
   --color-accent-amber: #f59e0b;
   --color-accent-orange: #f97316;
-  --color-own-msg-bg: #1e4070;
-  --color-whisper-bg: #1a1520;
-  --color-btn-text-inverse: #ffffff;
+
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  --shadow-modal: 0 20px 48px rgba(0, 0, 0, 0.6), 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* ===== MONOCHROME MODE ===== */
+/* ===== THEME COLOR TRANSITION =====
+   Smooth the theme toggle so bg/text don't snap. Per-element overrides may
+   disable as needed (e.g. during drag). Respects prefers-reduced-motion. */
+html, body, [data-theme-transition] {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+/* ===== MONOCHROME MODE =====
+   Collapse accent + semantic colors to ink; hierarchy comes from shadow +
+   border + weight (which the soft design already relies on). */
 
 :root.monochrome-mode {
-  --color-accent-blue: #1c1917;
-  --color-accent-blue-light: #57534e;
-  --color-accent-purple: #57534e;
-  --color-accent-red: #1c1917;
-  --color-accent-green: #1c1917;
-  --color-accent-amber: #1c1917;
-  --color-accent-orange: #1c1917;
-  --color-own-msg-bg: #f5f5f4;
-  --color-whisper-bg: #f5f5f4;
-  --color-btn-text-inverse: #ffffff;
-}
-
-:root.monochrome-mode.dark {
-  --color-accent-blue: #e4e4e7;
-  --color-accent-blue-light: #a1a1aa;
-  --color-accent-purple: #a1a1aa;
-  --color-accent-red: #e4e4e7;
-  --color-accent-green: #e4e4e7;
-  --color-accent-amber: #e4e4e7;
-  --color-accent-orange: #e4e4e7;
-  --color-own-msg-bg: #2d2d30;
-  --color-whisper-bg: #27272a;
-  --color-btn-text-inverse: #09090b;
+  --color-accent: var(--color-ink);
+  --color-accent-soft: var(--color-elevated);
+  --color-urgent: var(--color-ink);
+  --color-urgent-soft: var(--color-elevated);
+  --color-ok: var(--color-ink);
+  --color-ok-soft: var(--color-elevated);
+  --color-whisper-ink: var(--color-ink-soft);
+  --color-accent-amber: var(--color-ink);
+  --color-accent-orange: var(--color-ink);
+  --color-btn-text-inverse: var(--color-surface);
 }
 
 /* ===== DYSLEXIC MODE ===== */
 
 :where(.dyslexic-mode, .dyslexic-mode *) {
   --font-sans: 'Lexend', ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.7;
 }
 
 /* ===== KEYFRAMES ===== */
@@ -140,6 +189,26 @@
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+
+@keyframes v2p-slide-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes v2p-pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes v2p-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes v2p-dot {
+  0%, 100% { transform: translateY(0); opacity: 0.4; }
+  50% { transform: translateY(-4px); opacity: 1; }
 }
 
 /* ===== REDUCED MOTION ===== */
@@ -151,194 +220,167 @@
   }
 }
 
-/* ===== UTILITY CLASSES ===== */
+/* ===== UTILITY CLASSES =====
+   Note: these utility shells are carried over from the brutalist era so that
+   existing components keep compiling. Contents have been redefined against
+   soft-product tokens. They will be retired in phase 2 (primitives) / phase 8
+   (cleanup) as callers migrate to <Button>, <Card>, etc. */
 
 @utility btn-primary {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 8px 20px;
-  background-color: var(--color-accent-blue);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--radius-btn);
+  background-color: var(--color-accent);
   color: var(--color-btn-text-inverse);
   border: none;
   cursor: pointer;
+  transition: opacity 150ms, transform 120ms;
 
-  &:hover { opacity: 0.85; }
-  &:focus-visible { outline: 2px solid var(--color-accent-blue); outline-offset: 2px; }
+  &:hover { opacity: 0.9; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 @utility btn-secondary {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 8px 20px;
-  background-color: transparent;
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--radius-btn);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border-strong);
+  box-shadow: var(--shadow-soft);
   cursor: pointer;
+  transition: background-color 150ms;
 
-  &:hover { background-color: var(--color-bg-elevated); }
-  &:focus-visible { outline: 2px solid var(--color-accent-blue); outline-offset: 2px; }
+  &:hover { background-color: var(--color-hover); }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 @utility btn-danger {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 8px 20px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 14px;
+  border-radius: var(--radius-btn);
   background-color: transparent;
-  color: var(--color-accent-red);
-  border: 1px solid var(--color-accent-red);
+  color: var(--color-urgent);
+  border: 1px solid var(--color-urgent);
   cursor: pointer;
+  transition: background-color 150ms, color 150ms;
 
-  &:hover { background-color: var(--color-accent-red); color: var(--color-btn-text-inverse); }
-  &:focus-visible { outline: 2px solid var(--color-accent-red); outline-offset: 2px; }
+  &:hover { background-color: var(--color-urgent); color: var(--color-btn-text-inverse); }
+  &:focus-visible { outline: 2px solid var(--color-urgent); outline-offset: 2px; }
   &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 @utility input-field {
   width: 100%;
   padding: 10px 12px;
+  border-radius: var(--radius-btn);
   font-family: var(--font-sans);
   font-size: 13px;
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-surface);
+  color: var(--color-ink);
+  background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   outline: none;
+  transition: border-color 150ms;
 
   &::placeholder {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    text-transform: uppercase;
-    color: var(--color-text-muted);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    color: var(--color-ink-muted);
+    text-transform: none;
+    letter-spacing: normal;
   }
 
   &:focus {
-    border-color: var(--color-accent-blue);
+    border-color: var(--color-accent);
   }
 }
 
 @utility surface-card {
-  background-color: var(--color-bg-surface);
+  background-color: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
 }
 
 @utility surface-panel {
-  background-color: var(--color-bg-base);
+  background-color: var(--color-bg);
   border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
 }
 
 @utility bubble-received {
-  background-color: var(--color-bg-elevated);
-  border-left: 2px solid var(--color-border);
-  border-radius: 0;
+  background-color: var(--color-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-bubble);
+  border-top-left-radius: 4px;
 }
 
 @utility bubble-sent {
-  background-color: var(--color-own-msg-bg);
-  border-left: 2px solid var(--color-accent-blue);
-  border-radius: 0;
+  background-color: var(--color-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 22%, transparent);
+  border-radius: var(--radius-bubble);
+  border-top-right-radius: 4px;
 }
 
 @utility bubble-whisper {
-  background-color: var(--color-whisper-bg);
-  border-left: 2px solid var(--color-accent-purple);
-  border-radius: 0;
-}
-/* Whisper body: JetBrains Mono 12px secondary — matches the brutalist
-   chrome (mono for staff annotations) and reads as distinct from the
-   main Inter conversation. Applied to the MessageContent div descendant. */
-.bubble-whisper .msg-markdown,
-.bubble-whisper .msg-body {
-  font-family: 'JetBrains Mono', ui-monospace, 'Menlo', 'Consolas', monospace;
-  font-size: 12px;
-  color: var(--color-text-secondary);
-  letter-spacing: -0.01em;
-}
-
-/* ─── Tiptap compose editor surface ───────────────────────────────────── */
-.ProseMirror {
-  outline: none;
-}
-.ProseMirror p { margin: 0; }
-.ProseMirror p + p { margin-top: 0.25rem; }
-.ProseMirror strong { font-weight: 700; }
-.ProseMirror em { font-style: italic; }
-.ProseMirror s { text-decoration: line-through; color: var(--color-text-secondary); }
-.ProseMirror code { background: var(--color-bg-elevated); font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 1px 4px; border: 1px solid var(--color-border); }
-.ProseMirror blockquote { border-left: 3px solid var(--color-accent-blue); padding-left: 0.75rem; color: var(--color-text-secondary); margin: 0.25rem 0; }
-.ProseMirror ul { padding-left: 1.5rem; margin: 0.25rem 0; list-style: disc; }
-.ProseMirror li { margin-bottom: 0.125rem; }
-/* Placeholder (Tiptap @tiptap/extension-placeholder renders it as a
-   :before pseudo on the empty first paragraph). */
-.ProseMirror p.is-editor-empty:first-child::before {
-  content: attr(data-placeholder);
-  color: var(--color-text-muted);
-  opacity: 0.4;
-  pointer-events: none;
-  height: 0;
-  float: left;
-}
-/* Whisper compose mode swaps the editor body to JetBrains Mono so the
-   typing surface mirrors the bubble-whisper render on the receiving end. */
-.compose-whisper .ProseMirror {
-  font-family: 'JetBrains Mono', ui-monospace, 'Menlo', 'Consolas', monospace;
-  font-size: 13px;
-  color: var(--color-text-secondary);
+  background-color: var(--color-whisper);
+  border: 1px dashed var(--color-whisper-ink);
+  border-radius: var(--radius-whisper);
 }
 
 @utility section-header {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 500;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  color: var(--color-ink-muted);
 }
 
 @utility badge {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  font-weight: 700;
-  text-transform: uppercase;
-  padding: 1px 6px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
   display: inline-block;
 }
 
 @utility mono-label {
-  font-family: var(--font-mono);
-  font-size: 8px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  letter-spacing: 0.04em;
+  color: var(--color-ink-muted);
 }
 
 @utility mono-id {
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink);
 }
 
 @utility mono-timestamp {
-  font-family: var(--font-mono);
-  font-size: 8px;
-  color: var(--color-text-faint);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--color-ink-muted);
 }
 
 /* ===== BASE STYLES ===== */
 
 html {
-  background-color: var(--color-bg-base);
-  color: var(--color-text-primary);
+  background-color: var(--color-bg);
+  color: var(--color-ink);
   height: 100%;
 }
 
@@ -352,25 +394,89 @@ body {
   height: 100%;
 }
 
+/* ===== TIPTAP COMPOSE EDITOR ===== */
+
+.ProseMirror {
+  outline: none;
+}
+.ProseMirror p { margin: 0; }
+.ProseMirror p + p { margin-top: 0.25rem; }
+.ProseMirror strong { font-weight: 700; }
+.ProseMirror em { font-style: italic; }
+.ProseMirror s { text-decoration: line-through; color: var(--color-ink-soft); }
+.ProseMirror code {
+  background: var(--color-elevated);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+.ProseMirror blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 0.75rem;
+  color: var(--color-ink-soft);
+  margin: 0.25rem 0;
+}
+.ProseMirror ul { padding-left: 1.5rem; margin: 0.25rem 0; list-style: disc; }
+.ProseMirror li { margin-bottom: 0.125rem; }
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-ink-muted);
+  opacity: 0.55;
+  pointer-events: none;
+  height: 0;
+  float: left;
+}
+
+/* Whisper compose: swap surface + border tones. Body stays in Inter. */
+.compose-whisper {
+  background-color: var(--color-whisper);
+  border-color: var(--color-whisper-ink) !important;
+}
+.compose-whisper .ProseMirror {
+  color: var(--color-ink);
+}
+
 /* ===== MARKDOWN MESSAGE STYLES ===== */
 
 .msg-markdown p { margin: 0; }
 .msg-markdown p + p { margin-top: 0.25rem; }
 .msg-markdown strong { font-weight: 700; }
 .msg-markdown em { font-style: italic; }
-.msg-markdown del { text-decoration: line-through; color: var(--color-text-secondary); }
-.msg-markdown code { background: var(--color-bg-elevated); font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 1px 4px; border: 1px solid var(--color-border); }
-.msg-markdown pre { background: var(--color-bg-elevated); border: 1px solid var(--color-border); padding: 0.75rem; overflow-x: auto; margin: 0.5rem 0; }
+.msg-markdown del { text-decoration: line-through; color: var(--color-ink-soft); }
+.msg-markdown code {
+  background: var(--color-elevated);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+.msg-markdown pre {
+  background: var(--color-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
 .msg-markdown pre code { background: none; padding: 0; border: none; font-size: 12px; display: block; }
-.msg-markdown blockquote { border-left: 3px solid var(--color-accent-blue); padding-left: 0.75rem; color: var(--color-text-secondary); margin: 0.25rem 0; }
+.msg-markdown blockquote {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 0.75rem;
+  color: var(--color-ink-soft);
+  margin: 0.25rem 0;
+}
 .msg-markdown ul, .msg-markdown ol { padding-left: 1.5rem; margin: 0.25rem 0; font-size: 13px; }
 .msg-markdown li { margin-bottom: 0.25rem; }
-.msg-markdown a { color: var(--color-accent-blue); text-underline-offset: 2px; }
+.msg-markdown a { color: var(--color-accent); text-underline-offset: 2px; }
 .msg-markdown a:hover { text-decoration: underline; }
 
-/* ── In-conversation search highlights ────────────────────────────── */
+/* In-conversation search highlights */
 mark {
-  background: var(--color-accent-amber, #f59e0b);
-  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-accent) 30%, transparent);
+  color: var(--color-ink);
   padding: 0 1px;
+  border-radius: 2px;
 }
