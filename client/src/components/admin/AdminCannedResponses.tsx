@@ -18,6 +18,15 @@ interface CannedResponse {
   createdAt: string;
 }
 
+const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
+const INPUT = 'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+const TEXTAREA = 'w-full px-3 py-2 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)] resize-y';
+const ICON_BTN = 'w-8 h-8 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-50';
+const LABEL = 'text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block';
+const COL_HEAD = 'px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
+const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all';
+const SECONDARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors';
+
 export default function AdminCannedResponses() {
   const t = useT();
   const { bionicReading } = useStoreShallow(s => ({ bionicReading: s.bionicReading }));
@@ -25,20 +34,17 @@ export default function AdminCannedResponses() {
   const departments = manifest.departments || [];
   const utils = trpc.useUtils();
 
-  // Create form state
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
   const [newDept, setNewDept] = useState('');
   const [newShortcut, setNewShortcut] = useState('');
 
-  // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
   const [editDept, setEditDept] = useState('');
   const [editShortcut, setEditShortcut] = useState('');
 
-  // Expanded row (to preview body)
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
@@ -112,13 +118,13 @@ export default function AdminCannedResponses() {
     <div className="max-w-4xl">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-lg font-bold uppercase tracking-wide">{t('canned_responses')}</h2>
-          <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-1">{t('canned_responses_desc')}</p>
+          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('canned_responses')}</h2>
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('canned_responses_desc')}</p>
         </div>
         <button
           onClick={() => refetch()}
-          className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white"
-          title="Refresh"
+          className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
+          title={t('refresh') || 'Refresh'}
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
@@ -127,27 +133,27 @@ export default function AdminCannedResponses() {
       <ErrorBox error={error} />
 
       {/* Create new canned response */}
-      <div className="surface-card p-5 mb-6">
-        <h3 className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide mb-4">Create New Response</h3>
+      <div className={`${CARD} p-5 mb-6`}>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">Create New Response</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="mono-label mb-1.5 block">Title *</label>
+            <label className={LABEL}>Title *</label>
             <input
               type="text"
               value={newTitle}
               onChange={(e) => { setNewTitle(e.target.value); setFieldErrors({}); }}
               placeholder="e.g. Greeting"
-              className={`input-field w-full ${fieldErrors.title ? 'border-[var(--color-accent-red)]' : ''}`}
+              className={`${INPUT} ${fieldErrors.title ? 'border-[var(--color-urgent)]' : ''}`}
             />
             <FieldError error={fieldErrors.title} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mono-label mb-1.5 block">Department</label>
+              <label className={LABEL}>Department</label>
               <select
                 value={newDept}
                 onChange={(e) => setNewDept(e.target.value)}
-                className="input-field w-full"
+                className={INPUT}
               >
                 <option value="">{t('global') || 'Global (all depts)'}</option>
                 {departments.map((d) => (
@@ -156,82 +162,81 @@ export default function AdminCannedResponses() {
               </select>
             </div>
             <div>
-              <label className="mono-label mb-1.5 block">Shortcut</label>
+              <label className={LABEL}>Shortcut</label>
               <input
                 type="text"
                 value={newShortcut}
                 onChange={(e) => setNewShortcut(e.target.value)}
-                placeholder="e.g. /greet (optional)"
-                className="input-field w-full"
+                placeholder="e.g. /greet"
+                className={INPUT}
               />
             </div>
           </div>
         </div>
         <div className="mb-4">
-          <label className="mono-label mb-1.5 block">Body *</label>
+          <label className={LABEL}>Body *</label>
           <textarea
             value={newBody}
             onChange={(e) => { setNewBody(e.target.value); setFieldErrors({}); }}
             placeholder="Hello {{agentName}}, how can I help you today?"
             rows={3}
-            className={`input-field w-full resize-y ${fieldErrors.body ? 'border-[var(--color-accent-red)]' : ''}`}
+            className={`${TEXTAREA} ${fieldErrors.body ? 'border-[var(--color-urgent)]' : ''}`}
           />
           <FieldError error={fieldErrors.body} />
-          <p className="text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mt-1">
-            Variables: {'{{agentName}}'} {'{{supportName}}'} {'{{ticketId}}'}
+          <p className="text-[11px] text-[var(--color-ink-muted)] mt-1.5">
+            Variables: <span className="font-mono">{'{{agentName}}'} {'{{supportName}}'} {'{{ticketId}}'}</span>
           </p>
         </div>
         <div className="flex justify-end">
           <button
             onClick={addResponse}
             disabled={!newTitle.trim() || !newBody.trim() || createMutation.isPending}
-            className="btn-primary disabled:opacity-50"
+            className={PRIMARY_BTN}
           >
             <Plus className="h-3.5 w-3.5" />
-            {createMutation.isPending ? 'Creating...' : 'Create'}
+            {createMutation.isPending ? 'Creating…' : 'Create'}
           </button>
         </div>
       </div>
 
       {/* Responses list */}
-      <div className="surface-card">
-        <div className="grid grid-cols-[1fr_100px_100px_80px] border-b border-[var(--color-border)] bg-bg-elevated">
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Title</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Dept</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Shortcut</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide"></div>
+      <div className={`${CARD} overflow-hidden`}>
+        <div className="grid grid-cols-[1fr_120px_120px_80px] border-b border-[var(--color-border)]">
+          <div className={COL_HEAD}>Title</div>
+          <div className={COL_HEAD}>Dept</div>
+          <div className={COL_HEAD}>Shortcut</div>
+          <div className={COL_HEAD}></div>
         </div>
 
         {isLoading ? (
-          <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)] font-bold uppercase tracking-wide">
-            Loading...
+          <div className="px-4 py-8 text-center text-[13px] text-[var(--color-ink-muted)]">
+            {t('loading') || 'Loading…'}
           </div>
         ) : !responses || responses.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)] font-bold uppercase tracking-wide">
+          <div className="px-4 py-12 text-center text-[13px] text-[var(--color-ink-muted)]">
             No canned responses yet
           </div>
         ) : (
           responses.map((r) => (
             <div key={r.id}>
               {editingId === r.id ? (
-                /* Inline edit form */
-                <div className="border-b border-[var(--color-border)] p-4 bg-black/[0.02] dark:bg-white/[0.02]">
+                <div className="border-b border-[var(--color-border)] last:border-b-0 p-4 bg-[var(--color-bg-elevated)]">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                     <div>
-                      <label className="block text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-1">Title</label>
+                      <label className={LABEL}>Title</label>
                       <input
                         type="text"
                         value={editTitle}
                         onChange={(e) => setEditTitle(e.target.value)}
-                        className="input-field w-full"
+                        className={INPUT}
                       />
                     </div>
                     <div>
-                      <label className="block text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-1">Dept</label>
+                      <label className={LABEL}>Dept</label>
                       <select
                         value={editDept}
                         onChange={(e) => setEditDept(e.target.value)}
-                        className="input-field w-full"
+                        className={INPUT}
                       >
                         <option value="">{t('global') || 'Global (all depts)'}</option>
                         {departments.map((d) => (
@@ -240,81 +245,78 @@ export default function AdminCannedResponses() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-1">Shortcut</label>
+                      <label className={LABEL}>Shortcut</label>
                       <input
                         type="text"
                         value={editShortcut}
                         onChange={(e) => setEditShortcut(e.target.value)}
                         placeholder="(none)"
-                        className="input-field w-full"
+                        className={INPUT}
                       />
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className="block text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-1">Body</label>
+                    <label className={LABEL}>Body</label>
                     <textarea
                       value={editBody}
                       onChange={(e) => setEditBody(e.target.value)}
                       rows={3}
-                      className="input-field w-full resize-y"
+                      className={TEXTAREA}
                     />
                   </div>
                   <div className="flex gap-2 justify-end">
-                    <button
-                      onClick={cancelEdit}
-                      className="btn-secondary"
-                    >
+                    <button onClick={cancelEdit} className={SECONDARY_BTN}>
                       <X className="h-3 w-3" /> Cancel
                     </button>
                     <button
                       onClick={saveEdit}
                       disabled={!editTitle.trim() || !editBody.trim() || updateMutation.isPending}
-                      className="btn-primary disabled:opacity-50"
+                      className={PRIMARY_BTN}
                     >
-                      <Check className="h-3 w-3" /> {updateMutation.isPending ? 'Saving...' : 'Save'}
+                      <Check className="h-3 w-3" /> {updateMutation.isPending ? 'Saving…' : 'Save'}
                     </button>
                   </div>
                 </div>
               ) : (
-                /* Normal row */
                 <>
                   <div
-                    className="grid grid-cols-[1fr_100px_100px_80px] border-b border-[var(--color-border)] group hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer"
+                    className="grid grid-cols-[1fr_120px_120px_80px] border-b border-[var(--color-border)] last:border-b-0 group hover:bg-[var(--color-hover)] transition-colors cursor-pointer"
                     onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
                   >
-                    <div className="px-4 py-3 font-bold text-sm flex items-center gap-2">
-                      <MessageSquareText className="h-3.5 w-3.5 opacity-40 shrink-0" />
+                    <div className="px-4 py-3 text-[14px] font-medium text-[var(--color-ink)] flex items-center gap-2">
+                      <MessageSquareText className="h-3.5 w-3.5 text-[var(--color-ink-muted)] shrink-0" />
                       {r.title}
                     </div>
-                    <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)] flex items-center">
-                      {r.dept ? (departments.find(d => d.id === r.dept)?.name || r.dept) : <span className="italic text-[var(--color-text-muted)]">global</span>}
+                    <div className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)] flex items-center">
+                      {r.dept ? (departments.find(d => d.id === r.dept)?.name || r.dept) : <span className="italic text-[var(--color-ink-muted)]">global</span>}
                     </div>
-                    <div className="px-4 py-3 text-xs font-mono text-[var(--color-text-secondary)] flex items-center">
-                      {r.shortcut || <span className="italic text-[var(--color-text-muted)]">—</span>}
+                    <div className="px-4 py-3 text-[12px] font-mono text-[var(--color-ink-soft)] flex items-center">
+                      {r.shortcut || <span className="italic font-sans text-[var(--color-ink-muted)]">—</span>}
                     </div>
                     <div className="px-4 py-3 flex items-center justify-end gap-1">
                       <button
                         onClick={(e) => { e.stopPropagation(); startEdit(r); }}
-                        className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white"
+                        className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
                         title="Edit"
+                        aria-label={`Edit ${r.title}`}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); deleteResponse(r.id); }}
                         disabled={deleteMutation.isPending}
-                        className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
+                        className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
                         title="Delete"
+                        aria-label={`Delete ${r.title}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </div>
-                  {/* Expanded body preview */}
                   {expandedId === r.id && (
-                    <div className="px-4 py-3 border-b border-[var(--color-border)] bg-black/[0.02] dark:bg-white/[0.02]">
-                      <p className="text-[8px] font-bold uppercase tracking-wide text-[var(--color-text-muted)] mb-1.5">Body Preview</p>
-                      <p className="text-sm whitespace-pre-wrap opacity-80">{bionicReading ? <BionicText text={r.body} /> : r.body}</p>
+                    <div className="px-4 py-3 border-b border-[var(--color-border)] last:border-b-0 bg-[var(--color-bg-elevated)]">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-1.5">Body Preview</p>
+                      <p className="text-[13px] text-[var(--color-ink)] whitespace-pre-wrap">{bionicReading ? <BionicText text={r.body} /> : r.body}</p>
                     </div>
                   )}
                 </>
@@ -325,7 +327,7 @@ export default function AdminCannedResponses() {
       </div>
 
       {responses && responses.length > 0 && (
-        <div className="mt-3 font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] text-right">
+        <div className="mt-3 text-[12px] text-[var(--color-ink-muted)] text-right">
           {responses.length} response{responses.length !== 1 ? 's' : ''}
         </div>
       )}

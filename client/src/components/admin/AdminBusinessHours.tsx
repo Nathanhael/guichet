@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import {
   BusinessHoursSchedule,
@@ -16,6 +17,16 @@ import {
 import { useBusinessHours } from '../../hooks/useBusinessHours';
 import { useT } from '../../i18n';
 import TimezonePicker from '../TimezonePicker';
+
+// Shared Soft Product style constants
+const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
+const INPUT = 'h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-40 transition-all';
+const SECONDARY_BTN = 'h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40';
+const GHOST_BTN = 'h-8 px-2.5 inline-flex items-center gap-1 rounded-[var(--radius-btn)] text-[12px] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors';
+const FIELD_LABEL = 'block text-[11px] font-medium text-[var(--color-ink-muted)] mb-1.5';
+const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
+const SECTION_LABEL = 'text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 function cloneSchedule(schedule: BusinessHoursSchedule) {
   return JSON.parse(JSON.stringify(schedule)) as BusinessHoursSchedule;
@@ -50,6 +61,39 @@ function nextExceptionDate(schedule: BusinessHoursSchedule, timezone: string) {
   }
 
   return seed;
+}
+
+// Segmented closed/open toggle — Soft Product pill pattern. Keeps the
+// keyboard affordance of a button but reads like a stateful switch.
+function OpenClosedToggle({
+  closed,
+  openLabel,
+  closedLabel,
+  onToggle,
+}: { closed: boolean; openLabel: string; closedLabel: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={closed}
+      className={`inline-flex items-center rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] p-0.5 text-[12px] font-medium transition-colors`}
+    >
+      <span
+        className={`px-3 h-7 inline-flex items-center rounded-[var(--radius-pill)] transition-colors ${
+          !closed ? 'bg-[var(--color-ok)] text-white shadow-[var(--shadow-soft)]' : 'text-[var(--color-ink-muted)]'
+        }`}
+      >
+        {openLabel}
+      </span>
+      <span
+        className={`px-3 h-7 inline-flex items-center rounded-[var(--radius-pill)] transition-colors ${
+          closed ? 'bg-[var(--color-ink)] text-[var(--color-bg)] shadow-[var(--shadow-soft)]' : 'text-[var(--color-ink-muted)]'
+        }`}
+      >
+        {closedLabel}
+      </span>
+    </button>
+  );
 }
 
 export default function AdminBusinessHours() {
@@ -89,14 +133,14 @@ export default function AdminBusinessHours() {
     setIsDirty(true);
   }
 
-  if (isLoading) return <div className="p-8 mono-label text-[var(--color-text-muted)]">{t('loading')}</div>;
+  if (isLoading) return <div className="p-8 text-[13px] text-[var(--color-ink-muted)]">{t('loading')}</div>;
 
   return (
-    <div className="min-w-[1120px] max-w-5xl space-y-6">
-      <div className="flex items-end justify-between gap-6 border-b border-[var(--color-border)] pb-4">
+    <div className="min-w-[1120px] max-w-5xl space-y-5">
+      <div className="flex items-end justify-between gap-6 pb-1">
         <div>
-          <h2 className="text-4xl font-bold uppercase tracking-tighter">{t('bh_title')}</h2>
-          <p className="text-sm font-bold uppercase text-[var(--color-text-secondary)] mt-1 tracking-wide">{t('bh_desc')}</p>
+          <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">{t('bh_title')}</h2>
+          <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">{t('bh_desc')}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -104,7 +148,7 @@ export default function AdminBusinessHours() {
               setSchedule(createDefaultBusinessHoursSchedule(schedule.timezone));
               setIsDirty(true);
             }}
-            className="btn-secondary"
+            className={SECONDARY_BTN}
           >
             {t('bh_reset')}
           </button>
@@ -119,7 +163,7 @@ export default function AdminBusinessHours() {
                 },
               });
             }}
-            className="btn-primary disabled:opacity-30"
+            className={PRIMARY_BTN}
           >
             {mutation.isPending ? t('bh_saving') : t('bh_save')}
           </button>
@@ -127,25 +171,37 @@ export default function AdminBusinessHours() {
       </div>
 
       {mutation.error && (
-        <div className="border border-[var(--color-border)] p-4 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]">
-          <p className="mono-label">{t('bh_validation_error')}</p>
-          <p className="text-sm font-bold mt-2">{mutation.error.message}</p>
-        </div>
-      )}
-
-      {draftIssues.length > 0 && (
-        <div className="border border-[var(--color-border)] p-4 bg-[var(--color-text-primary)] text-[var(--color-bg-base)]">
-          <p className="mono-label">{t('bh_draft_issues')}</p>
-          <div className="mt-2 space-y-1 text-sm font-bold">
-            {draftIssues.map((issue) => (
-              <p key={issue}>{issue}</p>
-            ))}
+        <div
+          className={`${CARD} p-4 border-l-4 border-[var(--color-urgent)] flex items-start gap-3`}
+          role="alert"
+        >
+          <AlertTriangle className="w-5 h-5 text-[var(--color-urgent)] mt-0.5 shrink-0" aria-hidden />
+          <div>
+            <p className="text-[13px] font-semibold text-[var(--color-ink)]">{t('bh_validation_error')}</p>
+            <p className="text-[12px] text-[var(--color-ink-soft)] mt-1">{mutation.error.message}</p>
           </div>
         </div>
       )}
 
-      <div className="surface-card p-6 space-y-6">
-        <div className="grid grid-cols-[220px_1fr_1fr] gap-6 items-end">
+      {draftIssues.length > 0 && (
+        <div
+          className={`${CARD} p-4 border-l-4 border-[var(--color-accent-amber)] flex items-start gap-3`}
+          role="alert"
+        >
+          <AlertTriangle className="w-5 h-5 text-[var(--color-accent-amber)] mt-0.5 shrink-0" aria-hidden />
+          <div className="space-y-1">
+            <p className="text-[13px] font-semibold text-[var(--color-ink)]">{t('bh_draft_issues')}</p>
+            <ul className="space-y-0.5">
+              {draftIssues.map((issue) => (
+                <li key={issue} className="text-[12px] text-[var(--color-ink-soft)]">• {issue}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      <div className={`${CARD} p-5 space-y-5`}>
+        <div className="grid grid-cols-[240px_1fr_1fr] gap-4 items-stretch">
           <div>
             <TimezonePicker
               label={t('bh_timezone')}
@@ -157,54 +213,54 @@ export default function AdminBusinessHours() {
             />
           </div>
 
-          <div className="border border-[var(--color-border)] p-4">
-            <p className="mono-label text-[var(--color-text-secondary)] mb-1">{t('bh_saved_status')}</p>
-            <p className="text-sm font-bold">{getBusinessHoursSummary(status, t)}</p>
+          <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] p-3.5">
+            <p className={SECTION_LABEL}>{t('bh_saved_status')}</p>
+            <p className="text-[13px] font-medium text-[var(--color-ink)] mt-1.5">{getBusinessHoursSummary(status, t)}</p>
             {getBusinessHoursReason(status) && (
-              <p className="mono-label text-[var(--color-text-secondary)] mt-2">
+              <p className="text-[11px] text-[var(--color-ink-muted)] mt-1.5">
                 {getBusinessHoursReason(status)}
               </p>
             )}
             {status?.nextOpenAt && (
-              <p className="mono-label text-[var(--color-text-secondary)] mt-2">
-                {t('bh_next_open')} {formatBusinessHoursTimestamp(status.nextOpenAt, status.timezone)}
+              <p className="text-[11px] text-[var(--color-ink-muted)] mt-1.5">
+                <span className="text-[var(--color-ink-soft)]">{t('bh_next_open')}</span> {formatBusinessHoursTimestamp(status.nextOpenAt, status.timezone)}
               </p>
             )}
             {status?.nextCloseAt && (
-              <p className="mono-label text-[var(--color-text-secondary)] mt-1">
-                {t('bh_next_close')} {formatBusinessHoursTimestamp(status.nextCloseAt, status.timezone)}
+              <p className="text-[11px] text-[var(--color-ink-muted)] mt-0.5">
+                <span className="text-[var(--color-ink-soft)]">{t('bh_next_close')}</span> {formatBusinessHoursTimestamp(status.nextCloseAt, status.timezone)}
               </p>
             )}
           </div>
 
-          <div className="border border-[var(--color-border)] p-4">
-            <p className="mono-label text-[var(--color-text-secondary)] mb-1">{t('bh_draft_preview')}</p>
-            <p className="text-sm font-bold">{getBusinessHoursSummary(draftStatus, t)}</p>
+          <div className="rounded-[var(--radius-card)] bg-[var(--color-accent-soft)] p-3.5">
+            <p className={SECTION_LABEL}>{t('bh_draft_preview')}</p>
+            <p className="text-[13px] font-medium text-[var(--color-ink)] mt-1.5">{getBusinessHoursSummary(draftStatus, t)}</p>
             {getBusinessHoursReason(draftStatus) && (
-              <p className="mono-label text-[var(--color-text-secondary)] mt-2">
+              <p className="text-[11px] text-[var(--color-ink-soft)] mt-1.5">
                 {getBusinessHoursReason(draftStatus)}
               </p>
             )}
             {draftStatus.nextOpenAt && (
-              <p className="mono-label text-[var(--color-text-secondary)] mt-2">
-                {t('bh_next_open')} {formatBusinessHoursTimestamp(draftStatus.nextOpenAt, draftStatus.timezone)}
+              <p className="text-[11px] text-[var(--color-ink-soft)] mt-1.5">
+                <span className="text-[var(--color-ink)]">{t('bh_next_open')}</span> {formatBusinessHoursTimestamp(draftStatus.nextOpenAt, draftStatus.timezone)}
               </p>
             )}
             {draftStatus.nextCloseAt && (
-              <p className="mono-label text-[var(--color-text-secondary)] mt-1">
-                {t('bh_next_close')} {formatBusinessHoursTimestamp(draftStatus.nextCloseAt, draftStatus.timezone)}
+              <p className="text-[11px] text-[var(--color-ink-soft)] mt-0.5">
+                <span className="text-[var(--color-ink)]">{t('bh_next_close')}</span> {formatBusinessHoursTimestamp(draftStatus.nextCloseAt, draftStatus.timezone)}
               </p>
             )}
           </div>
         </div>
 
-        <div className="border border-[var(--color-border)] overflow-hidden">
+        <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] overflow-hidden">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[var(--color-border)] bg-bg-elevated">
-                <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_day')}</th>
-                <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_closed')}</th>
-                <th className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_col_windows')}</th>
+              <tr className="border-b border-[var(--color-border)]">
+                <th className={COL_HEAD}>{t('bh_col_day')}</th>
+                <th className={COL_HEAD}>{t('bh_col_closed')}</th>
+                <th className={COL_HEAD}>{t('bh_col_windows')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
@@ -212,48 +268,44 @@ export default function AdminBusinessHours() {
                 const daySchedule = schedule.weekly[day];
                 return (
                   <tr key={day}>
-                    <td className="px-4 py-4 text-sm font-bold uppercase tracking-wide">{t(`day_${day}`)}</td>
+                    <td className="px-4 py-4 text-[13px] font-medium text-[var(--color-ink)]">{t(`day_${day}`)}</td>
                     <td className="px-4 py-4">
-                      <button
-                        onClick={() => updateSchedule((next) => {
+                      <OpenClosedToggle
+                        closed={daySchedule.closed}
+                        openLabel={t('bh_open')}
+                        closedLabel={t('bh_closed')}
+                        onToggle={() => updateSchedule((next) => {
                           next.weekly[day].closed = !next.weekly[day].closed;
                           if (next.weekly[day].closed) next.weekly[day].windows = [];
                           if (!next.weekly[day].closed && next.weekly[day].windows.length === 0) {
                             next.weekly[day].windows = [{ start: '07:30', end: '22:30' }];
                           }
                         })}
-                        className={`px-3 py-2 border mono-label ${
-                          daySchedule.closed
-                            ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                            : 'border-[var(--color-border)]'
-                        }`}
-                      >
-                        {daySchedule.closed ? t('bh_closed') : t('bh_open')}
-                      </button>
+                      />
                     </td>
                     <td className="px-4 py-4">
                       {daySchedule.closed ? (
-                        <span className="text-xs font-bold uppercase text-[var(--color-text-muted)] tracking-wide">{t('bh_no_intake_windows')}</span>
+                        <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('bh_no_intake_windows')}</span>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-2.5">
                           {daySchedule.windows.map((window, index) => (
-                            <div key={`${day}-${index}`} className="flex items-center gap-3">
+                            <div key={`${day}-${index}`} className="flex items-center gap-2">
                               <input
                                 type="time"
                                 value={window.start}
                                 onChange={(e) => updateSchedule((next) => {
                                   next.weekly[day].windows[index].start = e.target.value;
                                 })}
-                                className="input-field"
+                                className={`${INPUT} w-[110px]`}
                               />
-                              <span className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('bh_to')}</span>
+                              <span className="text-[11px] text-[var(--color-ink-muted)]">{t('bh_to')}</span>
                               <input
                                 type="time"
                                 value={window.end}
                                 onChange={(e) => updateSchedule((next) => {
                                   next.weekly[day].windows[index].end = e.target.value;
                                 })}
-                                className="input-field"
+                                className={`${INPUT} w-[110px]`}
                               />
                               <button
                                 onClick={() => updateSchedule((next) => {
@@ -262,8 +314,10 @@ export default function AdminBusinessHours() {
                                     next.weekly[day].closed = true;
                                   }
                                 })}
-                                className="btn-secondary"
+                                className={GHOST_BTN}
+                                aria-label={t('bh_remove')}
                               >
+                                <Trash2 className="w-3.5 h-3.5" aria-hidden />
                                 {t('bh_remove')}
                               </button>
                             </div>
@@ -272,8 +326,9 @@ export default function AdminBusinessHours() {
                             onClick={() => updateSchedule((next) => {
                               next.weekly[day].windows.push({ start: '07:30', end: '22:30' });
                             })}
-                            className="btn-secondary"
+                            className={SECONDARY_BTN}
                           >
+                            <Plus className="w-3.5 h-3.5" aria-hidden />
                             {t('bh_add_window')}
                           </button>
                         </div>
@@ -286,11 +341,11 @@ export default function AdminBusinessHours() {
           </table>
         </div>
 
-        <div className="border border-[var(--color-border)] overflow-hidden">
-          <div className="px-4 py-3 border-b border-[var(--color-border)] bg-bg-elevated flex items-center justify-between">
+        <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] overflow-hidden">
+          <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
             <div>
-              <p className="mono-label">{t('bh_exceptions')}</p>
-              <p className="text-xs font-bold text-[var(--color-text-secondary)] mt-1">{t('bh_exceptions_desc')}</p>
+              <p className="text-[13px] font-semibold text-[var(--color-ink)]">{t('bh_exceptions')}</p>
+              <p className="text-[12px] text-[var(--color-ink-soft)] mt-0.5">{t('bh_exceptions_desc')}</p>
             </div>
             <button
               onClick={() => {
@@ -308,23 +363,24 @@ export default function AdminBusinessHours() {
                 }));
                 setIsDirty(true);
               }}
-              className="btn-secondary"
+              className={SECONDARY_BTN}
             >
+              <Plus className="w-3.5 h-3.5" aria-hidden />
               {t('bh_add_exception')}
             </button>
           </div>
 
-          <div className="p-4 space-y-4">
+          <div className="p-4 space-y-3">
             {schedule.exceptions.length === 0 ? (
-              <p className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('bh_no_exceptions')}</p>
+              <p className="text-[12px] text-[var(--color-ink-muted)] italic py-2">{t('bh_no_exceptions')}</p>
             ) : (
               sortBusinessHoursExceptions(schedule.exceptions).map((exception) => {
                 const index = schedule.exceptions.findIndex((item) => item.id === exception.id);
                 return (
-                <div key={exception.id} className="border border-[var(--color-border)] p-4 space-y-3">
-                  <div className="grid grid-cols-[180px_140px_1fr_auto] gap-3 items-end">
+                <div key={exception.id} className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)] p-4 space-y-3">
+                  <div className="grid grid-cols-[180px_180px_1fr_auto] gap-3 items-end">
                     <div>
-                      <label className="mono-label mb-2 block">{t('bh_date')}</label>
+                      <label className={FIELD_LABEL}>{t('bh_date')}</label>
                       <input
                         type="date"
                         value={exception.date}
@@ -337,39 +393,35 @@ export default function AdminBusinessHours() {
                           });
                           setIsDirty(true);
                         }}
-                        className="input-field w-full"
+                        className={`${INPUT} w-full`}
                       />
                     </div>
                     <div>
-                      <label className="mono-label mb-2 block">{t('bh_mode')}</label>
-                      <button
-                      onClick={() => {
-                        setSchedule((current) => {
-                          const next = cloneSchedule(current);
-                          const item = next.exceptions[index];
-                          item.closed = !item.closed;
+                      <label className={FIELD_LABEL}>{t('bh_mode')}</label>
+                      <OpenClosedToggle
+                        closed={!!exception.closed}
+                        openLabel={t('bh_custom_hours')}
+                        closedLabel={t('bh_closed')}
+                        onToggle={() => {
+                          setSchedule((current) => {
+                            const next = cloneSchedule(current);
+                            const item = next.exceptions[index];
+                            item.closed = !item.closed;
                             if (!item.closed && (!item.windows || item.windows.length === 0)) {
                               item.windows = [{ start: '07:30', end: '22:30' }];
                             }
-                          if (item.closed) {
-                            item.windows = undefined;
-                          }
-                          next.exceptions = sortBusinessHoursExceptions(next.exceptions);
-                          return next;
-                        });
-                        setIsDirty(true);
+                            if (item.closed) {
+                              item.windows = undefined;
+                            }
+                            next.exceptions = sortBusinessHoursExceptions(next.exceptions);
+                            return next;
+                          });
+                          setIsDirty(true);
                         }}
-                        className={`w-full px-3 py-2 border mono-label ${
-                          exception.closed
-                            ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)] border-[var(--color-border)]'
-                            : 'border-[var(--color-border)]'
-                        }`}
-                      >
-                        {exception.closed ? t('bh_closed') : t('bh_custom_hours')}
-                      </button>
+                      />
                     </div>
                     <div>
-                      <label className="mono-label mb-2 block">{t('bh_note')}</label>
+                      <label className={FIELD_LABEL}>{t('bh_note')}</label>
                       <input
                         type="text"
                         value={exception.note ?? ''}
@@ -382,7 +434,7 @@ export default function AdminBusinessHours() {
                           });
                           setIsDirty(true);
                         }}
-                        className="input-field w-full"
+                        className={`${INPUT} w-full`}
                         placeholder={t('bh_note_placeholder')}
                       />
                     </div>
@@ -394,22 +446,24 @@ export default function AdminBusinessHours() {
                         }));
                         setIsDirty(true);
                       }}
-                      className="btn-secondary"
+                      className={GHOST_BTN}
+                      aria-label={t('bh_remove')}
                     >
+                      <Trash2 className="w-3.5 h-3.5" aria-hidden />
                       {t('bh_remove')}
                     </button>
                   </div>
 
                   {exception.note?.trim() && (
-                    <p className="mono-label text-[var(--color-text-secondary)]">
-                      {t('bh_current_note')} {exception.note.trim()}
+                    <p className="text-[11px] text-[var(--color-ink-muted)]">
+                      <span className="text-[var(--color-ink-soft)]">{t('bh_current_note')}</span> {exception.note.trim()}
                     </p>
                   )}
 
                   {!exception.closed && (
-                    <div className="space-y-3">
+                    <div className="space-y-2.5 pt-1 border-t border-[var(--color-border)]">
                       {(exception.windows ?? []).map((window, windowIndex) => (
-                        <div key={`${exception.id}-${windowIndex}`} className="flex items-center gap-3">
+                        <div key={`${exception.id}-${windowIndex}`} className="flex items-center gap-2 pt-2.5">
                           <input
                             type="time"
                             value={window.start}
@@ -422,9 +476,9 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className="input-field"
+                            className={`${INPUT} w-[110px]`}
                           />
-                          <span className="text-xs font-bold uppercase tracking-wide text-[var(--color-text-secondary)]">{t('bh_to')}</span>
+                          <span className="text-[11px] text-[var(--color-ink-muted)]">{t('bh_to')}</span>
                           <input
                             type="time"
                             value={window.end}
@@ -437,7 +491,7 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className="input-field"
+                            className={`${INPUT} w-[110px]`}
                           />
                           <button
                             onClick={() => {
@@ -449,8 +503,10 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className="btn-secondary"
+                            className={GHOST_BTN}
+                            aria-label={t('bh_remove_window')}
                           >
+                            <Trash2 className="w-3.5 h-3.5" aria-hidden />
                             {t('bh_remove_window')}
                           </button>
                         </div>
@@ -468,8 +524,9 @@ export default function AdminBusinessHours() {
                           });
                           setIsDirty(true);
                         }}
-                        className="btn-secondary"
+                        className={SECONDARY_BTN}
                       >
+                        <Plus className="w-3.5 h-3.5" aria-hidden />
                         {t('bh_add_window')}
                       </button>
                     </div>
@@ -481,9 +538,9 @@ export default function AdminBusinessHours() {
         </div>
       </div>
 
-      <div className="border border-[var(--color-border)] p-4">
-        <p className="mono-label text-[var(--color-text-secondary)] mb-1">{t('bh_how_it_works')}</p>
-        <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+      <div className={`${CARD} p-4`}>
+        <p className={SECTION_LABEL}>{t('bh_how_it_works')}</p>
+        <p className="text-[12px] text-[var(--color-ink-soft)] leading-relaxed mt-1.5">
           {t('bh_how_it_works_desc')}
         </p>
       </div>

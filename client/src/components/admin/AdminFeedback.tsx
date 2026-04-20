@@ -10,28 +10,21 @@ export default function AdminFeedback() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <h2 className="text-xl font-bold">Feedback &amp; Ratings</h2>
-        <div className="flex gap-1">
-          <button
-            onClick={() => setTab('feedback')}
-            className={`px-3 py-1.5 text-xs font-medium ${
-              tab === 'feedback'
-                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-                : 'bg-bg-elevated text-[var(--color-text-secondary)] hover:opacity-100'
-            }`}
-          >
-            Feedback
-          </button>
-          <button
-            onClick={() => setTab('ratings')}
-            className={`px-3 py-1.5 text-xs font-medium ${
-              tab === 'ratings'
-                ? 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
-                : 'bg-bg-elevated text-[var(--color-text-secondary)] hover:opacity-100'
-            }`}
-          >
-            Ratings
-          </button>
+        <h2 className="text-[18px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">Feedback &amp; Ratings</h2>
+        <div className="inline-flex gap-1 p-1 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)]">
+          {(['feedback', 'ratings'] as const).map((id) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`px-3 py-1 rounded-[var(--radius-pill)] text-[12px] font-medium transition-colors ${
+                tab === id
+                  ? 'bg-[var(--color-bg-surface)] text-[var(--color-ink)] shadow-[var(--shadow-soft)]'
+                  : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+              }`}
+            >
+              {id === 'feedback' ? 'Feedback' : 'Ratings'}
+            </button>
+          ))}
         </div>
       </div>
 

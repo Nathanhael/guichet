@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { X, Check, Copy } from 'lucide-react';
 
 export type AuditEntry = {
   id: string;
@@ -65,23 +66,23 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
       <aside
         role="dialog"
         aria-label="Audit entry details"
-        className="fixed top-0 right-0 h-full w-full max-w-xl bg-[var(--color-bg-surface)] border-l border-[var(--color-border-heavy)] z-50 overflow-y-auto flex flex-col"
+        className="fixed top-0 right-0 h-full w-full max-w-xl bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] z-50 overflow-y-auto flex flex-col"
       >
-        <div className="flex justify-between items-start p-6 border-b border-[var(--color-border)]">
-          <div>
-            <h3 className="text-lg font-bold uppercase tracking-wide">{entry.action}</h3>
-            <p className="mono-label mt-2">{new Date(entry.createdAt).toLocaleString()}</p>
+        <div className="flex justify-between items-start p-5 border-b border-[var(--color-border)]">
+          <div className="min-w-0">
+            <h3 className="text-[16px] font-semibold text-[var(--color-ink)] font-mono break-all">{entry.action}</h3>
+            <p className="text-[12px] text-[var(--color-ink-muted)] mt-1 tabular-nums">{new Date(entry.createdAt).toLocaleString()}</p>
           </div>
           <button
             onClick={onClose}
-            className="btn-secondary"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors shrink-0"
             aria-label="Close"
           >
-            Close
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4 border-b border-[var(--color-border)]">
+        <div className="p-5 space-y-4 border-b border-[var(--color-border)]">
           <Field
             label="Actor"
             value={entry.actorName || entry.actorId || 'System'}
@@ -135,45 +136,47 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
         </div>
 
         {diffRows.length > 0 && (
-          <div className="p-6 border-b border-[var(--color-border)]">
-            <p className="mono-label mb-3">Changes</p>
-            <table
-              className="w-full border-collapse"
-              data-testid="audit-diff-table"
-            >
-              <thead>
-                <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
-                  <th className="p-2 text-left font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Field</th>
-                  <th className="p-2 text-left font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">Before</th>
-                  <th className="p-2 text-left font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">After</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
-                {diffRows.map(row => (
-                  <tr key={row.field}>
-                    <td className="p-2 font-mono text-[10px] uppercase tracking-wide">{row.field}</td>
-                    <td className="p-2 font-mono text-[10px] text-[var(--color-text-secondary)] line-through break-all">{row.before}</td>
-                    <td className="p-2 font-mono text-[10px] break-all">{row.after}</td>
+          <div className="p-5 border-b border-[var(--color-border)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-3">Changes</p>
+            <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] overflow-hidden">
+              <table
+                className="w-full border-collapse"
+                data-testid="audit-diff-table"
+              >
+                <thead>
+                  <tr className="border-b border-[var(--color-border)]">
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">Field</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">Before</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">After</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-border)]">
+                  {diffRows.map(row => (
+                    <tr key={row.field}>
+                      <td className="px-3 py-2 font-mono text-[11px] text-[var(--color-ink)] break-all">{row.field}</td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-[var(--color-ink-muted)] line-through break-all">{row.before}</td>
+                      <td className="px-3 py-2 font-mono text-[11px] text-[var(--color-ink)] break-all">{row.after}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
-        <div className="p-6 flex-1">
-          <div className="flex justify-between items-center mb-3">
-            <p className="mono-label">Metadata (JSON)</p>
+        <div className="p-5 flex-1">
+          <div className="flex justify-between items-center mb-3 gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">Metadata (JSON)</p>
             <button
               onClick={handleCopy}
-              className="btn-secondary"
+              className="h-7 px-2.5 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[12px] font-medium text-[var(--color-ink)] transition-colors"
               id="audit-drawer-copy"
             >
-              {copied ? 'Copied!' : 'Copy JSON'}
+              {copied ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy JSON</>}
             </button>
           </div>
           <pre
-            className="font-mono text-xs whitespace-pre-wrap break-words p-4 border border-[var(--color-border)] bg-[var(--color-bg-base)] max-h-[60vh] overflow-y-auto"
+            className="font-mono text-[12px] whitespace-pre-wrap break-words p-4 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] max-h-[60vh] overflow-y-auto"
             data-testid="audit-metadata-json"
           >
             {pretty}
@@ -244,18 +247,18 @@ function Field({
   return (
     <div>
       <div className="flex justify-between items-center mb-1 gap-2">
-        <p className="mono-label">{label}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">{label}</p>
         {action && (
           <button
             type="button"
             onClick={action.onClick}
-            className="mono-label underline hover:text-[var(--color-text-primary)]"
+            className="text-[11px] font-medium text-[var(--color-accent)] hover:underline"
           >
             {action.label}
           </button>
         )}
       </div>
-      <p className={mono ? 'font-mono text-xs break-all' : 'text-sm'}>{value}</p>
+      <p className={mono ? 'font-mono text-[12px] text-[var(--color-ink)] break-all' : 'text-[13px] text-[var(--color-ink)]'}>{value}</p>
     </div>
   );
 }

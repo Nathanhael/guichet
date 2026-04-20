@@ -87,16 +87,20 @@ export default function AdminLabels() {
 
   const error = fetchError?.message || createMutation.error?.message || updateMutation.error?.message || deleteMutation.error?.message;
 
+  const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
+  const INPUT = 'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+  const ICON_BTN = 'w-8 h-8 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-50';
+
   return (
     <div className="max-w-3xl">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-lg font-bold uppercase tracking-wide">{t('labels') || 'Labels'}</h2>
-          <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-1">{t('labels_desc') || 'Categorize and tag conversations'}</p>
+          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('labels') || 'Labels'}</h2>
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('labels_desc') || 'Categorize and tag conversations'}</p>
         </div>
         <button
           onClick={() => invalidate()}
-          className="p-2 hover:bg-[var(--color-accent-blue)] hover:text-white"
+          className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
           title={t('refresh') || 'Refresh'}
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -106,25 +110,25 @@ export default function AdminLabels() {
       <ErrorBox error={error} />
 
       {/* Create new label */}
-      <div className="surface-card p-5 mb-6">
-        <h3 className="font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide mb-4">{t('create_new_label') || 'Create New Label'}</h3>
-        <div className="flex items-end gap-4">
-          <div className="flex-1">
-            <label className="mono-label mb-1.5 block">{t('label_name') || 'Name'} *</label>
+      <div className={`${CARD} p-5 mb-6`}>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('create_new_label') || 'Create New Label'}</h3>
+        <div className="flex items-end gap-4 flex-wrap">
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_name') || 'Name'} *</label>
             <input
               type="text"
               value={newName}
               onChange={(e) => { setNewName(e.target.value); setFieldErrors({}); }}
               onKeyDown={(e) => e.key === 'Enter' && addLabel()}
               placeholder={t('label_name_placeholder') || 'e.g. Bug Report'}
-              className={`input-field w-full ${fieldErrors.name ? 'border-[var(--color-accent-red)]' : ''}`}
+              className={`${INPUT} ${fieldErrors.name ? 'border-[var(--color-urgent)]' : ''}`}
               maxLength={50}
             />
             <FieldError error={fieldErrors.name} />
           </div>
           <div>
-            <label className="mono-label mb-1.5 block">{t('label_color') || 'Color'} *</label>
-            <div className="flex gap-1.5 p-1.5 border border-[var(--color-border)]" role="radiogroup" aria-label={t('label_color') || 'Color'}>
+            <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_color') || 'Color'} *</label>
+            <div className="flex gap-1.5 p-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)]" role="radiogroup" aria-label={t('label_color') || 'Color'}>
               {COLORS.map((c) => (
                 <button
                   key={c.key}
@@ -132,7 +136,7 @@ export default function AdminLabels() {
                   role="radio"
                   aria-checked={newColor === c.key}
                   aria-label={c.key}
-                  className={`w-6 h-6 ${c.bg} ${
+                  className={`w-6 h-6 rounded-full ${c.bg} transition-opacity ${
                     newColor === c.key
                       ? 'ring-2 ring-offset-2 ring-offset-[var(--color-bg-surface)] ' + c.ring
                       : 'opacity-50 hover:opacity-80'
@@ -144,35 +148,35 @@ export default function AdminLabels() {
           <button
             onClick={addLabel}
             disabled={!newName.trim() || createMutation.isPending}
-            className="btn-primary disabled:opacity-50 shrink-0"
+            className="h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
-            {createMutation.isPending ? (t('adding_label') || 'Adding...') : (t('add_label') || 'Add')}
+            {createMutation.isPending ? (t('adding_label') || 'Adding…') : (t('add_label') || 'Add')}
           </button>
         </div>
       </div>
 
       {/* Labels list */}
-      <div className="surface-card">
-        <div className="grid grid-cols-[auto_1fr_auto] border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide w-16 text-center">{t('label_color') || 'Color'}</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('labels') || 'Label'}</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide"></div>
+      <div className={`${CARD} overflow-hidden`}>
+        <div className="grid grid-cols-[auto_1fr_auto] border-b border-[var(--color-border)]">
+          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)] w-16 text-center">{t('label_color') || 'Color'}</div>
+          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('labels') || 'Label'}</div>
+          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]"></div>
         </div>
 
         {isLoading ? (
-          <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)] font-bold uppercase tracking-wide">
-            {t('loading') || 'Loading...'}
+          <div className="px-4 py-8 text-center text-[13px] text-[var(--color-ink-muted)]">
+            {t('loading') || 'Loading…'}
           </div>
         ) : !labels || labels.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)] font-bold uppercase tracking-wide">
+          <div className="px-4 py-12 text-center text-[13px] text-[var(--color-ink-muted)]">
             {t('no_labels') || 'No labels created yet'}
           </div>
         ) : (
           labels.map((l) => (
             <div
               key={l.id}
-              className="grid grid-cols-[auto_1fr_auto] border-b border-[var(--color-border)] group hover:bg-[var(--color-bg-elevated)]"
+              className="grid grid-cols-[auto_1fr_auto] border-b border-[var(--color-border)] last:border-b-0 group hover:bg-[var(--color-hover)] transition-colors"
             >
               {editingId === l.id ? (
                 <>
@@ -183,7 +187,7 @@ export default function AdminLabels() {
                           key={c.key}
                           onClick={() => setEditColor(c.key)}
                           aria-label={c.key}
-                          className={`w-4 h-4 ${c.bg} ${editColor === c.key ? 'ring-1 ring-offset-1 ring-offset-[var(--color-bg-surface)] ' + c.ring : 'opacity-40'}`}
+                          className={`w-4 h-4 rounded-full ${c.bg} ${editColor === c.key ? 'ring-1 ring-offset-1 ring-offset-[var(--color-bg-surface)] ' + c.ring : 'opacity-40'}`}
                         />
                       ))}
                     </div>
@@ -194,7 +198,7 @@ export default function AdminLabels() {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
-                      className="input-field w-full text-sm"
+                      className={INPUT}
                       maxLength={50}
                       autoFocus
                     />
@@ -203,14 +207,14 @@ export default function AdminLabels() {
                     <button
                       onClick={saveEdit}
                       disabled={!editName.trim() || updateMutation.isPending}
-                      className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
+                      className={ICON_BTN}
                       title={t('save_label') || 'Save'}
                     >
                       <Check className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={cancelEdit}
-                      className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white"
+                      className={ICON_BTN}
                       title={t('cancel') || 'Cancel'}
                     >
                       <X className="h-3.5 w-3.5" />
@@ -220,13 +224,13 @@ export default function AdminLabels() {
               ) : (
                 <>
                   <div className="px-4 py-3 w-16 flex items-center justify-center">
-                    <div className={`w-3.5 h-3.5 ${COLOR_BG_MAP[l.color] ?? 'bg-slate-500'}`} />
+                    <div className={`w-3.5 h-3.5 rounded-full ${COLOR_BG_MAP[l.color] ?? 'bg-slate-500'}`} />
                   </div>
-                  <div className="px-4 py-3 font-bold text-sm flex items-center">{l.name}</div>
+                  <div className="px-4 py-3 text-[14px] font-medium text-[var(--color-ink)] flex items-center">{l.name}</div>
                   <div className="px-4 py-3 flex items-center gap-1">
                     <button
                       onClick={() => startEdit(l.id, l.name, l.color)}
-                      className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white"
+                      className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
                       title={t('edit_label') || 'Edit'}
                       aria-label={`${t('edit_label') || 'Edit'} ${l.name}`}
                     >
@@ -235,7 +239,7 @@ export default function AdminLabels() {
                     <button
                       onClick={() => confirmDeleteLabel(l.id, l.name)}
                       disabled={deletingId === l.id}
-                      className="w-7 h-7 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-50"
+                      className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
                       title={t('delete') || 'Delete'}
                       aria-label={`${t('delete') || 'Delete'} ${l.name}`}
                     >
@@ -250,7 +254,7 @@ export default function AdminLabels() {
       </div>
 
       {labels && labels.length > 0 && (
-        <div className="mt-3 font-mono text-[9px] uppercase tracking-wide text-[var(--color-text-muted)] text-right">
+        <div className="mt-3 text-[12px] text-[var(--color-ink-muted)] text-right">
           {labels.length} {t('labels') || 'label(s)'}
         </div>
       )}

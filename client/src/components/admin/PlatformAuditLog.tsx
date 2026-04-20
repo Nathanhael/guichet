@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, Download, ScrollText, Search } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import Toast from '../Toast';
@@ -6,6 +7,15 @@ import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 import CrossPartnerActivityPanel from './CrossPartnerActivityPanel';
 import { useUrlParam } from '../../hooks/useUrlState';
 import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
+
+// Shared style constants — mirrors the Soft Product token usage across the
+// other admin panels so visual density and spacing stay consistent.
+const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
+const INPUT = 'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all';
+const SECONDARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40';
+const FIELD_LABEL = 'block text-[11px] font-medium text-[var(--color-ink-muted)] mb-1.5';
+const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 function formatAuditDetails(log: { action: string; metadata?: unknown; targetId: string | null; actorName: string | null }) {
   const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
@@ -235,23 +245,25 @@ export default function PlatformAuditLog() {
     : [];
 
   return (
-    <div className="max-w-6xl space-y-6 pb-12">
+    <div className="max-w-6xl space-y-6 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-2xl font-bold uppercase tracking-tight">{t('audit_log_title')}</h2>
-          <p className="text-xs uppercase font-bold text-[var(--color-text-secondary)] mt-1 tracking-wide">{t('audit_log_desc')}</p>
+          <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">{t('audit_log_title')}</h2>
+          <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">{t('audit_log_desc')}</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => handleExport('csv')}
-            className="btn-primary"
+            className={PRIMARY_BTN}
           >
+            <Download className="w-4 h-4" aria-hidden />
             {t('export_csv')}
           </button>
           <button
             onClick={() => handleExport('json')}
-            className="btn-secondary"
+            className={SECONDARY_BTN}
           >
+            <Download className="w-4 h-4" aria-hidden />
             Export JSON
           </button>
         </div>
@@ -270,14 +282,14 @@ export default function PlatformAuditLog() {
         }}
       />
 
-      <div className="flex flex-col gap-3 bg-bg-elevated p-4 border border-[var(--color-border)]">
+      <div className={`${CARD} p-4 space-y-3`}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-          <div className="space-y-1">
-            <label className="mono-label ml-1">{t('action_type')}</label>
+          <div>
+            <label className={FIELD_LABEL}>{t('action_type')}</label>
             <select
               value={filterAction}
               onChange={e => { setFilterAction(e.target.value); resetCursor(); }}
-              className="input-field w-full"
+              className={INPUT}
             >
               <option value="">{t('all_actions')}</option>
               {(actionList || []).map((action) => (
@@ -286,12 +298,12 @@ export default function PlatformAuditLog() {
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="mono-label ml-1">{t('partner_context')}</label>
+          <div>
+            <label className={FIELD_LABEL}>{t('partner_context')}</label>
             <select
               value={filterPartnerId}
               onChange={e => { setFilterPartnerId(e.target.value); resetCursor(); }}
-              className="input-field w-full"
+              className={INPUT}
             >
               <option value="">{t('all_partners')}</option>
               {(partners || []).map(p => (
@@ -300,12 +312,12 @@ export default function PlatformAuditLog() {
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="mono-label ml-1">{t('actor_who')}</label>
+          <div>
+            <label className={FIELD_LABEL}>{t('actor_who')}</label>
             <select
               value={filterActorId}
               onChange={e => { setFilterActorId(e.target.value); resetCursor(); }}
-              className="input-field w-full"
+              className={INPUT}
             >
               <option value="">{t('all_actors')}</option>
               {actors.map(([id, name]) => (
@@ -314,13 +326,13 @@ export default function PlatformAuditLog() {
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="mono-label ml-1">{t('col_target_type')}</label>
+          <div>
+            <label className={FIELD_LABEL}>{t('col_target_type')}</label>
             <select
               id="platform-target-type-filter"
               value={filterTargetType}
               onChange={e => { setFilterTargetType(e.target.value); resetCursor(); }}
-              className="input-field w-full"
+              className={INPUT}
             >
               <option value="">All types</option>
               {(targetTypeList || []).map(tt => (
@@ -329,53 +341,56 @@ export default function PlatformAuditLog() {
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="mono-label ml-1">{t('col_target_id')}</label>
-            <input
-              type="text"
-              placeholder={t('search_target_id')}
-              value={filterTargetId}
-              onChange={e => setFilterTargetId(e.target.value)}
-              className="input-field w-full"
-            />
+          <div>
+            <label className={FIELD_LABEL}>{t('col_target_id')}</label>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--color-ink-muted)] pointer-events-none" aria-hidden />
+              <input
+                type="text"
+                placeholder={t('search_target_id')}
+                value={filterTargetId}
+                onChange={e => setFilterTargetId(e.target.value)}
+                className={`${INPUT} pl-8`}
+              />
+            </div>
           </div>
         </div>
 
         {/* Date Filters Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-[var(--color-border)]">
-          <div className="space-y-1">
-            <label className="mono-label ml-1">From Date</label>
+          <div>
+            <label className={FIELD_LABEL}>From Date</label>
             <div className="flex gap-2">
               <input
                 type="date"
                 value={dateFrom}
                 onChange={e => { setDateFrom(e.target.value); resetCursor(); }}
-                className="input-field w-full"
+                className={INPUT}
               />
               {dateFrom && (
                 <button
                   onClick={() => { setDateFrom(''); resetCursor(); }}
-                  className="btn-secondary"
+                  className={SECONDARY_BTN}
                 >
                   Clear
                 </button>
               )}
             </div>
           </div>
-          <div className="space-y-1">
-            <label className="mono-label ml-1">To Date</label>
+          <div>
+            <label className={FIELD_LABEL}>To Date</label>
             <div className="flex gap-2">
               <input
                 type="date"
                 value={dateTo}
                 min={dateFrom}
                 onChange={e => { setDateTo(e.target.value); resetCursor(); }}
-                className="input-field w-full"
+                className={INPUT}
               />
               {dateTo && (
                 <button
                   onClick={() => { setDateTo(''); resetCursor(); }}
-                  className="btn-secondary"
+                  className={SECONDARY_BTN}
                 >
                   Clear
                 </button>
@@ -387,26 +402,27 @@ export default function PlatformAuditLog() {
 
 
       {isLoading ? (
-        <div className="py-8 text-center uppercase font-bold text-[var(--color-text-muted)]">{t('loading_log')}</div>
+        <div className="py-12 text-center text-[13px] text-[var(--color-ink-muted)]">{t('loading_log')}</div>
       ) : (
-        <div className="surface-card overflow-x-auto flex-1 mb-[72px]">
+        <div className={`${CARD} overflow-x-auto mb-[72px]`}>
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
-              <tr className="bg-bg-elevated border-b border-[var(--color-border)]">
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_time')}</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_action')}</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_actor')}</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_partner_id')}</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_target_id')}</th>
-                <th className="p-3 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('col_details')}</th>
+              <tr className="border-b border-[var(--color-border)]">
+                <th className={COL_HEAD}>{t('col_time')}</th>
+                <th className={COL_HEAD}>{t('col_action')}</th>
+                <th className={COL_HEAD}>{t('col_actor')}</th>
+                <th className={COL_HEAD}>{t('col_partner_id')}</th>
+                <th className={COL_HEAD}>{t('col_target_id')}</th>
+                <th className={COL_HEAD}>{t('col_details')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
               {(!visibleData || visibleData.length === 0) && (
                 <tr>
-                  <td colSpan={6} className="py-16 text-center">
-                    <p className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('no_audit_entries') || 'No audit entries'}</p>
-                    <p className="text-[10px] uppercase text-[var(--color-text-muted)] mt-2 opacity-60">{t('no_audit_entries_hint') || 'Audit log entries will appear here as actions are performed.'}</p>
+                  <td colSpan={6} className="py-20 text-center">
+                    <ScrollText className="w-10 h-10 mx-auto text-[var(--color-ink-muted)] opacity-60 mb-3" aria-hidden />
+                    <p className="text-[13px] font-medium text-[var(--color-ink)]">{t('no_audit_entries') || 'No audit entries'}</p>
+                    <p className="text-[12px] text-[var(--color-ink-muted)] mt-1">{t('no_audit_entries_hint') || 'Audit log entries will appear here as actions are performed.'}</p>
                   </td>
                 </tr>
               )}
@@ -427,20 +443,26 @@ export default function PlatformAuditLog() {
                     });
                     setOpenId(log.id);
                   }}
-                  className={`hover:bg-black/[0.02] dark:hover:bg-white/[0.02] cursor-pointer ${severityRowClass(auditSeverity(log.action))}`}
+                  className={`hover:bg-[var(--color-hover)] cursor-pointer transition-colors ${severityRowClass(auditSeverity(log.action))}`}
                   data-audit-row-id={log.id}
                   data-audit-severity={auditSeverity(log.action)}
                 >
-                  <td className="p-3 text-[10px] font-mono whitespace-nowrap">
+                  <td className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)] tabular-nums whitespace-nowrap">
                     {new Date(log.createdAt).toLocaleString()}
                   </td>
-                  <td className="p-3 text-xs font-bold uppercase">{log.action}</td>
-                  <td className="p-3 text-xs uppercase">{log.actorName || <span className="text-[var(--color-text-muted)]">{t('system')}</span>}</td>
-                  <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.partnerId || '-'}</td>
-                  <td className="p-3 text-xs font-mono text-[var(--color-text-secondary)]">{log.targetId || '-'}</td>
-                  <td className="p-3 text-[10px] text-[var(--color-text-secondary)] max-w-xs">
-                    <div className="font-bold uppercase tracking-wide">{formatAuditDetails(log)}</div>
-                    <div className="font-mono text-[var(--color-text-muted)] truncate">{JSON.stringify(log.metadata)}</div>
+                  <td className="px-4 py-3 text-[12px]">
+                    <span className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] font-mono text-[11px] text-[var(--color-ink)]">
+                      {log.action}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-[13px] text-[var(--color-ink)]">
+                    {log.actorName || <span className="text-[var(--color-ink-muted)] italic">{t('system')}</span>}
+                  </td>
+                  <td className="px-4 py-3 text-[11px] font-mono text-[var(--color-ink-muted)]">{log.partnerId || '-'}</td>
+                  <td className="px-4 py-3 text-[11px] font-mono text-[var(--color-ink-muted)]">{log.targetId || '-'}</td>
+                  <td className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)] max-w-xs">
+                    <div className="text-[var(--color-ink)]">{formatAuditDetails(log)}</div>
+                    <div className="font-mono text-[11px] text-[var(--color-ink-muted)] truncate mt-0.5">{JSON.stringify(log.metadata)}</div>
                   </td>
                 </tr>
               ))}
@@ -449,19 +471,20 @@ export default function PlatformAuditLog() {
         </div>
       )}
 
-      {/* Enterprise Sticky Footer Pagination */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[var(--color-bg-base)] border-t border-[var(--color-border)] p-4 z-20">
+      {/* Sticky Footer Pagination */}
+      <div className="fixed bottom-0 left-0 right-0 bg-[var(--color-bg)]/95 backdrop-blur border-t border-[var(--color-border)] p-4 z-20">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4 font-mono text-[9px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
-            <div className="flex items-center gap-2">
-              <span>{t('records_per_page')}</span>
-              <span className="border-b border-current pb-0.5">{LIMIT}</span>
-            </div>
-            <span>|</span>
-            <span>{t('page_indicator')} {page + 1}</span>
+          <div className="flex items-center gap-3 text-[12px] text-[var(--color-ink-muted)]">
+            <span>
+              {t('records_per_page')} <span className="text-[var(--color-ink)] tabular-nums">{LIMIT}</span>
+            </span>
+            <span className="text-[var(--color-border)]">|</span>
+            <span>
+              {t('page_indicator')} <span className="text-[var(--color-ink)] tabular-nums">{page + 1}</span>
+            </span>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex gap-2">
             <button
               disabled={cursorStack.length === 0}
               onClick={() => {
@@ -470,9 +493,10 @@ export default function PlatformAuditLog() {
                 setCursorStack(stack);
                 setCursor(prev || undefined);
               }}
-              className="btn-secondary disabled:opacity-30"
+              className={SECONDARY_BTN}
             >
-              &larr; {t('newer')}
+              <ChevronLeft className="w-4 h-4" aria-hidden />
+              {t('newer')}
             </button>
             <button
               disabled={!data?.nextCursor}
@@ -482,9 +506,10 @@ export default function PlatformAuditLog() {
                   setCursor(data.nextCursor);
                 }
               }}
-              className="btn-secondary disabled:opacity-30"
+              className={SECONDARY_BTN}
             >
-              {t('older')} &rarr;
+              {t('older')}
+              <ChevronRight className="w-4 h-4" aria-hidden />
             </button>
           </div>
         </div>

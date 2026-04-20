@@ -2,9 +2,19 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, Trash2, Check, X, Plus } from 'lucide-react';
+import { Pencil, Trash2, Check, X, Plus, Building2 } from 'lucide-react';
 import Toast from '../Toast';
 import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
+
+// Shared Soft Product style constants — mirrors the other admin panels.
+const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
+const INPUT = 'h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all';
+const SECONDARY_BTN = 'h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
+const DANGER_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-urgent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all';
+const ICON_BTN = 'w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
+const FIELD_LABEL = 'block text-[11px] font-medium text-[var(--color-ink-muted)] mb-1.5';
+const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 interface RefField {
   label: string;
@@ -280,10 +290,10 @@ export default function AdminDepartments() {
 
   return (
     <div className="max-w-5xl">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-end mb-5">
         <div>
-          <h2 className="text-lg font-bold uppercase tracking-wide">Departments</h2>
-          <p className="text-xs uppercase text-[var(--color-text-secondary)] mt-1">{t('manage_departments') || 'Manage your organization structure'}</p>
+          <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">Departments</h2>
+          <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">{t('manage_departments') || 'Manage your organization structure'}</p>
         </div>
         <button
           onClick={handleAdd}
@@ -291,54 +301,57 @@ export default function AdminDepartments() {
           aria-disabled={isExternal || undefined}
           title={isExternal ? guestTooltip : undefined}
           data-guest-disabled={isExternal || undefined}
-          className="btn-primary disabled:opacity-50"
+          className={PRIMARY_BTN}
         >
-          <Plus className="h-3.5 w-3.5" />
-          Add Department
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Add department
         </button>
       </div>
 
-      <div className="surface-card">
-        {/* Header */}
-        <div className="grid grid-cols-[1fr_1fr_1fr_140px_80px] border-b border-[var(--color-border)] bg-bg-elevated">
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Name</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">Description</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">{t('ref_fields_label') || 'Ref Fields'}</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide">SLA</div>
-          <div className="px-4 py-3 font-mono text-[9px] uppercase text-[var(--color-text-muted)] tracking-wide text-center"></div>
+      <div className={`${CARD} overflow-hidden`}>
+        {/* Header row — uses a grid that mirrors the body rows so columns line up. */}
+        <div className="grid grid-cols-[1fr_1fr_1fr_180px_80px] border-b border-[var(--color-border)]">
+          <div className={COL_HEAD}>Name</div>
+          <div className={COL_HEAD}>Description</div>
+          <div className={COL_HEAD}>{t('ref_fields_label') || 'Ref fields'}</div>
+          <div className={COL_HEAD}>SLA</div>
+          <div className={`${COL_HEAD} text-right`}></div>
         </div>
 
-        {/* Rows */}
+        {/* Empty state */}
         {departments.length === 0 && (
-          <div className="px-4 py-12 text-center">
-            <p className="text-sm font-bold uppercase tracking-wide text-[var(--color-text-muted)]">{t('no_departments') || 'No departments configured'}</p>
-            <p className="text-[10px] uppercase text-[var(--color-text-muted)] mt-2 opacity-60">{t('no_departments_hint') || 'Add a department to get started.'}</p>
+          <div className="px-4 py-16 text-center">
+            <Building2 className="w-10 h-10 mx-auto text-[var(--color-ink-muted)] opacity-50 mb-3" aria-hidden />
+            <p className="text-[13px] font-medium text-[var(--color-ink)]">{t('no_departments') || 'No departments configured'}</p>
+            <p className="text-[12px] text-[var(--color-ink-muted)] mt-1">{t('no_departments_hint') || 'Add a department to get started.'}</p>
           </div>
         )}
+
+        {/* Rows */}
         {departments.map((dept, idx) => (
           <div key={dept.id || `new-${idx}`}>
             {editingIdx === idx && editDraft ? (
-              /* Edit mode */
-              <div className="border-b border-[var(--color-border)] p-4 space-y-4 bg-black/[0.02] dark:bg-white/[0.02]">
+              /* Edit mode — inline editor card */
+              <div className="border-b border-[var(--color-border)] p-5 space-y-4 bg-[var(--color-accent-soft)]">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="mono-label mb-1 block">Name *</label>
+                    <label className={FIELD_LABEL}>Name *</label>
                     <input
                       type="text"
                       value={editDraft.name}
                       onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
-                      className="input-field w-full uppercase"
+                      className={`${INPUT} w-full`}
                       placeholder="e.g. Sales"
                       autoFocus
                     />
                   </div>
                   <div>
-                    <label className="mono-label mb-1 block">Description</label>
+                    <label className={FIELD_LABEL}>Description</label>
                     <input
                       type="text"
                       value={editDraft.description}
                       onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
-                      className="input-field w-full"
+                      className={`${INPUT} w-full`}
                       placeholder="Briefly describe this department"
                     />
                   </div>
@@ -346,7 +359,7 @@ export default function AdminDepartments() {
 
                 {/* Reference Fields */}
                 <div>
-                  <label className="mono-label mb-2 block">{t('ref_fields_label') || 'Reference Fields'}</label>
+                  <label className={FIELD_LABEL}>{t('ref_fields_label') || 'Reference fields'}</label>
                   <div className="space-y-2">
                     {editDraft.referenceFields.map((field, fIdx) => (
                       <div key={fIdx} className="flex items-center gap-2">
@@ -354,26 +367,27 @@ export default function AdminDepartments() {
                           type="text"
                           value={field.label}
                           onChange={(e) => updateRefFieldLabel(fIdx, e.target.value)}
-                          className="input-field flex-1"
+                          className={`${INPUT} flex-1`}
                           placeholder={t('ref_field_placeholder') || 'Field label (e.g. Invoice Number)'}
                         />
                         <button
                           type="button"
                           onClick={() => toggleRefFieldOptional(fIdx)}
-                          className={`text-[8px] font-mono font-bold uppercase tracking-wider px-2 py-1 border border-[var(--color-border)] shrink-0 ${
+                          className={`inline-flex items-center px-2.5 h-7 rounded-[var(--radius-pill)] text-[11px] font-medium transition-colors shrink-0 ${
                             field.optional
-                              ? 'bg-transparent text-[var(--color-text-muted)]'
-                              : 'bg-[var(--color-text-primary)] text-[var(--color-bg-base)]'
+                              ? 'bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)]'
+                              : 'bg-[var(--color-accent)] text-white'
                           }`}
                           title={field.optional ? t('mark_required') || 'Mark as required' : t('mark_optional') || 'Mark as optional'}
                         >
-                          {field.optional ? t('optional') || 'OPT' : t('required_short') || 'REQ'}
+                          {field.optional ? t('optional') || 'Optional' : t('required_short') || 'Required'}
                         </button>
                         <button
                           onClick={() => removeRefField(fIdx)}
-                          className="w-8 h-8 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-[var(--color-bg-base)]"
+                          className={ICON_BTN}
+                          aria-label="Remove field"
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-3.5 w-3.5" aria-hidden />
                         </button>
                       </div>
                     ))}
@@ -381,52 +395,63 @@ export default function AdminDepartments() {
                   <button
                     onClick={addRefField}
                     disabled={editDraft.referenceFields.length >= 3}
-                    className="mt-2 mono-label text-[var(--color-text-secondary)] hover:opacity-100 disabled:opacity-20 disabled:cursor-not-allowed"
+                    className="mt-2 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline"
                   >
-                    + {t('add_ref_field') || 'Add Field'}
-                    {editDraft.referenceFields.length >= 3 && <span className="ml-2 normal-case">({t('max_ref_fields') || 'Maximum 3 fields'})</span>}
+                    <Plus className="h-3 w-3" aria-hidden />
+                    {t('add_ref_field') || 'Add field'}
+                    {editDraft.referenceFields.length >= 3 && <span className="ml-2 text-[var(--color-ink-muted)]">({t('max_ref_fields') || 'Maximum 3 fields'})</span>}
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
                   <button
                     onClick={saveEdit}
                     disabled={isExternal || isSaving}
                     aria-disabled={isExternal || undefined}
                     title={isExternal ? guestTooltip : undefined}
                     data-guest-disabled={isExternal || undefined}
-                    className="btn-primary disabled:opacity-50"
+                    className={PRIMARY_BTN}
                   >
-                    <Check className="h-3.5 w-3.5" />
+                    <Check className="h-3.5 w-3.5" aria-hidden />
                     Save
                   </button>
                   <button
                     onClick={cancelEdit}
-                    className="btn-secondary"
+                    className={SECONDARY_BTN}
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-3.5 w-3.5" aria-hidden />
                     Cancel
                   </button>
                 </div>
               </div>
             ) : (
               /* View mode */
-              <div className={`grid grid-cols-[1fr_1fr_1fr_140px_80px] border-b border-[var(--color-border)] ${deletingIdx === idx ? '' : 'hover:bg-black/[0.02] dark:hover:bg-white/[0.02]'}`}>
-                <div className="px-4 py-3 font-bold text-sm uppercase">{dept.name}</div>
-                <div className="px-4 py-3 text-sm text-[var(--color-text-secondary)]">{dept.description || '—'}</div>
-                <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
-                  {dept.referenceFields.length > 0
-                    ? dept.referenceFields.map(f => f.label).join(', ')
-                    : '—'}
+              <div className={`grid grid-cols-[1fr_1fr_1fr_180px_80px] border-b border-[var(--color-border)] last:border-0 transition-colors ${deletingIdx === idx ? '' : 'hover:bg-[var(--color-hover)]'} group/row`}>
+                <div className="px-4 py-3 text-[13px] font-medium text-[var(--color-ink)]">{dept.name}</div>
+                <div className="px-4 py-3 text-[13px] text-[var(--color-ink-soft)]">{dept.description || <span className="text-[var(--color-ink-muted)]">—</span>}</div>
+                <div className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)]">
+                  {dept.referenceFields.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {dept.referenceFields.map((f, i) => (
+                        <span key={i} className="inline-flex items-center px-1.5 h-5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] text-[var(--color-ink)]">
+                          {f.label}
+                          {f.optional && <span className="ml-1 text-[var(--color-ink-muted)]">?</span>}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-[var(--color-ink-muted)]">—</span>
+                  )}
                 </div>
-                <div className="px-4 py-3 text-xs text-[var(--color-text-secondary)]">
+                <div className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)]">
                   {slaEditingIdx === idx ? (
                     <div className="flex items-center gap-1 flex-wrap">
-                      <label className="flex items-center gap-1 font-mono text-[9px] uppercase">
+                      <label className="flex items-center gap-1 text-[11px] text-[var(--color-ink)]">
                         <input
                           type="checkbox"
                           checked={slaDraft.enabled}
                           onChange={(e) => setSlaDraft({ ...slaDraft, enabled: e.target.checked })}
+                          className="w-3.5 h-3.5 accent-[var(--color-accent)]"
                         />
                         On
                       </label>
@@ -436,14 +461,14 @@ export default function AdminDepartments() {
                         max={480}
                         value={slaDraft.firstResponseMinutes}
                         onChange={(e) => setSlaDraft({ ...slaDraft, firstResponseMinutes: Number(e.target.value) })}
-                        className="input-field w-14 text-xs px-1 py-0.5"
+                        className={`${INPUT} w-14 h-7 px-1.5 text-[11px]`}
                         disabled={!slaDraft.enabled}
                       />
-                      <span className="font-mono text-[9px] uppercase">m</span>
+                      <span className="text-[11px] text-[var(--color-ink-muted)]">m</span>
                       <select
                         value={slaDraft.warnAtPercent}
                         onChange={(e) => setSlaDraft({ ...slaDraft, warnAtPercent: Number(e.target.value) })}
-                        className="input-field text-xs px-1 py-0.5"
+                        className={`${INPUT} h-7 px-1.5 text-[11px]`}
                         disabled={!slaDraft.enabled}
                       >
                         <option value={50}>50%</option>
@@ -456,43 +481,43 @@ export default function AdminDepartments() {
                         aria-disabled={isExternal || undefined}
                         title={isExternal ? guestTooltip : 'Save'}
                         data-guest-disabled={isExternal || undefined}
-                        className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="w-6 h-6 inline-flex items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        <Check className="h-3 w-3" />
+                        <Check className="h-3 w-3" aria-hidden />
                       </button>
                       <button
                         onClick={cancelSlaEdit}
-                        className="w-6 h-6 flex items-center justify-center border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white"
+                        className="w-6 h-6 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
                         title="Cancel"
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3" aria-hidden />
                       </button>
                     </div>
                   ) : dept.sla && dept.sla.enabled ? (
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs">
-                        {dept.sla.firstResponseMinutes}m / warn {dept.sla.warnAtPercent}%
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[11px] font-medium text-[var(--color-accent)] tabular-nums">
+                        {dept.sla.firstResponseMinutes}m · {dept.sla.warnAtPercent}%
                       </span>
                       <button
                         onClick={() => startSlaEdit(idx)}
                         disabled={isExternal}
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
-                        className="w-6 h-6 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        className={`${ICON_BTN} w-6 h-6 opacity-0 group-hover/row:opacity-100`}
                         title={isExternal ? guestTooltip : 'Edit SLA'}
                       >
-                        <Pencil className="h-3 w-3" />
+                        <Pencil className="h-3 w-3" aria-hidden />
                       </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] uppercase text-[var(--color-text-muted)]">OFF</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-[var(--color-ink-muted)]">Off</span>
                       <button
                         onClick={() => startSlaEdit(idx)}
                         disabled={isExternal}
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
-                        className="font-mono text-[9px] uppercase tracking-wide px-2 py-0.5 border border-[var(--color-border)] hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[11px] font-medium text-[var(--color-ink)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         title={isExternal ? guestTooltip : 'Set SLA'}
                       >
                         Set SLA
@@ -500,35 +525,38 @@ export default function AdminDepartments() {
                     </div>
                   )}
                 </div>
-                <div className="px-4 py-3 flex items-center justify-center gap-1">
+                <div className="px-4 py-3 flex items-center justify-end gap-1">
                   <button
                     onClick={() => startEdit(idx)}
                     disabled={isExternal}
                     aria-disabled={isExternal || undefined}
                     data-guest-disabled={isExternal || undefined}
-                    className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={`${ICON_BTN} opacity-0 group-hover/row:opacity-100`}
                     title={isExternal ? guestTooltip : 'Edit'}
+                    aria-label="Edit department"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className="h-3.5 w-3.5" aria-hidden />
                   </button>
                   <button
                     onClick={() => startDelete(idx)}
                     disabled={isExternal}
                     aria-disabled={isExternal || undefined}
                     data-guest-disabled={isExternal || undefined}
-                    className="w-7 h-7 flex items-center justify-center hover:bg-[var(--color-accent-blue)] hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                    className={`w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100`}
                     title={isExternal ? guestTooltip : 'Delete'}
+                    aria-label="Delete department"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Delete confirmation */}
+            {/* Delete confirmation — inline banner */}
             {deletingIdx === idx && editingIdx !== idx && (
-              <div className="border-b border-[var(--color-border)] px-4 py-3 bg-bg-elevated flex items-center gap-4">
-                <span className="text-xs font-bold uppercase tracking-wide">
+              <div className="border-b border-[var(--color-border)] px-4 py-3 bg-[color-mix(in_srgb,var(--color-urgent)_8%,transparent)] flex items-center gap-3">
+                <Trash2 className="w-4 h-4 text-[var(--color-urgent)] shrink-0" aria-hidden />
+                <span className="text-[13px] text-[var(--color-ink)] flex-1">
                   {(memberCounts[dept.id] || 0) > 0
                     ? `${memberCounts[dept.id]} member${memberCounts[dept.id] === 1 ? '' : 's'} will become generalists.`
                     : 'Delete this department?'}
@@ -539,13 +567,13 @@ export default function AdminDepartments() {
                   aria-disabled={isExternal || undefined}
                   title={isExternal ? guestTooltip : undefined}
                   data-guest-disabled={isExternal || undefined}
-                  className="btn-danger disabled:opacity-50"
+                  className={DANGER_BTN}
                 >
-                  Confirm
+                  Confirm delete
                 </button>
                 <button
                   onClick={() => setDeletingIdx(null)}
-                  className="btn-secondary"
+                  className={SECONDARY_BTN}
                 >
                   Cancel
                 </button>
@@ -553,12 +581,6 @@ export default function AdminDepartments() {
             )}
           </div>
         ))}
-
-        {departments.length === 0 && (
-          <div className="px-4 py-8 text-center text-sm text-[var(--color-text-muted)] font-bold uppercase tracking-wide">
-            No departments configured
-          </div>
-        )}
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
