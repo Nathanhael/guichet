@@ -404,7 +404,7 @@ export default function SupportView() {
 
       <SupportNav partnerName={partnerName} />
 
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative gap-3 p-3">
         {activeMembership && viewMode !== 'focus' && (
           <ResizablePanel
             side="left"
@@ -430,7 +430,7 @@ export default function SupportView() {
           </ResizablePanel>
         )}
 
-        <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
+        <main className="flex-1 flex flex-col overflow-hidden bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-card)]">
           <ChatTabBar
             tabs={openTabTickets}
             activeTab={activeTab}
