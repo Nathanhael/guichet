@@ -1,9 +1,13 @@
 import { useState, useCallback } from 'react';
+import { Plus, LogIn, Pause, Play, Trash2, Settings } from 'lucide-react';
 import useStore from '../../store/useStore';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import ConfirmDialog from '../ConfirmDialog';
 import Toast from '../Toast';
+import Button from '../ui/Button';
+import Pill from '../ui/Pill';
+import Avatar from '../ui/Avatar';
 import type { Partner } from './types';
 
 interface PartnerListProps {
@@ -11,6 +15,9 @@ interface PartnerListProps {
   onEditPartner: (partner: Partner) => void;
   onDeletePartner: (partner: Partner) => void;
 }
+
+const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)]';
+const SECTION_LABEL = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]';
 
 export default function PartnerList({ onCreateClick, onEditPartner, onDeletePartner }: PartnerListProps) {
   const t = useT();
@@ -33,36 +40,59 @@ export default function PartnerList({ onCreateClick, onEditPartner, onDeletePart
 
   return (
     <>
-      <div className="flex justify-between items-end mb-8 border-b border-[var(--color-border-heavy)] pb-4">
+      <div className="flex justify-between items-end mb-8 pb-4 border-b border-[var(--color-border)]">
         <div>
-          <h1 className="text-4xl font-bold uppercase tracking-tighter font-mono">{t('partner_ecosystem')}</h1>
-          <p className="text-sm font-bold uppercase text-[var(--color-text-muted)] mt-1 tracking-widest">{t('manage_tenants_desc')}</p>
+          <h1 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('partner_ecosystem')}</h1>
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('manage_tenants_desc')}</p>
         </div>
-        <button onClick={onCreateClick} className="btn-primary px-6 py-2 text-[10px] uppercase tracking-widest">{t('create_new_partner')}</button>
+        <Button variant="primary" size="md" leading={<Plus className="h-3.5 w-3.5" />} onClick={onCreateClick}>
+          {t('create_new_partner')}
+        </Button>
       </div>
 
       {activePartnersList.length > 0 && (
         <div className="mb-12">
-          <h2 className="section-header mb-4">{t('active_partners')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <h2 className={`${SECTION_LABEL} mb-4`}>{t('active_partners')}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activePartnersList.map((p) => (
-              <div key={p.id} className="surface-card border border-[var(--color-border)] p-6 flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 border border-[var(--color-border)] flex items-center justify-center overflow-hidden bg-[var(--color-bg-elevated)] shrink-0">
-                      <span className="text-2xl font-bold font-mono">{p.name.charAt(0)}</span>
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold uppercase tracking-tight line-clamp-1 font-mono" title={p.name}>{p.name}</h2>
-                      <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">{p.industry}</p>
+              <div key={p.id} className={`${CARD} p-5 flex flex-col justify-between`}>
+                <div className="flex justify-between items-start mb-5 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar name={p.name} size={44} />
+                    <div className="min-w-0">
+                      <h3 className="text-[15px] font-semibold tracking-[-0.1px] text-[var(--color-ink)] line-clamp-1" title={p.name}>{p.name}</h3>
+                      <p className="text-[12px] text-[var(--color-ink-muted)] mt-0.5">{p.industry}</p>
                     </div>
                   </div>
-                  <div className="text-right"><p className="mono-id text-[var(--color-text-faint)]">{t('id_label')}: {p.id}</p></div>
+                  <p className="text-[11px] font-mono text-[var(--color-ink-muted)] shrink-0">{t('id_label')}: {p.id}</p>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-auto">
-                  <button onClick={() => onEditPartner(p)} className="btn-secondary flex-1 min-w-[80px] py-2 text-[10px] uppercase tracking-widest">{t('configure')}</button>
-                  <button onClick={async () => { try { await useStore.getState().enterPartnerAsOperator(p.id); } catch (err: unknown) { showError(err instanceof Error ? err.message : 'Failed to enter partner'); } }} className="btn-primary flex-1 min-w-[80px] py-2 text-[10px] uppercase tracking-widest">{t('enter')}</button>
-                  <button onClick={() => setConfirmDialog({ title: t('deactivate'), message: t('confirm_deactivate_partner').replace('{name}', p.name), confirmLabel: t('deactivate'), onConfirm: () => { deactivatePartner.mutate({ partnerId: p.id }); setConfirmDialog(null); } })} className="btn-secondary flex-none px-4 py-2 text-[10px] uppercase tracking-widest opacity-60 hover:opacity-100">{t('deactivate')}</button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    leading={<Settings className="h-3.5 w-3.5" />}
+                    className="flex-1 min-w-[90px]"
+                    onClick={() => onEditPartner(p)}
+                  >
+                    {t('configure')}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leading={<LogIn className="h-3.5 w-3.5" />}
+                    className="flex-1 min-w-[90px]"
+                    onClick={async () => { try { await useStore.getState().enterPartnerAsOperator(p.id); } catch (err: unknown) { showError(err instanceof Error ? err.message : 'Failed to enter partner'); } }}
+                  >
+                    {t('enter')}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    leading={<Pause className="h-3.5 w-3.5" />}
+                    onClick={() => setConfirmDialog({ title: t('deactivate'), message: t('confirm_deactivate_partner').replace('{name}', p.name), confirmLabel: t('deactivate'), onConfirm: () => { deactivatePartner.mutate({ partnerId: p.id }); setConfirmDialog(null); } })}
+                  >
+                    {t('deactivate')}
+                  </Button>
                 </div>
               </div>
             ))}
@@ -72,24 +102,40 @@ export default function PartnerList({ onCreateClick, onEditPartner, onDeletePart
 
       {inactivePartnersList.length > 0 && (
         <div>
-          <h2 className="section-header mb-4 opacity-50">{t('inactive_partners')}</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-60">
+          <h2 className={`${SECTION_LABEL} mb-4`}>{t('inactive_partners')}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {inactivePartnersList.map((p) => (
-              <div key={p.id} className="border border-dashed border-[var(--color-border)] p-6 bg-[var(--color-bg-elevated)] flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 border border-[var(--color-border)] flex items-center justify-center overflow-hidden bg-[var(--color-bg-elevated)] shrink-0 grayscale">
-                      <span className="text-2xl font-bold font-mono">{p.name.charAt(0)}</span>
-                    </div>
-                    <div>
-                      <h2 className="text-xl font-bold uppercase tracking-tight line-through line-clamp-1 font-mono" title={p.name}>{p.name}</h2>
-                      <span className="badge bg-[var(--color-accent-red)] text-white">{t('inactive_status')}</span>
+              <div key={p.id} className={`rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] border border-dashed border-[var(--color-border-strong)] p-5 flex flex-col justify-between`}>
+                <div className="flex justify-between items-start mb-5 gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar name={p.name} size={44} className="grayscale opacity-70" />
+                    <div className="min-w-0">
+                      <h3 className="text-[15px] font-semibold tracking-[-0.1px] text-[var(--color-ink-soft)] line-through line-clamp-1" title={p.name}>{p.name}</h3>
+                      <div className="mt-1">
+                        <Pill tone="urgent">{t('inactive_status')}</Pill>
+                      </div>
                     </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-auto">
-                  <button onClick={() => reactivatePartner.mutate({ partnerId: p.id })} className="btn-primary flex-1 py-2 text-[10px] uppercase tracking-widest">{t('reactivate')}</button>
-                  <button onClick={() => onDeletePartner(p)} className="btn-secondary flex-1 py-2 text-[10px] uppercase tracking-widest">{t('delete_permanently')}</button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    leading={<Play className="h-3.5 w-3.5" />}
+                    className="flex-1"
+                    onClick={() => reactivatePartner.mutate({ partnerId: p.id })}
+                  >
+                    {t('reactivate')}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leading={<Trash2 className="h-3.5 w-3.5" />}
+                    className="flex-1"
+                    onClick={() => onDeletePartner(p)}
+                  >
+                    {t('delete_permanently')}
+                  </Button>
                 </div>
               </div>
             ))}

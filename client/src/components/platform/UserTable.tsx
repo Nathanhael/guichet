@@ -1,8 +1,11 @@
 import { useState, useCallback } from 'react';
+import { UserPlus, X } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import ConfirmDialog from '../ConfirmDialog';
 import Toast from '../Toast';
+import Button from '../ui/Button';
+import Pill from '../ui/Pill';
 import type { GlobalUser, PartnerMembership, UserRole } from './types';
 import { getRoleDisplayName } from '../../utils/roles';
 
@@ -11,6 +14,10 @@ interface UserTableProps {
   onEditProfile: (user: GlobalUser) => void;
   onManageAccess: (user: GlobalUser) => void;
 }
+
+const INPUT =
+  'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
+const TH = 'px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 export default function UserTable({ onInviteClick, onEditProfile, onManageAccess }: UserTableProps) {
   const t = useT();
@@ -45,94 +52,148 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
 
   return (
     <>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 border-b border-[var(--color-border-heavy)] pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 pb-6 border-b border-[var(--color-border)]">
         <div className="flex-1">
-          <h1 className="text-4xl font-bold uppercase tracking-tighter font-mono">{t('global_users')}</h1>
-          <p className="text-sm font-bold uppercase text-[var(--color-text-muted)] mt-1 tracking-widest">{t('manage_identities_desc')}</p>
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 max-w-3xl">
+          <h1 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('global_users')}</h1>
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('manage_identities_desc')}</p>
+          <div className="mt-5 flex flex-col sm:flex-row gap-3 max-w-3xl">
             <div className="flex-[2] min-w-0 relative">
-              <input type="text" placeholder={t('search_users_placeholder')} className="input-field w-full" value={userSearch} onChange={(e) => setUserSearch(e.target.value)} />
-              {userSearch && <button onClick={() => setUserSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">{t('clear')}</button>}
+              <input
+                type="text"
+                placeholder={t('search_users_placeholder')}
+                className={INPUT}
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+              />
+              {userSearch && (
+                <button
+                  onClick={() => setUserSearch('')}
+                  aria-label={t('clear')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <div className="flex-1 min-w-[200px]">
-              <select className="input-field w-full px-4 py-2.5 text-sm font-bold uppercase tracking-widest" value={selectedPartnerId} onChange={(e) => setSelectedPartnerId(e.target.value)}>
+              <select
+                className={INPUT}
+                value={selectedPartnerId}
+                onChange={(e) => setSelectedPartnerId(e.target.value)}
+              >
                 <option value="all">{t('all_partners')}</option>
-                {partners?.filter(p => !p.deletedAt).map(p => <option key={p.id} value={p.id}>{p.status === 'inactive' ? `[${t('inactive_status')}] ${p.name}` : p.name}</option>)}
+                {partners?.filter(p => !p.deletedAt).map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.status === 'inactive' ? `[${t('inactive_status')}] ${p.name}` : p.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
         </div>
-        <button onClick={onInviteClick} className="btn-primary px-8 py-3 text-[10px] uppercase tracking-widest shrink-0">{t('invite_new_user')}</button>
+        <Button variant="primary" size="md" leading={<UserPlus className="h-3.5 w-3.5" />} onClick={onInviteClick} className="shrink-0">
+          {t('invite_new_user')}
+        </Button>
       </div>
 
-      <div className="border border-[var(--color-border)] overflow-hidden">
+      <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-[var(--color-bg-elevated)] text-[10px] font-bold uppercase tracking-widest font-mono">
-                <th className="p-4 border-r border-b border-[var(--color-border)] text-[var(--color-text-muted)]">{t('col_name')}</th>
-                <th className="p-4 border-r border-b border-[var(--color-border)] text-[var(--color-text-muted)]">{t('email_identity')}</th>
-                <th className="p-4 border-r border-b border-[var(--color-border)] text-[var(--color-text-muted)]">{t('col_status')}</th>
-                <th className="p-4 border-r border-b border-[var(--color-border)] text-[var(--color-text-muted)]">{t('last_active')}</th>
-                <th className="p-4 border-r border-b border-[var(--color-border)] text-[var(--color-text-muted)]">{t('col_access_scope')}</th>
-                <th className="p-4 border-b border-[var(--color-border)] text-right text-[var(--color-text-muted)]">{t('col_actions')}</th>
+              <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
+                <th className={TH}>{t('col_name')}</th>
+                <th className={TH}>{t('email_identity')}</th>
+                <th className={TH}>{t('col_status')}</th>
+                <th className={TH}>{t('last_active')}</th>
+                <th className={TH}>{t('col_access_scope')}</th>
+                <th className={`${TH} text-right`}>{t('col_actions')}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--color-border)]">
+            <tbody>
               {filteredUsers.length > 0 ? filteredUsers.map((u) => (
-                <tr key={u.id} className="text-sm font-bold hover:bg-[var(--color-bg-elevated)]">
-                  <td className="p-4 uppercase tracking-tighter whitespace-nowrap border-r border-[var(--color-border)]">
-                    {u.name}
-                    {u.isPlatformOperator && <span className="ml-2 text-[8px] border border-[var(--color-border)] px-1.5 py-0.5 align-middle bg-[var(--color-text-primary)] text-[var(--color-bg-base)] font-mono">ROOT</span>}
-                  </td>
-                  <td className="p-4 border-r border-[var(--color-border)]">
-                    <p className="font-mono text-xs mb-0.5">{u.email || '\u2014'}</p>
-                    <p className="mono-id text-[var(--color-text-faint)]">{t('id_label')}: {u.id}</p>
-                  </td>
-                  <td className="p-4 border-r border-[var(--color-border)]">
-                    {u.externalId ? (
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-1.5 h-1.5 bg-[var(--color-accent-green)]" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest font-mono">{t('status_linked_sso')}</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 opacity-40">
-                        <div className="w-1.5 h-1.5 border border-[var(--color-border)]" />
-                        <span className="text-[9px] font-bold uppercase tracking-widest font-mono">{t('status_pending')}</span>
-                      </div>
-                    )}
-                  </td>
-                  <td className="p-4 border-r border-[var(--color-border)] mono-timestamp text-[var(--color-text-secondary)]">{u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleString() : t('never')}</td>
-                  <td className="p-4 border-r border-[var(--color-border)]">
-                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto custom-scrollbar pr-2">
-                      {u.isPlatformOperator && <span className="border border-[var(--color-border)] text-[8px] font-bold uppercase px-2 py-1 flex items-center gap-1 shrink-0 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] font-mono">{t('all_partners')} <span className="opacity-60 italic">({getRoleDisplayName('platform_operator', true)})</span></span>}
-                      {(u.partnerMemberships?.length ?? 0) > 0 ? u.partnerMemberships!.map((m: PartnerMembership) => (
-                        <span key={m.partnerId} className="border border-[var(--color-border)] text-[8px] font-bold uppercase px-2 py-1 flex items-center gap-1 shrink-0 font-mono">{m.partnerName} <span className="opacity-40 italic">({getRoleDisplayName(m.role as UserRole)})</span></span>
-                      )) : !u.isPlatformOperator && <span className="text-[var(--color-text-faint)] text-[10px] uppercase font-bold tracking-widest">{t('no_active_memberships')}</span>}
+                <tr key={u.id} className="border-b border-[var(--color-border)] last:border-b-0 hover:bg-[var(--color-hover)] transition-colors">
+                  <td className="px-4 py-3 whitespace-nowrap align-top">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[14px] font-medium text-[var(--color-ink)]">{u.name}</span>
+                      {u.isPlatformOperator && (
+                        <Pill tone="accent">ROOT</Pill>
+                      )}
                     </div>
                   </td>
-                  <td className="p-4 text-right">
-                    <div className="flex flex-wrap justify-end gap-2">
-                      <button onClick={() => onEditProfile(u)} className="btn-secondary text-[10px] uppercase tracking-widest px-3 py-1.5">{t('edit_profile')}</button>
-                      <button onClick={() => onManageAccess(u)} className="btn-secondary text-[10px] uppercase tracking-widest px-3 py-1.5 opacity-60 hover:opacity-100">{t('manage_access')}</button>
-                      <button onClick={() => setConfirmDialog({
-                        title: 'Revoke Sessions',
-                        message: `Force sign-out all active sessions for ${u.name}?`,
-                        confirmLabel: 'Revoke Sessions',
-                        onConfirm: () => { revokeSessions.mutate({ userId: u.id }); setConfirmDialog(null); }
-                      })} className="btn-secondary text-[10px] uppercase tracking-widest px-3 py-1.5 opacity-60 hover:opacity-100">
+                  <td className="px-4 py-3 align-top">
+                    <p className="text-[13px] text-[var(--color-ink)]">{u.email || '\u2014'}</p>
+                    <p className="text-[11px] font-mono text-[var(--color-ink-muted)] mt-0.5">{t('id_label')}: {u.id}</p>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    {u.externalId ? (
+                      <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-ok)]">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-ok)]" />
+                        {t('status_linked_sso')}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-[12px] text-[var(--color-ink-muted)]">
+                        <span className="inline-block w-1.5 h-1.5 rounded-full border border-[var(--color-border-strong)]" />
+                        {t('status_pending')}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 align-top text-[12px] text-[var(--color-ink-soft)]">
+                    {u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleString() : t('never')}
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                      {u.isPlatformOperator && (
+                        <Pill tone="accent">
+                          {t('all_partners')} <span className="opacity-70 font-normal">({getRoleDisplayName('platform_operator', true)})</span>
+                        </Pill>
+                      )}
+                      {(u.partnerMemberships?.length ?? 0) > 0 ? u.partnerMemberships!.map((m: PartnerMembership) => (
+                        <Pill key={m.partnerId} tone="neutral">
+                          {m.partnerName} <span className="opacity-60 font-normal">({getRoleDisplayName(m.role as UserRole)})</span>
+                        </Pill>
+                      )) : !u.isPlatformOperator && (
+                        <span className="text-[12px] text-[var(--color-ink-muted)]">{t('no_active_memberships')}</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-right align-top">
+                    <div className="flex flex-wrap justify-end gap-1.5">
+                      <Button variant="secondary" size="sm" onClick={() => onEditProfile(u)}>{t('edit_profile')}</Button>
+                      <Button variant="secondary" size="sm" onClick={() => onManageAccess(u)}>{t('manage_access')}</Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmDialog({
+                          title: 'Revoke Sessions',
+                          message: `Force sign-out all active sessions for ${u.name}?`,
+                          confirmLabel: 'Revoke Sessions',
+                          onConfirm: () => { revokeSessions.mutate({ userId: u.id }); setConfirmDialog(null); },
+                        })}
+                      >
                         Revoke Sessions
-                      </button>
-                      <button onClick={() => setConfirmDialog({
-                        title: t('delete_account'),
-                        message: t('confirm_delete_account').replace('{name}', u.name),
-                        confirmLabel: t('delete_account'),
-                        onConfirm: () => { deleteUser.mutate(u.id); setConfirmDialog(null); }
-                      })} className="btn-danger text-[10px] uppercase tracking-widest px-3 py-1.5 opacity-40 hover:opacity-100">{t('delete_account')}</button>
+                      </Button>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => setConfirmDialog({
+                          title: t('delete_account'),
+                          message: t('confirm_delete_account').replace('{name}', u.name),
+                          confirmLabel: t('delete_account'),
+                          onConfirm: () => { deleteUser.mutate(u.id); setConfirmDialog(null); },
+                        })}
+                      >
+                        {t('delete_account')}
+                      </Button>
                     </div>
                   </td>
                 </tr>
-              )) : <tr><td colSpan={6} className="p-12 text-center"><p className="text-xl font-bold uppercase text-[var(--color-text-faint)] tracking-widest font-mono">{t('no_users')}</p></td></tr>}
+              )) : (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-[13px] text-[var(--color-ink-muted)]">
+                    {t('no_users')}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

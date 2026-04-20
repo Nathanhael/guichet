@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import ConfirmDialog from '../ConfirmDialog';
+import Modal, { ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
+import Button from '../ui/Button';
 import type { GlobalUser, PartnerMembership, UserRole } from './types';
 import { getRoleDisplayName } from '../../utils/roles';
 
@@ -9,6 +12,9 @@ interface ManageAccessModalProps {
   user: GlobalUser | null;
   onClose: () => void;
 }
+
+const INPUT =
+  'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
 
 export default function ManageAccessModal({ user, onClose }: ManageAccessModalProps) {
   const t = useT();
@@ -47,29 +53,36 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
 
   return (
     <>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-        <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black/80" />
-        <div role="dialog" aria-modal="true" className="w-full max-w-2xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-          <div className="flex justify-between items-start mb-6 border-b border-[var(--color-border)] pb-4">
-            <div>
-              <h2 className="text-2xl font-bold uppercase tracking-wide font-mono">{t('manage_access')}</h2>
-              <p className="text-sm font-bold uppercase text-[var(--color-text-muted)] tracking-widest">{localUser.name}</p>
-            </div>
-            <button onClick={onClose} aria-label="Close" className="text-xl font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]">&#10005;</button>
-          </div>
-          <div className="space-y-8">
+      <Modal open={!!user} onClose={onClose} id="manage-access" maxWidth={640}>
+        <ModalHeader onClose={onClose} title={t('manage_access')} subtitle={localUser.name} />
+        <ModalBody className="max-h-[70vh] overflow-y-auto">
+          <div className="space-y-3">
             {(localUser.partnerMemberships?.length ?? 0) > 0 ? localUser.partnerMemberships!.map((m: PartnerMembership) => (
-              <div key={m.id} className="border border-[var(--color-border)] p-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="section-header">{m.partnerName}</h3>
-                  <button onClick={() => setConfirmDialog({
-                    title: t('revoke_access'),
-                    message: t('confirm_revoke_access').replace('{name}', localUser.name),
-                    confirmLabel: t('revoke_access'),
-                    onConfirm: () => { removeMembership.mutate(m.id); setConfirmDialog(null); }
-                  })} className="btn-danger text-[8px] uppercase tracking-widest px-2 py-1">{t('revoke_access')}</button>
+              <div
+                key={m.id}
+                className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-4"
+              >
+                <div className="flex justify-between items-center mb-3 gap-3">
+                  <h3 className="text-[14px] font-medium text-[var(--color-ink)] truncate" title={m.partnerName}>{m.partnerName}</h3>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    leading={<Trash2 className="h-3.5 w-3.5" />}
+                    onClick={() => setConfirmDialog({
+                      title: t('revoke_access'),
+                      message: t('confirm_revoke_access').replace('{name}', localUser.name),
+                      confirmLabel: t('revoke_access'),
+                      onConfirm: () => { removeMembership.mutate(m.id); setConfirmDialog(null); },
+                    })}
+                  >
+                    {t('revoke_access')}
+                  </Button>
                 </div>
-                <select className="input-field w-full text-xs" value={m.role} onChange={(e) => updateMembership.mutate({ id: m.id, data: { role: e.target.value as UserRole } })}>
+                <select
+                  className={INPUT}
+                  value={m.role}
+                  onChange={(e) => updateMembership.mutate({ id: m.id, data: { role: e.target.value as UserRole } })}
+                >
                   <option value="agent">{getRoleDisplayName('agent')}</option>
                   <option value="support">{getRoleDisplayName('support')}</option>
                   <option value="admin">{getRoleDisplayName('admin')}</option>
@@ -77,16 +90,16 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
                 </select>
               </div>
             )) : (
-              <div className="p-12 text-center border border-dashed border-[var(--color-border)]">
-                <p className="text-sm font-bold uppercase text-[var(--color-text-faint)] tracking-widest">{t('no_active_memberships')}</p>
+              <div className="rounded-[var(--radius-card)] border border-dashed border-[var(--color-border-strong)] p-10 text-center">
+                <p className="text-[13px] text-[var(--color-ink-muted)]">{t('no_active_memberships')}</p>
               </div>
             )}
           </div>
-          <div className="flex justify-end mt-10">
-            <button onClick={onClose} className="btn-primary px-8 py-3 uppercase text-[10px] tracking-widest">{t('done')}</button>
-          </div>
-        </div>
-      </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" size="md" onClick={onClose}>{t('done')}</Button>
+        </ModalFooter>
+      </Modal>
 
       {confirmDialog && (
         <ConfirmDialog

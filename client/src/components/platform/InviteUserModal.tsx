@@ -1,6 +1,9 @@
 import { useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
+import Modal, { ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
+import Button from '../ui/Button';
 import type { UserRole } from './types';
 import { getRoleDisplayName } from '../../utils/roles';
 
@@ -8,6 +11,10 @@ interface InviteUserModalProps {
   open: boolean;
   onClose: () => void;
 }
+
+const FIELD_LABEL = 'block text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5';
+const INPUT =
+  'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
 
 export default function InviteUserModal({ open, onClose }: InviteUserModalProps) {
   const t = useT();
@@ -45,72 +52,70 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
     }
   });
 
-  if (!open && !result) return null;
-
-  // Invite result dialog
   if (result) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-        <div onClick={() => setResult(null)} aria-label="Close" className="absolute inset-0 bg-black/80" />
-        <div role="dialog" aria-modal="true" className="w-full max-w-md bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8">
-          <h2 className="text-xl font-bold uppercase tracking-wide font-mono mb-6 border-b border-[var(--color-border)] pb-2">
-            {t('invite_resent_success')}
-          </h2>
-          {result.isExistingUser ? (
-            <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest font-mono">
-                {t('manage_access')} — {result.partnerName}
-              </p>
-              <p className="text-[10px] uppercase text-[var(--color-text-muted)]">
-                {t('status_linked_sso')}
-              </p>
+      <Modal open={true} onClose={() => setResult(null)} id="invite-result" maxWidth={440}>
+        <ModalHeader onClose={() => setResult(null)}>
+          <div className="flex items-center gap-3">
+            <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-ok-soft)] text-[var(--color-ok)]">
+              <CheckCircle2 className="h-5 w-5" />
             </div>
-          ) : (
-            <div className="space-y-4">
-              <p className="text-xs font-bold uppercase tracking-widest font-mono">
-                {result.partnerName}
-              </p>
-              <p className="text-[10px] uppercase text-[var(--color-text-muted)]">
-                {t('sso_enterprise')}
-              </p>
+            <div>
+              <h2 className="text-[17px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">
+                {t('invite_resent_success')}
+              </h2>
+              <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">{result.partnerName}</p>
             </div>
-          )}
-          <div className="flex justify-end mt-8">
-            <button onClick={() => setResult(null)} className="btn-primary px-6 py-2 text-[10px] uppercase tracking-widest">{t('done')}</button>
           </div>
-        </div>
-      </div>
+        </ModalHeader>
+        <ModalBody>
+          <p className="text-[13px] text-[var(--color-ink-soft)]">
+            {result.isExistingUser ? t('status_linked_sso') : t('sso_enterprise')}
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" size="md" onClick={() => setResult(null)}>{t('done')}</Button>
+        </ModalFooter>
+      </Modal>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-      <div onClick={onClose} aria-label="Close" className="absolute inset-0 bg-black/80" />
-      <div role="dialog" aria-modal="true" className="w-full max-w-xl bg-[var(--color-bg-surface)] border border-[var(--color-border)] relative z-10 p-8">
-        <h2 className="text-2xl font-bold uppercase tracking-wide font-mono mb-6 border-b border-[var(--color-border)] pb-2">{t('invite_new_user')}</h2>
+    <Modal open={open} onClose={() => { onClose(); setError(''); }} id="invite-user" maxWidth={560}>
+      <ModalHeader onClose={() => { onClose(); setError(''); }} title={t('invite_new_user')} />
+      <ModalBody>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mono-label">{t('col_name')}</label>
-              <input type="text" className="input-field w-full"
-                value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
+              <label className={FIELD_LABEL}>{t('col_name')}</label>
+              <input
+                type="text"
+                className={INPUT}
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
               />
             </div>
             <div>
-              <label className="mono-label">{t('email_label')}</label>
-              <input type="email" className="input-field w-full"
-                value={form.email} onChange={e => { setForm({ ...form, email: e.target.value }); setError(''); }}
+              <label className={FIELD_LABEL}>{t('email_label')}</label>
+              <input
+                type="email"
+                className={INPUT}
+                value={form.email}
+                onChange={e => { setForm({ ...form, email: e.target.value }); setError(''); }}
               />
               {form.email && !isValidEmail(form.email) && (
-                <p className="mt-1 text-[9px] font-bold uppercase text-[var(--color-text-muted)]">{t('placeholder_email')}</p>
+                <p className="mt-1 text-[11px] text-[var(--color-ink-muted)]">{t('placeholder_email')}</p>
               )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mono-label">{t('assign_partner')}</label>
-              <select className="input-field w-full"
-                value={form.partnerId} onChange={e => setForm({ ...form, partnerId: e.target.value })}>
+              <label className={FIELD_LABEL}>{t('assign_partner')}</label>
+              <select
+                className={INPUT}
+                value={form.partnerId}
+                onChange={e => setForm({ ...form, partnerId: e.target.value })}
+              >
                 <option value="">—</option>
                 {partners?.filter(p => p.status === 'active').map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
@@ -118,9 +123,12 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
               </select>
             </div>
             <div>
-              <label className="mono-label">{t('col_role')}</label>
-              <select className="input-field w-full"
-                value={form.role} onChange={e => setForm({ ...form, role: e.target.value as UserRole })}>
+              <label className={FIELD_LABEL}>{t('col_role')}</label>
+              <select
+                className={INPUT}
+                value={form.role}
+                onChange={e => setForm({ ...form, role: e.target.value as UserRole })}
+              >
                 <option value="agent">{getRoleDisplayName('agent')}</option>
                 <option value="support">{getRoleDisplayName('support')}</option>
                 <option value="admin">{getRoleDisplayName('admin')}</option>
@@ -128,21 +136,25 @@ export default function InviteUserModal({ open, onClose }: InviteUserModalProps)
               </select>
             </div>
           </div>
-          {error && <p className="text-xs font-bold uppercase text-[var(--color-accent-red)]">{error}</p>}
-          <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-border)]">
-            <button onClick={() => { onClose(); setError(''); }} className="btn-secondary px-6 py-2 text-[10px] uppercase tracking-widest">{t('cancel')}</button>
-            <button onClick={() => {
-              inviteUser.mutate({
-                email: form.email, name: form.name, role: form.role, partnerId: form.partnerId,
-                departments: form.dept ? [form.dept] : undefined,
-              });
-            }}
-              disabled={!form.email || !isValidEmail(form.email) || !form.name || (!form.partnerId && form.role !== 'platform_operator')}
-              className="btn-primary px-6 py-2 text-[10px] uppercase tracking-widest disabled:opacity-20"
-            >{t('invite_new_user')}</button>
-          </div>
+          {error && <p className="text-[12px] text-[var(--color-urgent)]">{error}</p>}
         </div>
-      </div>
-    </div>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant="secondary" size="md" onClick={() => { onClose(); setError(''); }}>{t('cancel')}</Button>
+        <Button
+          variant="primary"
+          size="md"
+          disabled={!form.email || !isValidEmail(form.email) || !form.name || (!form.partnerId && form.role !== 'platform_operator') || inviteUser.isPending}
+          onClick={() => {
+            inviteUser.mutate({
+              email: form.email, name: form.name, role: form.role, partnerId: form.partnerId,
+              departments: form.dept ? [form.dept] : undefined,
+            });
+          }}
+        >
+          {t('invite_new_user')}
+        </Button>
+      </ModalFooter>
+    </Modal>
   );
 }

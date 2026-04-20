@@ -109,7 +109,7 @@ describe('ManageAccessModal', () => {
 
   it('calls onClose when backdrop is clicked', () => {
     render(<ManageAccessModal user={userWithAccess} onClose={onClose} />);
-    const backdrop = document.querySelector('.absolute.inset-0.bg-black\\/80');
+    const backdrop = screen.getByRole('dialog').parentElement;
     if (backdrop) fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalled();
   });

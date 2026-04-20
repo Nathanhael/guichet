@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
@@ -8,6 +9,7 @@ import DarkModeToggle from '../components/DarkModeToggle';
 import LanguageSwitcher from '../components/LanguageSwitcher';
 import SystemBackground from '../components/SystemBackground';
 import LegalModal from '../components/LegalModal';
+import Button from '../components/ui/Button';
 import { getRoleDisplayName } from '../utils/roles';
 
 import DemoUserPicker from './login/DemoUserPicker';
@@ -18,6 +20,9 @@ type PartnerSelection = {
 };
 
 type AuthViewMode = 'sso-selection' | 'demo';
+
+const SHELL =
+  'w-full max-w-md overflow-hidden relative z-10 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
 
 export default function LoginView() {
   const { setUser, setMemberships, setActiveMembershipId } = useStoreShallow((s) => ({
@@ -89,40 +94,52 @@ export default function LoginView() {
   if (isSsoVerifying) {
     return (
       <div className="h-screen w-screen flex items-center justify-center bg-[var(--color-bg-base)]">
-        <div className="mono-label text-[10px]">{t('loading') || 'Loading...'}</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-8 w-8 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin" />
+          <p className="text-[13px] text-[var(--color-ink-soft)]">{t('loading') || 'Loading...'}</p>
+        </div>
       </div>
     );
   }
 
   if (selectingPartner) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-[var(--color-text-primary)] relative">
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
         <SystemBackground />
-        <div className="w-full max-w-lg overflow-hidden relative z-10 border border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)]">
-          <div className="bg-[var(--color-text-primary)] px-8 py-10" style={{ color: 'var(--color-bg-base)' }}>
-            <h1 className="text-xl font-mono font-bold uppercase tracking-[3px]">{t('choose_workspace')}</h1>
-            <p className="mono-label mt-2" style={{ opacity: 0.8 }}>{selectingPartner.user.name}</p>
+        <div className={SHELL}>
+          <div className="px-7 pt-7 pb-5">
+            <h1 className="text-[20px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">
+              {t('choose_workspace')}
+            </h1>
+            <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{selectingPartner.user.name}</p>
           </div>
-          <div className="p-6 space-y-3">
+          <div className="px-7 pb-7 space-y-2">
             {selectingPartner.memberships.map((m) => (
               <button
                 key={m.id}
                 onClick={() => { setUser(selectingPartner.user); setMemberships(selectingPartner.memberships); setActiveMembershipId(m.id); }}
-                className="group w-full text-left p-4 border-2 border-[var(--color-border-heavy)] hover:bg-[var(--color-text-primary)] hover:text-[var(--color-bg-base)] flex items-center justify-between"
+                className="group w-full text-left px-4 py-3 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] hover:border-[var(--color-accent)] hover:bg-[var(--color-hover)] transition-colors flex items-center justify-between gap-3"
               >
-                <div>
-                  <p className="font-mono font-bold uppercase tracking-tight text-[var(--color-text-primary)] group-hover:text-[var(--color-bg-base)]">{m.partnerName}</p>
-                  <p className="mono-label text-[var(--color-text-secondary)] group-hover:text-[var(--color-bg-base)] mt-0.5">{getRoleDisplayName(m.role as UserRole, false)} · {m.manifest?.industry}</p>
+                <div className="min-w-0">
+                  <p className="text-[14px] font-medium text-[var(--color-ink)] truncate">{m.partnerName}</p>
+                  <p className="text-[12px] text-[var(--color-ink-muted)] mt-0.5 truncate">
+                    {getRoleDisplayName(m.role as UserRole, false)}
+                    {m.manifest?.industry ? ` · ${m.manifest.industry}` : ''}
+                  </p>
                 </div>
-                <span className="text-xl font-bold text-[var(--color-text-secondary)] group-hover:text-[var(--color-bg-base)]">➔</span>
+                <ArrowRight className="h-4 w-4 text-[var(--color-ink-muted)] group-hover:text-[var(--color-accent)] shrink-0" />
               </button>
             ))}
-            <button
-              onClick={() => setSelectingPartner(null)}
-              className="w-full py-3 mt-4 mono-label text-[var(--color-text-muted)] border border-transparent hover:border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
-            >
-              {t('cancel')}
-            </button>
+            <div className="pt-2">
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => setSelectingPartner(null)}
+                className="w-full"
+              >
+                {t('cancel')}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -131,84 +148,103 @@ export default function LoginView() {
 
   return (
     <ErrorBoundary>
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-[var(--color-text-primary)] relative">
-      <SystemBackground />
-      <div className="absolute top-6 right-6 z-50 flex items-center gap-2 bg-[var(--color-bg-elevated)] p-1 border border-[var(--color-border)]">
-        <LanguageSwitcher />
-        <DarkModeToggle />
-      </div>
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
+        <SystemBackground />
+        <div className="absolute top-5 right-5 z-50 flex items-center gap-1 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)] p-1">
+          <LanguageSwitcher />
+          <DarkModeToggle />
+        </div>
 
-      <div className="w-full max-w-lg overflow-hidden relative z-10 border border-[var(--color-border-heavy)] bg-[var(--color-bg-surface)]">
-        <div className="bg-[var(--color-text-primary)] px-8 py-10 relative overflow-hidden flex justify-between items-start" style={{ color: 'var(--color-bg-base)' }}>
-          <div className="flex flex-col items-start gap-4">
-            <img
-              src="/icon-blue.svg"
-              className="w-12 h-12 select-none"
-              alt={APP_NAME}
-            />
-            <h1 className="text-3xl font-mono font-bold uppercase tracking-[4px] relative z-10 cursor-default select-none focus:outline-none">
-              {APP_NAME}
-            </h1>
-            <p className="mono-label relative z-10" style={{ opacity: 0.8 }}>
-              {viewMode === 'sso-selection' ? t('sso_login_description') : t('select_user')}
-            </p>
+        <div className={SHELL}>
+          <div className="px-7 pt-7 pb-5 flex items-start justify-between gap-4">
+            <div className="flex flex-col items-start gap-3">
+              <img
+                src="/icon-blue.svg"
+                className="w-10 h-10 select-none"
+                alt={APP_NAME}
+              />
+              <div>
+                <h1 className="text-[22px] font-semibold tracking-[-0.3px] text-[var(--color-ink)] select-none">
+                  {APP_NAME}
+                </h1>
+                <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">
+                  {viewMode === 'sso-selection' ? t('sso_login_description') : t('select_user')}
+                </p>
+              </div>
+            </div>
+            {viewMode === 'demo' && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setError(''); setSuccessMessage(''); setViewMode('sso-selection'); }}
+              >
+                {t('standard_login')}
+              </Button>
+            )}
           </div>
+
+          {viewMode === 'sso-selection' && (
+            <div className="px-7 pb-7 space-y-4">
+              {error && (
+                <div className="rounded-[var(--radius-btn)] bg-[var(--color-urgent-soft)] border border-[var(--color-urgent)]/30 px-3 py-2.5 flex items-start gap-2.5">
+                  <AlertCircle className="h-4 w-4 text-[var(--color-urgent)] mt-0.5 shrink-0" />
+                  <p className="text-[13px] text-[var(--color-urgent)]">{error}</p>
+                </div>
+              )}
+              {successMessage && (
+                <div className="rounded-[var(--radius-btn)] bg-[var(--color-ok-soft)] border border-[var(--color-ok)]/30 px-3 py-2.5 flex items-start gap-2.5">
+                  <CheckCircle2 className="h-4 w-4 text-[var(--color-ok)] mt-0.5 shrink-0" />
+                  <p className="text-[13px] text-[var(--color-ok)]">{successMessage}</p>
+                </div>
+              )}
+
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }}
+                className="w-full h-11"
+                leading={
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+                    <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
+                  </svg>
+                }
+              >
+                {t('sso_microsoft')}
+              </Button>
+
+              <div className="text-center pt-1">
+                <button
+                  type="button"
+                  onClick={() => { setViewMode('demo'); setError(''); setSuccessMessage(''); }}
+                  className="text-[12px] font-medium text-[var(--color-accent)] hover:underline underline-offset-4"
+                >
+                  {t('demo_mode')}
+                </button>
+              </div>
+            </div>
+          )}
+
           {viewMode === 'demo' && (
-            <button
-              onClick={() => { setError(''); setSuccessMessage(''); setViewMode('sso-selection'); }}
-              className="mono-label border border-current px-3 py-1.5 hover:bg-[var(--color-bg-base)] hover:text-[var(--color-text-primary)]"
-              style={{ color: 'inherit' }}
-            >
-              {t('standard_login')}
-            </button>
+            <DemoUserPicker onLoginSuccess={handleLoginSuccess} />
           )}
         </div>
 
-        {viewMode === 'sso-selection' && (
-          <div className="p-8 space-y-6 bg-[var(--color-bg-surface)]">
-            {error && (
-              <div className="p-3 border border-[var(--color-accent-red)] text-[var(--color-accent-red)] flex items-center gap-3">
-                <span className="text-lg font-bold">!</span>
-                <p className="mono-label">{error}</p>
-              </div>
-            )}
-            {successMessage && (
-              <div className="p-3 border border-[var(--color-accent-green)] text-[var(--color-accent-green)] flex items-center gap-3">
-                <span className="text-lg font-bold">✓</span>
-                <p className="mono-label">{successMessage}</p>
-              </div>
-            )}
-            <p className="mono-label text-[var(--color-text-secondary)] leading-relaxed">{t('sso_login_description')}</p>
-            <button
-              onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }}
-              className="w-full py-3 bg-[var(--color-text-primary)] text-[var(--color-bg-base)] font-mono font-bold uppercase tracking-widest text-sm hover:bg-[var(--color-accent-blue)] hover:text-white flex items-center justify-center gap-4"
-            >
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5" aria-hidden="true"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" /></svg>
-              <span>{t('sso_microsoft')}</span>
-            </button>
-            <div className="text-center pt-2 flex flex-col items-center gap-2">
-              <button
-                type="button"
-                onClick={() => { setViewMode('demo'); setError(''); setSuccessMessage(''); }}
-                className="mono-label text-[var(--color-accent-blue)] hover:text-[var(--color-text-primary)] hover:underline underline-offset-4"
-              >
-                {t('demo_mode')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {viewMode === 'demo' && (
-          <DemoUserPicker onLoginSuccess={handleLoginSuccess} />
-        )}
+        <div className="mt-10 flex gap-6">
+          <button
+            onClick={() => setLegalModal('privacy')}
+            className="text-[12px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink-soft)] hover:underline underline-offset-4"
+          >
+            {t('privacy_policy')}
+          </button>
+          <button
+            onClick={() => setLegalModal('terms')}
+            className="text-[12px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink-soft)] hover:underline underline-offset-4"
+          >
+            {t('terms_of_service')}
+          </button>
+        </div>
+        {legalModal && <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />}
       </div>
-
-      <div className="mt-12 flex gap-8 text-[var(--color-text-faint)] hover:text-[var(--color-text-muted)]">
-        <button onClick={() => setLegalModal('privacy')} className="mono-label hover:underline">{t('privacy_policy')}</button>
-        <button onClick={() => setLegalModal('terms')} className="mono-label hover:underline">{t('terms_of_service')}</button>
-      </div>
-      {legalModal && <LegalModal type={legalModal} onClose={() => setLegalModal(null)} />}
-    </div>
     </ErrorBoundary>
   );
 }
