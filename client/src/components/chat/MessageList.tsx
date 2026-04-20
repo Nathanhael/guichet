@@ -125,17 +125,17 @@ export default function MessageList({
         <div
           ref={scrollContainerRef}
           onScroll={onScroll}
-          className={`flex-1 overflow-y-auto p-6 scrollbar-thin relative bg-bg-surface`}
+          className="flex-1 overflow-y-auto p-6 scrollbar-thin relative bg-[var(--color-bg-surface)]"
         >
           <div className="space-y-1 mb-8">
             {cursorInfo?.hasMore && (
               <div className="flex justify-center py-2">
                 {cursorInfo.loading ? (
-                  <span className="text-xs font-mono text-text-secondary">{t('loading')}</span>
+                  <span className="text-xs text-[var(--color-ink-muted)]">{t('loading')}</span>
                 ) : (
                   <button
                     onClick={onLoadOlder}
-                    className="text-xs font-mono text-text-secondary hover:text-text-primary"
+                    className="text-xs text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] underline underline-offset-2"
                   >
                     {t('load_older')}
                   </button>
@@ -143,11 +143,11 @@ export default function MessageList({
               </div>
             )}
             {ticketMessages.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 opacity-40">
-                <svg className="w-12 h-12 text-text-primary opacity-40 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="flex flex-col items-center justify-center py-20">
+                <svg className="w-12 h-12 text-[var(--color-ink-muted)] mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.855-1.246L3 20l1.226-3.746A9.233 9.233 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <p className="text-sm font-medium tracking-wide italic">{t('no_messages')}</p>
+                <p className="text-sm text-[var(--color-ink-muted)]">{t('no_messages')}</p>
               </div>
             )}
             {ticketMessages.map((msg, idx) => {
@@ -182,30 +182,28 @@ export default function MessageList({
               return (
                 <React.Fragment key={msg.id}>
                   {showDateSeparator && (
-                    <div className="flex items-center gap-3 my-4 px-4">
-                      <div className="flex-1 border-t border-border" />
-                      <span className="font-mono text-[8px] uppercase tracking-widest text-text-secondary bg-bg-surface px-2 shrink-0">
+                    <div className="flex justify-center my-4">
+                      <span className="text-[11px] font-medium text-[var(--color-ink-muted)] bg-[var(--color-bg-elevated)] px-3 py-1 rounded-[var(--radius-pill)] shrink-0">
                         {getDateLabel(msg.timestamp, t, user?.lang)}
                       </span>
-                      <div className="flex-1 border-t border-border" />
                     </div>
                   )}
                   {showDivider && (
                     <div className="flex items-center gap-3 my-3 px-4">
-                      <div className="flex-1 border-t border-accent-blue" />
-                      <span className="font-mono text-[8px] uppercase tracking-widest text-accent-blue bg-bg-surface px-2 shrink-0">
+                      <div className="flex-1 h-px bg-[var(--color-accent)] opacity-30" />
+                      <span className="text-[11px] font-semibold text-[var(--color-accent)] bg-[var(--color-accent-soft)] px-3 py-1 rounded-[var(--radius-pill)] shrink-0">
                         {t('new_messages')}
                       </span>
-                      <div className="flex-1 border-t border-accent-blue" />
+                      <div className="flex-1 h-px bg-[var(--color-accent)] opacity-30" />
                     </div>
                   )}
                   {isWhisperRunStart && (
-                    <div className="flex items-center gap-3 mt-2 mb-1 px-14 opacity-55">
-                      <div className="flex-1 border-t border-dashed border-accent-purple/60" />
-                      <span className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-accent-purple shrink-0">
+                    <div className="flex items-center gap-3 mt-2 mb-1 px-14">
+                      <div className="flex-1 border-t border-dashed border-[var(--color-whisper-ink)] opacity-40" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-whisper-ink)] shrink-0">
                         {t('whisper_run_start')}
                       </span>
-                      <div className="flex-1 border-t border-dashed border-accent-purple/60" />
+                      <div className="flex-1 border-t border-dashed border-[var(--color-whisper-ink)] opacity-40" />
                     </div>
                   )}
                   <MessageBubble
@@ -221,12 +219,12 @@ export default function MessageList({
                     suppressActions={suppressActions}
                   />
                   {isWhisperRunEnd && (
-                    <div className="flex items-center gap-3 mt-1 mb-2 px-14 opacity-55">
-                      <div className="flex-1 border-t border-dashed border-accent-purple/60" />
-                      <span className="font-mono text-[8px] font-bold uppercase tracking-[0.18em] text-accent-purple shrink-0">
+                    <div className="flex items-center gap-3 mt-1 mb-2 px-14">
+                      <div className="flex-1 border-t border-dashed border-[var(--color-whisper-ink)] opacity-40" />
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-whisper-ink)] shrink-0">
                         {t('whisper_run_end')}
                       </span>
-                      <div className="flex-1 border-t border-dashed border-accent-purple/60" />
+                      <div className="flex-1 border-t border-dashed border-[var(--color-whisper-ink)] opacity-40" />
                     </div>
                   )}
                 </React.Fragment>
@@ -241,12 +239,12 @@ export default function MessageList({
         {showScrollButton && (
           <button
             onClick={onScrollToBottom}
-            className="absolute bottom-20 right-4 z-40 flex items-center gap-1.5 bg-bg-elevated border border-border-heavy px-3 py-2 hover:bg-bg-surface transition-opacity duration-150"
+            className="absolute bottom-20 right-4 z-40 flex items-center gap-1.5 bg-[var(--color-bg-surface)] px-3 py-2 rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] hover:bg-[var(--color-hover)] transition-colors"
             aria-label={t('scroll_to_bottom')}
           >
-            <ArrowDown size={14} className="text-text-primary" />
+            <ArrowDown size={14} className="text-[var(--color-ink)]" />
             {unreadCount > 0 && (
-              <span className="bg-accent-blue text-btn-text-inverse font-mono text-[9px] px-1.5 py-0.5 min-w-[18px] text-center">
+              <span className="bg-[var(--color-accent)] text-white text-[10px] font-semibold tabular-nums px-1.5 py-0.5 min-w-[18px] text-center rounded-[var(--radius-pill)]">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
@@ -260,12 +258,12 @@ export default function MessageList({
         const typers = Object.keys(ticketTyping).filter(name => ticketTyping[name] && name !== user?.name);
         if (typers.length === 0) return null;
         return (
-          <div className="px-6 py-1.5 text-[11px] font-bold text-text-primary opacity-40 bg-bg-surface border-t border-border">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="flex gap-0.5">
-                <span className="w-1 h-1 bg-text-primary" />
-                <span className="w-1 h-1 bg-text-primary" />
-                <span className="w-1 h-1 bg-text-primary" />
+          <div className="px-6 py-2 text-[12px] text-[var(--color-ink-muted)] bg-[var(--color-bg-surface)] border-t border-[var(--color-border)]">
+            <span className="inline-flex items-center gap-2">
+              <span className="inline-flex gap-1" aria-hidden="true">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-ink-muted)] animate-[v2p-dot_1s_ease-in-out_infinite]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-ink-muted)] animate-[v2p-dot_1s_ease-in-out_infinite] [animation-delay:120ms]" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-ink-muted)] animate-[v2p-dot_1s_ease-in-out_infinite] [animation-delay:240ms]" />
               </span>
               {typers.length === 1
                 ? `${typers[0]} ${t('is_typing')}`

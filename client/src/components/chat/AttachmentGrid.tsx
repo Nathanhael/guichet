@@ -22,19 +22,19 @@ function isImage(mime: string): boolean {
 }
 
 function getFileIcon(mime: string) {
-  if (mime === 'application/pdf') return <FileText size={20} className="text-accent-blue shrink-0" />;
+  if (mime === 'application/pdf') return <FileText size={20} className="text-[var(--color-accent)] shrink-0" />;
   if (mime.includes('spreadsheet') || mime.includes('excel') || mime === 'text/csv' || mime === 'application/csv')
-    return <Sheet size={20} className="text-accent-blue shrink-0" />;
-  return <File size={20} className="text-accent-blue shrink-0" />;
+    return <Sheet size={20} className="text-[var(--color-accent)] shrink-0" />;
+  return <File size={20} className="text-[var(--color-accent)] shrink-0" />;
 }
 
 function getFileLabel(mime: string): string {
   if (mime === 'application/pdf') return 'PDF';
-  if (mime === 'application/msword' || mime.includes('wordprocessingml')) return 'WORD';
-  if (mime.includes('spreadsheet') || mime.includes('excel')) return 'EXCEL';
+  if (mime === 'application/msword' || mime.includes('wordprocessingml')) return 'Word';
+  if (mime.includes('spreadsheet') || mime.includes('excel')) return 'Excel';
   if (mime === 'text/csv' || mime === 'application/csv') return 'CSV';
-  if (mime === 'text/plain') return 'TEXT';
-  return 'FILE';
+  if (mime === 'text/plain') return 'Text';
+  return 'File';
 }
 
 export default function AttachmentGrid({ attachments }: AttachmentGridProps) {
@@ -55,7 +55,7 @@ export default function AttachmentGrid({ attachments }: AttachmentGridProps) {
               href={img.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="block border border-border overflow-hidden"
+              className="block rounded-[var(--radius-bubble)] overflow-hidden shadow-[var(--shadow-soft)]"
             >
               <img
                 src={img.url}
@@ -76,16 +76,16 @@ export default function AttachmentGrid({ attachments }: AttachmentGridProps) {
           target="_blank"
           rel="noopener noreferrer"
           download={doc.name}
-          className="flex items-center gap-2.5 px-3 py-2 border border-border bg-bg-surface hover:bg-bg-elevated"
+          className="flex items-center gap-2.5 px-3 py-2 bg-[var(--color-bg-surface)] rounded-[var(--radius-btn)] shadow-[var(--shadow-soft)] hover:bg-[var(--color-hover)]"
         >
           {getFileIcon(doc.mimeType)}
           <div className="flex flex-col min-w-0 flex-1">
-            <span className="text-[12px] font-mono font-bold text-text-primary truncate">{doc.name}</span>
-            <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-text-muted">
-              {getFileLabel(doc.mimeType)} &middot; {formatSize(doc.size)}
+            <span className="text-[13px] font-medium text-[var(--color-ink)] truncate">{doc.name}</span>
+            <span className="text-[11px] text-[var(--color-ink-muted)]">
+              {getFileLabel(doc.mimeType)} · {formatSize(doc.size)}
             </span>
           </div>
-          <Download size={14} className="text-text-muted shrink-0" />
+          <Download size={14} className="text-[var(--color-ink-muted)] shrink-0" />
         </a>
       ))}
     </div>

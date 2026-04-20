@@ -37,8 +37,8 @@ export default function MessageContent({
               const el = document.getElementById(`msg-${reply.id}`);
               if (el) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.classList.add('bg-accent-blue/10');
-                setTimeout(() => el.classList.remove('bg-accent-blue/10'), 1000);
+                el.classList.add('bg-[var(--color-accent-soft)]');
+                setTimeout(() => el.classList.remove('bg-[var(--color-accent-soft)]'), 1000);
               }
             }}
           />
@@ -79,24 +79,24 @@ export default function MessageContent({
 
         if (isImageExt) {
           return (
-            <div className="mt-2 border border-border">
+            <div className="mt-2 rounded-[var(--radius-bubble)] overflow-hidden shadow-[var(--shadow-soft)]">
               <img src={url} alt="attachment" className="w-full h-auto object-cover max-h-96" referrerPolicy="no-referrer" />
             </div>
           );
         }
 
-        const fileLabel = getFileTypeLabel(ext, 'uppercase');
+        const fileLabel = getFileTypeLabel(ext);
         return (
           <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 flex items-center gap-2.5 px-3 py-2 border border-border bg-bg-surface hover:bg-bg-elevated"
+            className="mt-2 flex items-center gap-2.5 px-3 py-2 bg-[var(--color-bg-surface)] rounded-[var(--radius-btn)] shadow-[var(--shadow-soft)] hover:bg-[var(--color-hover)]"
           >
-            <FileText size={20} strokeWidth={1.5} className="text-accent-blue shrink-0" />
+            <FileText size={20} strokeWidth={1.5} className="text-[var(--color-accent)] shrink-0" />
             <div className="flex flex-col min-w-0">
-              <span className="text-[12px] font-mono font-bold text-text-primary truncate">{filename}</span>
-              <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-text-muted">{fileLabel}</span>
+              <span className="text-[13px] font-medium text-[var(--color-ink)] truncate">{filename}</span>
+              <span className="text-[11px] text-[var(--color-ink-muted)]">{fileLabel}</span>
             </div>
           </a>
         );
