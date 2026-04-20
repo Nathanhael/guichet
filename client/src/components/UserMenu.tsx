@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { LogOut, MessageSquare } from 'lucide-react';
+import { LogOut, MessageSquare, ChevronDown } from 'lucide-react';
 import useStore from '../store/useStore';
 import { useT } from '../i18n';
 import GuestBadge from './GuestBadge';
+import Avatar from './ui/Avatar';
 
 export interface UserMenuProps {
   /** Show feedback button — agent view only. Default false. */
@@ -54,27 +55,34 @@ export default function UserMenu({ showFeedback = false, onFeedback }: UserMenuP
         aria-expanded={open}
         aria-haspopup="dialog"
         title={user.name}
-        className="h-8 px-3 flex items-center justify-center bg-[var(--color-accent-blue)] text-[var(--color-btn-text-inverse)] text-[10px] font-bold font-mono uppercase tracking-[0.12em] whitespace-nowrap max-w-[220px] truncate"
+        className="h-9 pl-1 pr-2.5 flex items-center gap-2 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] transition-colors max-w-[220px]"
       >
-        {user.name}
+        <Avatar name={user.name} size={28} />
+        <span className="text-[13px] font-medium text-[var(--color-ink)] truncate">
+          {user.name}
+        </span>
+        <ChevronDown size={14} className="text-[var(--color-ink-muted)] shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-[var(--color-bg-surface)] border border-[var(--color-border-heavy)]">
-          <div className="px-3 py-2.5 border-b border-[var(--color-border)]">
-            <div className="text-[11px] font-bold uppercase tracking-tight text-[var(--color-text-primary)] flex items-center gap-2">
-              <span className="truncate">{user.name}</span>
-              <GuestBadge isExternal={user.isExternal} size="prominent" />
+        <div className="absolute right-0 top-full mt-1.5 z-50 w-60 bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] overflow-hidden">
+          <div className="px-3.5 py-3 border-b border-[var(--color-border)] flex items-center gap-3">
+            <Avatar name={user.name} size={36} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-semibold text-[var(--color-ink)] flex items-center gap-2 truncate">
+                <span className="truncate">{user.name}</span>
+                <GuestBadge isExternal={user.isExternal} size="prominent" />
+              </div>
+              <div className="text-[11px] text-[var(--color-ink-muted)] truncate mt-0.5">{user.email}</div>
             </div>
-            <div className="text-[9px] text-[var(--color-text-muted)] mt-0.5">{user.email}</div>
           </div>
 
           {showFeedback && (
             <button
               onClick={handleFeedback}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)] border-b border-[var(--color-border)]"
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
             >
-              <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+              <MessageSquare className="h-4 w-4 shrink-0 text-[var(--color-ink-muted)]" />
               {t('feedback')}
             </button>
           )}
@@ -84,9 +92,9 @@ export default function UserMenu({ showFeedback = false, onFeedback }: UserMenuP
               setOpen(false);
               void logout();
             }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-[9px] font-mono font-bold uppercase tracking-widest text-[var(--color-accent-red)] hover:bg-[var(--color-bg-elevated)]"
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium text-[var(--color-urgent)] hover:bg-[var(--color-urgent-soft)]"
           >
-            <LogOut className="h-3.5 w-3.5 shrink-0" />
+            <LogOut className="h-4 w-4 shrink-0" />
             {t('sign_out')}
           </button>
         </div>
