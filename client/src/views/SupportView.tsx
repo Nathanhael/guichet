@@ -24,7 +24,6 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import CommandPalette from '../components/support/CommandPalette';
 import { useIdleStatus } from '../hooks/useIdleStatus';
 import { Clock } from 'lucide-react';
-import { APP_NAME } from '../constants';
 import type { OnlineSupport } from '../types';
 
 export default function SupportView() {
@@ -114,7 +113,6 @@ export default function SupportView() {
   const chatWindowRef = useRef<ChatWindowHandle>(null);
 
   const activeMembership = (memberships || []).find((m) => m.id === activeMembershipId);
-  const partnerName = activeMembership?.partnerName || 'Guichet';
 
   // Request notification permission once when enabled
   useEffect(() => {
@@ -398,52 +396,6 @@ export default function SupportView() {
         </div>
       )}
 
-      <nav
-        className={`px-6 flex items-center justify-between sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] ${
-          focusMode ? 'py-2' : 'py-3'
-        }`}
-      >
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-[15px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{APP_NAME}</span>
-          {!focusMode && (
-            <>
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-                {t('support')}
-              </span>
-              <span className="h-5 w-px bg-[var(--color-border)]" />
-              <span className="text-[13px] font-medium text-[var(--color-ink-soft)] truncate">{partnerName}</span>
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-3">
-          {totalOnline > 0 && !focusMode && (
-            <span className="text-[11px] font-medium text-[var(--color-ink-muted)] tabular-nums px-1.5">
-              {availableCount} / {totalOnline}
-            </span>
-          )}
-          {!focusMode && (
-            <button
-              type="button"
-              onClick={() => setPaletteOpen(true)}
-              className="h-8 px-2 flex items-center gap-1 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
-              title={t('cmd_palette_title') || 'Command Palette'}
-              aria-label={t('cmd_palette_title') || 'Command Palette'}
-            >
-              <kbd className="text-[11px] font-medium">Ctrl+K</kbd>
-            </button>
-          )}
-          <div className="w-[240px]">
-            <UserMenuChip
-              showStatus
-              showKeyboardShortcuts
-              onKeyboardShortcuts={() => setPaletteOpen(true)}
-              confirmBeforeSwitch
-              placement="bottom-end"
-            />
-          </div>
-        </div>
-      </nav>
-
       <div className="flex flex-1 overflow-hidden relative gap-3 p-3">
         {activeMembership && viewMode !== 'focus' && (
           <ResizablePanel
@@ -458,15 +410,46 @@ export default function SupportView() {
             collapsedBadge={queueCount}
             toggleTitle="Ctrl+B"
           >
-            <QueueSidebar
-              activeMembership={activeMembership}
-              activeTab={activeTab}
-              previewTicketId={previewTicket?.id || null}
-              atMaxChats={atMaxChats}
-              onToggle={toggleSidebar}
-              onSelectTicket={selectTicket}
-              onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
-            />
+            <div className="flex flex-col h-full">
+              <div className="px-2 pt-3 pb-2 border-b border-[var(--color-border)] flex-shrink-0">
+                <UserMenuChip
+                  showStatus
+                  showKeyboardShortcuts
+                  onKeyboardShortcuts={() => setPaletteOpen(true)}
+                  confirmBeforeSwitch
+                />
+              </div>
+              <div className="px-3 py-2 border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0">
+                <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-[0.08em]">{t('support')}</span>
+                <div className="flex items-center gap-2">
+                  {totalOnline > 0 && (
+                    <span className="text-[11px] font-medium text-[var(--color-ink-muted)] tabular-nums">
+                      {availableCount} / {totalOnline}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPaletteOpen(true)}
+                    className="h-6 px-1.5 flex items-center rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
+                    title={t('cmd_palette_title') || 'Command Palette'}
+                    aria-label={t('cmd_palette_title') || 'Command Palette'}
+                  >
+                    <kbd className="text-[10px] font-medium">Ctrl+K</kbd>
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <QueueSidebar
+                  activeMembership={activeMembership}
+                  activeTab={activeTab}
+                  previewTicketId={previewTicket?.id || null}
+                  atMaxChats={atMaxChats}
+                  onToggle={toggleSidebar}
+                  onSelectTicket={selectTicket}
+                  onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
+                />
+              </div>
+            </div>
           </ResizablePanel>
         )}
 

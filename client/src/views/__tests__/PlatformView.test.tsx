@@ -80,10 +80,9 @@ describe('PlatformView', () => {
     vi.clearAllMocks();
   });
 
-  it('renders nav bar with GUICHET brand and platform badge', () => {
+  it('renders sidebar with user-menu chip', () => {
     render(<PlatformView />);
-    expect(screen.getByText('GUICHET')).toBeInTheDocument();
-    expect(screen.getByText('platform')).toBeInTheDocument();
+    expect(screen.getByTestId('user-menu-chip')).toBeInTheDocument();
   });
 
   it('tab bar has role="tablist" for accessibility', () => {
