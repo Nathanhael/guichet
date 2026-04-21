@@ -17,6 +17,7 @@ export const partnerMembersRouter = router({
       search: z.string().optional(),
       role: z.enum(['agent', 'support']).optional(),
       excludeAdmin: z.boolean().optional().default(true),
+      unconfigured: z.boolean().optional(),
     }))
     .query(async ({ input, ctx }) => {
       try {
@@ -28,6 +29,10 @@ export const partnerMembersRouter = router({
           filters.push(eq(memberships.role, input.role));
         } else if (input.excludeAdmin) {
           filters.push(ne(memberships.role, 'admin'));
+        }
+        if (input.unconfigured) {
+          filters.push(eq(memberships.role, 'support'));
+          filters.push(sql`(${memberships.departments} IS NULL OR jsonb_array_length(${memberships.departments}) = 0)`);
         }
         if (input.search?.trim()) {
           const rawSearch = input.search.trim();
@@ -87,6 +92,31 @@ export const partnerMembersRouter = router({
         logger.error({ err, search: input.search }, 'listMembers error');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
       }
+    }),
+
+  memberStats: adminProcedure
+    .query(async ({ ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+      const rows = await db
+        .select({
+          role: memberships.role,
+          unconfigured: sql<boolean>`${memberships.role} = 'support' AND (${memberships.departments} IS NULL OR jsonb_array_length(${memberships.departments}) = 0)`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(memberships)
+        .where(and(eq(memberships.partnerId, partnerId), ne(memberships.role, 'admin')))
+        .groupBy(memberships.role, sql`${memberships.role} = 'support' AND (${memberships.departments} IS NULL OR jsonb_array_length(${memberships.departments}) = 0)`);
+
+      let total = 0, support = 0, agents = 0, unconfigured = 0;
+      for (const row of rows) {
+        total += row.count;
+        if (row.role === 'support') support += row.count;
+        if (row.role === 'agent') agents += row.count;
+        if (row.unconfigured) unconfigured += row.count;
+      }
+      return { total, support, agents, unconfigured };
     }),
 
   inviteExternalUser: destructiveAdminProcedure

@@ -1,13 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
-import useStore, { useStoreShallow } from '../../store/useStore';
+import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, Check, X, Search, Users, Shield, User, UserX, Trash2, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
+import { Pencil, X, Search, Users, Shield, User, UserX, Trash2, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
 import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
 import GuestBadge from '../GuestBadge';
-import { getStatusColors, getStatusI18nKey } from '../../utils/statusColors';
-import { OnlineSupport } from '../../types';
 import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 // Shared Soft Product style constants — mirrors the other admin panels.
@@ -29,61 +27,38 @@ export default function AdminTeam() {
   const activeMembership = memberships.find(m => m.id === activeMembershipId);
   const departments = activeMembership?.manifest?.departments || [];
 
-  const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
-  const onlineStatusMap = new Map(onlineSupportUsers.map((u) => [u.userId, u.status]));
-
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | ''>('');
   const [unconfiguredOnly, setUnconfiguredOnly] = useState(false);
-  const [onlineOnly, setOnlineOnly] = useState(false);
-  const [showAdmins, setShowAdmins] = useState(false);
   const LIMIT = 20;
 
   const utils = trpc.useUtils();
-  const invalidate = () => utils.partner.listMembers.invalidate();
+  const invalidate = () => {
+    utils.partner.listMembers.invalidate();
+    utils.partner.memberStats.invalidate();
+  };
   const { data, isLoading } = trpc.partner.listMembers.useQuery(
     {
       limit: LIMIT,
       offset: page * LIMIT,
       search: search.trim() || undefined,
       role: roleFilter || undefined,
-      excludeAdmin: !showAdmins,
+      excludeAdmin: true,
+      unconfigured: unconfiguredOnly || undefined,
     },
     { enabled: !!activeMembershipId }
   );
 
-  // Data comes pre-filtered from server (admins excluded unless toggled, role filter applied)
-  const filteredData = data ?? [];
+  const displayData = data ?? [];
 
-  // Summary counts — mirrors the table's admin visibility so the "All Members"
-  // card agrees with the row count when admins are toggled on.
-  const { data: allData } = trpc.partner.listMembers.useQuery(
-    { limit: 100, offset: 0, excludeAdmin: !showAdmins },
-    { enabled: !!activeMembershipId }
-  );
-  const stats = useMemo(() => {
-    const all = allData ?? [];
-    if (!all.length) return { total: 0, agents: 0, support: 0, unconfigured: 0, online: 0 };
-    return {
-      total: all.length,
-      agents: all.filter(m => m.role === 'agent').length,
-      support: all.filter(m => m.role === 'support').length,
-      unconfigured: all.filter(m => m.role === 'support' && (!m.departments || !Array.isArray(m.departments) || m.departments.length === 0)).length,
-      online: all.filter(m => onlineStatusMap.has(m.userId)).length,
-    };
-  }, [allData, onlineStatusMap]);
-
-  const displayData = useMemo(() => {
-    let result = filteredData;
-    if (onlineOnly) {
-      result = result.filter(m => onlineStatusMap.has(m.userId));
-    }
-    if (unconfiguredOnly) {
-      result = result.filter(m => m.role === 'support' && (!m.departments || !Array.isArray(m.departments) || m.departments.length === 0));
-    }
-    return result;
-  }, [filteredData, onlineOnly, unconfiguredOnly, onlineStatusMap]);
+  const { data: stats } = trpc.partner.memberStats.useQuery(undefined, {
+    enabled: !!activeMembershipId,
+  });
+  const total = stats?.total ?? 0;
+  const supportCount = stats?.support ?? 0;
+  const agentCount = stats?.agents ?? 0;
+  const unconfiguredCount = stats?.unconfigured ?? 0;
 
   const removeMutation = trpc.partner.removeMember.useMutation({
     onSuccess: invalidate,
@@ -103,21 +78,12 @@ export default function AdminTeam() {
 
   const handleRoleFilter = (role: '' | 'agent' | 'support') => {
     setRoleFilter(role);
-    setOnlineOnly(false);
-    setUnconfiguredOnly(false);
-    setPage(0);
-  };
-
-  const handleOnlineFilter = () => {
-    setRoleFilter('');
-    setOnlineOnly(!onlineOnly);
     setUnconfiguredOnly(false);
     setPage(0);
   };
 
   const handleUnconfiguredFilter = () => {
     setRoleFilter('');
-    setOnlineOnly(false);
     setUnconfiguredOnly(!unconfiguredOnly);
     setPage(0);
   };
@@ -156,16 +122,6 @@ export default function AdminTeam() {
               </button>
             )}
           </div>
-          <label className="flex items-center gap-2 text-[12px] cursor-pointer select-none whitespace-nowrap text-[var(--color-ink-soft)]">
-            <input
-              type="checkbox"
-              id="show-admins-toggle"
-              checked={showAdmins}
-              onChange={(e) => { setShowAdmins(e.target.checked); setPage(0); }}
-              className="w-3.5 h-3.5 accent-[var(--color-accent)] cursor-pointer"
-            />
-            <span>Show admins</span>
-          </label>
           <button
             onClick={() => setShowInviteModal(true)}
             disabled={isExternal}
@@ -181,13 +137,12 @@ export default function AdminTeam() {
       </div>
 
       {/* Stats row — each card is a filter. Active card gets accent-soft bg. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'All members', value: stats.total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !onlineOnly && !unconfiguredOnly, tint: 'text-[var(--color-ink)]' },
-          { label: 'Support staff', value: stats.support, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', tint: 'text-[var(--color-accent)]' },
-          { label: 'Agents', value: stats.agents, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', tint: 'text-[var(--color-accent)]' },
-          { label: 'Unconfigured', value: stats.unconfigured, icon: UserX, handler: handleUnconfiguredFilter, active: unconfiguredOnly, tint: 'text-[var(--color-accent-amber)]' },
-          { label: 'Online now', value: stats.online, icon: Check, handler: handleOnlineFilter, active: onlineOnly, tint: 'text-[var(--color-accent-green)]' },
+          { label: 'All members', value: total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !unconfiguredOnly, tint: 'text-[var(--color-ink)]' },
+          { label: 'Support staff', value: supportCount, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', tint: 'text-[var(--color-accent)]' },
+          { label: 'Unconfigured', value: unconfiguredCount, icon: UserX, handler: handleUnconfiguredFilter, active: unconfiguredOnly, tint: 'text-[var(--color-accent-amber)]' },
+          { label: 'Agents', value: agentCount, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', tint: 'text-[var(--color-accent)]' },
         ].map((stat) => (
           <button
             key={stat.label}
@@ -220,7 +175,6 @@ export default function AdminTeam() {
                 <tr className="border-b border-[var(--color-border)]">
                   <th className={COL_HEAD}>Identity</th>
                   <th className={COL_HEAD}>Role</th>
-                  <th className={`${COL_HEAD} text-center`}>Status</th>
                   <th className={COL_HEAD}>Department access</th>
                   <th className={`${COL_HEAD} text-right`}></th>
                 </tr>
@@ -228,7 +182,7 @@ export default function AdminTeam() {
               <tbody className="divide-y divide-[var(--color-border)]">
                 {displayData.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-20 text-center">
+                    <td colSpan={4} className="py-20 text-center">
                       <Search className="h-9 w-9 mx-auto text-[var(--color-ink-muted)] opacity-50 mb-3" aria-hidden />
                       <p className="text-[13px] font-medium text-[var(--color-ink)]">No members match {search ? `"${search}"` : 'the current filters'}</p>
                       {search && (
@@ -274,19 +228,6 @@ export default function AdminTeam() {
                       <span className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] font-medium text-[var(--color-ink)] capitalize">
                         {member.role}
                       </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {(() => {
-                        const onlineStatus = onlineStatusMap.get(member.userId);
-                        const colors = getStatusColors(onlineStatus);
-                        const label = onlineStatus ? t(getStatusI18nKey(onlineStatus)) : t('status_offline');
-                        return (
-                          <div className="inline-flex items-center gap-1.5" title={label}>
-                            <span className={`w-2 h-2 rounded-full ${colors.dot}`} aria-hidden />
-                            <span className={`text-[11px] ${colors.text}`}>{label}</span>
-                          </div>
-                        );
-                      })()}
                     </td>
                     <td className="px-4 py-3">
                       {member.role === 'agent' ? (
