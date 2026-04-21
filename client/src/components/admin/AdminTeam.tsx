@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, X, Search, Users, Shield, User, UserX, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText, AlertTriangle } from 'lucide-react';
+import { Pencil, X, Search, Users, Shield, User, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText, AlertTriangle } from 'lucide-react';
 import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
 import GuestBadge from '../GuestBadge';
@@ -31,7 +31,6 @@ export default function AdminTeam() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
   const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | ''>('');
-  const [unconfiguredOnly, setUnconfiguredOnly] = useState(false);
   const [dormantOnly, setDormantOnly] = useState(false);
   const [auditUserId, setAuditUserId] = useState<{ id: string; name: string } | null>(null);
   const LIMIT = 20;
@@ -48,7 +47,6 @@ export default function AdminTeam() {
       search: search.trim() || undefined,
       role: roleFilter || undefined,
       excludeAdmin: true,
-      unconfigured: unconfiguredOnly || undefined,
       dormant: dormantOnly || undefined,
     },
     { enabled: !!activeMembershipId }
@@ -65,7 +63,6 @@ export default function AdminTeam() {
   const total = stats?.total ?? 0;
   const supportCount = stats?.support ?? 0;
   const agentCount = stats?.agents ?? 0;
-  const unconfiguredCount = stats?.unconfigured ?? 0;
   const dormantCount = stats?.dormant ?? 0;
 
   const removeMutation = trpc.partner.removeMember.useMutation({
@@ -86,21 +83,12 @@ export default function AdminTeam() {
 
   const handleRoleFilter = (role: '' | 'agent' | 'support') => {
     setRoleFilter(role);
-    setUnconfiguredOnly(false);
-    setDormantOnly(false);
-    setPage(0);
-  };
-
-  const handleUnconfiguredFilter = () => {
-    setRoleFilter('');
-    setUnconfiguredOnly(!unconfiguredOnly);
     setDormantOnly(false);
     setPage(0);
   };
 
   const handleDormantFilter = () => {
     setRoleFilter('');
-    setUnconfiguredOnly(false);
     setDormantOnly(!dormantOnly);
     setPage(0);
   };
@@ -139,6 +127,20 @@ export default function AdminTeam() {
               </button>
             )}
           </div>
+          {dormantCount > 0 && (
+            <button
+              onClick={handleDormantFilter}
+              title="B2B guests inactive for 30+ days — review for removal"
+              className={`h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] text-[12px] font-medium transition-colors whitespace-nowrap border ${
+                dormantOnly
+                  ? 'bg-[var(--color-accent-amber)] text-white border-[var(--color-accent-amber)]'
+                  : 'border-[var(--color-accent-amber)] text-[var(--color-accent-amber)] hover:bg-[color-mix(in_srgb,var(--color-accent-amber)_14%,transparent)]'
+              }`}
+            >
+              <Moon className="h-3.5 w-3.5" aria-hidden />
+              {dormantCount} stale {dormantCount === 1 ? 'guest' : 'guests'}
+            </button>
+          )}
           <button
             onClick={() => setShowInviteModal(true)}
             disabled={isExternal}
@@ -154,12 +156,10 @@ export default function AdminTeam() {
       </div>
 
       {/* Stats row — each card is a filter. Active card gets accent-soft bg. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'All members', value: total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !unconfiguredOnly && !dormantOnly, tint: 'text-[var(--color-ink)]' },
+          { label: 'All members', value: total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !dormantOnly, tint: 'text-[var(--color-ink)]' },
           { label: 'Support staff', value: supportCount, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', tint: 'text-[var(--color-accent)]' },
-          { label: 'Unconfigured', value: unconfiguredCount, icon: UserX, handler: handleUnconfiguredFilter, active: unconfiguredOnly, tint: 'text-[var(--color-accent-amber)]' },
-          { label: 'Dormant 30d+', value: dormantCount, icon: Moon, handler: handleDormantFilter, active: dormantOnly, tint: 'text-[var(--color-ink-muted)]' },
           { label: 'Agents', value: agentCount, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', tint: 'text-[var(--color-accent)]' },
         ].map((stat) => (
           <button
