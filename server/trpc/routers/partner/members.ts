@@ -17,7 +17,6 @@ export const partnerMembersRouter = router({
       search: z.string().optional(),
       role: z.enum(['agent', 'support']).optional(),
       excludeAdmin: z.boolean().optional().default(true),
-      unconfigured: z.boolean().optional(),
       dormant: z.boolean().optional(),
     }))
     .query(async ({ input, ctx }) => {
@@ -31,12 +30,11 @@ export const partnerMembersRouter = router({
         } else if (input.excludeAdmin) {
           filters.push(ne(memberships.role, 'admin'));
         }
-        if (input.unconfigured) {
-          filters.push(eq(memberships.role, 'support'));
-          filters.push(sql`(${memberships.departments} IS NULL OR jsonb_array_length(${memberships.departments}) = 0)`);
-        }
         if (input.dormant) {
-          // Staff seats only — agents are customer-side and don't consume paid licenses.
+          // B2B guest support seats only. Internal users are governed by Azure
+          // account lifecycle (disabled account → SSO fails → no access), so
+          // tracking their dormancy here is redundant.
+          filters.push(eq(users.isExternal, true));
           filters.push(eq(memberships.role, 'support'));
           filters.push(sql`${users.lastActiveAt} IS NOT NULL AND ${users.lastActiveAt} < NOW() - INTERVAL '30 days'`);
         }
@@ -59,11 +57,6 @@ export const partnerMembersRouter = router({
             sql`${memberships.role}::text ILIKE ${s}`,
             sql`CONCAT(${memberships.role}::text, 's') ILIKE ${s}`,
             matchesDept,
-            sql`CASE
-              WHEN ${memberships.role} = 'support' AND jsonb_array_length(${memberships.departments}) = 0
-              THEN 'Unconfigured' ILIKE ${s}
-              ELSE FALSE
-            END`,
             sql`CASE
               WHEN ${memberships.source} = 'manual'
               THEN 'Manual' ILIKE ${s}
@@ -134,35 +127,33 @@ export const partnerMembersRouter = router({
       const rows = await db
         .select({
           role: memberships.role,
-          unconfigured: sql<boolean>`${memberships.role} = 'support' AND (${memberships.departments} IS NULL OR jsonb_array_length(${memberships.departments}) = 0)`,
           count: sql<number>`count(*)::int`,
         })
         .from(memberships)
         .where(and(eq(memberships.partnerId, partnerId), ne(memberships.role, 'admin')))
-        .groupBy(memberships.role, sql`${memberships.role} = 'support' AND (${memberships.departments} IS NULL OR jsonb_array_length(${memberships.departments}) = 0)`);
+        .groupBy(memberships.role);
 
-      // Dormant seats = support members whose user hasn't been active in 30+ days.
-      // Runs as a separate query because it joins users and doesn't slot cleanly
-      // into the role/unconfigured groupBy above.
+      // Stale guest seats = B2B support members inactive 30+ days. Internal
+      // users excluded — Azure lifecycle handles their cleanup.
       const dormantRow = await db
         .select({ count: sql<number>`count(*)::int` })
         .from(memberships)
         .innerJoin(users, eq(memberships.userId, users.id))
         .where(and(
           eq(memberships.partnerId, partnerId),
+          eq(users.isExternal, true),
           eq(memberships.role, 'support'),
           sql`${users.lastActiveAt} IS NOT NULL AND ${users.lastActiveAt} < NOW() - INTERVAL '30 days'`,
         ));
       const dormant = dormantRow[0]?.count ?? 0;
 
-      let total = 0, support = 0, agents = 0, unconfigured = 0;
+      let total = 0, support = 0, agents = 0;
       for (const row of rows) {
         total += row.count;
         if (row.role === 'support') support += row.count;
         if (row.role === 'agent') agents += row.count;
-        if (row.unconfigured) unconfigured += row.count;
       }
-      return { total, support, agents, unconfigured, dormant };
+      return { total, support, agents, dormant };
     }),
 
   inviteExternalUser: destructiveAdminProcedure
