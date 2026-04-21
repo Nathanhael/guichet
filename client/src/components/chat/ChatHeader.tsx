@@ -256,8 +256,8 @@ export default function ChatHeader({
                 title={sorted.map((p) => (resolveIsExternal(p) ? `${p.name} (GUEST)` : p.name)).join(', ')}
               >
                 {sorted.map((p) => {
-                  // Self-status is already shown explicitly by StatusPicker in the
-                  // support nav, so suppress the redundant dot on the viewer's own
+                  // Self-status is already shown explicitly by the user-menu chip
+                  // in the support nav, so suppress the redundant dot on the viewer's own
                   // avatar. Teammate avatars keep the dot as the only at-a-glance
                   // indicator of their availability.
                   const isSelf = p.id === currentUserId;

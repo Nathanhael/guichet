@@ -1,11 +1,8 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
-import { APP_NAME } from '../constants';
-import PartnerSwitcher from '../components/PartnerSwitcher';
-import SettingsPopover from '../components/SettingsPopover';
-import UserMenu from '../components/UserMenu';
+import UserMenuChip from '../components/ui/UserMenuChip';
 import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
@@ -20,7 +17,6 @@ import AdminAlerts from '../components/admin/AdminAlerts';
 import AdminTeam from '../components/admin/AdminTeam';
 import AdminAuditLog from '../components/admin/AdminAuditLog';
 import PartnerUnavailable from '../components/PartnerUnavailable';
-import { usePartner } from '../hooks/usePartner';
 import {
   Flame,
   Building2,
@@ -34,7 +30,6 @@ import {
   Clock,
   Tag,
   Zap,
-  Menu,
 } from 'lucide-react';
 
 const AdminStats = lazy(() => import('../components/admin/AdminStats'));
@@ -44,7 +39,33 @@ const LoadingFallback = () => (
   <div className="p-8 text-[13px] text-[var(--color-ink-muted)]">Loading…</div>
 );
 
-type AdminTab = 'dashboard' | 'satisfaction' | 'alerts' | 'team' | 'business_hours' | 'departments' | 'tickets' | 'archive' | 'audit_log' | 'feedback' | 'labels' | 'canned_responses'; // DISABLED_FEATURE: removed 'knowledge_base' | 'webhooks'
+type AdminTab =
+  | 'dashboard'
+  | 'satisfaction'
+  | 'alerts'
+  | 'team'
+  | 'business_hours'
+  | 'departments'
+  | 'tickets'
+  | 'archive'
+  | 'audit_log'
+  | 'feedback'
+  | 'labels'
+  | 'canned_responses';
+// DISABLED_FEATURE: removed 'knowledge_base' | 'webhooks'
+
+const SIDEBAR_WIDTH_KEY = 'guichet.adminSidebarWidth';
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 400;
+const SIDEBAR_DEFAULT = 240;
+
+function readInitialWidth(): number {
+  if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
+  const raw = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
+  const parsed = raw ? Number(raw) : NaN;
+  if (!Number.isFinite(parsed)) return SIDEBAR_DEFAULT;
+  return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, parsed));
+}
 
 export default function AdminView() {
   const { user, memberships, activeMembershipId } = useStoreShallow(s => ({
@@ -52,10 +73,38 @@ export default function AdminView() {
     memberships: s.memberships,
     activeMembershipId: s.activeMembershipId,
   }));
-  const { partnerName } = usePartner();
   const t = useT();
   const [view, setView] = useState<AdminTab>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => readInitialWidth());
+  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const widthRef = useRef(sidebarWidth);
+
+  const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    dragStateRef.current = { startX: e.clientX, startWidth: widthRef.current };
+    e.preventDefault();
+  }, []);
+
+  useEffect(() => {
+    function handleMove(e: MouseEvent) {
+      const drag = dragStateRef.current;
+      if (!drag) return;
+      const next = drag.startWidth + (e.clientX - drag.startX);
+      const clamped = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, next));
+      widthRef.current = clamped;
+      setSidebarWidth(clamped);
+    }
+    function handleUp() {
+      if (!dragStateRef.current) return;
+      dragStateRef.current = null;
+      try { window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(widthRef.current)); } catch { /* storage disabled */ }
+    }
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+  }, []);
 
   if (!user) return null;
 
@@ -69,85 +118,80 @@ export default function AdminView() {
       <button
         onClick={() => setView(id)}
         title={label}
-        className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-[var(--radius-btn)] mx-2 my-0.5 text-[13px] font-medium transition-colors ${
-          sidebarOpen ? 'justify-start' : 'justify-center'
-        } ${
+        className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-[var(--radius-btn)] text-[13px] font-medium transition-colors ${
           active
             ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
             : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]'
         }`}
       >
         <span className="shrink-0">{icon}</span>
-        {sidebarOpen && <span className="truncate">{label}</span>}
+        <span className="truncate">{label}</span>
       </button>
     );
   };
 
-  const SectionLabel = ({ children }: { children: React.ReactNode }) =>
-    sidebarOpen ? (
-      <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] px-5 pt-5 pb-1.5 select-none">
-        {children}
-      </div>
-    ) : (
-      <div className="pt-3 mx-3 border-t border-[var(--color-border)]" />
-    );
+  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] px-3 pt-4 pb-1.5 select-none">
+      {children}
+    </div>
+  );
 
   return (
     <ErrorBoundary>
-    <div className="h-screen flex flex-col overflow-hidden bg-[var(--color-bg)] text-[var(--color-ink)]">
-      <nav className="relative z-50 px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] text-[var(--color-ink)] flex items-center justify-between">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            onClick={() => setSidebarOpen((v) => !v)}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
-            aria-label={t('toggle_sidebar')}
-          >
-            <Menu className="h-4 w-4" />
-          </button>
-          <span className="text-[15px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{APP_NAME}</span>
-          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-            {t('admin')}
-          </span>
-          <span className="h-5 w-px bg-[var(--color-border)]" />
-          <span className="text-[13px] font-medium text-[var(--color-ink-soft)] truncate">{partnerName}</span>
-        </div>
+      <div className="h-screen flex flex-row overflow-hidden bg-[var(--color-bg)] text-[var(--color-ink)]">
+        <aside
+          className="relative h-full bg-[var(--color-bg-surface)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0"
+          style={{ width: sidebarWidth }}
+        >
+          <div className="px-2 pt-3 pb-2 border-b border-[var(--color-border)]">
+            <UserMenuChip />
+          </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <PartnerSwitcher confirmBeforeSwitch />
-          <SettingsPopover showAccessibility />
-          <UserMenu />
-        </div>
-      </nav>
+          <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-3">
+            <SectionLabel>Overview</SectionLabel>
+            <div className="flex flex-col gap-0.5">
+              <NavButton id="dashboard" label={t('dashboard')} icon={<LayoutDashboard className="h-4 w-4" />} />
+              <NavButton id="satisfaction" label="Satisfaction" icon={<Star className="h-4 w-4" />} />
+              <NavButton id="alerts" label="Alerts" icon={<Flame className="h-4 w-4" />} />
+            </div>
 
-      <div className="flex flex-row flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-56 max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:bg-[var(--color-bg-surface)] max-md:top-[57px]' : 'w-14 max-md:w-0 max-md:hidden'} h-full bg-[var(--color-bg-surface)] border-r border-[var(--color-border)] overflow-y-auto custom-scrollbar flex-shrink-0 py-2`}>
-          <SectionLabel>Overview</SectionLabel>
-          <NavButton id="dashboard" label={t('dashboard')} icon={<LayoutDashboard className="h-4 w-4" />} />
-          <NavButton id="satisfaction" label="Satisfaction" icon={<Star className="h-4 w-4" />} />
-          <NavButton id="alerts" label="Alerts" icon={<Flame className="h-4 w-4" />} />
+            <SectionLabel>Operations</SectionLabel>
+            <div className="flex flex-col gap-0.5">
+              <NavButton id="tickets" label={t('active_tickets')} icon={<MessageSquare className="h-4 w-4" />} />
+              <NavButton id="archive" label={t('archive')} icon={<Archive className="h-4 w-4" />} />
+              <NavButton id="audit_log" label="Audit Log" icon={<FileText className="h-4 w-4" />} />
+              <NavButton id="feedback" label={t('feedback_and_ratings')} icon={<Smile className="h-4 w-4" />} />
+            </div>
 
-          <SectionLabel>Operations</SectionLabel>
-          <NavButton id="tickets" label={t('active_tickets')} icon={<MessageSquare className="h-4 w-4" />} />
-          <NavButton id="archive" label={t('archive')} icon={<Archive className="h-4 w-4" />} />
-          <NavButton id="audit_log" label="Audit Log" icon={<FileText className="h-4 w-4" />} />
-          <NavButton id="feedback" label={t('feedback_and_ratings')} icon={<Smile className="h-4 w-4" />} />
+            <SectionLabel>Team</SectionLabel>
+            <div className="flex flex-col gap-0.5">
+              <NavButton id="team" label="Team" icon={<Users className="h-4 w-4" />} />
+              <NavButton id="departments" label="Departments" icon={<Building2 className="h-4 w-4" />} />
+            </div>
 
-          <SectionLabel>Team</SectionLabel>
-          <NavButton id="team" label="Team" icon={<Users className="h-4 w-4" />} />
-          <NavButton id="departments" label="Departments" icon={<Building2 className="h-4 w-4" />} />
+            <SectionLabel>Configuration</SectionLabel>
+            <div className="flex flex-col gap-0.5">
+              <NavButton id="business_hours" label="Business Hours" icon={<Clock className="h-4 w-4" />} />
+              <NavButton id="labels" label={t('labels')} icon={<Tag className="h-4 w-4" />} />
+              <NavButton id="canned_responses" label={t('canned_responses') || 'Quick Replies'} icon={<Zap className="h-4 w-4" />} />
+              {/* DISABLED_FEATURE: Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
+            </div>
+          </nav>
 
-          <SectionLabel>Configuration</SectionLabel>
-          <NavButton id="business_hours" label="Business Hours" icon={<Clock className="h-4 w-4" />} />
-          <NavButton id="labels" label={t('labels')} icon={<Tag className="h-4 w-4" />} />
-          <NavButton id="canned_responses" label={t('canned_responses') || 'Quick Replies'} icon={<Zap className="h-4 w-4" />} />
-          {/* DISABLED_FEATURE: Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
+          <div
+            onMouseDown={handleDragStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-[var(--color-accent-soft)] transition-colors"
+          />
         </aside>
 
-        {/* Content */}
-        <main className={`flex-1 bg-[var(--color-bg)] custom-scrollbar ${
-          ['tickets', 'archive'].includes(view) ? 'p-0 overflow-hidden' : 'p-6 overflow-y-auto'
-        }`}>
+        <main
+          className={`flex-1 bg-[var(--color-bg)] custom-scrollbar ${
+            ['tickets', 'archive'].includes(view) ? 'p-0 overflow-hidden' : 'p-6 overflow-y-auto'
+          }`}
+        >
           {view === 'dashboard' && <Suspense fallback={<LoadingFallback />}><AdminStats /></Suspense>}
           {view === 'satisfaction' && <Suspense fallback={<LoadingFallback />}><AdminSatisfaction /></Suspense>}
           {view === 'team' && <AdminTeam />}
@@ -163,7 +207,6 @@ export default function AdminView() {
           {/* DISABLED_FEATURE: Knowledge Base, Webhooks — tab panels hidden until production-ready */}
         </main>
       </div>
-    </div>
     </ErrorBoundary>
   );
 }

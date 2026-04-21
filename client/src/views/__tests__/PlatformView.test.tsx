@@ -15,20 +15,8 @@ vi.mock('../../i18n', () => ({
   useT: () => (key: string) => key,
 }));
 
-vi.mock('../../components/DarkModeToggle', () => ({
-  default: () => <div data-testid="dark-mode-toggle" />,
-}));
-
-vi.mock('../../components/LanguageSwitcher', () => ({
-  default: () => <div data-testid="language-switcher" />,
-}));
-
-vi.mock('../../components/SettingsPopover', () => ({
-  default: () => <div data-testid="settings-popover" />,
-}));
-
-vi.mock('../../components/UserMenu', () => ({
-  default: () => <div data-testid="user-menu" />,
+vi.mock('../../components/ui/UserMenuChip', () => ({
+  default: () => <div data-testid="user-menu-chip" />,
 }));
 
 vi.mock('../../components/admin/PlatformSystemHealth', () => ({
@@ -151,9 +139,9 @@ describe('PlatformView', () => {
     expect(screen.getByTestId('audit-log')).toBeInTheDocument();
   });
 
-  it('renders user menu in nav bar', () => {
+  it('renders user menu chip in nav bar', () => {
     render(<PlatformView />);
-    expect(screen.getByTestId('user-menu')).toBeInTheDocument();
+    expect(screen.getByTestId('user-menu-chip')).toBeInTheDocument();
   });
 
   it('opens CreatePartnerModal when PartnerList triggers create', () => {

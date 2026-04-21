@@ -9,10 +9,12 @@ import BusinessHoursGuard from '../components/BusinessHoursGuard';
 import FeedbackModal from '../components/FeedbackModal';
 import RatingModal from '../components/RatingModal';
 import PartnerUnavailable from '../components/PartnerUnavailable';
-import AgentNav from '../components/agent/AgentNav';
+import ConnectionStatus from '../components/ConnectionStatus';
+import UserMenuChip from '../components/ui/UserMenuChip';
 import TicketForm from '../components/agent/TicketForm';
 import { trpc } from '../utils/trpc';
 import { Ticket } from '../types';
+import { APP_NAME } from '../constants';
 
 export default function AgentView() {
   const {
@@ -86,17 +88,34 @@ export default function AgentView() {
       <div className="h-full bg-transparent flex flex-col overflow-hidden relative">
         <SystemBackground />
 
-        <AgentNav
-          partnerName={activeMembership.partnerName}
-          onShowFeedback={() => setShowFeedback(true)}
-        />
+        <nav className="relative z-50 px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] text-[var(--color-ink)] flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-[15px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{APP_NAME}</span>
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+              {t('agent')}
+            </span>
+            <span className="h-5 w-px bg-[var(--color-border)]" />
+            <span className="text-[13px] font-medium text-[var(--color-ink-soft)] truncate">{activeMembership.partnerName}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <ConnectionStatus />
+            <div className="w-[240px]">
+              <UserMenuChip
+                showFeedback
+                onFeedback={() => setShowFeedback(true)}
+                confirmBeforeSwitch
+                placement="bottom-end"
+              />
+            </div>
+          </div>
+        </nav>
 
         <div className="flex-1 overflow-hidden flex">
           <div className="flex-1 overflow-hidden flex flex-col min-w-0">
             {/* Queue position indicator */}
             {queuePosition && queuePosition.position > 0 && !activeTicket && agentTicket?.status === 'open' && (
               <div className="px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 border border-[var(--color-border)] text-[var(--color-text-primary)] text-xs font-bold font-mono">
+                <div className="flex items-center justify-center w-8 h-8 border border-[var(--color-border)] text-[var(--color-text-primary)] text-xs font-bold tabular-nums">
                   {queuePosition.position}
                 </div>
                 <div>

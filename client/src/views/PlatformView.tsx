@@ -3,8 +3,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useT } from '../i18n';
 import PlatformSystemHealth from '../components/admin/PlatformSystemHealth';
 import PlatformAuditLog from '../components/admin/PlatformAuditLog';
-import SettingsPopover from '../components/SettingsPopover';
-import UserMenu from '../components/UserMenu';
+import UserMenuChip from '../components/ui/UserMenuChip';
 import PartnerList from '../components/platform/PartnerList';
 import UserTable from '../components/platform/UserTable';
 import CreatePartnerModal from '../components/platform/CreatePartnerModal';
@@ -33,7 +32,7 @@ export default function PlatformView() {
   return (
     <ErrorBoundary>
     <div className="h-screen flex flex-col bg-[var(--color-bg-base)] text-[var(--color-text-primary)] overflow-hidden font-sans">
-      <nav className="px-8 py-4 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
+      <nav className="px-8 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
             <img src="/icon-blue.svg" className="w-5 h-5 mr-1" alt="" />
@@ -43,9 +42,8 @@ export default function PlatformView() {
             {t('platform')}
           </span>
         </div>
-        <div className="flex items-center gap-4">
-          <SettingsPopover />
-          <UserMenu />
+        <div className="w-[240px]">
+          <UserMenuChip subtitleOverride="Platform operator" placement="bottom-end" />
         </div>
       </nav>
 
