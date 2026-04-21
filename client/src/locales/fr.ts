@@ -13,7 +13,7 @@ const fr: Record<string, string> = {
     ref_fields_label: 'Champs de r\u00e9f\u00e9rence',
     add_ref_field: 'Ajouter un champ',
     ref_field_placeholder: 'Libell\u00e9 du champ (ex. Num\u00e9ro de facture)',
-    max_ref_fields: 'Maximum 3 champs',
+    max_ref_fields: 'Maximum 5 champs',
     question_problem: 'Question / probl\u00e8me',
     describe_problem: 'D\u00e9crivez le probl\u00e8me...',
     connecting: 'Connexion en cours...',

@@ -15,7 +15,7 @@ const en: Record<string, string> = {
     ref_fields_label: 'Reference Fields',
     add_ref_field: 'Add Field',
     ref_field_placeholder: 'Field label (e.g. Invoice Number)',
-    max_ref_fields: 'Maximum 3 fields',
+    max_ref_fields: 'Maximum 5 fields',
     question_problem: 'Question / problem',
     describe_problem: 'Describe the problem...',
     connecting: 'Connecting...',
