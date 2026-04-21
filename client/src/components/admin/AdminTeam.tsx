@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, X, Search, Users, Shield, User, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText, AlertTriangle } from 'lucide-react';
+import { Pencil, X, Search, Users, Shield, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText, AlertTriangle } from 'lucide-react';
 import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
 import GuestBadge from '../GuestBadge';
@@ -93,10 +93,17 @@ export default function AdminTeam() {
     setPage(0);
   };
 
+  const pillBase = 'h-7 px-2.5 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] text-[12px] font-medium transition-colors whitespace-nowrap';
+  const filters: Array<{ key: string; label: string; count: number; active: boolean; handler: () => void }> = [
+    { key: 'all', label: 'All', count: total, active: !roleFilter && !dormantOnly, handler: () => handleRoleFilter('') },
+    { key: 'support', label: 'Support', count: supportCount, active: roleFilter === 'support', handler: () => handleRoleFilter('support') },
+    { key: 'agents', label: 'Agents', count: agentCount, active: roleFilter === 'agent', handler: () => handleRoleFilter('agent') },
+  ];
+
   return (
-    <div className="flex flex-col min-h-full space-y-5">
+    <div className="flex flex-col min-h-full space-y-3">
       {/* Header & Main Controls */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-1">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 pb-1">
         <div className="flex items-center gap-3">
           <Users className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
           <div>
@@ -155,27 +162,21 @@ export default function AdminTeam() {
         </div>
       </div>
 
-      {/* Stats row — each card is a filter. Active card gets accent-soft bg. */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'All members', value: total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !dormantOnly, tint: 'text-[var(--color-ink)]' },
-          { label: 'Support staff', value: supportCount, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', tint: 'text-[var(--color-accent)]' },
-          { label: 'Agents', value: agentCount, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', tint: 'text-[var(--color-accent)]' },
-        ].map((stat) => (
+      {/* Filter pills — compact replacement for the prior 3-card stat grid.
+          Each pill is both an at-a-glance count and a filter toggle. */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {filters.map((f) => (
           <button
-            key={stat.label}
-            onClick={stat.handler}
-            className={`rounded-[var(--radius-card)] p-3.5 text-left transition-all ${
-              stat.active
-                ? 'bg-[var(--color-accent-soft)] shadow-[var(--shadow-card)] ring-1 ring-[var(--color-accent)]'
-                : 'bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-card)]'
+            key={f.key}
+            onClick={f.handler}
+            className={`${pillBase} ${
+              f.active
+                ? 'bg-[var(--color-accent)] text-white'
+                : 'bg-[var(--color-bg-surface)] text-[var(--color-ink)] hover:bg-[var(--color-hover)]'
             }`}
           >
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-[11px] font-medium text-[var(--color-ink-muted)]">{stat.label}</span>
-              <stat.icon className={`h-4 w-4 ${stat.tint} opacity-80`} aria-hidden />
-            </div>
-            <span className="text-2xl font-semibold text-[var(--color-ink)] tabular-nums tracking-tight">{stat.value}</span>
+            {f.label}
+            <span className={`tabular-nums ${f.active ? 'opacity-80' : 'text-[var(--color-ink-muted)]'}`}>{f.count}</span>
           </button>
         ))}
       </div>
@@ -221,11 +222,11 @@ export default function AdminTeam() {
           <p className="text-[12px] text-[var(--color-ink-muted)]">Loading directory…</p>
         </div>
       ) : (
-        <div className={`${CARD} overflow-hidden`}>
-          <div className="overflow-x-auto">
+        <div className={`${CARD} overflow-hidden flex-1 min-h-0 flex flex-col`}>
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
             <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-[var(--color-border)]">
+              <thead className="sticky top-0 z-10 bg-[var(--color-bg-surface)] shadow-[0_1px_0_var(--color-border)]">
+                <tr>
                   <th className={COL_HEAD}>Identity</th>
                   <th className={COL_HEAD}>Role</th>
                   <th className={COL_HEAD}>Department access</th>
@@ -250,9 +251,9 @@ export default function AdminTeam() {
                   </tr>
                 ) : displayData.map((member) => (
                   <tr key={member.membershipId} className="hover:bg-[var(--color-hover)] transition-colors group/row">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-[var(--color-bg-elevated)] flex items-center justify-center font-semibold text-[11px] text-[var(--color-ink)] shrink-0">
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-bg-elevated)] flex items-center justify-center font-semibold text-[10px] text-[var(--color-ink)] shrink-0">
                           {member.name?.slice(0, 2).toUpperCase()}
                         </div>
                         <div className="flex flex-col min-w-0">
@@ -277,12 +278,12 @@ export default function AdminTeam() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       <span className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] font-medium text-[var(--color-ink)] capitalize">
                         {member.role}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-2">
                       {member.role === 'agent' ? (
                         <span className="text-[12px] text-[var(--color-ink-muted)] italic">Selects per ticket</span>
                       ) : editingMembershipId === member.membershipId ? (
@@ -351,11 +352,11 @@ export default function AdminTeam() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-2 text-right">
                       <div className="inline-flex items-center gap-0.5">
                         <button
                           onClick={() => setAuditUserId({ id: member.userId, name: member.name })}
-                          className="w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors opacity-0 group-hover/row:opacity-100"
+                          className="w-7 h-7 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors opacity-0 group-hover/row:opacity-100"
                           aria-label={`Audit history for ${member.name}`}
                           title="Audit history"
                         >
@@ -368,7 +369,7 @@ export default function AdminTeam() {
                             aria-disabled={isExternal || undefined}
                             title={isExternal ? guestTooltip : 'Remove B2B guest'}
                             data-guest-disabled={isExternal || undefined}
-                            className="w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
+                            className="w-7 h-7 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
                             aria-label={`Remove ${member.name}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" aria-hidden />
