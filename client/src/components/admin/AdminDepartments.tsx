@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, Trash2, Check, X, Plus, Building2 } from 'lucide-react';
+import { Pencil, Trash2, Check, X, Plus, Building2, HelpCircle } from 'lucide-react';
 import Toast from '../Toast';
 import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
@@ -67,6 +67,16 @@ export default function AdminDepartments() {
   const [isSaving, setIsSaving] = useState(false);
   const [slaEditingIdx, setSlaEditingIdx] = useState<number | null>(null);
   const [slaDraft, setSlaDraft] = useState<SlaConfig>({ enabled: true, firstResponseMinutes: 30, warnAtPercent: 75 });
+  // Help panel — open-once, persist dismissal in localStorage. Returning
+  // admins see a compact "How departments work" link instead of the full panel.
+  const HELP_KEY = 'admin-departments-help-dismissed';
+  const [showHelp, setShowHelp] = useState(() => {
+    try { return localStorage.getItem(HELP_KEY) !== '1'; } catch { return true; }
+  });
+  const dismissHelp = () => {
+    setShowHelp(false);
+    try { localStorage.setItem(HELP_KEY, '1'); } catch { /* storage blocked */ }
+  };
 
   // Sync server data → local state (only when not actively editing)
   const isEditing = editingIdx !== null;
@@ -263,7 +273,7 @@ export default function AdminDepartments() {
   }
 
   function addRefField() {
-    if (!editDraft || editDraft.referenceFields.length >= 3) return;
+    if (!editDraft || editDraft.referenceFields.length >= 5) return;
     setEditDraft({ ...editDraft, referenceFields: [...editDraft.referenceFields, { label: '' }] });
   }
 
@@ -308,9 +318,61 @@ export default function AdminDepartments() {
         </button>
       </div>
 
+      {/* Help panel — shown on first visit, dismissible. Explains the three
+          admin-facing concepts (department / ref fields / SLA) so new partner
+          admins don't have to guess. */}
+      {showHelp ? (
+        <div
+          className="rounded-[var(--radius-card)] bg-[var(--color-accent-soft)] p-4 mb-4 relative"
+          data-testid="departments-help"
+        >
+          <button
+            onClick={dismissHelp}
+            aria-label="Dismiss help"
+            className="absolute top-2.5 right-2.5 w-6 h-6 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
+          >
+            <X className="h-3 w-3" aria-hidden />
+          </button>
+          <div className="flex items-center gap-2 mb-3">
+            <HelpCircle className="h-4 w-4 text-[var(--color-accent)]" aria-hidden />
+            <h3 className="text-[13px] font-semibold text-[var(--color-ink)]">How departments work</h3>
+          </div>
+          <dl className="grid grid-cols-[96px_1fr] gap-x-4 gap-y-2.5 text-[12px] leading-relaxed">
+            <dt className="font-semibold text-[var(--color-ink)]">Department</dt>
+            <dd className="text-[var(--color-ink-soft)]">
+              A routing bucket for tickets. Support staff assigned to a dept see only tickets routed there.
+            </dd>
+            <dt className="font-semibold text-[var(--color-ink)]">Ref fields</dt>
+            <dd className="text-[var(--color-ink-soft)]">
+              Extra fields a customer fills before opening a ticket (e.g. <em>Order ID</em>, <em>Account number</em>). Optional fields can be skipped. Up to 5 per dept.
+            </dd>
+            <dt className="font-semibold text-[var(--color-ink)]">SLA</dt>
+            <dd className="text-[var(--color-ink-soft)] space-y-1.5">
+              <p>
+                First-response target. Every ticket in this dept must get a first staff reply within <em>X</em> minutes; a warning chip highlights the ticket at <em>Y%</em> of budget so support reacts before breach. Business-hours aware.
+              </p>
+              <p className="text-[var(--color-ink-muted)]">
+                Example: 30 min target with 75% warn → warning fires at 22 min, breach logged at 30 min.
+              </p>
+              <p className="text-[var(--color-ink-muted)]">
+                To set: click <strong>Set SLA</strong> on a row → toggle on → enter minutes + warn-at % → save. Breached tickets show a red border in the queue; history lives under <strong>Alerts → SLA Breaches</strong>.
+              </p>
+            </dd>
+          </dl>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowHelp(true)}
+          className="mb-4 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
+        >
+          <HelpCircle className="h-3 w-3" aria-hidden />
+          How departments work
+        </button>
+      )}
+
       <div className={`${CARD} overflow-hidden`}>
         {/* Header row — uses a grid that mirrors the body rows so columns line up. */}
-        <div className="grid grid-cols-[1fr_1fr_1fr_180px_80px] border-b border-[var(--color-border)]">
+        <div className="grid grid-cols-[1fr_1fr_1fr_180px_60px] border-b border-[var(--color-border)]">
           <div className={COL_HEAD}>Name</div>
           <div className={COL_HEAD}>Description</div>
           <div className={COL_HEAD}>{t('ref_fields_label') || 'Ref fields'}</div>
@@ -394,12 +456,12 @@ export default function AdminDepartments() {
                   </div>
                   <button
                     onClick={addRefField}
-                    disabled={editDraft.referenceFields.length >= 3}
+                    disabled={editDraft.referenceFields.length >= 5}
                     className="mt-2 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline"
                   >
                     <Plus className="h-3 w-3" aria-hidden />
                     {t('add_ref_field') || 'Add field'}
-                    {editDraft.referenceFields.length >= 3 && <span className="ml-2 text-[var(--color-ink-muted)]">({t('max_ref_fields') || 'Maximum 3 fields'})</span>}
+                    {editDraft.referenceFields.length >= 5 && <span className="ml-2 text-[var(--color-ink-muted)]">({t('max_ref_fields') || 'Maximum 5 fields'})</span>}
                   </button>
                 </div>
 
@@ -425,22 +487,97 @@ export default function AdminDepartments() {
                 </div>
               </div>
             ) : (
-              /* View mode */
-              <div className={`grid grid-cols-[1fr_1fr_1fr_180px_80px] border-b border-[var(--color-border)] last:border-0 transition-colors ${deletingIdx === idx ? '' : 'hover:bg-[var(--color-hover)]'} group/row`}>
-                <div className="px-4 py-3 text-[13px] font-medium text-[var(--color-ink)]">{dept.name}</div>
-                <div className="px-4 py-3 text-[13px] text-[var(--color-ink-soft)]">{dept.description || <span className="text-[var(--color-ink-muted)]">—</span>}</div>
-                <div className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)]">
+              /* View mode — every data cell (name / description / ref fields)
+                  is a click target that opens the inline editor. Keeps one
+                  editor behind three discoverable affordances so admins don't
+                  have to hunt for a separate pencil. */
+              <div className={`grid grid-cols-[1fr_1fr_1fr_180px_60px] border-b border-[var(--color-border)] last:border-0 transition-colors ${deletingIdx === idx ? '' : 'hover:bg-[var(--color-hover)]'} group/row`}>
+                <div
+                  role="button"
+                  tabIndex={isExternal ? -1 : 0}
+                  onClick={() => { if (!isExternal) startEdit(idx); }}
+                  onKeyDown={(e) => {
+                    if (isExternal) return;
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(idx); }
+                  }}
+                  aria-disabled={isExternal || undefined}
+                  title={isExternal ? guestTooltip : 'Click to edit department'}
+                  className={`px-4 py-3 text-[13px] font-medium text-[var(--color-ink)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
+                    isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                  }`}
+                >
+                  {dept.name}
+                </div>
+                <div
+                  role="button"
+                  tabIndex={isExternal ? -1 : 0}
+                  onClick={() => { if (!isExternal) startEdit(idx); }}
+                  onKeyDown={(e) => {
+                    if (isExternal) return;
+                    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(idx); }
+                  }}
+                  aria-disabled={isExternal || undefined}
+                  title={isExternal ? guestTooltip : 'Click to edit description'}
+                  className={`px-4 py-3 text-[13px] text-[var(--color-ink-soft)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
+                    isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                  }`}
+                >
+                  {dept.description || (
+                    <span className="inline-flex items-center gap-1 text-[var(--color-ink-muted)] italic">
+                      <Plus className="h-3 w-3" aria-hidden />
+                      Add description
+                    </span>
+                  )}
+                </div>
+                {/* Ref-field cell is a click target on its own so admins can
+                    jump into the editor focused on reference fields without
+                    hunting for the row-level pencil. Falls back to the same
+                    startEdit() path as the pencil. */}
+                <div
+                  role="button"
+                  tabIndex={isExternal ? -1 : 0}
+                  onClick={() => { if (!isExternal) startEdit(idx); }}
+                  onKeyDown={(e) => {
+                    if (isExternal) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      startEdit(idx);
+                    }
+                  }}
+                  aria-disabled={isExternal || undefined}
+                  title={isExternal ? guestTooltip : 'Click to edit reference fields'}
+                  data-guest-disabled={isExternal || undefined}
+                  className={`px-4 py-3 text-[12px] text-[var(--color-ink-soft)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
+                    isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
+                  }`}
+                >
                   {dept.referenceFields.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 items-center">
                       {dept.referenceFields.map((f, i) => (
-                        <span key={i} className="inline-flex items-center px-1.5 h-5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] text-[var(--color-ink)]">
+                        // Optional fields render with a dashed border + muted
+                        // ink so "this can be skipped" reads visually without
+                        // needing a cryptic "?" suffix. Required fields keep
+                        // the solid neutral pill.
+                        <span
+                          key={i}
+                          aria-label={f.optional ? `${f.label} (optional)` : f.label}
+                          title={f.optional ? 'Optional field' : undefined}
+                          className={`inline-flex items-center px-1.5 h-5 rounded-[var(--radius-pill)] text-[11px] ${
+                            f.optional
+                              ? 'border border-dashed border-[var(--color-border)] text-[var(--color-ink-muted)]'
+                              : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink)]'
+                          }`}
+                        >
                           {f.label}
-                          {f.optional && <span className="ml-1 text-[var(--color-ink-muted)]">?</span>}
                         </span>
                       ))}
+                      <Pencil className="h-3 w-3 text-[var(--color-ink-muted)] opacity-0 group-hover/row:opacity-70 transition-opacity" aria-hidden />
                     </div>
                   ) : (
-                    <span className="text-[var(--color-ink-muted)]">—</span>
+                    <span className="inline-flex items-center gap-1 text-[var(--color-ink-muted)] italic">
+                      <Plus className="h-3 w-3" aria-hidden />
+                      Add fields
+                    </span>
                   )}
                 </div>
                 <div className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)]">
@@ -495,7 +632,10 @@ export default function AdminDepartments() {
                     </div>
                   ) : dept.sla && dept.sla.enabled ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[11px] font-medium text-[var(--color-accent)] tabular-nums">
+                      <span
+                        className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[11px] font-medium text-[var(--color-accent)] tabular-nums cursor-help"
+                        title={`First reply within ${dept.sla.firstResponseMinutes} min · warn at ${Math.round(dept.sla.firstResponseMinutes * dept.sla.warnAtPercent / 100)} min (${dept.sla.warnAtPercent}%)`}
+                      >
                         {dept.sla.firstResponseMinutes}m · {dept.sla.warnAtPercent}%
                       </span>
                       <button
@@ -511,7 +651,12 @@ export default function AdminDepartments() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] text-[var(--color-ink-muted)]">Off</span>
+                      <span
+                        className="text-[11px] text-[var(--color-ink-muted)] cursor-help"
+                        title="No SLA configured — no breach alerts will fire for this department"
+                      >
+                        Off
+                      </span>
                       <button
                         onClick={() => startSlaEdit(idx)}
                         disabled={isExternal}
@@ -525,18 +670,7 @@ export default function AdminDepartments() {
                     </div>
                   )}
                 </div>
-                <div className="px-4 py-3 flex items-center justify-end gap-1">
-                  <button
-                    onClick={() => startEdit(idx)}
-                    disabled={isExternal}
-                    aria-disabled={isExternal || undefined}
-                    data-guest-disabled={isExternal || undefined}
-                    className={`${ICON_BTN} opacity-0 group-hover/row:opacity-100`}
-                    title={isExternal ? guestTooltip : 'Edit'}
-                    aria-label="Edit department"
-                  >
-                    <Pencil className="h-3.5 w-3.5" aria-hidden />
-                  </button>
+                <div className="px-2 py-3 flex items-center justify-end">
                   <button
                     onClick={() => startDelete(idx)}
                     disabled={isExternal}

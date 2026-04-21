@@ -13,7 +13,7 @@ const nl: Record<string, string> = {
     ref_fields_label: 'Referentievelden',
     add_ref_field: 'Veld toevoegen',
     ref_field_placeholder: 'Veldlabel (bv. Factuurnummer)',
-    max_ref_fields: 'Maximaal 3 velden',
+    max_ref_fields: 'Maximaal 5 velden',
     question_problem: 'Vraag / probleem',
     describe_problem: 'Beschrijf het probleem...',
     connecting: 'Verbinden...',
