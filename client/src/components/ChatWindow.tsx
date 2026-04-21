@@ -20,9 +20,10 @@ interface ChatWindowProps {
   ticket?: Ticket;
   onClose?: () => void;
   compact?: boolean;
+  hideHeader?: boolean;
 }
 
-const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWindow({ ticket, onClose, compact }, ref) {
+const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWindow({ ticket, onClose, compact, hideHeader }, ref) {
   const { user, messages, messageCursors, setMessageLoading, participantsOnline, setParticipantOnline, tickets, setMessages, activePartnerId, focusMode } = useStoreShallow(s => ({
     user: s.user,
     messages: s.messages,
@@ -380,23 +381,25 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   return (
     <div className="relative flex flex-col h-full bg-[var(--color-bg-surface)] border border-[var(--color-border)] flex-1 min-h-0 overflow-hidden">
-      <ChatHeader
-        ticket={ticket}
-        liveTicket={liveTicket}
-        isSupport={isSupport}
-        isClosed={isClosed}
-        focusMode={focusMode}
-        compact={!!compact}
-        onClose={onClose}
-        showTransferMenu={showTransferMenu}
-        setShowTransferMenu={setShowTransferMenu}
-        onTransfer={transferTicket}
-        closing={closing}
-        canClose={canClose}
-        agentIsOnline={agentIsOnline}
-        onCloseTicket={requestCloseTicket}
-        onOpenSearch={() => setSearchOpen(true)}
-      />
+      {!hideHeader && (
+        <ChatHeader
+          ticket={ticket}
+          liveTicket={liveTicket}
+          isSupport={isSupport}
+          isClosed={isClosed}
+          focusMode={focusMode}
+          compact={!!compact}
+          onClose={onClose}
+          showTransferMenu={showTransferMenu}
+          setShowTransferMenu={setShowTransferMenu}
+          onTransfer={transferTicket}
+          closing={closing}
+          canClose={canClose}
+          agentIsOnline={agentIsOnline}
+          onCloseTicket={requestCloseTicket}
+          onOpenSearch={() => setSearchOpen(true)}
+        />
+      )}
 
       {/* Messages */}
       <MessageList

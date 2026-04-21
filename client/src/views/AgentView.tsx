@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useBusinessHours } from '../hooks/useBusinessHours';
@@ -12,9 +12,23 @@ import PartnerUnavailable from '../components/PartnerUnavailable';
 import ConnectionStatus from '../components/ConnectionStatus';
 import UserMenuChip from '../components/ui/UserMenuChip';
 import TicketForm from '../components/agent/TicketForm';
+import AgentTicketContextPanel from '../components/agent/AgentTicketContextPanel';
 import { trpc } from '../utils/trpc';
 import { Ticket } from '../types';
-import { APP_NAME } from '../constants';
+import type { ChatWindowHandle } from '../types/command';
+
+const SIDEBAR_WIDTH_KEY = 'guichet.agentSidebarWidth';
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 320;
+const SIDEBAR_DEFAULT = 240;
+
+function readInitialWidth(): number {
+  if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
+  const raw = window.localStorage.getItem(SIDEBAR_WIDTH_KEY);
+  const parsed = raw ? Number(raw) : NaN;
+  if (!Number.isFinite(parsed)) return SIDEBAR_DEFAULT;
+  return Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, parsed));
+}
 
 export default function AgentView() {
   const {
@@ -39,6 +53,38 @@ export default function AgentView() {
 
   const t = useT();
   const [showFeedback, setShowFeedback] = useState(false);
+  const chatWindowRef = useRef<ChatWindowHandle>(null);
+
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => readInitialWidth());
+  const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const widthRef = useRef(sidebarWidth);
+
+  const handleDragStart = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    dragStateRef.current = { startX: e.clientX, startWidth: widthRef.current };
+    e.preventDefault();
+  }, []);
+
+  useEffect(() => {
+    function handleMove(e: MouseEvent) {
+      const drag = dragStateRef.current;
+      if (!drag) return;
+      const next = drag.startWidth + (e.clientX - drag.startX);
+      const clamped = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, next));
+      widthRef.current = clamped;
+      setSidebarWidth(clamped);
+    }
+    function handleUp() {
+      if (!dragStateRef.current) return;
+      dragStateRef.current = null;
+      try { window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(widthRef.current)); } catch { /* storage disabled */ }
+    }
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+  }, []);
 
   // Keep business hours store fresh even when TicketForm is unmounted (agent in active chat)
   useBusinessHours();
@@ -85,68 +131,71 @@ export default function AgentView() {
   return (
     <ErrorBoundary>
     <BusinessHoursGuard mode={activeTicket ? 'notice' : 'block'}>
-      <div className="h-full bg-transparent flex flex-col overflow-hidden relative">
+      <div className="h-screen flex flex-row overflow-hidden bg-[var(--color-bg)] text-[var(--color-ink)] relative">
         <SystemBackground />
 
-        <nav className="relative z-50 px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] text-[var(--color-ink)] flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="text-[15px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{APP_NAME}</span>
-            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-              {t('agent')}
-            </span>
-            <span className="h-5 w-px bg-[var(--color-border)]" />
-            <span className="text-[13px] font-medium text-[var(--color-ink-soft)] truncate">{activeMembership.partnerName}</span>
+        <aside
+          className="relative h-full bg-[var(--color-bg-surface)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0 z-10"
+          style={{ width: sidebarWidth }}
+        >
+          <div className="px-2 pt-3 pb-2 border-b border-[var(--color-border)]">
+            <UserMenuChip
+              showFeedback
+              onFeedback={() => setShowFeedback(true)}
+              confirmBeforeSwitch
+            />
           </div>
-          <div className="flex items-center gap-3">
-            <ConnectionStatus />
-            <div className="w-[240px]">
-              <UserMenuChip
-                showFeedback
-                onFeedback={() => setShowFeedback(true)}
-                confirmBeforeSwitch
-                placement="bottom-end"
-              />
-            </div>
-          </div>
-        </nav>
 
-        <div className="flex-1 overflow-hidden flex">
-          <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-            {/* Queue position indicator */}
-            {queuePosition && queuePosition.position > 0 && !activeTicket && agentTicket?.status === 'open' && (
-              <div className="px-6 py-3 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 border border-[var(--color-border)] text-[var(--color-text-primary)] text-xs font-bold tabular-nums">
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3">
+            {activeTicket && activeTicket.status !== 'closed' ? (
+              <AgentTicketContextPanel
+                ticket={activeTicket}
+                onRequestClose={() => chatWindowRef.current?.triggerCloseTicket()}
+              />
+            ) : queuePosition && queuePosition.position > 0 && !activeTicket && agentTicket?.status === 'open' ? (
+              <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-3 flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 border border-[var(--color-border)] text-[var(--color-ink)] text-xs font-bold tabular-nums rounded-[var(--radius-btn)]">
                   {queuePosition.position}
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-[var(--color-text-primary)]">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-[var(--color-ink)] truncate">
                     {t('queue_position') || 'Queue position'}: #{queuePosition.position}
                   </p>
                   {queuePosition.etaMins > 0 && (
-                    <p className="text-xs text-[var(--color-text-secondary)]">
+                    <p className="text-[11px] text-[var(--color-ink-muted)] truncate">
                       {t('estimated_wait') || 'Estimated wait'}: ~{queuePosition.etaMins} {t('minutes') || 'min'}
                     </p>
                   )}
                 </div>
               </div>
-            )}
-            {activeTicket && activeTicket.status !== 'closed' ? (
-              <div className="flex-1 min-h-0 w-full">
-                <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
-                  <ChatWindow key={activeTicket.id} ticket={activeTicket} />
-                </div>
-              </div>
-            ) : (
-              // Closed/resolved → fall through to the new-ticket form. The agent's
-              // 1-ticket limit is already enforced by the agentTicket memo, so as
-              // soon as their open ticket is closed (by them or by support), the
-              // ticket row is filtered out and they can submit a new one. The
-              // RatingModal (driven by ratingPrompt in the store) overlays this
-              // view when a support agent had joined.
-              <TicketForm manifest={manifest} />
-            )}
+            ) : null}
           </div>
-        </div>
+
+          <div className="px-3 py-2 border-t border-[var(--color-border)] flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-[0.08em]">{t('agent')}</span>
+            <ConnectionStatus />
+          </div>
+
+          <div
+            onMouseDown={handleDragStart}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
+            className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-[var(--color-accent-soft)] transition-colors"
+          />
+        </aside>
+
+        <main className="flex-1 overflow-hidden flex flex-col min-w-0 bg-[var(--color-bg)]">
+          {activeTicket && activeTicket.status !== 'closed' ? (
+            <div className="flex-1 min-h-0 w-full">
+              <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
+                <ChatWindow ref={chatWindowRef} key={activeTicket.id} ticket={activeTicket} hideHeader />
+              </div>
+            </div>
+          ) : (
+            <TicketForm manifest={manifest} />
+          )}
+        </main>
       </div>
 
       {showFeedback && <FeedbackModal onClose={() => setShowFeedback(false)} />}
