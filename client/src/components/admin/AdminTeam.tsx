@@ -361,17 +361,19 @@ export default function AdminTeam() {
                         >
                           <FileText className="h-3.5 w-3.5" aria-hidden />
                         </button>
-                        <button
-                          onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
-                          disabled={isExternal}
-                          aria-disabled={isExternal || undefined}
-                          title={isExternal ? guestTooltip : 'Remove member'}
-                          data-guest-disabled={isExternal || undefined}
-                          className="w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
-                          aria-label={`Remove ${member.name}`}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                        </button>
+                        {member.isExternal && (
+                          <button
+                            onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
+                            disabled={isExternal}
+                            aria-disabled={isExternal || undefined}
+                            title={isExternal ? guestTooltip : 'Remove B2B guest'}
+                            data-guest-disabled={isExternal || undefined}
+                            className="w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
+                            aria-label={`Remove ${member.name}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
