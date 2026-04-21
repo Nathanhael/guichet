@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, X, Search, Users, Shield, User, UserX, Trash2, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react';
+import { Pencil, X, Search, Users, Shield, User, UserX, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText } from 'lucide-react';
 import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
 import GuestBadge from '../GuestBadge';
+import MemberAuditDrawer from './MemberAuditDrawer';
 import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 // Shared Soft Product style constants — mirrors the other admin panels.
@@ -31,6 +32,8 @@ export default function AdminTeam() {
   const [page, setPage] = useState(0);
   const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | ''>('');
   const [unconfiguredOnly, setUnconfiguredOnly] = useState(false);
+  const [dormantOnly, setDormantOnly] = useState(false);
+  const [auditUserId, setAuditUserId] = useState<{ id: string; name: string } | null>(null);
   const LIMIT = 20;
 
   const utils = trpc.useUtils();
@@ -46,6 +49,7 @@ export default function AdminTeam() {
       role: roleFilter || undefined,
       excludeAdmin: true,
       unconfigured: unconfiguredOnly || undefined,
+      dormant: dormantOnly || undefined,
     },
     { enabled: !!activeMembershipId }
   );
@@ -55,10 +59,14 @@ export default function AdminTeam() {
   const { data: stats } = trpc.partner.memberStats.useQuery(undefined, {
     enabled: !!activeMembershipId,
   });
+  const { data: admins } = trpc.partner.listAdmins.useQuery(undefined, {
+    enabled: !!activeMembershipId,
+  });
   const total = stats?.total ?? 0;
   const supportCount = stats?.support ?? 0;
   const agentCount = stats?.agents ?? 0;
   const unconfiguredCount = stats?.unconfigured ?? 0;
+  const dormantCount = stats?.dormant ?? 0;
 
   const removeMutation = trpc.partner.removeMember.useMutation({
     onSuccess: invalidate,
@@ -79,12 +87,21 @@ export default function AdminTeam() {
   const handleRoleFilter = (role: '' | 'agent' | 'support') => {
     setRoleFilter(role);
     setUnconfiguredOnly(false);
+    setDormantOnly(false);
     setPage(0);
   };
 
   const handleUnconfiguredFilter = () => {
     setRoleFilter('');
     setUnconfiguredOnly(!unconfiguredOnly);
+    setDormantOnly(false);
+    setPage(0);
+  };
+
+  const handleDormantFilter = () => {
+    setRoleFilter('');
+    setUnconfiguredOnly(false);
+    setDormantOnly(!dormantOnly);
     setPage(0);
   };
 
@@ -137,11 +154,12 @@ export default function AdminTeam() {
       </div>
 
       {/* Stats row — each card is a filter. Active card gets accent-soft bg. */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {[
-          { label: 'All members', value: total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !unconfiguredOnly, tint: 'text-[var(--color-ink)]' },
+          { label: 'All members', value: total, icon: Users, handler: () => handleRoleFilter(''), active: !roleFilter && !unconfiguredOnly && !dormantOnly, tint: 'text-[var(--color-ink)]' },
           { label: 'Support staff', value: supportCount, icon: Shield, handler: () => handleRoleFilter('support'), active: roleFilter === 'support', tint: 'text-[var(--color-accent)]' },
           { label: 'Unconfigured', value: unconfiguredCount, icon: UserX, handler: handleUnconfiguredFilter, active: unconfiguredOnly, tint: 'text-[var(--color-accent-amber)]' },
+          { label: 'Dormant 30d+', value: dormantCount, icon: Moon, handler: handleDormantFilter, active: dormantOnly, tint: 'text-[var(--color-ink-muted)]' },
           { label: 'Agents', value: agentCount, icon: User, handler: () => handleRoleFilter('agent'), active: roleFilter === 'agent', tint: 'text-[var(--color-accent)]' },
         ].map((stat) => (
           <button
@@ -161,6 +179,41 @@ export default function AdminTeam() {
           </button>
         ))}
       </div>
+
+      {/* Admins — read-only row. Provisioned via Azure SSO group mapping, so this
+          UI intentionally doesn't allow adding or removing admins. Each chip opens
+          the per-user audit drawer for traceability. */}
+      {admins && admins.length > 0 && (
+        <div className={`${CARD} px-4 py-3`}>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2 shrink-0">
+              <Shield className="h-4 w-4 text-[var(--color-accent)]" aria-hidden />
+              <div>
+                <span className="text-[13px] font-semibold text-[var(--color-ink)]">Partner admins</span>
+                <p className="text-[11px] text-[var(--color-ink-muted)]">Provisioned via Azure SSO — read-only</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-1.5 flex-1">
+              {admins.map((a) => (
+                <button
+                  key={a.membershipId}
+                  type="button"
+                  onClick={() => setAuditUserId({ id: a.userId, name: a.name })}
+                  title={a.email || undefined}
+                  className="inline-flex items-center gap-2 pl-1 pr-2.5 h-7 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] transition-colors group/chip"
+                >
+                  <span className="w-5 h-5 rounded-full bg-[var(--color-accent-soft)] text-[var(--color-accent)] flex items-center justify-center text-[9px] font-semibold">
+                    {a.name?.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="text-[12px] text-[var(--color-ink)] truncate max-w-[160px]">{a.name}</span>
+                  <GuestBadge isExternal={a.isExternal} />
+                  <FileText className="h-3 w-3 text-[var(--color-ink-muted)] opacity-0 group-hover/chip:opacity-100 transition-opacity" aria-hidden />
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className={`${CARD} flex-1 flex flex-col items-center justify-center py-24`}>
@@ -294,22 +347,32 @@ export default function AdminTeam() {
                                 );
                               })
                             : <span className="text-[12px] text-[var(--color-ink-muted)] italic">No departments assigned</span>}
-                          <Pencil className="h-3 w-3 opacity-0 group-hover/row:opacity-60 transition-opacity ml-auto text-[var(--color-ink-muted)]" aria-hidden />
+                          <Pencil className="h-3 w-3 opacity-40 group-hover/row:opacity-80 transition-opacity ml-auto text-[var(--color-ink-muted)]" aria-hidden />
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
-                        disabled={isExternal}
-                        aria-disabled={isExternal || undefined}
-                        title={isExternal ? guestTooltip : undefined}
-                        data-guest-disabled={isExternal || undefined}
-                        className="w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
-                        aria-label={`Remove ${member.name}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                      </button>
+                      <div className="inline-flex items-center gap-0.5">
+                        <button
+                          onClick={() => setAuditUserId({ id: member.userId, name: member.name })}
+                          className="w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors opacity-0 group-hover/row:opacity-100"
+                          aria-label={`Audit history for ${member.name}`}
+                          title="Audit history"
+                        >
+                          <FileText className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                        <button
+                          onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
+                          disabled={isExternal}
+                          aria-disabled={isExternal || undefined}
+                          title={isExternal ? guestTooltip : 'Remove member'}
+                          data-guest-disabled={isExternal || undefined}
+                          className="w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
+                          aria-label={`Remove ${member.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -362,6 +425,11 @@ export default function AdminTeam() {
           onCancel={() => setConfirmRemove(null)}
         />
       )}
+      <MemberAuditDrawer
+        userId={auditUserId?.id ?? null}
+        userName={auditUserId?.name}
+        onClose={() => setAuditUserId(null)}
+      />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );

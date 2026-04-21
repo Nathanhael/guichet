@@ -18,6 +18,7 @@ export const partnerMembersRouter = router({
       role: z.enum(['agent', 'support']).optional(),
       excludeAdmin: z.boolean().optional().default(true),
       unconfigured: z.boolean().optional(),
+      dormant: z.boolean().optional(),
     }))
     .query(async ({ input, ctx }) => {
       try {
@@ -33,6 +34,11 @@ export const partnerMembersRouter = router({
         if (input.unconfigured) {
           filters.push(eq(memberships.role, 'support'));
           filters.push(sql`(${memberships.departments} IS NULL OR jsonb_array_length(${memberships.departments}) = 0)`);
+        }
+        if (input.dormant) {
+          // Staff seats only — agents are customer-side and don't consume paid licenses.
+          filters.push(eq(memberships.role, 'support'));
+          filters.push(sql`${users.lastActiveAt} IS NOT NULL AND ${users.lastActiveAt} < NOW() - INTERVAL '30 days'`);
         }
         if (input.search?.trim()) {
           const rawSearch = input.search.trim();
@@ -94,6 +100,32 @@ export const partnerMembersRouter = router({
       }
     }),
 
+  // Admins are shown as a compact read-only row above the team table because
+  // tenant admin seats are provisioned via Azure group mapping — the partner
+  // admin UI intentionally can't mutate them. Small result set (typically <5),
+  // so no pagination.
+  listAdmins: adminProcedure
+    .query(async ({ ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+      const rows = await db
+        .select({
+          membershipId: memberships.id,
+          userId: users.id,
+          name: users.name,
+          email: users.email,
+          isExternal: users.isExternal,
+          lastActiveAt: users.lastActiveAt,
+        })
+        .from(memberships)
+        .innerJoin(users, eq(memberships.userId, users.id))
+        .where(and(eq(memberships.partnerId, partnerId), eq(memberships.role, 'admin')))
+        .orderBy(users.name);
+
+      return rows;
+    }),
+
   memberStats: adminProcedure
     .query(async ({ ctx }) => {
       const partnerId = ctx.user.partnerId;
@@ -109,6 +141,20 @@ export const partnerMembersRouter = router({
         .where(and(eq(memberships.partnerId, partnerId), ne(memberships.role, 'admin')))
         .groupBy(memberships.role, sql`${memberships.role} = 'support' AND (${memberships.departments} IS NULL OR jsonb_array_length(${memberships.departments}) = 0)`);
 
+      // Dormant seats = support members whose user hasn't been active in 30+ days.
+      // Runs as a separate query because it joins users and doesn't slot cleanly
+      // into the role/unconfigured groupBy above.
+      const dormantRow = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(memberships)
+        .innerJoin(users, eq(memberships.userId, users.id))
+        .where(and(
+          eq(memberships.partnerId, partnerId),
+          eq(memberships.role, 'support'),
+          sql`${users.lastActiveAt} IS NOT NULL AND ${users.lastActiveAt} < NOW() - INTERVAL '30 days'`,
+        ));
+      const dormant = dormantRow[0]?.count ?? 0;
+
       let total = 0, support = 0, agents = 0, unconfigured = 0;
       for (const row of rows) {
         total += row.count;
@@ -116,7 +162,7 @@ export const partnerMembersRouter = router({
         if (row.role === 'agent') agents += row.count;
         if (row.unconfigured) unconfigured += row.count;
       }
-      return { total, support, agents, unconfigured };
+      return { total, support, agents, unconfigured, dormant };
     }),
 
   inviteExternalUser: destructiveAdminProcedure
