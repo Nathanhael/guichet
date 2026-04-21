@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, X, Search, Users, Shield, User, UserX, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText } from 'lucide-react';
+import { Pencil, X, Search, Users, Shield, User, UserX, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText, AlertTriangle } from 'lucide-react';
 import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
 import GuestBadge from '../GuestBadge';
@@ -443,6 +443,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   const [role, setRole] = useState<'support'|'admin'>('support');
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [invited, setInvited] = useState<{ email: string; name: string; role: 'support' | 'admin' } | null>(null);
 
   const { activeMembershipId, memberships } = useStoreShallow((s) => ({
     activeMembershipId: s.activeMembershipId,
@@ -453,7 +454,10 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
 
   const inviteMutation = trpc.partner.inviteExternalUser.useMutation({
     onSuccess: () => {
-      onInvited();
+      // Hold the modal open on success to surface the Azure B2B handoff
+      // banner — the local record is created, but the invitee can't log in
+      // until a platform operator registers them as a guest in the tenant.
+      setInvited({ email, name, role });
     },
     onError: (err) => setToast({ message: err.message, type: 'error' })
   });
@@ -464,6 +468,71 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
       email, name, role, departments: selectedDepts,
     });
   };
+
+  const handleDismiss = () => { if (invited) onInvited(); else onClose(); };
+
+  if (invited) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]">
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleDismiss} aria-label="Close" />
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] p-6 w-full max-w-[520px] relative z-10 animate-[v2p-pop_180ms_ease-out]"
+        >
+          <div className="flex items-center gap-2.5 mb-5">
+            <Shield className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
+            <h3 className="text-lg font-semibold text-[var(--color-ink)]">Local record created</h3>
+          </div>
+          <div className="space-y-4">
+            <div
+              className="rounded-[var(--radius-card)] border border-[var(--color-accent-amber)] p-4 space-y-1"
+              style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 14%, transparent)' }}
+            >
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-[var(--color-accent-amber)] shrink-0 mt-0.5" aria-hidden />
+                <div className="space-y-1">
+                  <p className="text-[13px] font-semibold text-[var(--color-ink)]">Azure B2B invite still required</p>
+                  <p className="text-[12px] text-[var(--color-ink-soft)] leading-relaxed">
+                    {invited.name} is registered in Guichet but cannot log in yet. A platform operator must add them as a <strong>B2B guest</strong> in the Azure tenant before they can SSO. Forward the handoff details to your IT admin.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] p-3">
+              <p className="text-[11px] font-medium text-[var(--color-ink-muted)] uppercase tracking-[0.06em] mb-2">Handoff details</p>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]">
+                <dt className="text-[var(--color-ink-muted)]">Name</dt>
+                <dd className="text-[var(--color-ink)]">{invited.name}</dd>
+                <dt className="text-[var(--color-ink-muted)]">Email</dt>
+                <dd className="text-[var(--color-ink)] font-mono">{invited.email}</dd>
+                <dt className="text-[var(--color-ink-muted)]">Role</dt>
+                <dd className="text-[var(--color-ink)] capitalize">{invited.role}</dd>
+                <dt className="text-[var(--color-ink-muted)]">Azure step</dt>
+                <dd className="text-[var(--color-ink)]">Invite as B2B guest, map tenant groups</dd>
+              </dl>
+            </div>
+            <div className="flex gap-2 pt-2 border-t border-[var(--color-border)]">
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(`${invited.name} <${invited.email}> — needs Azure B2B guest invite for Guichet (role: ${invited.role})`)}
+                className={`${SECONDARY_BTN} flex-1 justify-center`}
+              >
+                Copy handoff
+              </button>
+              <button
+                type="button"
+                onClick={onInvited}
+                className={`${PRIMARY_BTN} flex-1 justify-center`}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]">
