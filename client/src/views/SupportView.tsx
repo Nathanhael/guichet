@@ -9,7 +9,7 @@ import { MAX_OPEN_CHATS } from '../config';
 import ChatWindow from '../components/ChatWindow';
 import TicketPreview from '../components/TicketPreview';
 import PartnerUnavailable from '../components/PartnerUnavailable';
-import SupportNav from '../components/support/SupportNav';
+import UserMenuChip from '../components/ui/UserMenuChip';
 import QueueSidebar from '../components/support/QueueSidebar';
 import ChatTabBar from '../components/support/ChatTabBar';
 import TicketSidebar from '../components/support/TicketSidebar';
@@ -24,6 +24,8 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import CommandPalette from '../components/support/CommandPalette';
 import { useIdleStatus } from '../hooks/useIdleStatus';
 import { Clock } from 'lucide-react';
+import { APP_NAME } from '../constants';
+import type { OnlineSupport } from '../types';
 
 export default function SupportView() {
   const {
@@ -43,6 +45,7 @@ export default function SupportView() {
     rightSidebarExpanded,
     toggleRightSidebar,
     setAllLabels,
+    onlineSupportUsers,
   } = useStore(
     useShallow((s) => ({
       user: s.user,
@@ -61,8 +64,11 @@ export default function SupportView() {
       rightSidebarExpanded: s.rightSidebarExpanded,
       toggleRightSidebar: s.toggleRightSidebar,
       setAllLabels: s.setAllLabels,
+      onlineSupportUsers: s.onlineSupportUsers as OnlineSupport[],
     }))
   );
+  const availableCount = onlineSupportUsers.filter((u) => u.status === 'online').length;
+  const totalOnline = onlineSupportUsers.length;
   const { status: businessHoursStatus } = useBusinessHours();
   const t = useT();
   useIdleStatus();
@@ -104,16 +110,6 @@ export default function SupportView() {
     });
   }, []);
   const [paletteOpen, setPaletteOpen] = useState(false);
-
-  // SupportNav's Ctrl+K badge dispatches this event; keeps the badge free
-  // of prop-drilling while still sharing the palette with the hotkey hook.
-  useEffect(() => {
-    function openPalette() {
-      setPaletteOpen(true);
-    }
-    window.addEventListener('support:open-palette', openPalette);
-    return () => window.removeEventListener('support:open-palette', openPalette);
-  }, []);
 
   const chatWindowRef = useRef<ChatWindowHandle>(null);
 
@@ -402,7 +398,51 @@ export default function SupportView() {
         </div>
       )}
 
-      <SupportNav partnerName={partnerName} />
+      <nav
+        className={`px-6 flex items-center justify-between sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] ${
+          focusMode ? 'py-2' : 'py-3'
+        }`}
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-[15px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{APP_NAME}</span>
+          {!focusMode && (
+            <>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+                {t('support')}
+              </span>
+              <span className="h-5 w-px bg-[var(--color-border)]" />
+              <span className="text-[13px] font-medium text-[var(--color-ink-soft)] truncate">{partnerName}</span>
+            </>
+          )}
+        </div>
+        <div className="flex items-center gap-3">
+          {totalOnline > 0 && !focusMode && (
+            <span className="text-[11px] font-medium text-[var(--color-ink-muted)] tabular-nums px-1.5">
+              {availableCount} / {totalOnline}
+            </span>
+          )}
+          {!focusMode && (
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="h-8 px-2 flex items-center gap-1 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
+              title={t('cmd_palette_title') || 'Command Palette'}
+              aria-label={t('cmd_palette_title') || 'Command Palette'}
+            >
+              <kbd className="text-[11px] font-medium">Ctrl+K</kbd>
+            </button>
+          )}
+          <div className="w-[240px]">
+            <UserMenuChip
+              showStatus
+              showKeyboardShortcuts
+              onKeyboardShortcuts={() => setPaletteOpen(true)}
+              confirmBeforeSwitch
+              placement="bottom-end"
+            />
+          </div>
+        </div>
+      </nav>
 
       <div className="flex flex-1 overflow-hidden relative gap-3 p-3">
         {activeMembership && viewMode !== 'focus' && (
