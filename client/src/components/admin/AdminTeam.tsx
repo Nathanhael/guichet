@@ -430,6 +430,7 @@ export default function AdminTeam() {
       <MemberAuditDrawer
         userId={auditUserId?.id ?? null}
         userName={auditUserId?.name}
+        departments={departments}
         onClose={() => setAuditUserId(null)}
       />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
