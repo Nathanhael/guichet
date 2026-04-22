@@ -293,12 +293,15 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           </span>
         </div>
 
-      </div>
-
-      {/* Action buttons — sibling in flex row, to the right of bubble */}
-      {showActions && !editing && (
-        <div className="flex flex-col gap-1 ml-1.5 shrink-0 self-start pt-1">
-          <div className="flex items-start gap-0.5 bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] px-1 py-1">
+        {/* Floating action bar — absolutely positioned above the bubble's top
+            edge on hover. Single compact pill merging reactions + actions with
+            a divider. Anchor flips for own-messages so the pill never pushes
+            past the row edge. */}
+        {showActions && !editing && (
+          <div
+            className={`absolute -top-4 ${isMine ? 'left-1' : 'right-1'} z-10 flex items-center bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] px-1 py-0.5 animate-[v2p-pop_180ms_ease-out]`}
+            onMouseEnter={() => setShowActions(true)}
+          >
             {REACTION_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
@@ -311,43 +314,45 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                 {emoji}
               </button>
             ))}
+            {(onReply || canEdit || canDelete) && (
+              <>
+                <span className="mx-0.5 h-4 w-px bg-[var(--color-border)]" aria-hidden="true" />
+                {onReply && !isDeleted && (
+                  <button
+                    onClick={() => onReply(message)}
+                    title={t('reply') || 'Reply'}
+                    aria-label={t('reply') || 'Reply'}
+                    className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
+                  >
+                    <CornerUpLeft size={14} />
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    onClick={startEdit}
+                    title={t('edit') || 'Edit'}
+                    aria-label={t('edit') || 'Edit'}
+                    className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
+                  >
+                    <Pencil size={13} />
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    onClick={() => { setConfirmDelete(true); setShowActions(false); }}
+                    title={t('delete') || 'Delete'}
+                    aria-label={t('delete') || 'Delete'}
+                    className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-urgent)] hover:bg-[var(--color-urgent-soft)]"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </>
+            )}
           </div>
-          {(onReply || canEdit || canDelete) && (
-            <div className="flex items-start gap-0.5 bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] px-1 py-1">
-              {onReply && !isDeleted && (
-                <button
-                  onClick={() => onReply(message)}
-                  title={t('reply') || 'Reply'}
-                  aria-label={t('reply') || 'Reply'}
-                  className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
-                >
-                  <CornerUpLeft size={14} />
-                </button>
-              )}
-              {canEdit && (
-                <button
-                  onClick={startEdit}
-                  title={t('edit') || 'Edit'}
-                  aria-label={t('edit') || 'Edit'}
-                  className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
-                >
-                  <Pencil size={13} />
-                </button>
-              )}
-              {canDelete && (
-                <button
-                  onClick={() => { setConfirmDelete(true); setShowActions(false); }}
-                  title={t('delete') || 'Delete'}
-                  aria-label={t('delete') || 'Delete'}
-                  className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-urgent)] hover:bg-[var(--color-urgent-soft)]"
-                >
-                  <Trash2 size={13} />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
+
       {confirmDelete && (
         <ConfirmDialog
           title={t('delete') || 'Delete'}
