@@ -5,6 +5,7 @@ import { ArrowDown } from 'lucide-react';
 import MessageBubble from '../MessageBubble';
 import SearchBar from './SearchBar';
 import { Ticket, Message } from '../../types';
+import { formatDate } from '../../utils/dateUtils';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '../../../../server/trpc/router';
 
@@ -166,18 +167,26 @@ export default function MessageList({
               const isGroupStart = !isSameSenderAsPrev || timeDiffPrev > 120000;
               const isGroupEnd = !isSameSenderAsNext || timeDiffNext > 120000;
 
-              // Whisper run boundaries: a whisper that immediately follows a
-              // non-whisper (or is the first message) starts a run. A whisper
-              // whose next message isn't a whisper (or is the last message)
-              // ends the run. Rendered as dashed purple rules to bracket the
-              // run as an aside from the main agent↔support conversation.
+              // Whisper run start: a whisper that immediately follows a
+              // non-whisper (or is the first message). Rendered as a dashed
+              // purple rule to open an aside from the main agent↔support
+              // conversation. The matching END marker was dropped — the rule
+              // felt redundant once the next non-whisper bubble naturally
+              // closes the aside by virtue of changing alignment/colour.
               const isWhisperRunStart = !!msg.whisper && (!prevMsg || !prevMsg.whisper);
-              const isWhisperRunEnd = !!msg.whisper && (!nextMsg || !nextMsg.whisper);
 
               // Date separator: show when day changes between messages
               const msgDate = new Date(msg.timestamp).toDateString();
               const prevDate = prevMsg ? new Date(prevMsg.timestamp).toDateString() : null;
               const showDateSeparator = idx === 0 || msgDate !== prevDate;
+
+              // Time gap separator: render a small time pill when the gap
+              // from the previous message exceeds 15 minutes within the same
+              // day. Suppressed on date boundaries (date pill already shown)
+              // and at whisper-run starts (whisper marker already breaks the
+              // visual flow). Gives the reader a cheap chronological anchor
+              // during long same-day conversations without spamming pills.
+              const showTimeGap = !!prevMsg && !showDateSeparator && !isWhisperRunStart && timeDiffPrev > 15 * 60 * 1000;
 
               const showDivider = firstUnreadIndex !== null && idx === firstUnreadIndex;
 
@@ -187,6 +196,13 @@ export default function MessageList({
                     <div className="flex justify-center my-4">
                       <span className="text-[11px] font-medium text-[var(--color-ink-muted)] bg-[var(--color-bg-elevated)] px-3 py-1 rounded-[var(--radius-pill)] shrink-0">
                         {getDateLabel(msg.timestamp, t, user?.lang)}
+                      </span>
+                    </div>
+                  )}
+                  {showTimeGap && (
+                    <div className="flex justify-center my-3">
+                      <span className="text-[10px] font-medium text-[var(--color-ink-muted)] opacity-70 shrink-0">
+                        {formatDate(msg.timestamp)}
                       </span>
                     </div>
                   )}
@@ -220,15 +236,6 @@ export default function MessageList({
                     isCurrentSearchMatch={msg.id === currentMatchId}
                     suppressActions={suppressActions}
                   />
-                  {isWhisperRunEnd && (
-                    <div className="flex items-center gap-3 mt-1 mb-2 px-14">
-                      <div className="flex-1 border-t border-dashed border-[var(--color-whisper-ink)] opacity-40" />
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-whisper-ink)] shrink-0">
-                        {t('whisper_run_end')}
-                      </span>
-                      <div className="flex-1 border-t border-dashed border-[var(--color-whisper-ink)] opacity-40" />
-                    </div>
-                  )}
                 </React.Fragment>
               );
             })}
