@@ -1,9 +1,10 @@
 import { type Server } from 'socket.io';
 import { db } from '../db.js';
 import { tickets } from '../db/schema.js';
-import { and, eq, isNotNull, lt, ne } from 'drizzle-orm';
+import { and, isNotNull, lt, ne } from 'drizzle-orm';
 import { insertSystemMessage } from './systemMessage.js';
 import { getOfflineAt, getUserStatus } from './presence.js';
+import { returnTicketToQueue } from './ticketQueries.js';
 import { Rooms } from '../utils/rooms.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
@@ -95,11 +96,10 @@ export async function reclaimAbandonedTickets(io: Server): Promise<void> {
     try {
       // Atomic: only reclaim if supportId still matches — prevents clobbering
       // if another agent picked up the ticket between the presence check and now.
-      const result = await db
-        .update(tickets)
-        .set({ supportId: null, supportName: null, supportJoinedAt: null, status: 'open' })
-        .where(and(eq(tickets.id, ticket.id), eq(tickets.supportId, ticket.supportId)));
-      if (result.rowCount === 0) continue; // ticket was already reassigned
+      // Also strips the outgoing support from the participants JSONB so a stale
+      // support:rejoin can't re-enter after reclaim.
+      const reclaimedOk = await returnTicketToQueue(ticket.id, ticket.supportId);
+      if (!reclaimedOk) continue; // ticket was already reassigned
 
       await insertSystemMessage(
         ticket.id,

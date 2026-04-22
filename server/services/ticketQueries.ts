@@ -314,14 +314,41 @@ export async function transferTicket(
 }
 
 /**
- * Returns ticket to queue — unassigns support.
- * Used by: ticket:transfer (no target)
+ * Returns ticket to queue — unassigns support and strips them from participants.
+ *
+ * When `supportId` is provided, the UPDATE is guarded by `support_id = supportId`
+ * (atomic — prevents racing with a concurrent claim) and also filters the
+ * outgoing support out of the participants JSONB array so a stale
+ * `support:rejoin` from that user can't re-enter the ticket after it's
+ * reclaimed by a different support.
+ *
+ * Returns true if a row was updated.
+ *
+ * Used by: ticket:transfer (return-to-queue), support:leave, ticketReclaim
  */
-export async function returnTicketToQueue(ticketId: string) {
-  await db
+export async function returnTicketToQueue(
+  ticketId: string,
+  supportId?: string,
+): Promise<boolean> {
+  if (supportId) {
+    const res = await db.execute(sql`UPDATE tickets SET
+      support_id = NULL,
+      support_name = NULL,
+      support_joined_at = NULL,
+      status = 'open',
+      participants = (
+        SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
+        FROM jsonb_array_elements(COALESCE(participants, '[]')::jsonb) AS elem
+        WHERE elem->>'id' != ${supportId}
+      )::text
+    WHERE id = ${ticketId} AND support_id = ${supportId}`);
+    return (res.rowCount ?? 0) > 0;
+  }
+  const res = await db
     .update(tickets)
     .set({ supportId: null, supportName: null, supportJoinedAt: null, status: 'open' })
     .where(eq(tickets.id, ticketId));
+  return (res.rowCount ?? 0) > 0;
 }
 
 /**
