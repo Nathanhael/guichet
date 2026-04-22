@@ -295,16 +295,16 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
 
         {/* Floating action bar — absolutely positioned above the bubble on
             hover. `bottom-full` anchors the pill's bottom to the bubble's
-            top (so it always sits fully above, regardless of pill height),
-            `mb-1` leaves a small gap. Horizontal side flips with isMine so
-            the pill grows outward into empty space rather than clipping
-            past the row edge: non-mine bubbles (on the left) anchor the
-            pill's LEFT edge to the bubble's left and grow rightward; own
-            bubbles (on the right) anchor the pill's RIGHT edge to the
-            bubble's right and grow leftward. */}
+            top so it always sits fully above regardless of pill height;
+            `mb-1` leaves a small gap. Always anchored `left-0` because
+            this chat renders every bubble (mine + received) with the
+            avatar on the left — no row-reverse alignment. Pill grows
+            rightward into the empty space after the bubble, which is the
+            only free area. Anchoring `right-0` on short own-messages
+            clipped the pill's left portion off-screen. */}
         {showActions && !editing && (
           <div
-            className={`absolute bottom-full mb-1 ${isMine ? 'right-0' : 'left-0'} z-10 flex items-center flex-nowrap whitespace-nowrap w-max bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] border border-[var(--color-border)] px-1.5 py-1 gap-0.5 animate-[v2p-pop_180ms_ease-out]`}
+            className="absolute bottom-full mb-1 left-0 z-10 flex items-center flex-nowrap whitespace-nowrap w-max bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] border border-[var(--color-border)] px-1.5 py-1 gap-0.5 animate-[v2p-pop_180ms_ease-out]"
             onMouseEnter={() => setShowActions(true)}
           >
             {REACTION_EMOJIS.map((emoji) => (
