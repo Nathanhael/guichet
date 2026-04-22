@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Shield, ChevronLeft, Search } from 'lucide-react';
+import { Shield, ChevronLeft, Search, Archive } from 'lucide-react';
 import { useT, useLang } from '../../i18n';
 import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
@@ -151,6 +151,30 @@ export default function QueueSidebar({
     [queueLangCounts],
   );
 
+  // Mirror the queue lang-count logic for the archive tab so the same
+  // language bar can render there. Dept filter is already applied
+  // server-side via `archiveQuery`, so we count whatever came back.
+  const archiveLangCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tk of archivedTickets) {
+      if (!tk.agentLang) continue;
+      counts.set(tk.agentLang, (counts.get(tk.agentLang) || 0) + 1);
+    }
+    return counts;
+  }, [archivedTickets]);
+  const archiveLangTotal = useMemo(
+    () => Array.from(archiveLangCounts.values()).reduce((a, b) => a + b, 0),
+    [archiveLangCounts],
+  );
+  const archiveFiltered = useMemo(
+    () => (filterLang ? archivedTickets.filter((tk) => tk.agentLang === filterLang) : archivedTickets),
+    [archivedTickets, filterLang],
+  );
+
+  // Active lang map/total for the rendered language bar — switches with the tab.
+  const activeLangCounts = sidebarTab === 'queue' ? queueLangCounts : archiveLangCounts;
+  const activeLangTotal = sidebarTab === 'queue' ? queueLangTotal : archiveLangTotal;
+
   const didAutoDefaultLang = useRef(false);
   // Once (after AI config resolves), if translation is off and we have tickets
   // in the viewer's language, auto-default the language filter to theirs.
@@ -248,7 +272,7 @@ export default function QueueSidebar({
           ))}
         </div>
 
-        {sidebarTab === 'queue' && queueLangCounts.size >= 2 && (
+        {activeLangCounts.size >= 2 && (
           <div className="flex items-center gap-1 flex-wrap pt-1.5 mt-1 border-t border-[var(--color-border)]">
             <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mr-1">
               {t('lang_label') || 'Lang'}
@@ -261,9 +285,9 @@ export default function QueueSidebar({
                 : (t('lang_filter_all_no_translation') || 'Show all — you may not speak some')}
             >
               {t('all')}
-              <span className={`text-[10px] tabular-nums ${filterLang === null ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{queueLangTotal}</span>
+              <span className={`text-[10px] tabular-nums ${filterLang === null ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{activeLangTotal}</span>
             </button>
-            {Array.from(queueLangCounts.keys())
+            {Array.from(activeLangCounts.keys())
               .sort((a, b) => (a === viewerLang ? -1 : b === viewerLang ? 1 : a.localeCompare(b)))
               .map((lang) => (
                 <button
@@ -277,7 +301,7 @@ export default function QueueSidebar({
                       : `${lang.toUpperCase()} — translation is off`}
                 >
                   {lang.toUpperCase()}
-                  <span className={`text-[10px] tabular-nums ${filterLang === lang ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{queueLangCounts.get(lang) || 0}</span>
+                  <span className={`text-[10px] tabular-nums ${filterLang === lang ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{activeLangCounts.get(lang) || 0}</span>
                 </button>
               ))}
           </div>
@@ -433,11 +457,21 @@ export default function QueueSidebar({
                     </svg>
                     <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading') || 'Loading…'}</p>
                   </li>
-                ) : archivedTickets.length === 0 ? (
-                  <li className="p-8 text-center">
-                    <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_archived') || 'No archived tickets'}</p>
+                ) : archiveFiltered.length === 0 ? (
+                  <li className="p-8 text-center flex flex-col items-center gap-2">
+                    <Archive className="h-6 w-6 text-[var(--color-ink-muted)] opacity-40" strokeWidth={1.5} />
+                    <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">
+                      {archivedTickets.length === 0
+                        ? (t('no_archived') || 'Nothing archived yet')
+                        : (t('no_archived_for_filter') || 'No archived tickets match this filter')}
+                    </p>
+                    <p className="text-[11px] text-[var(--color-ink-muted)] leading-relaxed max-w-[200px]">
+                      {archivedTickets.length === 0
+                        ? (t('no_archived_hint') || 'Closed conversations will show up here once they\u2019re wrapped up.')
+                        : (t('no_archived_for_filter_hint') || 'Try a different department or language.')}
+                    </p>
                   </li>
-                ) : archivedTickets.map((ticket) => (
+                ) : archiveFiltered.map((ticket) => (
                   <ArchiveTicketRow
                     key={ticket.id}
                     ticket={ticket}
@@ -468,7 +502,7 @@ export default function QueueSidebar({
       <SidebarFooter
         sidebarTab={sidebarTab}
         onToggleMode={() => setSidebarTab(sidebarTab === 'queue' ? 'archive' : 'queue')}
-        queueCount={sidebarTab === 'queue' ? queueFiltered.length : archivedTickets.length}
+        queueCount={sidebarTab === 'queue' ? queueFiltered.length : archiveFiltered.length}
         onlineSupportUsers={onlineSupportUsers}
       />
       </>

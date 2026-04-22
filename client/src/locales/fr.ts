@@ -71,6 +71,10 @@ const fr: Record<string, string> = {
     show_original: 'Afficher l\'original',
 
     no_tickets: 'Aucun ticket trouv\u00e9.',
+    no_archived: 'Rien d\u2019archiv\u00e9 pour l\u2019instant',
+    no_archived_hint: 'Les conversations cl\u00f4tur\u00e9es appara\u00eetront ici une fois termin\u00e9es.',
+    no_archived_for_filter: 'Aucun ticket archiv\u00e9 ne correspond \u00e0 ce filtre',
+    no_archived_for_filter_hint: 'Essayez un autre d\u00e9partement ou une autre langue.',
 
     support_chat_closed: 'Chat de support ferm\u00e9',
     support_chat_closed_body: 'Le chat de support est actuellement ferm\u00e9. Disponible du lundi au dimanche entre 07h30 et 22h30.',
