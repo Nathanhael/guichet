@@ -1,7 +1,7 @@
 // server/services/messageQueries.ts
 import { eq, and, asc, isNull, inArray, lt, or } from 'drizzle-orm';
 import { db } from '../db/postgres.js';
-import { messages, ticketLabels } from '../db/schema.js';
+import { messages, ticketLabels, users } from '../db/schema.js';
 import logger from '../utils/logger.js';
 import { getStorage } from './storage.js';
 
@@ -334,6 +334,24 @@ export async function resolveReplySnippetsBatch(replyToIds: string[]): Promise<M
       mediaUrl: r.mediaUrl || null,
     });
   }
+  return map;
+}
+
+/**
+ * Batch-resolve avatar URLs for a set of user IDs in a single query.
+ * Returned map is keyed by user ID → avatarUrl (null if user has none or no row).
+ * Used by message.list to decorate messages with live avatar URLs without
+ * denormalizing onto the messages table (photos change; names/roles don't).
+ */
+export async function resolveUserAvatarsBatch(userIds: string[]): Promise<Map<string, string | null>> {
+  if (userIds.length === 0) return new Map();
+  const unique = Array.from(new Set(userIds));
+  const rows = await db
+    .select({ id: users.id, avatarUrl: users.avatarUrl })
+    .from(users)
+    .where(inArray(users.id, unique));
+  const map = new Map<string, string | null>();
+  for (const r of rows) map.set(r.id, r.avatarUrl ?? null);
   return map;
 }
 

@@ -7,7 +7,7 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
-import { resolveReplySnippetsBatch } from '../../services/messageQueries.js';
+import { resolveReplySnippetsBatch, resolveUserAvatarsBatch } from '../../services/messageQueries.js';
 
 /**
  * Convert a user search string into a PostgreSQL tsquery with prefix matching.
@@ -90,18 +90,26 @@ export const messageRouter = router({
 
         const mappedMessages = items.map(mapMessageRow);
 
-        // Batch-resolve reply snippets in one query (avoids N+1)
+        // Batch-resolve reply snippets + sender avatars in parallel (avoids N+1).
+        // Avatars are joined live (not denormalized) so Entra photo updates
+        // reflect on historical messages next refresh.
         const replyIds = mappedMessages
           .map((m) => m.replyToId)
           .filter((id): id is string => !!id);
-        const snippetMap = await resolveReplySnippetsBatch(replyIds);
+        const senderIds = mappedMessages.map((m) => m.senderId).filter((id): id is string => !!id);
+        const [snippetMap, avatarMap] = await Promise.all([
+          resolveReplySnippetsBatch(replyIds),
+          resolveUserAvatarsBatch(senderIds),
+        ]);
 
-        const withReplies = mappedMessages.map((msg) => {
-          if (!msg.replyToId) return msg;
+        const decorated = mappedMessages.map((msg) => {
+          const senderAvatarUrl = avatarMap.get(msg.senderId) ?? null;
+          const base = { ...msg, senderAvatarUrl };
+          if (!msg.replyToId) return base;
           const snippet = snippetMap.get(msg.replyToId) || null;
-          return { ...msg, replyTo: snippet };
+          return { ...base, replyTo: snippet };
         });
-        return { messages: withReplies, hasMore, nextCursor };
+        return { messages: decorated, hasMore, nextCursor };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         const message = err instanceof Error ? err.message : String(err);

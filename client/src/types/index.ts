@@ -181,6 +181,12 @@ export interface Message {
    * before migration 0006 — treat undefined as false.
    */
   senderIsExternal?: boolean;
+  /**
+   * Live avatar URL joined from users.avatarUrl at fetch time. Null when
+   * the sender has no Entra photo synced or was deleted. Omitted on
+   * optimistic/pending client-side messages.
+   */
+  senderAvatarUrl?: string | null;
   originalText: string;
   improvedText: string;
   processedText: string;
