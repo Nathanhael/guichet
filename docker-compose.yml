@@ -79,8 +79,8 @@ services:
   redis:
     image: redis:8-alpine
     restart: always
-    ports:
-      - "127.0.0.1:6379:6379"
+    # No host port binding: internal network only, avoids conflicts with
+    # other projects' redis containers. Use `docker compose exec redis redis-cli` for debugging.
     command: ["redis-server", "--requirepass", "devpassword"]
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=devpassword redis-cli ping"]
