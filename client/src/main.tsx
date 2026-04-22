@@ -20,6 +20,7 @@ const queryClient = new QueryClient({
   },
 });
 
+// eslint-disable-next-line react-refresh/only-export-components -- entry file; fast-refresh not applicable to the bootstrap root
 const TRPCProvider = ({ children }: { children: React.ReactNode }) => {
   const [trpcClient] = React.useState(() =>
     trpc.createClient({
