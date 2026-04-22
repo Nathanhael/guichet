@@ -342,6 +342,7 @@ const fr: Record<string, string> = {
     waiting: 'en attente',
     active: 'actif',
     no_open_tickets: 'Aucun ticket ouvert',
+    no_active_chats: 'Choisissez un ticket dans la file.',
     in_progress: 'en cours',
     waiting_badge: 'en attente',
     lang_label: 'Langue',

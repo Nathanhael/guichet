@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ChevronDown,
   Check,
@@ -135,6 +136,45 @@ export default function UserMenuChip({
 
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    function compute() {
+      const btn = containerRef.current?.querySelector('button');
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      const MENU_W = 280;
+      const GAP = 8;
+      const margin = 8;
+      let top: number;
+      let left: number;
+      if (placement === 'bottom-end') {
+        top = r.bottom + GAP;
+        left = r.right - MENU_W;
+      } else {
+        top = r.top;
+        left = r.right + GAP;
+        if (left + MENU_W > window.innerWidth - margin) {
+          left = r.left - MENU_W - GAP;
+        }
+      }
+      left = Math.max(margin, Math.min(left, window.innerWidth - MENU_W - margin));
+      top = Math.max(margin, top);
+      setMenuPos({ top, left });
+    }
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
+  }, [open, placement]);
 
   // Global Ctrl+Shift+F focus-mode toggle (relocated from deprecated AccessibilityMenu).
   const handleGlobalKeyboard = useCallback(
@@ -181,7 +221,10 @@ export default function UserMenuChip({
   useEffect(() => {
     if (!open) return;
     function handleMouseDown(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (containerRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
+      setOpen(false);
     }
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false);
@@ -265,15 +308,13 @@ export default function UserMenuChip({
         />
       </button>
 
-      {open && (
+      {open && menuPos && createPortal(
         <div
+          ref={menuRef}
           role="dialog"
           aria-label={t('user_menu')}
-          className={`absolute z-50 w-[280px] bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] max-h-[calc(100vh-32px)] overflow-y-auto custom-scrollbar ${
-            placement === 'bottom-end'
-              ? 'right-0 top-full mt-2'
-              : 'left-[calc(100%+8px)] top-0'
-          }`}
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
+          className="z-50 w-[280px] bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] max-h-[calc(100vh-32px)] overflow-y-auto custom-scrollbar"
         >
           <div className="px-3.5 py-3 border-b border-[var(--color-border)] flex items-center gap-3">
             <Avatar name={user.name} size={40} />
@@ -468,7 +509,8 @@ export default function UserMenuChip({
             <LogOut className="h-4 w-4 shrink-0" />
             {t('sign_out')}
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );

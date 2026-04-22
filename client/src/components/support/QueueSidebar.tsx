@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Shield, ChevronLeft, Search } from 'lucide-react';
-import { useT } from '../../i18n';
+import { useT, useLang } from '../../i18n';
 import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
 import { trpc } from '../../utils/trpc';
@@ -9,7 +9,6 @@ import { Ticket, Membership, OnlineSupport } from '../../types';
 import QueueTicketRow from './QueueTicketRow';
 import ArchiveTicketRow from './ArchiveTicketRow';
 import SidebarFooter from './SidebarFooter';
-import StaffingHeader from './StaffingHeader';
 import SectionLabel from '../ui/SectionLabel';
 import Pill from '../ui/Pill';
 import { getSocket } from '../../hooks/useSocket';
@@ -39,15 +38,22 @@ export default function QueueSidebar({
   const onlineSupportUsers = useStore((s) => s.onlineSupportUsers) as OnlineSupport[];
   const user = useStore((s) => s.user);
   const t = useT();
+  const viewerLang = useLang();
 
   const [sidebarTab, setSidebarTab] = useState<'queue' | 'archive'>('queue');
   const [filterDept, setFilterDept] = useState('all');
+  const [filterLang, setFilterLang] = useState<string | null>(null);
   const [archivedTickets, setArchivedTickets] = useState<Ticket[]>([]);
   const [archiveCursor, setArchiveCursor] = useState<string | undefined>(undefined);
   const [hasMoreArchive, setHasMoreArchive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [otherAgentsExpanded, setOtherAgentsExpanded] = useState(false);
-  const [filterLang, setFilterLang] = useState<'nl' | 'fr' | 'en' | null>(null);
+
+  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const translationEnabled = aiConfigQuery.data?.translation === true;
 
   const departments = (activeMembership.manifest?.departments || []) as { id: string; name: string }[];
   const assignedDepartmentIds = activeMembership.departments || [];
@@ -123,6 +129,32 @@ export default function QueueSidebar({
     }
     return counts;
   }, [tickets, ticketDeptAllowed]);
+
+  const queueLangCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tk of tickets) {
+      if (tk.status === 'closed') continue;
+      if (!ticketDeptAllowed(tk.dept)) continue;
+      if (!tk.agentLang) continue;
+      counts.set(tk.agentLang, (counts.get(tk.agentLang) || 0) + 1);
+    }
+    return counts;
+  }, [tickets, ticketDeptAllowed]);
+  const queueLangTotal = useMemo(
+    () => Array.from(queueLangCounts.values()).reduce((a, b) => a + b, 0),
+    [queueLangCounts],
+  );
+
+  const didAutoDefaultLang = useRef(false);
+  useEffect(() => {
+    if (didAutoDefaultLang.current) return;
+    if (aiConfigQuery.isLoading) return;
+    if (queueLangCounts.size < 2) return;
+    if (!translationEnabled && queueLangCounts.has(viewerLang)) {
+      setFilterLang(viewerLang);
+    }
+    didAutoDefaultLang.current = true;
+  }, [aiConfigQuery.isLoading, translationEnabled, queueLangCounts, viewerLang]);
 
   const queueFiltered = useMemo(
     () =>
@@ -205,6 +237,41 @@ export default function QueueSidebar({
             </button>
           ))}
         </div>
+
+        {sidebarTab === 'queue' && queueLangCounts.size >= 2 && (
+          <div className="flex items-center gap-1 flex-wrap pt-1.5 mt-1 border-t border-[var(--color-border)]">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mr-1">
+              {t('lang_label') || 'Lang'}
+            </span>
+            <button
+              onClick={() => setFilterLang(null)}
+              className={deptChipClass(filterLang === null)}
+              title={translationEnabled
+                ? (t('lang_filter_all_translated') || 'Show all languages')
+                : (t('lang_filter_all_no_translation') || 'Show all — you may not speak some')}
+            >
+              {t('all')}
+              <span className={`text-[10px] tabular-nums ${filterLang === null ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{queueLangTotal}</span>
+            </button>
+            {Array.from(queueLangCounts.keys())
+              .sort((a, b) => (a === viewerLang ? -1 : b === viewerLang ? 1 : a.localeCompare(b)))
+              .map((lang) => (
+                <button
+                  key={lang}
+                  onClick={() => setFilterLang(filterLang === lang ? null : lang)}
+                  className={deptChipClass(filterLang === lang)}
+                  title={lang === viewerLang
+                    ? (t('lang_filter_your_lang') || 'Your language')
+                    : translationEnabled
+                      ? `Filter to ${lang.toUpperCase()}`
+                      : `${lang.toUpperCase()} — translation is off`}
+                >
+                  {lang.toUpperCase()}
+                  <span className={`text-[10px] tabular-nums ${filterLang === lang ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{queueLangCounts.get(lang) || 0}</span>
+                </button>
+              ))}
+          </div>
+        )}
       </div>
 
       {sidebarTab === 'archive' && (
@@ -221,12 +288,6 @@ export default function QueueSidebar({
           />
         </div>
       )}
-
-      <StaffingHeader
-        partnerId={activeMembership.partnerId}
-        filterLang={filterLang}
-        onToggleLang={setFilterLang}
-      />
 
       <div className="flex-1 overflow-y-auto">
         <ul>

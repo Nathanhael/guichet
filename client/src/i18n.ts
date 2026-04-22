@@ -62,13 +62,15 @@ export function useT() {
 }
 
 /**
- * Returns the active 2-letter language code, matching the resolution logic of useT().
+ * Returns the user's *actual* 2-letter language code (Azure SSO claim → user.lang).
+ * Used for routing/filter decisions where the user's spoken language matters
+ * (cross-lang banner, queue lang filter, lang dot). Independent of the UI
+ * language switcher — selectedLang is purely a UX override and does NOT change
+ * what we believe the user can read.
  */
 export function useLang(): string {
   const user = useStore(s => s.user);
-  const selectedLang = useStore(s => s.selectedLang);
-  const browserLang = typeof navigator !== 'undefined' ? navigator.language.slice(0, 2) : 'en';
-  return selectedLang || user?.lang || browserLang || 'en';
+  return user?.lang || 'en';
 }
 
 /**

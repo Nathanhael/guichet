@@ -38,7 +38,7 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
       {expanded && onlineSupportUsers.length > 0 && (
         <div className="border-b border-[var(--color-border)] px-3 py-3">
           <SectionLabel className="mb-2">{t('online_team')}</SectionLabel>
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1.5 max-h-[40vh] overflow-y-auto custom-scrollbar pr-1">
             {onlineSupportUsers.map((agent) => {
               const colors = getStatusColors(agent.status);
               return (
@@ -80,10 +80,12 @@ export default function SidebarFooter({ sidebarTab, onToggleMode, queueCount, on
         className="w-full px-4 py-2 flex items-center justify-between hover:bg-[var(--color-hover)] cursor-pointer select-none transition-colors"
       >
         <div className="flex items-center gap-2.5">
-          <span className="text-[11px] font-medium text-[var(--color-ink-muted)]">
-            <span className="tabular-nums text-[var(--color-ink-soft)] font-semibold">{queueCount}</span>{' '}
-            {sidebarTab === 'queue' ? t('queued') : t('archived')}
-          </span>
+          {sidebarTab === 'queue' && (
+            <span className="text-[11px] font-medium text-[var(--color-ink-muted)]">
+              <span className="tabular-nums text-[var(--color-ink-soft)] font-semibold">{queueCount}</span>{' '}
+              {t('queued')}
+            </span>
+          )}
           <button
             type="button"
             onClick={(e) => {
