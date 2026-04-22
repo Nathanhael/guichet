@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useStoreShallow } from '../store/useStore';
-import UserAvatar from './UserAvatar';
+import Avatar from './ui/Avatar';
 import GuestBadge from './GuestBadge';
 import { getSocket } from '../hooks/useSocket';
 import { useT } from '../i18n';
@@ -152,10 +152,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
     >
       <div className="flex flex-col justify-end w-7 shrink-0 mr-3">
         {isGroupStart && !isWhisper && (
-          <UserAvatar
-            userId={message.senderId}
+          <Avatar
             name={message.senderName || 'User'}
-            size="xs"
+            src={message.senderAvatarUrl ?? null}
+            size={24}
+            isExternal={!!message.senderIsExternal}
           />
         )}
       </div>

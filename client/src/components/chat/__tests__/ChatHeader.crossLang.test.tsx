@@ -29,7 +29,7 @@ vi.mock('../../../i18n', () => ({
 
 vi.mock('../../../hooks/usePartner', () => ({ usePartner: () => ({ manifest: { departments: [] } }) }));
 vi.mock('../../../hooks/useSocket', () => ({ getSocket: () => null }));
-vi.mock('../../UserAvatar', () => ({ default: () => null }));
+vi.mock('../../ui/Avatar', () => ({ default: () => null }));
 vi.mock('../../SlaIndicator', () => ({ default: () => null }));
 
 import ChatHeader from '../ChatHeader';

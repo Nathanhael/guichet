@@ -6,7 +6,7 @@ import { usePartner } from '../../hooks/usePartner';
 import { getSocket } from '../../hooks/useSocket';
 import { Search, X, Check } from 'lucide-react';
 import { COLOR_BG_MAP } from '../../utils/labelColors';
-import UserAvatar from '../UserAvatar';
+import Avatar from '../ui/Avatar';
 import SlaIndicator from '../SlaIndicator';
 
 interface ChatHeaderProps {
@@ -269,15 +269,14 @@ export default function ChatHeader({
                   return (
                     <span
                       key={p.id}
-                      className={isExternal ? 'ring-1 ring-[var(--color-accent-amber)] ring-offset-0 inline-block' : 'inline-block'}
+                      className="inline-block"
                       title={isExternal ? `${p.name} — external guest` : p.name}
                     >
-                      <UserAvatar
-                        userId={p.id}
+                      <Avatar
                         name={p.name}
-                        size="xs"
-                        showStatus={!isSelf && st !== undefined}
-                        isOnline={st === 'online'}
+                        size={24}
+                        isExternal={isExternal}
+                        statusDot={!isSelf && st !== undefined ? (st === 'online' ? 'online' : 'away') : null}
                       />
                     </span>
                   );
