@@ -333,7 +333,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             onMouseEnter={cancelHideAndShow}
             onMouseLeave={scheduleHide}
           >
-            {REACTION_EMOJIS.map((emoji) => (
+            {/* Reactions on own messages are noise in a B2B support tool
+                — self-liking rarely helps an agent or supporter. Peers
+                can still react to your bubble; those pills render inline
+                in the metadata row regardless of ownership. */}
+            {!isMine && REACTION_EMOJIS.map((emoji) => (
               <button
                 key={emoji}
                 onClick={() => { const s = getSocket(); if (s?.connected) s.emit('message:react', { ticketId, messageId: message.id, emoji }); }}
@@ -347,7 +351,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             ))}
             {(onReply || canEdit || canDelete) && (
               <>
-                <span className="mx-1 h-5 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />
+                {!isMine && <span className="mx-1 h-5 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />}
                 {onReply && !isDeleted && (
                   <button
                     onClick={() => onReply(message)}
