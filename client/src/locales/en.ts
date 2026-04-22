@@ -346,7 +346,6 @@ const en: Record<string, string> = {
     is_typing: 'is typing...',
     are_typing: 'are typing...',
     whisper_run_start: 'Whisper',
-    whisper_run_end: 'End whisper',
     whisper_placeholder: 'Private note for support staff…',
     drop_files_to_attach: 'Drop files to attach',
     reconnecting_queue: 'Reconnecting — your message will send in a moment…',
