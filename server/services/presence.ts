@@ -109,7 +109,7 @@ export async function broadcastOnlineSupport(partnerId: string) {
     const list: SupportEntry[] = [];
     for (const result of results) {
       const data = result as unknown as Record<string, string>;
-      if (data && data.userId && canUseSupportWorkflows(data.role as UserRole, data.isPlatformOperator === '1')) {
+      if (data && data.userId && data.role === 'support' && data.isPlatformOperator !== '1') {
         list.push({
           userId: data.userId,
           name: data.name,

@@ -342,6 +342,7 @@ const nl: Record<string, string> = {
     waiting: 'wachtend',
     active: 'actief',
     no_open_tickets: 'Geen open tickets',
+    no_active_chats: 'Kies een ticket uit de wachtrij.',
     in_progress: 'in behandeling',
     waiting_badge: 'wachtend',
     lang_label: 'Taal',

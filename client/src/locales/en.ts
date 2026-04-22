@@ -357,6 +357,7 @@ const en: Record<string, string> = {
     waiting: 'waiting',
     active: 'active',
     no_open_tickets: 'No open tickets',
+    no_active_chats: 'Pick a ticket from the queue.',
     in_progress: 'in progress',
     waiting_badge: 'waiting',
     lang_label: 'Lang',

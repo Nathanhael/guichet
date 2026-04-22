@@ -24,7 +24,6 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import CommandPalette from '../components/support/CommandPalette';
 import { useIdleStatus } from '../hooks/useIdleStatus';
 import { Clock } from 'lucide-react';
-import type { OnlineSupport } from '../types';
 
 export default function SupportView() {
   const {
@@ -44,7 +43,6 @@ export default function SupportView() {
     rightSidebarExpanded,
     toggleRightSidebar,
     setAllLabels,
-    onlineSupportUsers,
   } = useStore(
     useShallow((s) => ({
       user: s.user,
@@ -63,11 +61,8 @@ export default function SupportView() {
       rightSidebarExpanded: s.rightSidebarExpanded,
       toggleRightSidebar: s.toggleRightSidebar,
       setAllLabels: s.setAllLabels,
-      onlineSupportUsers: s.onlineSupportUsers as OnlineSupport[],
     }))
   );
-  const availableCount = onlineSupportUsers.filter((u) => u.status === 'online').length;
-  const totalOnline = onlineSupportUsers.length;
   const { status: businessHoursStatus } = useBusinessHours();
   const t = useT();
   useIdleStatus();
@@ -419,26 +414,7 @@ export default function SupportView() {
                   confirmBeforeSwitch
                 />
               </div>
-              <div className="px-3 py-2 border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0">
-                <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-[0.08em]">{t('support')}</span>
-                <div className="flex items-center gap-2">
-                  {totalOnline > 0 && (
-                    <span className="text-[11px] font-medium text-[var(--color-ink-muted)] tabular-nums">
-                      {availableCount} / {totalOnline}
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setPaletteOpen(true)}
-                    className="h-6 px-1.5 flex items-center rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
-                    title={t('cmd_palette_title') || 'Command Palette'}
-                    aria-label={t('cmd_palette_title') || 'Command Palette'}
-                  >
-                    <kbd className="text-[10px] font-medium">Ctrl+K</kbd>
-                  </button>
-                </div>
-              </div>
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <QueueSidebar
                   activeMembership={activeMembership}
                   activeTab={activeTab}
