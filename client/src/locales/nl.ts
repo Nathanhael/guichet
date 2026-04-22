@@ -71,6 +71,10 @@ const nl: Record<string, string> = {
     show_original: 'Toon origineel',
 
     no_tickets: 'Geen tickets gevonden.',
+    no_archived: 'Nog niets gearchiveerd',
+    no_archived_hint: 'Afgesloten gesprekken verschijnen hier zodra ze zijn afgerond.',
+    no_archived_for_filter: 'Geen gearchiveerde tickets voor dit filter',
+    no_archived_for_filter_hint: 'Probeer een andere afdeling of taal.',
 
     support_chat_closed: 'Supportchat gesloten',
     support_chat_closed_body: 'De supportchat is momenteel gesloten. Beschikbaar van maandag t/m zondag tussen 07:30 en 22:30.',

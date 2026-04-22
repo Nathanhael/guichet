@@ -76,6 +76,10 @@ const en: Record<string, string> = {
 
     // Ticket list
     no_tickets: 'No tickets found.',
+    no_archived: 'Nothing archived yet',
+    no_archived_hint: 'Closed conversations will show up here once they\u2019re wrapped up.',
+    no_archived_for_filter: 'No archived tickets match this filter',
+    no_archived_for_filter_hint: 'Try a different department or language.',
 
     // Business hours guard
     support_chat_closed: 'Support chat closed',
