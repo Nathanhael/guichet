@@ -338,7 +338,7 @@ const nl: Record<string, string> = {
     whisper_label: 'intern',
 
     my_chats: 'Mijn chats',
-    other_agents: 'Andere agenten',
+    other_agents: 'Door anderen opgepakt',
     load_older: 'Oudere berichten laden',
     is_typing: 'is aan het typen...',
     are_typing: 'zijn aan het typen...',

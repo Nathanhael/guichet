@@ -309,7 +309,7 @@ export async function transferTicket(
       SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb) || ${newParticipantJson}::jsonb
       FROM jsonb_array_elements(COALESCE(participants, '[]')::jsonb) AS elem
       WHERE elem->>'id' != ${senderId} AND elem->>'id' != ${targetSupportId}
-    )::text
+    )
   WHERE id = ${ticketId}`);
 }
 
@@ -340,7 +340,7 @@ export async function returnTicketToQueue(
         SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
         FROM jsonb_array_elements(COALESCE(participants, '[]')::jsonb) AS elem
         WHERE elem->>'id' != ${supportId}
-      )::text
+      )
     WHERE id = ${ticketId} AND support_id = ${supportId}`);
     return (res.rowCount ?? 0) > 0;
   }

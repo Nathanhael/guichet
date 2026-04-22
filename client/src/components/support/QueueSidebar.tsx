@@ -47,7 +47,12 @@ export default function QueueSidebar({
   const [archiveCursor, setArchiveCursor] = useState<string | undefined>(undefined);
   const [hasMoreArchive, setHasMoreArchive] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [otherAgentsExpanded, setOtherAgentsExpanded] = useState(false);
+  const [otherAgentsExpanded, setOtherAgentsExpanded] = useState(
+    () => localStorage.getItem('guichet:otherAgentsExpanded') === 'true',
+  );
+  useEffect(() => {
+    localStorage.setItem('guichet:otherAgentsExpanded', String(otherAgentsExpanded));
+  }, [otherAgentsExpanded]);
 
   const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
     enabled: !!user,
@@ -388,7 +393,7 @@ export default function QueueSidebar({
                         onClick={() => setOtherAgentsExpanded((v) => !v)}
                       >
                         <SectionLabel>
-                          {t('other_agents') || 'Other agents'}
+                          {t('other_agents') || 'Claimed by others'}
                         </SectionLabel>
                         <Pill tone="muted">{otherAgents.length}</Pill>
                         <span className="text-[10px] text-[var(--color-ink-muted)] ml-auto">{otherAgentsExpanded ? '▴' : '▾'}</span>
@@ -503,7 +508,7 @@ export default function QueueSidebar({
       <SidebarFooter
         sidebarTab={sidebarTab}
         onToggleMode={() => setSidebarTab(sidebarTab === 'queue' ? 'archive' : 'queue')}
-        queueCount={sidebarTab === 'queue' ? queueFiltered.length : archiveFiltered.length}
+        queueCount={sidebarTab === 'queue' ? unassigned.length : archiveFiltered.length}
         onlineSupportUsers={onlineSupportUsers}
       />
       </>

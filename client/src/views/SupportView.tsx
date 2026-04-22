@@ -188,12 +188,18 @@ export default function SupportView() {
   const showPreview = !!previewTicket && !supportOpenTickets.includes(previewTicket.id);
   const atMaxChats = openTabTickets.length >= MAX_OPEN_CHATS;
 
-  // Queue count for collapsed sidebar badge
+  // Queue count for collapsed sidebar badge. "Queue" = unclaimed work
+  // waiting for pickup; tickets already claimed by me or other agents
+  // live in their own sections and are not counted here.
   const queueCount = useMemo(() => {
     if (!activeMembership) return 0;
     const assignedDepts = activeMembership.departments || [];
+    const isGeneralist = assignedDepts.length === 0;
     return tickets.filter(
-      (tk) => tk.status !== 'closed' && assignedDepts.includes(tk.dept),
+      (tk) =>
+        tk.status !== 'closed' &&
+        !tk.supportId &&
+        (isGeneralist || assignedDepts.includes(tk.dept)),
     ).length;
   }, [tickets, activeMembership]);
 

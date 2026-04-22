@@ -520,7 +520,12 @@ export default function UserMenuChip({
               className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[13px] font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
             >
               <Keyboard className="h-4 w-4 shrink-0 text-[var(--color-ink-muted)]" />
-              {t('keyboard_shortcuts') || 'Keyboard shortcuts'}
+              <span className="flex-1 text-left">
+                {t('keyboard_shortcuts') || 'Keyboard shortcuts'}
+              </span>
+              <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-ink-muted)] select-none">
+                Ctrl+K
+              </kbd>
             </button>
           )}
           {showFeedback && (
