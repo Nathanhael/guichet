@@ -151,11 +151,26 @@ describe('ticketQueries', () => {
   });
 
   describe('returnTicketToQueue', () => {
-    it('unassigns support and sets status to open', async () => {
-      const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(undefined) };
+    it('unassigns support and sets status to open (no supportId guard)', async () => {
+      const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue({ rowCount: 1 }) };
       vi.mocked(db.update).mockReturnValue(chain as never);
-      await returnTicketToQueue('t1');
+      const ok = await returnTicketToQueue('t1');
+      expect(ok).toBe(true);
       expect(db.update).toHaveBeenCalled();
+      expect(chain.set).toHaveBeenCalledWith({ supportId: null, supportName: null, supportJoinedAt: null, status: 'open' });
+    });
+
+    it('uses atomic SQL with supportId guard when provided', async () => {
+      vi.mocked(db.execute).mockResolvedValue({ rowCount: 1 } as never);
+      const ok = await returnTicketToQueue('t1', 'support-42');
+      expect(ok).toBe(true);
+      expect(db.execute).toHaveBeenCalled();
+    });
+
+    it('returns false when race-guarded update affects zero rows', async () => {
+      vi.mocked(db.execute).mockResolvedValue({ rowCount: 0 } as never);
+      const ok = await returnTicketToQueue('t1', 'support-42');
+      expect(ok).toBe(false);
     });
   });
 
