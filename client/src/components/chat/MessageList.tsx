@@ -128,7 +128,7 @@ export default function MessageList({
         <div
           ref={scrollContainerRef}
           onScroll={onScroll}
-          className="flex-1 overflow-y-auto p-6 scrollbar-thin relative bg-[var(--color-bg-surface)]"
+          className="flex-1 overflow-y-auto p-6 custom-scrollbar relative bg-[var(--color-bg-surface)]"
         >
           <div className="space-y-1 mb-8">
             {cursorInfo?.hasMore && (

@@ -34,7 +34,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
     }
   }, [messages.length]);
 
-  const modeLabel = readOnly ? (t('history_mode') || 'History') : (t('preview_mode') || 'Preview');
+  const modeLabel = readOnly ? (t('history_mode') || 'Archived') : (t('preview_mode') || 'Preview');
 
   return (
     <div className="h-full flex flex-col p-4">

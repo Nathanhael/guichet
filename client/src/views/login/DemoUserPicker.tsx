@@ -16,7 +16,7 @@ interface DemoUserPickerProps {
 
 export default function DemoUserPicker({ onLoginSuccess }: DemoUserPickerProps) {
   const t = useT();
-  const [filter, setFilter] = useState<'all' | 'platform' | 'support' | 'admin' | 'agent'>('all');
+  const [filter, setFilter] = useState<'all' | 'platform' | 'admin' | 'support' | 'agent'>('all');
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -59,7 +59,7 @@ export default function DemoUserPicker({ onLoginSuccess }: DemoUserPickerProps) 
   return (
     <>
       <div className="flex border-b border-[var(--color-border)] px-5 pt-1 bg-[var(--color-bg-surface)] overflow-x-auto no-scrollbar">
-        {(['all', 'platform', 'support', 'admin', 'agent'] as const).map((tab) => {
+        {(['all', 'platform', 'admin', 'support', 'agent'] as const).map((tab) => {
           const active = filter === tab;
           return (
             <button

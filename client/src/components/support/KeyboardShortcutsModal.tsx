@@ -24,15 +24,13 @@ const GROUPS: Group[] = [
     titleKey: 'cmd_group_navigation',
     shortcuts: [
       { labelKey: 'cmd_focus_message', keys: ['/'] },
-      { labelKey: 'cmd_next_tab', keys: ['Ctrl', '\u2193'] },
-      { labelKey: 'cmd_prev_tab', keys: ['Ctrl', '\u2191'] },
+      { labelKey: 'cmd_next_tab', keys: ['Alt', '\u2193'] },
+      { labelKey: 'cmd_prev_tab', keys: ['Alt', '\u2191'] },
       { labelKey: 'cmd_toggle_sidebar', keys: ['Ctrl', 'B'] },
-      { labelKey: 'cmd_jump_to_tab_1', keys: ['Ctrl', '1'] },
-      { labelKey: 'cmd_jump_to_tab_2', keys: ['Ctrl', '2'] },
-      { labelKey: 'cmd_jump_to_tab_3', keys: ['Ctrl', '3'] },
-      { labelKey: 'cmd_jump_to_tab_4', keys: ['Ctrl', '4'] },
-      { labelKey: 'cmd_prev_unread', keys: ['Alt', '\u2191'] },
-      { labelKey: 'cmd_next_unread', keys: ['Alt', '\u2193'] },
+      { labelKey: 'cmd_jump_to_tab_1', keys: ['Alt', '1'] },
+      { labelKey: 'cmd_jump_to_tab_2', keys: ['Alt', '2'] },
+      { labelKey: 'cmd_jump_to_tab_3', keys: ['Alt', '3'] },
+      { labelKey: 'cmd_jump_to_tab_4', keys: ['Alt', '4'] },
       { labelKey: 'cmd_search_messages', keys: ['Ctrl', 'F'] },
     ],
   },
@@ -43,8 +41,8 @@ const GROUPS: Group[] = [
       { labelKey: 'cmd_transfer_ticket', keys: ['Alt', 'T'] },
       { labelKey: 'cmd_close_tab', keys: ['Alt', 'W'] },
       { labelKey: 'cmd_close_ticket', keys: ['Ctrl', 'Enter'] },
-      { labelKey: 'cmd_open_label_picker', keys: ['Ctrl', 'L'] },
-      { labelKey: 'cmd_open_canned', keys: ['Ctrl', 'J'] },
+      { labelKey: 'cmd_open_label_picker', keys: ['Alt', 'L'] },
+      { labelKey: 'cmd_open_canned', keys: ['Alt', 'J'] },
     ],
   },
   {
@@ -57,7 +55,7 @@ const GROUPS: Group[] = [
     titleKey: 'cmd_group_view',
     shortcuts: [
       { labelKey: 'cmd_toggle_focus', keys: ['Ctrl', 'Shift', 'F'] },
-      { labelKey: 'cmd_toggle_customer_info', keys: ['Ctrl', 'Shift', 'A'] },
+      { labelKey: 'cmd_toggle_customer_info', keys: ['Ctrl', 'Shift', 'C'] },
       { labelKey: 'cmd_exit_focus', keys: ['Esc'] },
     ],
   },
@@ -78,6 +76,10 @@ export default function KeyboardShortcutsModal({ open, onClose }: KeyboardShortc
         title={t('keyboard_shortcuts') || 'Keyboard shortcuts'}
         subtitle={t('keyboard_shortcuts_subtitle') || 'Press Ctrl+K to run any command from the palette.'}
       />
+      <div className="px-5 pb-3 text-[11px] text-[var(--color-ink-muted)] leading-relaxed">
+        {t('keyboard_shortcuts_browser_note') ||
+          'Some browser shortcuts (Ctrl+F) are replaced by app equivalents while Guichet has focus.'}
+      </div>
       <ModalBody className="pb-5 max-h-[60vh] overflow-y-auto custom-scrollbar">
         <div className="flex flex-col gap-5">
           {GROUPS.map((group) => (

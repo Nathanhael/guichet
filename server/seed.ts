@@ -162,14 +162,15 @@ const TICKETS: SeedTicket[] = [
 
 const PARTNER_USERS: SeedUser[] = [
   { id: 'admin_emma',     name: 'Emma Admin',     email: 'emma@acme.test',    lang: 'en', role: 'admin',   departments: [] },
-  { id: 'support_lucas',  name: 'Lucas Support',  email: 'lucas@acme.test',   lang: 'en', role: 'support', departments: ['DSC', 'FOT'] },
-  { id: 'support_sophie', name: 'Sophie Support', email: 'sophie@acme.test',  lang: 'en', role: 'support', departments: ['TEC'] },
-  { id: 'agent_julie',    name: 'Julie Agent',    email: 'julie@acme.test',   lang: 'en', role: 'agent',   departments: [] },
+  { id: 'support_lucas',  name: 'Lucas Support',  email: 'lucas@acme.test',   lang: 'fr', role: 'support', departments: ['DSC', 'FOT'] },
+  { id: 'support_sophie', name: 'Sophie Support', email: 'sophie@acme.test',  lang: 'nl', role: 'support', departments: ['TEC'] },
+  { id: 'support_oliver', name: 'Oliver Support', email: 'oliver@acme.test',  lang: 'en', role: 'support', departments: ['DSC', 'FOT', 'TEC'] },
+  { id: 'agent_julie',    name: 'Julie Agent',    email: 'julie@acme.test',   lang: 'fr', role: 'agent',   departments: [] },
   { id: 'agent_kevin',    name: 'Kevin Agent',    email: 'kevin@acme.test',   lang: 'en', role: 'agent',   departments: [] },
-  { id: 'agent_thomas',   name: 'Thomas Agent',   email: 'thomas@acme.test',  lang: 'en', role: 'agent',   departments: [] },
-  { id: 'agent_marc',     name: 'Marc Agent',     email: 'marc@acme.test',    lang: 'en', role: 'agent',   departments: [] },
+  { id: 'agent_thomas',   name: 'Thomas Agent',   email: 'thomas@acme.test',  lang: 'nl', role: 'agent',   departments: [] },
+  { id: 'agent_marc',     name: 'Marc Agent',     email: 'marc@acme.test',    lang: 'fr', role: 'agent',   departments: [] },
   { id: 'agent_sarah',    name: 'Sarah Agent',    email: 'sarah@acme.test',   lang: 'en', role: 'agent',   departments: [] },
-  { id: 'agent_marie',    name: 'Marie Agent',    email: 'marie@acme.test',   lang: 'en', role: 'agent',   departments: [] },
+  { id: 'agent_marie',    name: 'Marie Agent',    email: 'marie@acme.test',   lang: 'nl', role: 'agent',   departments: [] },
   // QA fixtures — intentionally kept free of pre-seeded tickets so E2E tests
   // (see testing/e2e/chat-enhancements.spec.ts) can log in as them without
   // colliding with the 1-ticket-per-agent guard or the queue-variant layout
@@ -283,19 +284,22 @@ async function seedMinimal() {
 
   // Tickets (assigned to support users) + first message per ticket
   const now = new Date().toISOString();
+  const langOf = (userId: string) =>
+    PARTNER_USERS.find((u) => u.id === userId)?.lang ?? 'en';
   for (const t of TICKETS) {
+    const agentLang = langOf(t.agentId);
     await db.insert(schema.tickets).values({
       id: t.id,
       partnerId: PARTNER_ID,
       dept: t.dept,
       agentId: t.agentId,
       agentName: t.agentName,
-      agentLang: 'en',
+      agentLang,
       references: [],
       status: t.supportId ? 'pending' : 'open',
       supportId: t.supportId,
       supportName: t.supportName,
-      supportLang: t.supportId ? 'en' : null,
+      supportLang: t.supportId ? langOf(t.supportId) : null,
       supportJoinedAt: t.supportId ? now : null,
       createdAt: now,
       updatedAt: now,
@@ -307,7 +311,7 @@ async function seedMinimal() {
       senderId: t.agentId,
       senderName: t.agentName,
       senderRole: 'agent',
-      senderLang: 'en',
+      senderLang: agentLang,
       text: t.firstMessage,
       createdAt: now,
     });
@@ -322,15 +326,16 @@ async function seedMinimal() {
   console.log('  Admin:');
   console.log('    - emma@acme.test              (admin_emma)');
   console.log('  Support:');
-  console.log('    - lucas@acme.test             (support_lucas, depts: DSC, FOT)');
-  console.log('    - sophie@acme.test            (support_sophie, depts: TEC)');
+  console.log('    - lucas@acme.test             (support_lucas,  fr, depts: DSC, FOT)');
+  console.log('    - sophie@acme.test            (support_sophie, nl, depts: TEC)');
+  console.log('    - oliver@acme.test            (support_oliver, en, depts: DSC, FOT, TEC)');
   console.log('  Agents (each has 1 open/pending ticket):');
-  console.log('    - julie@acme.test             (agent_julie,  DSC pending)');
-  console.log('    - kevin@acme.test             (agent_kevin,  FOT pending)');
-  console.log('    - thomas@acme.test            (agent_thomas, TEC pending)');
-  console.log('    - marc@acme.test              (agent_marc,   DSC queue)');
-  console.log('    - sarah@acme.test             (agent_sarah,  FOT queue)');
-  console.log('    - marie@acme.test             (agent_marie,  TEC queue)');
+  console.log('    - julie@acme.test             (agent_julie,  fr, DSC pending)');
+  console.log('    - kevin@acme.test             (agent_kevin,  en, FOT pending)');
+  console.log('    - thomas@acme.test            (agent_thomas, nl, TEC pending)');
+  console.log('    - marc@acme.test              (agent_marc,   fr, DSC queue)');
+  console.log('    - sarah@acme.test             (agent_sarah,  en, FOT queue)');
+  console.log('    - marie@acme.test             (agent_marie,  nl, TEC queue)');
   console.log('  QA fixtures (no tickets — reserved for E2E):');
   console.log('    - support_qa@acme.test        (support_qa, depts: DSC, FOT, TEC)');
   console.log('    - agent_qa@acme.test          (agent_qa,  no tickets)');

@@ -15,17 +15,23 @@ export default function SplitChatLayout({ tabs, activeTab, viewMode, onSelectTab
 
   const isActive = (id: string) => id === activeTab;
 
+  // Each chat becomes a mini-card with shadow + radius; gap-3 between cards
+  // provides the visual channel. Active chat gets a 2px accent ring that
+  // reads on all sides (replaces the old left-only border stripe).
+  const cardClass = (active: boolean) =>
+    `overflow-hidden flex flex-col min-w-0 transition-all duration-150 rounded-[var(--radius-card)] shadow-[var(--shadow-card)] ${
+      active ? 'ring-2 ring-[var(--color-accent)]' : ''
+    }`;
+
   if (viewMode === 'split-stack') {
     return (
-      <div className="flex h-full overflow-hidden">
-        {tabs.map((ticket, i) => (
+      <div className="flex h-full overflow-hidden gap-3 p-3">
+        {tabs.map((ticket) => (
           <div
             key={ticket.id}
             onClick={() => onSelectTab(ticket.id)}
             style={{ flex: isActive(ticket.id) ? 2 : 1 }}
-            className={`overflow-hidden flex flex-col min-w-0 transition-[flex] duration-150 ${
-              i < tabs.length - 1 ? 'border-r border-[var(--color-border)]' : ''
-            } ${isActive(ticket.id) ? 'border-l-[3px] border-l-[var(--color-accent)]' : ''}`}
+            className={cardClass(isActive(ticket.id))}
           >
             <ChatWindow ticket={ticket} compact={!isActive(ticket.id)} onClose={() => onCloseTab(ticket.id)} />
           </div>
@@ -38,18 +44,14 @@ export default function SplitChatLayout({ tabs, activeTab, viewMode, onSelectTab
   const bottomRow = tabs.slice(2, 4);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <div className={`flex ${bottomRow.length > 0 ? 'flex-1' : 'flex-1'} overflow-hidden min-h-0 ${
-        bottomRow.length > 0 ? 'border-b border-[var(--color-border)]' : ''
-      }`}>
-        {topRow.map((ticket, ci) => (
+    <div className="flex flex-col h-full overflow-hidden gap-3 p-3">
+      <div className="flex flex-1 overflow-hidden min-h-0 gap-3">
+        {topRow.map((ticket) => (
           <div
             key={ticket.id}
             onClick={() => onSelectTab(ticket.id)}
             style={{ flex: isActive(ticket.id) ? 2 : 1 }}
-            className={`overflow-hidden flex flex-col min-w-0 transition-[flex] duration-150 ${
-              ci === 0 && topRow.length > 1 ? 'border-r border-[var(--color-border)]' : ''
-            } ${isActive(ticket.id) ? 'border-l-[3px] border-l-[var(--color-accent)]' : ''}`}
+            className={cardClass(isActive(ticket.id))}
           >
             <ChatWindow ticket={ticket} compact={!isActive(ticket.id)} onClose={() => onCloseTab(ticket.id)} />
           </div>
@@ -57,15 +59,13 @@ export default function SplitChatLayout({ tabs, activeTab, viewMode, onSelectTab
       </div>
 
       {bottomRow.length > 0 && (
-        <div className="flex flex-1 overflow-hidden min-h-0">
-          {bottomRow.map((ticket, ci) => (
+        <div className="flex flex-1 overflow-hidden min-h-0 gap-3">
+          {bottomRow.map((ticket) => (
             <div
               key={ticket.id}
               onClick={() => onSelectTab(ticket.id)}
               style={{ flex: isActive(ticket.id) ? 2 : 1 }}
-              className={`overflow-hidden flex flex-col min-w-0 transition-[flex] duration-150 ${
-                ci === 0 && bottomRow.length > 1 ? 'border-r border-[var(--color-border)]' : ''
-              } ${isActive(ticket.id) ? 'border-l-[3px] border-l-[var(--color-accent)]' : ''}`}
+              className={cardClass(isActive(ticket.id))}
             >
               <ChatWindow ticket={ticket} compact={!isActive(ticket.id)} onClose={() => onCloseTab(ticket.id)} />
             </div>

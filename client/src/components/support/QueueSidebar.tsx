@@ -329,7 +329,8 @@ export default function QueueSidebar({
             ? (
               queueFiltered.length === 0 ? (
                 <li className="p-8 text-center">
-                  <p className="text-[12px] text-[var(--color-ink-muted)]">{t('queue_empty') || 'Queue empty'}</p>
+                  <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">{t('queue_empty') || 'All caught up'}</p>
+                  <p className="mt-1 text-[11px] text-[var(--color-ink-muted)]">{t('queue_empty_hint') || 'Nothing waiting right now.'}</p>
                 </li>
               ) : (
                 <>

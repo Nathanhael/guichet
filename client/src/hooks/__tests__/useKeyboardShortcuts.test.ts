@@ -20,8 +20,6 @@ describe('useKeyboardShortcuts', () => {
     onOpenCannedPicker: vi.fn(),
     onToggleAiCopilot: vi.fn(),
     onOpenStatusPicker: vi.fn(),
-    onPrevUnread: vi.fn(),
-    onNextUnread: vi.fn(),
     onToggleFocus: vi.fn(),
   };
 
@@ -45,15 +43,15 @@ describe('useKeyboardShortcuts', () => {
     expect(handlers.onOpenPalette).toHaveBeenCalledOnce();
   });
 
-  it('Ctrl+ArrowDown fires onNextTab', () => {
+  it('Alt+ArrowDown fires onNextTab', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('ArrowDown', { ctrlKey: true });
+    fire('ArrowDown', { altKey: true });
     expect(handlers.onNextTab).toHaveBeenCalledOnce();
   });
 
-  it('Ctrl+ArrowUp fires onPrevTab', () => {
+  it('Alt+ArrowUp fires onPrevTab', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('ArrowUp', { ctrlKey: true });
+    fire('ArrowUp', { altKey: true });
     expect(handlers.onPrevTab).toHaveBeenCalledOnce();
   });
 
@@ -114,7 +112,7 @@ describe('useKeyboardShortcuts', () => {
   it('nothing fires when enabled is false', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: false, ...handlers }));
     fire('k', { ctrlKey: true });
-    fire('ArrowDown', { ctrlKey: true });
+    fire('ArrowDown', { altKey: true });
     fire('b', { ctrlKey: true });
     fireOnElement(document.body, '/');
     expect(handlers.onOpenPalette).not.toHaveBeenCalled();
@@ -202,21 +200,33 @@ describe('useKeyboardShortcuts', () => {
 
   // ── Tier-2 ───────────────────────────────────────────────────────────────
 
-  it('Ctrl+1 fires onJumpToTab with 1', () => {
+  it('Alt+1 fires onJumpToTab with 1 (QWERTY)', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('1', { ctrlKey: true });
+    fire('1', { altKey: true, code: 'Digit1' });
     expect(handlers.onJumpToTab).toHaveBeenCalledWith(1);
   });
 
-  it('Ctrl+9 fires onJumpToTab with 9', () => {
+  it('Alt+& fires onJumpToTab with 1 (AZERTY — physical Digit1 without Shift)', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('9', { ctrlKey: true });
+    fire('&', { altKey: true, code: 'Digit1' });
+    expect(handlers.onJumpToTab).toHaveBeenCalledWith(1);
+  });
+
+  it('Alt+9 fires onJumpToTab with 9', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('9', { altKey: true, code: 'Digit9' });
     expect(handlers.onJumpToTab).toHaveBeenCalledWith(9);
   });
 
-  it('Ctrl+0 does NOT fire onJumpToTab (outside 1..9 range)', () => {
+  it('Alt+0 does NOT fire onJumpToTab (outside 1..9 range)', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('0', { ctrlKey: true });
+    fire('0', { altKey: true, code: 'Digit0' });
+    expect(handlers.onJumpToTab).not.toHaveBeenCalled();
+  });
+
+  it('Ctrl+1 does NOT fire onJumpToTab (left free for browser tab switch)', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('1', { ctrlKey: true, code: 'Digit1' });
     expect(handlers.onJumpToTab).not.toHaveBeenCalled();
   });
 
@@ -226,39 +236,45 @@ describe('useKeyboardShortcuts', () => {
     expect(handlers.onOpenSearch).toHaveBeenCalledOnce();
   });
 
-  it('Ctrl+L fires onOpenLabelPicker', () => {
-    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('l', { ctrlKey: true });
-    expect(handlers.onOpenLabelPicker).toHaveBeenCalledOnce();
-  });
-
-  it('Alt+L also fires onOpenLabelPicker (browser/AZERTY-safe fallback)', () => {
+  it('Alt+L fires onOpenLabelPicker', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
     fire('l', { altKey: true });
     expect(handlers.onOpenLabelPicker).toHaveBeenCalledOnce();
   });
 
-  it('Ctrl+J fires onOpenCannedPicker', () => {
+  it('Ctrl+L does NOT fire onOpenLabelPicker (left free for browser address bar)', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('j', { ctrlKey: true });
-    expect(handlers.onOpenCannedPicker).toHaveBeenCalledOnce();
+    fire('l', { ctrlKey: true });
+    expect(handlers.onOpenLabelPicker).not.toHaveBeenCalled();
   });
 
-  it('Alt+J also fires onOpenCannedPicker', () => {
+  it('Alt+J fires onOpenCannedPicker', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
     fire('j', { altKey: true });
     expect(handlers.onOpenCannedPicker).toHaveBeenCalledOnce();
   });
 
-  it('Ctrl+Shift+A fires onToggleAiCopilot', () => {
+  it('Ctrl+J does NOT fire onOpenCannedPicker (left free for browser downloads)', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('a', { ctrlKey: true, shiftKey: true });
+    fire('j', { ctrlKey: true });
+    expect(handlers.onOpenCannedPicker).not.toHaveBeenCalled();
+  });
+
+  it('Ctrl+Shift+C fires onToggleAiCopilot', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('c', { ctrlKey: true, shiftKey: true });
     expect(handlers.onToggleAiCopilot).toHaveBeenCalledOnce();
   });
 
-  it('Ctrl+A without Shift does NOT fire onToggleAiCopilot (preserve select-all)', () => {
+  it('Ctrl+C without Shift does NOT fire onToggleAiCopilot (preserve copy)', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('a', { ctrlKey: true });
+    fire('c', { ctrlKey: true });
+    expect(handlers.onToggleAiCopilot).not.toHaveBeenCalled();
+  });
+
+  it('Ctrl+Shift+A does NOT fire onToggleAiCopilot (freed for Chrome tab search)', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('a', { ctrlKey: true, shiftKey: true });
     expect(handlers.onToggleAiCopilot).not.toHaveBeenCalled();
   });
 
@@ -269,18 +285,6 @@ describe('useKeyboardShortcuts', () => {
   });
 
   // ── Tier-3 ───────────────────────────────────────────────────────────────
-
-  it('Alt+ArrowUp fires onPrevUnread', () => {
-    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('ArrowUp', { altKey: true });
-    expect(handlers.onPrevUnread).toHaveBeenCalledOnce();
-  });
-
-  it('Alt+ArrowDown fires onNextUnread', () => {
-    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
-    fire('ArrowDown', { altKey: true });
-    expect(handlers.onNextUnread).toHaveBeenCalledOnce();
-  });
 
   it('Ctrl+Shift+F fires onToggleFocus', () => {
     renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));

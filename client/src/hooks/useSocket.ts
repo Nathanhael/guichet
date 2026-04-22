@@ -165,14 +165,16 @@ export function useSocket(): Socket {
       addMessage(message.ticketId, message);
       const state = useStore.getState();
       if (message.senderId !== state.user?.id) {
-        state.markUnread(message.ticketId);
-        if (state.notificationsEnabled) {
+        if (!message.system) {
+          state.markUnread(message.ticketId);
+        }
+        if (state.notificationsEnabled && !message.system) {
           notify(message.senderName || 'New message', {
             body: message.text || message.originalText || '',
             tag: `msg-${message.ticketId}`,
           });
         }
-        if (!document.hasFocus() && !message.system) {
+        if (!document.hasFocus() && !message.system && state.soundEnabled) {
           playNotificationSound();
         }
         updateTitleBadge();

@@ -12,7 +12,7 @@ describe('unreadTickets uses Record instead of Set (#40)', () => {
     expect(ticketSliceSource).not.toMatch(/new Set/);
   });
 
-  it('uses Record<string, boolean> for unreadTickets', () => {
-    expect(ticketSliceSource).toMatch(/Record<string,\s*boolean>/);
+  it('uses Record<string, number> for unreadTickets', () => {
+    expect(ticketSliceSource).toMatch(/Record<string,\s*number>/);
   });
 });

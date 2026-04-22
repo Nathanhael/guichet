@@ -16,6 +16,7 @@ export interface UISlice {
   darkMode: boolean;
   selectedLang: string | null;
   notificationsEnabled: boolean;
+  soundEnabled: boolean;
   connectionStatus: 'connected' | 'disconnected' | 'reconnecting';
   agentStatus: string;
   setAgentStatus: (status: string) => void;
@@ -27,6 +28,7 @@ export interface UISlice {
   toggleBionicReading: () => void;
   toggleMonochromeMode: () => void;
   toggleFocusMode: () => void;
+  toggleSoundEnabled: () => void;
   updateZenSettings: (updates: Partial<ZenSettings>) => void;
   setSelectedLang: (lang: string) => void;
   setNotificationsEnabled: (enabled: boolean) => void;
@@ -49,6 +51,7 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
   darkMode: localStorage.getItem('darkMode') === 'true',
   selectedLang: localStorage.getItem('selectedLang') || null,
   notificationsEnabled: localStorage.getItem('notificationsEnabled') === 'true',
+  soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
   connectionStatus: 'disconnected',
   agentStatus: 'online',
   rightSidebarExpanded: localStorage.getItem('rightSidebarExpanded') === 'true',
@@ -101,6 +104,13 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
       localStorage.setItem('viewMode', newFocus ? 'focus' : 'normal');
       trpcVanilla.user.updateAccessibilityPrefs.mutate({ focusMode: newFocus }).catch((err: unknown) => { console.error('[uiSlice] Failed to persist focusMode:', err); });
       return { focusMode: newFocus, viewMode: newFocus ? 'focus' : 'normal', prefsModifiedLocally: true };
+    }),
+
+  toggleSoundEnabled: () =>
+    set((state) => {
+      const next = !state.soundEnabled;
+      localStorage.setItem('soundEnabled', String(next));
+      return { soundEnabled: next };
     }),
 
   setViewMode: (mode) => {

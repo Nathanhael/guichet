@@ -19,7 +19,7 @@ vi.mock('../../../i18n', () => ({
 function makeCommands(): Command[] {
   return [
     { id: 'focus', labelKey: 'cmd_focus_message', groupKey: 'cmd_group_navigation', shortcutHint: '/', execute: vi.fn() as unknown as () => void, keywords: ['type'] },
-    { id: 'next', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2193', execute: vi.fn() as unknown as () => void },
+    { id: 'next', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2193', execute: vi.fn() as unknown as () => void },
     { id: 'whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', execute: vi.fn() as unknown as () => void },
     { id: 'disabled-cmd', labelKey: 'cmd_disabled', groupKey: 'cmd_group_actions', execute: vi.fn() as unknown as () => void, enabled: false },
   ];
@@ -56,7 +56,7 @@ describe('CommandPalette', () => {
   it('renders shortcut hints', () => {
     render(<CommandPalette commands={commands} onClose={onClose} />);
     expect(screen.getByText('/')).toBeInTheDocument();
-    expect(screen.getByText('Ctrl+\u2193')).toBeInTheDocument();
+    expect(screen.getByText('Alt+\u2193')).toBeInTheDocument();
   });
 
   it('filters commands by search query', () => {

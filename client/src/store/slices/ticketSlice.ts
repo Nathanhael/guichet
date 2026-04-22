@@ -5,7 +5,7 @@ export interface TicketSlice {
   tickets: Ticket[];
   archivedTickets: Ticket[];
   activeTicketId: string | null;
-  unreadTickets: Record<string, boolean>;
+  unreadTickets: Record<string, number>;
   participantsOnline: Record<string, boolean>;
   supportOpenTickets: string[];
   queuePosition: { position: number; etaMins: number } | null;
@@ -80,7 +80,10 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   setActiveTicketId: (id) => set({ activeTicketId: id }),
   markUnread: (ticketId) =>
     set((state) => ({
-      unreadTickets: { ...state.unreadTickets, [ticketId]: true },
+      unreadTickets: {
+        ...state.unreadTickets,
+        [ticketId]: (state.unreadTickets[ticketId] || 0) + 1,
+      },
     })),
   clearUnread: (ticketId) =>
     set((state) => {

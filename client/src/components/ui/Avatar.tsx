@@ -65,6 +65,7 @@ export default function Avatar({
   style,
   ...rest
 }: AvatarProps) {
+  const usesHashedBg = !color && !src;
   const bg = color ?? hashColor(name);
   const radius = shape === 'round' ? 999 : 8;
   const font = Math.max(10, Math.round(size * 0.4));
@@ -73,7 +74,7 @@ export default function Avatar({
   return (
     <div
       aria-label={alt ?? name}
-      className={`relative inline-flex items-center justify-center overflow-visible text-white font-semibold shrink-0 select-none ${className}`.trim()}
+      className={`relative inline-flex items-center justify-center overflow-visible text-white font-semibold shrink-0 select-none ${usesHashedBg ? 'avatar-swatch' : ''} ${className}`.trim()}
       style={{
         width: size,
         height: size,
