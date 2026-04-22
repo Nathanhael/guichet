@@ -94,6 +94,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
                   ticketId={ticket.id}
                   isGroupStart={!isSameSenderAsPrev || timeDiffPrev > 120000}
                   isGroupEnd={!isSameSenderAsNext || timeDiffNext > 120000}
+                  suppressActions
                 />
               );
             })

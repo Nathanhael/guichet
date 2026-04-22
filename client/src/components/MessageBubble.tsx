@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useStoreShallow } from '../store/useStore';
 import Avatar from './ui/Avatar';
 import GuestBadge from './GuestBadge';
@@ -60,6 +60,31 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   const hasContent = message.text || message.originalText || message.mediaUrl || (message.attachments && message.attachments.length > 0);
   const isDeleted = !!message.deletedAt || !hasContent;
   const isEdited = !!message.editedAt;
+
+  // Hover intent: keep the floating action bar visible through the 4px
+  // gap between bubble-top and pill-bottom (the `mb-1` spacer). Without
+  // a grace window, mouseleave fires the moment the cursor crosses the
+  // gap and the bar vanishes mid-reach. 220ms is long enough to bridge
+  // the gap at normal pointer speed but short enough not to feel sticky.
+  const hideTimeoutRef = useRef<number | null>(null);
+  const clearHideTimer = () => {
+    if (hideTimeoutRef.current != null) {
+      window.clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  };
+  const scheduleHide = useCallback(() => {
+    clearHideTimer();
+    hideTimeoutRef.current = window.setTimeout(() => {
+      setShowActions(false);
+      hideTimeoutRef.current = null;
+    }, 220);
+  }, []);
+  const cancelHideAndShow = useCallback(() => {
+    clearHideTimer();
+    if (!isDeleted && !suppressActions) setShowActions(true);
+  }, [isDeleted, suppressActions]);
+  useEffect(() => () => clearHideTimer(), []);
 
   if (message.system) {
     // Resolve i18n: prefixed keys to localized text at render time
@@ -147,8 +172,8 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
       className={`group flex w-full ${isGroupEnd ? 'mb-3' : 'mb-0.5'} px-4 flex-row rounded-[var(--radius-btn)] ${
         isCurrentSearchMatch ? 'bg-[var(--color-accent-soft)]' : isSearchMatch ? 'bg-[var(--color-bg-elevated)]' : ''
       }`}
-      onMouseEnter={() => !isDeleted && !suppressActions && setShowActions(true)}
-      onMouseLeave={() => { setShowActions(false); }}
+      onMouseEnter={cancelHideAndShow}
+      onMouseLeave={scheduleHide}
     >
       <div className="flex flex-col justify-end w-7 shrink-0 mr-3">
         {isGroupStart && !isWhisper && (
@@ -305,7 +330,8 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
         {showActions && !editing && (
           <div
             className="absolute bottom-full mb-1 left-0 z-10 flex items-center flex-nowrap whitespace-nowrap w-max bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] border border-[var(--color-border)] px-1.5 py-1 gap-0.5 animate-[v2p-pop_180ms_ease-out]"
-            onMouseEnter={() => setShowActions(true)}
+            onMouseEnter={cancelHideAndShow}
+            onMouseLeave={scheduleHide}
           >
             {REACTION_EMOJIS.map((emoji) => (
               <button
