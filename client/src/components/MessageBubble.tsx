@@ -304,7 +304,7 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
             bubble's right and grow leftward. */}
         {showActions && !editing && (
           <div
-            className={`absolute bottom-full mb-1 ${isMine ? 'right-0' : 'left-0'} z-10 flex items-center bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] border border-[var(--color-border)] px-1 py-0.5 animate-[v2p-pop_180ms_ease-out]`}
+            className={`absolute bottom-full mb-1 ${isMine ? 'right-0' : 'left-0'} z-10 flex items-center flex-nowrap whitespace-nowrap w-max bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] border border-[var(--color-border)] px-1.5 py-1 gap-0.5 animate-[v2p-pop_180ms_ease-out]`}
             onMouseEnter={() => setShowActions(true)}
           >
             {REACTION_EMOJIS.map((emoji) => (
@@ -314,22 +314,22 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                 disabled={isDeleted}
                 title={`React with ${emoji}`}
                 aria-label={`React with ${emoji}`}
-                className="w-6 h-6 flex items-center justify-center rounded-full text-[13px] hover:bg-[var(--color-hover)]"
+                className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-[16px] leading-none hover:bg-[var(--color-hover)] transition-transform hover:scale-110"
               >
                 {emoji}
               </button>
             ))}
             {(onReply || canEdit || canDelete) && (
               <>
-                <span className="mx-0.5 h-4 w-px bg-[var(--color-border)]" aria-hidden="true" />
+                <span className="mx-1 h-5 w-px bg-[var(--color-border)] shrink-0" aria-hidden="true" />
                 {onReply && !isDeleted && (
                   <button
                     onClick={() => onReply(message)}
                     title={t('reply') || 'Reply'}
                     aria-label={t('reply') || 'Reply'}
-                    className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
+                    className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
                   >
-                    <CornerUpLeft size={14} />
+                    <CornerUpLeft size={15} />
                   </button>
                 )}
                 {canEdit && (
@@ -337,9 +337,9 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                     onClick={startEdit}
                     title={t('edit') || 'Edit'}
                     aria-label={t('edit') || 'Edit'}
-                    className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
+                    className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
                   >
-                    <Pencil size={13} />
+                    <Pencil size={14} />
                   </button>
                 )}
                 {canDelete && (
@@ -347,9 +347,9 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
                     onClick={() => { setConfirmDelete(true); setShowActions(false); }}
                     title={t('delete') || 'Delete'}
                     aria-label={t('delete') || 'Delete'}
-                    className="w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-urgent)] hover:bg-[var(--color-urgent-soft)]"
+                    className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-urgent)] hover:bg-[var(--color-urgent-soft)]"
                   >
-                    <Trash2 size={13} />
+                    <Trash2 size={14} />
                   </button>
                 )}
               </>
