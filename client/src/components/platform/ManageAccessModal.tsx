@@ -22,7 +22,10 @@ export default function ManageAccessModal({ user, onClose }: ManageAccessModalPr
   const [localUser, setLocalUser] = useState<GlobalUser | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ title: string; message: string; confirmLabel?: string; onConfirm: () => void } | null>(null);
 
+  // Hydrate local copy when the modal opens onto a user (prop→state sync).
+  // Kept as local state so refreshUser() can mutate it after access changes.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user) setLocalUser(user);
   }, [user]);
 

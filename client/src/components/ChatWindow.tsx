@@ -180,6 +180,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     setSearchQuery('');
   }, [ticketId]);
 
+  const lastMessageId = ticketMessages[ticketMessages.length - 1]?.id;
   useEffect(() => {
     if (!ticketId) return;
     // Read fresh state from store to avoid stale closure over ticketMessages/user
@@ -224,7 +225,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         return count - newMessages;
       });
     }
-  }, [ticketMessages.length, ticketMessages[ticketMessages.length - 1]?.id, ticketId, user?.id]);
+  }, [ticketMessages.length, lastMessageId, ticketId, user?.id]);
 
   useEffect(() => {
     if (ticket?.status === 'closed') {

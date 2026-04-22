@@ -61,6 +61,7 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const showError = useCallback((message: string) => setToast({ message, type: 'error' }), []);
 
+  // Hydrate the form when the modal opens onto a partner (prop→state sync).
   useEffect(() => {
     if (partner) {
       const raw = (partner.aiFeatures ?? {}) as AiFeatures;
@@ -69,6 +70,7 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
       else if (raw.messageImprovement === 'forced') improvement = 'forced';
       else if (typeof raw.messageImprovement === 'string') improvement = raw.messageImprovement as ImprovementMode;
 
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         name: partner.name,
         aiEnabled: partner.aiEnabled ?? false,

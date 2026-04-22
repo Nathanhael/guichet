@@ -95,7 +95,11 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
     ? msgDate.toLocaleTimeString(timeLocale, { hour: '2-digit', minute: '2-digit' })
     : '—';
 
-  // Check if message is within edit window (15 min)
+  // Check if message is within edit window (15 min). Date.now() in render is
+  // flagged impure; acceptable here — UI gating by wall-clock age, and the
+  // worst case is showing Edit ~1s past the boundary until the next render.
+  // Server enforces the window on submit.
+  // eslint-disable-next-line react-hooks/purity
   const ageMs = msgDate ? Date.now() - msgDate.getTime() : Infinity;
   const canEdit = isMine && !message.system && !isDeleted && !message.mediaUrl && ageMs < 15 * 60 * 1000;
   const canDelete = (isMine || user?.role === 'admin' || user?.role === 'support' || user?.isPlatformOperator) && !message.system && !isDeleted;

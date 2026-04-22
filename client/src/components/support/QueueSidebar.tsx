@@ -56,7 +56,10 @@ export default function QueueSidebar({
   const translationEnabled = aiConfigQuery.data?.translation === true;
 
   const departments = (activeMembership.manifest?.departments || []) as { id: string; name: string }[];
-  const assignedDepartmentIds = activeMembership.departments || [];
+  const assignedDepartmentIds = useMemo(
+    () => activeMembership.departments || [],
+    [activeMembership.departments],
+  );
   const isGeneralist = assignedDepartmentIds.length === 0;
   const visibleDepartments = isGeneralist
     ? departments
@@ -105,11 +108,14 @@ export default function QueueSidebar({
     setHasMoreArchive(false);
   }
 
+  // Cursor-paginated accumulator for the archive tab — merges each page into
+  // local state. Can't be derived since pages must accumulate across renders.
   useEffect(() => {
     if (sidebarTab !== 'archive') return;
     if (!archiveQuery.data) return;
     const data = archiveQuery.data as { tickets?: Ticket[]; nextCursor?: string };
     if (data.tickets) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setArchivedTickets((prev) =>
         archiveCursor ? [...prev, ...data.tickets!] : data.tickets!
       );
@@ -146,11 +152,15 @@ export default function QueueSidebar({
   );
 
   const didAutoDefaultLang = useRef(false);
+  // Once (after AI config resolves), if translation is off and we have tickets
+  // in the viewer's language, auto-default the language filter to theirs.
+  // Guarded by a ref so this fires exactly once per mount.
   useEffect(() => {
     if (didAutoDefaultLang.current) return;
     if (aiConfigQuery.isLoading) return;
     if (queueLangCounts.size < 2) return;
     if (!translationEnabled && queueLangCounts.has(viewerLang)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilterLang(viewerLang);
     }
     didAutoDefaultLang.current = true;

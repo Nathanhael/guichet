@@ -139,8 +139,12 @@ export default function UserMenuChip({
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
+  // Fixed-position popover: clears cached position on close and recomputes
+  // from the trigger rect on open. setState is how we communicate layout
+  // back to React; unavoidable for portal-positioned overlays.
   useLayoutEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMenuPos(null);
       return;
     }

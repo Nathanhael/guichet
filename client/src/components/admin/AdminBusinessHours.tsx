@@ -115,8 +115,12 @@ export default function AdminBusinessHours() {
     },
   });
 
+  // Sync local form state from the server schedule when it arrives (and only
+  // if the user hasn't already dirtied the form). Prop→state sync is load-bearing:
+  // the user edits in place and submits the whole schedule at once.
   useEffect(() => {
     if (!isDirty && fetchedSchedule) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSchedule({
         ...cloneSchedule(fetchedSchedule),
         exceptions: sortBusinessHoursExceptions(fetchedSchedule.exceptions),

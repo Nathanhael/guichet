@@ -53,6 +53,9 @@ export default function LoginView() {
     }
   }, [setUser, setMemberships, setActiveMembershipId]);
 
+  // Mount-time: harvest SSO error / callback params from the URL and sync to
+  // local state. External→React state sync; must happen after mount because
+  // window.location is a browser-only API.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
 
@@ -67,6 +70,7 @@ export default function LoginView() {
         'guest_multi_partner_mapping': t('sso_guest_multi_partner_message'),
         'invite_expired': t('sso_invite_expired_message'),
       };
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError(ssoErrorMessages[ssoError] || t('login_failed'));
       window.history.replaceState({}, document.title, window.location.pathname);
     }
