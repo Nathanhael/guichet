@@ -131,32 +131,52 @@ export default function SupportView() {
     if (labelsQuery.data) setAllLabels(labelsQuery.data);
   }, [labelsQuery.data, setAllLabels]);
 
-  // Silent rejoin — after a crash/refresh, restored tabs need to rejoin
-  // their socket rooms without inserting "joined" whispers. Runs once when
-  // tickets load and we have restored tabs from localStorage.
-  const hasRejoinedRef = useRef(false);
+  // Tab restore + silent rejoin — runs once per session after tickets load.
+  // Merges two sources of truth:
+  //   1. localStorage tabs (fast same-browser restore)
+  //   2. Server-owned tickets where supportId === me and status !== closed
+  //      (handles crash / logout / new-device where localStorage is empty)
+  // Emits support:rejoin to reattach to ticket rooms silently (no "joined"
+  // whispers). Rejects are pruned from the tab list via support:rejoin:denied.
+  // Caps total tabs at MAX_OPEN_CHATS — overflow stays visible under OTHER
+  // AGENTS in the queue until the user closes a tab to pick them up.
+  const hasRestoredRef = useRef(false);
   useEffect(() => {
-    if (hasRejoinedRef.current) return;
-    if (supportOpenTickets.length === 0 || !ticketsQuery.isSuccess) return;
-    hasRejoinedRef.current = true;
+    if (hasRestoredRef.current) return;
+    if (!ticketsQuery.isSuccess || !user?.id) return;
+    hasRestoredRef.current = true;
     const socket = getSocket();
     if (!socket) return;
-    // Listen for denied rejoins — remove stale tabs where we're no longer a participant
+
     const onDenied = ({ ticketId }: { ticketId: string }) => {
       removeSupportOpenTicket(ticketId);
     };
     socket.on('support:rejoin:denied', onDenied);
-    // Validate restored tabs against actual ticket list — remove stale ones
+
     const validTicketIds = new Set(tickets.map((tk) => tk.id));
+    const rejoined = new Set<string>();
+
     for (const ticketId of supportOpenTickets) {
       if (validTicketIds.has(ticketId)) {
         socket.emit('support:rejoin', { ticketId });
+        rejoined.add(ticketId);
       } else {
         removeSupportOpenTicket(ticketId);
       }
     }
+
+    const owned = tickets
+      .filter((tk) => tk.supportId === user.id && tk.status !== 'closed' && !rejoined.has(tk.id))
+      .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+    const available = Math.max(0, MAX_OPEN_CHATS - rejoined.size);
+
+    for (const tk of owned.slice(0, available)) {
+      addSupportOpenTicket(tk.id);
+      socket.emit('support:rejoin', { ticketId: tk.id });
+    }
+
     return () => { socket.off('support:rejoin:denied', onDenied); };
-  }, [supportOpenTickets, tickets, ticketsQuery.isSuccess, removeSupportOpenTicket]);
+  }, [ticketsQuery.isSuccess, user?.id, tickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket]);
 
   // Derived state
   const openTabTickets = useMemo(

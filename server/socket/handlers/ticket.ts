@@ -272,7 +272,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           await broadcastQueuePositions(callerPartnerId);
         } else {
           // Return to queue — same department, unassign support
-          await returnTicketToQueue(ticketId);
+          await returnTicketToQueue(ticketId, ticket.supportId ?? undefined);
           auditTicketReturnedToQueue({
             ticketId,
             partnerId: callerPartnerId,
