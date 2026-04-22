@@ -18,6 +18,14 @@ const BionicText: React.FC<BionicTextProps> = ({ text, className = '' }) => {
     return words.map((word, idx) => {
       if (word.trim().length === 0) return word;
 
+      // Skip bionic on words containing astral-plane chars (emoji + other
+      // surrogate pairs). `.length` / `.slice()` count UTF-16 code units,
+      // so slicing mid-pair produces lone surrogates that render as the
+      // replacement glyph (�). Plain BMP punctuation ("/65465") is fine.
+      if (/[\uD800-\uDBFF]/.test(word)) {
+        return <React.Fragment key={idx}>{word}</React.Fragment>;
+      }
+
       // Density calculation based on language (2026 Neuro-inclusive standard)
       let fixationLength: number;
       

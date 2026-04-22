@@ -11,10 +11,13 @@ export function requestNotificationPermission(): void {
 
 /**
  * Update browser tab title with unread count badge.
- * Reads unreadTickets from the store.
+ * Reads unreadTickets from the store (values are per-ticket message counts).
  */
 export function updateTitleBadge(): void {
-    const count = Object.keys(useStore.getState().unreadTickets).length;
+    const count = Object.values(useStore.getState().unreadTickets).reduce(
+        (sum, n) => sum + (n || 0),
+        0,
+    );
     document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE;
 }
 

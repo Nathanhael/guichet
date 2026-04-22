@@ -19,8 +19,6 @@ interface UseKeyboardShortcutsOptions {
   onOpenCannedPicker: () => void;
   onToggleAiCopilot: () => void;
   onOpenStatusPicker: () => void;
-  onPrevUnread: () => void;
-  onNextUnread: () => void;
   onToggleFocus: () => void;
 }
 
@@ -30,8 +28,8 @@ interface UseKeyboardShortcutsOptions {
  * Tier-1 (AZERTY-safe):
  *  - Ctrl+K         → open command palette
  *  - ?              → open command palette (help)
- *  - Ctrl+ArrowDown → next chat tab
- *  - Ctrl+ArrowUp   → previous chat tab
+ *  - Alt+ArrowDown  → next chat tab (+ focus compose)
+ *  - Alt+ArrowUp    → previous chat tab (+ focus compose)
  *  - Ctrl+B         → toggle queue sidebar
  *  - Ctrl+Enter     → close current ticket
  *  - Alt+T          → transfer ticket
@@ -41,16 +39,12 @@ interface UseKeyboardShortcutsOptions {
  *  - bare /         → focus message textarea
  *
  * Tier-2:
- *  - Ctrl+1..9      → jump to chat tab N (steals browser tab switch)
+ *  - Alt+1..9       → jump to chat tab N (Ctrl+1..9 reserved for browser tab switch)
  *  - Ctrl+F         → open message search (steals browser Find)
- *  - Ctrl+L / Alt+L → open label picker
- *  - Ctrl+J / Alt+J → open canned response picker
- *  - Ctrl+Shift+A   → toggle AI copilot sidebar
+ *  - Alt+L          → open label picker (Ctrl+L reserved for browser address bar)
+ *  - Alt+J          → open canned response picker (Ctrl+J reserved for browser downloads)
+ *  - Ctrl+Shift+C   → toggle AI copilot sidebar (was Ctrl+Shift+A; freed Chrome tab search)
  *  - Ctrl+.         → open status picker
- *
- * Tier-3:
- *  - Alt+ArrowUp    → jump to previous unread ticket in openTabs
- *  - Alt+ArrowDown  → jump to next unread ticket in openTabs
  *  - Ctrl+Shift+F   → toggle focus mode (enter AND exit; Esc only exits)
  */
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
@@ -72,8 +66,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onOpenCannedPicker,
     onToggleAiCopilot,
     onOpenStatusPicker,
-    onPrevUnread,
-    onNextUnread,
     onToggleFocus,
   } = options;
 
@@ -106,8 +98,8 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Ctrl+Shift+A — toggle AI copilot (checked before plain Ctrl+letter)
-      if (ctrl && shift && e.key.toLowerCase() === 'a') {
+      // Ctrl+Shift+C — toggle AI copilot (checked before plain Ctrl+letter)
+      if (ctrl && shift && e.key.toLowerCase() === 'c') {
         e.preventDefault();
         onToggleAiCopilot();
         return;
@@ -120,15 +112,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Alt+ArrowUp / Alt+ArrowDown — prev/next unread ticket
+      // Alt+ArrowUp / Alt+ArrowDown — prev/next chat tab (+ focus compose)
       if (alt && !ctrl && !shift && e.key === 'ArrowUp') {
         e.preventDefault();
-        onPrevUnread();
+        onPrevTab();
         return;
       }
       if (alt && !ctrl && !shift && e.key === 'ArrowDown') {
         e.preventDefault();
-        onNextUnread();
+        onNextTab();
         return;
       }
 
@@ -139,10 +131,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Ctrl+1..9 — jump to tab N
-      if (ctrl && !alt && !shift && e.key >= '1' && e.key <= '9') {
+      // Alt+1..9 — jump to tab N. Match on e.code (physical key) so AZERTY
+      // layouts where digit row needs Shift still work. Ctrl+1..9 left alone
+      // so browser tab switch still works.
+      if (alt && !ctrl && /^Digit[1-9]$/.test(e.code)) {
         e.preventDefault();
-        onJumpToTab(Number(e.key));
+        onJumpToTab(Number(e.code.slice(5)));
         return;
       }
 
@@ -153,15 +147,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Ctrl+L or Alt+L — open label picker (XOR on modifiers, no Shift)
-      if ((ctrl !== alt) && !shift && e.key.toLowerCase() === 'l') {
+      // Alt+L — open label picker (Ctrl+L left alone so browser address bar still works)
+      if (alt && !ctrl && !shift && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         onOpenLabelPicker();
         return;
       }
 
-      // Ctrl+J or Alt+J — open canned response picker (XOR on modifiers, no Shift)
-      if ((ctrl !== alt) && !shift && e.key.toLowerCase() === 'j') {
+      // Alt+J — open canned response picker (Ctrl+J left alone so browser downloads still work)
+      if (alt && !ctrl && !shift && e.key.toLowerCase() === 'j') {
         e.preventDefault();
         onOpenCannedPicker();
         return;
@@ -203,20 +197,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Ctrl+ArrowDown — next tab
-      if (ctrl && e.key === 'ArrowDown') {
-        e.preventDefault();
-        onNextTab();
-        return;
-      }
-
-      // Ctrl+ArrowUp — previous tab
-      if (ctrl && e.key === 'ArrowUp') {
-        e.preventDefault();
-        onPrevTab();
-        return;
-      }
-
       // Ctrl+B — toggle queue sidebar
       if (ctrl && e.key === 'b') {
         e.preventDefault();
@@ -254,8 +234,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onOpenCannedPicker,
     onToggleAiCopilot,
     onOpenStatusPicker,
-    onPrevUnread,
-    onNextUnread,
     onToggleFocus,
   ]);
 }

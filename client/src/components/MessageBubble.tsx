@@ -279,44 +279,53 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           </div>
         )}
 
-        {/* Metadata row: timestamp + status + reactions inline */}
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          {/* Reaction pills — inline with metadata */}
-          {Object.entries(message.reactions || {}).map(([emoji, userIds]) => {
-              const count = userIds.length;
-              if (count === 0) return null;
-              const iReacted = userIds.includes(user?.id || '');
-              return (
-                <button
-                  key={emoji}
-                  onClick={() => { const s = getSocket(); if (s?.connected) s.emit('message:react', { ticketId, messageId: message.id, emoji }); }}
-                  disabled={isDeleted}
-                  aria-label={`${emoji}, ${count} reaction${count !== 1 ? 's' : ''}${iReacted ? ', you reacted' : ''}`}
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded-[var(--radius-pill)] ${
-                    iReacted
-                      ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
-                      : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)]'
-                  } ${isDeleted ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
-                >
-                  <span>{emoji}</span>
-                  <span className="tabular-nums">{count}</span>
-                </button>
-              );
-            })}
+        {/* Metadata row: timestamp + status + reactions inline. Timestamp
+            only renders on the last bubble in a cluster (isGroupEnd) to
+            avoid repeating the same minute across every message — Slack /
+            iMessage pattern. Reactions + "edited" tag still render on any
+            bubble that has them. */}
+        {(() => {
+          const hasReactions = Object.values(message.reactions || {}).some((ids) => ids.length > 0);
+          const showMeta = isGroupEnd || hasReactions || (isEdited && !isDeleted);
+          if (!showMeta) return null;
+          return (
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {Object.entries(message.reactions || {}).map(([emoji, userIds]) => {
+                const count = userIds.length;
+                if (count === 0) return null;
+                const iReacted = userIds.includes(user?.id || '');
+                return (
+                  <button
+                    key={emoji}
+                    onClick={() => { const s = getSocket(); if (s?.connected) s.emit('message:react', { ticketId, messageId: message.id, emoji }); }}
+                    disabled={isDeleted}
+                    aria-label={`${emoji}, ${count} reaction${count !== 1 ? 's' : ''}${iReacted ? ', you reacted' : ''}`}
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 text-[11px] font-medium rounded-[var(--radius-pill)] ${
+                      iReacted
+                        ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
+                        : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)]'
+                    } ${isDeleted ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
+                  >
+                    <span>{emoji}</span>
+                    <span className="tabular-nums">{count}</span>
+                  </button>
+                );
+              })}
 
-          {/* Spacer pushes timestamp to right */}
-          <span className="ml-auto" />
+              <span className="ml-auto" />
 
-          <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-muted)] shrink-0">
-            {isEdited && !isDeleted && (
-              <span className="italic">{t('edited') || 'edited'}</span>
-            )}
-            <span className="tabular-nums">{time}</span>
-            {isMine && !isDeleted && !message.system && (
-              <DeliveryStatus deliveredAt={message.deliveredAt} readAt={message.readAt} />
-            )}
-          </span>
-        </div>
+              <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-muted)] shrink-0">
+                {isEdited && !isDeleted && (
+                  <span className="italic">{t('edited') || 'edited'}</span>
+                )}
+                {isGroupEnd && <span className="tabular-nums">{time}</span>}
+                {isGroupEnd && isMine && !isDeleted && !message.system && (
+                  <DeliveryStatus deliveredAt={message.deliveredAt} readAt={message.readAt} />
+                )}
+              </span>
+            </div>
+          );
+        })()}
 
         {/* Floating action bar — absolutely positioned above the bubble on
             hover. `bottom-full` anchors the pill's bottom to the bubble's

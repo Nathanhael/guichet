@@ -154,27 +154,27 @@ export default function LoginView() {
     <ErrorBoundary>
       <div className="min-h-screen flex flex-col items-center justify-center p-6 relative">
         <SystemBackground />
-        <div className="absolute top-5 right-5 z-50 flex items-center gap-1 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)] p-1">
+        <div className="absolute top-5 left-5 z-50 flex items-center gap-1 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)] p-1">
           <LanguageSwitcher />
           <DarkModeToggle />
         </div>
 
         <div className={SHELL}>
           <div className="px-7 pt-7 pb-5 flex items-start justify-between gap-4">
-            <div className="flex flex-col items-start gap-3">
-              <img
-                src="/icon-blue.svg"
-                className="w-10 h-10 select-none"
-                alt={APP_NAME}
-              />
-              <div>
+            <div className="flex flex-col gap-3 min-w-0">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/icon-blue.svg"
+                  className="w-9 h-9 select-none shrink-0"
+                  alt={APP_NAME}
+                />
                 <h1 className="text-[22px] font-semibold tracking-[-0.3px] text-[var(--color-ink)] select-none">
                   {APP_NAME}
                 </h1>
-                <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">
-                  {viewMode === 'sso-selection' ? t('sso_login_description') : t('select_user')}
-                </p>
               </div>
+              <p className="text-[13px] text-[var(--color-ink-muted)]">
+                {viewMode === 'sso-selection' ? t('sso_login_description') : t('select_user')}
+              </p>
             </div>
             {viewMode === 'demo' && (
               <Button
@@ -202,25 +202,36 @@ export default function LoginView() {
                 </div>
               )}
 
-              <Button
-                variant="primary"
-                size="md"
+              <button
+                type="button"
                 onClick={() => { window.location.href = '/api/v1/auth/sso/azure'; }}
-                className="w-full h-11"
-                leading={
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
-                    <path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z" />
-                  </svg>
-                }
+                className="w-full h-[41px] flex items-center justify-center gap-3 bg-white dark:bg-[#2F2F2F] border border-[#8C8C8C] hover:shadow-[var(--shadow-soft)] active:bg-[#F3F3F3] dark:active:bg-[#1F1F1F] transition-shadow"
+                style={{ fontFamily: '"Segoe UI", system-ui, sans-serif' }}
               >
-                {t('sso_microsoft')}
-              </Button>
+                <svg viewBox="0 0 21 21" className="w-[21px] h-[21px]" aria-hidden="true">
+                  <rect x="1" y="1" width="9" height="9" fill="#F25022" />
+                  <rect x="11" y="1" width="9" height="9" fill="#7FBA00" />
+                  <rect x="1" y="11" width="9" height="9" fill="#00A4EF" />
+                  <rect x="11" y="11" width="9" height="9" fill="#FFB900" />
+                </svg>
+                <span className="text-[15px] font-semibold text-[#5E5E5E] dark:text-white">
+                  {t('sso_microsoft')}
+                </span>
+              </button>
 
-              <div className="text-center pt-1">
+              <div className="flex items-center gap-3 pt-1">
+                <div className="flex-1 h-px bg-[var(--color-border)]" />
+                <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
+                  {t('or') || 'or'}
+                </span>
+                <div className="flex-1 h-px bg-[var(--color-border)]" />
+              </div>
+
+              <div className="text-center">
                 <button
                   type="button"
                   onClick={() => { setViewMode('demo'); setError(''); setSuccessMessage(''); }}
-                  className="text-[12px] font-medium text-[var(--color-accent)] hover:underline underline-offset-4"
+                  className="text-[12px] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:underline underline-offset-4"
                 >
                   {t('demo_mode')}
                 </button>

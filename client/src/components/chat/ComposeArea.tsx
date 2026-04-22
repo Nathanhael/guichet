@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { getSocket } from '../../hooks/useSocket';
@@ -79,7 +79,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
-  // Global shortcut: Ctrl+J / Alt+J dispatches `support:open-canned-picker`
+  // Global shortcut: Alt+J dispatches `support:open-canned-picker`
   // on SupportView. Listening here keeps the picker owner (this compose
   // area) free of prop-drilling.
   useEffect(() => {
@@ -310,14 +310,46 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const pendingFilesRef = useRef(pendingFiles);
   pendingFilesRef.current = pendingFiles;
 
+  // Queue focus requests that arrive before the editor view is mounted.
+  // Alt+1..9 / Alt+Up/Down switches to a just-mounted ChatWindow and calls
+  // focus immediately; useEditor is async, so the first call usually hits
+  // a null editor (or a Proxy whose view isn't ready yet and throws — see
+  // the placeholder comment above). The `create` listener flushes any
+  // pending focus as soon as the view mounts.
+  // Seed true so the caret lands in the compose bar as soon as the chat
+  // appears — covers normal tab switches, split-view activation (compose
+  // unmounts/remounts when the selected chat changes), and initial open.
+  // The existing flush effect below drains the flag on editor 'create'.
+  const pendingFocusRef = useRef(true);
+  const tryFocus = useCallback(() => {
+    if (!editor || editor.isDestroyed) return false;
+    try {
+      editor.commands.focus();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [editor]);
+
   useImperativeHandle(ref, () => ({
     toggleWhisper: () => setWhisperMode((v) => !v),
-    focus: () => editor?.commands.focus(),
-    // Re-runs when the editor instance resolves (useEditor is async on
-    // first mount, so `editor` is null on render 1 and non-null soon
-    // after). Without editor in the dep array, focus() would capture
-    // the initial null and silently no-op forever.
-  }), [editor]);
+    focus: () => {
+      if (!tryFocus()) pendingFocusRef.current = true;
+    },
+  }), [tryFocus]);
+
+  useEffect(() => {
+    if (!editor) return;
+    const flush = () => {
+      if (!pendingFocusRef.current) return;
+      if (tryFocus()) pendingFocusRef.current = false;
+    };
+    flush();
+    editor.on('create', flush);
+    return () => {
+      editor.off('create', flush);
+    };
+  }, [editor, tryFocus]);
 
   // Surface server-side rejection of outgoing messages as a localized toast
   // for the currently-open ticket. The matching optimistic bubble is removed

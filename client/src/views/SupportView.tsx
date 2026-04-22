@@ -286,55 +286,58 @@ export default function SupportView() {
 
   // ── Command Palette ──
 
+  // After switching tabs via keyboard, ChatWindow remounts (keyed on
+  // activeTab). Defer the focus call so the new ComposeArea is in the DOM
+  // and chatWindowRef points at the fresh instance.
+  const focusComposeAfterTabSwitch = useCallback(() => {
+    requestAnimationFrame(() => {
+      chatWindowRef.current?.focusTextarea();
+    });
+  }, []);
+
   const navigateTab = useCallback((direction: 1 | -1) => {
     if (openTabTickets.length < 2 || !activeTab) return;
     const idx = openTabTickets.findIndex((tk) => tk.id === activeTab);
     const next = (idx + direction + openTabTickets.length) % openTabTickets.length;
     setActiveTab(openTabTickets[next].id);
-  }, [openTabTickets, activeTab, setActiveTab]);
+    focusComposeAfterTabSwitch();
+  }, [openTabTickets, activeTab, setActiveTab, focusComposeAfterTabSwitch]);
 
   const jumpToTab = useCallback((n: number) => {
     const idx = n - 1;
     if (idx < 0 || idx >= openTabTickets.length) return;
     setActiveTab(openTabTickets[idx].id);
-  }, [openTabTickets, setActiveTab]);
+    focusComposeAfterTabSwitch();
+  }, [openTabTickets, setActiveTab, focusComposeAfterTabSwitch]);
 
-  // Jump to the prev/next open tab that has an unread indicator. No-op if
-  // nothing is unread. Wraps around the list in either direction.
-  const navigateUnread = useCallback((direction: 1 | -1) => {
-    const { unreadTickets } = useStore.getState();
-    const unreadOpen = openTabTickets.filter((tk) => unreadTickets[tk.id]);
-    if (unreadOpen.length === 0) return;
-    const currentIdx = unreadOpen.findIndex((tk) => tk.id === activeTab);
-    // If the current tab isn't unread, jump to the first/last unread based on direction.
-    const nextIdx =
-      currentIdx === -1
-        ? direction === 1 ? 0 : unreadOpen.length - 1
-        : (currentIdx + direction + unreadOpen.length) % unreadOpen.length;
-    setActiveTab(unreadOpen[nextIdx].id);
-  }, [openTabTickets, activeTab, setActiveTab]);
+  // Tab-bar + split-view click: activate the chat AND land the caret in its
+  // compose bar so the user can type immediately. Skip refocus if it's
+  // already the active tab (preserves any in-place input focus).
+  const selectTab = useCallback((id: string) => {
+    if (id === activeTab) return;
+    setActiveTab(id);
+    focusComposeAfterTabSwitch();
+  }, [activeTab, setActiveTab, focusComposeAfterTabSwitch]);
 
   const commands: Command[] = useMemo(() => [
     // Navigation
     { id: 'focus-message', labelKey: 'cmd_focus_message', groupKey: 'cmd_group_navigation', shortcutHint: '/', execute: () => chatWindowRef.current?.focusTextarea(), keywords: ['type', 'input', 'chat'] },
-    { id: 'next-tab', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2193', execute: () => navigateTab(1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
-    { id: 'prev-tab', labelKey: 'cmd_prev_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+\u2191', execute: () => navigateTab(-1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
+    { id: 'next-tab', labelKey: 'cmd_next_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2193', execute: () => navigateTab(1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
+    { id: 'prev-tab', labelKey: 'cmd_prev_tab', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2191', execute: () => navigateTab(-1), enabled: openTabTickets.length >= 2, keywords: ['switch', 'tab'] },
     { id: 'toggle-sidebar', labelKey: 'cmd_toggle_sidebar', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+B', execute: toggleSidebar, keywords: ['queue', 'sidebar', 'hide', 'show'] },
     { id: 'search-tickets', labelKey: 'cmd_search_tickets', groupKey: 'cmd_group_navigation', execute: () => { setSidebarOpen(true); localStorage.setItem('queueSidebarOpen', 'true'); setTimeout(() => { const el = document.querySelector<HTMLInputElement>('[data-queue-search]'); el?.focus(); }, 50); }, keywords: ['find', 'search', 'filter'] },
-    { id: 'jump-to-tab-1', labelKey: 'cmd_jump_to_tab_1', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+1', execute: () => jumpToTab(1), enabled: openTabTickets.length >= 1, keywords: ['tab', '1'] },
-    { id: 'jump-to-tab-2', labelKey: 'cmd_jump_to_tab_2', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+2', execute: () => jumpToTab(2), enabled: openTabTickets.length >= 2, keywords: ['tab', '2'] },
-    { id: 'jump-to-tab-3', labelKey: 'cmd_jump_to_tab_3', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+3', execute: () => jumpToTab(3), enabled: openTabTickets.length >= 3, keywords: ['tab', '3'] },
-    { id: 'jump-to-tab-4', labelKey: 'cmd_jump_to_tab_4', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+4', execute: () => jumpToTab(4), enabled: openTabTickets.length >= 4, keywords: ['tab', '4'] },
-    { id: 'prev-unread', labelKey: 'cmd_prev_unread', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2191', execute: () => navigateUnread(-1), enabled: openTabTickets.length >= 1, keywords: ['unread', 'previous', 'jump'] },
-    { id: 'next-unread', labelKey: 'cmd_next_unread', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2193', execute: () => navigateUnread(1), enabled: openTabTickets.length >= 1, keywords: ['unread', 'next', 'jump'] },
+    { id: 'jump-to-tab-1', labelKey: 'cmd_jump_to_tab_1', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+1', execute: () => jumpToTab(1), enabled: openTabTickets.length >= 1, keywords: ['tab', '1'] },
+    { id: 'jump-to-tab-2', labelKey: 'cmd_jump_to_tab_2', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+2', execute: () => jumpToTab(2), enabled: openTabTickets.length >= 2, keywords: ['tab', '2'] },
+    { id: 'jump-to-tab-3', labelKey: 'cmd_jump_to_tab_3', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+3', execute: () => jumpToTab(3), enabled: openTabTickets.length >= 3, keywords: ['tab', '3'] },
+    { id: 'jump-to-tab-4', labelKey: 'cmd_jump_to_tab_4', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+4', execute: () => jumpToTab(4), enabled: openTabTickets.length >= 4, keywords: ['tab', '4'] },
     { id: 'search-messages', labelKey: 'cmd_search_messages', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+F', execute: () => window.dispatchEvent(new CustomEvent('support:open-search')), enabled: !!activeTab, keywords: ['find', 'search', 'messages'] },
     // Actions
     { id: 'toggle-whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+/', execute: () => chatWindowRef.current?.toggleWhisper(), enabled: !!activeTab, keywords: ['whisper', 'internal', 'private'] },
     { id: 'transfer-ticket', labelKey: 'cmd_transfer_ticket', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+T', execute: () => chatWindowRef.current?.openTransferMenu(), enabled: !!activeTab, keywords: ['transfer', 'hand off', 'department'] },
     { id: 'close-tab', labelKey: 'cmd_close_tab', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+W', execute: () => { if (activeTab) closeTab(activeTab); }, enabled: !!activeTab, keywords: ['close', 'tab'] },
     { id: 'close-ticket', labelKey: 'cmd_close_ticket', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+Enter', execute: () => chatWindowRef.current?.triggerCloseTicket(), enabled: !!activeTab, keywords: ['resolve', 'close', 'end'] },
-    { id: 'open-label-picker', labelKey: 'cmd_open_label_picker', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+L', execute: () => window.dispatchEvent(new CustomEvent('support:open-label-picker')), enabled: !!activeTab, keywords: ['label', 'tag'] },
-    { id: 'open-canned', labelKey: 'cmd_open_canned', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+J', execute: () => window.dispatchEvent(new CustomEvent('support:open-canned-picker')), enabled: !!activeTab, keywords: ['canned', 'snippet', 'template'] },
+    { id: 'open-label-picker', labelKey: 'cmd_open_label_picker', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+L', execute: () => window.dispatchEvent(new CustomEvent('support:open-label-picker')), enabled: !!activeTab, keywords: ['label', 'tag'] },
+    { id: 'open-canned', labelKey: 'cmd_open_canned', groupKey: 'cmd_group_actions', shortcutHint: 'Alt+J', execute: () => window.dispatchEvent(new CustomEvent('support:open-canned-picker')), enabled: !!activeTab, keywords: ['canned', 'snippet', 'template'] },
     // Status
     { id: 'status-online', labelKey: 'cmd_status_online', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'online' }), keywords: ['online', 'available'] },
     { id: 'status-away', labelKey: 'cmd_status_away', groupKey: 'cmd_group_status', execute: () => getSocket()?.emit('status:set', { status: 'away' }), keywords: ['away', 'break', 'pause'] },
@@ -342,8 +345,8 @@ export default function SupportView() {
     // View & Toggles
     { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+F', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
     { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
-    { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_customer_info', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+A', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'info', 'customer'] },
-  ], [activeTab, openTabTickets, navigateTab, jumpToTab, navigateUnread, closeTab, toggleSidebar]);
+    { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_customer_info', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+C', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'info', 'customer'] },
+  ], [activeTab, openTabTickets, navigateTab, jumpToTab, closeTab, toggleSidebar]);
 
   useKeyboardShortcuts({
     enabled: !paletteOpen,
@@ -384,8 +387,6 @@ export default function SupportView() {
     onOpenStatusPicker: () => {
       window.dispatchEvent(new CustomEvent('support:open-status-picker'));
     },
-    onPrevUnread: () => navigateUnread(-1),
-    onNextUnread: () => navigateUnread(1),
     onToggleFocus: () => {
       const s = useStore.getState();
       s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus');
@@ -438,6 +439,7 @@ export default function SupportView() {
                 <UserMenuChip
                   showStatus
                   showKeyboardShortcuts
+                  showFocusMode
                   onKeyboardShortcuts={() => setShortcutsOpen(true)}
                   confirmBeforeSwitch
                 />
@@ -461,7 +463,7 @@ export default function SupportView() {
           <ChatTabBar
             tabs={openTabTickets}
             activeTab={activeTab}
-            onSelectTab={(id) => setActiveTab(id)}
+            onSelectTab={selectTab}
             onCloseTab={closeTab}
           />
 
@@ -473,7 +475,7 @@ export default function SupportView() {
                     tabs={openTabTickets}
                     activeTab={activeTab}
                     viewMode={viewMode}
-                    onSelectTab={(id) => setActiveTab(id)}
+                    onSelectTab={selectTab}
                     onCloseTab={closeTab}
                   />
                   {/* Overlay preview on top of split layout so queue → preview → join works */}

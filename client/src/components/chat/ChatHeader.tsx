@@ -54,6 +54,7 @@ export default function ChatHeader({
   const currentUserId = useStore(s => s.user?.id);
   const currentUserIsExternal = useStore(s => !!s.user?.isExternal);
   const currentRole = useStore(s => s.user?.role);
+  const toggleFocusMode = useStore(s => s.toggleFocusMode);
   // Map of userId -> live status, used to light up support avatars and keep them in sync with presence changes.
   const supportStatusById = new Map<string, 'online' | 'away'>();
   for (const u of (onlineSupportUsers || [])) {
@@ -127,7 +128,7 @@ export default function ChatHeader({
     };
   }, [showLabelPicker]);
 
-  // Global shortcut: Ctrl+L / Alt+L dispatches `support:open-label-picker`
+  // Global shortcut: Alt+L dispatches `support:open-label-picker`
   // on SupportView. Listening here keeps the picker owner (this header)
   // free of prop-drilling from the parent view.
   useEffect(() => {
@@ -515,6 +516,23 @@ export default function ChatHeader({
                 </svg>
               )}
               {t('close') || 'Close'}
+            </button>
+          )}
+
+          {/* Focus mode exit hint — persistent chip showing ESC shortcut.
+              Support-only: focus mode is scoped to the support chat surface
+              (AgentView has no focus toggle). */}
+          {focusMode && isSupport && (
+            <button
+              onClick={toggleFocusMode}
+              aria-label={t('focus_mode_exit') || 'Exit focus mode'}
+              title={t('focus_mode_exit') || 'Exit focus mode'}
+              className="h-8 inline-flex items-center gap-1.5 px-2.5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] text-[11px] font-medium"
+            >
+              <span>{t('focus_mode_pill') || 'Focus'}</span>
+              <kbd className="font-mono text-[9px] px-1 py-px rounded bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-ink-soft)]">
+                {t('focus_mode_esc_hint') || 'ESC'}
+              </kbd>
             </button>
           )}
 

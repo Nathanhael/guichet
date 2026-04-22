@@ -124,6 +124,7 @@ export default function AgentView() {
   }, [ticketList, setTickets]);
 
   const activeTicket = tickets.find((tk) => tk.id === activeTicketId);
+  const inChat = !!activeTicket && activeTicket.status !== 'closed';
 
   if (!user) return null;
   if (!activeMembership) return <PartnerUnavailable />;
@@ -134,62 +135,81 @@ export default function AgentView() {
       <div className="h-screen flex flex-row overflow-hidden bg-[var(--color-bg)] text-[var(--color-ink)] relative">
         <SystemBackground />
 
-        <aside
-          className="relative h-full bg-[var(--color-bg-surface)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0 z-10"
-          style={{ width: sidebarWidth }}
-        >
-          <div className="px-2 pt-3 pb-2 border-b border-[var(--color-border)]">
-            <UserMenuChip
-              showFeedback
-              onFeedback={() => setShowFeedback(true)}
-              confirmBeforeSwitch
-            />
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3">
-            {activeTicket && activeTicket.status !== 'closed' ? (
-              <AgentTicketContextPanel
-                ticket={activeTicket}
-                onRequestClose={() => chatWindowRef.current?.triggerCloseTicket()}
+        {inChat && (
+          <aside
+            className="relative h-full bg-[var(--color-bg-surface)] border-r border-[var(--color-border)] flex flex-col flex-shrink-0 z-10"
+            style={{ width: sidebarWidth }}
+          >
+            <div className="px-2 pt-3 pb-2 border-b border-[var(--color-border)]">
+              <UserMenuChip
+                showFeedback
+                onFeedback={() => setShowFeedback(true)}
+                confirmBeforeSwitch
               />
-            ) : queuePosition && queuePosition.position > 0 && !activeTicket && agentTicket?.status === 'open' ? (
-              <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-3 flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 border border-[var(--color-border)] text-[var(--color-ink)] text-xs font-bold tabular-nums rounded-[var(--radius-btn)]">
-                  {queuePosition.position}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold text-[var(--color-ink)] truncate">
-                    {t('queue_position') || 'Queue position'}: #{queuePosition.position}
-                  </p>
-                  {queuePosition.etaMins > 0 && (
-                    <p className="text-[11px] text-[var(--color-ink-muted)] truncate">
-                      {t('estimated_wait') || 'Estimated wait'}: ~{queuePosition.etaMins} {t('minutes') || 'min'}
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar px-3 py-3">
+              {activeTicket && activeTicket.status !== 'closed' ? (
+                <AgentTicketContextPanel
+                  ticket={activeTicket}
+                  onRequestClose={() => chatWindowRef.current?.triggerCloseTicket()}
+                />
+              ) : queuePosition && queuePosition.position > 0 && !activeTicket && agentTicket?.status === 'open' ? (
+                <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-3 flex items-center gap-3">
+                  <div className="flex items-center justify-center w-8 h-8 border border-[var(--color-border)] text-[var(--color-ink)] text-xs font-bold tabular-nums rounded-[var(--radius-btn)]">
+                    {queuePosition.position}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold text-[var(--color-ink)] truncate">
+                      {t('queue_position') || 'Queue position'}: #{queuePosition.position}
                     </p>
-                  )}
+                    {queuePosition.etaMins > 0 && (
+                      <p className="text-[11px] text-[var(--color-ink-muted)] truncate">
+                        {t('estimated_wait') || 'Estimated wait'}: ~{queuePosition.etaMins} {t('minutes') || 'min'}
+                      </p>
+                    )}
+                  </div>
                 </div>
+              ) : null}
+            </div>
+
+            <div className="px-3 py-2 border-t border-[var(--color-border)] flex items-center justify-end">
+              <ConnectionStatus />
+            </div>
+
+            <div
+              onMouseDown={handleDragStart}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize sidebar"
+              className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-[var(--color-accent-soft)] transition-colors"
+            />
+          </aside>
+        )}
+
+        <main className="flex-1 overflow-hidden flex flex-col min-w-0 bg-[var(--color-bg)] relative">
+          {/* Idle overlay — when no chat, float the user chip top-left so
+              the workspace switcher / settings stay reachable without the
+              whole sidebar chrome. Connection status tucks bottom-left. */}
+          {!inChat && (
+            <>
+              <div className="absolute top-3 left-3 z-20 w-[220px]">
+                <UserMenuChip
+                  showFeedback
+                  onFeedback={() => setShowFeedback(true)}
+                  confirmBeforeSwitch
+                />
               </div>
-            ) : null}
-          </div>
+              <div className="absolute bottom-3 left-3 z-20">
+                <ConnectionStatus />
+              </div>
+            </>
+          )}
 
-          <div className="px-3 py-2 border-t border-[var(--color-border)] flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-[var(--color-accent)] uppercase tracking-[0.08em]">{t('agent')}</span>
-            <ConnectionStatus />
-          </div>
-
-          <div
-            onMouseDown={handleDragStart}
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize sidebar"
-            className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-[var(--color-accent-soft)] transition-colors"
-          />
-        </aside>
-
-        <main className="flex-1 overflow-hidden flex flex-col min-w-0 bg-[var(--color-bg)]">
-          {activeTicket && activeTicket.status !== 'closed' ? (
+          {inChat ? (
             <div className="flex-1 min-h-0 w-full">
               <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
-                <ChatWindow ref={chatWindowRef} key={activeTicket.id} ticket={activeTicket} hideHeader />
+                <ChatWindow ref={chatWindowRef} key={activeTicket!.id} ticket={activeTicket!} hideHeader />
               </div>
             </div>
           ) : (

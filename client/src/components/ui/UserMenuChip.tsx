@@ -6,6 +6,10 @@ import {
   LogOut,
   MessageSquare,
   Keyboard,
+  Bell,
+  BellOff,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useStoreShallow } from '../../store/useStore';
 import { trpc } from '../../utils/trpc';
@@ -24,6 +28,8 @@ export interface UserMenuChipProps {
   /** Show in-app feedback entry (Agent only). */
   showFeedback?: boolean;
   onFeedback?: () => void;
+  /** Show focus-mode toggle + shortcut hint (Support only — no chat-focus surface elsewhere). */
+  showFocusMode?: boolean;
   /** Subtitle override (PlatformView uses "Platform operator"). */
   subtitleOverride?: string;
   /** Confirm before switching workspace (Support / Agent). */
@@ -86,6 +92,7 @@ export default function UserMenuChip({
   onKeyboardShortcuts,
   showFeedback = false,
   onFeedback,
+  showFocusMode = false,
   subtitleOverride,
   confirmBeforeSwitch = false,
   placement = 'right',
@@ -102,6 +109,7 @@ export default function UserMenuChip({
     bionicReading, toggleBionicReading,
     monochromeMode, toggleMonochromeMode,
     focusMode, toggleFocusMode,
+    soundEnabled, toggleSoundEnabled,
     logout,
   } = useStoreShallow(s => ({
     user: s.user,
@@ -122,6 +130,8 @@ export default function UserMenuChip({
     toggleMonochromeMode: s.toggleMonochromeMode,
     focusMode: s.focusMode,
     toggleFocusMode: s.toggleFocusMode,
+    soundEnabled: s.soundEnabled,
+    toggleSoundEnabled: s.toggleSoundEnabled,
     logout: s.logout,
   }));
 
@@ -320,17 +330,11 @@ export default function UserMenuChip({
           style={{ position: 'fixed', top: menuPos.top, left: menuPos.left }}
           className="z-50 w-[280px] bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] max-h-[calc(100vh-32px)] overflow-y-auto custom-scrollbar"
         >
-          <div className="px-3.5 py-3 border-b border-[var(--color-border)] flex items-center gap-3">
-            <Avatar name={user.name} src={user.avatarUrl ?? null} size={40} isExternal={user.isExternal} />
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold text-[var(--color-ink)] flex items-center gap-2 truncate">
-                <span className="truncate">{user.name}</span>
-                <GuestBadge isExternal={user.isExternal} size="prominent" />
-              </div>
-              <div className="text-[11px] text-[var(--color-ink-muted)] truncate mt-0.5">
-                {user.email}
-              </div>
-            </div>
+          <div className="px-3.5 py-2.5 border-b border-[var(--color-border)] flex items-center gap-2 min-w-0">
+            <span className="text-[12px] text-[var(--color-ink-muted)] truncate flex-1">
+              {user.email}
+            </span>
+            <GuestBadge isExternal={user.isExternal} size="prominent" />
           </div>
 
           {showStatus && (
@@ -412,11 +416,34 @@ export default function UserMenuChip({
           )}
 
           <div className={ROW}>
-            <span className={LABEL}>{darkMode ? t('light_mode') : t('dark_mode')}</span>
+            <span className={`${LABEL} flex items-center gap-2`}>
+              {darkMode ? (
+                <Sun className="h-3.5 w-3.5 text-[var(--color-ink-muted)]" />
+              ) : (
+                <Moon className="h-3.5 w-3.5 text-[var(--color-ink-muted)]" />
+              )}
+              {darkMode ? t('light_mode') : t('dark_mode')}
+            </span>
             <ToggleSwitch
               enabled={darkMode}
               onToggle={toggleDarkMode}
               label={darkMode ? t('light_mode') : t('dark_mode')}
+            />
+          </div>
+
+          <div className={ROW}>
+            <span className={`${LABEL} flex items-center gap-2`}>
+              {soundEnabled ? (
+                <Bell className="h-3.5 w-3.5 text-[var(--color-ink-muted)]" />
+              ) : (
+                <BellOff className="h-3.5 w-3.5 text-[var(--color-ink-muted)]" />
+              )}
+              {t('notification_sounds') || 'Notification sounds'}
+            </span>
+            <ToggleSwitch
+              enabled={soundEnabled}
+              onToggle={toggleSoundEnabled}
+              label={t('notification_sounds') || 'Notification sounds'}
             />
           </div>
 
@@ -436,7 +463,7 @@ export default function UserMenuChip({
                   onClick={() => handleLangPick(lang.code)}
                   className={`flex-1 px-2 py-1 text-[11px] font-medium rounded-[var(--radius-btn)] transition-colors ${
                     currentLang === lang.code
-                      ? 'bg-[var(--color-accent)] text-white'
+                      ? 'bg-[var(--color-accent)] text-[var(--color-btn-text-inverse)]'
                       : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)]'
                   }`}
                 >
@@ -471,19 +498,21 @@ export default function UserMenuChip({
               label={t('monochrome')}
             />
           </div>
-          <div className="border-b border-[var(--color-border)] px-3.5 py-2.5 flex items-center justify-between gap-4">
-            <div className="flex flex-col min-w-0">
-              <span className={LABEL}>{t('focus_mode') || 'Focus mode'}</span>
-              <span className="text-[10px] text-[var(--color-ink-muted)]">
-                Ctrl+Shift+F
-              </span>
+          {showFocusMode && (
+            <div className="border-b border-[var(--color-border)] px-3.5 py-2.5 flex items-center justify-between gap-4">
+              <div className="flex flex-col min-w-0">
+                <span className={LABEL}>{t('focus_mode') || 'Focus mode'}</span>
+                <span className="text-[10px] text-[var(--color-ink-muted)]">
+                  Ctrl+Shift+F
+                </span>
+              </div>
+              <ToggleSwitch
+                enabled={focusMode}
+                onToggle={toggleFocusMode}
+                label={t('focus_mode') || 'Focus mode'}
+              />
             </div>
-            <ToggleSwitch
-              enabled={focusMode}
-              onToggle={toggleFocusMode}
-              label={t('focus_mode') || 'Focus mode'}
-            />
-          </div>
+          )}
 
           {showKeyboardShortcuts && (
             <button

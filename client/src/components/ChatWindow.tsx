@@ -425,27 +425,29 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
         suppressActions={!!compact}
       />
 
-      {/* Input — Suspense fallback matches ComposeArea height to prevent layout shift */}
-      <Suspense
-        fallback={
-          <div
-            className="border-t border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3"
-            style={{ minHeight: '72px' }}
-            aria-hidden="true"
+      {/* Input — Suspense fallback matches ComposeArea height to prevent layout shift.
+          Inactive split-view chats hide compose entirely (compact=true). */}
+      {!compact && (
+        <Suspense
+          fallback={
+            <div
+              className="border-t border-[var(--color-border)] bg-[var(--color-bg-base)] px-4 py-3"
+              style={{ minHeight: '72px' }}
+              aria-hidden="true"
+            />
+          }
+        >
+          <ComposeArea
+            ref={composeRef}
+            ticket={ticket}
+            isClosed={isClosed}
+            isSupport={isSupport}
+            aiConfig={aiConfig}
+            replyingTo={replyingTo}
+            onClearReply={() => setReplyingTo(null)}
           />
-        }
-      >
-        <ComposeArea
-          ref={composeRef}
-          ticket={ticket}
-          isClosed={isClosed}
-          isSupport={isSupport}
-          compact={!!compact}
-          aiConfig={aiConfig}
-          replyingTo={replyingTo}
-          onClearReply={() => setReplyingTo(null)}
-        />
-      </Suspense>
+        </Suspense>
+      )}
 
       {showCloseConfirm && (
         <ConfirmDialog
