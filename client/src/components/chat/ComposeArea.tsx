@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, forwardRef, useImperativeHandle } from 'react';
+import { createPortal } from 'react-dom';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
@@ -302,6 +303,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const fileRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const emojiGridRef = useRef<HTMLDivElement | null>(null);
+  const [emojiPickerPos, setEmojiPickerPos] = useState<{ bottom: number; left: number } | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
   const pendingFilesRef = useRef(pendingFiles);
@@ -346,16 +349,42 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Close emoji picker on outside click
+  // Close emoji picker on outside click. Grid is portaled to document.body,
+  // so the original button-wrapper ref wouldn't contain it — check both.
   useEffect(() => {
     if (!showEmojiPicker) return;
     function handleClickOutside(e: MouseEvent) {
-      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target as Node)) {
-        setShowEmojiPicker(false);
-      }
+      const target = e.target as Node;
+      if (emojiPickerRef.current?.contains(target)) return;
+      if (emojiGridRef.current?.contains(target)) return;
+      setShowEmojiPicker(false);
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showEmojiPicker]);
+
+  // Portaled-popup positioning: anchor fixed coords to the trigger button's
+  // rect so the grid escapes the compose area's overflow-hidden clip.
+  useLayoutEffect(() => {
+    if (!showEmojiPicker) return;
+    function compute() {
+      const el = emojiPickerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const GAP = 8;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setEmojiPickerPos({
+        bottom: window.innerHeight - r.top + GAP,
+        left: r.left,
+      });
+    }
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
   }, [showEmojiPicker]);
 
   const improveMutation = trpc.ai.improveMessage.useMutation();
@@ -827,11 +856,15 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             >
               <Smile size={18} />
             </button>
-            {showEmojiPicker && (
+            {showEmojiPicker && typeof document !== 'undefined' && createPortal(
               <div
+                ref={emojiGridRef}
                 role="grid"
                 aria-label={t('emoji') || 'Emoji'}
-                className="absolute bottom-full left-0 mb-2 bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] z-50 p-2 w-[280px]"
+                style={emojiPickerPos
+                  ? { position: 'fixed' as const, bottom: emojiPickerPos.bottom, left: emojiPickerPos.left }
+                  : { display: 'none' as const }}
+                className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] z-[60] p-2 w-[280px]"
                 onKeyDown={(e) => {
                   if (e.key === 'Escape') { setShowEmojiPicker(false); return; }
                   const btns = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
@@ -853,8 +886,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                       type="button"
                       aria-label={emoji}
                       onClick={() => {
-                        // Insert at current selection via the editor chain —
-                        // Tiptap handles the cursor position update for us.
                         editor?.chain().focus().insertContent(emoji).run();
                         setShowEmojiPicker(false);
                       }}
@@ -864,7 +895,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                     </button>
                   ))}
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
           )}

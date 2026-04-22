@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { searchEmoji } from '../../utils/emojiData';
 
 interface EmojiSuggestionProps {
@@ -7,9 +8,13 @@ interface EmojiSuggestionProps {
   onClose: () => void;
 }
 
+const POPUP_WIDTH = 240;
+
 export default function EmojiSuggestion({ query, onSelect, onClose }: EmojiSuggestionProps) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const listRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [popupPos, setPopupPos] = useState<{ bottom: number; left: number } | null>(null);
   const results = searchEmoji(query);
 
   // Reset selection index when the query changes; activeIndex is independently
@@ -44,12 +49,43 @@ export default function EmojiSuggestion({ query, onSelect, onClose }: EmojiSugge
     el?.scrollIntoView({ block: 'nearest' });
   }, [activeIndex]);
 
-  if (results.length === 0) return null;
+  // Portal popup: the compose wrapper has overflow-hidden, so anchor a
+  // 0-height div in-place and render the popup into document.body with
+  // fixed positioning to escape the clip.
+  useLayoutEffect(() => {
+    function compute() {
+      const el = anchorRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const GAP = 4;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPopupPos({
+        bottom: window.innerHeight - r.top + GAP,
+        left: r.left,
+      });
+    }
+    compute();
+    window.addEventListener('resize', compute);
+    window.addEventListener('scroll', compute, true);
+    return () => {
+      window.removeEventListener('resize', compute);
+      window.removeEventListener('scroll', compute, true);
+    };
+  }, []);
 
-  return (
+  // Always mount the anchor so useLayoutEffect can measure on first commit.
+  // Gating the popup here (not the whole component) keeps popupPos live.
+  const showPopup = results.length > 0;
+
+  const style = popupPos
+    ? { position: 'fixed' as const, bottom: popupPos.bottom, left: popupPos.left, width: POPUP_WIDTH }
+    : { display: 'none' as const };
+
+  const popup = (
     <div
       ref={listRef}
-      className="absolute bottom-full left-0 mb-1 w-60 max-h-48 overflow-y-auto rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] z-50 p-1"
+      style={style}
+      className="z-[60] max-h-48 overflow-y-auto rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] p-1"
     >
       {results.map((entry, i) => (
         <button
@@ -67,5 +103,12 @@ export default function EmojiSuggestion({ query, onSelect, onClose }: EmojiSugge
         </button>
       ))}
     </div>
+  );
+
+  return (
+    <>
+      <div ref={anchorRef} className="absolute inset-x-0 top-0 h-0" aria-hidden />
+      {showPopup && typeof document !== 'undefined' && createPortal(popup, document.body)}
+    </>
   );
 }
