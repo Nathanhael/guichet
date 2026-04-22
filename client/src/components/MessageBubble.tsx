@@ -293,13 +293,18 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
           </span>
         </div>
 
-        {/* Floating action bar — absolutely positioned above the bubble's top
-            edge on hover. Single compact pill merging reactions + actions with
-            a divider. Anchor flips for own-messages so the pill never pushes
-            past the row edge. */}
+        {/* Floating action bar — absolutely positioned above the bubble on
+            hover. `bottom-full` anchors the pill's bottom to the bubble's
+            top (so it always sits fully above, regardless of pill height),
+            `mb-1` leaves a small gap. Horizontal side flips with isMine so
+            the pill grows outward into empty space rather than clipping
+            past the row edge: non-mine bubbles (on the left) anchor the
+            pill's LEFT edge to the bubble's left and grow rightward; own
+            bubbles (on the right) anchor the pill's RIGHT edge to the
+            bubble's right and grow leftward. */}
         {showActions && !editing && (
           <div
-            className={`absolute -top-4 ${isMine ? 'left-1' : 'right-1'} z-10 flex items-center bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] px-1 py-0.5 animate-[v2p-pop_180ms_ease-out]`}
+            className={`absolute bottom-full mb-1 ${isMine ? 'right-0' : 'left-0'} z-10 flex items-center bg-[var(--color-bg-surface)] rounded-[var(--radius-pill)] shadow-[var(--shadow-card)] border border-[var(--color-border)] px-1 py-0.5 animate-[v2p-pop_180ms_ease-out]`}
             onMouseEnter={() => setShowActions(true)}
           >
             {REACTION_EMOJIS.map((emoji) => (
