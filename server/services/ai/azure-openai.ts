@@ -140,7 +140,7 @@ export class AzureOpenAiProvider implements AiProvider {
     if (this.availableCache && Date.now() - this.availableCache.ts < AzureOpenAiProvider.AVAILABILITY_CACHE_TTL) {
       return this.availableCache.result;
     }
-    let result = false;
+    let result: boolean;
     try {
       // Non-billable check: list deployments endpoint (no inference cost)
       const listUrl = `${this.baseUrl}/openai/deployments?api-version=${this.apiVersion}`;

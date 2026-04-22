@@ -197,7 +197,7 @@ export const platformAuditRouter = router({
     }))
     .query(async ({ input }) => {
       try {
-        let conditions = [];
+        const conditions = [];
         if (input.action) conditions.push(eq(auditLog.action, input.action));
         if (input.partnerId) conditions.push(eq(auditLog.partnerId, input.partnerId));
         if (input.actorId) conditions.push(eq(auditLog.actorId, input.actorId));

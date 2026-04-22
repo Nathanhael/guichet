@@ -33,9 +33,7 @@ const h = vi.hoisted(() => {
 
   function makeTicketsUpdateChain() {
     const chain: Rec = {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     chain.set = (patch: Rec) => { ticketsSetCalls.push(patch); return chain as any; };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     chain.where = (clause: unknown) => { ticketsWhereCalls.push(clause); return chain as any; };
     chain.returning = async () => ticketsUpdateReturnQueue.shift() ?? [];
     return chain;
@@ -43,9 +41,7 @@ const h = vi.hoisted(() => {
 
   function makeBreachesUpdateChain() {
     const chain: Rec = {};
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     chain.set = (patch: Rec) => { breachesSetCalls.push(patch); return chain as any; };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     chain.where = (clause: unknown) => { breachesWhereCalls.push(clause); return chain as any; };
     chain.returning = async () => breachesUpdateReturnQueue.shift() ?? [];
     return chain;
@@ -505,7 +501,6 @@ describe('runSlaSweep', () => {
   it('emits sla:breach socket event when a breach is recorded', async () => {
     const emitMock = vi.fn();
     const toMock = vi.fn(() => ({ emit: emitMock }));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mockIo = { to: toMock } as any;
     setSlaIo(mockIo);
 

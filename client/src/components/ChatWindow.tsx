@@ -260,12 +260,8 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     return () => window.removeEventListener('focus', onFocus);
   }, [ticketId]);
 
-  if (!ticket) return null;
-
-  const liveTicket = tickets.find(t => t.id === ticket!.id) || ticket;
-
   // Pagination cursor for the current ticket
-  const cursorInfo = ticket ? messageCursors[ticket!.id] : undefined;
+  const cursorInfo = ticket ? messageCursors[ticket.id] : undefined;
 
   const loadOlderMessages = useCallback(() => {
     // Derive ticketId from store to avoid stale closure when ticket prop
@@ -322,6 +318,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
       loadOlderMessages();
     }
   }, [loadOlderMessages]);
+
+  if (!ticket) return null;
+
+  const liveTicket = tickets.find(t => t.id === ticket.id) || ticket;
 
   function scrollToBottom() {
     const el = scrollContainerRef.current;

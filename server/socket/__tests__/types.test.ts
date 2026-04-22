@@ -21,9 +21,6 @@ vi.mock('../../utils/metrics.js', () => ({
 }));
 
 import { isTokenExpired, requireIdentified, REVOCATION_CHECK_INTERVAL_MS } from '../handlers/types.js';
-import { isRevoked } from '../../services/sessionRevocation.js';
-
-const mockIsRevoked = vi.mocked(isRevoked);
 
 function makeSocket(overrides: Partial<{ tokenExp: number; userId: string; partnerId: string; lastRevocationCheck: number }> = {}): Socket {
   const emitMock = vi.fn();

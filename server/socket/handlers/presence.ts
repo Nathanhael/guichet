@@ -169,7 +169,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         return socket.emit('error', { message: 'You are not a participant of this ticket' });
       }
 
-      let participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
+      const participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
       await updateParticipants(ticketId, participants);
 
       // Return ticket to queue if the leaving agent is the primary support,
@@ -177,7 +177,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       let queueReturned = false;
       if (ticket.supportId === supportId || participants.length === 0) {
         const { returnTicketToQueue } = await import('../../services/ticketQueries.js');
-        await returnTicketToQueue(ticketId);
+        await returnTicketToQueue(ticketId, supportId);
         queueReturned = true;
       }
 

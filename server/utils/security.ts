@@ -59,5 +59,6 @@ export function sanitizeForPrompt(text: string | undefined | null): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     // Remove common control characters that might confuse some models
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 }

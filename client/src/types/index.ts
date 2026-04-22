@@ -307,7 +307,7 @@ export interface AdminStats {
   previousPeriod?: Partial<AdminStats>;
 }
 
-export interface Statistics extends AdminStats {}
+export type Statistics = AdminStats;
 
 export interface FeedbackItem {
   id: string;

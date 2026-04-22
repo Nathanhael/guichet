@@ -27,8 +27,8 @@ export interface ModalHeaderProps extends Omit<HTMLAttributes<HTMLDivElement>, '
   actions?: ReactNode;
 }
 
-export interface ModalBodyProps extends HTMLAttributes<HTMLDivElement> {}
-export interface ModalFooterProps extends HTMLAttributes<HTMLDivElement> {}
+export type ModalBodyProps = HTMLAttributes<HTMLDivElement>;
+export type ModalFooterProps = HTMLAttributes<HTMLDivElement>;
 
 export function ModalHeader({ onClose, title, subtitle, actions, className = '', children, ...rest }: ModalHeaderProps) {
   return (

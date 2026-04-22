@@ -13,8 +13,8 @@ import config from '../../../config.js';
 function makeSlug(text: string) {
   return text.toString().toLowerCase().trim()
     .replace(/\s+/g, '-')
-    .replace(/[^\w\-]+/g, '')
-    .replace(/\-\-+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-')
     .replace(/^-+/, '')
     .replace(/-+$/, '');
 }
@@ -184,7 +184,7 @@ export const partnerConfigRouter = router({
       if (result.length === 0) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
 
       // Strip sensitive AI configuration (API keys, provider config) from the response
-      const { aiConfig, aiProvider, aiModel, ...safePartner } = result[0];
+      const { aiConfig: _aiConfig, aiProvider: _aiProvider, aiModel: _aiModel, ...safePartner } = result[0];
       return safePartner;
     } catch (err: unknown) {
       // IM-11: Re-throw TRPCErrors (e.g. NOT_FOUND) instead of swallowing into INTERNAL_SERVER_ERROR
