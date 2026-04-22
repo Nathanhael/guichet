@@ -25,6 +25,8 @@ interface ChatHeaderProps {
   agentIsOnline: boolean;
   onCloseTicket: () => void;
   onOpenSearch?: () => void;
+  /** When false/undefined, suppresses the cross-lang auto-translate banner — the claim only holds if the partner has AI translation turned on. */
+  translationEnabled?: boolean;
 }
 
 export default function ChatHeader({
@@ -43,6 +45,7 @@ export default function ChatHeader({
   agentIsOnline,
   onCloseTicket,
   onOpenSearch,
+  translationEnabled,
 }: ChatHeaderProps) {
   const { allLabels, onlineSupportUsers } = useStoreShallow(s => ({
     allLabels: s.allLabels,
@@ -535,7 +538,7 @@ export default function ChatHeader({
           )}
         </div>
         </div>
-        {isCrossLang && !hasSupportReply && !focusMode && !compact && !isClosed && (
+        {translationEnabled && isCrossLang && !hasSupportReply && !focusMode && !compact && !isClosed && (
           <div
             data-cross-lang-banner
             className="px-4 py-1.5 border-t border-[var(--color-border)] bg-[var(--color-accent-soft)] text-[11px] text-[var(--color-accent)]"

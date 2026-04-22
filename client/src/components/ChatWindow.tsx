@@ -399,6 +399,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
           agentIsOnline={agentIsOnline}
           onCloseTicket={requestCloseTicket}
           onOpenSearch={() => setSearchOpen(true)}
+          translationEnabled={!!aiConfig?.translation}
         />
       )}
 

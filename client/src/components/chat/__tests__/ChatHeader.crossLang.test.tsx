@@ -55,8 +55,23 @@ describe('ChatHeader cross-lang banner', () => {
       showTransferMenu={false} setShowTransferMenu={() => {}} onTransfer={() => {}}
       closing={false} canClose={true} agentIsOnline={true}
       onCloseTicket={() => {}}
+      translationEnabled={true}
     />);
     expect(screen.getByText(/auto-translated to NL/i)).toBeInTheDocument();
+  });
+
+  it('omits the banner when translation is disabled for the partner', () => {
+    const ticket = makeTicket('nl');
+    render(<ChatHeader
+      ticket={ticket} liveTicket={ticket}
+      isSupport={true} isClosed={false}
+      focusMode={false} compact={false}
+      showTransferMenu={false} setShowTransferMenu={() => {}} onTransfer={() => {}}
+      closing={false} canClose={true} agentIsOnline={true}
+      onCloseTicket={() => {}}
+      translationEnabled={false}
+    />);
+    expect(screen.queryByText(/auto-translated/i)).toBeNull();
   });
 
   it('omits the banner when ticket lang matches viewer lang', () => {
@@ -68,6 +83,7 @@ describe('ChatHeader cross-lang banner', () => {
       showTransferMenu={false} setShowTransferMenu={() => {}} onTransfer={() => {}}
       closing={false} canClose={true} agentIsOnline={true}
       onCloseTicket={() => {}}
+      translationEnabled={true}
     />);
     expect(screen.queryByText(/auto-translated/i)).toBeNull();
   });
@@ -84,6 +100,7 @@ describe('ChatHeader cross-lang banner', () => {
       showTransferMenu={false} setShowTransferMenu={() => {}} onTransfer={() => {}}
       closing={false} canClose={true} agentIsOnline={true}
       onCloseTicket={() => {}}
+      translationEnabled={true}
     />);
     expect(screen.queryByText(/auto-translated/i)).toBeNull();
   });
@@ -103,6 +120,7 @@ describe('ChatHeader cross-lang banner', () => {
       showTransferMenu={false} setShowTransferMenu={() => {}} onTransfer={() => {}}
       closing={false} canClose={true} agentIsOnline={true}
       onCloseTicket={() => {}}
+      translationEnabled={true}
     />);
     expect(screen.getByText(/auto-translated to NL/i)).toBeInTheDocument();
   });
@@ -119,6 +137,7 @@ describe('ChatHeader cross-lang banner', () => {
       showTransferMenu={false} setShowTransferMenu={() => {}} onTransfer={() => {}}
       closing={false} canClose={true} agentIsOnline={true}
       onCloseTicket={() => {}}
+      translationEnabled={true}
     />);
     expect(screen.getByText(/auto-translated to NL/i)).toBeInTheDocument();
   });
