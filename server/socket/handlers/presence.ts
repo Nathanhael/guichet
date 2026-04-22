@@ -56,6 +56,24 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         return socket.emit('error', { message: 'Cannot join a closed ticket' });
       }
 
+      // Idempotency: if the joiner is already a participant (tab re-open,
+      // state rehydrate, duplicate emit), short-circuit to the silent-rejoin
+      // behaviour — refresh the room + history but skip the audit write,
+      // "joined the conversation" whisper, and staff-room broadcast. Prior
+      // behaviour inserted a new system message on every call, producing
+      // stacks of duplicate "X joined" lines in the chat.
+      const existingParticipants = (ticket.participants as unknown as Participant[] | null) || [];
+      const alreadyParticipant = existingParticipants.some((p: Participant) => p.id === supportId);
+
+      if (alreadyParticipant) {
+        socket.join(Rooms.ticket(ticketId));
+        const { messages: msgRows, hasMore, nextCursor } = await findTicketMessagesPaginated(ticketId, { limit: 100 });
+        const msgs = msgRows.map(mapMessageRow);
+        const labelIds = await findTicketLabelIds(ticketId);
+        socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
+        return;
+      }
+
       // Resolve the joiner's Azure B2B guest flag so it can be denormalized
       // onto tickets.participants — lets ChatHeader flag offline guests
       // without a live presence lookup. findUserName is a cheap single-row
