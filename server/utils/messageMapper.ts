@@ -48,11 +48,11 @@ export function mapMessageRow(row: MessageRow): Message {
   const senderRole = (row.sender_role ?? row.senderRole ?? 'system') as UserRole;
   const senderLang = row.sender_lang ?? row.senderLang ?? 'en';
 
-  let reactions: Record<string, string[]> = {};
+  let reactions: Record<string, string[]>;
   try {
     const rawReactions = row.reactions || '{}';
     reactions = typeof rawReactions === 'string' ? JSON.parse(rawReactions) : rawReactions;
-  } catch (e) {
+  } catch {
     reactions = {};
   }
 

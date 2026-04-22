@@ -1,3 +1,5 @@
+import useStore from '../store/useStore';
+
 const BASE_TITLE = 'Guichet';
 
 export function requestNotificationPermission(): void {
@@ -12,14 +14,8 @@ export function requestNotificationPermission(): void {
  * Reads unreadTickets from the store.
  */
 export function updateTitleBadge(): void {
-    try {
-        // Dynamically import to avoid circular dependency
-        const { default: useStore } = require('../store/useStore');
-        const count = Object.keys(useStore.getState().unreadTickets).length;
-        document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE;
-    } catch {
-        // Ignore — store not yet initialized
-    }
+    const count = Object.keys(useStore.getState().unreadTickets).length;
+    document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE;
 }
 
 /**

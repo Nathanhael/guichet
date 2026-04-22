@@ -58,7 +58,7 @@ export async function createContext({ req, res }: CreateExpressContextOptions) {
         tokenExp: decoded.exp,
         tokenIat: decoded.iat,
       };
-    } catch (err) {
+    } catch {
       // Ignore invalid tokens for base context
     }
   }

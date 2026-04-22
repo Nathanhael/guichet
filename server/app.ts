@@ -491,7 +491,7 @@ setInterval(async () => {
 }, 60 * 60 * 1000).unref();
 
 // Global error handler — catch unhandled Express errors, prevent stack trace leaks
-app.use((err: Error, _req: Request, res: Response, _next: Function) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error({ err: err.message, stack: err.stack }, 'Unhandled route error');
   if (!res.headersSent) {
     res.status(500).json({ error: 'Internal server error' });

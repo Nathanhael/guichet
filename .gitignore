@@ -13,6 +13,7 @@ out/
 
 # Compiled TS output in source tree (should live in dist/ only)
 server/**/*.js
+!server/eslint.config.js
 
 # Environment
 .env

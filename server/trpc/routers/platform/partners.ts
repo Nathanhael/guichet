@@ -37,7 +37,7 @@ export const platformPartnersRouter = router({
       const allPartners = await db.select().from(partners)
         .where(isNull(partners.deletedAt))
         .orderBy(asc(partners.name));
-      return allPartners.map(({ aiConfig, aiProvider, aiModel, ...safe }) => safe);
+      return allPartners.map(({ aiConfig: _aiConfig, aiProvider: _aiProvider, aiModel: _aiModel, ...safe }) => safe);
     } catch (err: unknown) {
       logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: listPartners error');
       throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Failed to list partners' });
@@ -144,7 +144,7 @@ export const platformPartnersRouter = router({
           try {
             configToStore.encryptedApiKey = encrypt(configToStore.apiKey);
             delete configToStore.apiKey;
-          } catch (err) {
+          } catch {
             if (config.NODE_ENV === 'production') {
               throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Cannot store API key: AI_KEY_ENCRYPTION_SECRET is not configured' });
             }
