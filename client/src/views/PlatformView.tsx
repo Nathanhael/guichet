@@ -4,6 +4,7 @@ import { useT } from '../i18n';
 import PlatformSystemHealth from '../components/admin/PlatformSystemHealth';
 import PlatformAuditLog from '../components/admin/PlatformAuditLog';
 import UserMenuChip from '../components/ui/UserMenuChip';
+import { NavButton, NavGroupLabel } from '../components/ui/SidebarNav';
 import PartnerList from '../components/platform/PartnerList';
 import UserTable from '../components/platform/UserTable';
 import CreatePartnerModal from '../components/platform/CreatePartnerModal';
@@ -81,30 +82,15 @@ export default function PlatformView() {
     };
   }, []);
 
-  const NavButton = ({ id, label, icon }: { id: PlatformTab; label: string; icon: React.ReactNode }) => {
-    const active = activeTab === id;
-    return (
-      <button
-        role="tab"
-        aria-selected={active}
-        onClick={() => setActiveTab(id)}
-        title={label}
-        className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-[var(--radius-btn)] text-[13px] font-medium transition-colors ${
-          active
-            ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
-            : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]'
-        }`}
-      >
-        <span className="shrink-0">{icon}</span>
-        <span className="truncate">{label}</span>
-      </button>
-    );
-  };
-
-  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] px-3 pt-4 pb-1.5 select-none">
-      {children}
-    </div>
+  const navItem = (id: PlatformTab, label: string, icon: React.ReactNode) => (
+    <NavButton
+      key={id}
+      role="tab"
+      active={activeTab === id}
+      onClick={() => setActiveTab(id)}
+      label={label}
+      icon={icon}
+    />
   );
 
   return (
@@ -119,19 +105,19 @@ export default function PlatformView() {
           </div>
 
           <nav role="tablist" aria-label={t('platform')} className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-3">
-            <SectionLabel>Tenants</SectionLabel>
+            <NavGroupLabel>Tenants</NavGroupLabel>
             <div className="flex flex-col gap-0.5">
-              <NavButton id="partners" label={t('partners_tab')} icon={<Building2 className="h-4 w-4" />} />
-              <NavButton id="users" label={t('users_tab')} icon={<Users className="h-4 w-4" />} />
-              <NavButton id="invites" label={t('invites_tab')} icon={<Mail className="h-4 w-4" />} />
-              <NavButton id="sso" label={t('sso_tab')} icon={<KeyRound className="h-4 w-4" />} />
+              {navItem('partners', t('partners_tab'), <Building2 className="h-4 w-4" />)}
+              {navItem('users', t('users_tab'), <Users className="h-4 w-4" />)}
+              {navItem('invites', t('invites_tab'), <Mail className="h-4 w-4" />)}
+              {navItem('sso', t('sso_tab'), <KeyRound className="h-4 w-4" />)}
             </div>
 
-            <SectionLabel>Platform</SectionLabel>
+            <NavGroupLabel>Platform</NavGroupLabel>
             <div className="flex flex-col gap-0.5">
-              <NavButton id="health" label={t('health_tab')} icon={<Activity className="h-4 w-4" />} />
-              <NavButton id="audit" label={t('audit_tab')} icon={<FileText className="h-4 w-4" />} />
-              <NavButton id="archive" label={t('archive_tab')} icon={<Archive className="h-4 w-4" />} />
+              {navItem('health', t('health_tab'), <Activity className="h-4 w-4" />)}
+              {navItem('audit', t('audit_tab'), <FileText className="h-4 w-4" />)}
+              {navItem('archive', t('archive_tab'), <Archive className="h-4 w-4" />)}
             </div>
           </nav>
 

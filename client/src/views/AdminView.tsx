@@ -3,6 +3,7 @@ import ErrorBoundary from '../components/ErrorBoundary';
 import { useStoreShallow } from '../store/useStore';
 import { useT } from '../i18n';
 import UserMenuChip from '../components/ui/UserMenuChip';
+import { NavButton, NavGroupLabel } from '../components/ui/SidebarNav';
 import AdminTickets from '../components/admin/AdminTickets';
 import AdminArchive from '../components/admin/AdminArchive';
 import AdminFeedback from '../components/admin/AdminFeedback';
@@ -112,28 +113,14 @@ export default function AdminView() {
   const activeMembership = (memberships || []).find(m => m.id === activeMembershipId);
   if (activeMembershipId && !activeMembership && !user.isPlatformOperator) return <PartnerUnavailable />;
 
-  const NavButton = ({ id, label, icon }: { id: AdminTab; label: string; icon: React.ReactNode }) => {
-    const active = view === id;
-    return (
-      <button
-        onClick={() => setView(id)}
-        title={label}
-        className={`flex items-center gap-2.5 w-full px-3 py-2 rounded-[var(--radius-btn)] text-[13px] font-medium transition-colors ${
-          active
-            ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
-            : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]'
-        }`}
-      >
-        <span className="shrink-0">{icon}</span>
-        <span className="truncate">{label}</span>
-      </button>
-    );
-  };
-
-  const SectionLabel = ({ children }: { children: React.ReactNode }) => (
-    <div className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] px-3 pt-4 pb-1.5 select-none">
-      {children}
-    </div>
+  const navItem = (id: AdminTab, label: string, icon: React.ReactNode) => (
+    <NavButton
+      key={id}
+      active={view === id}
+      onClick={() => setView(id)}
+      label={label}
+      icon={icon}
+    />
   );
 
   return (
@@ -148,32 +135,32 @@ export default function AdminView() {
           </div>
 
           <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 pb-3">
-            <SectionLabel>Overview</SectionLabel>
+            <NavGroupLabel>Overview</NavGroupLabel>
             <div className="flex flex-col gap-0.5">
-              <NavButton id="dashboard" label={t('dashboard')} icon={<LayoutDashboard className="h-4 w-4" />} />
-              <NavButton id="satisfaction" label="Satisfaction" icon={<Star className="h-4 w-4" />} />
-              <NavButton id="alerts" label="Alerts" icon={<Flame className="h-4 w-4" />} />
+              {navItem('dashboard', t('dashboard'), <LayoutDashboard className="h-4 w-4" />)}
+              {navItem('satisfaction', 'Satisfaction', <Star className="h-4 w-4" />)}
+              {navItem('alerts', 'Alerts', <Flame className="h-4 w-4" />)}
             </div>
 
-            <SectionLabel>Operations</SectionLabel>
+            <NavGroupLabel>Operations</NavGroupLabel>
             <div className="flex flex-col gap-0.5">
-              <NavButton id="tickets" label={t('active_tickets')} icon={<MessageSquare className="h-4 w-4" />} />
-              <NavButton id="archive" label={t('archive')} icon={<Archive className="h-4 w-4" />} />
-              <NavButton id="audit_log" label="Audit Log" icon={<FileText className="h-4 w-4" />} />
-              <NavButton id="feedback" label={t('feedback_and_ratings')} icon={<Smile className="h-4 w-4" />} />
+              {navItem('tickets', t('active_tickets'), <MessageSquare className="h-4 w-4" />)}
+              {navItem('archive', t('archive'), <Archive className="h-4 w-4" />)}
+              {navItem('audit_log', 'Audit Log', <FileText className="h-4 w-4" />)}
+              {navItem('feedback', t('feedback_and_ratings'), <Smile className="h-4 w-4" />)}
             </div>
 
-            <SectionLabel>Team</SectionLabel>
+            <NavGroupLabel>Team</NavGroupLabel>
             <div className="flex flex-col gap-0.5">
-              <NavButton id="team" label="Team" icon={<Users className="h-4 w-4" />} />
-              <NavButton id="departments" label="Departments" icon={<Building2 className="h-4 w-4" />} />
+              {navItem('team', 'Team', <Users className="h-4 w-4" />)}
+              {navItem('departments', 'Departments', <Building2 className="h-4 w-4" />)}
             </div>
 
-            <SectionLabel>Configuration</SectionLabel>
+            <NavGroupLabel>Configuration</NavGroupLabel>
             <div className="flex flex-col gap-0.5">
-              <NavButton id="business_hours" label="Business Hours" icon={<Clock className="h-4 w-4" />} />
-              <NavButton id="labels" label={t('labels')} icon={<Tag className="h-4 w-4" />} />
-              <NavButton id="canned_responses" label={t('canned_responses') || 'Quick Replies'} icon={<Zap className="h-4 w-4" />} />
+              {navItem('business_hours', 'Business Hours', <Clock className="h-4 w-4" />)}
+              {navItem('labels', t('labels'), <Tag className="h-4 w-4" />)}
+              {navItem('canned_responses', t('canned_responses') || 'Quick Replies', <Zap className="h-4 w-4" />)}
               {/* DISABLED_FEATURE: Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
             </div>
           </nav>
