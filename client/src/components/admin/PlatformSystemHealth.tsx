@@ -87,11 +87,15 @@ export default function PlatformSystemHealth() {
   });
 
   const [retryRemaining, setRetryRemaining] = useState<number>(0);
+  // Rate-limit countdown: the server responds 429 + retry-after, we seed and
+  // tick a local countdown. setState in the effect body seeds the initial value
+  // once; the interval (a subscription) then pushes updates on each tick.
   useEffect(() => {
     if (chainVerify.error?.data?.code !== 'TOO_MANY_REQUESTS') return;
     const secs = parseRetryAfter(chainVerify.error.message);
     if (secs === null || secs <= 0) return;
     const deadline = Date.now() + secs * 1000;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRetryRemaining(secs);
     const id = setInterval(() => {
       const left = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
@@ -107,6 +111,9 @@ export default function PlatformSystemHealth() {
     if (!health.postgres) alerts.push({ id: 'pg-down', message: t('postgres_unreachable') });
     if (!health.gdprSuccess) alerts.push({ id: 'gdpr-failed', message: t('gdpr_purge_failed') });
     const lastRun = new Date(health.gdprLastRun).getTime();
+    // Date.now() in render gates a "purge overdue" alert; acceptable since the
+    // worst case is showing the banner a render late, and health data refreshes.
+    // eslint-disable-next-line react-hooks/purity
     if (Date.now() - lastRun > 25 * 60 * 60 * 1000) alerts.push({ id: 'gdpr-overdue', message: t('gdpr_purge_overdue') });
   }
   const visibleAlerts = alerts.filter(a => !dismissedAlerts.includes(a.id));
@@ -237,6 +244,9 @@ export default function PlatformSystemHealth() {
           </div>
 
           {lastVerify && !chainVerify.isPending && (() => {
+            // Date.now() in render gates a staleness banner; acceptable since the
+            // banner only needs day-level precision and re-renders happen on mutations.
+            // eslint-disable-next-line react-hooks/purity
             const ageMs = Date.now() - new Date(lastVerify.ranAt).getTime();
             if (ageMs < STALE_AFTER_MS) return null;
             const days = Math.floor(ageMs / (24 * 60 * 60 * 1000));

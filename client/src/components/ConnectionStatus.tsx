@@ -18,6 +18,10 @@ export default function ConnectionStatus() {
   }, [connectionStatus]);
 
   if (connectionStatus === 'connected') return null;
+  // Intentional ref read in render: "have we ever connected" is a render
+  // gate, not render data. Promoting to state would trigger an extra
+  // re-render on first connect for no user-visible benefit.
+  // eslint-disable-next-line react-hooks/refs
   if (!hasConnected.current) return null;
 
   return (

@@ -20,8 +20,8 @@ export default function RatingsTab() {
   const ratingsQuery = trpc.rating.list.useQuery({ limit: 200 });
   const { data: usersData } = trpc.user.list.useQuery();
 
-  const users: UserInput[] = usersData?.users ?? [];
-  const ratings = (ratingsQuery.data?.items || []) as RatingInput[];
+  const users: UserInput[] = useMemo(() => usersData?.users ?? [], [usersData?.users]);
+  const ratings = useMemo(() => (ratingsQuery.data?.items || []) as RatingInput[], [ratingsQuery.data?.items]);
   const loading = ratingsQuery.isLoading;
 
   const maps = useMemo(() => buildUserMaps(users), [users]);

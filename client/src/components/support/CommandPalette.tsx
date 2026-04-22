@@ -30,7 +30,9 @@ export default function CommandPalette({ commands, onClose }: CommandPaletteProp
     return label.includes(q) || !!keywordMatch;
   });
 
+  // Reset selection on query change; arrow-key navigation mutates it independently.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
   }, [query]);
 

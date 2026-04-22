@@ -201,20 +201,23 @@ export default function SupportView() {
     [activeTab, tickets],
   );
 
-  // Keep activeTab in sync with open tabs
+  // Keep activeTab pointing at a valid tab as the open-tab set changes.
+  // Cross-render state dependency, can't be purely derived.
   useEffect(() => {
     if (openTabTickets.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(null);
       return;
     }
     if (!activeTab || !openTabTickets.some((tk) => tk.id === activeTab)) {
       setActiveTab(openTabTickets[0].id);
     }
-  }, [openTabTickets, activeTab]);
+  }, [openTabTickets, activeTab, setActiveTab]);
 
-  // Clear preview if the ticket was opened as a tab
+  // Clear the preview pane if the previewed ticket was subsequently opened as a tab.
   useEffect(() => {
     if (previewTicket && supportOpenTickets.includes(previewTicket.id)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewTicket(null);
     }
   }, [supportOpenTickets, previewTicket]);
@@ -266,7 +269,7 @@ export default function SupportView() {
     setPreviewTicket(null);
   }
 
-  function closeTab(ticketId: string) {
+  const closeTab = useCallback((ticketId: string) => {
     // Notify server so it unassigns the agent from the ticket
     const ticket = tickets.find((tk) => tk.id === ticketId);
     if (ticket && ticket.status !== 'closed') {
@@ -277,7 +280,7 @@ export default function SupportView() {
       const remaining = openTabTickets.filter((tk) => tk.id !== ticketId);
       setActiveTab(remaining.length > 0 ? remaining[0].id : null);
     }
-  }
+  }, [tickets, removeSupportOpenTicket, activeTab, openTabTickets, setActiveTab]);
 
   // ── Command Palette ──
 
@@ -286,13 +289,13 @@ export default function SupportView() {
     const idx = openTabTickets.findIndex((tk) => tk.id === activeTab);
     const next = (idx + direction + openTabTickets.length) % openTabTickets.length;
     setActiveTab(openTabTickets[next].id);
-  }, [openTabTickets, activeTab]);
+  }, [openTabTickets, activeTab, setActiveTab]);
 
   const jumpToTab = useCallback((n: number) => {
     const idx = n - 1;
     if (idx < 0 || idx >= openTabTickets.length) return;
     setActiveTab(openTabTickets[idx].id);
-  }, [openTabTickets]);
+  }, [openTabTickets, setActiveTab]);
 
   // Jump to the prev/next open tab that has an unread indicator. No-op if
   // nothing is unread. Wraps around the list in either direction.
@@ -307,7 +310,7 @@ export default function SupportView() {
         ? direction === 1 ? 0 : unreadOpen.length - 1
         : (currentIdx + direction + unreadOpen.length) % unreadOpen.length;
     setActiveTab(unreadOpen[nextIdx].id);
-  }, [openTabTickets, activeTab]);
+  }, [openTabTickets, activeTab, setActiveTab]);
 
   const commands: Command[] = useMemo(() => [
     // Navigation
@@ -335,7 +338,7 @@ export default function SupportView() {
     { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+F', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
     { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
     { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_sidebar_right', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+A', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'copilot', 'info', 'ai'] },
-  ], [activeTab, openTabTickets, navigateTab, jumpToTab]);
+  ], [activeTab, openTabTickets, navigateTab, jumpToTab, closeTab, toggleSidebar]);
 
   useKeyboardShortcuts({
     enabled: !paletteOpen,

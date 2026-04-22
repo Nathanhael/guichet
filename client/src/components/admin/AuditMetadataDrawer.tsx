@@ -36,7 +36,9 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
     return () => window.removeEventListener('keydown', handler);
   }, [entry, onClose]);
 
+  // Reset the "copied" indicator when the drawer opens onto a different entry.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCopied(false);
   }, [entry]);
 

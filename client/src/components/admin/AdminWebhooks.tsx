@@ -32,6 +32,27 @@ const LABEL = 'text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block
 const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all';
 const SECONDARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors';
 
+function EventChips({ events, selected, onToggle }: { events: readonly string[]; selected: string[]; onToggle: (e: WebhookEvent) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {events.map((e) => (
+        <button
+          key={e}
+          type="button"
+          onClick={() => onToggle(e as WebhookEvent)}
+          className={`px-2.5 py-1 text-[11px] font-medium rounded-[var(--radius-pill)] transition-colors ${
+            selected.includes(e)
+              ? 'bg-[var(--color-accent)] text-white shadow-[var(--shadow-soft)]'
+              : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
+          }`}
+        >
+          {e === '*' ? 'ALL' : e}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function AdminWebhooks() {
   const t = useT();
   const isExternal = useIsExternalAdmin();
@@ -131,26 +152,6 @@ export default function AdminWebhooks() {
 
   const error = fetchError?.message || createMutation.error?.message || updateMutation.error?.message || deleteMutation.error?.message;
 
-  function EventChips({ events, selected, onToggle }: { events: readonly string[]; selected: string[]; onToggle: (e: WebhookEvent) => void }) {
-    return (
-      <div className="flex flex-wrap gap-1.5">
-        {events.map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => onToggle(e as WebhookEvent)}
-            className={`px-2.5 py-1 text-[11px] font-medium rounded-[var(--radius-pill)] transition-colors ${
-              selected.includes(e)
-                ? 'bg-[var(--color-accent)] text-white shadow-[var(--shadow-soft)]'
-                : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
-            }`}
-          >
-            {e === '*' ? 'ALL' : e}
-          </button>
-        ))}
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-5xl">

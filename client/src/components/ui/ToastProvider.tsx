@@ -65,9 +65,10 @@ export default function ToastProvider({ children, limit = 4 }: ToastProviderProp
   );
 
   useEffect(() => {
+    const map = timers.current;
     return () => {
-      timers.current.forEach((t) => clearTimeout(t));
-      timers.current.clear();
+      map.forEach((t) => clearTimeout(t));
+      map.clear();
     };
   }, []);
 

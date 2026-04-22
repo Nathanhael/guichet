@@ -12,7 +12,12 @@ export default function EmojiSuggestion({ query, onSelect, onClose }: EmojiSugge
   const listRef = useRef<HTMLDivElement>(null);
   const results = searchEmoji(query);
 
-  useEffect(() => { setActiveIndex(0); }, [query]);
+  // Reset selection index when the query changes; activeIndex is independently
+  // navigated by arrow keys so can't be purely derived.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveIndex(0);
+  }, [query]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

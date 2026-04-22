@@ -216,7 +216,12 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
   const selectedPartner = ssoPartners.find(p => p.id === partnerId);
   const partnerDepts = (selectedPartner?.departments as { id: string; name: string }[] | undefined) || [];
 
-  useEffect(() => { setSelectedDepts([]); }, [partnerId]);
+  // Clear department selection when the user picks a different partner —
+  // dept IDs are partner-scoped and won't apply across tenants.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedDepts([]);
+  }, [partnerId]);
 
   const addMutation = trpc.platform.addGroupMapping.useMutation({
     onSuccess: onAdded,

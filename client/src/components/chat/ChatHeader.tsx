@@ -98,7 +98,10 @@ export default function ChatHeader({
   const transferMenuRef = useRef<HTMLDivElement>(null);
   const labelPickerRef = useRef<HTMLDivElement>(null);
 
+  // Sync optimistic local label state to the authoritative server list whenever
+  // the ticket's labels change (server push, other client, accept/revert).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOptimisticLabels(liveTicket.labels || []);
   }, [liveTicket.labels]);
 

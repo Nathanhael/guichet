@@ -49,10 +49,14 @@ export default function AdminArchive() {
     refetchInterval: 60000,
   });
 
+  // Cursor-paginated accumulator: merge each page of query results into local
+  // state. setState-in-effect is the canonical pattern for this since the
+  // accumulation is inherently cross-render and can't be a derived value.
   useEffect(() => {
     if (ticketsQuery.data) {
       const data = ticketsQuery.data as { tickets?: Ticket[]; nextCursor?: string };
       if (data.tickets) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTickets((prev) => !cursor ? data.tickets! : [...prev, ...data.tickets!]);
         setHasMore(!!data.nextCursor);
       }
@@ -64,7 +68,9 @@ export default function AdminArchive() {
     { enabled: !!preview?.id }
   );
 
+  // Sync fetched messages to local state for the preview pane.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (messagesQuery.data) setPreviewMessages(messagesQuery.data.messages as unknown as Message[]);
   }, [messagesQuery.data]);
 

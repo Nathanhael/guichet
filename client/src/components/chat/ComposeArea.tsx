@@ -126,7 +126,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       }
     }
     setText('');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
 
   // Debounced save — 400ms after the last keystroke.

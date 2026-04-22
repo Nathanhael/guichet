@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Drop-in replacement for `useState<string>` that mirrors the value into
@@ -50,14 +50,12 @@ export function useUrlParam(
   }, [write]);
 
   // Respect back/forward navigation by re-reading the URL on popstate.
-  const readerRef = useRef(read);
-  readerRef.current = read;
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const handler = () => setValue(readerRef.current());
+    const handler = () => setValue(read());
     window.addEventListener('popstate', handler);
     return () => window.removeEventListener('popstate', handler);
-  }, []);
+  }, [read]);
 
   return [value, setBoth];
 }

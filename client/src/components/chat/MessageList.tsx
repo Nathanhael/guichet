@@ -89,8 +89,10 @@ export default function MessageList({
 
   const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
 
-  // Reset match index when query or matches change
+  // Reset match index when query or matches change; index is independently
+  // advanced by next/prev navigation.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCurrentMatchIndex(0);
   }, [searchQuery, matchedMessageIds.length]);
 

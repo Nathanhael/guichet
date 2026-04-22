@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { trpc } from '../../utils/trpc';
 import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
@@ -68,7 +68,10 @@ export default function AdminAuditLog() {
     setCursorStack([]);
   }, []);
 
+  // Reset pagination cursor whenever any filter input changes — ensures the
+  // next query starts from page 1 instead of a stale cursor.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     resetCursor();
   }, [filterAction, filterActorId, filterTargetType, filterWasExternal, dateFrom, dateTo, resetCursor]);
 
@@ -117,12 +120,16 @@ export default function AdminAuditLog() {
 
   const { data, isLoading } = trpc.partner.audit.getAuditLog.useQuery(queryParams);
   const utils = trpc.useUtils();
-  const items = data?.items || [];
+  const items = useMemo(() => data?.items || [], [data?.items]);
 
+  // Open-from-URL: hydrate drawer state when the row matching ?p.open=<id>
+  // lands on the current page. Inherently cross-render — URL param arrives
+  // before query resolves.
   useEffect(() => {
     if (!openId || selectedEntry) return;
     const match = items.find(l => l.id === openId);
     if (match) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedEntry({
         id: match.id,
         action: match.action,

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { trpc } from '../utils/trpc';
 import { useT } from '../i18n';
 import useStore from '../store/useStore';
@@ -37,6 +37,9 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
   const [selectedIndex, setSelectedIndex] = useState(0);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
+  // Pin latest onClose to a ref so the document listener below doesn't need
+  // to re-bind on every render (would defeat the point of the useEffect with []).
+  // eslint-disable-next-line react-hooks/refs
   onCloseRef.current = onClose;
 
   useEffect(() => {
@@ -65,9 +68,21 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
     );
   });
 
+  // Reset selection when the filter query changes. Can't be derived state
+  // because the user also navigates via arrow keys, so selectedIndex owns
+  // its identity across renders.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0);
   }, [query]);
+
+  const expandVariables = useCallback((body: string): string => {
+    const state = useStore.getState();
+    return body
+      .replace(/\{\{agentName\}\}/g, state.user?.name || '')
+      .replace(/\{\{supportName\}\}/g, state.user?.name || '')
+      .replace(/\{\{ticketId\}\}/g, ticketId || '');
+  }, [ticketId]);
 
   useEffect(() => {
     const wrapper = wrapperRef.current;
@@ -91,20 +106,12 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
     }
     target.addEventListener('keydown', handleKeyDown, true);
     return () => target.removeEventListener('keydown', handleKeyDown, true);
-  }, [filtered, selectedIndex, onSelect, onClose]);
+  }, [filtered, selectedIndex, onSelect, onClose, expandVariables]);
 
   useEffect(() => {
     const el = listRef.current?.children[selectedIndex] as HTMLElement;
     el?.scrollIntoView({ block: 'nearest' });
   }, [selectedIndex]);
-
-  function expandVariables(body: string): string {
-    const state = useStore.getState();
-    return body
-      .replace(/\{\{agentName\}\}/g, state.user?.name || '')
-      .replace(/\{\{supportName\}\}/g, state.user?.name || '')
-      .replace(/\{\{ticketId\}\}/g, ticketId || '');
-  }
 
   if (filtered.length === 0 && query) {
     return (

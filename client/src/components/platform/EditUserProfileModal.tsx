@@ -19,8 +19,10 @@ export default function EditUserProfileModal({ user, onClose }: EditUserProfileM
   const utils = trpc.useUtils();
   const [form, setForm] = useState({ name: '', email: '' });
 
+  // Hydrate the form when the modal opens onto a user (prop→state sync).
   useEffect(() => {
     if (user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({ name: user.name, email: user.email ?? '' });
     }
   }, [user]);

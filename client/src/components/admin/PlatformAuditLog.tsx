@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Download, ScrollText, Search } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
@@ -136,8 +136,9 @@ export default function PlatformAuditLog() {
     return () => clearTimeout(handler);
   }, [filterTargetId, resetCursor]);
 
-  // Reset cursor when dates change
+  // Reset cursor when dates change so the next query starts from page 1.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     resetCursor();
   }, [dateFrom, dateTo, resetCursor]);
 
@@ -159,7 +160,7 @@ export default function PlatformAuditLog() {
 
   const { data, isLoading } = trpc.platform.getAuditLog.useQuery(queryParams);
   const utils = trpc.useUtils();
-  const items = data?.items || [];
+  const items = useMemo(() => data?.items || [], [data?.items]);
 
   // Open-from-URL: promote the row matching ?p.open=<id> when it lands on
   // the current page. Does not auto-fetch pages beyond cursor position.
@@ -167,6 +168,7 @@ export default function PlatformAuditLog() {
     if (!openId || selectedEntry) return;
     const match = items.find(l => l.id === openId);
     if (match) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedEntry({
         id: match.id,
         action: match.action,

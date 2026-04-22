@@ -20,7 +20,9 @@ export default function DeletePartnerModal({ partner, onClose }: DeletePartnerMo
   const utils = trpc.useUtils();
   const [confirmation, setConfirmation] = useState('');
 
+  // Clear the typed-to-confirm input when the modal opens onto a new partner.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (partner) setConfirmation('');
   }, [partner]);
 

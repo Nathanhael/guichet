@@ -93,8 +93,11 @@ export default function AdminTickets() {
     .filter((tk: Ticket | undefined): tk is Ticket => !!tk)
     .slice(0, 4);
 
+  // Keep activeTab pointing at a valid tab as the open-tab set changes
+  // (closing, opening, reopening). Cross-render state dependency.
   useEffect(() => {
     if (openTabTickets.length > 0 && !activeTab) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab(openTabTickets[0].id);
     } else if (openTabTickets.length === 0) {
       setActiveTab(null);

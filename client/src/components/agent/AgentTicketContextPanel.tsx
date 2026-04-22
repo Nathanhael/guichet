@@ -10,6 +10,15 @@ interface AgentTicketContextPanelProps {
   onRequestClose: () => void;
 }
 
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">{label}</span>
+      <div className="text-[13px] text-[var(--color-ink)]">{children}</div>
+    </div>
+  );
+}
+
 export default function AgentTicketContextPanel({ ticket, onRequestClose }: AgentTicketContextPanelProps) {
   const t = useT();
   const { memberships, activeMembershipId } = useStoreShallow((s) => ({
@@ -53,13 +62,6 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
     : supportJoined
       ? 'bg-[var(--color-ok)]'
       : 'bg-[var(--color-accent-amber)]';
-
-  const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">{label}</span>
-      <div className="text-[13px] text-[var(--color-ink)]">{children}</div>
-    </div>
-  );
 
   return (
     <div className="flex flex-col gap-4">

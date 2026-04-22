@@ -41,14 +41,20 @@ export default function TicketForm({ manifest }: TicketFormProps) {
   const refFields = selectedDept?.referenceFields || [];
   const allRefsFilledIn = refFields.length === 0 || references.every((r, i) => refFields[i]?.optional || r.value.trim() !== '');
 
+  // Re-seed reference inputs when the user picks a different department —
+  // each dept has its own set of reference fields.
   useEffect(() => {
     const fields = selectedDept?.referenceFields || [];
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReferences(fields.map((f) => ({ label: f.label, value: '' })));
   }, [selectedDept]);
 
+  // If the current dept isn't in the partner manifest (e.g. partner switch),
+  // fall back to the first available department.
   useEffect(() => {
     const hasSelectedDept = manifest.departments.some((d) => d.id === dept);
     if (!hasSelectedDept) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDept(manifest.departments[0]?.id || '');
     }
   }, [manifest.departments, dept]);
