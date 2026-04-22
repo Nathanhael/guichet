@@ -55,22 +55,27 @@ describe('reclaimAbandonedTickets — crash-recovery wiring', () => {
     expect(source).toMatch(/offlineThresholdMs\s*\*\s*RESTART_FALLBACK_MULTIPLIER/);
   });
 
-  it('uses an atomic update race-guarded on supportId to avoid clobbering a just-reassigned ticket', () => {
-    // WHERE id = ? AND supportId = <original>
-    expect(source).toMatch(
-      /\.update\(\s*tickets\s*\)[\s\S]*?\.where\(\s*and\([\s\S]*?eq\(\s*tickets\.id[\s\S]*?eq\(\s*tickets\.supportId\s*,\s*ticket\.supportId/,
-    );
+  it('delegates to returnTicketToQueue with the race-guard supportId so a just-reassigned ticket is not clobbered', () => {
+    // Race-guard lives in returnTicketToQueue's supportId branch (atomic SQL
+    // UPDATE ... WHERE id = ? AND support_id = ?). Passing ticket.supportId
+    // as the second arg is what opts this caller into the guarded path.
+    expect(source).toMatch(/returnTicketToQueue\(\s*ticket\.id\s*,\s*ticket\.supportId\s*\)/);
   });
 
-  it('abandons the ticket silently when the race-guarded update updated zero rows', () => {
-    expect(source).toMatch(/result\.rowCount\s*===\s*0[\s\S]*?continue/);
+  it('abandons the ticket silently when returnTicketToQueue reports zero rows updated', () => {
+    // returnTicketToQueue returns false when the atomic update found no row
+    // (another agent grabbed it first). The reclaim loop must skip — no
+    // system message, no broadcast, no reclaim counter bump.
+    expect(source).toMatch(/if\s*\(\s*!\s*reclaimedOk\s*\)\s*continue/);
   });
 
-  it('nulls support_id, support_name, support_joined_at AND resets status to open', () => {
-    expect(source).toMatch(/supportId:\s*null/);
-    expect(source).toMatch(/supportName:\s*null/);
-    expect(source).toMatch(/supportJoinedAt:\s*null/);
-    expect(source).toMatch(/status:\s*['"]open['"]/);
+  it('resets the ticket via returnTicketToQueue (nulls support_* + status=open live in that helper)', () => {
+    // The nulling of support_id/name/joined_at and status→open is the
+    // contract of returnTicketToQueue — asserted in ticketQueries.test.ts.
+    // Here we just verify the reclaim path goes through that helper and
+    // does NOT hand-roll its own db.update(tickets).set({ supportId: null }).
+    expect(source).toMatch(/import\s*\{[^}]*\breturnTicketToQueue\b[^}]*\}\s*from\s*['"]\.\/ticketQueries\.js['"]/);
+    expect(source).not.toMatch(/\.update\(\s*tickets\s*\)[\s\S]*?\.set\(\s*\{\s*supportId:\s*null/);
   });
 
   it('writes a system message for audit trail on successful reclaim', () => {

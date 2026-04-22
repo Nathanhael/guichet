@@ -24,9 +24,14 @@ describe('SidebarFooter', () => {
     expect(screen.getByText(/queued/i)).toBeInTheDocument();
   });
 
-  it('shows archive count on archive tab', () => {
+  it('hides the count on archive tab (count is queue-specific)', () => {
+    // Intentional: archive mode drops the "{n} queued" chip since the number
+    // doesn't describe the archive view. The toggle button switches back to
+    // 'queue' instead.
     render(<SidebarFooter sidebarTab="archive" queueCount={7} onlineSupportUsers={agents} />);
-    expect(screen.getByText(/7/)).toBeInTheDocument();
+    expect(screen.queryByText(/queued/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('7')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /queue/i })).toBeInTheDocument();
   });
 
   it('shows capacity count', () => {
