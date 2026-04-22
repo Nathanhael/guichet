@@ -13,6 +13,7 @@ import { isPlatformAdmin } from '../services/roles.js';
 import { getRedisClients } from '../utils/redis.js';
 import { auth } from '../middleware/auth.js';
 import { extractLocaleClaim, mapClaimToLocale, computeLocaleUpdate } from '../services/localeSync.js';
+import { getStorage } from '../services/storage.js';
 
 const router = express.Router();
 
@@ -104,6 +105,64 @@ async function getSsoState(state: string): Promise<{ nonce: string } | null> {
   }
 }
 
+// Background sync of the user's Entra profile photo. Fire-and-forget from
+// the SSO callback — first login shows initials, the photo lands in DB and
+// appears on the next `user.me` fetch. Keeps SSO redirect zero-latency.
+// Needs the `User.Read` scope that was added to authorize/token requests.
+async function syncEntraPhoto(userId: string, accessToken: string): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const photoRes = await fetch('https://graph.microsoft.com/v1.0/me/photos/240x240/$value', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    if (!photoRes.ok) {
+      if (photoRes.status !== 404) {
+        logger.warn({ userId, status: photoRes.status }, '[SSO] Graph photo fetch returned non-OK');
+      }
+      return;
+    }
+    const buf = Buffer.from(await photoRes.arrayBuffer());
+    // Sanity cap: Entra thumbnails are ~20–60 KB; reject >1 MB as a safety
+    // net against a misbehaving tenant/proxy returning junk.
+    if (buf.length === 0 || buf.length >= 1024 * 1024) return;
+
+    // Capture the previous avatar URL before overwriting — used below to
+    // delete the old file and avoid leaking one orphan per login.
+    const existing = (await db
+      .select({ avatarUrl: users.avatarUrl })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1))[0];
+    const oldUrl = existing?.avatarUrl ?? null;
+
+    const storage = getStorage();
+    const filename = `avatar-${userId}-${Date.now()}.jpg`;
+    const avatarUrl = await storage.upload(buf, filename, 'image/jpeg');
+    await db.update(users).set({ avatarUrl }).where(eq(users.id, userId));
+
+    // Best-effort cleanup of the previous auto-synced avatar. Gated on the
+    // `avatar-{userId}-` prefix so a manually-uploaded (future) avatar with
+    // a different naming scheme is left alone.
+    if (oldUrl && oldUrl !== avatarUrl && oldUrl.startsWith('/uploads/')) {
+      const oldFilename = oldUrl.slice('/uploads/'.length);
+      if (oldFilename.startsWith(`avatar-${userId}-`)) {
+        try {
+          await storage.delete(oldFilename);
+        } catch (err) {
+          logger.warn({ userId, oldFilename, err: err instanceof Error ? err.message : String(err) }, '[SSO] Failed to delete old avatar');
+        }
+      }
+    }
+
+    logger.info({ userId, bytes: buf.length }, '[SSO] Synced Entra profile photo');
+  } catch (err) {
+    logger.warn({ userId, err: err instanceof Error ? err.message : String(err) }, '[SSO] Photo sync failed');
+  }
+}
+
 // ---- Step 1: Redirect to Microsoft ----
 router.get('/azure', async (_req: Request, res: Response) => {
   if (!ensureConfigured()) {
@@ -124,7 +183,7 @@ router.get('/azure', async (_req: Request, res: Response) => {
     response_type: 'code',
     redirect_uri: REDIRECT_URI()!,
     response_mode: 'query',
-    scope: 'openid profile email',
+    scope: 'openid profile email User.Read',
     state,
     nonce,
   });
@@ -183,7 +242,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           code,
           redirect_uri: REDIRECT_URI()!,
           grant_type: 'authorization_code',
-          scope: 'openid profile email',
+          scope: 'openid profile email User.Read',
         }),
       }
     );
@@ -320,6 +379,11 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
 
     // Update lastActiveAt
     await db.update(users).set({ lastActiveAt: new Date().toISOString() }).where(eq(users.id, user.id));
+
+    // Kick off Entra profile photo sync in the background. Non-blocking —
+    // photo lands in DB and appears on next `user.me` fetch. See the helper
+    // above for the actual Graph call + storage write.
+    void syncEntraPhoto(user.id, tokenData.access_token);
 
     // ---- Auto-membership: group-based partner mapping ----
     const azureGroups: string[] = claims.groups || [];
@@ -507,6 +571,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
         isPlatformOperator: user.isPlatformOperator,
         isExternal: user.isExternal,
         accessibilityPrefs: user.accessibilityPrefs ?? {},
+        avatarUrl: user.avatarUrl,
       },
       memberships: userMemberships,
     });

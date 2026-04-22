@@ -78,6 +78,7 @@ export function registerDevLoginRoutes(router: express.Router): void {
               isPlatformOperator: user.isPlatformOperator,
               isExternal: user.isExternal,
               accessibilityPrefs: user.accessibilityPrefs ?? {},
+              avatarUrl: user.avatarUrl,
             },
             memberships: userMemberships,
           }),

@@ -111,6 +111,7 @@ export function buildAuthResponse(input: {
     // omitted/null is treated as `false` (i.e. internal staff by default).
     isExternal?: boolean | null;
     accessibilityPrefs?: Record<string, unknown> | null;
+    avatarUrl?: string | null;
   };
   memberships: SessionMembership[];
 }) {
@@ -126,6 +127,7 @@ export function buildAuthResponse(input: {
       isPlatformOperator: !!input.user.isPlatformOperator,
       isExternal: !!input.user.isExternal,
       accessibilityPrefs: input.user.accessibilityPrefs ?? null,
+      avatarUrl: input.user.avatarUrl ?? null,
     },
     memberships: activeMemberships.map((m) => ({
       id: m.id,
