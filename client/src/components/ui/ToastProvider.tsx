@@ -10,6 +10,7 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook co-located with its provider is intentional; splitting would churn imports app-wide for a fast-refresh nicety
 export function useToast(): ToastContextValue {
   const ctx = useContext(ToastContext);
   if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');

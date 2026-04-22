@@ -190,12 +190,10 @@ export function useSocket(): Socket {
     };
 
     const handleSupportOnline = (list: OnlineSupport[]) => {
-      console.debug('[socket] support:online', list);
       setOnlineSupportUsers(list);
     };
 
     const handleAgentsOnline = (ids: string[]) => {
-      console.debug('[socket] agents:online', ids);
       setOnlineAgentIds(ids);
     };
 
