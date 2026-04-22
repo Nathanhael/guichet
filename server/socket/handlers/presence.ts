@@ -11,6 +11,7 @@ import {
   assignSupport,
   findUpdatedParticipants,
   updateParticipants,
+  returnTicketToQueue,
 } from '../../services/ticketQueries.js';
 import { broadcastQueuePositions } from '../../services/businessHours.js';
 import { insertSystemMessage } from '../../services/systemMessage.js';
@@ -72,6 +73,29 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         const labelIds = await findTicketLabelIds(ticketId);
         socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
         return;
+      }
+
+      // Ghost-heal: if support_id points to a user who either isn't in
+      // participants (stale) or is fully offline (no active sockets),
+      // clear it before assignSupport. Without this, a crashed primary
+      // who never emitted support:leave leaves support_id set, and
+      // assignSupport's COALESCE keeps the ghost — making new joiners
+      // silent secondaries (their later leave doesn't unassign the ticket).
+      if (ticket.supportId && ticket.supportId !== supportId) {
+        const listedInParticipants = existingParticipants.some(
+          (p) => p.id === ticket.supportId,
+        );
+        let primaryValid = false;
+        if (listedInParticipants) {
+          const status = await presenceService.getUserStatus(
+            ticket.supportId,
+            callerPartnerId,
+          );
+          primaryValid = status !== null;
+        }
+        if (!primaryValid) {
+          await returnTicketToQueue(ticketId);
+        }
       }
 
       // Resolve the joiner's Azure B2B guest flag so it can be denormalized
@@ -190,13 +214,25 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
       await updateParticipants(ticketId, participants);
 
-      // Return ticket to queue if the leaving agent is the primary support,
-      // or if no participants remain after removal.
+      // Invariant: support_id must point to someone in participants AND online.
+      // Any violation → clear unguarded. Covers:
+      //   1. Leaver is primary (most common)
+      //   2. Ticket is empty after leave
+      //   3. Primary is a ghost — in participants but offline (crashed without
+      //      emitting support:leave). Without this check, the leaver stays a
+      //      silent secondary and the ticket visibly lingers under the stale
+      //      primary's name in "Other support".
       let queueReturned = false;
-      if (ticket.supportId === supportId || participants.length === 0) {
-        const { returnTicketToQueue } = await import('../../services/ticketQueries.js');
-        await returnTicketToQueue(ticketId, supportId);
-        queueReturned = true;
+      const storedPrimary = ticket.supportId;
+      if (storedPrimary) {
+        const primaryValid =
+          storedPrimary !== supportId
+          && participants.some((p: Participant) => p.id === storedPrimary)
+          && (await presenceService.getUserStatus(storedPrimary, callerPartnerId)) !== null;
+        if (!primaryValid) {
+          await returnTicketToQueue(ticketId);
+          queueReturned = true;
+        }
       }
 
       // Insert the system message BEFORE removing the socket from the ticket

@@ -340,7 +340,7 @@ const en: Record<string, string> = {
 
     // Support view
     my_chats: 'My Chats',
-    other_agents: 'Other Agents',
+    other_agents: 'Claimed by others',
     queue: 'Queue',
     queued: 'Queued',
     archived: 'Archived',

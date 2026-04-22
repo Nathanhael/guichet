@@ -338,7 +338,7 @@ const fr: Record<string, string> = {
     whisper_label: 'interne',
 
     my_chats: 'Mes conversations',
-    other_agents: 'Autres agents',
+    other_agents: 'Pris par d\u2019autres',
     load_older: 'Charger les messages plus anciens',
     is_typing: 'est en train d\u2019\u00e9crire...',
     are_typing: 'sont en train d\u2019\u00e9crire...',
