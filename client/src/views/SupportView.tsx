@@ -22,6 +22,7 @@ import type { Command, ChatWindowHandle } from '../types/command';
 import { trpc } from '../utils/trpc';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import CommandPalette from '../components/support/CommandPalette';
+import KeyboardShortcutsModal from '../components/support/KeyboardShortcutsModal';
 import { useIdleStatus } from '../hooks/useIdleStatus';
 import { Clock } from 'lucide-react';
 
@@ -104,6 +105,7 @@ export default function SupportView() {
     });
   }, []);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const chatWindowRef = useRef<ChatWindowHandle>(null);
 
@@ -322,6 +324,9 @@ export default function SupportView() {
     { id: 'jump-to-tab-1', labelKey: 'cmd_jump_to_tab_1', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+1', execute: () => jumpToTab(1), enabled: openTabTickets.length >= 1, keywords: ['tab', '1'] },
     { id: 'jump-to-tab-2', labelKey: 'cmd_jump_to_tab_2', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+2', execute: () => jumpToTab(2), enabled: openTabTickets.length >= 2, keywords: ['tab', '2'] },
     { id: 'jump-to-tab-3', labelKey: 'cmd_jump_to_tab_3', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+3', execute: () => jumpToTab(3), enabled: openTabTickets.length >= 3, keywords: ['tab', '3'] },
+    { id: 'jump-to-tab-4', labelKey: 'cmd_jump_to_tab_4', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+4', execute: () => jumpToTab(4), enabled: openTabTickets.length >= 4, keywords: ['tab', '4'] },
+    { id: 'prev-unread', labelKey: 'cmd_prev_unread', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2191', execute: () => navigateUnread(-1), enabled: openTabTickets.length >= 1, keywords: ['unread', 'previous', 'jump'] },
+    { id: 'next-unread', labelKey: 'cmd_next_unread', groupKey: 'cmd_group_navigation', shortcutHint: 'Alt+\u2193', execute: () => navigateUnread(1), enabled: openTabTickets.length >= 1, keywords: ['unread', 'next', 'jump'] },
     { id: 'search-messages', labelKey: 'cmd_search_messages', groupKey: 'cmd_group_navigation', shortcutHint: 'Ctrl+F', execute: () => window.dispatchEvent(new CustomEvent('support:open-search')), enabled: !!activeTab, keywords: ['find', 'search', 'messages'] },
     // Actions
     { id: 'toggle-whisper', labelKey: 'cmd_toggle_whisper', groupKey: 'cmd_group_actions', shortcutHint: 'Ctrl+/', execute: () => chatWindowRef.current?.toggleWhisper(), enabled: !!activeTab, keywords: ['whisper', 'internal', 'private'] },
@@ -337,8 +342,8 @@ export default function SupportView() {
     // View & Toggles
     { id: 'toggle-focus', labelKey: 'cmd_toggle_focus', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+F', execute: () => { const s = useStore.getState(); s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus'); }, keywords: ['focus', 'distraction'] },
     { id: 'toggle-dark', labelKey: 'cmd_toggle_dark', groupKey: 'cmd_group_view', execute: () => document.documentElement.classList.toggle('dark'), keywords: ['dark', 'light', 'theme'] },
-    { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_sidebar_right', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+A', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'copilot', 'info', 'ai'] },
-  ], [activeTab, openTabTickets, navigateTab, jumpToTab, closeTab, toggleSidebar]);
+    { id: 'toggle-sidebar-right', labelKey: 'cmd_toggle_customer_info', groupKey: 'cmd_group_view', shortcutHint: 'Ctrl+Shift+A', execute: () => useStore.getState().toggleRightSidebar(), keywords: ['sidebar', 'context', 'panel', 'info', 'customer'] },
+  ], [activeTab, openTabTickets, navigateTab, jumpToTab, navigateUnread, closeTab, toggleSidebar]);
 
   useKeyboardShortcuts({
     enabled: !paletteOpen,
@@ -433,7 +438,7 @@ export default function SupportView() {
                 <UserMenuChip
                   showStatus
                   showKeyboardShortcuts
-                  onKeyboardShortcuts={() => setPaletteOpen(true)}
+                  onKeyboardShortcuts={() => setShortcutsOpen(true)}
                   confirmBeforeSwitch
                 />
               </div>
@@ -540,6 +545,7 @@ export default function SupportView() {
 
       {/* Command Palette overlay */}
       {paletteOpen && <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />}
+      <KeyboardShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
     </ErrorBoundary>
   );
