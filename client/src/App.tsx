@@ -59,7 +59,7 @@ export default function App() {
   useSocket();
   useTokenRefresh();
 
-  useEffect(() => { initTitleBadgeListener(); }, []);
+  useEffect(() => initTitleBadgeListener(), []);
 
   useEffect(() => {
     if (!user || !activeMembershipId || user.isPlatformOperator) return;

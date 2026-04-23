@@ -8,6 +8,7 @@ import logger from '../../../utils/logger.js';
 import { canAssignTenantRole } from '../../../services/roles.js';
 import { revokeUserSessions } from '../../../services/sessionRevocation.js';
 import { revokeAllUserRefreshTokens } from '../../../services/refreshToken.js';
+import { escapeLikePattern } from '../../../utils/security.js';
 
 export const partnerMembersRouter = router({
   listMembers: adminProcedure
@@ -40,7 +41,7 @@ export const partnerMembersRouter = router({
         }
         if (input.search?.trim()) {
           const rawSearch = input.search.trim();
-          const s = `%${rawSearch}%`;
+          const s = `%${escapeLikePattern(rawSearch)}%`;
 
           // ME-07 fix: Allow filtering by department name (access grants)
           // Only match department names for non-agent roles — agents show "Selects per ticket"
