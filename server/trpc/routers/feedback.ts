@@ -1,16 +1,10 @@
 import { z } from 'zod';
 import { router, protectedProcedure, adminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { appFeedback, memberships } from '../../db/schema.js';
-import { eq, desc, inArray, and } from 'drizzle-orm';
+import { appFeedback } from '../../db/schema.js';
+import { eq, desc, and } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
-
-/** Subquery: user IDs that belong to a given partner */
-const partnerMemberIds = (partnerId: string) =>
-  db.select({ userId: memberships.userId })
-    .from(memberships)
-    .where(eq(memberships.partnerId, partnerId));
 
 function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -24,9 +18,13 @@ export const feedbackRouter = router({
         // IM-07: Platform operators without partner context must not see cross-tenant feedback
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'Partner context required to list feedback. Use enter-partner first.' });
       } else if (ctx.user.partnerId) {
+        // Scope by the row's own partnerId column, not by membership subquery.
+        // A multi-partner user's feedback submitted while active in partner B
+        // would otherwise leak into partner A's admin view (and be treatable
+        // by A's admin) simply because the user is also a member of A.
         data = await db.select()
           .from(appFeedback)
-          .where(inArray(appFeedback.userId, partnerMemberIds(ctx.user.partnerId)))
+          .where(eq(appFeedback.partnerId, ctx.user.partnerId))
           .orderBy(desc(appFeedback.createdAt));
       } else {
         data = [];
@@ -85,7 +83,7 @@ export const feedbackRouter = router({
         if (ctx.user.partnerId) {
           await db.update(appFeedback)
             .set({ treated: 1 })
-            .where(and(eq(appFeedback.id, id), inArray(appFeedback.userId, partnerMemberIds(ctx.user.partnerId))));
+            .where(and(eq(appFeedback.id, id), eq(appFeedback.partnerId, ctx.user.partnerId)));
         }
 
         return { success: true };
