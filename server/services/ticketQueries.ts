@@ -64,6 +64,7 @@ export async function findTicketOwner(ticketId: string) {
       agentId: tickets.agentId,
       supportId: tickets.supportId,
       dept: tickets.dept,
+      status: tickets.status,
       closedAt: tickets.closedAt,
     })
     .from(tickets)
