@@ -6,6 +6,7 @@ import {
   Play, Eye, EyeOff, KeyRound, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import ErrorBox from './ErrorBox';
+import Toast from '../Toast';
 import FieldError from '../FieldError';
 import { webhookCreateSchema, validateForm, FieldErrors } from '../../validation/adminSchemas';
 import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
@@ -72,6 +73,7 @@ export default function AdminWebhooks() {
   const [logsWebhookId, setLogsWebhookId] = useState<string | null>(null);
   const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const utils = trpc.useUtils();
   const { data: hooks, isLoading, error: fetchError } = trpc.webhook.list.useQuery();
@@ -106,7 +108,10 @@ export default function AdminWebhooks() {
     },
   });
 
-  const testMutation = trpc.webhook.test.useMutation();
+  const testMutation = trpc.webhook.test.useMutation({
+    onSuccess: () => setToast({ message: 'Test event dispatched', type: 'success' }),
+    onError: (err) => setToast({ message: err.message, type: 'error' }),
+  });
 
   const logsQuery = trpc.webhook.logs.useQuery(
     { webhookId: logsWebhookId || '' },
@@ -430,6 +435,8 @@ export default function AdminWebhooks() {
           {hooks.length} webhook{hooks.length !== 1 ? 's' : ''}
         </div>
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

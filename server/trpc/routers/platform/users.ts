@@ -7,6 +7,7 @@ import { TRPCError } from '@trpc/server';
 import { randomUUID } from 'crypto';
 import { revokeUserSessions } from '../../../services/sessionRevocation.js';
 import logger from '../../../utils/logger.js';
+import { wrapError } from '../../../utils/trpcErrors.js';
 
 export const platformUsersRouter = router({
   updateUser: platformProcedure
@@ -189,8 +190,7 @@ export const platformUsersRouter = router({
 
         return { userId, membershipId: memId, isExistingUser };
       } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'invite member');
       }
     }),
 
@@ -226,9 +226,7 @@ export const platformUsersRouter = router({
 
         return { success: true };
       } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        logger.error({ err: err instanceof Error ? err.message : String(err), membershipId: input }, '[removeMembership] Error');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, `removeMembership (${input})`);
       }
     }),
 
@@ -420,8 +418,7 @@ export const platformUsersRouter = router({
 
         return { success: true, userSoftDeleted: orphaned };
       } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'revoke pending invite');
       }
     }),
 

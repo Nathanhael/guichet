@@ -4,11 +4,7 @@ import { db } from '../../db.js';
 import { appFeedback } from '../../db/schema.js';
 import { eq, desc, and } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
-import logger from '../../utils/logger.js';
-
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+import { wrapError } from '../../utils/trpcErrors.js';
 
 export const feedbackRouter = router({
   list: adminProcedure.query(async ({ ctx }) => {
@@ -35,8 +31,7 @@ export const feedbackRouter = router({
         treated: !!f.treated,
       }));
     } catch (err: unknown) {
-      logger.error({ err: errMsg(err) }, 'tRPC: Error listing feedback');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+      wrapError(err, 'list feedback');
     }
   }),
 
@@ -66,8 +61,7 @@ export const feedbackRouter = router({
         await db.insert(appFeedback).values(entry);
         return entry;
       } catch (err: unknown) {
-        logger.error({ err: errMsg(err) }, 'tRPC: Error creating feedback');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+        wrapError(err, 'create feedback');
       }
     }),
 
@@ -88,8 +82,7 @@ export const feedbackRouter = router({
 
         return { success: true };
       } catch (err: unknown) {
-        logger.error({ err: errMsg(err), id }, 'tRPC: Error treating feedback');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+        wrapError(err, 'mark feedback treated');
       }
     }),
 });

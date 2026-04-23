@@ -8,16 +8,6 @@ import {
 
 export const BUSINESS_HOURS_DAY_ORDER: BusinessHoursDayKey[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
-export const BUSINESS_HOURS_DAY_LABELS: Record<BusinessHoursDayKey, string> = {
-  mon: 'Monday',
-  tue: 'Tuesday',
-  wed: 'Wednesday',
-  thu: 'Thursday',
-  fri: 'Friday',
-  sat: 'Saturday',
-  sun: 'Sunday',
-};
-
 const WALL_CLOCK_TIMESTAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/;
 
 export function createDefaultBusinessHoursSchedule(timezone = 'Europe/Brussels'): BusinessHoursSchedule {

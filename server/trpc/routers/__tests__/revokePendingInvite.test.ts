@@ -302,7 +302,7 @@ describe('platformUsersRouter.revokePendingInvite', () => {
 
     await expect(
       makeCaller().revokePendingInvite({ membershipId: 'm1' }),
-    ).rejects.toThrow(/db went boom/);
+    ).rejects.toThrow(/An internal error occurred/);
 
     // Audit must not be written when the tx fails
     expect(insertValuesMock).not.toHaveBeenCalled();

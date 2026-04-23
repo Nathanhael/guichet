@@ -190,8 +190,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         ctx.io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System', supportId: ticket.supportId ?? undefined, supportName: ticket.supportName ?? undefined });
         await broadcastQueuePositions(ticket.partnerId);
 
-        // Fire-and-forget AI auto-summarize
-        autoSummarizeOnClose(ticket.partnerId, senderId, ticketId, io).catch(() => {});
+        // Fire-and-forget AI auto-summarize — log on failure so an AI-provider
+        // outage leaves a trail instead of silently dropping summaries.
+        autoSummarizeOnClose(ticket.partnerId, senderId, ticketId, io).catch((err) => {
+          logger.warn({ err: err instanceof Error ? err.message : String(err), ticketId, partnerId: ticket.partnerId }, '[ticket:close] autoSummarize failed (non-fatal)');
+        });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
     });
 

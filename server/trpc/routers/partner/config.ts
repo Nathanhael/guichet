@@ -5,6 +5,7 @@ import { partners, memberships, auditLog } from '../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../../utils/logger.js';
+import { wrapError } from '../../../utils/trpcErrors.js';
 import { getBusinessHoursStatus, type BusinessHoursSchedule } from '../../../services/businessHours.js';
 import { getPartnerAiConfig } from '../../../services/ai/index.js';
 import config from '../../../config.js';
@@ -225,8 +226,7 @@ export const partnerConfigRouter = router({
         status,
       };
     } catch (err: unknown) {
-      if (err instanceof TRPCError) throw err;
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+      wrapError(err, 'get business hours');
     }
   }),
 
@@ -261,8 +261,7 @@ export const partnerConfigRouter = router({
           status: getBusinessHoursStatus({ businessHoursSchedule: schedule }),
         };
       } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'update business hours');
       }
     }),
 
@@ -319,7 +318,7 @@ export const partnerConfigRouter = router({
         logger.info({ partnerId, count: mappedDepartments.length }, 'Departments updated by Partner Admin');
         return { success: true, departments: mappedDepartments };
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'update departments');
       }
     }),
 

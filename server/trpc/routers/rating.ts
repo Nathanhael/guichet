@@ -4,11 +4,7 @@ import { ratings, tickets, users } from '../../db/schema.js';
 import { desc, eq, sql, and, gte, lt } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import logger from '../../utils/logger.js';
-
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
+import { wrapError } from '../../utils/trpcErrors.js';
 
 export const ratingRouter = router({
   list: roleProcedure(['admin', 'support'])
@@ -69,8 +65,7 @@ export const ratingRouter = router({
 
       return { items, nextCursor };
     } catch (err: unknown) {
-      logger.error({ err: errMsg(err) }, 'tRPC: Error listing ratings');
-      throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+      wrapError(err, 'list ratings');
     }
   }),
 
@@ -116,8 +111,7 @@ export const ratingRouter = router({
 
         return data;
       } catch (err: unknown) {
-        logger.error({ err: errMsg(err) }, 'tRPC: Error getting staff ratings');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+        wrapError(err, 'get staff ratings');
       }
     }),
 
@@ -226,8 +220,7 @@ export const ratingRouter = router({
           },
         };
       } catch (err: unknown) {
-        logger.error({ err: errMsg(err) }, 'tRPC: Error getting rating analytics');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+        wrapError(err, 'get rating analytics');
       }
     }),
 });
