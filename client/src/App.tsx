@@ -7,6 +7,7 @@ import { initTitleBadgeListener } from './utils/notifications';
 import DarkModeToggle from './components/DarkModeToggle';
 import ErrorBoundary from './components/ErrorBoundary';
 import Button from './components/ui/Button';
+import { ImageLightbox } from './components/chat';
 import { isPlatformAdmin, isTenantAdmin } from './utils/roles';
 
 const LoginView = lazy(() => import('./views/LoginView'));
@@ -121,7 +122,7 @@ export default function App() {
     <div className="h-full">
       <div className={`h-full ${dyslexicMode ? 'dyslexic-mode' : ''}`}>
         {renderView()}
-
+        <ImageLightbox />
       </div>
     </div>
   );

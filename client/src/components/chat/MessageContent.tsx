@@ -7,6 +7,7 @@ import { hasMarkdownSyntax, renderMarkdown } from '../../utils/markdown';
 import { getFileTypeLabel } from '../../utils/fileUtils';
 import { FileText } from 'lucide-react';
 import { highlightText } from '../../utils/highlightText';
+import useStore from '../../store/useStore';
 
 interface MessageContentProps {
   message: Message;
@@ -67,7 +68,7 @@ export default function MessageContent({
 
       {/* Multi-file attachments */}
       {!isDeleted && message.attachments && message.attachments.length > 0 && (
-        <AttachmentGrid attachments={message.attachments} />
+        <AttachmentGrid attachments={message.attachments} ticketId={message.ticketId} />
       )}
 
       {/* Legacy single image — backward compat */}
@@ -79,9 +80,13 @@ export default function MessageContent({
 
         if (isImageExt) {
           return (
-            <div className="mt-2 rounded-[var(--radius-bubble)] overflow-hidden shadow-[var(--shadow-soft)]">
+            <button
+              type="button"
+              onClick={() => useStore.getState().openLightbox([{ url, name: filename }], 0)}
+              className="mt-2 block rounded-[var(--radius-bubble)] overflow-hidden shadow-[var(--shadow-soft)] cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
+            >
               <img src={url} alt="attachment" className="w-full h-auto object-cover max-h-96" referrerPolicy="no-referrer" />
-            </div>
+            </button>
           );
         }
 

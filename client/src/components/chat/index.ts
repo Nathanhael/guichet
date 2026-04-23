@@ -1,4 +1,5 @@
 export { default as AttachmentGrid } from './AttachmentGrid';
+export { default as ImageLightbox } from './ImageLightbox';
 export { default as ChatHeader } from './ChatHeader';
 export { default as MessageList } from './MessageList';
 export { default as ComposeArea } from './ComposeArea';
