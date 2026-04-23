@@ -431,14 +431,25 @@ export default function QueueSidebar({
               ) : (searchResults.data || []).map((result: { messageId: string; ticketId: string; text: string | null; createdAt: string; ticketDept: string; ticketStatus: string; agentName: string | null; senderName: string | null }) => (
                 <li
                   key={result.messageId}
-                  onClick={() => {
-                    const tk = tickets.find(t => t.id === result.ticketId);
-                    if (tk) {
-                      if (supportOpenTickets.includes(tk.id)) {
-                        onSelectTicket(tk);
-                      } else {
-                        onPreviewArchived(tk);
-                      }
+                  onClick={async () => {
+                    // Search returns both open and archived tickets. Live tickets
+                    // live in the Zustand store; closed ones may be in the local
+                    // paginated archive, or not loaded at all — fall back to a
+                    // direct fetch so search results for cold archive entries
+                    // still open a preview.
+                    const localHit =
+                      tickets.find((t) => t.id === result.ticketId) ||
+                      archivedTickets.find((t) => t.id === result.ticketId);
+                    if (localHit) {
+                      if (supportOpenTickets.includes(localHit.id)) onSelectTicket(localHit);
+                      else onPreviewArchived(localHit);
+                      return;
+                    }
+                    try {
+                      const fetched = await trpcUtils.ticket.getById.fetch(result.ticketId);
+                      if (fetched) onPreviewArchived(fetched as unknown as Ticket);
+                    } catch {
+                      // Ticket not accessible / no longer in partner scope — no-op.
                     }
                   }}
                   className="p-3 cursor-pointer hover:bg-[var(--color-hover)] border-b border-[var(--color-border)]"

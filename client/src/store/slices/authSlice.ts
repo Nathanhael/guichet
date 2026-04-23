@@ -127,6 +127,20 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       syncUserRole(set, get);
     },
     setActiveMembershipId: (id) => {
+      // Partner-scoped in-memory state bleeds across tenants if not reset. The
+      // hydration effect in SupportView rebuilds supportOpenTickets from the
+      // new partner's localStorage, but between now and that effect firing,
+      // the old partner's ticket IDs would be re-emitted as support:rejoin to
+      // the new partner's socket rooms. Reset the obviously partner-scoped
+      // slices here; fresh data arrives via socket:identify + ticket.list.
+      const partnerResetSlice: Partial<StoreState> = {
+        supportOpenTickets: [],
+        tickets: [],
+        messages: {},
+        activeTicketId: null,
+        unreadTickets: {},
+      };
+
       if (id) {
         sessionStorage.setItem('activeMembershipId', id);
       } else {
@@ -135,7 +149,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
         // Clean up synthetic memberships when returning to platform cockpit
         const filtered = get().memberships.filter(m => !m.id.startsWith('platform_'));
         sessionStorage.setItem('memberships', JSON.stringify(filtered));
-        set({ activeMembershipId: null, activePartnerId: null, memberships: filtered });
+        set({ ...partnerResetSlice, activeMembershipId: null, activePartnerId: null, memberships: filtered });
         syncUserRole(set, get);
         return;
       }
@@ -143,11 +157,11 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       const membership = get().memberships.find(m => m.id === id);
       if (membership) {
         sessionStorage.setItem('activePartnerId', membership.partnerId);
-        set({ activeMembershipId: id, activePartnerId: membership.partnerId });
+        set({ ...partnerResetSlice, activeMembershipId: id, activePartnerId: membership.partnerId });
       } else {
         // If no membership found, assume the ID itself is the partnerId (Platform Operator scenario)
         sessionStorage.setItem('activePartnerId', id);
-        set({ activeMembershipId: id, activePartnerId: id });
+        set({ ...partnerResetSlice, activeMembershipId: id, activePartnerId: id });
       }
       syncUserRole(set, get);
     },
