@@ -19,14 +19,44 @@ function clearAuthState(set: (partial: Partial<StoreState>) => void) {
   sessionStorage.removeItem('memberships');
   sessionStorage.removeItem('activeMembershipId');
   sessionStorage.removeItem('activePartnerId');
+  // Reset every partner-scoped or session-scoped in-memory field so that on a
+  // shared device the next user doesn't briefly see the previous user's
+  // labels, alerts, presence, unread counts, or pending modals before the
+  // socket + tRPC queries repopulate. Device preferences (dark mode, lang,
+  // accessibility toggles) are intentionally preserved.
   set({
+    // auth
     user: null,
     memberships: [],
     activeMembershipId: null,
     activePartnerId: null,
+    // ticket (partner-scoped)
     tickets: [],
+    activeTicketId: null,
+    unreadTickets: {},
+    participantsOnline: {},
+    supportOpenTickets: [],
+    queuePosition: null,
+    topicAlerts: [],
+    // message (partner-scoped)
     messages: {},
-    activeTicketId: null
+    messageCursors: {},
+    onlineSupportUsers: [],
+    onlineAgentIds: [],
+    typingUsers: {},
+    lastRejection: null,
+    // config (partner-scoped)
+    appConfig: null,
+    businessHoursStatus: null,
+    allLabels: [],
+    // rating (user-scoped)
+    ratingPrompt: null,
+    // ui (session-scoped; device prefs preserved)
+    agentStatus: 'online',
+    lightboxImages: [],
+    lightboxIndex: null,
+    prefsModifiedLocally: false,
+    connectionStatus: 'disconnected',
   });
 }
 
