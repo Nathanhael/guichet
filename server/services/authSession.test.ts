@@ -71,6 +71,7 @@ describe('auth session helpers', () => {
       // See docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md.
       isExternal: false,
       accessibilityPrefs: null,
+      avatarUrl: null,
     });
     expect(response.memberships).toHaveLength(1);
     expect(response.memberships[0]).toMatchObject({

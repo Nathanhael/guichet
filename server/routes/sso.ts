@@ -128,6 +128,15 @@ async function syncEntraPhoto(userId: string, accessToken: string): Promise<void
     // Sanity cap: Entra thumbnails are ~20–60 KB; reject >1 MB as a safety
     // net against a misbehaving tenant/proxy returning junk.
     if (buf.length === 0 || buf.length >= 1024 * 1024) return;
+    // JPEG SOI magic bytes (FF D8). We upload with Content-Type image/jpeg
+    // and serve it cross-origin; a misconfigured Graph response or MITM
+    // returning HTML/SVG could otherwise be stored under a .jpg path and
+    // rendered as something sniffable. Reject anything not starting with
+    // the JPEG marker.
+    if (buf[0] !== 0xff || buf[1] !== 0xd8) {
+      logger.warn({ userId }, '[SSO] Graph photo response is not JPEG, skipping sync');
+      return;
+    }
 
     // Capture the previous avatar URL before overwriting — used below to
     // delete the old file and avoid leaking one orphan per login.
