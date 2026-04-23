@@ -94,7 +94,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           primaryValid = status !== null;
         }
         if (!primaryValid) {
-          await returnTicketToQueue(ticketId);
+          // Guarded clear — if a concurrent support:join claimed the ticket
+          // between our read and here, the guarded overload (WHERE support_id
+          // = ghostId) no-ops instead of clobbering the fresh claim.
+          await returnTicketToQueue(ticketId, ticket.supportId ?? undefined);
         }
       }
 
@@ -230,8 +233,11 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           && participants.some((p: Participant) => p.id === storedPrimary)
           && (await presenceService.getUserStatus(storedPrimary, callerPartnerId)) !== null;
         if (!primaryValid) {
-          await returnTicketToQueue(ticketId);
-          queueReturned = true;
+          // Guarded clear — serializes against a concurrent support:join
+          // that may have just claimed the ticket. If support_id no longer
+          // matches storedPrimary, the update no-ops and queueReturned
+          // stays false so we don't mislead the queue broadcast.
+          queueReturned = await returnTicketToQueue(ticketId, storedPrimary);
         }
       }
 
