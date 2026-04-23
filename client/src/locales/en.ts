@@ -47,7 +47,6 @@ const en: Record<string, string> = {
     transfer: 'Transfer',
     transfer_to_department: 'Transfer to department',
     transfer_note_placeholder: 'Add context for the next agent...',
-    return_to_queue: 'Return to queue',
     ticket_transferred_to: 'Ticket transferred to',
     yes_close: 'Yes, close',
     closing_notes_label: 'Closing Notes (Optional)',

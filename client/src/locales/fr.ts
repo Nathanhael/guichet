@@ -44,7 +44,6 @@ const fr: Record<string, string> = {
     transfer: 'Transf\u00e9rer',
     transfer_to_department: 'Transférer au département',
     transfer_note_placeholder: 'Ajouter du contexte pour le prochain agent...',
-    return_to_queue: 'Remettre en file d\'attente',
     ticket_transferred_to: 'Ticket transféré vers',
     yes_close: 'Oui, fermer',
     closing_notes_label: 'Notes de clôture (optionnel)',

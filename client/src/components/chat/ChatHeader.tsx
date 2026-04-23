@@ -447,8 +447,9 @@ export default function ChatHeader({
             </button>
           )}
 
-          {/* Transfer (support/admin only) */}
-          {isSupport && !isClosed && (
+          {/* Transfer (support/admin only) — hidden when no other departments exist,
+              since support:leave already covers "return to queue". */}
+          {isSupport && !isClosed && transferDepartments.length > 0 && (
             <div ref={transferMenuRef} className="relative">
               <button
                 onClick={() => setShowTransferMenu(!showTransferMenu)}
@@ -460,30 +461,20 @@ export default function ChatHeader({
               </button>
               {showTransferMenu && (
                 <div className="absolute right-0 top-full mt-1.5 bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] min-w-[220px] z-50 overflow-hidden">
-                  <button
-                    onClick={() => handleTransfer()}
-                    className="w-full text-left px-4 py-2.5 text-[12px] font-medium text-[var(--color-ink)] hover:bg-[var(--color-hover)] border-b border-[var(--color-border)]"
-                  >
-                    {t('return_to_queue') || 'Return to queue'}
-                  </button>
-                  {transferDepartments.length > 0 && (
-                    <>
-                      <div className="px-3 pt-2 pb-1">
-                        <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">
-                          {t('transfer_to_department') || 'Transfer to department'}
-                        </span>
-                      </div>
-                      <div className="px-3 pb-2">
-                        <input
-                          type="text"
-                          value={transferNote}
-                          onChange={(e) => setTransferNote(e.target.value)}
-                          placeholder={t('transfer_note_placeholder') || 'Add context...'}
-                          className="w-full text-[12px] bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] px-2.5 py-1.5 text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
-                        />
-                      </div>
-                    </>
-                  )}
+                  <div className="px-3 pt-2 pb-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">
+                      {t('transfer_to_department') || 'Transfer to department'}
+                    </span>
+                  </div>
+                  <div className="px-3 pb-2">
+                    <input
+                      type="text"
+                      value={transferNote}
+                      onChange={(e) => setTransferNote(e.target.value)}
+                      placeholder={t('transfer_note_placeholder') || 'Add context...'}
+                      className="w-full text-[12px] bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] px-2.5 py-1.5 text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                    />
+                  </div>
                   {transferDepartments.map((d: { id: string; name: string }) => (
                     <button
                       key={d.id}
