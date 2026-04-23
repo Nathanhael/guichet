@@ -18,8 +18,10 @@ export async function addViewer(
     const { pubClient } = getRedisClients();
     if (!pubClient) return;
     const key = `${viewerKeyPrefix}${ticketId}`;
-    await pubClient.hSet(key, socketId, JSON.stringify({ userId, userName }));
-    await pubClient.expire(key, VIEWER_TTL_SECONDS);
+    await pubClient.multi()
+      .hSet(key, socketId, JSON.stringify({ userId, userName }))
+      .expire(key, VIEWER_TTL_SECONDS)
+      .exec();
     // Track locally for disconnect cleanup
     if (!socketTickets.has(socketId)) socketTickets.set(socketId, new Set());
     socketTickets.get(socketId)!.add(ticketId);

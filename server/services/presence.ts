@@ -250,10 +250,14 @@ export async function setUserStatus(userId: string, partnerId: string, status: s
 
   const key = hashKey(partnerId, userId);
   try {
-    const user = await pubClient.hGetAll(key);
-    if (user && user.userId) {
-      await pubClient.hSet(key, 'status', status);
-      await pubClient.hSet(key, 'statusChangedAt', new Date().toISOString());
+    // hExists is cheaper than hGetAll; we only need to confirm the user hash
+    // was initialized by socket:identify before writing partial status fields.
+    const exists = await pubClient.hExists(key, 'userId');
+    if (exists) {
+      await pubClient.hSet(key, {
+        status,
+        statusChangedAt: new Date().toISOString(),
+      });
       await broadcastOnlineSupport(partnerId);
       logger.info({ userId, status }, 'User status updated in Redis');
       return true;
