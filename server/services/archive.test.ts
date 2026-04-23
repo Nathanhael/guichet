@@ -336,6 +336,34 @@ describe('snapshotTicketToArchive', () => {
     expect(inserted.messageCount).toBe(7);
   });
 
+  it('preserves references on snapshot (needed for post-purge archive search)', async () => {
+    const refs = [
+      { label: 'Order ID', value: 'ORD-42' },
+      { label: 'Tracking #', value: 'TRK-7788' },
+    ];
+    const ticket = makeTicketRow({ references: refs });
+    selectQueue.push([ticket]);
+    selectQueue.push([{ count: 3 }]);
+
+    const { snapshotTicketToArchive } = await import('./archive.js');
+    await snapshotTicketToArchive('ticket-1');
+
+    const inserted = insertValuesMock.mock.calls[0][0];
+    expect(inserted.references).toEqual(refs);
+  });
+
+  it('defaults references to [] when ticket has none', async () => {
+    const ticket = makeTicketRow({ references: null });
+    selectQueue.push([ticket]);
+    selectQueue.push([{ count: 0 }]);
+
+    const { snapshotTicketToArchive } = await import('./archive.js');
+    await snapshotTicketToArchive('ticket-1');
+
+    const inserted = insertValuesMock.mock.calls[0][0];
+    expect(inserted.references).toEqual([]);
+  });
+
   it('skips non-closed tickets without inserting', async () => {
     const ticket = makeTicketRow({ status: 'open' });
     selectQueue.push([ticket]);
@@ -390,6 +418,19 @@ describe('archiveTickets', () => {
     expect(inserted.messageCount).toBe(42);
     expect(inserted.archivedAt).toBeDefined();
     expect(inserted.status).toBe('closed');
+  });
+
+  it('copies references onto each archived row (bulk sweep path)', async () => {
+    const refs = [{ label: 'Case #', value: 'CASE-9001' }];
+    const ticket = makeTicketRow({ references: refs });
+    selectQueue.push([ticket]);
+    selectQueue.push([{ ticketId: 'ticket-1', count: 5 }]);
+
+    const { archiveTickets } = await import('./archive.js');
+    await archiveTickets(30);
+
+    const inserted = insertValuesMock.mock.calls[0][0];
+    expect(inserted.references).toEqual(refs);
   });
 
   it('does not include message content in archive', async () => {

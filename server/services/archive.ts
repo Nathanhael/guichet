@@ -250,6 +250,7 @@ export async function snapshotTicketToArchive(ticketId: string): Promise<void> {
       closingNotes: ticket.closingNotes ?? undefined,
       reopenCount: ticket.reopenCount ?? 0,
       messageCount: Number(countRow?.count ?? 0),
+      references: ticket.references ?? [],
       archivedAt: new Date().toISOString(),
     }).onConflictDoNothing();
   });
@@ -312,6 +313,7 @@ export async function archiveTickets(retentionDays?: number): Promise<number> {
           closingNotes: ticket.closingNotes ?? undefined,
           reopenCount: ticket.reopenCount ?? 0,
           messageCount: msgCountMap.get(ticket.id) ?? 0,
+          references: ticket.references ?? [],
           archivedAt: now,
         }).onConflictDoNothing();
       }

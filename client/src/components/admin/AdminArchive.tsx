@@ -126,8 +126,9 @@ export default function AdminArchive() {
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); resetPagination(); }}
-              placeholder={t('search') || 'Search…'}
-              className={`${INPUT} w-44`}
+              placeholder={t('archive_search_placeholder') || 'Name or ref value…'}
+              title="Matches agent name, support name, or any reference value (Order ID, tracking #, case #, …)"
+              className={`${INPUT} w-52`}
             />
             <div className={`flex items-center gap-1.5 ${INPUT.replace('h-9 px-3', 'h-9 px-2')}`}>
               <input

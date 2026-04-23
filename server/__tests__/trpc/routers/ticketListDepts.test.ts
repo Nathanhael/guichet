@@ -35,3 +35,33 @@ describe('ticket.list department isolation', () => {
     expect(deptBlock).not.toContain('membershipId');
   });
 });
+
+describe('ticket.list reference-value search', () => {
+  const source = readFileSync(
+    join(__dirname, '../../../trpc/routers/ticket.ts'),
+    'utf-8',
+  );
+
+  // Anchor: inside the `if (input.search)` block
+  const searchStart = source.indexOf('if (input.search)');
+  const searchEnd = source.indexOf('if (input.dateFrom)');
+
+  it('search block expands references jsonb and filters by value ILIKE', () => {
+    expect(searchStart).toBeGreaterThan(-1);
+    expect(searchEnd).toBeGreaterThan(searchStart);
+    const block = source.slice(searchStart, searchEnd);
+    // JSONB array expansion is what lets us search by the raw reference value
+    // regardless of the (partner-translated) label.
+    expect(block).toMatch(/jsonb_array_elements/);
+    expect(block).toMatch(/tickets\.references/);
+    expect(block).toMatch(/el->>'value'/);
+    expect(block).toMatch(/ILIKE/);
+  });
+
+  it('guards null references with COALESCE to avoid jsonb_array_elements error', () => {
+    const block = source.slice(searchStart, searchEnd);
+    // Without COALESCE, jsonb_array_elements(NULL) raises; legacy rows predate
+    // the jsonb default so we must treat null as an empty array.
+    expect(block).toMatch(/COALESCE\(\$\{tickets\.references\}.*'\[\]'::jsonb\)/);
+  });
+});
