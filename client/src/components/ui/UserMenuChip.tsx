@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ChevronDown,
@@ -189,22 +189,6 @@ export default function UserMenuChip({
       window.removeEventListener('scroll', compute, true);
     };
   }, [open, placement]);
-
-  // Global Ctrl+Shift+F focus-mode toggle (relocated from deprecated AccessibilityMenu).
-  const handleGlobalKeyboard = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'F') {
-        e.preventDefault();
-        toggleFocusMode();
-      }
-    },
-    [toggleFocusMode],
-  );
-
-  useEffect(() => {
-    document.addEventListener('keydown', handleGlobalKeyboard);
-    return () => document.removeEventListener('keydown', handleGlobalKeyboard);
-  }, [handleGlobalKeyboard]);
 
   // Support-only: sync Zustand agentStatus from socket `status:restored`
   // (fires on reconnect to preserve prior away state across socket drops).

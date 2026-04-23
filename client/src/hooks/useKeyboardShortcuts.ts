@@ -182,7 +182,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Ctrl+/ — toggle whisper
+      // Ctrl+/ — toggle whisper. Match on e.key so AZERTY layouts where `/`
+      // is produced by Shift+: still fire (physical Slash position on AZERTY
+      // is `!`/`§`, not `/`, so e.code === 'Slash' would be wrong).
       if (ctrl && e.key === '/') {
         e.preventDefault();
         onToggleWhisper();
@@ -204,8 +206,9 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
-      // Bare / — focus message input
-      if (e.key === '/' && !ctrl && !alt && !shift) {
+      // Bare / — focus message input. Accept `/` regardless of Shift so AZERTY
+      // (where Shift+: is needed to produce `/`) still fires.
+      if (e.key === '/' && !ctrl && !alt) {
         const tag = (e.target as HTMLElement)?.tagName;
         const editable = (e.target as HTMLElement)?.isContentEditable;
         if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return;
