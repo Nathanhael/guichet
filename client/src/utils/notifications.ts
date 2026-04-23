@@ -23,12 +23,14 @@ export function updateTitleBadge(): void {
 
 /**
  * Clear the title badge when window gets focus.
- * Should be called once on app init.
+ * Intended to be called from a `useEffect` — returns a cleanup function so
+ * the listener is removed on unmount (React StrictMode double-mount, HMR,
+ * and future SPA route remounts would otherwise stack listeners).
  */
-export function initTitleBadgeListener(): void {
-    window.addEventListener('focus', () => {
-        document.title = BASE_TITLE;
-    });
+export function initTitleBadgeListener(): () => void {
+    const handler = () => { document.title = BASE_TITLE; };
+    window.addEventListener('focus', handler);
+    return () => window.removeEventListener('focus', handler);
 }
 
 // Synthesize a clean, professional 'chime' using Web Audio API

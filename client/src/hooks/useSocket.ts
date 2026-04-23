@@ -169,8 +169,16 @@ export function useSocket(): Socket {
           state.markUnread(message.ticketId);
         }
         if (state.notificationsEnabled && !message.system) {
+          // Truncate the preview before handing it to the OS. Desktop
+          // notifications persist in system notification history and
+          // surface on lock screens, so a full customer-typed message
+          // (which can include PII — emails, phone numbers, IDs) would
+          // leak beyond the staff member's active session. 80 chars is
+          // enough to identify the conversation without dumping the body.
+          const raw = message.text || message.originalText || '';
+          const preview = raw.length > 80 ? raw.slice(0, 80) + '…' : raw;
           notify(message.senderName || 'New message', {
-            body: message.text || message.originalText || '',
+            body: preview,
             tag: `msg-${message.ticketId}`,
           });
         }

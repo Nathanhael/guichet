@@ -7,6 +7,7 @@ import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
 import { runChainVerify, LAST_VERIFY_KEY, VERIFY_HISTORY_KEY } from '../../../services/chainVerifySchedule.js';
+import { escapeLikePattern } from '../../../utils/security.js';
 
 const VERIFY_CHAIN_WINDOW_SECS = 60;
 const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
@@ -244,7 +245,7 @@ export const platformAuditRouter = router({
     }))
     .query(async ({ input }) => {
       const conditions = [];
-      if (input.action) conditions.push(ilike(auditArchive.action, `%${input.action}%`));
+      if (input.action) conditions.push(ilike(auditArchive.action, `%${escapeLikePattern(input.action)}%`));
       if (input.partnerId) conditions.push(eq(auditArchive.partnerId, input.partnerId));
       if (input.dateFrom) conditions.push(gte(auditArchive.createdAt, `${input.dateFrom}T00:00:00`));
       if (input.dateTo) conditions.push(lte(auditArchive.createdAt, `${input.dateTo}T23:59:59.999`));
@@ -348,7 +349,7 @@ export const platformAuditRouter = router({
     .query(async ({ input }) => {
       const conditions = [];
       if (input.partnerId) conditions.push(eq(archivedTickets.partnerId, input.partnerId));
-      if (input.dept) conditions.push(ilike(archivedTickets.dept, `%${input.dept}%`));
+      if (input.dept) conditions.push(ilike(archivedTickets.dept, `%${escapeLikePattern(input.dept)}%`));
       if (input.dateFrom) conditions.push(gte(archivedTickets.createdAt, `${input.dateFrom}T00:00:00`));
       if (input.dateTo) conditions.push(lte(archivedTickets.createdAt, `${input.dateTo}T23:59:59.999`));
 
