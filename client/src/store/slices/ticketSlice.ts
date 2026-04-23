@@ -3,7 +3,6 @@ import { StoreState, Ticket, TopicAlert } from '../../types';
 
 export interface TicketSlice {
   tickets: Ticket[];
-  archivedTickets: Ticket[];
   activeTicketId: string | null;
   unreadTickets: Record<string, number>;
   participantsOnline: Record<string, boolean>;
@@ -12,7 +11,6 @@ export interface TicketSlice {
   topicAlerts: TopicAlert[];
 
   setTickets: (tickets: Ticket[]) => void;
-  setArchivedTickets: (archived: Ticket[]) => void;
   addTicket: (ticket: Ticket) => void;
   removeTicket: (ticketId: string) => void;
   updateTicket: (ticketId: string, updates: Partial<Ticket>) => void;
@@ -33,7 +31,6 @@ function tabStorageKey(partnerId?: string): string {
 
 export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = (set, get) => ({
   tickets: [],
-  archivedTickets: [],
   activeTicketId: null,
   unreadTickets: {},
   participantsOnline: {},
@@ -42,7 +39,6 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   topicAlerts: [],
 
   setTickets: (tickets) => set({ tickets }),
-  setArchivedTickets: (archived) => set({ archivedTickets: archived }),
   addTicket: (ticket) =>
     set((state) => ({
       tickets: state.tickets.some((t) => t.id === ticket.id)
