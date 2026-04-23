@@ -4,6 +4,11 @@ import { trpcVanilla } from '../../utils/trpc';
 
 export type ViewMode = 'normal' | 'split-grid' | 'split-stack' | 'focus';
 
+export interface LightboxImage {
+  url: string;
+  name: string;
+}
+
 export interface UISlice {
   dyslexicMode: boolean;
   bionicReading: boolean;
@@ -22,6 +27,11 @@ export interface UISlice {
   setAgentStatus: (status: string) => void;
   rightSidebarExpanded: boolean;
   toggleRightSidebar: () => void;
+  lightboxImages: LightboxImage[];
+  lightboxIndex: number | null;
+  openLightbox: (images: LightboxImage[], startIndex: number) => void;
+  closeLightbox: () => void;
+  navigateLightbox: (delta: 1 | -1) => void;
 
   toggleDarkMode: () => void;
   toggleDyslexicMode: () => void;
@@ -55,6 +65,19 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
   connectionStatus: 'disconnected',
   agentStatus: 'online',
   rightSidebarExpanded: localStorage.getItem('rightSidebarExpanded') === 'true',
+  lightboxImages: [],
+  lightboxIndex: null,
+
+  openLightbox: (images, startIndex) =>
+    set({ lightboxImages: images, lightboxIndex: Math.max(0, Math.min(startIndex, images.length - 1)) }),
+  closeLightbox: () => set({ lightboxImages: [], lightboxIndex: null }),
+  navigateLightbox: (delta) =>
+    set((state) => {
+      if (state.lightboxIndex === null || state.lightboxImages.length === 0) return {};
+      const n = state.lightboxImages.length;
+      const next = (state.lightboxIndex + delta + n) % n;
+      return { lightboxIndex: next };
+    }),
 
   toggleRightSidebar: () =>
     set((state) => {

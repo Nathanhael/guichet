@@ -1,4 +1,5 @@
 import { FileText, Sheet, File, Download } from 'lucide-react';
+import useStore from '../../store/useStore';
 
 interface Attachment {
   url: string;
@@ -9,6 +10,7 @@ interface Attachment {
 
 interface AttachmentGridProps {
   attachments: Attachment[];
+  ticketId: string;
 }
 
 function formatSize(bytes: number): string {
@@ -37,9 +39,24 @@ function getFileLabel(mime: string): string {
   return 'File';
 }
 
-export default function AttachmentGrid({ attachments }: AttachmentGridProps) {
+export default function AttachmentGrid({ attachments, ticketId }: AttachmentGridProps) {
   const images = attachments.filter(a => isImage(a.mimeType));
   const documents = attachments.filter(a => !isImage(a.mimeType));
+
+  function openLightboxFor(clickedUrl: string) {
+    const state = useStore.getState();
+    // Build the gallery from every image attachment in this ticket so
+    // prev/next arrows flip between screenshots across all messages, not
+    // just the current bubble.
+    const ticketMessages = state.messages[ticketId] || [];
+    const allImages = ticketMessages.flatMap((m) =>
+      (m.attachments || [])
+        .filter((a) => a.mimeType.startsWith('image/'))
+        .map((a) => ({ url: a.url, name: a.name })),
+    );
+    const idx = Math.max(0, allImages.findIndex((a) => a.url === clickedUrl));
+    state.openLightbox(allImages, idx);
+  }
 
   return (
     <div className="mt-2 flex flex-col gap-2">
@@ -50,12 +67,11 @@ export default function AttachmentGrid({ attachments }: AttachmentGridProps) {
           'grid-cols-2'
         }`}>
           {images.map((img) => (
-            <a
+            <button
               key={img.url}
-              href={img.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-[var(--radius-bubble)] overflow-hidden shadow-[var(--shadow-soft)]"
+              type="button"
+              onClick={() => openLightboxFor(img.url)}
+              className="block rounded-[var(--radius-bubble)] overflow-hidden shadow-[var(--shadow-soft)] cursor-zoom-in focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]"
             >
               <img
                 src={img.url}
@@ -63,7 +79,7 @@ export default function AttachmentGrid({ attachments }: AttachmentGridProps) {
                 className="w-full h-auto object-cover max-h-60"
                 referrerPolicy="no-referrer"
               />
-            </a>
+            </button>
           ))}
         </div>
       )}
