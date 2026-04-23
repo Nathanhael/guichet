@@ -240,11 +240,14 @@ export function register(socket: Socket, ctx: HandlerContext): void {
             .where(eq(partners.id, ticket.partnerId))
             .limit(1);
           const aiFeatures = (partnerRow[0]?.aiFeatures as Record<string, unknown>) || {};
-          const roomSockets = await ctx.io.in(Rooms.ticket(ticketId)).fetchSockets();
+          // Local-node iteration avoids the cross-node fetchSockets() RTT on
+          // every message send; same pattern as broadcastTyping in presence.ts.
+          const room = Rooms.ticket(ticketId);
           const viewerLangs = new Set<string>();
-          for (const s of roomSockets) {
-            if (s.id === socket.id) continue;
-            const lg = (s.data.lang as string) || '';
+          for (const peer of ctx.io.sockets.sockets.values()) {
+            if (peer.id === socket.id) continue;
+            if (!peer.rooms.has(room)) continue;
+            const lg = (peer.data.lang as string) || '';
             if (lg) viewerLangs.add(lg);
           }
           const targets = computePrewarmTargets({
@@ -285,11 +288,14 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       }
 
       if (isWhisper) {
-        // CR-01: Whisper messages must only be sent to support/admin sockets, never to end-users
-        const roomSockets = await ctx.io.in(Rooms.ticket(ticketId)).fetchSockets();
-        for (const s of roomSockets) {
-          if (s.data.isSupport) {
-            s.emit('message:new', broadcastPayload);
+        // CR-01: Whisper messages must only be sent to support/admin sockets, never to end-users.
+        // Local-node iteration: fetchSockets() returns RemoteSocket stubs whose
+        // .data.isSupport is not reliably set across the Redis adapter.
+        const room = Rooms.ticket(ticketId);
+        for (const peer of ctx.io.sockets.sockets.values()) {
+          if (!peer.rooms.has(room)) continue;
+          if (peer.data.isSupport) {
+            peer.emit('message:new', broadcastPayload);
           }
         }
       } else {

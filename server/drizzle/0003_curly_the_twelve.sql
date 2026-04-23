@@ -1,0 +1,1 @@
+CREATE INDEX "idx_tickets_partner_closed" ON "tickets" USING btree ("partner_id","closed_at");

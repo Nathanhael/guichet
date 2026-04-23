@@ -94,7 +94,11 @@ export async function fetchLiveTickets(partnerId: string, rangeStart: string, ra
   // guarding it here would require duplicating 20+ fields. The selected
   // columns below are fixed — any rename will surface at read-site via the
   // Ticket type. Kept as cast by design.
-  const result = await db.execute(sql`SELECT id, created_at, status, closed_at, dept, agent_id, agent_name, support_id, support_name, support_joined_at, reopened, closing_notes, closed_by, partner_id FROM tickets WHERE created_at::date >= ${rangeStart} AND created_at::date <= ${rangeEnd} AND partner_id = ${partnerId}`);
+  //
+  // Half-open range on created_at (no ::date cast on the column) so the
+  // planner can use idx_tickets_partner_created. rangeEnd is inclusive in
+  // intent, so we bump one day and use `<`.
+  const result = await db.execute(sql`SELECT id, created_at, status, closed_at, dept, agent_id, agent_name, support_id, support_name, support_joined_at, reopened, closing_notes, closed_by, partner_id FROM tickets WHERE created_at >= ${rangeStart} AND created_at < (${rangeEnd}::date + 1) AND partner_id = ${partnerId}`);
   return result.rows as unknown as Ticket[];
 }
 
@@ -106,10 +110,10 @@ export async function fetchRatings(partnerId: string, rangeStart: string, rangeE
   const result = dept && dept !== 'all'
     ? await db.execute(sql`SELECT r.id, r.ticket_id AS "ticketId", r.support_id AS "supportId", r.rating, r.comment, r.created_at AS "createdAt"
        FROM ratings r JOIN tickets t ON r.ticket_id = t.id
-       WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId} AND t.dept = ${dept}`)
+       WHERE t.created_at >= ${rangeStart} AND t.created_at < (${rangeEnd}::date + 1) AND t.partner_id = ${partnerId} AND t.dept = ${dept}`)
     : await db.execute(sql`SELECT r.id, r.ticket_id AS "ticketId", r.support_id AS "supportId", r.rating, r.comment, r.created_at AS "createdAt"
        FROM ratings r JOIN tickets t ON r.ticket_id = t.id
-       WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}`);
+       WHERE t.created_at >= ${rangeStart} AND t.created_at < (${rangeEnd}::date + 1) AND t.partner_id = ${partnerId}`);
   return parseRows(result.rows, ratingSchema, 'fetchRatings');
 }
 
@@ -133,7 +137,7 @@ export async function fetchLabelSummary(partnerId: string, rangeStart: string, r
                      FROM ticket_labels tl
                      JOIN labels l ON tl.label_id = l.id
                      JOIN tickets t ON tl.ticket_id = t.id
-                     WHERE t.created_at::date >= ${rangeStart} AND t.created_at::date <= ${rangeEnd} AND t.partner_id = ${partnerId}
+                     WHERE t.created_at >= ${rangeStart} AND t.created_at < (${rangeEnd}::date + 1) AND t.partner_id = ${partnerId}
                      GROUP BY l.name, t.dept
                      ORDER BY t.dept, count DESC`);
   return parseRows(result.rows, labelCountSchema, 'fetchLabelSummary');
