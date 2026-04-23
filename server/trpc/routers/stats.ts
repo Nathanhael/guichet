@@ -471,9 +471,9 @@ export const statsRouter = router({
 
         return responseData;
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
+        if (err instanceof TRPCError) throw err;
         const stack = err instanceof Error ? err.stack : undefined;
-        logger.error({ err: message, stack }, 'tRPC: FATAL ERROR in getGlobalStats');
+        logger.error({ err: err instanceof Error ? err.message : String(err), stack }, 'tRPC: FATAL ERROR in getGlobalStats');
         throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' });
       }
     }),

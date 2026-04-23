@@ -6,6 +6,7 @@ import { eq, desc, gte, lte, ilike, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
+import { wrapError } from '../../../utils/trpcErrors.js';
 import { runChainVerify, LAST_VERIFY_KEY, VERIFY_HISTORY_KEY } from '../../../services/chainVerifySchedule.js';
 import { escapeLikePattern } from '../../../utils/security.js';
 
@@ -182,7 +183,7 @@ export const platformAuditRouter = router({
 
         return { items, nextCursor };
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'list audit log');
       }
     }),
 
@@ -230,7 +231,7 @@ export const platformAuditRouter = router({
         .orderBy(desc(auditLog.createdAt))
         .limit(10000);
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'export audit log');
       }
     }),
 
@@ -437,8 +438,7 @@ export const platformAuditRouter = router({
 
         return totals;
       } catch (err: unknown) {
-        logger.error({ err }, '[platform.audit] getCrossPartnerActivity failed');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'cross-partner activity');
       }
     }),
 });

@@ -5,6 +5,7 @@ import { partners, users, memberships, auditLog } from '../../../db/schema.js';
 import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import logger from '../../../utils/logger.js';
+import { wrapError } from '../../../utils/trpcErrors.js';
 import { canAssignTenantRole } from '../../../services/roles.js';
 import { revokeUserSessions } from '../../../services/sessionRevocation.js';
 import { revokeAllUserRefreshTokens } from '../../../services/refreshToken.js';
@@ -89,8 +90,7 @@ export const partnerMembersRouter = router({
 
         return result;
       } catch (err: unknown) {
-        logger.error({ err, search: input.search }, 'listMembers error');
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, `listMembers (search="${input.search ?? ''}")`);
       }
     }),
 
@@ -226,8 +226,7 @@ export const partnerMembersRouter = router({
         logger.info({ userId: newUserId }, '[inviteExternalUser] User created');
         return { success: true, userId: newUserId };
       } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'invite external user');
       }
     }),
 
@@ -274,8 +273,7 @@ export const partnerMembersRouter = router({
 
         return { success: true };
       } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'update member');
       }
     }),
 
@@ -340,8 +338,7 @@ export const partnerMembersRouter = router({
 
         return { success: true };
       } catch (err: unknown) {
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'remove member');
       }
     }),
 });

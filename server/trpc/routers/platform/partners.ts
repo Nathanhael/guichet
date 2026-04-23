@@ -6,6 +6,7 @@ import { eq, asc, isNull, and, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { randomUUID } from 'crypto';
 import logger from '../../../utils/logger.js';
+import { wrapError } from '../../../utils/trpcErrors.js';
 import { broadcastPartnerDeactivation } from '../../../socket/handlers.js';
 import { validateWebhookUrl } from '../../../services/webhookDispatch.js';
 import { encrypt } from '../../../services/encryption.js';
@@ -85,7 +86,7 @@ export const platformPartnersRouter = router({
         if (err instanceof Error && 'code' in err && (err as { code: string }).code === '23505') {
           throw new TRPCError({ code: 'CONFLICT', message: 'Partner ID already exists' });
         }
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'create partner');
       }
     }),
 
@@ -221,7 +222,7 @@ export const platformPartnersRouter = router({
 
         return { success: true };
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'deactivate partner');
       }
     }),
 
@@ -244,7 +245,7 @@ export const platformPartnersRouter = router({
 
         return { success: true };
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'reactivate partner');
       }
     }),
 

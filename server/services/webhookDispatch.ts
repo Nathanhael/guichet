@@ -271,7 +271,11 @@ async function deliverOne(
       error: errorMsg,
       durationMs,
       createdAt: timestamp,
-    }).catch(() => {}); // don't throw if logging itself fails
+    }).catch((logErr) => {
+      // don't throw if logging itself fails, but surface so silent webhook_log
+      // data loss (e.g. table outage) isn't invisible
+      logger.error({ err: logErr instanceof Error ? logErr.message : String(logErr), webhookId: hook.id }, '[webhook] failed to insert webhook_log');
+    });
 
     logger.error(
       { webhookId: hook.id, url: hook.url, err: errorMsg, durationMs },

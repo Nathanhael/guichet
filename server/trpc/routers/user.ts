@@ -7,7 +7,7 @@ import { db } from '../../db.js';
 import { auditLog, users, memberships, partners } from '../../db/schema.js';
 import { eq, and, isNull, desc, asc, sql, count } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import logger from '../../utils/logger.js';
+import { wrapError } from '../../utils/trpcErrors.js';
 
 export const userRouter = router({
   list: platformProcedure
@@ -38,9 +38,7 @@ export const userRouter = router({
 
         return { users: userRows, total };
       } catch (err: unknown) {
-        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+        wrapError(err, 'list users');
       }
     }),
 
@@ -98,9 +96,7 @@ export const userRouter = router({
 
         return [...membershipRows, ...standaloneOperators];
       } catch (err: unknown) {
-        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+        wrapError(err, 'demo list users');
       }
     }),
 
@@ -121,9 +117,7 @@ export const userRouter = router({
 
         return { success: true, revokedAfter };
       } catch (err: unknown) {
-        logger.error({ err: err instanceof Error ? err.message : String(err) }, 'tRPC: user query error');
-        if (err instanceof TRPCError) throw err;
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'An unexpected error occurred' });
+        wrapError(err, 'revoke user sessions');
       }
     }),
 

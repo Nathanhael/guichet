@@ -19,7 +19,3 @@ export type LabelColorKey = (typeof LABEL_COLORS)[number]['key'];
 export const COLOR_BG_MAP: Record<string, string> = Object.fromEntries(
   LABEL_COLORS.map((c) => [c.key, c.bg]),
 );
-
-export const COLOR_RING_MAP: Record<string, string> = Object.fromEntries(
-  LABEL_COLORS.map((c) => [c.key, c.ring]),
-);

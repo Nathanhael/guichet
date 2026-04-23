@@ -6,6 +6,7 @@ import { eq, desc, gte, lte, and, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
+import { wrapError } from '../../../utils/trpcErrors.js';
 import { verifyAuditChain } from '../../../services/archive.js';
 
 const PARTNER_VERIFY_CHAIN_WINDOW_SECS = 60;
@@ -152,7 +153,7 @@ export const partnerAuditRouter = router({
 
         return { items, nextCursor };
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'list partner audit log');
       }
     }),
 
@@ -193,7 +194,7 @@ export const partnerAuditRouter = router({
 
         return results;
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, `partner audit getForTicket (${input.ticketId})`);
       }
     }),
 
@@ -240,7 +241,7 @@ export const partnerAuditRouter = router({
           .orderBy(desc(auditLog.createdAt))
           .limit(10000);
       } catch (err: unknown) {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: String(err) });
+        wrapError(err, 'export partner audit log');
       }
     }),
 });

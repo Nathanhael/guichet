@@ -1,7 +1,7 @@
 import { SignJWT } from 'jose';
 import crypto from 'crypto';
 import type { Response } from 'express';
-import { eq, and, isNull, sql } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import { db } from '../db.js';
 import { memberships, partners, users } from '../db/schema.js';
 import config from '../config.js';
@@ -143,15 +143,6 @@ export function buildAuthResponse(input: {
     })),
     activePartnerId: defaultMembership?.partnerId,
   };
-}
-
-export async function findUserByEmail(email: string) {
-  // Use lower() + eq() for case-insensitive matching instead of ilike()
-  // to prevent LIKE wildcard injection (e.g. '%@evil.com')
-  const rows = await db.select().from(users).where(
-    eq(sql`lower(${users.email})`, email.toLowerCase())
-  ).limit(1);
-  return rows[0];
 }
 
 const COOKIE_NAME = 'guichet_token';
