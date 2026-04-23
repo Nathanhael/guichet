@@ -44,7 +44,6 @@ const nl: Record<string, string> = {
     transfer: 'Overdragen',
     transfer_to_department: 'Overdragen naar afdeling',
     transfer_note_placeholder: 'Voeg context toe voor de volgende agent...',
-    return_to_queue: 'Terug naar wachtrij',
     ticket_transferred_to: 'Ticket overgedragen naar',
     yes_close: 'Ja, sluiten',
     closing_notes_label: 'Afsluitnotities (optioneel)',
