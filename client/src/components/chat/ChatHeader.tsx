@@ -153,17 +153,21 @@ export default function ChatHeader({
   function toggleLabel(labelId: string) {
     const isRemoving = optimisticLabels.includes(labelId);
     if (!isRemoving && optimisticLabels.length >= MAX_LABELS) return;
+    const socket = getSocket();
+    if (!socket?.connected) return;
     const newLabels = isRemoving
       ? optimisticLabels.filter((id) => id !== labelId)
       : [...optimisticLabels, labelId];
     setOptimisticLabels(newLabels);
-    getSocket().emit('ticket:labels:update', { ticketId: ticket.id, labels: newLabels });
+    socket.emit('ticket:labels:update', { ticketId: ticket.id, labels: newLabels });
   }
 
   function removeLabel(labelId: string) {
+    const socket = getSocket();
+    if (!socket?.connected) return;
     const newLabels = optimisticLabels.filter((id) => id !== labelId);
     setOptimisticLabels(newLabels);
-    getSocket().emit('ticket:labels:update', { ticketId: ticket.id, labels: newLabels });
+    socket.emit('ticket:labels:update', { ticketId: ticket.id, labels: newLabels });
   }
 
   // Close transfer menu on outside click or Escape

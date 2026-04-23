@@ -1,4 +1,4 @@
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, useEffect, useState } from 'react';
 
 type Shape = 'round' | 'squircle';
 
@@ -65,7 +65,13 @@ export default function Avatar({
   style,
   ...rest
 }: AvatarProps) {
-  const usesHashedBg = !color && !src;
+  // Avatar URLs come from users.avatar_url (SSO photo sync). When the file is
+  // missing (user re-onboarded, storage gap, stale cache) the <img> renders a
+  // broken-image icon permanently. Track error and fall back to initials.
+  const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [src]);
+  const showImg = !!src && !imgError;
+  const usesHashedBg = !color && !showImg;
   const bg = color ?? hashColor(name);
   const radius = shape === 'round' ? 999 : 8;
   const font = Math.max(10, Math.round(size * 0.4));
@@ -79,7 +85,7 @@ export default function Avatar({
         width: size,
         height: size,
         borderRadius: radius,
-        background: src ? undefined : bg,
+        background: showImg ? undefined : bg,
         fontSize: font,
         outline: isExternal ? '2px dashed var(--color-accent-amber)' : undefined,
         outlineOffset: isExternal ? 1 : undefined,
@@ -87,14 +93,15 @@ export default function Avatar({
       }}
       {...rest}
     >
-      {src ? (
+      {showImg ? (
         <img
-          src={src}
+          src={src!}
           alt={alt ?? name}
           width={size}
           height={size}
           loading="lazy"
           decoding="async"
+          onError={() => setImgError(true)}
           style={{ width: size, height: size, borderRadius: radius, objectFit: 'cover' }}
         />
       ) : (
