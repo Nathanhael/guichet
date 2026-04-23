@@ -88,7 +88,11 @@ export const ticketRouter = router({
           const q = `%${escapeLikePattern(input.search)}%`;
           conditions.push(or(
             ilike(tickets.agentName, q),
-            ilike(tickets.supportName, q)
+            ilike(tickets.supportName, q),
+            // Match any reference value (Order ID, tracking #, case #, …).
+            // Labels are translated per-partner; searching values lets support
+            // paste a raw identifier and find the ticket regardless of label.
+            sql`EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(${tickets.references}, '[]'::jsonb)) el WHERE el->>'value' ILIKE ${q})`,
           ));
         }
 

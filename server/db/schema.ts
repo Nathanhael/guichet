@@ -356,11 +356,13 @@ export const archivedTickets = pgTable('archived_tickets', {
   closingNotes: text('closing_notes'),
   reopenCount: integer('reopen_count').default(0),
   messageCount: integer('message_count').default(0),
+  references: jsonb('references').$type<Array<{ label: string; value: string }>>().default([]),
   archivedAt: timestamp('archived_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => [
   index('idx_archived_tickets_partner').on(table.partnerId),
   index('idx_archived_tickets_created').on(table.createdAt),
   index('idx_archived_tickets_archived').on(table.archivedAt),
+  index('idx_archived_tickets_references').using('gin', table.references),
 ]);
 
 // ─── Knowledge Base ─────────────────────────────────────────────────────────
