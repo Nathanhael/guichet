@@ -31,6 +31,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       if (ticket.agentId !== socket.data.userId) {
         return socket.emit('error', { message: 'Only the ticket agent can submit a rating' });
       }
+      if (ticket.status !== 'closed') {
+        return socket.emit('error', { message: 'Rating can only be submitted on closed tickets' });
+      }
       if (!ticket.supportId) {
         return socket.emit('error', { message: 'No support user assigned to this ticket' });
       }

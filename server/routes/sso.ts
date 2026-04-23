@@ -11,7 +11,7 @@ import { createRefreshToken } from '../services/refreshToken.js';
 import { setRefreshCookie } from './auth/rateLimit.js';
 import { isPlatformAdmin } from '../services/roles.js';
 import { getRedisClients } from '../utils/redis.js';
-import { auth } from '../middleware/auth.js';
+import { auth, type AuthRequest } from '../middleware/auth.js';
 import { extractLocaleClaim, mapClaimToLocale, computeLocaleUpdate } from '../services/localeSync.js';
 import { getStorage } from '../services/storage.js';
 
@@ -638,10 +638,17 @@ router.get('/exchange', auth as express.RequestHandler, async (req: Request, res
       return res.status(404).json({ error: 'Token expired or invalid' });
     }
 
-    // Delete immediately — single use only
+    const payload = JSON.parse(raw);
+    const callerId = (req as AuthRequest).user?.id;
+    if (!callerId || payload.user?.id !== callerId) {
+      // Don't delete — let the legitimate owner redeem within the TTL.
+      logger.warn({ callerId, payloadUserId: payload.user?.id }, '[SSO] Exchange ownership mismatch');
+      return res.status(403).json({ error: 'Token does not belong to the authenticated user' });
+    }
+
+    // Single-use — only delete after ownership is verified
     await pubClient.del(key);
 
-    const payload = JSON.parse(raw);
     res.json(payload);
   } catch (err: unknown) {
     logger.error({ err: err instanceof Error ? err.message : String(err) }, '[SSO] Exchange FATAL error');

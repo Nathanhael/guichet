@@ -151,6 +151,12 @@ if (config.NODE_ENV === 'production') {
         fatal.push('FIELD_ENCRYPTION_SECRET (or AI_KEY_ENCRYPTION_SECRET) is not set but AI_ENABLED is true — partner API keys would be stored unencrypted. Generate one with: openssl rand -hex 32');
     if (!config.FIELD_ENCRYPTION_SECRET && !config.AI_KEY_ENCRYPTION_SECRET && !config.AI_ENABLED)
         warn.push('FIELD_ENCRYPTION_SECRET (or AI_KEY_ENCRYPTION_SECRET) is not set — if AI is enabled later, partner API keys will not be encrypted at rest');
+    if (
+        config.FIELD_ENCRYPTION_SECRET &&
+        config.AI_KEY_ENCRYPTION_SECRET &&
+        config.FIELD_ENCRYPTION_SECRET !== config.AI_KEY_ENCRYPTION_SECRET
+    )
+        fatal.push('FIELD_ENCRYPTION_SECRET and AI_KEY_ENCRYPTION_SECRET are both set but differ — the encryption service prefers FIELD_ENCRYPTION_SECRET, so data encrypted with AI_KEY_ENCRYPTION_SECRET will be undecryptable. Unset one, or align both to the same value.');
     if (!config.COOKIE_SECURE)
         fatal.push('COOKIE_SECURE is false — cookies will not be sent over HTTPS');
     if (config.DEMO_MODE)
