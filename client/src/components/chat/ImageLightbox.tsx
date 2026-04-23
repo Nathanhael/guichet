@@ -1,7 +1,23 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import useStore from '../../store/useStore';
+
+// Attachment URLs come from the server and should always resolve to the same
+// origin (either `/uploads/<file>` for local storage, or an origin-rewritten
+// proxy path for object storage). Reject anything cross-origin so a bad
+// attachment record can't redirect the Download anchor offsite — the
+// `download` attribute is ignored by browsers on cross-origin hrefs, so a
+// malicious URL there becomes a plain navigation.
+function isSafeAttachmentUrl(url: string): boolean {
+  try {
+    if (url.startsWith('/') && !url.startsWith('//')) return true;
+    const u = new URL(url, window.location.origin);
+    return u.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
 
 export default function ImageLightbox() {
   const images = useStore((s) => s.lightboxImages);
@@ -12,29 +28,74 @@ export default function ImageLightbox() {
   const isOpen = index !== null && images.length > 0;
   const current = isOpen ? images[index] : null;
   const hasMany = images.length > 1;
+  const safe = !!current && isSafeAttachmentUrl(current.url);
+
+  const dialogRef = useRef<HTMLDivElement | null>(null);
 
   const onPrev = useCallback(() => navigateLightbox(-1), [navigateLightbox]);
   const onNext = useCallback(() => navigateLightbox(1), [navigateLightbox]);
 
+  // Focus trap — on open, remember the previously focused element, move
+  // focus into the dialog, and restore on close. Tab/Shift+Tab wrap around
+  // the dialog's own focusable descendants so keyboard users can't escape
+  // into the chat underneath while the modal is up.
   useEffect(() => {
     if (!isOpen) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    dialog?.focus();
+
+    function getFocusable(): HTMLElement[] {
+      if (!dialog) return [];
+      return Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+    }
+
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeLightbox();
-      else if (e.key === 'ArrowLeft' && hasMany) onPrev();
-      else if (e.key === 'ArrowRight' && hasMany) onNext();
+      if (e.key === 'Escape') { closeLightbox(); return; }
+      if (e.key === 'ArrowLeft' && hasMany) { onPrev(); return; }
+      if (e.key === 'ArrowRight' && hasMany) { onNext(); return; }
+      if (e.key === 'Tab') {
+        const focusable = getFocusable();
+        if (focusable.length === 0) { e.preventDefault(); return; }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (e.shiftKey && (active === first || !dialog?.contains(active))) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     }
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      previouslyFocused?.focus?.();
+    };
   }, [isOpen, hasMany, closeLightbox, onPrev, onNext]);
 
-  if (!isOpen || !current) return null;
+  // Close automatically if a cross-origin URL sneaks in — don't render a
+  // dialog around content we refuse to display.
+  useEffect(() => {
+    if (isOpen && current && !safe) closeLightbox();
+  }, [isOpen, current, safe, closeLightbox]);
+
+  if (!isOpen || !current || !safe) return null;
 
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={current.name}
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 animate-[fade-in_150ms_ease-out]"
+      tabIndex={-1}
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/85 animate-[fade-in_150ms_ease-out] outline-none"
       onClick={closeLightbox}
     >
       <button
