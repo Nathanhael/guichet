@@ -18,6 +18,7 @@ import { useComposeAttachments } from '../../hooks/useComposeAttachments';
 import { useComposeLinkPreview } from '../../hooks/useComposeLinkPreview';
 import { useComposeAiImprove } from '../../hooks/useComposeAiImprove';
 import { useComposeEmojiPicker } from '../../hooks/useComposeEmojiPicker';
+import { useComposeCanned } from '../../hooks/useComposeCanned';
 import { EMOJI_LIST } from '../../utils/emojiData';
 import EmojiSuggestion from './EmojiSuggestion';
 
@@ -59,17 +60,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const [text, setText] = useState('');
   const [whisperMode, setWhisperMode] = useState(false);
-  const [showCannedPicker, setShowCannedPicker] = useState(false);
-  // Global shortcut: Alt+J dispatches `support:open-canned-picker`
-  // on SupportView. Listening here keeps the picker owner (this compose
-  // area) free of prop-drilling.
-  useEffect(() => {
-    function open() {
-      setShowCannedPicker(true);
-    }
-    window.addEventListener('support:open-canned-picker', open);
-    return () => window.removeEventListener('support:open-canned-picker', open);
-  }, []);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
 
@@ -114,6 +104,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // those closures are created).
   const editorRef = useRef<Editor | null>(null);
   const emojiHook = useComposeEmojiPicker({ editorRef, text, setText });
+  const cannedHook = useComposeCanned({ editorRef, setText, isSupport });
 
   // Tiptap editor — the actual interactive surface. text/setText remains
   // the authoritative store for draft persistence, character counter,
@@ -135,11 +126,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       // normalization, etc.).
       if (isProgrammaticUpdateRef.current) return;
       setText(markdown);
-      // Canned-response trigger — only when message starts with "/".
-      if (isSupport) {
-        if (markdown.startsWith('/')) setShowCannedPicker(true);
-        else if (showCannedPicker) setShowCannedPicker(false);
-      }
+      cannedHook.syncFromMarkdown(markdown);
       emojiHook.syncQuery(markdown);
       emitTyping();
     },
@@ -149,8 +136,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     },
     onEscape: () => {
       if (emojiHook.query) { emojiHook.clearQuery(); return; }
-      if (showCannedPicker) setShowCannedPicker(false);
-      else if (replyingTo && onClearReply) onClearReply();
+      if (cannedHook.isOpen) { cannedHook.close(); return; }
+      if (replyingTo && onClearReply) onClearReply();
     },
   });
 
@@ -650,17 +637,13 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         </div>
 
         <div className="relative flex-1">
-          {isSupport && showCannedPicker && (
+          {isSupport && cannedHook.isOpen && (
             <CannedResponsePicker
               inputText={text}
               dept={ticket.dept}
               ticketId={ticket.id}
-              onSelect={(body) => {
-                setText(body);
-                setShowCannedPicker(false);
-                editor?.chain().focus().run();
-              }}
-              onClose={() => setShowCannedPicker(false)}
+              onSelect={cannedHook.insert}
+              onClose={cannedHook.close}
             />
           )}
           {emojiHook.query && (
