@@ -16,6 +16,7 @@ import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEdito
 import { useComposeDraft } from '../../hooks/useComposeDraft';
 import { useComposeTyping } from '../../hooks/useComposeTyping';
 import { useComposeAttachments } from '../../hooks/useComposeAttachments';
+import { useComposeLinkPreview } from '../../hooks/useComposeLinkPreview';
 import { EMOJI_LIST } from '../../utils/emojiData';
 import EmojiSuggestion from './EmojiSuggestion';
 
@@ -74,13 +75,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [improving, setImproving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
-  // Debounced copy of `text` for the link-preview query. Updating it on
-  // every keystroke would spam the server; we wait 800ms after the last
-  // input before unfurling the first URL in the compose buffer.
-  const [debouncedText, setDebouncedText] = useState('');
-  // User-dismissed previews — URLs in this set are hidden until the
-  // user clears them from the text buffer.
-  const [dismissedPreviews, setDismissedPreviews] = useState<Set<string>>(new Set());
 
   // Draft persistence — one key per (user, ticket, mode). Each support agent
   // keeps their own in-progress reply across reloads, and whisper vs regular
@@ -195,43 +189,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     queueMicrotask(() => { isProgrammaticUpdateRef.current = false; });
   }, [editor, text]);
 
-  // Debounce the compose text for the link-preview query. 800ms after
-  // the last keystroke we ping the server to unfurl the first URL in
-  // the buffer. Avoids flooding the endpoint while the user is still
-  // typing the URL character by character.
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedText(text), 800);
-    return () => clearTimeout(timer);
-  }, [text]);
-
-  const linkPreviewQuery = trpc.linkPreview.fetchForCompose.useQuery(
-    { text: debouncedText },
-    {
-      // Only fire when the buffer contains something that looks like a URL.
-      // Regex is deliberately loose; the server applies the authoritative
-      // URL_REGEX + SSRF guards.
-      enabled: /https?:\/\//i.test(debouncedText) && debouncedText.length >= 10,
-      staleTime: 60_000,
-      retry: 0,
-    },
-  );
-  const livePreview = linkPreviewQuery.data && !dismissedPreviews.has(linkPreviewQuery.data.url) ? linkPreviewQuery.data : null;
-
-  // Clear the dismissed-previews set when the text no longer contains the
-  // dismissed URL — if the user retypes or pastes it later, the preview
-  // should come back.
-  useEffect(() => {
-    if (dismissedPreviews.size === 0) return;
-    let changed = false;
-    const next = new Set(dismissedPreviews);
-    for (const url of dismissedPreviews) {
-      if (!text.includes(url)) {
-        next.delete(url);
-        changed = true;
-      }
-    }
-    if (changed) setDismissedPreviews(next);
-  }, [text, dismissedPreviews]);
+  const { livePreview, dismiss: dismissPreview } = useComposeLinkPreview({ text });
 
   // Dynamic placeholder — Tiptap's Placeholder extension stores the value
   // at editor construction time and doesn't reactively pick up prop
@@ -633,7 +591,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             />
             <button
               type="button"
-              onClick={() => setDismissedPreviews((prev) => new Set(prev).add(livePreview.url))}
+              onClick={() => dismissPreview(livePreview.url)}
               aria-label={t('dismiss_preview') || 'Dismiss preview'}
               title={t('dismiss_preview') || 'Dismiss preview'}
               className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-[var(--color-bg-surface)] rounded-full shadow-[var(--shadow-soft)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
