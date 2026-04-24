@@ -40,7 +40,7 @@ export function disconnectSocket(): void {
   listenersAttached = false;
 }
 
-export function useSocket(): Socket {
+export function useSocket(): Socket | null {
   const {
     user, 
     activePartnerId,
@@ -510,5 +510,5 @@ export function useSocket(): Socket {
   // screen does not spin up a pre-auth socket that fails JWT middleware and
   // gets stuck in a polling-handshake retry loop. Consumers (chat panels,
   // ticket UI) only render after login, so they will always see a real socket.
-  return user ? getSocket() : (null as unknown as Socket);
+  return user ? getSocket() : null;
 }

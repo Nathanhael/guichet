@@ -14,7 +14,6 @@ import UserMenuChip from '../components/ui/UserMenuChip';
 import TicketForm from '../components/agent/TicketForm';
 import AgentTicketContextPanel from '../components/agent/AgentTicketContextPanel';
 import { trpc } from '../utils/trpc';
-import { Ticket } from '../types';
 import type { ChatWindowHandle } from '../types/command';
 
 const SIDEBAR_WIDTH_KEY = 'guichet.agentSidebarWidth';
@@ -117,9 +116,7 @@ export default function AgentView() {
 
   useEffect(() => {
     if (ticketList && Array.isArray(ticketList)) {
-      // tRPC infers Drizzle row types which differ slightly from client Ticket interface
-      // (e.g. participants as JSONB object vs typed array). Runtime data is compatible.
-      setTickets(ticketList as unknown as Ticket[]);
+      setTickets(ticketList);
     }
   }, [ticketList, setTickets]);
 
