@@ -1,11 +1,11 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send, ALargeSmall } from 'lucide-react';
-import { EditorContent } from '@tiptap/react';
+import { EditorContent, type Editor } from '@tiptap/react';
 import FormatToolbar from './FormatToolbar';
 import LinkPreviewCard from './LinkPreviewCard';
 import Toast from '../Toast';
@@ -17,6 +17,7 @@ import { useComposeTyping } from '../../hooks/useComposeTyping';
 import { useComposeAttachments } from '../../hooks/useComposeAttachments';
 import { useComposeLinkPreview } from '../../hooks/useComposeLinkPreview';
 import { useComposeAiImprove } from '../../hooks/useComposeAiImprove';
+import { useComposeEmojiPicker } from '../../hooks/useComposeEmojiPicker';
 import { EMOJI_LIST } from '../../utils/emojiData';
 import EmojiSuggestion from './EmojiSuggestion';
 
@@ -58,7 +59,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const [text, setText] = useState('');
   const [whisperMode, setWhisperMode] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
   // Global shortcut: Alt+J dispatches `support:open-canned-picker`
   // on SupportView. Listening here keeps the picker owner (this compose
@@ -70,7 +70,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     window.addEventListener('support:open-canned-picker', open);
     return () => window.removeEventListener('support:open-canned-picker', open);
   }, []);
-  const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
 
@@ -108,6 +107,14 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     },
   });
 
+  // Latest-editor ref — populated via useEffect after useComposeEditor
+  // returns. Used by useComposeEmojiPicker so the hook can be declared
+  // BEFORE useComposeEditor (the editor's onUpdate/onSubmit/onEscape
+  // closures reference emojiHook methods, so the hook must exist when
+  // those closures are created).
+  const editorRef = useRef<Editor | null>(null);
+  const emojiHook = useComposeEmojiPicker({ editorRef, text, setText });
+
   // Tiptap editor — the actual interactive surface. text/setText remains
   // the authoritative store for draft persistence, character counter,
   // canned-response trigger, and doSend; the editor's onUpdate callback
@@ -133,21 +140,21 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         if (markdown.startsWith('/')) setShowCannedPicker(true);
         else if (showCannedPicker) setShowCannedPicker(false);
       }
-      // Emoji suggestion trigger — `:` followed by 2+ word chars at end of text
-      const emojiMatch = markdown.match(/:(\w{2,})$/);
-      setEmojiQuery(emojiMatch ? emojiMatch[1] : null);
+      emojiHook.syncQuery(markdown);
       emitTyping();
     },
     onSubmit: () => {
-      if (emojiQuery) return; // Enter selects emoji, don't send
+      if (emojiHook.query) return; // Enter selects emoji, don't send
       sendMessage();
     },
     onEscape: () => {
-      if (emojiQuery) { setEmojiQuery(null); return; }
+      if (emojiHook.query) { emojiHook.clearQuery(); return; }
       if (showCannedPicker) setShowCannedPicker(false);
       else if (replyingTo && onClearReply) onClearReply();
     },
   });
+
+  useEffect(() => { editorRef.current = editor; }, [editor]);
 
   // Guard flag: when we programmatically call setContent below, Tiptap's
   // onUpdate may still fire (some versions of tiptap-markdown hook it
@@ -235,10 +242,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     };
   }, [editor, whisperMode, t]);
 
-  const emojiPickerRef = useRef<HTMLDivElement>(null);
-  const emojiGridRef = useRef<HTMLDivElement | null>(null);
-  const [emojiPickerPos, setEmojiPickerPos] = useState<{ bottom: number; left: number } | null>(null);
-
   // Queue focus requests that arrive before the editor view is mounted.
   // Alt+1..9 / Alt+Up/Down switches to a just-mounted ChatWindow and calls
   // focus immediately; useEditor is async, so the first call usually hits
@@ -294,44 +297,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     });
     setLastRejection(null);
   }, [lastRejection, ticket.id, t, setLastRejection]);
-
-  // Close emoji picker on outside click. Grid is portaled to document.body,
-  // so the original button-wrapper ref wouldn't contain it — check both.
-  useEffect(() => {
-    if (!showEmojiPicker) return;
-    function handleClickOutside(e: MouseEvent) {
-      const target = e.target as Node;
-      if (emojiPickerRef.current?.contains(target)) return;
-      if (emojiGridRef.current?.contains(target)) return;
-      setShowEmojiPicker(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showEmojiPicker]);
-
-  // Portaled-popup positioning: anchor fixed coords to the trigger button's
-  // rect so the grid escapes the compose area's overflow-hidden clip.
-  useLayoutEffect(() => {
-    if (!showEmojiPicker) return;
-    function compute() {
-      const el = emojiPickerRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const GAP = 8;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setEmojiPickerPos({
-        bottom: window.innerHeight - r.top + GAP,
-        left: r.left,
-      });
-    }
-    compute();
-    window.addEventListener('resize', compute);
-    window.addEventListener('scroll', compute, true);
-    return () => {
-      window.removeEventListener('resize', compute);
-      window.removeEventListener('scroll', compute, true);
-    };
-  }, [showEmojiPicker]);
 
   const {
     originalText,
@@ -630,28 +595,28 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
           {/* Emoji picker — hidden in compact mode */}
           {!compact && (
-          <div className="relative" ref={emojiPickerRef}>
+          <div className="relative" ref={emojiHook.pickerRef}>
             <button
               type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              onClick={emojiHook.toggle}
               aria-label={t('emoji') || 'Emoji'}
-              aria-expanded={showEmojiPicker}
+              aria-expanded={emojiHook.isOpen}
               className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
               title={t('emoji') || 'Emoji'}
             >
               <Smile size={18} />
             </button>
-            {showEmojiPicker && typeof document !== 'undefined' && createPortal(
+            {emojiHook.isOpen && typeof document !== 'undefined' && createPortal(
               <div
-                ref={emojiGridRef}
+                ref={emojiHook.gridRef}
                 role="grid"
                 aria-label={t('emoji') || 'Emoji'}
-                style={emojiPickerPos
-                  ? { position: 'fixed' as const, bottom: emojiPickerPos.bottom, left: emojiPickerPos.left }
+                style={emojiHook.position
+                  ? { position: 'fixed' as const, bottom: emojiHook.position.bottom, left: emojiHook.position.left }
                   : { display: 'none' as const }}
                 className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] z-[60] p-2 w-[280px]"
                 onKeyDown={(e) => {
-                  if (e.key === 'Escape') { setShowEmojiPicker(false); return; }
+                  if (e.key === 'Escape') { emojiHook.close(); return; }
                   const btns = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
                   const idx = btns.indexOf(e.target as HTMLButtonElement);
                   if (idx < 0) return;
@@ -670,10 +635,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                       key={emoji}
                       type="button"
                       aria-label={emoji}
-                      onClick={() => {
-                        editor?.chain().focus().insertContent(emoji).run();
-                        setShowEmojiPicker(false);
-                      }}
+                      onClick={() => emojiHook.insert(emoji)}
                       className="w-8 h-8 flex items-center justify-center text-lg rounded-[var(--radius-btn)] hover:bg-[var(--color-hover)]"
                     >
                       {emoji}
@@ -701,17 +663,11 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               onClose={() => setShowCannedPicker(false)}
             />
           )}
-          {emojiQuery && (
+          {emojiHook.query && (
             <EmojiSuggestion
-              query={emojiQuery}
-              onSelect={(emoji) => {
-                // Replace `:query` with the emoji character
-                const newText = text.replace(/:(\w{2,})$/, emoji);
-                setText(newText);
-                setEmojiQuery(null);
-                editor?.chain().focus().run();
-              }}
-              onClose={() => setEmojiQuery(null)}
+              query={emojiHook.query}
+              onSelect={emojiHook.selectSuggestion}
+              onClose={emojiHook.clearQuery}
             />
           )}
           {/* Tiptap WYSIWYG editor — replaces the plain textarea. Onkeydown
