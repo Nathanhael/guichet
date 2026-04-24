@@ -108,7 +108,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
   // tRPC: Agent Presence
   const presenceQuery = trpc.presence.getOnlineStatus.useQuery(
-    { userId: ticket?.agentId || '', partnerId: activePartnerId || '' },
+    { userId: ticket?.agentId || '' },
     {
       enabled: isSupport && !!ticket?.agentId && ticket?.status !== 'closed' && !!activePartnerId,
       refetchInterval: 10000 + Math.floor(Math.random() * 3000), // 10–13s with jitter
