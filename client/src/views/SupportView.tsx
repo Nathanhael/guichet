@@ -443,7 +443,6 @@ export default function SupportView() {
                 <UserMenuChip
                   showStatus
                   showKeyboardShortcuts
-                  showFocusMode
                   onKeyboardShortcuts={() => setShortcutsOpen(true)}
                   confirmBeforeSwitch
                 />

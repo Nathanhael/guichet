@@ -54,6 +54,7 @@ export default function ChatHeader({
   const currentUserId = useStore(s => s.user?.id);
   const currentUserIsExternal = useStore(s => !!s.user?.isExternal);
   const currentRole = useStore(s => s.user?.role);
+  const viewMode = useStore(s => s.viewMode);
   const toggleFocusMode = useStore(s => s.toggleFocusMode);
   // Map of userId -> live status, used to light up support avatars and keep them in sync with presence changes.
   const supportStatusById = new Map<string, 'online' | 'away'>();
@@ -545,9 +546,11 @@ export default function ChatHeader({
           )}
 
           {/* Focus mode exit hint — persistent chip showing ESC shortcut.
-              Support-only: focus mode is scoped to the support chat surface
-              (AgentView has no focus toggle). */}
-          {focusMode && isSupport && (
+              Gated on viewMode === 'focus' (not the accessibility focusMode pref):
+              the pill is meant to escape the focus *view*, so it must stay hidden
+              in normal/split layouts even when the pref is on. Support-only:
+              AgentView has no focus toggle. */}
+          {viewMode === 'focus' && isSupport && (
             <button
               onClick={toggleFocusMode}
               aria-label={t('focus_mode_exit') || 'Exit focus mode'}
