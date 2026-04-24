@@ -21,7 +21,6 @@ export interface AiFeatures {
 export interface Partner {
   id: string;
   name: string;
-  logoUrl: string | null;
   industry: string | null;
   status: string;
   departments?: unknown;

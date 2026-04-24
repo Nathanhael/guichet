@@ -29,6 +29,13 @@
       "when": 1776979736616,
       "tag": "0003_curly_the_twelve",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777011337396,
+      "tag": "0004_moaning_avengers",
+      "breakpoints": true
     }
   ]
 }

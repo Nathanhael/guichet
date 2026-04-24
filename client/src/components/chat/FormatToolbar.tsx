@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Editor } from '@tiptap/react';
 import { Bold, Italic, Strikethrough, Code, Quote, List } from 'lucide-react';
+import { useT } from '../../i18n';
 
 interface FormatToolbarProps {
   /** Tiptap editor instance. Each format button drives an editor command
@@ -12,7 +13,7 @@ interface FormatToolbarProps {
 type IconComponent = React.ComponentType<{ className?: string; strokeWidth?: number }>;
 
 interface FormatAction {
-  title: string;
+  titleKey: string;
   Icon: IconComponent;
   /** Tiptap mark/node name to check for active state. */
   activeKey: string;
@@ -22,37 +23,37 @@ interface FormatAction {
 
 const FORMAT_ACTIONS: FormatAction[] = [
   {
-    title: 'Bold',
+    titleKey: 'fmt_bold',
     Icon: Bold,
     activeKey: 'bold',
     run: (editor) => { editor.chain().focus().toggleBold().run(); },
   },
   {
-    title: 'Italic',
+    titleKey: 'fmt_italic',
     Icon: Italic,
     activeKey: 'italic',
     run: (editor) => { editor.chain().focus().toggleItalic().run(); },
   },
   {
-    title: 'Strikethrough',
+    titleKey: 'fmt_strikethrough',
     Icon: Strikethrough,
     activeKey: 'strike',
     run: (editor) => { editor.chain().focus().toggleStrike().run(); },
   },
   {
-    title: 'Code',
+    titleKey: 'fmt_code',
     Icon: Code,
     activeKey: 'code',
     run: (editor) => { editor.chain().focus().toggleCode().run(); },
   },
   {
-    title: 'Blockquote',
+    titleKey: 'fmt_blockquote',
     Icon: Quote,
     activeKey: 'blockquote',
     run: (editor) => { editor.chain().focus().toggleBlockquote().run(); },
   },
   {
-    title: 'List',
+    titleKey: 'fmt_list',
     Icon: List,
     activeKey: 'bulletList',
     run: (editor) => { editor.chain().focus().toggleBulletList().run(); },
@@ -60,17 +61,19 @@ const FORMAT_ACTIONS: FormatAction[] = [
 ];
 
 export default function FormatToolbar({ editor }: FormatToolbarProps) {
+  const t = useT();
   return (
     <div className="flex items-center gap-0.5 px-1.5 py-1 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]">
       {FORMAT_ACTIONS.map((action) => {
         const { Icon } = action;
+        const label = t(action.titleKey);
         const isActive = editor?.isActive(action.activeKey) ?? false;
         return (
           <button
-            key={action.title}
+            key={action.titleKey}
             type="button"
-            title={action.title}
-            aria-label={action.title}
+            title={label}
+            aria-label={label}
             aria-pressed={isActive}
             disabled={!editor}
             onClick={() => editor && action.run(editor)}
@@ -89,11 +92,11 @@ export default function FormatToolbar({ editor }: FormatToolbarProps) {
       <div className="flex items-center gap-3 pr-1 text-[10px] text-[var(--color-ink-muted)] select-none">
         <span className="hidden sm:inline-flex items-center gap-1">
           <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] font-mono text-[10px]">Ctrl+V</kbd>
-          paste
+          {t('fmt_paste')}
         </span>
         <span className="inline-flex items-center gap-1">
           <kbd className="inline-flex items-center px-1.5 py-0.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] font-mono text-[10px]">⏎</kbd>
-          send
+          {t('fmt_send')}
         </span>
       </div>
     </div>

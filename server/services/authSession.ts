@@ -14,7 +14,6 @@ export interface SessionMembership {
   role: string;
   departments: unknown;
   partnerName: string;
-  logoUrl: string | null;
   industry: string | null;
   partnerDepartments: unknown;
   status: string;
@@ -31,7 +30,6 @@ export async function listUserMemberships(userId: string): Promise<SessionMember
       .select({
         partnerId: partners.id,
         partnerName: partners.name,
-        logoUrl: partners.logoUrl,
         industry: partners.industry,
         partnerDepartments: partners.departments,
         status: partners.status,
@@ -46,7 +44,6 @@ export async function listUserMemberships(userId: string): Promise<SessionMember
       role: 'admin',
       departments: [], // Platform admins see all by default
       partnerName: p.partnerName,
-      logoUrl: p.logoUrl,
       industry: p.industry,
       partnerDepartments: p.partnerDepartments,
       status: p.status,
@@ -61,7 +58,6 @@ export async function listUserMemberships(userId: string): Promise<SessionMember
       role: memberships.role,
       departments: memberships.departments,
       partnerName: partners.name,
-      logoUrl: partners.logoUrl,
       industry: partners.industry,
       partnerDepartments: partners.departments,
       status: partners.status,
@@ -137,7 +133,6 @@ export function buildAuthResponse(input: {
       departments: m.departments || [],
       manifest: {
         industry: m.industry,
-        logoUrl: m.logoUrl,
         departments: m.partnerDepartments || [],
       },
     })),
@@ -189,7 +184,6 @@ export async function getEnterPartnerContext(partnerId: string) {
       id: partners.id,
       name: partners.name,
       status: partners.status,
-      logoUrl: partners.logoUrl,
       industry: partners.industry,
       partnerDepartments: partners.departments,
     })

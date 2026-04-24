@@ -194,7 +194,7 @@ export default function AdminCannedResponses() {
             className={PRIMARY_BTN}
           >
             <Plus className="h-3.5 w-3.5" />
-            {createMutation.isPending ? 'Creating…' : 'Create'}
+            {createMutation.isPending ? t('creating') : t('create')}
           </button>
         </div>
       </div>
@@ -273,7 +273,7 @@ export default function AdminCannedResponses() {
                       disabled={!editTitle.trim() || !editBody.trim() || updateMutation.isPending}
                       className={PRIMARY_BTN}
                     >
-                      <Check className="h-3 w-3" /> {updateMutation.isPending ? 'Saving…' : 'Save'}
+                      <Check className="h-3 w-3" /> {updateMutation.isPending ? t('saving_ellipsis') : t('save')}
                     </button>
                   </div>
                 </div>

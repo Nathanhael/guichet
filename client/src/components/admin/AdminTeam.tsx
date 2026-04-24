@@ -121,7 +121,8 @@ export default function AdminTeam() {
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              placeholder="Filter by name, role, or department…"
+              placeholder={t('filter_members_placeholder')}
+              aria-label={t('filter_members_placeholder')}
               className={`${INPUT} pl-8 pr-8 w-full`}
             />
             {search && (
@@ -270,7 +271,7 @@ export default function AdminTeam() {
                                 <span className="inline-flex items-center px-1.5 h-4 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[10px] font-medium text-[var(--color-accent)]">Invite pending</span>
                               ) : member.lastActiveAt && (
                                 <span className="text-[11px] text-[var(--color-ink-muted)]">
-                                  Last active {new Date(member.lastActiveAt).toLocaleDateString()}
+                                  {t('last_active_on').replace('{date}', new Date(member.lastActiveAt).toLocaleDateString())}
                                 </span>
                               )}
                             </div>

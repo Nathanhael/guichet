@@ -26,7 +26,6 @@ export function makePartner(overrides: Partial<Partner> = {}): Partner {
   return {
     id: `partner-${idCounter}`,
     name: `Test Partner ${idCounter}`,
-    logoUrl: null,
     industry: 'Tech',
     status: 'active',
     createdAt: '2025-01-01T00:00:00Z',

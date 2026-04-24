@@ -60,7 +60,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 
 **API Layer**:
 - **tRPC (Primary)**: tRPC 11 for all data fetching and mutations. Router: `server/trpc/router.ts`. 17 domain routers in `server/trpc/routers/`: `ai`, `alerts`, `cannedResponse`, `feedback`, `kb`, `label`, `message`, `partner`, `platform`, `presence`, `rating`, `savedView`, `stats`, `status`, `ticket`, `user`, `webhook`. Input validation via Zod.
-- **Express Routes**: Auth (`server/routes/auth/` — dev-login + session only), SSO (`server/routes/sso.ts`), Logos (`server/routes/logos.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`).
+- **Express Routes**: Auth (`server/routes/auth/` — dev-login + session only), SSO (`server/routes/sso.ts`), Uploads (`server/routes/uploads.ts`), Tickets (`server/routes/tickets.ts`).
 - **API Docs**: Swagger UI at `/api/v1/docs/` (REST), tRPC reference at `/api/v1/trpc-reference`.
 
 **tRPC Middleware** (`server/trpc/trpc.ts`):
@@ -135,7 +135,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 | Table | Purpose | Key Columns |
 |---|---|---|
 | `users` | Global user accounts | `id`, `email`, `externalId` (Azure OID), `lang` (nl/fr/en), `isPlatformOperator` |
-| `partners` | Tenant organizations | `id`, `name`, `status` (active/inactive), `departments` (JSONB), `logoUrl`, `industry` |
+| `partners` | Tenant organizations | `id`, `name`, `status` (active/inactive), `departments` (JSONB), `industry` |
 | `memberships` | User-Partner junction | `userId`, `partnerId`, `role`, `departments` (JSONB array of dept IDs) |
 | `tickets` | Support tickets | `id`, `partnerId`, `agentId`, `status` (open/pending/closed/resolved), `participants` (JSONB) |
 | `messages` | Per-ticket messages | `ticketId`, `senderId`, `body`, `whisper`, `reactions` (JSONB), `editedAt`, `deletedAt` |
@@ -187,7 +187,7 @@ The seed script truncates all tables. The platform operator is auto-created by t
 - `components/agent/` — AgentNav, AgentTicketSidebar, TicketForm
 - `components/support/` — AiCopilotSidebar, ChatTabBar, CustomerInfoPanel, QueueSidebar, SavedViewPicker, SupportNav
 - `components/chat/` — Decomposed chat sub-components: ChatHeader, ComposeArea, MessageList, MessageContent, AttachmentGrid, DeliveryStatus, FormatToolbar, LabelPicker, LinkPreviewCard, QuoteBlock, SearchBar
-- `utils/` — `statusColors.ts`, `dateUtils.ts`, `markdown.ts`, `fileUtils.ts`, `exportDashboard.ts`, `labelColors.ts`, `highlightText.tsx`, `businessHours.ts`, `notifications.ts`, `notificationSound.ts`, `roles.ts`, `uploadLogo.ts`, `trpc.ts`
+- `utils/` — `statusColors.ts`, `dateUtils.ts`, `markdown.ts`, `fileUtils.ts`, `exportDashboard.ts`, `labelColors.ts`, `highlightText.tsx`, `businessHours.ts`, `notifications.ts`, `notificationSound.ts`, `roles.ts`, `trpc.ts`
 - Shared: AccessibilityMenu, BionicText, BusinessHoursGuard, CannedResponsePicker, ChatWindow, ConfirmDialog, ConnectionStatus, DarkModeToggle, ErrorBoundary, FeedbackModal, LanguageSwitcher, LegalModal, MessageBubble, NeuroToggle, PartnerSwitcher, PartnerUnavailable, RatingModal, SettingsPopover, StatusPicker, SystemBackground, TicketPreview, Toast, UserAvatar, UserMenu
 
 **Aesthetics**: Soft Product design (calm, polished, dense). Indigo accent (`#5b5bd6` light / `#8b8cff` dark) as v1 fixed accent; future work exposes a per-user or per-partner accent picker. Inter is the default font everywhere; JetBrains Mono is scoped to code blocks, inline code, and ticket IDs only. Subtle shadows (`--shadow-soft` / `--shadow-card` / `--shadow-modal`), soft radii (14 card / 8 button / 999 pill / 12 bubble). Purposeful motion only: `fade-in` 150ms, `v2p-slide-in` 260ms (new messages, toasts), `v2p-pop` 180ms (modal cards), `v2p-pulse` 1.8s (unread badges), `v2p-dot` 1s (typing), theme transition 200ms. Respect `prefers-reduced-motion`. Tokens in `client/src/index.css`; full spec at `docs/SOFT_PRODUCT_DESIGN_SPEC.md`.
@@ -278,7 +278,6 @@ guichet/
 │   │   │   ├── devLogin.ts        # /dev-login (non-prod only)
 │   │   │   └── session.ts         # /refresh, /logout, /switch-partner, /enter-partner
 │   │   ├── sso.ts                 # /api/auth/sso/* (SAML/OIDC flows)
-│   │   ├── logos.ts               # /api/v1/logos
 │   │   ├── uploads.ts             # /api/v1/uploads (file attachments)
 │   │   ├── tickets.ts             # /api/v1/tickets (REST ticket endpoints)
 │   ├── services/                  # Business logic

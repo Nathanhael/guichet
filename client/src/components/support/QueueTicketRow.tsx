@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { AlertTriangle, Clock } from 'lucide-react';
 import type { Ticket } from '../../types';
 import { formatChatDuration, formatQueueWait } from '../../utils/dateUtils';
 import useStore from '../../store/useStore';
@@ -68,8 +69,17 @@ export default function QueueTicketRow({
         const colorClass = severity === 'red' ? 'text-[var(--color-urgent)]'
           : severity === 'amber' ? 'text-[var(--color-accent-amber)]'
           : 'text-[var(--color-ink-muted)]';
+        // Icon + aria-label for color-blind users. Severity is NOT color-only.
+        const SeverityIcon = severity === 'red' ? AlertTriangle : severity === 'amber' ? Clock : null;
+        const ariaLabel = severity === 'red' ? `SLA breached — waiting ${text}`
+          : severity === 'amber' ? `SLA warning — waiting ${text}`
+          : `Waiting ${text}`;
         return (
-          <span className={`text-[11px] font-semibold tabular-nums ml-auto ${colorClass}`}>
+          <span
+            className={`text-[11px] font-semibold tabular-nums ml-auto inline-flex items-center gap-1 ${colorClass}`}
+            aria-label={ariaLabel}
+          >
+            {SeverityIcon && <SeverityIcon className="w-3 h-3" aria-hidden strokeWidth={2.5} />}
             {text}
           </span>
         );

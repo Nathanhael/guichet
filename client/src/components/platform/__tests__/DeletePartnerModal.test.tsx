@@ -6,7 +6,7 @@ import type { Partner } from '../types';
 const { mockDelete, partner } = vi.hoisted(() => ({
   mockDelete: { mutate: vi.fn(), isPending: false },
   partner: {
-    id: 'del-1', name: 'DangerCorp', logoUrl: null, industry: 'Tech',
+    id: 'del-1', name: 'DangerCorp', industry: 'Tech',
     status: 'inactive', createdAt: '', updatedAt: '',
   } satisfies Partner,
 }));

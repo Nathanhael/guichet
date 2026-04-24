@@ -17,7 +17,6 @@ export const membershipSourceEnum = pgEnum('membership_source', ['sso', 'manual'
 export const partners = pgTable('partners', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
-  logoUrl: text('logo_url'),
   industry: text('industry').default('general'),
   departments: jsonb('departments').default([]),
   businessHoursSchedule: jsonb('business_hours_schedule'),

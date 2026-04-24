@@ -9,11 +9,11 @@ import type { Partner } from '../types';
 
 const { mockDeactivate, mockReactivate, activePartner, inactivePartner } = vi.hoisted(() => {
   const activePartner: Partner = {
-    id: 'p1', name: 'Acme Corp', logoUrl: null, industry: 'Tech',
+    id: 'p1', name: 'Acme Corp', industry: 'Tech',
     status: 'active', createdAt: '', updatedAt: '',
   };
   const inactivePartner: Partner = {
-    id: 'p2', name: 'Old Inc', logoUrl: null, industry: 'Tech',
+    id: 'p2', name: 'Old Inc', industry: 'Tech',
     status: 'inactive', createdAt: '', updatedAt: '',
   };
   return {
