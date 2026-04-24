@@ -2,10 +2,11 @@ import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { router, roleProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { partners, tickets, memberships } from '../../db/schema.js';
+import { partners, tickets } from '../../db/schema.js';
 import { and, eq, isNull, inArray } from 'drizzle-orm';
 import { getOnlineUsersForPartner } from '../../services/presence.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
+import { assertMembership } from '../../services/membership.js';
 import type { UserRole } from '../../types/index.js';
 import logger from '../../utils/logger.js';
 import {
@@ -48,16 +49,6 @@ export interface StaffingRow {
   unclaimedTickets: number;
   oldestWaitMinutes: number | null;
   imbalanceLevel: ImbalanceLevel;
-}
-
-async function assertMembership(userId: string, partnerId: string, isPlatformOperator: boolean): Promise<void> {
-  if (isPlatformOperator) return;
-  const rows = await db.select().from(memberships)
-    .where(and(eq(memberships.userId, userId), eq(memberships.partnerId, partnerId)))
-    .limit(1);
-  if (rows.length === 0) {
-    throw new TRPCError({ code: 'FORBIDDEN', message: 'not a member of this partner' });
-  }
 }
 
 export const supportRouter = router({
