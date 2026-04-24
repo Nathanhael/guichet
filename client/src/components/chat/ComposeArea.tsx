@@ -13,27 +13,9 @@ import Toast from '../Toast';
 import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
 import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEditor';
+import { useComposeDraft } from '../../hooks/useComposeDraft';
 import { EMOJI_LIST } from '../../utils/emojiData';
 import EmojiSuggestion from './EmojiSuggestion';
-
-// Purge expired drafts from localStorage on module load (once per session).
-// Drafts older than 24h are stale — the ticket is likely closed or reassigned.
-const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-(() => {
-  try {
-    const keys = Object.keys(localStorage).filter((k) => k.startsWith('guichet:draft:'));
-    for (const key of keys) {
-      const raw = localStorage.getItem(key);
-      if (!raw) continue;
-      try {
-        const { ts } = JSON.parse(raw);
-        if (!ts || Date.now() - ts > DRAFT_TTL_MS) localStorage.removeItem(key);
-      } catch {
-        localStorage.removeItem(key); // corrupt entry
-      }
-    }
-  } catch { /* localStorage unavailable */ }
-})();
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -106,37 +88,9 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // Draft persistence — one key per (user, ticket, mode). Each support agent
   // keeps their own in-progress reply across reloads, and whisper vs regular
   // mode stay separate so a private note can't leak into a public reply.
-  // Stored in localStorage (survives crashes) with a 24h TTL.
+  // The hook owns hydrate + 400ms debounced save + module-level 24h TTL purge.
   const draftKey = `guichet:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
-
-  // Hydrate draft once per key change (ticket switch, whisper toggle).
-  // The editor reference is captured via ref in a downstream effect
-  // below so we can push the markdown into setContent too.
-  useEffect(() => {
-    const raw = localStorage.getItem(draftKey);
-    if (raw) {
-      try {
-        const { text: saved, ts } = JSON.parse(raw);
-        if (Date.now() - ts < DRAFT_TTL_MS) {
-          setText(saved);
-          return;
-        }
-        localStorage.removeItem(draftKey); // expired
-      } catch {
-        localStorage.removeItem(draftKey); // corrupt
-      }
-    }
-    setText('');
-  }, [draftKey]);
-
-  // Debounced save — 400ms after the last keystroke.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (text) localStorage.setItem(draftKey, JSON.stringify({ text, ts: Date.now() }));
-      else localStorage.removeItem(draftKey);
-    }, 400);
-    return () => clearTimeout(timer);
-  }, [text, draftKey]);
+  useComposeDraft({ user, ticketId: ticket.id, whisperMode, text, setText });
 
   // Tiptap editor — the actual interactive surface. text/setText remains
   // the authoritative store for draft persistence, character counter,
