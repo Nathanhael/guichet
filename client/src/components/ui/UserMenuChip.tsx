@@ -28,8 +28,6 @@ export interface UserMenuChipProps {
   /** Show in-app feedback entry (Agent only). */
   showFeedback?: boolean;
   onFeedback?: () => void;
-  /** Show focus-mode toggle + shortcut hint (Support only — no chat-focus surface elsewhere). */
-  showFocusMode?: boolean;
   /** Subtitle override (PlatformView uses "Platform operator"). */
   subtitleOverride?: string;
   /** Confirm before switching workspace (Support / Agent). */
@@ -92,7 +90,6 @@ export default function UserMenuChip({
   onKeyboardShortcuts,
   showFeedback = false,
   onFeedback,
-  showFocusMode = false,
   subtitleOverride,
   confirmBeforeSwitch = false,
   placement = 'right',
@@ -108,7 +105,6 @@ export default function UserMenuChip({
     dyslexicMode, toggleDyslexicMode,
     bionicReading, toggleBionicReading,
     monochromeMode, toggleMonochromeMode,
-    focusMode, toggleFocusMode,
     soundEnabled, toggleSoundEnabled,
     logout,
   } = useStoreShallow(s => ({
@@ -128,8 +124,6 @@ export default function UserMenuChip({
     toggleBionicReading: s.toggleBionicReading,
     monochromeMode: s.monochromeMode,
     toggleMonochromeMode: s.toggleMonochromeMode,
-    focusMode: s.focusMode,
-    toggleFocusMode: s.toggleFocusMode,
     soundEnabled: s.soundEnabled,
     toggleSoundEnabled: s.toggleSoundEnabled,
     logout: s.logout,
@@ -482,22 +476,6 @@ export default function UserMenuChip({
               label={t('monochrome')}
             />
           </div>
-          {showFocusMode && (
-            <div className="border-b border-[var(--color-border)] px-3.5 py-2.5 flex items-center justify-between gap-4">
-              <div className="flex flex-col min-w-0">
-                <span className={LABEL}>{t('focus_mode') || 'Focus mode'}</span>
-                <span className="text-[10px] text-[var(--color-ink-muted)]">
-                  Ctrl+Shift+F
-                </span>
-              </div>
-              <ToggleSwitch
-                enabled={focusMode}
-                onToggle={toggleFocusMode}
-                label={t('focus_mode') || 'Focus mode'}
-              />
-            </div>
-          )}
-
           {showKeyboardShortcuts && (
             <button
               onClick={handleKeyboardShortcuts}
