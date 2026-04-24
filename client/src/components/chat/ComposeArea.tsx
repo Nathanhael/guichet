@@ -15,10 +15,9 @@ import { getFileTypeLabel } from '../../utils/fileUtils';
 import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEditor';
 import { useComposeDraft } from '../../hooks/useComposeDraft';
 import { useComposeTyping } from '../../hooks/useComposeTyping';
+import { useComposeAttachments } from '../../hooks/useComposeAttachments';
 import { EMOJI_LIST } from '../../utils/emojiData';
 import EmojiSuggestion from './EmojiSuggestion';
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
@@ -58,8 +57,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const [text, setText] = useState('');
   const [whisperMode, setWhisperMode] = useState(false);
-  const [pendingFiles, setPendingFiles] = useState<Array<{ file: File; preview: string }>>([]);
-  const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showCannedPicker, setShowCannedPicker] = useState(false);
   // Global shortcut: Alt+J dispatches `support:open-canned-picker`
@@ -76,7 +73,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const [originalText, setOriginalText] = useState<string | null>(null);
   const [improving, setImproving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
   // Debounced copy of `text` for the link-preview query. Updating it on
   // every keystroke would spam the server; we wait 800ms after the last
@@ -93,6 +89,32 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const draftKey = `guichet:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
   useComposeDraft({ user, ticketId: ticket.id, whisperMode, text, setText });
   const { emit: emitTyping, stop: stopTyping } = useComposeTyping({ ticket, whisperMode });
+  const {
+    pendingFiles,
+    uploading,
+    isDragOver,
+    fileInputRef: fileRef,
+    removeFile,
+    clearMedia,
+    uploadFiles,
+    handleFileChange,
+    handlePaste,
+    dragProps,
+  } = useComposeAttachments({
+    onError: (err) => {
+      if (err.code === 'file_too_large') {
+        setToast({
+          message: t('file_too_large') || `File exceeds 10MB limit`,
+          type: 'error',
+        });
+      } else {
+        const msg = err.detail
+          ? `${t('upload_failed') || 'Upload failed'}: ${err.detail}`
+          : t('upload_failed') || 'Upload failed. Please try again.';
+        setToast({ message: msg, type: 'error' });
+      }
+    },
+  });
 
   // Tiptap editor — the actual interactive surface. text/setText remains
   // the authoritative store for draft persistence, character counter,
@@ -257,12 +279,9 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     };
   }, [editor, whisperMode, t]);
 
-  const fileRef = useRef<HTMLInputElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiGridRef = useRef<HTMLDivElement | null>(null);
   const [emojiPickerPos, setEmojiPickerPos] = useState<{ bottom: number; left: number } | null>(null);
-  const pendingFilesRef = useRef(pendingFiles);
-  pendingFilesRef.current = pendingFiles;
 
   // Queue focus requests that arrive before the editor view is mounted.
   // Alt+1..9 / Alt+Up/Down switches to a just-mounted ChatWindow and calls
@@ -320,14 +339,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     setLastRejection(null);
   }, [lastRejection, ticket.id, t, setLastRejection]);
 
-  // Cleanup on unmount: revoke Object URLs. Typing indicator cleanup lives
-  // in useComposeTyping.
-  useEffect(() => {
-    return () => {
-      pendingFilesRef.current.forEach(pf => URL.revokeObjectURL(pf.preview));
-    };
-  }, []);
-
   // Close emoji picker on outside click. Grid is portaled to document.body,
   // so the original button-wrapper ref wouldn't contain it — check both.
   useEffect(() => {
@@ -368,88 +379,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const improveMutation = trpc.ai.improveMessage.useMutation();
   const improvementMode = aiConfig?.messageImprovement ?? 'off';
-
-  function addFiles(files: File[]) {
-    const remaining = 5 - pendingFiles.length;
-    if (remaining <= 0) return;
-    const oversized = files.filter(f => f.size > MAX_FILE_SIZE);
-    if (oversized.length > 0) {
-      setToast({ message: t('file_too_large') || `File exceeds ${MAX_FILE_SIZE / 1024 / 1024}MB limit`, type: 'error' });
-    }
-    const valid = files.filter(f => f.size <= MAX_FILE_SIZE);
-    const toAdd = valid.slice(0, remaining).map(file => ({
-      file,
-      preview: URL.createObjectURL(file),
-    }));
-    setPendingFiles(prev => [...prev, ...toAdd]);
-  }
-
-  function removeFile(index: number) {
-    setPendingFiles(prev => {
-      const removed = prev[index];
-      if (removed) URL.revokeObjectURL(removed.preview);
-      return prev.filter((_, i) => i !== index);
-    });
-  }
-
-  async function uploadFiles(): Promise<Array<{ url: string; name: string; mimeType: string; size: number }>> {
-    const currentFiles = pendingFilesRef.current;
-    if (currentFiles.length === 0) return [];
-    setUploading(true);
-    try {
-      const form = new FormData();
-      for (const pf of currentFiles) {
-        form.append('files', pf.file);
-      }
-      const res = await fetch('/api/v1/uploads/multi', {
-        method: 'POST',
-        credentials: 'include',
-        body: form,
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        const errorMsg = data.error || 'Unknown error';
-        console.error('Upload failed:', errorMsg);
-        setToast({ message: t('upload_failed') || `Upload failed: ${errorMsg}`, type: 'error' });
-        return [];
-      }
-      return data as Array<{ url: string; name: string; mimeType: string; size: number }>;
-    } catch {
-      setToast({ message: t('upload_failed') || 'Upload failed. Please try again.', type: 'error' });
-      return [];
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-    addFiles(files);
-    if (fileRef.current) fileRef.current.value = '';
-  }
-
-  function handlePaste(e: React.ClipboardEvent) {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const pastedFiles: File[] = [];
-    for (const item of items) {
-      if (item.type.startsWith('image/')) {
-        const file = item.getAsFile();
-        if (file) pastedFiles.push(file);
-      }
-    }
-    if (pastedFiles.length > 0) {
-      e.preventDefault();
-      addFiles(pastedFiles);
-    }
-  }
-
-  function clearMedia() {
-    pendingFiles.forEach(pf => URL.revokeObjectURL(pf.preview));
-    setPendingFiles([]);
-    if (fileRef.current) fileRef.current.value = '';
-  }
 
   /** Core send logic -- uploads pending files, then emits socket event with the given text. */
   async function doSend(finalText: string) {
@@ -719,20 +648,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             files. Purple border when whisper mode is active so the private
             state is unmissable. */}
         <div
-          onDragEnter={(e) => { e.preventDefault(); setIsDragOver(true); }}
-          onDragOver={(e) => { e.preventDefault(); try { e.dataTransfer.dropEffect = 'copy'; } catch { /* some browsers throw on certain drag types */ } }}
-          onDragLeave={(e) => {
-            // Only clear when the drag actually leaves the outer box, not
-            // when it crosses into a child element.
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            setIsDragOver(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            setIsDragOver(false);
-            const files = Array.from(e.dataTransfer.files).filter(Boolean);
-            if (files.length > 0) addFiles(files);
-          }}
+          {...dragProps}
           className={`relative rounded-[var(--radius-card)] overflow-hidden shadow-[var(--shadow-soft)] ${
             whisperMode ? 'ring-1 ring-[var(--color-whisper-ink)]' : 'ring-1 ring-[var(--color-border)]'
           } ${isDragOver ? 'outline outline-2 outline-[var(--color-accent)] outline-offset-0' : ''}`}
