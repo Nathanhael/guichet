@@ -27,7 +27,6 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                     role: memberships.role,
                     departments: memberships.departments,
                     partnerName: partners.name,
-                    logoUrl: partners.logoUrl,
                     industry: partners.industry,
                     partnerDepartments: partners.departments,
                     status: partners.status
@@ -64,7 +63,6 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 activePartnerId: membership.partnerId,
                 manifest: {
                     industry: membership.industry,
-                    logoUrl: membership.logoUrl,
                     departments: membership.partnerDepartments || [],
                 }
             });
@@ -231,7 +229,6 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 partnerName: partner.name,
                 manifest: {
                     industry: partner.industry,
-                    logoUrl: partner.logoUrl,
                     departments: partner.partnerDepartments || [],
                 }
             });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type MouseEvent as ReactMouseEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { useT, useLang } from '../../i18n';
 import { Ticket } from '../../types';
@@ -101,6 +101,16 @@ export default function ChatHeader({
   const [optimisticLabels, setOptimisticLabels] = useState<string[]>(liveTicket.labels || []);
   const transferMenuRef = useRef<HTMLDivElement>(null);
   const labelPickerRef = useRef<HTMLDivElement>(null);
+  // Return focus to the invoking trigger when the popover closes via Escape,
+  // so keyboard users don't lose their place in the header toolbar.
+  const labelTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const transferTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const copyReference = (value: string, i: number) => {
+    void navigator.clipboard.writeText(value);
+    setCopiedRef(i);
+    setTimeout(() => setCopiedRef(null), 1500);
+  };
 
   // Sync optimistic local label state to the authoritative server list whenever
   // the ticket's labels change (server push, other client, accept/revert).
@@ -118,7 +128,10 @@ export default function ChatHeader({
       }
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setShowLabelPicker(false);
+      if (e.key === 'Escape') {
+        setShowLabelPicker(false);
+        labelTriggerRef.current?.focus();
+      }
     }
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleKey);
@@ -179,7 +192,10 @@ export default function ChatHeader({
       }
     }
     function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') setShowTransferMenu(false);
+      if (e.key === 'Escape') {
+        setShowTransferMenu(false);
+        transferTriggerRef.current?.focus();
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
@@ -298,7 +314,10 @@ export default function ChatHeader({
             const visible = optimisticLabels.slice(0, MAX_VISIBLE_LABELS);
             const overflow = optimisticLabels.length - visible.length;
             const canAdd = !isClosed && optimisticLabels.length < MAX_LABELS;
-            const openPicker = () => setShowLabelPicker((v) => !v);
+            const openPicker = (e: ReactMouseEvent<HTMLButtonElement>) => {
+              labelTriggerRef.current = e.currentTarget;
+              setShowLabelPicker((v) => !v);
+            };
 
             return (
               <div ref={labelPickerRef} className="relative flex items-center gap-1 shrink-0">
@@ -425,7 +444,14 @@ export default function ChatHeader({
                   role="button"
                   tabIndex={0}
                   title={`Click to copy ${ref.value}`}
-                  onClick={() => { navigator.clipboard.writeText(ref.value); setCopiedRef(i); setTimeout(() => setCopiedRef(null), 1500); }}
+                  aria-label={`Copy ${ref.label}: ${ref.value}`}
+                  onClick={() => copyReference(ref.value, i)}
+                  onKeyDown={(e: ReactKeyboardEvent<HTMLSpanElement>) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      copyReference(ref.value, i);
+                    }
+                  }}
                   className="flex items-center gap-1.5 cursor-pointer shrink-0"
                 >
                   <span className="text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{ref.label}</span>
@@ -456,8 +482,11 @@ export default function ChatHeader({
           {isSupport && !isClosed && transferDepartments.length > 0 && (
             <div ref={transferMenuRef} className="relative">
               <button
+                ref={transferTriggerRef}
                 onClick={() => setShowTransferMenu(!showTransferMenu)}
                 aria-label={t('transfer') || 'Transfer'}
+                aria-expanded={showTransferMenu}
+                aria-haspopup="menu"
                 title={t('transfer') || 'Transfer'}
                 className="h-8 px-3 flex items-center text-[12px] font-medium rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
               >
@@ -476,6 +505,7 @@ export default function ChatHeader({
                       value={transferNote}
                       onChange={(e) => setTransferNote(e.target.value)}
                       placeholder={t('transfer_note_placeholder') || 'Add context...'}
+                      aria-label={t('transfer_note_placeholder') || 'Add context'}
                       className="w-full text-[12px] bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] px-2.5 py-1.5 text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
                     />
                   </div>

@@ -22,7 +22,6 @@ export interface Department {
 
 export interface PartnerManifest {
   industry: string;
-  logoUrl?: string;
   primaryColor?: string;
   secondaryColor?: string;
   departments: { id: string; name: string; description?: string; welcomeMessage?: string; referenceFields?: Array<{ label: string; optional?: boolean }> }[];

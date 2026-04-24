@@ -21,6 +21,8 @@ export default function Toast({ message, type = 'success', onClose, duration = 4
   return (
     <div
       role="status"
+      aria-live={isError ? 'assertive' : 'polite'}
+      aria-atomic="true"
       className="fixed top-6 right-6 z-[300] animate-[v2p-slide-in_260ms_ease-out]"
     >
       <div className="min-w-[240px] max-w-[360px] flex items-start gap-2.5 px-3.5 py-2.5 bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-card)]">

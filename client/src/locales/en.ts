@@ -590,14 +590,46 @@ const en: Record<string, string> = {
     webhooks: 'Webhooks',
     webhooks_desc: 'HTTP callbacks for real-time event notifications',
     new_webhook: 'New Webhook Endpoint',
+    wh_new: 'New Webhook',
     no_webhooks: 'No webhooks configured',
     signing_secret: 'Signing Secret',
     signing_secret_warn: 'Copy now, it won\'t be shown again',
     wh_events: 'Events',
+    wh_active: 'Active',
     wh_paused: 'Paused',
+    wh_pause: 'Pause',
+    wh_activate: 'Activate',
+    wh_test: 'Send test event',
+    wh_test_sent: 'Test event dispatched',
+    wh_delete: 'Delete',
+    wh_all_events: 'ALL EVENTS',
+    wh_logs: 'Logs',
+    wh_count_one: '{count} webhook',
+    wh_count_other: '{count} webhooks',
     wh_regenerate_secret: 'Regenerate secret',
     wh_recent_deliveries: 'Recent Deliveries',
     wh_no_deliveries: 'No deliveries yet',
+
+    // Format toolbar (chat compose)
+    fmt_bold: 'Bold',
+    fmt_italic: 'Italic',
+    fmt_strikethrough: 'Strikethrough',
+    fmt_code: 'Code',
+    fmt_blockquote: 'Blockquote',
+    fmt_list: 'List',
+    fmt_paste: 'paste',
+    fmt_send: 'send',
+
+    // Generic form controls
+    create: 'Create',
+    creating: 'Creating…',
+    saving_ellipsis: 'Saving…',
+    url: 'URL',
+    description: 'Description',
+
+    // Admin Team
+    filter_members_placeholder: 'Filter by name, role, or department…',
+    last_active_on: 'Last active {date}',
 
     // AI Copilot
     ai_copilot: 'AI Copilot',

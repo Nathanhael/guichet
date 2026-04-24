@@ -109,7 +109,7 @@ export default function AdminWebhooks() {
   });
 
   const testMutation = trpc.webhook.test.useMutation({
-    onSuccess: () => setToast({ message: 'Test event dispatched', type: 'success' }),
+    onSuccess: () => setToast({ message: t('wh_test_sent'), type: 'success' }),
     onError: (err) => setToast({ message: err.message, type: 'error' }),
   });
 
@@ -174,7 +174,7 @@ export default function AdminWebhooks() {
             data-guest-disabled={isExternal || undefined}
             className={PRIMARY_BTN}
           >
-            <Plus className="h-3.5 w-3.5" /> New Webhook
+            <Plus className="h-3.5 w-3.5" /> {t('wh_new')}
           </button>
           <button
             onClick={() => invalidate()}
@@ -194,14 +194,14 @@ export default function AdminWebhooks() {
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-accent)] mb-1.5">
-                Signing Secret — copy now, it won't be shown again
+                {t('signing_secret')} — {t('signing_secret_warn')}
               </p>
               <code className="text-[12px] font-mono bg-[var(--color-bg-surface)] px-2 py-1 rounded-[var(--radius-btn)] select-all break-all text-[var(--color-ink)] inline-block">{revealedSecret}</code>
             </div>
             <button
               onClick={() => setRevealedSecret(null)}
               className="w-8 h-8 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors shrink-0"
-              aria-label="Dismiss"
+              aria-label={t('dismiss')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -212,10 +212,10 @@ export default function AdminWebhooks() {
       {/* Create form */}
       {showCreate && (
         <div className={`${CARD} p-5 mb-6`}>
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">New Webhook Endpoint</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('new_webhook')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className={LABEL}>URL *</label>
+              <label className={LABEL}>{t('url')} *</label>
               <input
                 type="url"
                 value={newUrl}
@@ -226,7 +226,7 @@ export default function AdminWebhooks() {
               <FieldError error={fieldErrors.url} />
             </div>
             <div>
-              <label className={LABEL}>Description</label>
+              <label className={LABEL}>{t('description')}</label>
               <input
                 type="text"
                 value={newDesc}
@@ -237,12 +237,12 @@ export default function AdminWebhooks() {
             </div>
           </div>
           <div className="mb-4">
-            <label className={LABEL}>Events *</label>
+            <label className={LABEL}>{t('wh_events')} *</label>
             <EventChips events={ALL_EVENTS} selected={newEvents} onToggle={(e) => { toggleEvent(newEvents, e, setNewEvents); setFieldErrors({}); }} />
             <FieldError error={fieldErrors.events} />
           </div>
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowCreate(false)} className={SECONDARY_BTN}>Cancel</button>
+            <button onClick={() => setShowCreate(false)} className={SECONDARY_BTN}>{t('cancel')}</button>
             <button
               onClick={addHook}
               disabled={isExternal || !newUrl.trim() || newEvents.length === 0 || createMutation.isPending}
@@ -251,7 +251,7 @@ export default function AdminWebhooks() {
               data-guest-disabled={isExternal || undefined}
               className={PRIMARY_BTN}
             >
-              <Plus className="h-3.5 w-3.5" /> {createMutation.isPending ? 'Creating…' : 'Create'}
+              <Plus className="h-3.5 w-3.5" /> {createMutation.isPending ? t('creating') : t('create')}
             </button>
           </div>
         </div>
@@ -266,7 +266,7 @@ export default function AdminWebhooks() {
         ) : !hooks || hooks.length === 0 ? (
           <div className={`${CARD} px-4 py-12 text-center`}>
             <Webhook className="h-10 w-10 mx-auto text-[var(--color-ink-muted)] opacity-50 mb-3" strokeWidth={1.5} />
-            <p className="text-[13px] text-[var(--color-ink-muted)]">No webhooks configured</p>
+            <p className="text-[13px] text-[var(--color-ink-muted)]">{t('no_webhooks')}</p>
           </div>
         ) : (
           hooks.map((h) => (
@@ -275,21 +275,21 @@ export default function AdminWebhooks() {
                 <div className="p-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                     <div>
-                      <label className={LABEL}>URL</label>
+                      <label className={LABEL}>{t('url')}</label>
                       <input type="url" value={editUrl} onChange={(e) => setEditUrl(e.target.value)} className={INPUT} />
                     </div>
                     <div>
-                      <label className={LABEL}>Description</label>
+                      <label className={LABEL}>{t('description')}</label>
                       <input type="text" value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className={INPUT} />
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className={LABEL}>Events</label>
+                    <label className={LABEL}>{t('wh_events')}</label>
                     <EventChips events={ALL_EVENTS} selected={editEvents} onToggle={(e) => toggleEvent(editEvents, e, setEditEvents)} />
                   </div>
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setEditingId(null)} className={SECONDARY_BTN}>
-                      <X className="h-3 w-3" /> Cancel
+                      <X className="h-3 w-3" /> {t('cancel')}
                     </button>
                     <button
                       onClick={saveEdit}
@@ -299,7 +299,7 @@ export default function AdminWebhooks() {
                       data-guest-disabled={isExternal || undefined}
                       className={PRIMARY_BTN}
                     >
-                      <Check className="h-3 w-3" /> {updateMutation.isPending ? 'Saving…' : 'Save'}
+                      <Check className="h-3 w-3" /> {updateMutation.isPending ? t('saving_ellipsis') : t('save')}
                     </button>
                   </div>
                 </div>
@@ -319,7 +319,7 @@ export default function AdminWebhooks() {
                           ? 'bg-[color-mix(in_srgb,var(--color-ok)_14%,transparent)] text-[var(--color-ok)]'
                           : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)]'
                       }`}>
-                        {h.active ? 'Active' : 'Paused'}
+                        {h.active ? t('wh_active') : t('wh_paused')}
                       </span>
                       <button
                         onClick={() => updateMutation.mutate({ id: h.id, active: !h.active })}
@@ -327,7 +327,7 @@ export default function AdminWebhooks() {
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
                         className={ICON_BTN}
-                        title={isExternal ? guestTooltip : (h.active ? 'Pause' : 'Activate')}
+                        title={isExternal ? guestTooltip : (h.active ? t('wh_pause') : t('wh_activate'))}
                       >
                         {h.active ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </button>
@@ -337,7 +337,7 @@ export default function AdminWebhooks() {
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
                         className={ICON_BTN}
-                        title={isExternal ? guestTooltip : 'Send test event'}
+                        title={isExternal ? guestTooltip : t('wh_test')}
                       >
                         <Play className="h-3.5 w-3.5" />
                       </button>
@@ -347,7 +347,7 @@ export default function AdminWebhooks() {
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
                         className={ICON_BTN}
-                        title={isExternal ? guestTooltipShort : 'Regenerate secret'}
+                        title={isExternal ? guestTooltipShort : t('wh_regenerate_secret')}
                       >
                         <KeyRound className="h-3.5 w-3.5" />
                       </button>
@@ -357,7 +357,7 @@ export default function AdminWebhooks() {
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
                         className={ICON_BTN}
-                        title={isExternal ? guestTooltip : 'Edit'}
+                        title={isExternal ? guestTooltip : t('edit')}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -367,7 +367,7 @@ export default function AdminWebhooks() {
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
                         className={ICON_BTN}
-                        title={isExternal ? guestTooltip : 'Delete'}
+                        title={isExternal ? guestTooltip : t('wh_delete')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -378,7 +378,7 @@ export default function AdminWebhooks() {
                     <div className="flex flex-wrap gap-1.5">
                       {((h.events as string[]) || []).map((e) => (
                         <span key={e} className="px-2 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] text-[var(--color-ink-soft)]">
-                          {e === '*' ? 'ALL EVENTS' : e}
+                          {e === '*' ? t('wh_all_events') : e}
                         </span>
                       ))}
                     </div>
@@ -386,17 +386,17 @@ export default function AdminWebhooks() {
                       onClick={() => setLogsWebhookId(logsWebhookId === h.id ? null : h.id)}
                       className="flex items-center gap-1 text-[12px] font-medium text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
                     >
-                      Logs {logsWebhookId === h.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      {t('wh_logs')} {logsWebhookId === h.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                     </button>
                   </div>
 
                   {logsWebhookId === h.id && (
                     <div className="border-t border-[var(--color-border)] px-4 py-3 bg-[var(--color-bg-elevated)]">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-2">Recent Deliveries</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-2">{t('wh_recent_deliveries')}</p>
                       {logsQuery.isLoading ? (
-                        <p className="text-[12px] text-[var(--color-ink-muted)]">Loading…</p>
+                        <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading')}</p>
                       ) : !logsQuery.data || logsQuery.data.length === 0 ? (
-                        <p className="text-[12px] text-[var(--color-ink-muted)] italic">No deliveries yet</p>
+                        <p className="text-[12px] text-[var(--color-ink-muted)] italic">{t('wh_no_deliveries')}</p>
                       ) : (
                         <div className="space-y-1 max-h-48 overflow-y-auto">
                           {logsQuery.data.map((log) => {
@@ -432,7 +432,7 @@ export default function AdminWebhooks() {
 
       {hooks && hooks.length > 0 && (
         <div className="mt-3 text-[12px] text-[var(--color-ink-muted)] text-right">
-          {hooks.length} webhook{hooks.length !== 1 ? 's' : ''}
+          {(hooks.length === 1 ? t('wh_count_one') : t('wh_count_other')).replace('{count}', String(hooks.length))}
         </div>
       )}
 

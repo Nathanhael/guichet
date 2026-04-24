@@ -22,7 +22,7 @@ const { mockDeleteUser, mockRevokeSessions, activeUser, pendingUser, deletedUser
     lastActiveAt: null, externalId: null, partnerMemberships: [],
   };
   const partner: Partner = {
-    id: 'p1', name: 'Acme', logoUrl: null, industry: 'Tech',
+    id: 'p1', name: 'Acme', industry: 'Tech',
     status: 'active', createdAt: '', updatedAt: '',
   };
   return {

@@ -6,7 +6,7 @@ import type { Partner } from '../types';
 const { mockUpdate, partner } = vi.hoisted(() => ({
   mockUpdate: { mutate: vi.fn(), isPending: false },
   partner: {
-    id: 'edit-1', name: 'EditCorp', logoUrl: null, industry: 'Tech',
+    id: 'edit-1', name: 'EditCorp', industry: 'Tech',
     status: 'active', createdAt: '', updatedAt: '',
   } satisfies Partner,
 }));
