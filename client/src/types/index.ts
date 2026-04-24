@@ -149,7 +149,7 @@ export interface Ticket {
   references?: Array<{ label: string; value: string }> | null;
   cdbId?: string | null; // legacy
   dareRef?: string | null; // legacy
-  status: 'open' | 'pending' | 'closed';
+  status: 'open' | 'pending' | 'closed' | 'resolved';
   supportId?: string | null;
   supportName?: string | null;
   supportLang?: string | null;
@@ -162,8 +162,8 @@ export interface Ticket {
   participants: Participant[];
   labels: string[];
   summary?: string | null;
-  reopened?: boolean;
-  reopenCount?: number;
+  reopened?: boolean | null;
+  reopenCount?: number | null;
 }
 
 export interface Message {

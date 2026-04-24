@@ -31,6 +31,11 @@ import {
   type Participant,
 } from './types.js';
 
+/** Narrow the Drizzle JSONB participants row to Participant[]; null → []. */
+function getParticipants(ticket: { participants: Participant[] | null }): Participant[] {
+  return ticket.participants ?? [];
+}
+
 export function register(socket: Socket, ctx: HandlerContext): void {
   socket.on('support:join', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
@@ -63,8 +68,8 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       // "joined the conversation" whisper, and staff-room broadcast. Prior
       // behaviour inserted a new system message on every call, producing
       // stacks of duplicate "X joined" lines in the chat.
-      const existingParticipants = (ticket.participants as unknown as Participant[] | null) || [];
-      const alreadyParticipant = existingParticipants.some((p: Participant) => p.id === supportId);
+      const existingParticipants = getParticipants(ticket);
+      const alreadyParticipant = existingParticipants.some((p) => p.id === supportId);
 
       if (alreadyParticipant) {
         socket.join(Rooms.ticket(ticketId));
@@ -162,8 +167,8 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       if (!ticket) return;
 
       // Only rejoin if already a participant — prevents abuse
-      const participants: Participant[] = (ticket.participants as unknown as Participant[]) || [];
-      const isParticipant = participants.some((p: Participant) => p.id === supportId);
+      const participants = getParticipants(ticket);
+      const isParticipant = participants.some((p) => p.id === supportId);
       if (!isParticipant) {
         socket.emit('support:rejoin:denied', { ticketId });
         return;
@@ -208,8 +213,8 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       if (!ticket) return;
 
       // Verify caller is actually a participant in this ticket
-      const currentParticipants: Participant[] = (ticket.participants as unknown as Participant[]) || [];
-      const isParticipant = currentParticipants.some((p: Participant) => p.id === supportId);
+      const currentParticipants = getParticipants(ticket);
+      const isParticipant = currentParticipants.some((p) => p.id === supportId);
       if (!isParticipant) {
         return socket.emit('error', { message: 'You are not a participant of this ticket' });
       }

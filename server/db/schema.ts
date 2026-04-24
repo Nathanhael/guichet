@@ -107,7 +107,7 @@ export const tickets = pgTable('tickets', {
   closedAt: timestamp('closed_at', { mode: 'string' }),
   closingNotes: text('closing_notes'),
   closedBy: text('closed_by'),
-  participants: jsonb('participants').$type<Array<{ id: string; name: string; role?: string; lang?: string }>>().default([]),
+  participants: jsonb('participants').$type<Array<{ id: string; name: string; role?: string; lang?: string; isExternal?: boolean }>>().default([]),
   reopened: boolean('reopened').default(false),
   reopenCount: integer('reopen_count').default(0),
 }, (table) => [
