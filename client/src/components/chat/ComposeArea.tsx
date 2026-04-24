@@ -4,7 +4,6 @@ import useStore, { useStoreShallow } from '../../store/useStore';
 import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
-import { trpc } from '../../utils/trpc';
 import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send, ALargeSmall } from 'lucide-react';
 import { EditorContent } from '@tiptap/react';
 import FormatToolbar from './FormatToolbar';
@@ -17,6 +16,7 @@ import { useComposeDraft } from '../../hooks/useComposeDraft';
 import { useComposeTyping } from '../../hooks/useComposeTyping';
 import { useComposeAttachments } from '../../hooks/useComposeAttachments';
 import { useComposeLinkPreview } from '../../hooks/useComposeLinkPreview';
+import { useComposeAiImprove } from '../../hooks/useComposeAiImprove';
 import { EMOJI_LIST } from '../../utils/emojiData';
 import EmojiSuggestion from './EmojiSuggestion';
 
@@ -71,8 +71,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     return () => window.removeEventListener('support:open-canned-picker', open);
   }, []);
   const [emojiQuery, setEmojiQuery] = useState<string | null>(null);
-  const [originalText, setOriginalText] = useState<string | null>(null);
-  const [improving, setImproving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
 
@@ -335,8 +333,21 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     };
   }, [showEmojiPicker]);
 
-  const improveMutation = trpc.ai.improveMessage.useMutation();
-  const improvementMode = aiConfig?.messageImprovement ?? 'off';
+  const {
+    originalText,
+    improving,
+    improvementMode,
+    handleImprove,
+    revertImprove,
+    improveAndSend,
+    reset: resetAiImprove,
+  } = useComposeAiImprove({
+    text,
+    setText,
+    isSupport,
+    aiConfig,
+    doSend: (finalText) => doSend(finalText),
+  });
 
   /** Core send logic -- uploads pending files, then emits socket event with the given text. */
   async function doSend(finalText: string) {
@@ -425,7 +436,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       socket.once('connect', onConnect);
     }
     setText('');
-    setOriginalText(null);
+    resetAiImprove();
     clearMedia();
     stopTyping();
     // Clear any persisted draft for this (user, ticket, mode) — the message
@@ -447,58 +458,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     }
 
     doSend(trimmed);
-  }
-
-  async function handleImprove() {
-    if (improving || text.trim().length < 10) return;
-    setImproving(true);
-    setOriginalText(text);
-    try {
-      const result = await improveMutation.mutateAsync({
-        text: text.trim(),
-        role: isSupport ? 'support' : 'agent',
-      });
-      setText(result.improved);
-    } catch {
-      // On failure, keep original text
-      setOriginalText(null);
-    } finally {
-      setImproving(false);
-    }
-  }
-
-  function revertImprove() {
-    if (originalText !== null) {
-      setText(originalText);
-      setOriginalText(null);
-    }
-  }
-
-  /** For 'forced' mode: improve text before sending, then send. */
-  async function improveAndSend() {
-    if (improving) return;
-    const trimmed = text.trim();
-    if (!trimmed && pendingFiles.length === 0) return;
-
-    // Only improve if text is long enough and not already improved
-    if (trimmed.length >= 10 && originalText === null) {
-      setImproving(true);
-      try {
-        const result = await improveMutation.mutateAsync({
-          text: trimmed,
-          role: isSupport ? 'support' : 'agent',
-        });
-        // Send the improved version directly
-        doSend(result.improved);
-      } catch {
-        // On AI failure, send original text (graceful degradation)
-        doSend(trimmed);
-      } finally {
-        setImproving(false);
-      }
-    } else {
-      doSend(trimmed);
-    }
   }
 
   if (isClosed) return null;
