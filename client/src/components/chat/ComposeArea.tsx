@@ -14,6 +14,7 @@ import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
 import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEditor';
 import { useComposeDraft } from '../../hooks/useComposeDraft';
+import { useComposeTyping } from '../../hooks/useComposeTyping';
 import { EMOJI_LIST } from '../../utils/emojiData';
 import EmojiSuggestion from './EmojiSuggestion';
 
@@ -91,6 +92,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   // The hook owns hydrate + 400ms debounced save + module-level 24h TTL purge.
   const draftKey = `guichet:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
   useComposeDraft({ user, ticketId: ticket.id, whisperMode, text, setText });
+  const { emit: emitTyping, stop: stopTyping } = useComposeTyping({ ticket, whisperMode });
 
   // Tiptap editor — the actual interactive surface. text/setText remains
   // the authoritative store for draft persistence, character counter,
@@ -259,8 +261,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const emojiGridRef = useRef<HTMLDivElement | null>(null);
   const [emojiPickerPos, setEmojiPickerPos] = useState<{ bottom: number; left: number } | null>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const isTypingRef = useRef(false);
   const pendingFilesRef = useRef(pendingFiles);
   pendingFilesRef.current = pendingFiles;
 
@@ -320,19 +320,12 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     setLastRejection(null);
   }, [lastRejection, ticket.id, t, setLastRejection]);
 
-  // Cleanup on unmount: revoke Object URLs + stop typing indicator
+  // Cleanup on unmount: revoke Object URLs. Typing indicator cleanup lives
+  // in useComposeTyping.
   useEffect(() => {
     return () => {
       pendingFilesRef.current.forEach(pf => URL.revokeObjectURL(pf.preview));
-      // Clear typing timeout and emit typing:stop so server doesn't show phantom indicator
-      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      if (isTypingRef.current) {
-        isTypingRef.current = false;
-        const socket = getSocket();
-        if (socket) socket.emit('typing:stop', { ticketId: ticket.id });
-      }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Close emoji picker on outside click. Grid is portaled to document.body,
@@ -375,33 +368,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const improveMutation = trpc.ai.improveMessage.useMutation();
   const improvementMode = aiConfig?.messageImprovement ?? 'off';
-
-  function emitTyping() {
-    const socket = getSocket();
-    if (!socket) return;
-    if (!isTypingRef.current) {
-      isTypingRef.current = true;
-      // Server derives senderName from socket.data — don't send client identity.
-      // whisper flag tells the server to route the indicator only to staff
-      // sockets in the ticket room (never the agent) while we compose a note.
-      socket.emit('typing:start', { ticketId: ticket.id, whisper: whisperMode });
-    }
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      isTypingRef.current = false;
-      const s = getSocket();
-      if (s) s.emit('typing:stop', { ticketId: ticket.id, whisper: whisperMode });
-    }, 2000);
-  }
-
-  function stopTyping() {
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    if (isTypingRef.current) {
-      isTypingRef.current = false;
-      const socket = getSocket();
-      if (socket) socket.emit('typing:stop', { ticketId: ticket.id, whisper: whisperMode });
-    }
-  }
 
   function addFiles(files: File[]) {
     const remaining = 5 - pendingFiles.length;
