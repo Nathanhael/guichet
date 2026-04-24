@@ -7,6 +7,7 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../utils/logger.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
+import { loadTicketForUser } from '../../services/membership.js';
 import { resolveReplySnippetsBatch, resolveUserAvatarsBatch } from '../../services/messageQueries.js';
 
 /**
@@ -36,23 +37,12 @@ export const messageRouter = router({
       try {
         const isSupport = canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator);
 
-        // Always verify the ticket belongs to the caller's partner (tenant isolation)
-        const ticketResult = await db.select({ agentId: tickets.agentId, partnerId: tickets.partnerId })
-          .from(tickets)
-          .where(eq(tickets.id, input.ticketId))
-          .limit(1);
-
-        if (ticketResult.length === 0) {
-          throw new TRPCError({ code: 'NOT_FOUND', message: 'Ticket not found' });
-        }
-
-        // Tenant isolation: ticket must belong to caller's partner (platform operators can access any)
-        if (!ctx.user.isPlatformOperator && ticketResult[0].partnerId !== ctx.user.partnerId) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to view these messages' });
-        }
+        // Tenant isolation via shared helper: throws NOT_FOUND or FORBIDDEN.
+        // No operator bypass — operators must have entered the partner.
+        const ticket = await loadTicketForUser(input.ticketId, ctx);
 
         // Ownership check for agents (non-support)
-        if (!isSupport && ticketResult[0].agentId !== ctx.user.id) {
+        if (!isSupport && ticket.agentId !== ctx.user.id) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized to view these messages' });
         }
 

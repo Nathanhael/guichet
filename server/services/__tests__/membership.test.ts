@@ -5,6 +5,12 @@
  *  1. Platform operators short-circuit — no DB hit required.
  *  2. Users with a membership row for the given (userId, partnerId) pass silently.
  *  3. Users without a membership row are rejected with TRPCError FORBIDDEN.
+ *
+ * loadTicketForUser invariants:
+ *  1. Throws NOT_FOUND when the ticket row does not exist.
+ *  2. Throws FORBIDDEN when ticket.partnerId !== ctx.user.partnerId.
+ *  3. Platform operators follow the same rule — no bypass.
+ *  4. Returns the full ticket row when tenant matches.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -27,9 +33,12 @@ vi.mock('../../db/schema.js', () => ({
     userId: { name: 'userId' },
     partnerId: { name: 'partnerId' },
   },
+  tickets: {
+    id: { name: 'id' },
+  },
 }));
 
-import { assertMembership } from '../membership.js';
+import { assertMembership, loadTicketForUser } from '../membership.js';
 
 describe('assertMembership', () => {
   beforeEach(() => {
@@ -73,5 +82,55 @@ describe('assertMembership', () => {
       caught = e;
     }
     expect(caught).toBeInstanceOf(TRPCError);
+  });
+});
+
+describe('loadTicketForUser', () => {
+  beforeEach(() => {
+    selectMock.mockClear();
+    fromMock.mockClear();
+    whereMock.mockClear();
+    limitMock.mockReset();
+  });
+
+  const ctx = (overrides: Partial<{ partnerId: string; isPlatformOperator: boolean }> = {}) => ({
+    user: {
+      id: 'user-1',
+      partnerId: overrides.partnerId ?? 'partner-a',
+      isPlatformOperator: overrides.isPlatformOperator ?? false,
+    },
+  });
+
+  it('throws NOT_FOUND when the ticket row does not exist', async () => {
+    limitMock.mockResolvedValueOnce([]);
+    await expect(loadTicketForUser('ticket-missing', ctx())).rejects.toMatchObject({
+      name: 'TRPCError',
+      code: 'NOT_FOUND',
+    });
+  });
+
+  it('throws FORBIDDEN when ticket belongs to a different partner', async () => {
+    limitMock.mockResolvedValueOnce([{ id: 'ticket-1', partnerId: 'partner-b' }]);
+    await expect(loadTicketForUser('ticket-1', ctx({ partnerId: 'partner-a' }))).rejects.toMatchObject({
+      name: 'TRPCError',
+      code: 'FORBIDDEN',
+    });
+  });
+
+  it('throws FORBIDDEN even for platform operators when partner does not match (no bypass)', async () => {
+    limitMock.mockResolvedValueOnce([{ id: 'ticket-1', partnerId: 'partner-b' }]);
+    await expect(
+      loadTicketForUser('ticket-1', ctx({ partnerId: 'partner-a', isPlatformOperator: true })),
+    ).rejects.toMatchObject({
+      name: 'TRPCError',
+      code: 'FORBIDDEN',
+    });
+  });
+
+  it('returns the full ticket row when partner matches', async () => {
+    const row = { id: 'ticket-1', partnerId: 'partner-a', agentId: 'u-2', dept: 'billing' };
+    limitMock.mockResolvedValueOnce([row]);
+    const result = await loadTicketForUser('ticket-1', ctx({ partnerId: 'partner-a' }));
+    expect(result).toEqual(row);
   });
 });

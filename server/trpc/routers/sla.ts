@@ -1,30 +1,20 @@
 import { z } from 'zod';
 import { router, protectedProcedure, adminProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { tickets, partners, slaBreaches } from '../../db/schema.js';
+import { partners, slaBreaches } from '../../db/schema.js';
 import { and, eq, desc, lt, isNull, isNotNull } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { computeSlaState, type DepartmentSlaConfig } from '../../services/sla.js';
 import { resolveSchedule, type BusinessHoursSchedule } from '../../services/businessHours.js';
+import { loadTicketForUser } from '../../services/membership.js';
 
 export const slaRouter = router({
   getTicketState: protectedProcedure
     .input(z.object({ ticketId: z.string().min(1) }))
     .query(async ({ input, ctx }) => {
-      const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-
-      const [ticket] = await db.select({
-        id: tickets.id,
-        partnerId: tickets.partnerId,
-        dept: tickets.dept,
-        createdAt: tickets.createdAt,
-        firstStaffResponseAt: tickets.firstStaffResponseAt,
-      }).from(tickets).where(eq(tickets.id, input.ticketId));
-      if (!ticket) throw new TRPCError({ code: 'NOT_FOUND' });
-      if (ticket.partnerId !== partnerId && !ctx.user.isPlatformOperator) {
-        throw new TRPCError({ code: 'FORBIDDEN' });
-      }
+      // Tenant isolation via shared helper: throws NOT_FOUND or FORBIDDEN.
+      // No operator bypass — operators must have entered the partner.
+      const ticket = await loadTicketForUser(input.ticketId, ctx);
 
       const [partner] = await db.select({
         departments: partners.departments,
