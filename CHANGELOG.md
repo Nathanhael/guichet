@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Code-review pass batches 9–12 (2026-04-23 → 24)** — four incremental cleanups, no behavioral change; 702 server + 255 client tests green throughout.
+  - **Batch 9 — perf** (`fc285c3`) — hot-path RTT shaves across tRPC query paths; unlocked index on stats range queries.
+  - **Batch 10 — error sanitization + dead code** (`01308f7`) — tRPC errors scrubbed of internal details (messages, stack traces) before leaving the server; dead exports removed across routers.
+  - **Batch 11 — a11y + i18n** (`66e8597`) — `Toast` gains `aria-live`/`aria-atomic`; `ChatHeader` popovers now restore focus to trigger on `Escape` (label picker, transfer menu); `QueueTicketRow` SLA severity no longer color-only (icon + aria-label for color-blind users); 26+ new keys for i18n coverage in `AdminWebhooks`, `FormatToolbar`, `AdminCannedResponses`, `AdminKnowledgeBase`, `AdminTeam`; en/nl/fr synced with 12 pre-existing locale gaps filled.
+  - **Batch 12 — type drift** (`b82205a`) — dropped four `as unknown as` lies via root-cause fixes: schema `participants.$type<>()` now includes `isExternal?` so tRPC infers what the client declared; `useSocket()` return type is `Socket | null` instead of a lying `Socket`; client `Ticket.status` widened to include `'resolved'` (already in DB enum); `reopened`/`reopenCount` widened to allow null (nullable in DB). New `getParticipants()` helper in socket handlers centralizes Drizzle JSONB narrowing.
+
 ### Added
 - **Audit-trail observability (9 feature batches, 2026-04-18)** — WORM audit log went from "rows in a table" to a first-class operations surface.
   - **Platform chain-integrity verify UI** (`PlatformSystemHealth`) — operator-triggered verify run, server-persisted history table, CSV export for compliance attestation, rate-limited 1 run per 5 min per operator, auto-scheduled daily.
