@@ -153,8 +153,27 @@ export const blockExternalUsers = t.middleware(async ({ ctx, next }) => {
 });
 
 /**
- * Admin procedure with external-guest block. Use for any admin mutation that
- * touches secrets, grants/revokes access, or mutates tenant structure.
- * Reads stay on the plain `adminProcedure`.
+ * Admin procedure with external-guest block. Three-way dichotomy for admin
+ * routes against B2B guests:
+ *
+ * - `destructiveAdminProcedure` — admin **mutations** a guest may not perform
+ *   (secrets, grant/revoke access, tenant-structure changes).
+ * - `internalAdminReadProcedure` — admin **reads** that expose internal-only
+ *   PII a guest may not see (e.g. the internal admin roster).
+ * - Plain `adminProcedure` — admin reads safe for guests (the default; covers
+ *   the majority of routes).
+ *
+ * Both gated procedures share the `blockExternalUsers` middleware. Operator
+ * bypass is handled inside the middleware.
  */
 export const destructiveAdminProcedure = adminProcedure.use(blockExternalUsers);
+
+/**
+ * Admin read procedure that hides internal-only PII from B2B guest viewers.
+ * Use for any admin **read** endpoint whose result set would leak the identity
+ * or contact details of internal staff to a guest partner organization.
+ *
+ * Sibling of `destructiveAdminProcedure`; same `blockExternalUsers` gate,
+ * different intent: this one protects what guests *see*, not what they *do*.
+ */
+export const internalAdminReadProcedure = adminProcedure.use(blockExternalUsers);

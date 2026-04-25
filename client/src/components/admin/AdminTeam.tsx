@@ -58,7 +58,7 @@ export default function AdminTeam() {
     enabled: !!activeMembershipId,
   });
   const { data: admins } = trpc.partner.listAdmins.useQuery(undefined, {
-    enabled: !!activeMembershipId,
+    enabled: !!activeMembershipId && !isExternal,
   });
   const total = stats?.total ?? 0;
   const supportCount = stats?.support ?? 0;
@@ -184,8 +184,9 @@ export default function AdminTeam() {
 
       {/* Admins — read-only row. Provisioned via Azure SSO group mapping, so this
           UI intentionally doesn't allow adding or removing admins. Each chip opens
-          the per-user audit drawer for traceability. */}
-      {admins && admins.length > 0 && (
+          the per-user audit drawer for traceability. Hidden for B2B guest admins —
+          they shouldn't see the internal admin roster. */}
+      {!isExternal && admins && admins.length > 0 && (
         <div className={`${CARD} px-4 py-3`}>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2 shrink-0">
