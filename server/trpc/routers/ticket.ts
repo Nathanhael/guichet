@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, protectedProcedure } from '../trpc.js';
+import { router, protectedProcedure, partnerScopedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { tickets, ticketLabels } from '../../db/schema.js';
 import { eq, and, or, ilike, sql, asc, desc, gte, lte, inArray, isNull, isNotNull } from 'drizzle-orm';
@@ -22,7 +22,7 @@ async function fetchLabelsForTickets(ticketIds: string[]): Promise<Record<string
 }
 
 export const ticketRouter = router({
-  list: protectedProcedure
+  list: partnerScopedProcedure
     .input(z.object({
       agentId: z.string().optional(),
       status: z.union([z.enum(['open', 'pending', 'closed']), z.array(z.enum(['open', 'pending', 'closed']))]).optional(),
@@ -32,23 +32,12 @@ export const ticketRouter = router({
       cursor: z.string().optional(), // "createdAt|id" or "closedAt|id"
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
-      partnerId: z.string().optional(), // required for platform operators
       hasSupport: z.boolean().optional(), // true = supportId assigned, false = unassigned
       supportId: z.string().optional(), // narrow to a specific support user
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const conditions = [];
-
-        // Scope by partner
-        if (ctx.user.isPlatformOperator) {
-          const opPartnerId = input.partnerId || ctx.user.partnerId;
-          if (!opPartnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Platform operators must provide partnerId' });
-          conditions.push(eq(tickets.partnerId, opPartnerId));
-        } else {
-          if (!ctx.user.partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-          conditions.push(eq(tickets.partnerId, ctx.user.partnerId));
-        }
+        const conditions = [eq(tickets.partnerId, ctx.user.partnerId)];
 
         // CR-04: Agents (non-support, non-admin) can only see their own tickets
         if (!ctx.user.isPlatformOperator && ctx.user.role === 'agent') {
@@ -93,7 +82,7 @@ export const ticketRouter = router({
             // Labels are translated per-partner; searching values lets support
             // paste a raw identifier and find the ticket regardless of label.
             sql`EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(${tickets.references}, '[]'::jsonb)) el WHERE el->>'value' ILIKE ${q})`,
-          ));
+          )!);
         }
 
         if (input.dateFrom) conditions.push(gte(tickets.createdAt, input.dateFrom));
