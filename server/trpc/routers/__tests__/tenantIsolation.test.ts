@@ -149,4 +149,43 @@ describe('tenant isolation — ticket-scoped routes reject cross-tenant callers'
       await expect(caller.sla.getTicketState({ ticketId: ticketInBId })).rejects.toThrow(/FORBIDDEN|another partner/i);
     });
   });
+
+  describe('ticket.list', () => {
+    it('ignores any client-supplied partnerId — operator with JWT partnerA does NOT see tickets from partner B', async () => {
+      const caller = appRouter.createCaller({
+        user: {
+          id: operatorId,
+          name: 'Operator',
+          email: 'op@test',
+          role: 'platform_operator',
+          partnerId: partnerA,
+          isPlatformOperator: true,
+          isExternal: false,
+          lang: 'en',
+          departments: [],
+        },
+      } as unknown as CallerCtx);
+      const result = await caller.ticket.list({ partnerId: partnerB } as unknown as Record<string, never>);
+      const list = Array.isArray(result) ? result : result.tickets;
+      const ids = list.map((t: { id: string }) => t.id);
+      expect(ids).not.toContain(ticketInBId);
+    });
+
+    it('rejects a platform operator whose JWT has no partnerId (partnerScopedProcedure guard)', async () => {
+      const caller = appRouter.createCaller({
+        user: {
+          id: operatorId,
+          name: 'Operator',
+          email: 'op@test',
+          role: 'platform_operator',
+          partnerId: null,
+          isPlatformOperator: true,
+          isExternal: false,
+          lang: 'en',
+          departments: [],
+        },
+      } as unknown as CallerCtx);
+      await expect(caller.ticket.list({} as Record<string, never>)).rejects.toThrow(/BAD_REQUEST|No active partner/i);
+    });
+  });
 });
