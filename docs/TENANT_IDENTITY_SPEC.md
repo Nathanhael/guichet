@@ -183,7 +183,10 @@ the Guichet user as external.
 
 - `users.is_external` is set at every SSO login from `claims.acct === 1 || !!claims.idp`. The flag is refreshed on each login so a member→guest or guest→member change in Azure auto-syncs.
 - **Strict single-partner rule**: a guest whose Azure groups resolve to more than one partner is rejected with `sso_error=guest_multi_partner_mapping`. An audit entry (`sso.guest_multi_partner_rejected`) is written with `partnerIds` + `groupCount` — never the full group array. Internal staff keep the existing multi-partner behavior and can use `PartnerSwitcher`.
-- **Destructive admin block**: `destructiveAdminProcedure` (in `server/trpc/trpc.ts`) throws FORBIDDEN when `ctx.user.isExternal === true`. Applied to 10 partner-admin mutations that touch secrets, grant/revoke access, or mutate tenant structure (webhook CRUD + secret rotation + test, partner-member add/update/remove/invite, partner department edits). Read procedures stay open.
+- **Admin guest gates** (both in `server/trpc/trpc.ts`, both share `blockExternalUsers`; operators bypass):
+  - **Destructive mutations** — `destructiveAdminProcedure` throws FORBIDDEN when `ctx.user.isExternal === true`. Applied to partner-admin mutations that touch secrets, grant/revoke access, or mutate tenant structure (webhook CRUD + secret rotation + test, partner-member add/update/remove/invite, partner department edits).
+  - **Internal-only PII reads** — `internalAdminReadProcedure` throws FORBIDDEN for the same callers. Applied to admin reads whose result set would leak the identity or contact details of internal staff to a guest partner organization (currently `partner.listAdmins` — the internal admin roster).
+  - Plain `adminProcedure` covers the default case: admin reads safe for guests.
 - **UI signal**: a brutalist `GUEST` badge renders next to guest names in `UserMenu`, `AdminTeam`, and the SupportView team panel. Driven by `users.isExternal` exposed via `trpc.user.me` and batch-looked-up in `trpc.status.getTeamStatus`.
 - Platform operators are never external by definition (staff authenticate via our tenant as members, `acct !== 1`). The middleware short-circuits before its DB lookup for operators.
 
