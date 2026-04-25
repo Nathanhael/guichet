@@ -76,18 +76,48 @@ conductor/
 .husky/
 
 # E2E testing & testing config — local only
-playwright.config.ts
 testing/
 
-# Unit/integration tests — local only (re-add selectively later)
+# Unit/integration tests — local only by default; allowlist what ships
 **/*.test.ts
 **/*.test.tsx
 **/*.spec.ts
 **/*.spec.tsx
-**/__tests__/
-client/src/test/
 **/vitest.config.*
-scripts/ci.ps1
+
+# --- Test allowlist (ships to origin) ---
+# Server unit tests (co-located)
+!server/services/*.test.ts
+!server/services/ai/*.test.ts
+!server/socket/*.test.ts
+!server/socket/handlers/*.test.ts
+!server/middleware/*.test.ts
+!server/routes/*.test.ts
+!server/trpc/routers/*.test.ts
+!server/trpc/routers/platform/*.test.ts
+!server/utils/*.test.ts
+!server/scripts/*.test.ts
+
+# Server cross-cutting integration tests
+!server/__integration__/**/*.test.ts
+
+# E2E tests (Playwright)
+!testing/
+!testing/e2e/**/*.spec.ts
+
+# Client behavioral tests (curated)
+!client/src/components/ExternalGuestGuard.test.tsx
+!client/src/hooks/useComposeAiImprove.test.ts
+!client/src/hooks/useComposeAttachments.test.ts
+!client/src/hooks/useComposeDraft.test.ts
+!client/src/hooks/useComposeLinkPreview.test.ts
+!client/src/hooks/useKeyboardShortcuts.test.ts
+
+# Test infra (re-tracked)
+!server/vitest.config.ts
+!playwright.config.ts
+!scripts/ci.ps1
+!client/src/test/
 
 # Video recordings
 docs/videos/
