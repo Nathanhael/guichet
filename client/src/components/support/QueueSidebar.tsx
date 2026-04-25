@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Shield, ChevronLeft, Search, Archive } from 'lucide-react';
+import { Shield, Search, Archive } from 'lucide-react';
 import { useT, useLang } from '../../i18n';
 import useStore from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
@@ -18,7 +18,6 @@ interface QueueSidebarProps {
   activeTab: string | null;
   previewTicketId: string | null;
   atMaxChats: boolean;
-  onToggle: () => void;
   onSelectTicket: (ticket: Ticket) => void;
   onPreviewArchived: (ticket: Ticket) => void;
 }
@@ -28,7 +27,6 @@ export default function QueueSidebar({
   activeTab,
   previewTicketId,
   atMaxChats,
-  onToggle,
   onSelectTicket,
   onPreviewArchived,
 }: QueueSidebarProps) {
@@ -238,21 +236,10 @@ export default function QueueSidebar({
       ) : (
       <>
       <div className="px-4 py-3 border-b border-[var(--color-border)]">
-        <div className="flex items-center justify-between mb-2">
-          <SectionLabel>
+        <div className="flex items-center gap-1 flex-wrap py-1">
+          <SectionLabel className="mr-1">
             {sidebarTab === 'queue' ? t('queue') : t('archive')}
           </SectionLabel>
-          <button
-            onClick={onToggle}
-            title="Ctrl+B"
-            aria-label="Collapse sidebar"
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-[var(--radius-btn)] border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)] transition-colors"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1 flex-wrap py-1">
           <button
             onClick={() => { setFilterDept('all'); setSearchQuery(''); resetArchive(); }}
             className={deptChipClass(filterDept === 'all')}

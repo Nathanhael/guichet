@@ -24,7 +24,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import CommandPalette from '../components/support/CommandPalette';
 import KeyboardShortcutsModal from '../components/support/KeyboardShortcutsModal';
 import { useIdleStatus } from '../hooks/useIdleStatus';
-import { Clock } from 'lucide-react';
+import { Clock, ChevronLeft } from 'lucide-react';
 
 export default function SupportView() {
   const {
@@ -439,13 +439,23 @@ export default function SupportView() {
             toggleTitle="Ctrl+B"
           >
             <div className="flex flex-col h-full">
-              <div className="px-2 pt-3 pb-2 border-b border-[var(--color-border)] flex-shrink-0">
-                <UserMenuChip
-                  showStatus
-                  showKeyboardShortcuts
-                  onKeyboardShortcuts={() => setShortcutsOpen(true)}
-                  confirmBeforeSwitch
-                />
+              <div className="px-2 pt-3 pb-2 border-b border-[var(--color-border)] flex-shrink-0 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <UserMenuChip
+                    showStatus
+                    showKeyboardShortcuts
+                    onKeyboardShortcuts={() => setShortcutsOpen(true)}
+                    confirmBeforeSwitch
+                  />
+                </div>
+                <button
+                  onClick={toggleSidebar}
+                  title="Ctrl+B"
+                  aria-label={t('collapse_sidebar') || 'Collapse sidebar'}
+                  className="shrink-0 w-7 h-7 flex items-center justify-center rounded-[var(--radius-btn)] border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)] transition-colors"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
+                </button>
               </div>
               <div className="flex-1 min-h-0 flex flex-col">
                 <QueueSidebar
@@ -453,7 +463,6 @@ export default function SupportView() {
                   activeTab={activeTab}
                   previewTicketId={previewTicket?.id || null}
                   atMaxChats={atMaxChats}
-                  onToggle={toggleSidebar}
                   onSelectTicket={selectTicket}
                   onPreviewArchived={(ticket) => setPreviewTicket(ticket)}
                 />
