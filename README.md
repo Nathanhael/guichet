@@ -19,12 +19,6 @@ Real-time, multi-tenant chat platform for BPO and outsourced helpdesk teams. Eac
 - **Canned Responses** — Per-partner templates with shortcut keys and `/` picker in chat
 - **Customer Satisfaction** — Auto-prompted ratings on ticket close, follow-up reminders, per-agent CSAT reporting
 
-## Screenshots
-
-| Support View | Platform Admin |
-|:---:|:---:|
-| ![Support](docs/screenshots/support-dark.png) | ![Platform](docs/screenshots/platform-dark.png) |
-
 ## Tech Stack
 
 | Layer | Technology |
