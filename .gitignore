@@ -79,6 +79,16 @@ conductor/
 playwright.config.ts
 testing/
 
+# Unit/integration tests — local only (re-add selectively later)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__tests__/
+client/src/test/
+**/vitest.config.*
+scripts/ci.ps1
+
 # Video recordings
 docs/videos/
 
