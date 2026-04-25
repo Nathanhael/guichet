@@ -32,9 +32,15 @@ test.describe('Split View Modes', () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.waitForTimeout(1000);
 
-    // App should not crash
-    const errorVisible = await page.getByText(/error|crash|oops/i).first().isVisible().catch(() => false);
-    expect(errorVisible).toBeFalsy();
+    // App should not crash. The previous regex `/error|crash|oops/i` matched
+    // incidental message-body text in the seeded queue (subjects/bodies
+    // mentioning those words), producing false positives. Tighten to actual
+    // error-UI surfaces only — same shape as agent-view.spec.ts.
+    const fallbackText = page.getByText(/component failed to load|something went wrong|500 internal/i).first();
+    const alertEl = page.locator('[role="alert"]').first();
+    const fallbackVisible = await fallbackText.isVisible().catch(() => false);
+    const alertVisible = await alertEl.isVisible().catch(() => false);
+    expect(fallbackVisible || alertVisible).toBeFalsy();
     await expect(chrome).toBeVisible();
 
     // Expand back to desktop
