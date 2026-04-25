@@ -190,7 +190,7 @@ the Guichet user as external.
 - **UI signal**: a brutalist `GUEST` badge renders next to guest names in `UserMenu`, `AdminTeam`, and the SupportView team panel. Driven by `users.isExternal` exposed via `trpc.user.me` and batch-looked-up in `trpc.status.getTeamStatus`.
 - Platform operators are never external by definition (staff authenticate via our tenant as members, `acct !== 1`). The middleware short-circuits before its DB lookup for operators.
 
-Full ops runbook: `docs/superpowers/specs/partner-sso-b2b-guest.md`.
+SSO callback wiring lives in `server/routes/sso.ts`; guard middleware in `server/trpc/trpc.ts` (`blockExternalUsers`).
 
 ## Current Implementation Rules
 

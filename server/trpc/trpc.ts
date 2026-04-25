@@ -127,8 +127,6 @@ export const featureGate = (feature: DisabledFeature) =>
  * Applied via `destructiveAdminProcedure` for `adminProcedure`-based routers,
  * or composed manually for `partnerAdminProcedure`-based routers (e.g.
  * webhook router's `gatedPartnerAdmin`).
- *
- * See docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md.
  */
 export const blockExternalUsers = t.middleware(async ({ ctx, next }) => {
   if (!ctx.user) {

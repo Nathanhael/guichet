@@ -44,7 +44,6 @@ const gatedPartnerAdmin = partnerAdminProcedure.use(featureGate('webhooks'));
 // Destructive variant — adds the Azure B2B guest block. Used for create,
 // update, regenerateSecret, delete, and test (anything that mutates webhook
 // config, rotates secrets, or triggers outbound deliveries).
-// See docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md.
 const gatedPartnerAdminNoGuests = gatedPartnerAdmin.use(blockExternalUsers);
 
 export const webhookRouter = router({

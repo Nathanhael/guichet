@@ -68,8 +68,7 @@ Use break-glass only when one of these is true:
   Azure security group (soft — takes effect on next login) or delete the
   guest user in Azure AD (hard — takes effect on next token validation).
   For immediate revoke, also call `trpc.user.revokeSessions` to kill any
-  active JWT. Background and invite flow in
-  `docs/superpowers/specs/partner-sso-b2b-guest.md`.
+  active JWT. Background and invite flow in `docs/TENANT_IDENTITY_SPEC.md`.
 
 ## Required Follow-Up
 

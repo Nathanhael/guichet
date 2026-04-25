@@ -5,8 +5,6 @@ import { trpc } from '../utils/trpc';
 /**
  * Returns whether the current user is an Azure B2B guest admin.
  *
- * Parent: docs/superpowers/plans/2026-04-17-guest-admin-visible-disable.md
- *
  * The Zustand store carries an `isExternal` flag stamped at SSO callback and
  * partner-switch time, but nothing refreshes it within a session. A platform
  * operator demoting/promoting a guest would stay invisible to this hook
