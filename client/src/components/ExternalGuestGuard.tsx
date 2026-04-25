@@ -24,8 +24,6 @@ interface ExternalGuestGuardProps {
  * Backend source of truth is `destructiveAdminProcedure`; this wrapper is
  * UX polish and defense-in-depth only. When the viewer is internal, it
  * renders its children unchanged and adds no DOM nodes around them.
- *
- * Parent: docs/superpowers/plans/2026-04-17-guest-admin-visible-disable.md
  */
 export default function ExternalGuestGuard({ children, short, className }: ExternalGuestGuardProps) {
   const isExternal = useIsExternalAdmin();

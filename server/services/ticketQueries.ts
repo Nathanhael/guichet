@@ -227,7 +227,7 @@ export async function assignSupport(
    * the `tickets.participants` JSONB entry so ChatHeader can render the
    * amber guest ring even when the participant is offline. Defaults to
    * false for backward compatibility with callers that haven't resolved
-   * the flag. See docs/superpowers/specs/partner-sso-b2b-guest.md.
+   * the flag.
    */
   supportIsExternal: boolean = false,
 ) {

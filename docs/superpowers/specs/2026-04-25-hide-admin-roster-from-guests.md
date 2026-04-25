@@ -66,7 +66,7 @@ A good test asserts external behavior at the security boundary, not implementati
 
 ## Out of Scope
 
-- **Documentation update** to `docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md` (or a new addendum) describing the read-side guest gate as a sibling pattern to the destructive-mutation gate. Zero-runtime-impact; deferred per standing user preference for cosmetic doc work. Revisit once a second caller of `internalAdminReadProcedure` appears.
+- ~~**Documentation update** to the canonical SSO/B2B-guest section describing the read-side guest gate as a sibling pattern to the destructive-mutation gate.~~ Shipped post-merge in `docs/TENANT_IDENTITY_SPEC.md` and `CLAUDE.md`.
 - **Audit sweep** of the rest of the admin UI (AdminWebhooks, AdminDepartments, AdminAlerts, AdminFeedback, GroupMappingsPanel, audit drawers, etc.) for *other* internal-only PII reads that should also be gated for guests. This PRD scopes to `partner.listAdmins` only; a separate audit pass should sweep siblings.
 - **Empty-state hint** for guests indicating the section was intentionally hidden. Silent omission is correct UX — they shouldn't know the section exists.
 - **Audit logging of denied guest attempts** on the server. Express request logs cover it; a dedicated `audit_log` row per FORBIDDEN would just create noise.
@@ -75,7 +75,7 @@ A good test asserts external behavior at the security boundary, not implementati
 
 ## Further Notes
 
-- This is a follow-on to the partner-SSO B2B guest spec (`docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md`) and the visible-disable plan (`docs/superpowers/plans/2026-04-17-guest-admin-visible-disable.md`). The pattern up to now has been "guest may see but may not mutate" via `destructiveAdminProcedure` + `<ExternalGuestGuard>`. This PRD introduces the read-side counterpart: some reads expose internal-only PII and must be hidden, not merely disabled.
+- This is a follow-on to the partner-SSO B2B guest work (now described in `docs/TENANT_IDENTITY_SPEC.md`) and the visible-disable pattern (`<ExternalGuestGuard>` + `disabledIfExternal()` in `client/src/utils/guestDisable.ts`). The pattern up to now has been "guest may see but may not mutate" via `destructiveAdminProcedure` + `<ExternalGuestGuard>`. This PRD introduces the read-side counterpart: some reads expose internal-only PII and must be hidden, not merely disabled.
 - The current WIP diff inlines the gate in the router body. The recommendation in this PRD is to refactor that to the new `internalAdminReadProcedure` middleware *before merge*, not as a follow-up — naming a pattern once at introduction is cheaper than naming it later after copy-paste.
 - The DB hit cost added by `blockExternalUsers` on `listAdmins` calls is one row by primary key (`users.id`). Identical cost to what every destructive mutation already pays. Negligible.
 - The companion file change in `client/src/components/admin/AdminTeam.tsx` already gates the query and render path correctly. The client side is closed; only the server inline-vs-middleware decision is open.

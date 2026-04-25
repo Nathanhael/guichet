@@ -102,9 +102,9 @@ export function buildAuthResponse(input: {
     email: string;
     lang: string | null;
     isPlatformOperator: boolean | null;
-    // Azure B2B guest flag — see docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md.
-    // Optional for backward compatibility with call sites that haven't been updated yet;
-    // omitted/null is treated as `false` (i.e. internal staff by default).
+    // Azure B2B guest flag. Optional for backward compatibility with call
+    // sites that haven't been updated yet; omitted/null is treated as `false`
+    // (i.e. internal staff by default).
     isExternal?: boolean | null;
     accessibilityPrefs?: Record<string, unknown> | null;
     avatarUrl?: string | null;

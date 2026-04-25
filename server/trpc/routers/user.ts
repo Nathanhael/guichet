@@ -122,12 +122,10 @@ export const userRouter = router({
     }),
 
   /**
-   * Return the current authenticated user's identity payload.
-   *
-   * Added for Azure B2B guest support (see docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md):
-   * client components (UserMenu, GuestBadge, etc.) need a fresh `isExternal`
-   * flag without relying on stale data from the login response. Also handy as
-   * a canonical "current user" query point going forward.
+   * Return the current authenticated user's identity payload. Client
+   * components (UserMenu, GuestBadge, etc.) need a fresh `isExternal` flag
+   * without relying on stale data from the login response. Also serves as
+   * the canonical "current user" query point.
    */
   me: protectedProcedure.query(async ({ ctx }) => {
     const rows = await db

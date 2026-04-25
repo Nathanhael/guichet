@@ -33,8 +33,7 @@ describe('insertSystemMessage', () => {
       senderName: 'System',
       senderRole: 'admin',
       senderLang: 'en',
-      // System messages are never attributed to a guest — see
-      // docs/superpowers/specs/partner-sso-b2b-guest.md.
+      // System messages are never attributed to a guest.
       senderIsExternal: false,
       text: 'Agent joined the chat',
       system: true,

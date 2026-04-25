@@ -17,9 +17,9 @@ export const statusRouter = router({
       }
       const onlineUsers = await presenceService.getOnlineUsersForPartner(partnerId);
       if (onlineUsers.length === 0) return [];
-      // Batch-fetch isExternal for the team so the client can render GUEST badges
-      // (see docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md Task 4).
-      // One query for the whole team regardless of size — cheap, no N+1 risk.
+      // Batch-fetch isExternal for the team so the client can render GUEST
+      // badges. One query for the whole team regardless of size — cheap, no
+      // N+1 risk.
       const ids = onlineUsers.map((u) => u.userId);
       const flagRows = await db
         .select({ id: users.id, isExternal: users.isExternal })

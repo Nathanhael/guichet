@@ -106,7 +106,6 @@ export default function MessageBubble({ message, ticketId, isGroupStart = true, 
   // Server-authoritative GUEST flag — denormalized onto the message at
   // insert time (migration 0006). Works for historical senders in closed
   // tickets as well as live chats; no presence-store lookup needed.
-  // See docs/superpowers/specs/partner-sso-b2b-guest.md.
   const isSenderExternal = !!message.senderIsExternal;
 
   const originalDisplayText = isDeleted ? (t('message_deleted') || 'This message was deleted') : (message.text || '');

@@ -1,9 +1,6 @@
 /**
  * E2E: destructive admin controls are visibly disabled for Azure B2B guests.
  *
- * Parent plan: docs/superpowers/plans/2026-04-17-guest-admin-visible-disable.md
- * Parent feature: docs/superpowers/specs/partner-sso-b2b-guest.md
- *
  * Seed fixture `admin_guest` (Gina Guest) is an ACME admin with
  * `users.isExternal = true`. Every destructive control in the AdminView tabs
  * this spec exercises (Team, Departments) must:

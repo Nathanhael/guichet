@@ -71,10 +71,9 @@ export default function ChatHeader({
     return undefined;
   };
   // Azure B2B guest flag per participant. Authoritative source is the
-  // `isExternal` field denormalized onto `tickets.participants` at join time
-  // (see docs/superpowers/specs/partner-sso-b2b-guest.md). Tickets are
-  // reseeded, so every participant row carries the field; no legacy
-  // fallback. The viewer's own flag comes from the store because the
+  // `isExternal` field denormalized onto `tickets.participants` at join time.
+  // Tickets are reseeded, so every participant row carries the field; no
+  // legacy fallback. The viewer's own flag comes from the store because the
   // viewer may not be in the participant list (agent-side chat).
   const resolveIsExternal = (
     p: { id: string; isExternal?: boolean } | string,

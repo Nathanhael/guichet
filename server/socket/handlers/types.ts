@@ -170,7 +170,6 @@ export interface Participant {
    * on guest participants regardless of live presence. Optional for
    * backward compatibility with participants written before the B2B
    * plumbing landed — treat undefined as false.
-   * See docs/superpowers/specs/partner-sso-b2b-guest.md.
    */
   isExternal?: boolean;
 }

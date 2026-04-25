@@ -59,7 +59,7 @@ export const users = pgTable('users', {
   }>(),
   // True when the user is an Azure B2B guest (external partner employee invited into our tenant).
   // Set at SSO callback from the `acct === 1` or `idp` claim. Drives UI GUEST badge and
-  // destructiveAdminProcedure blocklist (see docs/superpowers/plans/2026-04-16-partner-sso-b2b-guest.md).
+  // destructiveAdminProcedure / internalAdminReadProcedure blocklists.
   isExternal: boolean('is_external').notNull().default(false),
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
@@ -136,7 +136,6 @@ export const messages = pgTable('messages', {
   // Denormalized at insert time so historical messages can still render the
   // GUEST badge in MessageBubble without a live presence lookup. Sourced from
   // `users.isExternal` via `findSenderInfo`. System messages are always false.
-  // See docs/superpowers/specs/partner-sso-b2b-guest.md.
   senderIsExternal: boolean('sender_is_external').notNull().default(false),
   text: text('text'),
   mediaUrl: text('media_url'),

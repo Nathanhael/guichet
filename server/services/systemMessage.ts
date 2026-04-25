@@ -29,7 +29,7 @@ export async function insertSystemMessage(ticketId: string, text: string) {
  * `senderIsExternal` defaults to false for backward compatibility — callers
  * that have resolved the real flag (e.g. ticket:transfer via findSenderInfo)
  * should pass it so MessageBubble can render the GUEST marker on the
- * whisper. See docs/superpowers/specs/partner-sso-b2b-guest.md.
+ * whisper.
  */
 export async function insertWhisperMessage(
   ticketId: string,

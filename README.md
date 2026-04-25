@@ -8,7 +8,7 @@ Real-time, multi-tenant chat platform for BPO and outsourced helpdesk teams. Eac
 - **Multi-Tenant Architecture** — Strict isolation between tenants, platform-wide SSO with multi-tenant user memberships, and seamless workspace switching
 - **Soft Product Design System** — CSS custom property token UI (indigo accent, soft neutrals), Inter default with JetBrains Mono scoped to code/IDs, calm purposeful motion, full light/dark parity
 - **Role-Based Access** — Four roles (agent, support, admin, platform_operator) with granular permission gates
-- **SSO-Only Authentication** — Azure Entra ID for all staff; partner employees federate in via Azure B2B guest invites (see `docs/superpowers/specs/partner-sso-b2b-guest.md`). No passwords, no MFA. Emergency access via the break-glass CLI (`server/scripts/break_glass.ts`).
+- **SSO-Only Authentication** — Azure Entra ID for all staff; partner employees federate in via Azure B2B guest invites (see `docs/TENANT_IDENTITY_SPEC.md`). No passwords, no MFA. Emergency access via the break-glass CLI (`server/scripts/break_glass.ts`).
 - **Identity Model** — Single corporate identity per user across multiple tenant organizations with scoped roles per tenant. External guests (`users.isExternal`) are enforced single-partner and blocked from destructive partner-admin mutations via the `destructiveAdminProcedure` tRPC middleware.
 - **Platform Cockpit** — Global operator view for tenant management, user provisioning, audit log, and archive browser
 - **AI-Powered Support** — Message improvement, chat summarization, translation (nl/en/fr), and auto-summarize on close (Ollama / Azure OpenAI)

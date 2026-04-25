@@ -78,7 +78,7 @@ describe('messageQueries', () => {
     it('denormalizes senderIsExternal=true onto the row and the return payload', async () => {
       // Server-authoritative GUEST-badge plumbing: the flag the caller passes
       // is persisted on the row AND echoed back so socket broadcasts carry
-      // it without a re-fetch. See docs/superpowers/specs/partner-sso-b2b-guest.md.
+      // it without a re-fetch.
       const valuesMock = vi.fn().mockResolvedValue(undefined);
       vi.mocked(db.insert).mockReturnValue({ values: valuesMock } as never);
 

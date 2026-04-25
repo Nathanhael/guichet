@@ -18,7 +18,6 @@ export interface InsertMessageData {
    * messages row so MessageBubble can render the GUEST marker on
    * historical messages without a live presence lookup. Omit/`false` for
    * system messages and internal staff; pass `true` for external guests.
-   * See docs/superpowers/specs/partner-sso-b2b-guest.md.
    */
   senderIsExternal?: boolean;
   text: string;
