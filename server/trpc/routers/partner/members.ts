@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, adminProcedure, destructiveAdminProcedure } from '../../trpc.js';
+import { router, adminProcedure, destructiveAdminProcedure, internalAdminReadProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { partners, users, memberships, auditLog } from '../../../db/schema.js';
 import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
@@ -98,7 +98,12 @@ export const partnerMembersRouter = router({
   // tenant admin seats are provisioned via Azure group mapping — the partner
   // admin UI intentionally can't mutate them. Small result set (typically <5),
   // so no pagination.
-  listAdmins: adminProcedure
+  //
+  // External (B2B guest) admins must not see the internal admin roster — names
+  // and emails are sensitive. `internalAdminReadProcedure` enforces the gate
+  // (operators bypass; non-operator guests get FORBIDDEN). Guests keep read
+  // access to the rest of the admin UI.
+  listAdmins: internalAdminReadProcedure
     .query(async ({ ctx }) => {
       const partnerId = ctx.user.partnerId;
       if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });

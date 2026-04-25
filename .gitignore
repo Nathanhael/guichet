@@ -107,6 +107,7 @@ testing/
 
 # Client behavioral tests (curated)
 !client/src/components/ExternalGuestGuard.test.tsx
+!client/src/components/admin/__tests__/AdminTeam.test.tsx
 !client/src/hooks/useComposeAiImprove.test.ts
 !client/src/hooks/useComposeAttachments.test.ts
 !client/src/hooks/useComposeDraft.test.ts
