@@ -3,7 +3,7 @@
 #        powershell -File scripts/ci.ps1 -Skip e2e    (skip slow E2E tests)
 
 param(
-    [ValidateSet("typecheck", "lint", "audit", "test-server", "test-client", "migrate", "build", "e2e")]
+    [ValidateSet("typecheck", "tenant-isolation-guard", "lint", "audit", "test-server", "test-client", "migrate", "build", "e2e")]
     [string[]]$Skip = @()
 )
 
@@ -41,6 +41,7 @@ Write-Host "  Guichet Local CI" -ForegroundColor White
 Write-Host "========================================" -ForegroundColor White
 
 Run-Step "typecheck" @("docker compose exec server npx tsc --noEmit", "docker compose exec client npx tsc --noEmit")
+Run-Step "tenant-isolation-guard" @("docker compose exec server node scripts/check-trpc-tenant-isolation.mjs trpc/routers")
 Run-Step "lint" @("docker compose exec server npm run lint", "docker compose exec client npm run lint")
 Run-Step "audit" @("docker compose exec server npm audit --audit-level=high", "docker compose exec client npm audit --audit-level=high")
 Run-Step "test-server" @("docker compose exec server npm test")
@@ -58,7 +59,7 @@ if ($failed.Count -gt 0) {
     Write-Host "  FAILED ($($stopwatch.Elapsed.TotalSeconds.ToString('0'))s): $($failed -join ', ')" -ForegroundColor Red
     exit 1
 } else {
-    $ran = 8 - $Skip.Count
+    $ran = 9 - $Skip.Count
     Write-Host "  ALL $ran STEPS PASSED ($($stopwatch.Elapsed.TotalSeconds.ToString('0'))s)" -ForegroundColor Green
     exit 0
 }
