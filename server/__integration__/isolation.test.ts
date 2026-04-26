@@ -656,6 +656,73 @@ describe('multi-tenant isolation — socket handlers', () => {
     expect(pubClientHDelMock).not.toHaveBeenCalled();
   });
 
+  // ── rating:submit / ticket:preview:join cross-tenant rejection ───────────
+  // rating:submit is the only ticket-touching socket event that uses the
+  // `requirePartnerScopeWith` variant (rating.ts:29 — handler reuses the
+  // lookup result for agentId / supportId checks). Verify-can-fail on
+  // this test proves the variant catches regressions; the eight tests
+  // above cover the plain `requirePartnerScope` variant.
+
+  it('rating:submit rejects writing a rating for a cross-partner ticket', async () => {
+    const socket = createMockSocket({
+      userId: 'agent-1',
+      partnerId: 'partner-A',
+      role: 'agent',
+      name: 'Agent A',
+      authedUserId: 'agent-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'rating:submit');
+
+    // findTicketOwner is the lookup function passed to
+    // requirePartnerScopeWith. Returning a partner-B ticket triggers the
+    // partner mismatch path in the helper.
+    findTicketOwnerMock.mockResolvedValueOnce({
+      partnerId: 'partner-B',
+      agentId: 'agent-1',
+      supportId: 'support-1',
+      status: 'closed',
+      dept: null,
+      closedAt: new Date().toISOString(),
+    });
+
+    await handler({ ticketId: 'ticket-1', rating: 5, comment: 'great support' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    expect(insertRatingMock).not.toHaveBeenCalled();
+  });
+
+  it('ticket:preview:join rejects opening a preview on a cross-partner ticket', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+      isSupport: true,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'ticket:preview:join');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    await handler({ ticketId: 'ticket-1' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    // Preview room name comes from Rooms.ticketPreview — `ticket:<id>:preview`.
+    // socket.join may legitimately be called for OTHER rooms during
+    // connection setup; we only care that the preview room was not joined.
+    expect(socket.join).not.toHaveBeenCalledWith('ticket:ticket-1:preview');
+  });
+
   it('socket:identify prevents non-platform user from accessing unassigned partner', async () => {
     const socket = createMockSocket({
       authedUserId: 'user-1',
