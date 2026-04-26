@@ -166,7 +166,7 @@ export function useSocket(): Socket | null {
       const state = useStore.getState();
       if (message.senderId !== state.user?.id) {
         if (!message.system) {
-          state.markUnread(message.ticketId);
+          state.markUnread(message.ticketId, message.senderName);
         }
         if (state.notificationsEnabled && !message.system) {
           // Truncate the preview before handing it to the OS. Desktop

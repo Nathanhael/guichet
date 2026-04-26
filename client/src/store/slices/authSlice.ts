@@ -34,6 +34,7 @@ function clearAuthState(set: (partial: Partial<StoreState>) => void) {
     tickets: [],
     activeTicketId: null,
     unreadTickets: {},
+    unreadSenders: {},
     participantsOnline: {},
     supportOpenTickets: [],
     queuePosition: null,
@@ -169,6 +170,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
         messages: {},
         activeTicketId: null,
         unreadTickets: {},
+        unreadSenders: {},
       };
 
       if (id) {

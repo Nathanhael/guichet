@@ -5,6 +5,7 @@ export interface TicketSlice {
   tickets: Ticket[];
   activeTicketId: string | null;
   unreadTickets: Record<string, number>;
+  unreadSenders: Record<string, string>;
   participantsOnline: Record<string, boolean>;
   supportOpenTickets: string[];
   queuePosition: { position: number; etaMins: number } | null;
@@ -16,7 +17,7 @@ export interface TicketSlice {
   updateTicket: (ticketId: string, updates: Partial<Ticket>) => void;
   toggleTicketLabel: (ticketId: string, labelId: string) => void;
   setActiveTicketId: (id: string | null) => void;
-  markUnread: (ticketId: string) => void;
+  markUnread: (ticketId: string, senderName?: string) => void;
   clearUnread: (ticketId: string) => void;
   setParticipantOnline: (ticketId: string, online: boolean) => void;
   addSupportOpenTicket: (ticketId: string) => void;
@@ -33,6 +34,7 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   tickets: [],
   activeTicketId: null,
   unreadTickets: {},
+  unreadSenders: {},
   participantsOnline: {},
   supportOpenTickets: [],
   queuePosition: null,
@@ -74,17 +76,21 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   },
 
   setActiveTicketId: (id) => set({ activeTicketId: id }),
-  markUnread: (ticketId) =>
+  markUnread: (ticketId, senderName) =>
     set((state) => ({
       unreadTickets: {
         ...state.unreadTickets,
         [ticketId]: (state.unreadTickets[ticketId] || 0) + 1,
       },
+      unreadSenders: senderName
+        ? { ...state.unreadSenders, [ticketId]: senderName }
+        : state.unreadSenders,
     })),
   clearUnread: (ticketId) =>
     set((state) => {
-      const { [ticketId]: _, ...rest } = state.unreadTickets;
-      return { unreadTickets: rest };
+      const { [ticketId]: _u, ...restUnread } = state.unreadTickets;
+      const { [ticketId]: _s, ...restSenders } = state.unreadSenders;
+      return { unreadTickets: restUnread, unreadSenders: restSenders };
     }),
   setParticipantOnline: (ticketId, online) =>
     set((state) => ({ participantsOnline: { ...state.participantsOnline, [ticketId]: online } })),

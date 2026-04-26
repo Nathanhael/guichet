@@ -80,3 +80,17 @@ export function useLang(): string {
 export function tBrowser(key: string): string {
   return loaded.en[key] ?? key;
 }
+
+/**
+ * Standalone translation for non-React contexts that should respect the
+ * user's active language (e.g. document.title updates from socket events).
+ * Returns English if the active locale isn't loaded yet — it gets loaded
+ * lazily by useT() once the UI mounts.
+ */
+export function tStandalone(key: string): string {
+  const state = useStore.getState();
+  const browserLang = typeof navigator !== 'undefined' ? navigator.language.slice(0, 2) : 'en';
+  const langKey = state.selectedLang || state.user?.lang || browserLang || 'en';
+  const lang = (langKey in loaded) ? langKey : 'en';
+  return loaded[lang]?.[key] ?? loaded.en[key] ?? key;
+}
