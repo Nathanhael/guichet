@@ -1,6 +1,6 @@
 import { StateCreator } from 'zustand';
 import { StoreState, User, Membership } from '../../types';
-import { disconnectSocket } from '../../hooks/useSocket';
+import { disconnectSocket, peekSocket } from '../../hooks/useSocket';
 
 export interface AuthSlice {
   user: User | null;
@@ -225,6 +225,23 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       });
     },
     logout: async () => {
+      // Return open chat tabs to the queue on intentional logout. The
+      // disconnect handler does not emit support:leave (refresh/crash uses
+      // the support:rejoin path), so without this, tickets stay pinned to
+      // the logged-out user until another support's join clears the ghost
+      // primary. Emit before fetch so the socket is still connected and
+      // identified; fetch's await gives socket.io time to flush packets
+      // before disconnectSocket() closes the transport.
+      const openTickets = get().supportOpenTickets;
+      if (openTickets.length > 0) {
+        const s = peekSocket();
+        if (s?.connected) {
+          for (const ticketId of openTickets) {
+            s.emit('support:leave', { ticketId });
+          }
+        }
+      }
+
       try {
         await fetch('/api/v1/auth/logout', {
           method: 'POST',
