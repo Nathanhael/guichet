@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, partnerAdminProcedure } from '../../trpc.js';
+import { router, partnerAdminProcedure, partnerInternalAdminReadProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { auditLog, users } from '../../../db/schema.js';
 import { eq, desc, gte, lte, and, sql } from 'drizzle-orm';
@@ -109,7 +109,10 @@ export const partnerAuditRouter = router({
     return PARTNER_TARGET_TYPES.slice();
   }),
 
-  getAuditLog: partnerAdminProcedure
+  // Audit rows leftJoin users.name for the actor — including platform
+  // operators who acted on this partner via /enter-partner. B2B guest admins
+  // must not see those identities, so this read is gated.
+  getAuditLog: partnerInternalAdminReadProcedure
     .input(baseInput.extend({
       limit: z.number().min(1).max(100).default(50),
       cursor: z.string().optional(),
@@ -161,8 +164,9 @@ export const partnerAuditRouter = router({
   // with targetType='ticket' *and* rows where metadata.ticketId carries the id
   // (legacy/adjacent emitters that don't set targetType). Partner-scoped via
   // partnerId so cross-tenant leakage is impossible even if a caller guesses
-  // another tenant's ticket id.
-  getForTicket: partnerAdminProcedure
+  // another tenant's ticket id. Same actor-name leak as getAuditLog, so the
+  // same `partnerInternalAdminReadProcedure` gate applies.
+  getForTicket: partnerInternalAdminReadProcedure
     .input(z.object({
       ticketId: z.string(),
       limit: z.number().min(1).max(200).default(100),
