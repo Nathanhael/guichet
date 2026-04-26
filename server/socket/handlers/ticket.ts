@@ -2,33 +2,19 @@ import { Socket } from 'socket.io';
 import { z } from 'zod';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
-import { isValidMediaUrl } from '../../utils/security.js';
 import { requirePartnerScope, requirePartnerScopeWith } from '../partnerScope.js';
 import {
   findTicketForClose,
   findTicketForTransfer,
   findPartnerLabels,
-  createTicket,
-  closeTicket,
   replaceTicketLabels,
-  findRecentClosedTickets,
-  findActiveTicketsForAgent,
 } from '../../services/ticketQueries.js';
 import { getBusinessHoursStatus, broadcastQueuePositions, BusinessHoursSchedule } from '../../services/businessHours.js';
 import { findPartnerConfig } from '../../services/partnerQueries.js';
 import { findUserName } from '../../services/userQueries.js';
-import { insertMessage } from '../../services/messageQueries.js';
 import { autoSummarizeOnClose } from '../../services/ai/index.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
-import {
-  auditTicketCreated,
-  auditTicketClosed,
-} from '../../services/ticketAudit.js';
-import {
-  MAX_NOTE_LENGTH,
-  MAX_LABELS_PER_TICKET,
-  RECENT_CLOSED_TICKETS_LIMIT,
-} from '../../constants.js';
+import { MAX_LABELS_PER_TICKET } from '../../constants.js';
 import {
   requireIdentified,
   socketioEventsTotal,
@@ -38,7 +24,6 @@ import {
   ticketTransferSchema,
   type HandlerContext,
 } from './types.js';
-import { Ticket } from '../../types/index.js';
 
 export function register(socket: Socket, ctx: HandlerContext): void {
   const { io } = ctx;
@@ -50,100 +35,79 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         logger.warn({ socketId: socket.id, userId: socket.data.userId }, '[ticket:new] payload validation failed');
         return;
       }
-      if (socket.data.role !== 'agent') {
-        logger.warn({ socketId: socket.id, userId: socket.data.userId, role: socket.data.role }, '[ticket:new] rejected — not an agent');
-        return socket.emit('error', { message: 'Only agents can create tickets' });
-      }
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       try {
         const partnerId = socket.data.partnerId;
-        const partnerRow = partnerId ? await findPartnerConfig(partnerId) : null;
-
-        if (partnerRow && partnerRow.status !== 'active') {
-          logger.warn({ partnerId, status: partnerRow.status }, '[ticket:new] rejected — partner inactive');
-          return socket.emit('error', { message: 'Partner is currently inactive.' });
-        }
-
-        const partnerHours = partnerRow ? {
-          businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null,
-        } : undefined;
-
-        const businessHoursStatus = getBusinessHoursStatus(partnerHours);
-        if (!businessHoursStatus.isOpen) {
-          logger.warn({ partnerId, nextOpen: businessHoursStatus.nextOpenAt }, '[ticket:new] rejected — business hours closed');
-          return socket.emit('hours:closed', {
-            code: 'BUSINESS_HOURS_CLOSED',
-            message: businessHoursStatus.message,
-            status: businessHoursStatus,
-          });
-        }
-
         const { agentLang, dept, references = [], text, mediaUrl } = parsed;
-        const agentId = socket.data.userId; // Server-side identity — never trust client-supplied agentId
-        if (!agentId || !agentLang || !dept) {
-          logger.warn({ agentId: !!agentId, agentLang: !!agentLang, dept: !!dept }, '[ticket:new] rejected — missing required fields');
+        if (!agentLang || !dept) {
+          logger.warn({ agentLang: !!agentLang, dept: !!dept }, '[ticket:new] rejected — missing required fields');
           return socket.emit('error', { message: 'Missing required fields' });
         }
         if (!partnerId) {
           logger.warn({ socketId: socket.id }, '[ticket:new] rejected — no partner context');
           return socket.emit('error', { message: 'No partner context' });
         }
-        if (mediaUrl && !isValidMediaUrl(mediaUrl)) {
-          logger.warn({ mediaUrl }, '[ticket:new] rejected — invalid media URL');
-          return socket.emit('error', { message: 'Invalid media URL' });
-        }
-        // Server-side 1-ticket limit — agents may only have one non-closed ticket
-        const existingTickets = await findActiveTicketsForAgent(agentId, partnerId);
-        if (existingTickets.length > 0) {
-          logger.warn({ agentId, partnerId, existing: existingTickets[0].id }, '[ticket:new] rejected — agent already has an open ticket');
-          return socket.emit('error', { message: 'You already have an open ticket' });
-        }
 
-        logger.debug({ partnerId, agentId, dept }, '[ticket:new] accepted — creating ticket');
+        // Resolve B2B-guest flag for the actor — denormalized into the
+        // first-message row inside the lifecycle txn so historical
+        // messages render the GUEST badge without a live presence
+        // lookup. Cheap single-row read.
+        const agentUser = await findUserName(socket.data.userId);
+        const baseActor = socketActor(socket);
+        const createActor = { ...baseActor, isExternal: !!agentUser?.isExternal };
 
-        // Re-open detection — JS-side exact value match
-        let reopened = false;
-        let reopenCount = 0;
-        const incomingValues = (references || []).map(r => r.value).filter(Boolean);
-        if (incomingValues.length > 0) {
-          const recentClosed = await findRecentClosedTickets(partnerId, RECENT_CLOSED_TICKETS_LIMIT);
-          const match = recentClosed.find(t => {
-            try {
-              const raw = typeof t.references === 'string' ? JSON.parse(t.references) : t.references;
-              const ticketRefs: Array<{ label: string; value: string }> = Array.isArray(raw) ? raw : [];
-              return ticketRefs.some(r => incomingValues.includes(r.value));
-            } catch { return false; }
-          });
-          if (match) {
-            reopened = true;
-            reopenCount = (match.reopenCount || 0) + 1;
+        const result = await ctx.lifecycle.create({
+          partnerId,
+          actor: createActor,
+          dept,
+          agentLang,
+          references,
+          text,
+          mediaUrl,
+        });
+
+        if (!result.ok) {
+          switch (result.code) {
+            case 'NOT_AUTHORIZED':
+              logger.warn({ socketId: socket.id, userId: socket.data.userId, role: socket.data.role }, '[ticket:new] rejected — not an agent');
+              return socket.emit('error', { message: 'Only agents can create tickets' });
+            case 'PARTNER_NOT_ACTIVE':
+              logger.warn({ partnerId }, '[ticket:new] rejected — partner inactive');
+              return socket.emit('error', { message: 'Partner is currently inactive.' });
+            case 'BUSINESS_HOURS_CLOSED': {
+              // Re-evaluate the status here so the client gets the same
+              // hours payload the legacy handler emitted (next-open
+              // timestamp etc.). The lifecycle has already declined the
+              // create — this is a transport-tier hint only.
+              const partnerRow = await findPartnerConfig(partnerId);
+              const hoursStatus = getBusinessHoursStatus(partnerRow ? {
+                businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null,
+              } : undefined);
+              return socket.emit('hours:closed', {
+                code: 'BUSINESS_HOURS_CLOSED',
+                message: hoursStatus.message,
+                status: hoursStatus,
+              });
+            }
+            case 'INVALID_MEDIA_URL':
+              return socket.emit('error', { message: 'Invalid media URL' });
+            case 'DUPLICATE_TICKET':
+              logger.warn({ agentId: socket.data.userId, partnerId }, '[ticket:new] rejected — agent already has an open ticket');
+              return socket.emit('error', { message: 'You already have an open ticket' });
+            default:
+              return socket.emit('error', { message: 'Failed to create ticket' });
           }
         }
 
-        const agentUser = await findUserName(agentId);
-        const ticket: Ticket = { id: crypto.randomUUID(), dept, agentId, agentName: agentUser?.name || agentId, agentLang, references, status: 'open', supportId: null, createdAt: new Date().toISOString(), participants: '[]' };
-        await createTicket({ id: ticket.id, partnerId, dept: ticket.dept, agentId: ticket.agentId, agentName: ticket.agentName, agentLang: ticket.agentLang, references, status: ticket.status, createdAt: ticket.createdAt, participants: [], reopened, reopenCount });
-        auditTicketCreated({ ticketId: ticket.id, partnerId, actorId: agentId, dept, reopened, reopenCount });
-
-        let message = null;
-        if (text?.trim()) {
-          message = await insertMessage({
-            ticketId: ticket.id,
-            senderId: agentId,
-            senderName: agentUser?.name || agentId,
-            senderRole: 'agent',
-            senderLang: agentLang,
-            senderIsExternal: !!agentUser?.isExternal,
-            text: text,
-            mediaUrl: mediaUrl,
-          });
-        }
-        socket.join(Rooms.ticket(ticket.id));
-        socket.emit('ticket:created:self', { ticket: { ...ticket, participants: [], labels: [] }, message });
-        // Broadcast to staff only — agents must not see other users' tickets (CR-04 socket-layer fix)
-        ctx.io.to(Rooms.staff(partnerId)).emit('ticket:created', { ticket: { ...ticket, participants: [], labels: [] }, firstMessage: message });
-        await broadcastQueuePositions(partnerId);
+        // Caller-only ack. The lifecycle returned the ticket + first
+        // message snapshot so we don't need a re-read.
+        socket.join(Rooms.ticket(result.data.ticket.id));
+        socket.emit('ticket:created:self', {
+          ticket: { ...result.data.ticket, participants: [], labels: [] },
+          message: result.data.firstMessage,
+        });
+        applyEffects(ctx.io, result.effects);
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:new] error');
         socket.emit('error', { message: 'Failed to create ticket' });
@@ -158,38 +122,43 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       socketioEventsTotal.inc({ event: 'ticket:close' });
       try {
         const senderId = socket.data.userId;
-        const senderName = socket.data.name;
+        const callerPartnerId = socket.data.partnerId;
         if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
 
-        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForClose);
-        if (!ticket) return;
+        // Partner-scope guard before the lifecycle — preserves the legacy
+        // "Not authorized" wording and saves the lifecycle a round-trip
+        // when the ticket is in another tenant. The lifecycle would also
+        // refuse with TICKET_NOT_FOUND, but the handler-level check is
+        // the canonical "you don't get to see this exists" UX.
+        const partnerCheck = await requirePartnerScopeWith(socket, ticketId, findTicketForClose);
+        if (!partnerCheck) return;
 
-        // Authorization: support/admin can close any ticket; agents can close their own
-        if (!socket.data.isSupport && ticket.agentId !== senderId) {
-          return socket.emit('error', { message: 'Only support staff can close tickets' });
-        }
-
-        if (ticket.status === 'closed') {
-          return; // Already closed
-        }
-
-        // Limit closing notes length to prevent abuse
-        const sanitizedNotes = closingNotes ? closingNotes.slice(0, MAX_NOTE_LENGTH) : '';
-        const now = await closeTicket(ticketId, senderName || 'System', sanitizedNotes);
-        auditTicketClosed({
+        const result = await ctx.lifecycle.close({
           ticketId,
-          partnerId: ticket.partnerId,
-          actorId: senderId,
-          closedBy: senderName || 'System',
-          hadSupport: !!ticket.supportId,
+          partnerId: callerPartnerId,
+          actor: socketActor(socket),
+          closingNotes,
         });
-        ctx.io.to(Rooms.ticket(ticketId)).emit('ticket:closed', { ticketId, status: 'closed', closedAt: now, closedBy: senderName || 'System', supportId: ticket.supportId ?? undefined, supportName: ticket.supportName ?? undefined });
-        await broadcastQueuePositions(ticket.partnerId);
+
+        if (!result.ok) {
+          switch (result.code) {
+            case 'NOT_AUTHORIZED':
+              return socket.emit('error', { message: 'Only support staff can close tickets' });
+            case 'TICKET_NOT_FOUND':
+              return socket.emit('error', { message: 'Ticket not found' });
+            case 'TICKET_ALREADY_CLOSED':
+              return; // Idempotent — silent no-op preserves legacy UX
+            default:
+              return;
+          }
+        }
+
+        applyEffects(ctx.io, result.effects);
 
         // Fire-and-forget AI auto-summarize — log on failure so an AI-provider
         // outage leaves a trail instead of silently dropping summaries.
-        autoSummarizeOnClose(ticket.partnerId, senderId, ticketId, io).catch((err) => {
-          logger.warn({ err: err instanceof Error ? err.message : String(err), ticketId, partnerId: ticket.partnerId }, '[ticket:close] autoSummarize failed (non-fatal)');
+        autoSummarizeOnClose(callerPartnerId, senderId, ticketId, io).catch((err) => {
+          logger.warn({ err: err instanceof Error ? err.message : String(err), ticketId, partnerId: callerPartnerId }, '[ticket:close] autoSummarize failed (non-fatal)');
         });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
     });
