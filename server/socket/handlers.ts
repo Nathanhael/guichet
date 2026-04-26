@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import logger from '../utils/logger.js';
 import { socketioConnectionsActive } from '../utils/metrics.js';
 import { Rooms } from '../utils/rooms.js';
+import type { TicketLifecycle } from '../services/ticketLifecycle/index.js';
 import type { HandlerContext } from './handlers/types.js';
 import { setupRevocationPubSub, setupJwtMiddleware, setupIdentityMiddleware, register as registerAuth } from './handlers/auth.js';
 import { register as registerTicket } from './handlers/ticket.js';
@@ -27,9 +28,18 @@ export function broadcastUserDeactivation(userId: string) {
   ioInstance.to(Rooms.user(userId)).emit('user:deactivated', { userId });
 }
 
-export function registerSocketHandlers(io: Server) {
+export interface RegisterSocketHandlersDeps {
+  lifecycle: TicketLifecycle;
+}
+
+export function registerSocketHandlers(io: Server, deps: RegisterSocketHandlersDeps) {
   ioInstance = io;
-  const ctx: HandlerContext = { io, socketTickets, viewerKeyPrefix: VIEWER_KEY_PREFIX };
+  const ctx: HandlerContext = {
+    io,
+    socketTickets,
+    viewerKeyPrefix: VIEWER_KEY_PREFIX,
+    lifecycle: deps.lifecycle,
+  };
 
   setupRevocationPubSub(io);
   setupJwtMiddleware(io);
