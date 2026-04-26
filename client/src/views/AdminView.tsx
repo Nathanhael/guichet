@@ -33,7 +33,7 @@ import {
   Zap,
 } from 'lucide-react';
 
-const AdminStats = lazy(() => import('../components/admin/AdminStats'));
+const DashboardView = lazy(() => import('../components/admin/dashboard/DashboardView'));
 const AdminSatisfaction = lazy(() => import('../components/admin/AdminSatisfaction'));
 
 const LoadingFallback = () => (
@@ -179,7 +179,7 @@ export default function AdminView() {
             ['tickets', 'archive'].includes(view) ? 'p-0 overflow-hidden' : 'p-6 overflow-y-auto'
           }`}
         >
-          {view === 'dashboard' && <Suspense fallback={<LoadingFallback />}><AdminStats /></Suspense>}
+          {view === 'dashboard' && <Suspense fallback={<LoadingFallback />}><DashboardView /></Suspense>}
           {view === 'satisfaction' && <Suspense fallback={<LoadingFallback />}><AdminSatisfaction /></Suspense>}
           {view === 'team' && <AdminTeam />}
           {view === 'alerts' && <AdminAlerts />}

@@ -7,6 +7,7 @@ import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
 import GuestBadge from '../GuestBadge';
 import MemberAuditDrawer from './MemberAuditDrawer';
+import AgentStatusStats from './AgentStatusStats';
 import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 // Shared Soft Product style constants — mirrors the other admin panels.
@@ -416,6 +417,8 @@ export default function AdminTeam() {
           </div>
         </div>
       )}
+
+      <AgentStatusStats />
 
       {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); invalidate(); }} />}
       {confirmRemove && (
