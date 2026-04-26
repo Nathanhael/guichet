@@ -101,6 +101,9 @@ testing/
 # Server cross-cutting integration tests
 !server/__integration__/**/*.test.ts
 
+# Server lifecycle test substrate (PGLite-based; ships with the suite)
+!server/test/**/*.ts
+
 # E2E tests (Playwright)
 !testing/
 !testing/e2e/**/*.spec.ts
