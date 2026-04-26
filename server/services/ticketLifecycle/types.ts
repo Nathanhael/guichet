@@ -62,7 +62,17 @@ export type LifecycleError =
   /** Closed tickets cannot be re-opened by a join — use the reopen flow instead. */
   | 'TICKET_CLOSED'
   /** Department id is not in the partner's `departments` JSONB. */
-  | 'DEPARTMENT_NOT_FOUND';
+  | 'DEPARTMENT_NOT_FOUND'
+  /** Idempotent close — the ticket was already in `status='closed'`. */
+  | 'TICKET_ALREADY_CLOSED'
+  /** Partner record is missing or status is not 'active'. */
+  | 'PARTNER_NOT_ACTIVE'
+  /** Business hours schedule says closed at the evaluation time. */
+  | 'BUSINESS_HOURS_CLOSED'
+  /** Agent already has a non-closed ticket. */
+  | 'DUPLICATE_TICKET'
+  /** mediaUrl failed `isValidMediaUrl()`. */
+  | 'INVALID_MEDIA_URL';
 
 /**
  * Discriminated result. Domain rejections are values, not exceptions, so
@@ -165,6 +175,23 @@ export interface TicketLifecycle {
    * directly — no need for a separate verb.
    */
   transfer(args: TransferArgs): Promise<Result<TransferOk>>;
+
+  /**
+   * Closes a ticket. Atomic txn: status update + closed_at/closed_by/
+   * closing_notes + `ticket.closed` audit row. Idempotent: re-closing
+   * an already-closed ticket returns `TICKET_ALREADY_CLOSED` rather
+   * than rewriting state.
+   */
+  close(args: CloseArgs): Promise<Result<CloseOk>>;
+
+  /**
+   * Creates a new ticket. Owns the largest preflight surface in the
+   * lifecycle: role gate, partner status, business hours, dup-ticket
+   * limit, media-url validation, reopen detection. Atomic txn: insert
+   * ticket + optional first message + `ticket.created` (or
+   * `ticket.reopened`) audit row.
+   */
+  create(args: CreateArgs): Promise<Result<CreateOk>>;
 }
 
 export interface ReclaimArgs {
@@ -264,4 +291,63 @@ export interface TransferOk {
   fromSupportId: string | null;
   toDepartmentId: string;
   toDepartmentName: string;
+}
+
+export interface CloseArgs {
+  ticketId: string;
+  partnerId: string;
+  /** Closer — must be support / admin / platform_operator OR the ticket's own agent. */
+  actor: UserActor;
+  /** Optional notes; sliced to MAX_NOTE_LENGTH inside the lifecycle. */
+  closingNotes?: string;
+}
+
+export interface CloseOk {
+  closedAt: string;
+  closedBy: string;
+  hadSupport: boolean;
+  supportId: string | null;
+  supportName: string | null;
+}
+
+export interface TicketReference {
+  label: string;
+  value: string;
+}
+
+export interface CreateArgs {
+  partnerId: string;
+  /** Must have role='agent'. */
+  actor: UserActor;
+  dept: string;
+  agentLang: string;
+  references?: TicketReference[];
+  /** Optional first message body. */
+  text?: string;
+  /** Optional attachment URL (validated against `isValidMediaUrl`). */
+  mediaUrl?: string;
+}
+
+export interface CreateOk {
+  ticket: {
+    id: string;
+    partnerId: string;
+    dept: string;
+    agentId: string;
+    agentName: string;
+    agentLang: string;
+    references: TicketReference[];
+    status: 'open';
+    supportId: null;
+    createdAt: string;
+    participants: never[];
+    reopened: boolean;
+    reopenCount: number;
+  };
+  /**
+   * The first message inserted along with the ticket, if `text` was
+   * provided. Same SocketMessage shape returned by other lifecycle
+   * verbs so the handler can forward it as a `message:new` payload.
+   */
+  firstMessage: import('./messages.js').SocketMessage | null;
 }
