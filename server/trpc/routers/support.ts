@@ -72,9 +72,13 @@ export const supportRouter = router({
         if (lang && SUPPORTED_LANGS.includes(lang)) staffByLang[lang] += 1;
       }
 
+      // Use queueEnteredAt (not createdAt) so staffing-imbalance signals
+      // reflect time-since-last-queue-entry, matching how the queue itself
+      // is ordered. A ticket that bounced through a brief support touch
+      // shouldn't inflate "oldest waiting" with its pre-touch age.
       const openTickets = await db.select({
         agentLang: tickets.agentLang,
-        createdAt: tickets.createdAt,
+        queueEnteredAt: tickets.queueEnteredAt,
       }).from(tickets).where(and(
         eq(tickets.partnerId, input.partnerId),
         isNull(tickets.supportId),
@@ -90,7 +94,7 @@ export const supportRouter = router({
       for (const t of openTickets) {
         const lang = (t.agentLang as SupportedLang | null) ?? 'en';
         if (!SUPPORTED_LANGS.includes(lang)) continue;
-        const ageMinutes = Math.max(0, Math.floor((now - new Date(t.createdAt).getTime()) / 60_000));
+        const ageMinutes = Math.max(0, Math.floor((now - new Date(t.queueEnteredAt).getTime()) / 60_000));
         rowsByLang[lang].count += 1;
         rowsByLang[lang].oldestMinutes = Math.max(rowsByLang[lang].oldestMinutes, ageMinutes);
         rowsByLang[lang].totalMinutes += ageMinutes;

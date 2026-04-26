@@ -154,6 +154,7 @@ export interface Ticket {
   supportName?: string | null;
   supportLang?: string | null;
   supportJoinedAt?: string | null;
+  queueEnteredAt?: string;
   createdAt: string;
   updatedAt?: string;
   closedAt?: string | null;

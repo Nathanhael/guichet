@@ -24,7 +24,9 @@ export async function findPartnerDepartments(partnerId: string): Promise<Partner
 
 /**
  * Transfers a ticket to a new department.
- * Clears support assignment and re-opens the ticket.
+ * Clears support assignment and re-opens the ticket. Bumps queue_entered_at
+ * so the ticket joins the new department's queue at NOW() instead of
+ * jumping ahead based on its original creation time.
  */
 export async function transferTicketToDepartment(ticketId: string, departmentId: string): Promise<void> {
   await db
@@ -34,6 +36,7 @@ export async function transferTicketToDepartment(ticketId: string, departmentId:
       supportId: null,
       supportName: null,
       status: 'open',
+      queueEnteredAt: new Date().toISOString(),
     })
     .where(eq(tickets.id, ticketId));
 }
