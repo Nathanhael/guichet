@@ -75,6 +75,8 @@ services:
     depends_on:
       server:
         condition: service_healthy
+      client:
+        condition: service_healthy
 
   redis:
     image: redis:8-alpine
@@ -101,6 +103,14 @@ services:
     depends_on:
       server:
         condition: service_healthy
+    # Vite dev server takes a while to spin up on cold start (deps + first
+    # transform). start_period gives it room before failed probes count.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5173/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   prometheus:
     image: prom/prometheus:latest
