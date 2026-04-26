@@ -7,6 +7,7 @@
 import type { Server } from 'socket.io';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
+import { broadcastQueuePositions } from '../businessHours.js';
 import type { Effect } from './types.js';
 
 /**
@@ -38,6 +39,13 @@ export function applyEffects(io: Server, effects: Effect[]): void {
           io.to(Rooms.ticketPreview(effect.ticketId)).emit('ticket:preview:invalidate', {
             ticketId: effect.ticketId,
           });
+          break;
+        case 'broadcastQueue':
+          // Fire-and-forget — the queue rebroadcast is a best-effort
+          // post-commit nicety. We swallow the promise here so a slow
+          // broadcast can't extend the latency of the original event;
+          // the broadcastQueuePositions helper logs its own errors.
+          void broadcastQueuePositions(effect.partnerId);
           break;
         default: {
           // Exhaustiveness check — TypeScript will complain when a new
