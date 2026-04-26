@@ -1,26 +1,18 @@
-import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import useStore, { useStoreShallow } from '../../store/useStore';
 import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
 import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send, ALargeSmall } from 'lucide-react';
-import { EditorContent, type Editor } from '@tiptap/react';
+import { EditorContent } from '@tiptap/react';
 import FormatToolbar from './FormatToolbar';
 import LinkPreviewCard from './LinkPreviewCard';
 import Toast from '../Toast';
-import CannedResponsePicker from '../CannedResponsePicker';
 import { getFileTypeLabel } from '../../utils/fileUtils';
-import { useComposeEditor, getEditorMarkdown } from '../../hooks/useComposeEditor';
-import { useComposeDraft } from '../../hooks/useComposeDraft';
-import { useComposeTyping } from '../../hooks/useComposeTyping';
+import { useComposeEditor } from '../../hooks/useComposeEditor';
 import { useComposeAttachments } from '../../hooks/useComposeAttachments';
 import { useComposeLinkPreview } from '../../hooks/useComposeLinkPreview';
 import { useComposeAiImprove } from '../../hooks/useComposeAiImprove';
-import { useComposeEmojiPicker } from '../../hooks/useComposeEmojiPicker';
-import { useComposeCanned } from '../../hooks/useComposeCanned';
-import { EMOJI_LIST } from '../../utils/emojiData';
-import EmojiSuggestion from './EmojiSuggestion';
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
@@ -58,18 +50,10 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   const setLastRejection = useStore((s) => s.setLastRejection);
   const t = useT();
 
-  const [text, setText] = useState('');
   const [whisperMode, setWhisperMode] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'error' | 'success' } | null>(null);
   const [showFormatToolbar, setShowFormatToolbar] = useState(false);
 
-  // Draft persistence — one key per (user, ticket, mode). Each support agent
-  // keeps their own in-progress reply across reloads, and whisper vs regular
-  // mode stay separate so a private note can't leak into a public reply.
-  // The hook owns hydrate + 400ms debounced save + module-level 24h TTL purge.
-  const draftKey = `guichet:draft:${user?.id || 'anon'}:${ticket.id}:${whisperMode ? 'whisper' : 'regular'}`;
-  useComposeDraft({ user, ticketId: ticket.id, whisperMode, text, setText });
-  const { emit: emitTyping, stop: stopTyping } = useComposeTyping({ ticket, whisperMode });
   const {
     pendingFiles,
     uploading,
@@ -97,178 +81,32 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     },
   });
 
-  // Latest-editor ref — populated via useEffect after useComposeEditor
-  // returns. Used by useComposeEmojiPicker so the hook can be declared
-  // BEFORE useComposeEditor (the editor's onUpdate/onSubmit/onEscape
-  // closures reference emojiHook methods, so the hook must exist when
-  // those closures are created).
-  const editorRef = useRef<Editor | null>(null);
-  const emojiHook = useComposeEmojiPicker({ editorRef, text, setText });
-  const cannedHook = useComposeCanned({ editorRef, setText, isSupport });
-
-  // Tiptap editor — the actual interactive surface. text/setText remains
-  // the authoritative store for draft persistence, character counter,
-  // canned-response trigger, and doSend; the editor's onUpdate callback
-  // keeps `text` in lockstep with the markdown representation. All
-  // programmatic content changes (drafts hydrate, AI improve, canned,
-  // emoji, send-clear) must call BOTH setText(...) AND
-  // editor?.commands.setContent(...) so the two stay in sync.
-  const editor = useComposeEditor({
+  // Single deep hook — owns the Tiptap editor, draft persistence, typing
+  // emit, emoji picker (suggestion + grid), and canned picker. Replaces
+  // the prior 5-hook surface (useComposeEditor + useComposeDraft +
+  // useComposeTyping + useComposeEmojiPicker + useComposeCanned) along
+  // with their cross-hook plumbing (ping-pong guard, hook-order
+  // convention, manual editor-refs).
+  const compose = useComposeEditor({
+    ticket,
+    user,
+    whisperMode,
+    isSupport,
     placeholder: whisperMode
-      ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
-      : (t('type_message') || 'Type a message\u2026'),
-    onUpdate: (markdown) => {
-      // Short-circuit the write-back when the update was triggered by
-      // our own programmatic setContent (draft hydrate / AI improve /
-      // canned pick / clear-on-send). Without this guard the markdown
-      // round-trip could ping-pong between text state and editor state
-      // on lossy serializations (trailing newlines, list marker
-      // normalization, etc.).
-      if (isProgrammaticUpdateRef.current) return;
-      setText(markdown);
-      cannedHook.syncFromMarkdown(markdown);
-      emojiHook.syncQuery(markdown);
-      emitTyping();
-    },
-    onSubmit: () => {
-      if (emojiHook.query) return; // Enter selects emoji, don't send
-      sendMessage();
-    },
+      ? (t('whisper_placeholder') || 'Private note for support staff…')
+      : (t('type_message') || 'Type a message…'),
+    onSubmit: () => sendMessage(),
     onEscape: () => {
-      if (emojiHook.query) { emojiHook.clearQuery(); return; }
-      if (cannedHook.isOpen) { cannedHook.close(); return; }
       if (replyingTo && onClearReply) onClearReply();
     },
   });
 
-  useEffect(() => { editorRef.current = editor; }, [editor]);
-
-  // Guard flag: when we programmatically call setContent below, Tiptap's
-  // onUpdate may still fire (some versions of tiptap-markdown hook it
-  // internally regardless of emitUpdate). The flag lets the onUpdate
-  // callback short-circuit and not write back into `text`, preventing a
-  // potential ping-pong loop when the markdown round-trip isn't lossless.
-  const isProgrammaticUpdateRef = useRef(false);
-
-  // Push text state into the editor when it was set programmatically
-  // (draft hydrate, AI improve/revert, canned pick, clear-on-send). We
-  // avoid re-setting content that already matches the editor's current
-  // markdown, otherwise onUpdate would re-fire and bounce the value.
-  //
-  // Same Tiptap view-Proxy gotcha as the placeholder effect above:
-  // `commands.setContent` ultimately calls `view.dispatch`, which throws
-  // synchronously when the view isn't mounted yet. Currently masked because
-  // `text` is empty on first mount and the `getEditorMarkdown(...) === text`
-  // short-circuit fires — but a draft-hydrated mount during the lazy-load
-  // race window would land in the same trap. Wrap in try-catch and let the
-  // next text change retry once the view exists. See learning page
-  // `learnings/guichet-tiptap-view-proxy-throw` in the cross-project wiki.
-  useEffect(() => {
-    if (!editor) return;
-    if (getEditorMarkdown(editor) === text) return;
-    isProgrammaticUpdateRef.current = true;
-    try {
-      editor.commands.setContent(text, { emitUpdate: false });
-    } catch {
-      // View not yet mounted — Tiptap's Proxy throws here. Reset the
-      // guard flag and bail out; the effect will re-run on the next
-      // `text` change once the view is up.
-      isProgrammaticUpdateRef.current = false;
-      return;
-    }
-    // Clear on the next microtask so any synchronous onUpdate triggered
-    // by setContent is suppressed, but future real keystrokes are not.
-    queueMicrotask(() => { isProgrammaticUpdateRef.current = false; });
-  }, [editor, text]);
-
-  const { livePreview, dismiss: dismissPreview } = useComposeLinkPreview({ text });
-
-  // Dynamic placeholder — Tiptap's Placeholder extension stores the value
-  // at editor construction time and doesn't reactively pick up prop
-  // changes on re-render. Imperatively update the ProseMirror root's
-  // data-placeholder attribute when whisperMode toggles so the empty-state
-  // pseudo-element CSS rule reads the new text.
-  //
-  // Subtle Tiptap quirk: `editor.view` is a Proxy (see @tiptap/core
-  // Editor.ts ~L320-L350). It's always truthy — optional chaining does NOT
-  // short-circuit it — and accessing any key besides a small stub set
-  // (`composing`, `dragging`, `editable`, `isDestroyed`, `state`) THROWS
-  // "[tiptap error]: The editor view is not available" until the underlying
-  // view is mounted. With ComposeArea now lazy-loaded under a Suspense
-  // boundary, the gap between `useEditor()` returning the instance and
-  // EditorContent committing its ref is wide enough to consistently hit this
-  // throw. Wrap the access in a try-catch and re-run on the editor's
-  // `create` event so the placeholder lands as soon as the view exists.
-  useEffect(() => {
-    if (!editor) return;
-    const apply = () => {
-      if (editor.isDestroyed) return;
-      const next = whisperMode
-        ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
-        : (t('type_message') || 'Type a message\u2026');
-      try {
-        editor.view.dom.setAttribute('data-placeholder', next);
-      } catch {
-        // View not yet mounted — Tiptap's Proxy throws synchronously here.
-        // The 'create' listener below will re-invoke apply() once it is.
-        return;
-      }
-      // Also patch the Placeholder extension's stored options so empty-state
-      // renders on initial mount before the first keystroke.
-      const placeholderExt = editor.extensionManager.extensions.find(
-        (ext: { name: string }) => ext.name === 'placeholder',
-      ) as { options: { placeholder: string } } | undefined;
-      if (placeholderExt) {
-        placeholderExt.options.placeholder = next;
-      }
-    };
-    apply();
-    editor.on('create', apply);
-    return () => {
-      editor.off('create', apply);
-    };
-  }, [editor, whisperMode, t]);
-
-  // Queue focus requests that arrive before the editor view is mounted.
-  // Alt+1..9 / Alt+Up/Down switches to a just-mounted ChatWindow and calls
-  // focus immediately; useEditor is async, so the first call usually hits
-  // a null editor (or a Proxy whose view isn't ready yet and throws — see
-  // the placeholder comment above). The `create` listener flushes any
-  // pending focus as soon as the view mounts.
-  // Seed true so the caret lands in the compose bar as soon as the chat
-  // appears — covers normal tab switches, split-view activation (compose
-  // unmounts/remounts when the selected chat changes), and initial open.
-  // The existing flush effect below drains the flag on editor 'create'.
-  const pendingFocusRef = useRef(true);
-  const tryFocus = useCallback(() => {
-    if (!editor || editor.isDestroyed) return false;
-    try {
-      editor.commands.focus();
-      return true;
-    } catch {
-      return false;
-    }
-  }, [editor]);
+  const { livePreview, dismiss: dismissPreview } = useComposeLinkPreview({ text: compose.text });
 
   useImperativeHandle(ref, () => ({
     toggleWhisper: () => setWhisperMode((v) => !v),
-    focus: () => {
-      if (!tryFocus()) pendingFocusRef.current = true;
-    },
-  }), [tryFocus]);
-
-  useEffect(() => {
-    if (!editor) return;
-    const flush = () => {
-      if (!pendingFocusRef.current) return;
-      if (tryFocus()) pendingFocusRef.current = false;
-    };
-    flush();
-    editor.on('create', flush);
-    return () => {
-      editor.off('create', flush);
-    };
-  }, [editor, tryFocus]);
+    focus: () => compose.focus(),
+  }), [compose]);
 
   // Surface server-side rejection of outgoing messages as a localized toast
   // for the currently-open ticket. The matching optimistic bubble is removed
@@ -294,8 +132,11 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     improveAndSend,
     reset: resetAiImprove,
   } = useComposeAiImprove({
-    text,
-    setText,
+    text: compose.text,
+    // replaceText keeps the editor and the text mirror in lockstep and
+    // suppresses the typing emit during the rewrite — exactly what AI
+    // improve needs.
+    setText: compose.replaceText,
     isSupport,
     aiConfig,
     doSend: (finalText) => doSend(finalText),
@@ -373,7 +214,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       // back. Soft info toast tells the user their message will land shortly.
       // If reconnect doesn't complete within 10s, surface the real error and
       // mark the optimistic bubble as failed so they can retry manually.
-      setToast({ message: t('reconnecting_queue') || 'Reconnecting \u2014 your message will send in a moment\u2026', type: 'success' });
+      setToast({ message: t('reconnecting_queue') || 'Reconnecting — your message will send in a moment…', type: 'success' });
       const timeoutHandle = setTimeout(() => {
         socket.off('connect', onConnect);
         useStore.getState().updateMessageState(ticket.id, localId, { pending: false });
@@ -387,20 +228,20 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       };
       socket.once('connect', onConnect);
     }
-    setText('');
+    // compose.clear() empties the editor, removes the persisted draft,
+    // and stops the typing indicator in one call — replacing the prior
+    // setText('') + editor.commands.setContent('') + stopTyping() +
+    // localStorage.removeItem(draftKey) sequence.
+    compose.clear();
     resetAiImprove();
     clearMedia();
-    stopTyping();
-    // Clear any persisted draft for this (user, ticket, mode) — the message
-    // is now sent, the half-written state is no longer relevant.
-    localStorage.removeItem(draftKey);
     if (onClearReply) onClearReply();
   }
 
   function sendMessage(e?: React.SyntheticEvent<HTMLFormElement>) {
     if (e) e.preventDefault();
     if (uploading) return; // Wait for upload to finish
-    const trimmed = text.trim();
+    const trimmed = compose.text.trim();
     if (!trimmed && pendingFiles.length === 0) return;
 
     // In 'forced' mode, auto-improve before sending
@@ -413,6 +254,16 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   }
 
   if (isClosed) return null;
+
+  // Character counter — read visual chars (not markdown bytes) from the
+  // CharacterCount extension so the UI matches the server's 5000-char cap
+  // (which also counts visual chars).
+  const editor = compose.editor;
+  const charCount = (() => {
+    if (!editor) return compose.text.length;
+    const extStorage = editor.storage as unknown as { characterCount?: { characters(): number } };
+    return extStorage.characterCount?.characters() ?? compose.text.length;
+  })();
 
   return (
     <form onSubmit={sendMessage} className={`border-t border-[var(--color-border)] p-4 pb-5 ${whisperMode
@@ -580,101 +431,51 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             />
           </label>
 
-          {/* Emoji picker — hidden in compact mode */}
+          {/* Emoji picker — hidden in compact mode. Anchor ref + toggle
+              live in the hook; the popup renders inside <PickerPortals /> below. */}
           {!compact && (
-          <div className="relative" ref={emojiHook.pickerRef}>
+          <div className="relative" ref={compose.emojiAnchorRef}>
             <button
               type="button"
-              onClick={emojiHook.toggle}
+              onClick={compose.toggleEmojiGrid}
               aria-label={t('emoji') || 'Emoji'}
-              aria-expanded={emojiHook.isOpen}
+              aria-expanded={compose.isEmojiGridOpen}
               className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
               title={t('emoji') || 'Emoji'}
             >
               <Smile size={18} />
             </button>
-            {emojiHook.isOpen && typeof document !== 'undefined' && createPortal(
-              <div
-                ref={emojiHook.gridRef}
-                role="grid"
-                aria-label={t('emoji') || 'Emoji'}
-                style={emojiHook.position
-                  ? { position: 'fixed' as const, bottom: emojiHook.position.bottom, left: emojiHook.position.left }
-                  : { display: 'none' as const }}
-                className="bg-[var(--color-bg-surface)] border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] z-[60] p-2 w-[280px]"
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') { emojiHook.close(); return; }
-                  const btns = Array.from(e.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
-                  const idx = btns.indexOf(e.target as HTMLButtonElement);
-                  if (idx < 0) return;
-                  const cols = 8;
-                  let next = -1;
-                  if (e.key === 'ArrowRight') next = (idx + 1) % btns.length;
-                  else if (e.key === 'ArrowLeft') next = (idx - 1 + btns.length) % btns.length;
-                  else if (e.key === 'ArrowDown') next = Math.min(idx + cols, btns.length - 1);
-                  else if (e.key === 'ArrowUp') next = Math.max(idx - cols, 0);
-                  if (next >= 0) { e.preventDefault(); btns[next].focus(); }
-                }}
-              >
-                <div className="grid grid-cols-8 gap-0.5">
-                  {EMOJI_LIST.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      aria-label={emoji}
-                      onClick={() => emojiHook.insert(emoji)}
-                      className="w-8 h-8 flex items-center justify-center text-lg rounded-[var(--radius-btn)] hover:bg-[var(--color-hover)]"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>,
-              document.body
-            )}
           </div>
           )}
         </div>
 
         <div className="relative flex-1">
-          {isSupport && cannedHook.isOpen && (
-            <CannedResponsePicker
-              inputText={text}
-              dept={ticket.dept}
-              ticketId={ticket.id}
-              onSelect={cannedHook.insert}
-              onClose={cannedHook.close}
-            />
-          )}
-          {emojiHook.query && (
-            <EmojiSuggestion
-              query={emojiHook.query}
-              onSelect={emojiHook.selectSuggestion}
-              onClose={emojiHook.clearQuery}
-            />
-          )}
-          {/* Tiptap WYSIWYG editor — replaces the plain textarea. Onkeydown
-              for Enter=send / Escape=dismiss is handled inside
-              useComposeEditor via editorProps.handleKeyDown; paste/drop
-              events still bubble to the outer wrapper's handlePaste/onDrop. */}
+          {/* PickerPortals owns the emoji suggestion (':word'), the emoji
+              grid (smile-button trigger), and the canned-response picker
+              (support '/' trigger + Alt+J global event). All three were
+              previously parent-rendered. */}
+          <compose.PickerPortals />
+          {/* Tiptap WYSIWYG editor. Keydown / paste / drop are all wired
+              inside the hook (Enter=send, Escape=cascade, paste/drop
+              forwarded to attachments). */}
           <div onPaste={handlePaste} aria-label="Type a message">
             <EditorContent
               editor={editor}
               data-placeholder={
               uploading
-                ? (t('uploading') || 'Uploading\u2026')
+                ? (t('uploading') || 'Uploading…')
                 : pendingFiles.length > 0
                   ? (t('add_message_or_send') || 'Add a message or press Enter to send')
                   : whisperMode
-                    ? (t('whisper_placeholder') || 'Private note for support staff\u2026')
-                    : (t('type_message') || 'Type a message\u2026')
+                    ? (t('whisper_placeholder') || 'Private note for support staff…')
+                    : (t('type_message') || 'Type a message…')
             }
             />
           </div>
         </div>
 
         {/* AI Improve button -- only in 'optional' mode */}
-        {improvementMode === 'optional' && text.trim().length >= 10 && !originalText && (
+        {improvementMode === 'optional' && compose.text.trim().length >= 10 && !originalText && (
           <button
             type="button"
             onClick={handleImprove}
@@ -693,7 +494,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
         <button
           type="submit"
-          disabled={uploading || improving || (!text.trim() && pendingFiles.length === 0)}
+          disabled={uploading || improving || (!compose.text.trim() && pendingFiles.length === 0)}
           aria-label={t('send') || 'Send'}
           className={`${compact ? 'w-9 h-9 rounded-full' : 'h-9 px-3 rounded-[var(--radius-pill)]'} flex items-center ${compact ? 'justify-center' : 'gap-2'} text-[12px] font-semibold text-white disabled:opacity-40 shadow-[var(--shadow-soft)] hover:opacity-90 transition-opacity ${
             whisperMode ? 'bg-[var(--color-whisper-ink)]' : 'bg-[var(--color-accent)]'
@@ -716,26 +517,15 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
         </div>{/* /unified compose box */}
 
-        {/* Character counter — reads visual characters from the Tiptap
-            CharacterCount extension (not markdown-source bytes), so the
-            UI number matches the server-side validation cap.
-            `text.length` would count "**" wrapper characters as real
-            content, which doesn't match what the user perceives. */}
-        {(() => {
-          if (!editor) return null;
-          const extStorage = editor.storage as unknown as { characterCount?: { characters(): number } };
-          const count = extStorage.characterCount?.characters() ?? text.length;
-          if (count <= 3500) return null;
-          return (
-            <div className="flex justify-end mt-1 pr-1">
-              <span className={`font-mono text-[11px] tabular-nums ${
-                count >= 5000 ? 'text-[var(--color-urgent)]' : count >= 4500 ? 'text-[var(--color-accent-amber)]' : 'text-[var(--color-ink-muted)]'
-              }`}>
-                {count} / 5000
-              </span>
-            </div>
-          );
-        })()}
+        {charCount > 3500 && (
+          <div className="flex justify-end mt-1 pr-1">
+            <span className={`font-mono text-[11px] tabular-nums ${
+              charCount >= 5000 ? 'text-[var(--color-urgent)]' : charCount >= 4500 ? 'text-[var(--color-accent-amber)]' : 'text-[var(--color-ink-muted)]'
+            }`}>
+              {charCount} / 5000
+            </span>
+          </div>
+        )}
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </form>
