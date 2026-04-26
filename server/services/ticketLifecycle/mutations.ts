@@ -1,13 +1,12 @@
 /**
  * Private: ticket-row mutations executed INSIDE the lifecycle transaction.
- * In PR 6 the corresponding public helpers in `services/ticketQueries.ts`
- * (`returnTicketToQueue` etc.) are deleted; until then they continue to
- * exist for the call sites that haven't been migrated yet. The lifecycle
- * uses these private versions so the surrounding txn semantics are honored.
- *
- * Read-side helpers (`findTicketForJoin/Close/Transfer/Participants/...`)
- * stay shared in `ticketQueries.ts` because `partnerScope` guards depend on
- * them. Only the *mutation* slice is being absorbed.
+ * The corresponding public helpers in `services/ticketQueries.ts`
+ * (`returnTicketToQueue`, `closeTicket`, `createTicket`,
+ * `transferTicketToDepartment`, `assignSupport`, etc.) were deleted in
+ * PR 6 of the deepening refactor — there is no public way to mutate a
+ * ticket row outside the lifecycle anymore. Read-side helpers
+ * (`findTicketForJoin/Close/Transfer/Participants/...`) stay shared in
+ * `ticketQueries.ts` because `partnerScope` guards depend on them.
  */
 import { sql } from 'drizzle-orm';
 
