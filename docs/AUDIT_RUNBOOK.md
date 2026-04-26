@@ -27,7 +27,7 @@ Treat this as the first document to open when:
 | Daily scheduler | `server/services/chainVerifySchedule.ts::scheduleDailyChainVerify` | Armed at boot with a 10–40m startup jitter, then a 24h interval. Uses synthetic actor `system-scheduler`. |
 | Platform verify UI | `client/src/components/admin/PlatformSystemHealth.tsx` | "Verify chain" button + staleness banner + run history table + CSV export. |
 | Partner verify UI | `client/src/components/admin/PartnerAuditVerify.tsx` | Per-tenant verify button — returns the partner-scoped slice only. |
-| Ticket lifecycle emitter | `server/services/ticketAudit.ts` | Fire-and-forget audit writes for ticket.created/closed/assigned/transferred/returned_to_queue/reopened. Increments `guichet_ticket_audit_events_total` BEFORE the DB write. |
+| Ticket lifecycle module | `server/services/ticketLifecycle/` | Owns every state transition that produces an audit row. Emits ticket.created / closed / assigned / transferred / returned_to_queue / reopened / **left / reclaimed**. The audit insert runs INSIDE the lifecycle transaction — a DB failure rolls back the whole event (intentional behavior change from the legacy fire-and-forget emitter). The action counter `guichet_ticket_audit_events_total` is still incremented before the DB write so the metric reflects user-observable reality even on rollback. |
 | GDPR purge | `server/services/gdpr.ts::runDailyPurge` | Daily retention enforcement. Emits `guichet_gdpr_purge_runs_total` and `guichet_gdpr_rows_purged_total`. Refuses to run if the chain fails to verify. |
 
 ---
@@ -188,18 +188,24 @@ Triggered by: `TicketAuditEmitterSilenced` Prometheus alert.
 The ticket lifecycle counter went from nonzero to zero without a
 corresponding drop in ticket traffic. Likely causes:
 
-1. A recent deploy broke the call sites (ticket router, socket handler, or
-   transfer service no longer invokes `auditTicket*()`).
-2. `db.insert(auditLog)` is hard-failing in the fire-and-forget path —
-   search logs for `[ticketAudit]` errors.
-3. Only closed and transferred tickets are being created (e.g. during an
-   off-hours batch import that bypasses the user-facing paths). Confirm by
-   checking the live ticket table.
+1. A recent deploy broke the lifecycle factory wiring in `server/app.ts`
+   (`createTicketLifecycle({ db })`) or stopped passing `lifecycle` into
+   `HandlerContext` — the socket handlers would still respond but no
+   verb would actually run.
+2. `tx.insert(auditLog)` is failing inside the lifecycle transaction. Unlike
+   the pre-deepening emitter (which was fire-and-forget), this aborts the
+   whole transition — search logs for transaction-rollback errors and for
+   the lifecycle's own thrown errors. The mutation will also have rolled
+   back, so user-facing operations are visibly failing too.
+3. The boot-time reclaim sweep in `server/services/ticketReclaim.ts` is the
+   only background path that bumps the counter without a live event — if
+   the sweep is disabled (`RECLAIM_TIMEOUT_MINS=0`) and live traffic is low,
+   a quiet window is expected.
 
 Confirmation: open any admin ticket audit drawer. If rows are missing for
-tickets created in the silent window, the emitter wiring is the root
+tickets created in the silent window, the lifecycle wiring is the root
 cause. Re-deploy with the fix; the counter should resume ticking within
-the next create/close/transfer action.
+the next create/close/assign/transfer/leave/reclaim action.
 
 ---
 
@@ -270,8 +276,9 @@ Dashboard: `monitoring/grafana/dashboards/guichet.json`.
 | Scheduler uses synthetic actor and marks `metadata.scheduled=true` | `server/services/__tests__/chainVerifySchedule.test.ts` |
 | Partner verify passes partnerId; returns scoped slice; nulls brokenAt cross-tenant | `server/trpc/routers/__tests__/partnerVerifyChain.test.ts` |
 | Partner verify rate limit is per-(partner+user) and fails open | `server/trpc/routers/__tests__/partnerVerifyChain.test.ts` |
-| Ticket emitter increments metric before db.insert (ordering invariant) | `server/services/__tests__/ticketAudit.test.ts` |
-| Ticket emitter DB failure does not surface to caller | `server/services/__tests__/ticketAudit.test.ts` |
+| Ticket emitter increments metric before db.insert (ordering invariant) | `server/services/ticketLifecycle/audit.ts` (asserted indirectly by every lifecycle verb test — the metric tick is the first line of `writeAudit`) |
+| Audit write rolls back the whole lifecycle event on FK violation | `server/services/ticketLifecycle/{reclaim,leave,returnToQueue,assign,transfer,close,create}.test.ts` (each suite has a "transactional rollback" boundary case) |
+| `ticket.left` and `ticket.reclaimed` audit rows land for every leave / reclaim | `server/services/ticketLifecycle/{leave,reclaim}.test.ts` (audit-invariant assertion in the happy path + the "secondary leaves" case for `ticket.left`) |
 | Audit drawer opens from TicketPreview and fires getForTicket | `testing/e2e/admin-ticket-audit-drawer.spec.ts` |
 
 If any of these tests need to be weakened, assume the invariant itself is
