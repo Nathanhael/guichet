@@ -1,13 +1,12 @@
 import { useState } from 'react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { Pencil, X, Search, Users, Shield, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText, AlertTriangle } from 'lucide-react';
 import Toast from '../Toast';
 import ConfirmDialog from '../ConfirmDialog';
-import GuestBadge from '../GuestBadge';
 import MemberAuditDrawer from './MemberAuditDrawer';
-import AgentStatusStats from './AgentStatusStats';
 import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 // Shared Soft Product style constants — mirrors the other admin panels.
@@ -33,8 +32,9 @@ export default function AdminTeam() {
   const [page, setPage] = useState(0);
   const [roleFilter, setRoleFilter] = useState<'agent' | 'support' | ''>('');
   const [dormantOnly, setDormantOnly] = useState(false);
+  const [guestsOnly, setGuestsOnly] = useState(false);
   const [auditUserId, setAuditUserId] = useState<{ id: string; name: string } | null>(null);
-  const LIMIT = 20;
+  const LIMIT = 12;
 
   const utils = trpc.useUtils();
   const invalidate = () => {
@@ -47,10 +47,12 @@ export default function AdminTeam() {
       offset: page * LIMIT,
       search: search.trim() || undefined,
       role: roleFilter || undefined,
-      excludeAdmin: true,
+      excludeAdmin: false,
+      excludePending: true,
       dormant: dormantOnly || undefined,
+      isExternal: guestsOnly || undefined,
     },
-    { enabled: !!activeMembershipId }
+    { enabled: !!activeMembershipId, placeholderData: keepPreviousData }
   );
 
   const displayData = data ?? [];
@@ -58,13 +60,15 @@ export default function AdminTeam() {
   const { data: stats } = trpc.partner.memberStats.useQuery(undefined, {
     enabled: !!activeMembershipId,
   });
-  const { data: admins } = trpc.partner.listAdmins.useQuery(undefined, {
-    enabled: !!activeMembershipId && !isExternal,
-  });
+  const { data: pendingInvites } = trpc.partner.listMembers.useQuery(
+    { limit: 50, offset: 0, excludeAdmin: false, pendingInvite: true },
+    { enabled: !!activeMembershipId && !isExternal }
+  );
   const total = stats?.total ?? 0;
   const supportCount = stats?.support ?? 0;
   const agentCount = stats?.agents ?? 0;
   const dormantCount = stats?.dormant ?? 0;
+  const guestsCount = stats?.guests ?? 0;
 
   const removeMutation = trpc.partner.removeMember.useMutation({
     onSuccess: invalidate,
@@ -85,20 +89,30 @@ export default function AdminTeam() {
   const handleRoleFilter = (role: '' | 'agent' | 'support') => {
     setRoleFilter(role);
     setDormantOnly(false);
+    setGuestsOnly(false);
     setPage(0);
   };
 
   const handleDormantFilter = () => {
     setRoleFilter('');
+    setGuestsOnly(false);
     setDormantOnly(!dormantOnly);
+    setPage(0);
+  };
+
+  const handleGuestsFilter = () => {
+    setRoleFilter('');
+    setDormantOnly(false);
+    setGuestsOnly(!guestsOnly);
     setPage(0);
   };
 
   const pillBase = 'h-7 px-2.5 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] text-[12px] font-medium transition-colors whitespace-nowrap';
   const filters: Array<{ key: string; label: string; count: number; active: boolean; handler: () => void }> = [
-    { key: 'all', label: 'All', count: total, active: !roleFilter && !dormantOnly, handler: () => handleRoleFilter('') },
+    { key: 'all', label: 'All', count: total, active: !roleFilter && !dormantOnly && !guestsOnly, handler: () => handleRoleFilter('') },
     { key: 'support', label: 'Support', count: supportCount, active: roleFilter === 'support', handler: () => handleRoleFilter('support') },
     { key: 'agents', label: 'Agents', count: agentCount, active: roleFilter === 'agent', handler: () => handleRoleFilter('agent') },
+    { key: 'guests', label: 'Guest B2B', count: guestsCount, active: guestsOnly, handler: handleGuestsFilter },
   ];
 
   return (
@@ -116,26 +130,6 @@ export default function AdminTeam() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
-          <div className="relative min-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-ink-muted)] pointer-events-none" aria-hidden />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-              placeholder={t('filter_members_placeholder')}
-              aria-label={t('filter_members_placeholder')}
-              className={`${INPUT} pl-8 pr-8 w-full`}
-            />
-            {search && (
-              <button
-                onClick={() => setSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
-                aria-label="Clear search"
-              >
-                <X className="h-3 w-3" aria-hidden />
-              </button>
-            )}
-          </div>
           {dormantCount > 0 && (
             <button
               onClick={handleDormantFilter}
@@ -150,17 +144,6 @@ export default function AdminTeam() {
               {dormantCount} stale {dormantCount === 1 ? 'guest' : 'guests'}
             </button>
           )}
-          <button
-            onClick={() => setShowInviteModal(true)}
-            disabled={isExternal}
-            aria-disabled={isExternal || undefined}
-            title={isExternal ? guestTooltip : undefined}
-            data-guest-disabled={isExternal || undefined}
-            className={`${PRIMARY_BTN} whitespace-nowrap`}
-          >
-            <UserPlus className="h-3.5 w-3.5" aria-hidden />
-            Invite external
-          </button>
         </div>
       </div>
 
@@ -183,52 +166,102 @@ export default function AdminTeam() {
         ))}
       </div>
 
-      {/* Admins — read-only row. Provisioned via Azure SSO group mapping, so this
-          UI intentionally doesn't allow adding or removing admins. Each chip opens
-          the per-user audit drawer for traceability. Hidden for B2B guest admins —
-          they shouldn't see the internal admin roster. */}
-      {!isExternal && admins && admins.length > 0 && (
+      {/* B2B Guests — invite + pending Azure handoff list. Internal SSO members
+          are not shown here (they self-provision via Azure group mapping). Hidden
+          from B2B guest admins themselves. */}
+      {!isExternal && (
         <div className={`${CARD} px-4 py-3`}>
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2 shrink-0">
-              <Shield className="h-4 w-4 text-[var(--color-accent)]" aria-hidden />
+              <AlertTriangle className="h-4 w-4 text-[var(--color-accent-amber)]" aria-hidden />
               <div>
-                <span className="text-[13px] font-semibold text-[var(--color-ink)]">Partner admins</span>
-                <p className="text-[11px] text-[var(--color-ink-muted)]">Provisioned via Azure SSO — read-only</p>
+                <span className="text-[13px] font-semibold text-[var(--color-ink)]">B2B Guest invites</span>
+                <p className="text-[11px] text-[var(--color-ink-muted)]">
+                  {pendingInvites && pendingInvites.length > 0
+                    ? `${pendingInvites.length} awaiting Azure tenant registration`
+                    : 'No pending invites — invite an external partner to start'}
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-1.5 flex-1">
-              {admins.map((a) => (
-                <button
-                  key={a.membershipId}
-                  type="button"
-                  onClick={() => setAuditUserId({ id: a.userId, name: a.name })}
-                  title={a.email || undefined}
-                  className="inline-flex items-center gap-2 pl-1 pr-2.5 h-7 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] transition-colors group/chip"
+              {pendingInvites?.map((p) => (
+                <span
+                  key={p.membershipId}
+                  title={p.email || undefined}
+                  className="inline-flex items-center gap-2 pl-1 pr-2.5 h-7 rounded-[var(--radius-pill)] bg-[color-mix(in_srgb,var(--color-accent-amber)_14%,transparent)]"
                 >
-                  <span className="w-5 h-5 rounded-full bg-[var(--color-accent-soft)] text-[var(--color-accent)] flex items-center justify-center text-[9px] font-semibold">
-                    {a.name?.slice(0, 2).toUpperCase()}
+                  <span className="w-5 h-5 rounded-full bg-[var(--color-accent-amber)] text-white flex items-center justify-center text-[9px] font-semibold">
+                    {p.name?.slice(0, 2).toUpperCase()}
                   </span>
-                  <span className="text-[12px] text-[var(--color-ink)] truncate max-w-[160px]">{a.name}</span>
-                  <GuestBadge isExternal={a.isExternal} />
-                  <FileText className="h-3 w-3 text-[var(--color-ink-muted)] opacity-0 group-hover/chip:opacity-100 transition-opacity" aria-hidden />
-                </button>
+                  <span className="text-[12px] text-[var(--color-ink)] truncate max-w-[160px]">{p.name}</span>
+                  <span className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{p.role}</span>
+                </span>
               ))}
             </div>
+            <button
+              onClick={() => setShowInviteModal(true)}
+              className={`${PRIMARY_BTN} whitespace-nowrap shrink-0`}
+            >
+              <UserPlus className="h-3.5 w-3.5" aria-hidden />
+              Invite B2B guest
+            </button>
           </div>
         </div>
       )}
 
-      {isLoading ? (
-        <div className={`${CARD} flex-1 flex flex-col items-center justify-center py-24`}>
-          <div className="w-8 h-8 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin mb-3" aria-hidden />
-          <p className="text-[12px] text-[var(--color-ink-muted)]">Loading directory…</p>
-        </div>
-      ) : (
-        <div className={`${CARD} overflow-hidden flex-1 min-h-0 flex flex-col`}>
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
+      <div className={`${CARD} overflow-hidden flex flex-col`}>
+          <div className="px-4 py-2.5 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 text-[12px] text-[var(--color-ink-muted)]">
+              <span>
+                Showing <span className="text-[var(--color-ink)] tabular-nums">{displayData.length}</span> {displayData.length === 1 ? 'member' : 'members'}
+              </span>
+              <span className="text-[var(--color-border)]">|</span>
+              <span>
+                Page <span className="text-[var(--color-ink)] tabular-nums">{page + 1}</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="relative w-[260px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--color-ink-muted)] pointer-events-none" aria-hidden />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                  placeholder={t('filter_members_placeholder')}
+                  aria-label={t('filter_members_placeholder')}
+                  className={`${INPUT} pl-8 pr-8 w-full`}
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3 w-3" aria-hidden />
+                  </button>
+                )}
+              </div>
+              <button
+                disabled={page === 0}
+                onClick={() => setPage(p => p - 1)}
+                className={SECONDARY_BTN}
+              >
+                <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+                Previous
+              </button>
+              <button
+                disabled={displayData.length < LIMIT}
+                onClick={() => setPage(p => p + 1)}
+                className={SECONDARY_BTN}
+              >
+                Next
+                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full border-collapse">
-              <thead className="sticky top-0 z-10 bg-[var(--color-bg-surface)] shadow-[0_1px_0_var(--color-border)]">
+              <thead className="bg-[var(--color-bg-surface)] shadow-[0_1px_0_var(--color-border)]">
                 <tr>
                   <th className={COL_HEAD}>Identity</th>
                   <th className={COL_HEAD}>Role</th>
@@ -236,8 +269,15 @@ export default function AdminTeam() {
                   <th className={`${COL_HEAD} text-right`}></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
-                {displayData.length === 0 ? (
+              <tbody className={`divide-y divide-[var(--color-border)] transition-opacity ${isLoading && displayData.length === 0 ? 'opacity-60' : ''}`}>
+                {isLoading && displayData.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-20 text-center">
+                      <div className="w-8 h-8 mx-auto rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin mb-3" aria-hidden />
+                      <p className="text-[12px] text-[var(--color-ink-muted)]">Loading directory…</p>
+                    </td>
+                  </tr>
+                ) : displayData.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-20 text-center">
                       <Search className="h-9 w-9 mx-auto text-[var(--color-ink-muted)] opacity-50 mb-3" aria-hidden />
@@ -262,7 +302,6 @@ export default function AdminTeam() {
                         <div className="flex flex-col min-w-0">
                           <div className="flex items-center gap-2">
                             <span title={member.email || undefined} className="text-[13px] font-medium text-[var(--color-ink)] truncate">{member.name}</span>
-                            <GuestBadge isExternal={member.isExternal} />
                           </div>
                           <div className="flex flex-col gap-0.5 mt-0.5">
                             {member.isExternal && (
@@ -282,8 +321,14 @@ export default function AdminTeam() {
                       </div>
                     </td>
                     <td className="px-4 py-2">
-                      <span className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] font-medium text-[var(--color-ink)] capitalize">
-                        {member.role}
+                      <span
+                        className={`inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] text-[11px] font-medium capitalize ${
+                          member.isExternal
+                            ? 'bg-[color-mix(in_srgb,var(--color-accent-amber)_18%,transparent)] text-[var(--color-accent-amber)]'
+                            : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink)]'
+                        }`}
+                      >
+                        {member.isExternal ? `External ${member.role}` : member.role}
                       </span>
                     </td>
                     <td className="px-4 py-2">
@@ -385,40 +430,7 @@ export default function AdminTeam() {
               </tbody>
             </table>
           </div>
-
-          <div className="px-4 py-3 border-t border-[var(--color-border)] flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3 text-[12px] text-[var(--color-ink-muted)]">
-              <span>
-                Showing <span className="text-[var(--color-ink)] tabular-nums">{displayData.length}</span> {displayData.length === 1 ? 'member' : 'members'}
-              </span>
-              <span className="text-[var(--color-border)]">|</span>
-              <span>
-                Limit <span className="text-[var(--color-ink)] tabular-nums">{LIMIT}</span>
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <button
-                disabled={page === 0}
-                onClick={() => setPage(p => p - 1)}
-                className={SECONDARY_BTN}
-              >
-                <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-                Previous
-              </button>
-              <button
-                disabled={displayData.length < LIMIT}
-                onClick={() => setPage(p => p + 1)}
-                className={SECONDARY_BTN}
-              >
-                Next
-                <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </div>
-          </div>
         </div>
-      )}
-
-      <AgentStatusStats />
 
       {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); invalidate(); }} />}
       {confirmRemove && (

@@ -20,6 +20,9 @@ export const partnerMembersRouter = router({
       role: z.enum(['agent', 'support']).optional(),
       excludeAdmin: z.boolean().optional().default(true),
       dormant: z.boolean().optional(),
+      pendingInvite: z.boolean().optional(),
+      excludePending: z.boolean().optional(),
+      isExternal: z.boolean().optional(),
     }))
     .query(async ({ input, ctx }) => {
       try {
@@ -39,6 +42,21 @@ export const partnerMembersRouter = router({
           filters.push(eq(users.isExternal, true));
           filters.push(eq(memberships.role, 'support'));
           filters.push(sql`${users.lastActiveAt} IS NOT NULL AND ${users.lastActiveAt} < NOW() - INTERVAL '30 days'`);
+        }
+        if (input.pendingInvite) {
+          // B2B guests created via inviteExternalUser but never claimed: no Azure
+          // externalId stamped (Azure B2B handoff incomplete) and never logged in.
+          filters.push(eq(users.isExternal, true));
+          filters.push(sql`${users.externalId} IS NULL`);
+          filters.push(sql`${users.lastActiveAt} IS NULL`);
+        }
+        if (input.excludePending) {
+          // Hide unclaimed B2B invites from the main roster — they live in the
+          // dedicated B2B Guest invites panel until Azure handoff completes.
+          filters.push(sql`NOT (${users.isExternal} = true AND ${users.externalId} IS NULL AND ${users.lastActiveAt} IS NULL)`);
+        }
+        if (input.isExternal !== undefined) {
+          filters.push(eq(users.isExternal, input.isExternal));
         }
         if (input.search?.trim()) {
           const rawSearch = input.search.trim();
@@ -130,13 +148,20 @@ export const partnerMembersRouter = router({
       const partnerId = ctx.user.partnerId;
       if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
 
+      // Counts mirror the AdminTeam roster (excludes admins + unclaimed B2B
+      // invites — those live in the B2B Guest invites panel until accepted).
       const rows = await db
         .select({
           role: memberships.role,
           count: sql<number>`count(*)::int`,
         })
         .from(memberships)
-        .where(and(eq(memberships.partnerId, partnerId), ne(memberships.role, 'admin')))
+        .innerJoin(users, eq(memberships.userId, users.id))
+        .where(and(
+          eq(memberships.partnerId, partnerId),
+          ne(memberships.role, 'admin'),
+          sql`NOT (${users.isExternal} = true AND ${users.externalId} IS NULL AND ${users.lastActiveAt} IS NULL)`,
+        ))
         .groupBy(memberships.role);
 
       // Stale guest seats = B2B support members inactive 30+ days. Internal
@@ -153,13 +178,27 @@ export const partnerMembersRouter = router({
         ));
       const dormant = dormantRow[0]?.count ?? 0;
 
+      // Active B2B guest seats — any role (admins can also be external via
+      // inviteExternalUser). Pending invites excluded — they live in the B2B
+      // Guest invites panel until Azure handoff completes.
+      const guestsRow = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(memberships)
+        .innerJoin(users, eq(memberships.userId, users.id))
+        .where(and(
+          eq(memberships.partnerId, partnerId),
+          eq(users.isExternal, true),
+          sql`NOT (${users.externalId} IS NULL AND ${users.lastActiveAt} IS NULL)`,
+        ));
+      const guests = guestsRow[0]?.count ?? 0;
+
       let total = 0, support = 0, agents = 0;
       for (const row of rows) {
         total += row.count;
         if (row.role === 'support') support += row.count;
         if (row.role === 'agent') agents += row.count;
       }
-      return { total, support, agents, dormant };
+      return { total, support, agents, dormant, guests };
     }),
 
   inviteExternalUser: destructiveAdminProcedure
