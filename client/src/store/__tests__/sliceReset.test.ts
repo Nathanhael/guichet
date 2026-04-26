@@ -4,10 +4,18 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({}) })));
 
 // disconnectSocket is invoked from logout(); avoid touching the real socket
-// singleton during slice tests.
+// singleton during slice tests. peekSocket() is also called by logout to emit
+// support:leave for open chat tabs — default to "no live socket" so existing
+// tests stay agnostic; the dedicated emit test overrides it inline.
+const mockEmit = vi.fn();
+const peekSocketMock = vi.fn(() => null as { connected: boolean; emit: typeof mockEmit } | null);
 vi.mock('../../hooks/useSocket', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/useSocket')>();
-  return { ...actual, disconnectSocket: vi.fn() };
+  return {
+    ...actual,
+    disconnectSocket: vi.fn(),
+    peekSocket: () => peekSocketMock(),
+  };
 });
 
 // trpcVanilla is touched by uiSlice toggles for accessibility prefs. Only
@@ -29,6 +37,8 @@ beforeEach(() => {
   // from a known baseline. Replace `true` makes setState merge-replace so we
   // get a clean snapshot rather than residue from previous mutations.
   useStore.setState(initialState, true);
+  mockEmit.mockClear();
+  peekSocketMock.mockReturnValue(null);
 });
 
 describe('slice reset registry', () => {
@@ -197,6 +207,46 @@ describe('slice reset registry', () => {
   });
 
   describe('logout orchestrator', () => {
+    it('emits support:leave for each open chat tab before disconnect', async () => {
+      peekSocketMock.mockReturnValue({ connected: true, emit: mockEmit });
+      useStore.setState({
+        user: { id: 'u1', email: 'a@b.c' } as never,
+        supportOpenTickets: ['t1', 't2', 't3'],
+      });
+
+      await useStore.getState().logout();
+
+      expect(mockEmit).toHaveBeenCalledTimes(3);
+      expect(mockEmit).toHaveBeenNthCalledWith(1, 'support:leave', { ticketId: 't1' });
+      expect(mockEmit).toHaveBeenNthCalledWith(2, 'support:leave', { ticketId: 't2' });
+      expect(mockEmit).toHaveBeenNthCalledWith(3, 'support:leave', { ticketId: 't3' });
+    });
+
+    it('skips emit when the socket is not live', async () => {
+      // peekSocket returns null when no socket has been created yet
+      peekSocketMock.mockReturnValue(null);
+      useStore.setState({
+        user: { id: 'u1', email: 'a@b.c' } as never,
+        supportOpenTickets: ['t1'],
+      });
+
+      await useStore.getState().logout();
+
+      expect(mockEmit).not.toHaveBeenCalled();
+    });
+
+    it('skips emit when the socket exists but is disconnected', async () => {
+      peekSocketMock.mockReturnValue({ connected: false, emit: mockEmit });
+      useStore.setState({
+        user: { id: 'u1', email: 'a@b.c' } as never,
+        supportOpenTickets: ['t1'],
+      });
+
+      await useStore.getState().logout();
+
+      expect(mockEmit).not.toHaveBeenCalled();
+    });
+
     it('resets every partner-scoped slice and identity', async () => {
       useStore.setState({
         // identity

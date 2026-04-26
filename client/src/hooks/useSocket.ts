@@ -26,6 +26,16 @@ export function getSocket(): Socket {
 }
 
 /**
+ * Read the current socket without creating one. Used by logout to emit
+ * `support:leave` for open tabs only when a live socket exists — calling
+ * getSocket() instead would spin up a fresh connection just to immediately
+ * tear it down.
+ */
+export function peekSocket(): Socket | null {
+  return socket;
+}
+
+/**
  * Tear down the module-level socket. Call on logout so re-login does not
  * reuse a socket whose handshake was rejected (no cookie) and which is
  * stuck in an indefinite CONNECT_ERROR retry loop. Without this, users who
