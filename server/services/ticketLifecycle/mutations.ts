@@ -13,6 +13,12 @@ import { sql } from 'drizzle-orm';
 
 import type { Participant } from './types.js';
 
+interface PartnerDepartment {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 interface ReturnToQueueResult {
   /** False = race lost; the ticket is now owned by someone else. */
   ok: boolean;
@@ -76,6 +82,23 @@ export async function readParticipants(
 }
 
 /**
+ * Read the partner's `departments` JSONB. Used by `lifecycle.transfer`'s
+ * preflight to validate the target department id and resolve its name
+ * for the system message + audit metadata. Returns an empty array if
+ * the partner row doesn't exist.
+ */
+export async function readPartnerDepartments(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exec: any,
+  args: { partnerId: string },
+): Promise<PartnerDepartment[]> {
+  const res = await exec.execute(sql`SELECT departments FROM partners WHERE id = ${args.partnerId}`);
+  const rows = (res.rows ?? res) as Array<{ departments: PartnerDepartment[] | null }>;
+  if (!rows[0]) return [];
+  return rows[0].departments ?? [];
+}
+
+/**
  * Read the lifecycle-relevant slice of a ticket needed by `lifecycle.assign`'s
  * preflight (status check + ghost-decision context). Returns null when the
  * row doesn't exist in the supplied tenant.
@@ -114,6 +137,47 @@ export async function writeParticipantsTx(
   await tx.execute(sql`UPDATE tickets
     SET participants = ${JSON.stringify(args.participants)}::jsonb
     WHERE id = ${args.ticketId}`);
+}
+
+/**
+ * Read the lifecycle slice for `lifecycle.transfer`'s preflight: the
+ * ticket's tenant + current support assignment (used to record
+ * `fromSupportId` in the audit metadata). Returns null when the row
+ * doesn't exist in the supplied tenant.
+ */
+export async function readForTransfer(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exec: any,
+  args: { ticketId: string; partnerId: string },
+): Promise<{ supportId: string | null; status: string } | null> {
+  const res = await exec.execute(sql`SELECT support_id, status FROM tickets
+    WHERE id = ${args.ticketId} AND partner_id = ${args.partnerId}`);
+  const rows = (res.rows ?? res) as Array<{ support_id: string | null; status: string }>;
+  if (!rows[0]) return null;
+  return { supportId: rows[0].support_id, status: rows[0].status };
+}
+
+/**
+ * Atomically transfer a ticket to a different department. Clears the
+ * support assignment, sets `status='open'`, bumps `queue_entered_at` so
+ * the ticket joins the new queue at NOW() instead of jumping ahead,
+ * and updates `dept`. Always succeeds — there's no race guard because
+ * a transfer is the most recent intent and should win.
+ */
+export async function transferTicketToDepartmentTx(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: any,
+  args: { ticketId: string; toDepartmentId: string },
+): Promise<void> {
+  await tx.execute(sql`UPDATE tickets SET
+    dept = ${args.toDepartmentId},
+    support_id = NULL,
+    support_name = NULL,
+    support_lang = NULL,
+    support_joined_at = NULL,
+    status = 'open',
+    queue_entered_at = NOW()
+  WHERE id = ${args.ticketId}`);
 }
 
 /**

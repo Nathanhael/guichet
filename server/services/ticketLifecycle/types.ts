@@ -60,7 +60,9 @@ export type LifecycleError =
   /** Caller is not listed in `tickets.participants`. */
   | 'NOT_A_PARTICIPANT'
   /** Closed tickets cannot be re-opened by a join — use the reopen flow instead. */
-  | 'TICKET_CLOSED';
+  | 'TICKET_CLOSED'
+  /** Department id is not in the partner's `departments` JSONB. */
+  | 'DEPARTMENT_NOT_FOUND';
 
 /**
  * Discriminated result. Domain rejections are values, not exceptions, so
@@ -85,7 +87,9 @@ export type Result<Ok> =
 export type Effect =
   | { type: 'emit'; rooms: string[]; event: string; payload: unknown }
   | { type: 'notifyPreviewers'; ticketId: string }
-  | { type: 'broadcastQueue'; partnerId: string };
+  | { type: 'broadcastQueue'; partnerId: string }
+  /** Force every support / admin / platform_operator socket out of the ticket room. */
+  | { type: 'evictSupportFromRoom'; ticketId: string };
 
 /** Snapshot of `tickets.participants` JSONB rows. */
 export interface Participant {
@@ -147,6 +151,20 @@ export interface TicketLifecycle {
    * `ticket.assigned` audit row — all in one transaction.
    */
   assign(args: AssignArgs): Promise<Result<AssignOk>>;
+
+  /**
+   * Transfers a ticket to a different department. Atomic txn:
+   * (optional) whisper note, dept update + support clear + status='open'
+   * + queue_entered_at bump, system announcement message, and the
+   * `ticket.transferred` audit row. Returned effects fan out the ticket
+   * + partner room broadcasts and force-evict every support socket from
+   * the old ticket room so the next claim can come from the new
+   * department.
+   *
+   * Same-department return-to-queue uses `lifecycle.returnToQueue`
+   * directly — no need for a separate verb.
+   */
+  transfer(args: TransferArgs): Promise<Result<TransferOk>>;
 }
 
 export interface ReclaimArgs {
@@ -229,4 +247,21 @@ export interface AssignOk {
   becamePrimary: boolean;
   /** True iff the ghost-heal clear actually fired (race-guarded). */
   ghostHealed: boolean;
+}
+
+export interface TransferArgs {
+  ticketId: string;
+  partnerId: string;
+  /** Must be a support / admin / platform_operator. */
+  actor: UserActor;
+  /** Target department id; must exist in `partners.departments`. */
+  toDepartmentId: string;
+  /** Optional whisper note for the new owner — staff-only context handoff. */
+  note?: string;
+}
+
+export interface TransferOk {
+  fromSupportId: string | null;
+  toDepartmentId: string;
+  toDepartmentName: string;
 }

@@ -14,7 +14,8 @@ type AuditAction =
   | 'ticket.reclaimed'
   | 'ticket.left'
   | 'ticket.returned_to_queue'
-  | 'ticket.assigned';
+  | 'ticket.assigned'
+  | 'ticket.transferred';
 
 interface WriteAuditArgs {
   action: AuditAction;
