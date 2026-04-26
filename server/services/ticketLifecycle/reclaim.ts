@@ -73,7 +73,7 @@ export async function runReclaim(
   const effects: Effect[] = [
     {
       type: 'emit',
-      room: Rooms.staff(deps.partnerId),
+      rooms: [Rooms.staff(deps.partnerId)],
       event: 'ticket:reclaimed',
       payload: {
         ticketId: args.ticketId,

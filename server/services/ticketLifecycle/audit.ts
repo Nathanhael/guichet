@@ -11,7 +11,9 @@ import { ticketAuditEventsTotal } from '../../utils/metrics.js';
 import type { Actor } from './types.js';
 
 type AuditAction =
-  | 'ticket.reclaimed';
+  | 'ticket.reclaimed'
+  | 'ticket.left'
+  | 'ticket.returned_to_queue';
 
 interface WriteAuditArgs {
   action: AuditAction;

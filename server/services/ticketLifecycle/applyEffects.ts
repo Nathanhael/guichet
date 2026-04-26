@@ -6,6 +6,7 @@
  */
 import type { Server } from 'socket.io';
 import logger from '../../utils/logger.js';
+import { Rooms } from '../../utils/rooms.js';
 import type { Effect } from './types.js';
 
 /**
@@ -20,13 +21,28 @@ export function applyEffects(io: Server, effects: Effect[]): void {
   for (const effect of effects) {
     try {
       switch (effect.type) {
-        case 'emit':
-          io.to(effect.room).emit(effect.event, effect.payload);
+        case 'emit': {
+          if (effect.rooms.length === 0) break;
+          // Chain `.to(room)` so socket.io de-duplicates by socket id —
+          // emitting once per room would double-deliver to anyone in
+          // multiple rooms (very common: support agents sit in both the
+          // ticket room and the staff room).
+          let target = io.to(effect.rooms[0]);
+          for (let i = 1; i < effect.rooms.length; i++) {
+            target = target.to(effect.rooms[i]);
+          }
+          target.emit(effect.event, effect.payload);
+          break;
+        }
+        case 'notifyPreviewers':
+          io.to(Rooms.ticketPreview(effect.ticketId)).emit('ticket:preview:invalidate', {
+            ticketId: effect.ticketId,
+          });
           break;
         default: {
           // Exhaustiveness check — TypeScript will complain when a new
           // Effect variant is added without a handler.
-          const _exhaustive: never = effect.type;
+          const _exhaustive: never = effect;
           logger.warn({ effect: _exhaustive }, '[lifecycle] unknown effect type');
         }
       }

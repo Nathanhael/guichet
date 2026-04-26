@@ -113,7 +113,7 @@ describe('lifecycle.reclaim', () => {
     expect(result.effects).toEqual([
       {
         type: 'emit',
-        room: 'partner:p_a:staff',
+        rooms: ['partner:p_a:staff'],
         event: 'ticket:reclaimed',
         payload: {
           ticketId,
