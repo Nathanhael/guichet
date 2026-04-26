@@ -13,7 +13,8 @@ import type { Actor } from './types.js';
 type AuditAction =
   | 'ticket.reclaimed'
   | 'ticket.left'
-  | 'ticket.returned_to_queue';
+  | 'ticket.returned_to_queue'
+  | 'ticket.assigned';
 
 interface WriteAuditArgs {
   action: AuditAction;

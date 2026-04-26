@@ -12,10 +12,13 @@
  * PR 1 ships only `reclaim`. Subsequent PRs add `leave`, `returnToQueue`,
  * `assign`, `transfer`, `close`, and `create` to the same interface.
  */
+import { runAssign } from './assign.js';
 import { runLeave } from './leave.js';
 import { runReclaim } from './reclaim.js';
 import { runReturnToQueue } from './returnToQueue.js';
 import type {
+  AssignArgs,
+  AssignOk,
   LeaveArgs,
   LeaveOk,
   LifecycleDb,
@@ -31,6 +34,8 @@ export { applyEffects } from './applyEffects.js';
 export { socketActor, systemActor, isUserActor } from './actor.js';
 export type {
   Actor,
+  AssignArgs,
+  AssignOk,
   UserActor,
   SystemActor,
   Effect,
@@ -64,5 +69,7 @@ export function createTicketLifecycle(deps: TicketLifecycleDeps): TicketLifecycl
       runLeave({ db: deps.db }, args),
     returnToQueue: (args: ReturnToQueueArgs): Promise<Result<ReturnToQueueOk>> =>
       runReturnToQueue({ db: deps.db }, args),
+    assign: (args: AssignArgs): Promise<Result<AssignOk>> =>
+      runAssign({ db: deps.db }, args),
   };
 }
