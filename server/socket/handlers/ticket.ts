@@ -4,6 +4,7 @@ import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
 import { isValidMediaUrl } from '../../utils/security.js';
 import { requirePartnerScope, requirePartnerScopeWith } from '../partnerScope.js';
+import { notifyPreviewers } from './preview.js';
 import {
   findTicketForClose,
   findTicketForTransfer,
@@ -233,6 +234,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
               !!senderInfo?.isExternal,
             );
             ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', whisperMsg);
+            notifyPreviewers(ctx.io, ticketId);
           }
 
           // Update ticket: new department, clear support assignment, re-open
@@ -251,6 +253,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           const sysText = `Ticket transferred to ${targetDept.name} by ${senderName}`;
           const sysMsg = await insertSystemMessage(ticketId, sysText);
           ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
+          notifyPreviewers(ctx.io, ticketId);
 
           const transferPayload = {
             ticketId,
@@ -286,6 +289,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           const sysText = `${senderName} returned ticket to queue`;
           const sysMsg = await insertSystemMessage(ticketId, sysText);
           ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
+          notifyPreviewers(ctx.io, ticketId);
           ctx.io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', {
             ticketId,
             fromId: senderId,

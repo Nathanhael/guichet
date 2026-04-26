@@ -6,6 +6,7 @@ import { trpc } from '../utils/trpc';
 import { Ticket, Message } from '../types';
 import Button from './ui/Button';
 import Pill from './ui/Pill';
+import { getSocket } from '../hooks/useSocket';
 
 interface TicketPreviewProps {
   ticket: Ticket;
@@ -21,6 +22,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
   const t = useT();
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const trpcUtils = trpc.useUtils();
   const messageQuery = trpc.message.list.useQuery(
     { ticketId: ticket.id },
     { enabled: !!ticket.id && (!propMessages || propMessages.length === 0) }
@@ -33,6 +35,31 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length]);
+
+  // Live subscription: server fans out `ticket:preview:invalidate` to a
+  // read-only preview room when messages change in this ticket. We refetch
+  // through tRPC so visibility rules (whisper filtering, etc.) stay
+  // server-enforced — the socket payload carries no message body.
+  const isStatic = !!(propMessages && propMessages.length > 0);
+  useEffect(() => {
+    if (!ticket.id || isStatic) return;
+    const socket = getSocket();
+    if (!socket) return;
+
+    socket.emit('ticket:preview:join', { ticketId: ticket.id });
+
+    const onInvalidate = (payload: { ticketId: string }) => {
+      if (payload.ticketId === ticket.id) {
+        trpcUtils.message.list.invalidate({ ticketId: ticket.id });
+      }
+    };
+    socket.on('ticket:preview:invalidate', onInvalidate);
+
+    return () => {
+      socket.off('ticket:preview:invalidate', onInvalidate);
+      socket.emit('ticket:preview:leave', { ticketId: ticket.id });
+    };
+  }, [ticket.id, isStatic, trpcUtils]);
 
   const modeLabel = readOnly ? (t('history_mode') || 'Archived') : (t('preview_mode') || 'Preview');
 

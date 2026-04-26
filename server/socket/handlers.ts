@@ -8,6 +8,7 @@ import { register as registerTicket } from './handlers/ticket.js';
 import { register as registerMessage } from './handlers/message.js';
 import { register as registerPresence } from './handlers/presence.js';
 import { register as registerCollision } from './handlers/collision.js';
+import { register as registerPreview } from './handlers/preview.js';
 import { register as registerRating } from './handlers/rating.js';
 import { register as registerDisconnect } from './handlers/disconnect.js';
 
@@ -41,6 +42,7 @@ export function registerSocketHandlers(io: Server) {
     registerMessage(socket, ctx);
     registerPresence(socket, ctx);
     registerCollision(socket, ctx);
+    registerPreview(socket, ctx);
     registerRating(socket, ctx);
     registerDisconnect(socket, ctx);
   });
