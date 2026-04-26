@@ -47,6 +47,25 @@ export function applyEffects(io: Server, effects: Effect[]): void {
           // the broadcastQueuePositions helper logs its own errors.
           void broadcastQueuePositions(effect.partnerId);
           break;
+        case 'evictSupportFromRoom': {
+          // Force every support / admin / platform_operator socket out of
+          // the ticket room. After a department transfer, the prior
+          // support staff should not keep receiving the ticket's
+          // message:new / typing events — the new department's queue
+          // owns it now.
+          const room = Rooms.ticket(effect.ticketId);
+          void io.in(room).fetchSockets().then((sockets) => {
+            for (const s of sockets) {
+              if (s.data.isSupport) s.leave(room);
+            }
+          }).catch((err: unknown) => {
+            logger.error(
+              { err: err instanceof Error ? err.message : String(err), ticketId: effect.ticketId },
+              '[lifecycle] evictSupportFromRoom failed',
+            );
+          });
+          break;
+        }
         default: {
           // Exhaustiveness check — TypeScript will complain when a new
           // Effect variant is added without a handler.

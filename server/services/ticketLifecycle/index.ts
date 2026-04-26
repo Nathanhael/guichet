@@ -16,6 +16,7 @@ import { runAssign } from './assign.js';
 import { runLeave } from './leave.js';
 import { runReclaim } from './reclaim.js';
 import { runReturnToQueue } from './returnToQueue.js';
+import { runTransfer } from './transfer.js';
 import type {
   AssignArgs,
   AssignOk,
@@ -28,6 +29,8 @@ import type {
   ReturnToQueueArgs,
   ReturnToQueueOk,
   TicketLifecycle,
+  TransferArgs,
+  TransferOk,
 } from './types.js';
 
 export { applyEffects } from './applyEffects.js';
@@ -50,6 +53,8 @@ export type {
   ReturnToQueueArgs,
   ReturnToQueueOk,
   TicketLifecycle,
+  TransferArgs,
+  TransferOk,
 } from './types.js';
 
 export interface TicketLifecycleDeps {
@@ -71,5 +76,7 @@ export function createTicketLifecycle(deps: TicketLifecycleDeps): TicketLifecycl
       runReturnToQueue({ db: deps.db }, args),
     assign: (args: AssignArgs): Promise<Result<AssignOk>> =>
       runAssign({ db: deps.db }, args),
+    transfer: (args: TransferArgs): Promise<Result<TransferOk>> =>
+      runTransfer({ db: deps.db }, args),
   };
 }

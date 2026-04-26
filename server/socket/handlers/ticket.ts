@@ -4,30 +4,25 @@ import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
 import { isValidMediaUrl } from '../../utils/security.js';
 import { requirePartnerScope, requirePartnerScopeWith } from '../partnerScope.js';
-import { notifyPreviewers } from './preview.js';
 import {
   findTicketForClose,
   findTicketForTransfer,
   findPartnerLabels,
   createTicket,
   closeTicket,
-  returnTicketToQueue,
   replaceTicketLabels,
   findRecentClosedTickets,
   findActiveTicketsForAgent,
 } from '../../services/ticketQueries.js';
 import { getBusinessHoursStatus, broadcastQueuePositions, BusinessHoursSchedule } from '../../services/businessHours.js';
 import { findPartnerConfig } from '../../services/partnerQueries.js';
-import { findUserName, findSenderInfo } from '../../services/userQueries.js';
+import { findUserName } from '../../services/userQueries.js';
 import { insertMessage } from '../../services/messageQueries.js';
 import { autoSummarizeOnClose } from '../../services/ai/index.js';
-import { insertSystemMessage, insertWhisperMessage } from '../../services/systemMessage.js';
-import { findPartnerDepartments, transferTicketToDepartment } from '../../services/transferService.js';
+import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
 import {
   auditTicketCreated,
   auditTicketClosed,
-  auditTicketTransferred,
-  auditTicketReturnedToQueue,
 } from '../../services/ticketAudit.js';
 import {
   MAX_NOTE_LENGTH,
@@ -218,78 +213,58 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForTransfer);
         if (!ticket) return;
 
+        const actor = socketActor(socket);
+
         if (departmentId) {
-          // Transfer to a different department
-          const depts = await findPartnerDepartments(callerPartnerId);
-          const targetDept = depts.find(d => d.id === departmentId);
-          if (!targetDept) return socket.emit('error', { message: 'Department not found' });
-
-          // Optional whisper note for context handoff
-          if (note?.trim()) {
-            const senderInfo = await findSenderInfo(senderId, callerPartnerId);
-            const whisperMsg = await insertWhisperMessage(
-              ticketId, senderId, senderName,
-              senderInfo?.role || 'support', senderInfo?.lang || 'en',
-              note.trim(),
-              !!senderInfo?.isExternal,
-            );
-            ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', whisperMsg);
-            notifyPreviewers(ctx.io, ticketId);
-          }
-
-          // Update ticket: new department, clear support assignment, re-open
-          await transferTicketToDepartment(ticketId, departmentId);
-          auditTicketTransferred({
+          // Department-change branch — full transfer.
+          const result = await ctx.lifecycle.transfer({
             ticketId,
             partnerId: callerPartnerId,
-            actorId: senderId,
+            actor,
             toDepartmentId: departmentId,
-            toDepartmentName: targetDept.name,
-            fromSupportId: ticket.supportId ?? null,
-            note: note?.trim() || undefined,
+            note,
           });
 
-          // System message
-          const sysText = `Ticket transferred to ${targetDept.name} by ${senderName}`;
-          const sysMsg = await insertSystemMessage(ticketId, sysText);
-          ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
-          notifyPreviewers(ctx.io, ticketId);
-
-          const transferPayload = {
-            ticketId,
-            fromId: senderId,
-            fromName: senderName,
-            toDepartment: departmentId,
-            toDepartmentName: targetDept.name,
-          };
-
-          // Emit to ticket room (for the user/agent) AND partner room (for support sidebars)
-          ctx.io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', transferPayload);
-          ctx.io.to(Rooms.partner(callerPartnerId)).emit('ticket:transferred', transferPayload);
-
-          // Remove ALL support sockets from ticket room
-          const ticketRoom = Rooms.ticket(ticketId);
-          const socketsInRoom = await ctx.io.in(ticketRoom).fetchSockets();
-          for (const s of socketsInRoom) {
-            if (s.data.isSupport) s.leave(ticketRoom);
+          if (!result.ok) {
+            switch (result.code) {
+              case 'NOT_AUTHORIZED':
+                return socket.emit('error', { message: 'Only support staff can transfer tickets' });
+              case 'DEPARTMENT_NOT_FOUND':
+                return socket.emit('error', { message: 'Department not found' });
+              case 'TICKET_NOT_FOUND':
+                return; // requirePartnerScopeWith already emitted
+              default:
+                return;
+            }
           }
 
-          // Broadcast queue positions for both departments
-          await broadcastQueuePositions(callerPartnerId);
+          applyEffects(ctx.io, result.effects);
         } else {
-          // Return to queue — same department, unassign support
-          await returnTicketToQueue(ticketId, ticket.supportId ?? undefined);
-          auditTicketReturnedToQueue({
+          // Same-department branch — return to queue. Reuses the
+          // PR 2 lifecycle.returnToQueue verb so we don't have a
+          // second mutation path with its own audit semantics.
+          if (!ticket.supportId) {
+            return; // Nothing to return — already unassigned.
+          }
+          const result = await ctx.lifecycle.returnToQueue({
             ticketId,
             partnerId: callerPartnerId,
-            actorId: senderId,
-            fromSupportId: ticket.supportId ?? null,
+            actor,
+            previousSupportId: ticket.supportId,
+            systemMessageText: `${senderName} returned ticket to queue`,
           });
 
-          const sysText = `${senderName} returned ticket to queue`;
-          const sysMsg = await insertSystemMessage(ticketId, sysText);
-          ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', sysMsg);
-          notifyPreviewers(ctx.io, ticketId);
+          if (!result.ok) {
+            // TICKET_ALREADY_REASSIGNED — race lost; another agent is
+            // now primary. Don't re-emit the transfer broadcast.
+            return;
+          }
+
+          applyEffects(ctx.io, result.effects);
+
+          // Legacy emitted ticket:transferred to the ticket room with
+          // null toId/toName — preserved here so existing clients don't
+          // notice the migration.
           ctx.io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', {
             ticketId,
             fromId: senderId,
@@ -298,7 +273,8 @@ export function register(socket: Socket, ctx: HandlerContext): void {
             toName: null,
           });
 
-          // Remove sender from ticket room
+          // The sender (now ex-support) leaves the ticket room — they
+          // shouldn't keep receiving the customer's typing / messages.
           socket.leave(Rooms.ticket(ticketId));
 
           await broadcastQueuePositions(callerPartnerId);
