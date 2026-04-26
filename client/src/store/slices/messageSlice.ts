@@ -37,6 +37,10 @@ export interface MessageSlice {
   setOnlineAgentIds: (ids: string[]) => void;
   setTyping: (ticketId: string, name: string, isTyping: boolean) => void;
   setLastRejection: (rejection: Omit<MessageRejection, 'at'> | null) => void;
+  /** Slice-owned reset for the partner-scoped lifecycle (logout). Called by the
+   * authSlice orchestrator; do not call from feature code. Keep in sync with
+   * `messageInitialState`. */
+  _resetMessageState: () => void;
 }
 
 /** Safely extract a numeric timestamp from a message, returning 0 for invalid/missing dates */
@@ -46,13 +50,20 @@ function safeTimestamp(m: { createdAt?: string; timestamp?: string }): number {
   return Number.isNaN(t) ? 0 : t;
 }
 
-export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> = (set) => ({
+const messageInitialState: Pick<
+  MessageSlice,
+  'messages' | 'messageCursors' | 'onlineSupportUsers' | 'onlineAgentIds' | 'typingUsers' | 'lastRejection'
+> = {
   messages: {},
   messageCursors: {},
   onlineSupportUsers: [],
   onlineAgentIds: [],
   typingUsers: {},
   lastRejection: null,
+};
+
+export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> = (set) => ({
+  ...messageInitialState,
 
   setMessages: (ticketId, newMessages) =>
     set((state) => {
@@ -187,4 +198,5 @@ export const createMessageSlice: StateCreator<StoreState, [], [], MessageSlice> 
       else delete ticketTyping[name];
       return { typingUsers: { ...state.typingUsers, [ticketId]: ticketTyping } };
     }),
+  _resetMessageState: () => set(messageInitialState),
 });
