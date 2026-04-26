@@ -146,6 +146,40 @@ vi.mock('../services/messageQueries.js', () => ({
   updateMessageLinkPreviews: vi.fn(),
 }));
 
+// ---- Redis mocks ----
+// pubClient must be a truthy object so collision.ts doesn't bail at
+// `if (!pubClient) return;` before reaching the methods we want to spy
+// on. Without this, a dropped partner-scope guard in collision.ts would
+// still leave `pubClient.multi` / `pubClient.hDel` untouched and give
+// the cross-tenant test a false-pass.
+const pubClientMultiMock = vi.fn(() => {
+  const chain: Record<string, unknown> = {
+    hSet: vi.fn(() => chain),
+    expire: vi.fn(() => chain),
+    hDel: vi.fn(() => chain),
+    exec: vi.fn(async () => undefined),
+  };
+  return chain;
+});
+const pubClientHDelMock = vi.fn(async () => undefined);
+const pubClientHGetAllMock = vi.fn(async () => ({}));
+
+vi.mock('../utils/redis.js', () => ({
+  initRedis: vi.fn(async () => undefined),
+  getRedisClients: () => ({
+    pubClient: {
+      multi: pubClientMultiMock,
+      hDel: pubClientHDelMock,
+      hGetAll: pubClientHGetAllMock,
+    },
+    subClient: {
+      subscribe: vi.fn(),
+      pSubscribe: vi.fn(),
+      on: vi.fn(),
+    },
+  }),
+}));
+
 vi.mock('../config.js', () => ({
   default: {
     JWT_SECRET: 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
@@ -273,6 +307,9 @@ describe('multi-tenant isolation — socket handlers', () => {
     softDeleteMessageMock.mockReset();
     markDeliveredMock.mockReset();
     markReadMock.mockReset();
+    pubClientMultiMock.mockClear();
+    pubClientHDelMock.mockClear();
+    pubClientHGetAllMock.mockClear();
     selectQueue.length = 0;
     insertValuesMock.mockReset();
     insertValuesMock.mockResolvedValue(undefined);
@@ -562,6 +599,61 @@ describe('multi-tenant isolation — socket handlers', () => {
     // Lookup-not-called is the dropped-guard tripwire (see message:edit).
     expect(findMessageForReactMock).not.toHaveBeenCalled();
     expect(updateMessageReactionsMock).not.toHaveBeenCalled();
+  });
+
+  // ── ticket:viewing / ticket:left cross-tenant rejection ─────────────────
+  // collision.ts addViewer/removeViewer touch Redis (pubClient.multi /
+  // pubClient.hDel). Asserting those spies were never called catches a
+  // dropped requirePartnerScope: with the guard in place, addViewer is
+  // unreachable; without it, the handler would write to the foreign
+  // tenant's viewer hash.
+
+  it('ticket:viewing rejects joining a cross-partner ticket viewer set', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+      isSupport: true,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'ticket:viewing');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    await handler({ ticketId: 'ticket-1' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    expect(pubClientMultiMock).not.toHaveBeenCalled();
+  });
+
+  it('ticket:left rejects removing self from a cross-partner ticket viewer set', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+      isSupport: true,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'ticket:left');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    await handler({ ticketId: 'ticket-1' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    expect(pubClientHDelMock).not.toHaveBeenCalled();
   });
 
   it('socket:identify prevents non-platform user from accessing unassigned partner', async () => {
