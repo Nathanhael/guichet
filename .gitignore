@@ -110,7 +110,7 @@ testing/
 !client/src/utils/__tests__/notifications.test.ts
 !client/src/hooks/useComposeAiImprove.test.ts
 !client/src/hooks/useComposeAttachments.test.ts
-!client/src/hooks/useComposeDraft.test.ts
+!client/src/hooks/useComposeEditor.test.tsx
 !client/src/hooks/useComposeLinkPreview.test.ts
 !client/src/hooks/useKeyboardShortcuts.test.ts
 !client/src/store/__tests__/sliceReset.test.ts
