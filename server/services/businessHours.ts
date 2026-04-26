@@ -274,7 +274,7 @@ export async function broadcastQueuePositions(partnerId?: string) {
     let openTickets: { id: string }[];
     if (partnerId) {
       // Scoped: only broadcast within a single partner
-      openTickets = await db.select({ id: tickets.id }).from(tickets).where(and(eq(tickets.status, 'open'), isNull(tickets.supportId), eq(tickets.partnerId, partnerId))).orderBy(asc(tickets.createdAt));
+      openTickets = await db.select({ id: tickets.id }).from(tickets).where(and(eq(tickets.status, 'open'), isNull(tickets.supportId), eq(tickets.partnerId, partnerId))).orderBy(asc(tickets.queueEnteredAt));
     } else {
       // Fallback: broadcast per-partner to avoid cross-tenant leakage
       const partnerRows = await db.selectDistinct({ partnerId: tickets.partnerId }).from(tickets).where(and(eq(tickets.status, 'open'), isNull(tickets.supportId)));

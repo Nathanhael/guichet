@@ -332,11 +332,16 @@ export async function returnTicketToQueue(
   supportId?: string,
 ): Promise<boolean> {
   if (supportId) {
+    // queue_entered_at = NOW() — re-entering the queue after a brief support
+    // touch must not retain the original head-of-queue position over genuinely
+    // fresh tickets. Customer's wait-time fairness is preserved by createdAt
+    // (audit/CSAT/GDPR), but queue ordering uses queue_entered_at.
     const res = await db.execute(sql`UPDATE tickets SET
       support_id = NULL,
       support_name = NULL,
       support_joined_at = NULL,
       status = 'open',
+      queue_entered_at = NOW(),
       participants = (
         SELECT COALESCE(jsonb_agg(elem), '[]'::jsonb)
         FROM jsonb_array_elements(COALESCE(participants, '[]')::jsonb) AS elem
@@ -347,7 +352,13 @@ export async function returnTicketToQueue(
   }
   const res = await db
     .update(tickets)
-    .set({ supportId: null, supportName: null, supportJoinedAt: null, status: 'open' })
+    .set({
+      supportId: null,
+      supportName: null,
+      supportJoinedAt: null,
+      status: 'open',
+      queueEnteredAt: new Date().toISOString(),
+    })
     .where(eq(tickets.id, ticketId));
   return (res.rowCount ?? 0) > 0;
 }

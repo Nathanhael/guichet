@@ -29,7 +29,7 @@ export const ticketRouter = router({
       dept: z.string().optional(),
       search: z.string().optional(),
       limit: z.number().min(1).optional(),
-      cursor: z.string().optional(), // "createdAt|id" or "closedAt|id"
+      cursor: z.string().optional(), // "<queueEnteredAt|closedAt>|id"
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
       hasSupport: z.boolean().optional(), // true = supportId assigned, false = unassigned
@@ -61,6 +61,20 @@ export const ticketRouter = router({
         const statusArr = input.status
           ? (Array.isArray(input.status) ? input.status : [input.status])
           : [];
+
+        // Reject mixed active+terminal status filters. Active rows sort by
+        // queueEnteredAt ASC and terminal rows sort by closedAt DESC; mixing
+        // them would silently use one column for both groups and produce a
+        // cursor that's compared in the wrong direction for half the page.
+        const hasActive = statusArr.some(s => s === 'open' || s === 'pending');
+        const hasTerminal = statusArr.some(s => s === 'closed');
+        if (hasActive && hasTerminal) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Cannot mix active (open/pending) and terminal (closed) status filters in a single query.',
+          });
+        }
+
         if (statusArr.length === 1) {
           conditions.push(eq(tickets.status, statusArr[0]));
         } else if (statusArr.length > 1) {
@@ -91,9 +105,13 @@ export const ticketRouter = router({
           conditions.push(lte(tickets.createdAt, end));
         }
 
-        // Terminal statuses (closed/resolved) sort by closedAt DESC; active statuses by createdAt ASC
+        // Terminal statuses (closed/resolved) sort by closedAt DESC.
+        // Active statuses sort by queueEnteredAt ASC so the live queue order
+        // matches broadcastQueuePositions — a ticket that got a brief support
+        // touch and was returned to queue (queueEnteredAt bumped) goes to the
+        // back, not back to head-of-queue based on its original createdAt.
         const isTerminal = statusArr.length > 0 && statusArr.every(s => s === 'closed');
-        const orderCol = isTerminal ? tickets.closedAt : tickets.createdAt;
+        const orderCol = isTerminal ? tickets.closedAt : tickets.queueEnteredAt;
 
         // Cursor-based pagination
         if (input.limit !== undefined) {
@@ -136,7 +154,7 @@ export const ticketRouter = router({
           }));
 
           const lastItem = pageRows[pageRows.length - 1];
-          const cursorValue = isTerminal ? (lastItem.closedAt ?? lastItem.createdAt) : lastItem.createdAt;
+          const cursorValue = isTerminal ? (lastItem.closedAt ?? lastItem.createdAt) : lastItem.queueEnteredAt;
           const nextCursor = hasMore && lastItem ? `${cursorValue}|${lastItem.id}` : '';
 
           return { tickets: ticketsWithLabels, nextCursor };

@@ -102,6 +102,12 @@ export const tickets = pgTable('tickets', {
   supportLang: text('support_lang'),
   supportJoinedAt: timestamp('support_joined_at', { mode: 'string' }),
   firstStaffResponseAt: timestamp('first_staff_response_at', { mode: 'string' }),
+  // Bumped to now() every time the ticket (re-)enters a queue: creation,
+  // returnTicketToQueue (support:leave / ticketReclaim), and dept transfer.
+  // Queue ordering uses this instead of created_at so a customer who got a
+  // 30-second support touch and was returned to queue doesn't keep their
+  // original head-of-queue position over genuinely fresh tickets.
+  queueEnteredAt: timestamp('queue_entered_at', { mode: 'string' }).notNull().defaultNow(),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
   closedAt: timestamp('closed_at', { mode: 'string' }),
@@ -121,7 +127,7 @@ export const tickets = pgTable('tickets', {
   index('idx_tickets_partner_status').on(table.partnerId, table.status),
   index('idx_tickets_support_id').on(table.supportId),
   index('idx_tickets_participants_gin').using('gin', table.participants),
-  index('idx_tickets_open_unassigned').on(table.partnerId, table.createdAt).where(sql`status = 'open' AND support_id IS NULL`),
+  index('idx_tickets_open_unassigned').on(table.partnerId, table.queueEnteredAt).where(sql`status = 'open' AND support_id IS NULL`),
   index('idx_tickets_open_unresponded').on(table.partnerId, table.createdAt).where(sql`status IN ('open','pending') AND first_staff_response_at IS NULL`),
 ]);
 

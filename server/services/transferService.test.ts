@@ -121,8 +121,23 @@ describe('transferTicketToDepartment', () => {
       supportId: null,
       supportName: null,
       status: 'open',
+      queueEnteredAt: expect.any(String),
     });
     expect(updateWhereMock).toHaveBeenCalled();
+  });
+
+  it('bumps queueEnteredAt to NOW so the transferred ticket joins the new dept queue at the back', async () => {
+    const before = new Date().toISOString();
+    const { transferTicketToDepartment } = await import('./transferService.js');
+    await transferTicketToDepartment('ticket-bump', 'billing');
+    const after = new Date().toISOString();
+
+    const call = updateSetMock.mock.calls[0]?.[0] as { queueEnteredAt?: string };
+    expect(call?.queueEnteredAt).toBeDefined();
+    // Stamped between the start and end of the call — proves it's NOW(),
+    // not the original createdAt or some null-default fallback.
+    expect(call.queueEnteredAt! >= before).toBe(true);
+    expect(call.queueEnteredAt! <= after).toBe(true);
   });
 
   it('sets status to open on transfer', async () => {

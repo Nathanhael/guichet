@@ -65,7 +65,7 @@ export default function QueueTicketRow({
 
   const timerContent = variant === 'queue'
     ? (() => {
-        const { text, severity } = formatQueueWait(ticket.createdAt);
+        const { text, severity } = formatQueueWait(ticket.queueEnteredAt ?? ticket.createdAt);
         const colorClass = severity === 'red' ? 'text-[var(--color-urgent)]'
           : severity === 'amber' ? 'text-[var(--color-accent-amber)]'
           : 'text-[var(--color-ink-muted)]';
