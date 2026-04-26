@@ -5,6 +5,7 @@ import { markFirstStaffResponse } from '../../services/sla.js';
 import { isValidMediaUrl } from '../../utils/security.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { requirePartnerScope, requirePartnerScopeWith } from '../partnerScope.js';
+import { notifyPreviewers } from './preview.js';
 import { findTicketForMessage } from '../../services/ticketQueries.js';
 import { findSenderInfo } from '../../services/userQueries.js';
 import {
@@ -301,6 +302,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       } else {
         ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', broadcastPayload);
       }
+      notifyPreviewers(ctx.io, ticketId);
       logger.info({ messageId, whisper: !!isWhisper }, '[message:send] Emitted message:new');
       // Invalidate cached AI summary for this ticket (fire-and-forget)
       invalidateSummary(ticketId).catch(() => {});
@@ -407,6 +409,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const now = await updateMessageText(messageId, guardedText);
 
       ctx.io.to(Rooms.ticket(ticketId)).emit('message:edited', { ticketId, messageId, text: guardedText, editedAt: now });
+      notifyPreviewers(ctx.io, ticketId);
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:edit] error'); }
   });
 
@@ -437,6 +440,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const now = await softDeleteMessage(messageId);
 
       ctx.io.to(Rooms.ticket(ticketId)).emit('message:deleted', { ticketId, messageId, deletedAt: now });
+      notifyPreviewers(ctx.io, ticketId);
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delete] error'); }
   });
 
@@ -486,6 +490,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       await updateMessageReactions(messageId, reactions);
 
       ctx.io.to(Rooms.ticket(ticketId)).emit('reaction:updated', { ticketId, messageId, reactions });
+      notifyPreviewers(ctx.io, ticketId);
     } catch (err: unknown) {
       logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:react] error');
     }

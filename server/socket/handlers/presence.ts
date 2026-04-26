@@ -4,6 +4,7 @@ import { Rooms } from '../../utils/rooms.js';
 import * as presenceService from '../../services/presence.js';
 import * as statusTracking from '../../services/statusTracking.js';
 import { requirePartnerScopeWith } from '../partnerScope.js';
+import { notifyPreviewers } from './preview.js';
 
 import {
   findTicketForJoin,
@@ -145,6 +146,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', joinMsg);
       ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))
         .emit('support:joined', { ticketId, supportId, supportName, participants });
+      notifyPreviewers(ctx.io, ticketId);
       await broadcastQueuePositions(callerPartnerId);
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
   });
@@ -254,6 +256,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         `${supportName} left the conversation`,
       );
       ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', leaveMsg);
+      notifyPreviewers(ctx.io, ticketId);
 
       socket.leave(Rooms.ticket(ticketId));
       ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))

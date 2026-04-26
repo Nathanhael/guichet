@@ -14,6 +14,9 @@ export const Rooms = {
   /** Individual ticket room — only participants */
   ticket: (ticketId: string) => `ticket:${ticketId}` as const,
 
+  /** Read-only preview room — admins watching a ticket without joining as a participant */
+  ticketPreview: (ticketId: string) => `ticket:${ticketId}:preview` as const,
+
   /** Private user room — for kill switches and targeted disconnects */
   user: (userId: string) => `user:${userId}` as const,
 } as const;

@@ -137,6 +137,11 @@ export const ticketViewingSchema = z.object({
 });
 export type TicketViewingPayload = z.infer<typeof ticketViewingSchema>;
 
+export const ticketPreviewSchema = z.object({
+  ticketId: z.string().min(1),
+});
+export type TicketPreviewPayload = z.infer<typeof ticketPreviewSchema>;
+
 export const messageLoadMoreSchema = z.object({
   ticketId: z.string().min(1),
   cursor: z.string().min(1),
