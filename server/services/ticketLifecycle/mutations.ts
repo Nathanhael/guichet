@@ -11,6 +11,8 @@
  */
 import { sql } from 'drizzle-orm';
 
+import type { Participant } from './types.js';
+
 interface ReturnToQueueResult {
   /** False = race lost; the ticket is now owned by someone else. */
   ok: boolean;
@@ -49,4 +51,45 @@ export async function returnTicketToQueueTx(
   const r = res as { rowCount?: number | null; affectedRows?: number | null };
   const rowCount = r.rowCount ?? r.affectedRows ?? 0;
   return { ok: rowCount > 0 };
+}
+
+/**
+ * Read the current participants snapshot for a ticket. Returns null when
+ * the row doesn't exist. Cheap single-row read used by `lifecycle.leave`
+ * for its preflight check (is the actor a participant?). The lifecycle
+ * caches the result in-flight so the txn doesn't re-read.
+ */
+export async function readParticipants(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exec: any,
+  args: { ticketId: string; partnerId: string },
+): Promise<{ participants: Participant[]; supportId: string | null } | null> {
+  const res = await exec.execute(sql`SELECT participants, support_id
+    FROM tickets
+    WHERE id = ${args.ticketId} AND partner_id = ${args.partnerId}`);
+  const rows = (res.rows ?? res) as Array<{ participants: Participant[] | null; support_id: string | null }>;
+  if (!rows[0]) return null;
+  return {
+    participants: rows[0].participants ?? [],
+    supportId: rows[0].support_id,
+  };
+}
+
+/**
+ * Overwrites `tickets.participants` with the supplied array. Always runs;
+ * no race guard. Used by `lifecycle.leave` to drop the leaver from the
+ * roster.
+ */
+export async function writeParticipantsTx(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: any,
+  args: { ticketId: string; participants: Participant[] },
+): Promise<void> {
+  // Encode JSONB explicitly. Drizzle's `tickets.participants` is jsonb
+  // with a default, but the parameter binding through `sql` template
+  // doesn't auto-cast arrays — we wrap the JSON-encoded payload in
+  // `::jsonb` so PG accepts it.
+  await tx.execute(sql`UPDATE tickets
+    SET participants = ${JSON.stringify(args.participants)}::jsonb
+    WHERE id = ${args.ticketId}`);
 }

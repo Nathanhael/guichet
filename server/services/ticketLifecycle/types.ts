@@ -56,7 +56,9 @@ export type LifecycleError =
   /** Race: someone else already mutated the ticket between read and write. */
   | 'TICKET_ALREADY_REASSIGNED'
   /** Actor is in the wrong tenant (returned as TICKET_NOT_FOUND to avoid leakage). */
-  | 'NOT_AUTHORIZED';
+  | 'NOT_AUTHORIZED'
+  /** Caller is not listed in `tickets.participants`. */
+  | 'NOT_A_PARTICIPANT';
 
 /**
  * Discriminated result. Domain rejections are values, not exceptions, so
@@ -73,10 +75,23 @@ export type Result<Ok> =
  * caller's `applyEffects(io, effects)` dispatches them. The lifecycle module
  * never imports `socket.io`.
  *
- * The union grows per PR as new ops land. PR 1 only needs `emit`.
+ * The union grows per PR as new ops land. `emit` carries an array of room
+ * names so the dispatcher can preserve socket.io's `to(a).to(b).emit(...)`
+ * de-duplication semantics — broadcasting twice would double-deliver to
+ * sockets that sit in both rooms.
  */
 export type Effect =
-  | { type: 'emit'; room: string; event: string; payload: unknown };
+  | { type: 'emit'; rooms: string[]; event: string; payload: unknown }
+  | { type: 'notifyPreviewers'; ticketId: string };
+
+/** Snapshot of `tickets.participants` JSONB rows. */
+export interface Participant {
+  id: string;
+  name: string;
+  role?: string;
+  lang?: string;
+  isExternal?: boolean;
+}
 
 /** Result data shape returned by `lifecycle.reclaim()`. */
 export interface ReclaimOk {
@@ -87,21 +102,38 @@ export interface ReclaimOk {
 }
 
 /**
- * Public lifecycle interface. Each PR adds a new verb; PR 1 only exposes
- * `reclaim`. Callers depend on this interface, not on individual functions.
+ * Public lifecycle interface. Each PR adds a new verb; PRs 1–2 expose
+ * `reclaim`, `leave`, and `returnToQueue`. Callers depend on this
+ * interface, not on individual functions.
  */
 export interface TicketLifecycle {
   /**
    * Returns an abandoned ticket to the queue. Caller pre-filters
    * candidates (offline-at marker, supportJoinedAt fallback) and invokes
-   * this once per ticket. The lifecycle:
-   *  - atomically clears support assignment (race-guarded by previousSupportId)
-   *  - inserts the "Auto-released" system message
-   *  - writes a `ticket.reclaimed` audit row (new in this PR)
-   * All in one PG transaction. A failure on any insert rolls back the
-   * mutation — no partial state.
+   * this once per ticket. Atomically clears support assignment, inserts
+   * the "Auto-released" system message, writes a `ticket.reclaimed`
+   * audit row — all in one transaction.
    */
   reclaim(args: ReclaimArgs): Promise<Result<ReclaimOk>>;
+
+  /**
+   * Removes a participant from a ticket. If `clearPrimary` is true, also
+   * clears the support assignment (the leaver was the primary, or the
+   * stored primary is a ghost). Inserts the "X left the conversation"
+   * system message and writes a `ticket.left` audit row — all in one
+   * transaction. The audit row closes the silent gap that existed when
+   * the support:leave handler hand-rolled the orchestration.
+   */
+  leave(args: LeaveArgs): Promise<Result<LeaveOk>>;
+
+  /**
+   * Atomically returns a ticket to the queue (clears support assignment,
+   * sets status='open', bumps queue_entered_at), optionally inserts a
+   * system message, and writes a `ticket.returned_to_queue` audit row.
+   * Used by transfer-same-department and ghost-heal in support:join
+   * (those callers migrate in PR 3 / PR 4).
+   */
+  returnToQueue(args: ReturnToQueueArgs): Promise<Result<ReturnToQueueOk>>;
 }
 
 export interface ReclaimArgs {
@@ -112,4 +144,46 @@ export interface ReclaimArgs {
   previousSupportId: string;
   /** Used in the system message body. Snapshot from the candidate row. */
   previousSupportName: string | null;
+}
+
+export interface LeaveArgs {
+  ticketId: string;
+  partnerId: string;
+  /** The user who is leaving. Must be a participant. */
+  actor: UserActor;
+  /**
+   * Caller-determined: should the support assignment be cleared as part
+   * of this leave? True when the leaver is the stored primary, or the
+   * stored primary turned out to be a ghost (offline / not in
+   * participants). False when another valid support remains primary.
+   */
+  clearPrimary: boolean;
+  /**
+   * The stored support_id at the time the caller decided `clearPrimary`.
+   * Required when `clearPrimary` is true; used as the race guard on the
+   * atomic UPDATE so a concurrent claim can't be clobbered.
+   */
+  previousSupportId?: string | null;
+}
+
+export interface LeaveOk {
+  /** Snapshot of participants AFTER the leaver was removed. */
+  participants: Participant[];
+  /** True iff `clearPrimary` was requested AND the atomic clear updated a row. */
+  queueReturned: boolean;
+}
+
+export interface ReturnToQueueArgs {
+  ticketId: string;
+  partnerId: string;
+  /** UserActor for transfer-same-dept; SystemActor for ghost-heal. */
+  actor: Actor;
+  /** Race guard — only clear if `tickets.support_id` still matches. */
+  previousSupportId: string;
+  /** Optional system-message body. Omit to skip the message. */
+  systemMessageText?: string;
+}
+
+export interface ReturnToQueueOk {
+  ticketId: string;
 }

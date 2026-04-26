@@ -5,13 +5,13 @@ import * as presenceService from '../../services/presence.js';
 import * as statusTracking from '../../services/statusTracking.js';
 import { requirePartnerScopeWith } from '../partnerScope.js';
 import { notifyPreviewers } from './preview.js';
+import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
 
 import {
   findTicketForJoin,
   findTicketParticipants,
   assignSupport,
   findUpdatedParticipants,
-  updateParticipants,
   returnTicketToQueue,
 } from '../../services/ticketQueries.js';
 import { broadcastQueuePositions } from '../../services/businessHours.js';
@@ -206,61 +206,59 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId } = leaveParsed;
     socketioEventsTotal.inc({ event: 'support:leave' });
     try {
-      // Use verified identity — never trust client-supplied supportId/supportName
-      const supportId = socket.data.userId;
-      const supportName = socket.data.name;
       const callerPartnerId = socket.data.partnerId;
 
+      // Read the ticket once so the partner-scope check + the
+      // ghost-primary decision can share a single round-trip; the
+      // lifecycle does its own atomic re-read inside the txn so this is
+      // not a TOCTOU surface.
       const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketParticipants);
       if (!ticket) return;
 
-      // Verify caller is actually a participant in this ticket
-      const currentParticipants = getParticipants(ticket);
-      const isParticipant = currentParticipants.some((p) => p.id === supportId);
-      if (!isParticipant) {
-        return socket.emit('error', { message: 'You are not a participant of this ticket' });
-      }
-
-      const participants = currentParticipants.filter((p: Participant) => p.id !== supportId);
-      await updateParticipants(ticketId, participants);
-
-      // Invariant: support_id must point to someone in participants AND online.
-      // Any violation → clear unguarded. Covers:
-      //   1. Leaver is primary (most common)
-      //   2. Ticket is empty after leave
-      //   3. Primary is a ghost — in participants but offline (crashed without
-      //      emitting support:leave). Without this check, the leaver stays a
-      //      silent secondary and the ticket visibly lingers under the stale
-      //      primary's name in "Other support".
-      let queueReturned = false;
+      // Determine `clearPrimary` BEFORE the lifecycle call. The decision
+      // depends on Redis presence (kept out of the lifecycle so the
+      // module stays DB-only). Mirrors the legacy invariant exactly:
+      //   1. Leaver is primary (storedPrimary === leaver) → clear.
+      //   2. Stored primary not in remaining participants → clear.
+      //   3. Stored primary fully offline → clear.
+      const supportId = socket.data.userId;
+      const currentParticipants: Participant[] = ticket.participants ?? [];
+      const remaining = currentParticipants.filter((p: Participant) => p.id !== supportId);
       const storedPrimary = ticket.supportId;
+      let clearPrimary = false;
       if (storedPrimary) {
         const primaryValid =
           storedPrimary !== supportId
-          && participants.some((p: Participant) => p.id === storedPrimary)
+          && remaining.some((p: Participant) => p.id === storedPrimary)
           && (await presenceService.getUserStatus(storedPrimary, callerPartnerId)) !== null;
-        if (!primaryValid) {
-          // Guarded clear — serializes against a concurrent support:join
-          // that may have just claimed the ticket. If support_id no longer
-          // matches storedPrimary, the update no-ops and queueReturned
-          // stays false so we don't mislead the queue broadcast.
-          queueReturned = await returnTicketToQueue(ticketId, storedPrimary);
-        }
+        clearPrimary = !primaryValid;
       }
 
-      // Insert the system message BEFORE removing the socket from the ticket
-      // room so the leaver also receives the message:new event for their own
-      // farewell line in their currently-open chat tab.
-      const leaveMsg = await insertSystemMessage(
+      const result = await ctx.lifecycle.leave({
         ticketId,
-        `${supportName} left the conversation`,
-      );
-      ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', leaveMsg);
-      notifyPreviewers(ctx.io, ticketId);
+        partnerId: callerPartnerId,
+        actor: socketActor(socket),
+        clearPrimary,
+        previousSupportId: storedPrimary ?? null,
+      });
 
+      if (!result.ok) {
+        if (result.code === 'NOT_A_PARTICIPANT') {
+          return socket.emit('error', { message: 'You are not a participant of this ticket' });
+        }
+        if (result.code === 'TICKET_NOT_FOUND') {
+          return; // requirePartnerScopeWith already emitted the error.
+        }
+        return; // any other code → silently log via the lifecycle's own logging path
+      }
+
+      // Drop the leaver out of the ticket room before fanning out the
+      // leave events; the lifecycle's `message:new` and `support:left`
+      // emits target Rooms.ticket(ticketId) but we want the leaver to
+      // still receive the farewell line in their currently-open chat
+      // tab. Order matches the legacy handler exactly: emit, then leave.
+      applyEffects(ctx.io, result.effects);
       socket.leave(Rooms.ticket(ticketId));
-      ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))
-        .emit('support:left', { ticketId, supportId, supportName, participants, queueReturned });
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:leave] error'); }
   });
 
