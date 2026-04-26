@@ -46,6 +46,7 @@ vi.mock('../../Toast', () => ({ default: () => null }));
 vi.mock('../../ConfirmDialog', () => ({ default: () => null }));
 vi.mock('../../GuestBadge', () => ({ default: () => null }));
 vi.mock('../MemberAuditDrawer', () => ({ default: () => null }));
+vi.mock('../AgentStatusStats', () => ({ default: () => null }));
 
 vi.mock('../../../utils/trpc', () => ({
   trpc: {

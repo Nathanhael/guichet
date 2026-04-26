@@ -19,6 +19,7 @@ import { statusRouter } from './routers/status.js';
 import { linkPreviewRouter } from './routers/linkPreview.js';
 import { slaRouter } from './routers/sla.js';
 import { supportRouter } from './routers/support.js';
+import { dashboardRouter } from './routers/dashboard.js';
 
 export const appRouter = router({
   status: statusRouter,
@@ -34,6 +35,7 @@ export const appRouter = router({
   savedView: savedViewRouter,
   stats: statsRouter,
   support: supportRouter,
+  dashboard: dashboardRouter,
   user: userRouter,
   platform: platformRouter,
   partner: partnerRouter,
