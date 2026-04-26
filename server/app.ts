@@ -38,6 +38,7 @@ import { register } from './utils/metrics.js';
 import { initRedis, getRedisClients } from './utils/redis.js';
 import { jwtVerify } from 'jose';
 import { initAiContext } from './services/ai/index.js';
+import { createTicketLifecycle, type TicketLifecycle } from './services/ticketLifecycle/index.js';
 import { decrypt } from './services/encryption.js';
 import * as schema from './db/schema.js';
 
@@ -49,6 +50,13 @@ export { app };
 
 const httpServer = createServer(app);
 export { httpServer };
+
+// Ticket lifecycle module — single deep service that owns every ticket-state
+// transition (reclaim today; leave/returnToQueue/assign/transfer/close/create
+// land in subsequent PRs). Wired once here and passed explicitly to socket
+// handlers and the boot-time reclaim sweep so neither has to reach for a
+// module-level singleton.
+export const lifecycle: TicketLifecycle = createTicketLifecycle({ db });
 
 const allowedOrigins = config.CORS_ORIGIN.split(',');
 
@@ -447,7 +455,7 @@ if (config.RECLAIM_TIMEOUT_MINS > 0) {
   const RECLAIM_INTERVAL_MS = 5 * 60 * 1000; // every 5 minutes
   const reclaimTask = () => reclaimRunner.run(async () => {
     const { reclaimAbandonedTickets } = await import('./services/ticketReclaim.js');
-    await reclaimAbandonedTickets(io);
+    await reclaimAbandonedTickets(io, lifecycle);
   });
   setTimeout(() => {
     reclaimTask();
@@ -499,7 +507,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // Socket.IO handlers
-registerSocketHandlers(io);
+registerSocketHandlers(io, { lifecycle });
 
 setBusinessHoursIo(io);
 setPresenceIo(io);

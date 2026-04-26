@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { z } from 'zod';
 import logger from '../../utils/logger.js';
 import { isRevoked } from '../../services/sessionRevocation.js';
+import type { TicketLifecycle } from '../../services/ticketLifecycle/index.js';
 import { socketioEventsTotal } from '../../utils/metrics.js';
 
 // Re-export so handler modules can reference it without importing metrics directly
@@ -11,6 +12,13 @@ export interface HandlerContext {
   io: Server;
   socketTickets: Map<string, Set<string>>;
   viewerKeyPrefix: string;
+  /**
+   * The single deep ticket-lifecycle service. Handlers call e.g.
+   * `ctx.lifecycle.leave(...)` and dispatch the returned effects via
+   * `applyEffects(ctx.io, effects)` rather than reaching into mutation /
+   * audit / system-message helpers directly. Wired in `server/app.ts`.
+   */
+  lifecycle: TicketLifecycle;
 }
 
 // ─── Socket Event Payload Schemas ─────────────────────────────────────────────

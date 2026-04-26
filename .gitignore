@@ -89,6 +89,7 @@ testing/
 # Server unit tests (co-located)
 !server/services/*.test.ts
 !server/services/ai/*.test.ts
+!server/services/ticketLifecycle/*.test.ts
 !server/socket/*.test.ts
 !server/socket/handlers/*.test.ts
 !server/middleware/*.test.ts

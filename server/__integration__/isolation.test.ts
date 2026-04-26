@@ -243,7 +243,11 @@ describe('multi-tenant isolation — socket handlers', () => {
 
     const { registerSocketHandlers } = await import('../socket/handlers.js');
     io = createMockIo();
-    registerSocketHandlers(io);
+    // Lifecycle isn't exercised by these integration tests (they cover
+    // partner-scope guards, not lifecycle ops). A stub keeps the wiring
+    // honest without dragging the lifecycle module into the mock graph.
+    const stubLifecycle = { reclaim: async () => ({ ok: false, code: 'TICKET_NOT_FOUND' as const }) };
+    registerSocketHandlers(io, { lifecycle: stubLifecycle as never });
   });
 
   it('support:join rejects joining a ticket belonging to a different partner', async () => {
