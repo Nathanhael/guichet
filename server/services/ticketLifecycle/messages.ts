@@ -29,6 +29,15 @@ interface WhisperMessageArgs extends BaseMessageArgs {
   text: string;
 }
 
+interface AgentMessageArgs extends BaseMessageArgs {
+  senderId: string;
+  senderName: string;
+  senderLang: string;
+  senderIsExternal: boolean;
+  text: string;
+  mediaUrl?: string;
+}
+
 /**
  * Socket-ready system/whisper message shape. Mirrors the object returned
  * by the legacy `insertMessage` helper so the lifecycle's emit effects
@@ -115,6 +124,41 @@ export async function insertSystemMessageTx(tx: any, args: SystemMessageArgs): P
     text: args.text,
     whisper: false,
     system: true,
+  });
+}
+
+/** Insert a regular agent-authored message — used by `lifecycle.create`'s optional first-message slot. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function insertAgentMessageTx(tx: any, args: AgentMessageArgs): Promise<SocketMessage> {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await tx.insert(messages).values({
+    id,
+    ticketId: args.ticketId,
+    senderId: args.senderId,
+    senderName: args.senderName,
+    senderRole: 'agent',
+    senderLang: args.senderLang,
+    senderIsExternal: args.senderIsExternal,
+    text: args.text,
+    mediaUrl: args.mediaUrl ?? null,
+    whisper: 0,
+    system: 0,
+    createdAt: now,
+    reactions: {},
+  });
+  return toSocketMessage({
+    id,
+    now,
+    ticketId: args.ticketId,
+    senderId: args.senderId,
+    senderName: args.senderName,
+    senderRole: 'agent',
+    senderLang: args.senderLang,
+    senderIsExternal: args.senderIsExternal,
+    text: args.text,
+    whisper: false,
+    system: false,
   });
 }
 

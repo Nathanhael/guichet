@@ -13,6 +13,8 @@
  * `assign`, `transfer`, `close`, and `create` to the same interface.
  */
 import { runAssign } from './assign.js';
+import { runClose } from './close.js';
+import { runCreate } from './create.js';
 import { runLeave } from './leave.js';
 import { runReclaim } from './reclaim.js';
 import { runReturnToQueue } from './returnToQueue.js';
@@ -20,6 +22,10 @@ import { runTransfer } from './transfer.js';
 import type {
   AssignArgs,
   AssignOk,
+  CloseArgs,
+  CloseOk,
+  CreateArgs,
+  CreateOk,
   LeaveArgs,
   LeaveOk,
   LifecycleDb,
@@ -39,6 +45,10 @@ export type {
   Actor,
   AssignArgs,
   AssignOk,
+  CloseArgs,
+  CloseOk,
+  CreateArgs,
+  CreateOk,
   UserActor,
   SystemActor,
   Effect,
@@ -53,6 +63,7 @@ export type {
   ReturnToQueueArgs,
   ReturnToQueueOk,
   TicketLifecycle,
+  TicketReference,
   TransferArgs,
   TransferOk,
 } from './types.js';
@@ -78,5 +89,9 @@ export function createTicketLifecycle(deps: TicketLifecycleDeps): TicketLifecycl
       runAssign({ db: deps.db }, args),
     transfer: (args: TransferArgs): Promise<Result<TransferOk>> =>
       runTransfer({ db: deps.db }, args),
+    close: (args: CloseArgs): Promise<Result<CloseOk>> =>
+      runClose({ db: deps.db }, args),
+    create: (args: CreateArgs): Promise<Result<CreateOk>> =>
+      runCreate({ db: deps.db }, args),
   };
 }

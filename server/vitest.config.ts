@@ -8,7 +8,11 @@ export default defineConfig({
       NODE_ENV: 'test',
       DATABASE_URL: process.env.DATABASE_URL ?? 'postgres://user:password@localhost:5432/guichet',
     },
-    testTimeout: 15000,
-    hookTimeout: 15000,
+    // Bumped from 15s after the lifecycle PGLite suite (~40s of WASM
+    // boot + migration across 7 files) started competing with the
+    // socket-isolation tests' beforeEach `await import(...)` for the
+    // event loop under full-suite load.
+    testTimeout: 30000,
+    hookTimeout: 30000,
   },
 });

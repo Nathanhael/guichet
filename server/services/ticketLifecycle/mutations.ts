@@ -82,6 +82,140 @@ export async function readParticipants(
 }
 
 /**
+ * Read the lifecycle slice for `lifecycle.close`'s preflight: existence,
+ * tenant, status, and the support assignment (used to decide
+ * `hadSupport` in the audit metadata + the ticket:closed payload).
+ */
+export async function readForClose(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exec: any,
+  args: { ticketId: string; partnerId: string },
+): Promise<{ status: string; agentId: string; supportId: string | null; supportName: string | null } | null> {
+  const res = await exec.execute(sql`SELECT status, agent_id, support_id, support_name FROM tickets
+    WHERE id = ${args.ticketId} AND partner_id = ${args.partnerId}`);
+  const rows = (res.rows ?? res) as Array<{ status: string; agent_id: string; support_id: string | null; support_name: string | null }>;
+  if (!rows[0]) return null;
+  return {
+    status: rows[0].status,
+    agentId: rows[0].agent_id,
+    supportId: rows[0].support_id,
+    supportName: rows[0].support_name,
+  };
+}
+
+/**
+ * Atomically close a ticket. Sets status='closed' + closed_at +
+ * closed_by + closing_notes. Returns the closed_at timestamp so the
+ * orchestrator can include it in the post-commit emit.
+ */
+export async function closeTicketTx(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: any,
+  args: { ticketId: string; closedBy: string; closingNotes: string },
+): Promise<{ closedAt: string }> {
+  const closedAt = new Date().toISOString();
+  await tx.execute(sql`UPDATE tickets SET
+    status = 'closed',
+    closed_at = ${closedAt},
+    closed_by = ${args.closedBy},
+    closing_notes = ${args.closingNotes}
+  WHERE id = ${args.ticketId}`);
+  return { closedAt };
+}
+
+/**
+ * Read the partner row needed by `lifecycle.create`'s preflight:
+ * status (must be 'active') + business hours schedule. Returns null
+ * when the partner doesn't exist.
+ */
+export async function readPartnerForCreate(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exec: any,
+  args: { partnerId: string },
+): Promise<{ status: string; businessHoursSchedule: unknown } | null> {
+  const res = await exec.execute(sql`SELECT status, business_hours_schedule FROM partners WHERE id = ${args.partnerId}`);
+  const rows = (res.rows ?? res) as Array<{ status: string; business_hours_schedule: unknown }>;
+  if (!rows[0]) return null;
+  return {
+    status: rows[0].status,
+    businessHoursSchedule: rows[0].business_hours_schedule,
+  };
+}
+
+/**
+ * Read the agent's open / pending tickets — the dup-ticket check.
+ * Returns up to one row (we only care whether there's *any* match).
+ */
+export async function readActiveTicketForAgent(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exec: any,
+  args: { agentId: string; partnerId: string },
+): Promise<{ id: string } | null> {
+  const res = await exec.execute(sql`SELECT id FROM tickets
+    WHERE agent_id = ${args.agentId}
+      AND partner_id = ${args.partnerId}
+      AND status != 'closed'
+    LIMIT 1`);
+  const rows = (res.rows ?? res) as Array<{ id: string }>;
+  return rows[0] ?? null;
+}
+
+/**
+ * Read recently-closed tickets in the partner — the reopen-detection
+ * data source. Caller iterates and matches references in JS to keep
+ * the SQL simple.
+ */
+export async function readRecentClosedTickets(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exec: any,
+  args: { partnerId: string; limit: number },
+): Promise<Array<{ references: unknown; reopenCount: number | null }>> {
+  const res = await exec.execute(sql`SELECT "references", reopen_count FROM tickets
+    WHERE partner_id = ${args.partnerId} AND status = 'closed'
+    ORDER BY closed_at DESC NULLS LAST
+    LIMIT ${args.limit}`);
+  const rows = (res.rows ?? res) as Array<{ references: unknown; reopen_count: number | null }>;
+  return rows.map((r) => ({ references: r.references, reopenCount: r.reopen_count }));
+}
+
+/**
+ * Insert the ticket row inside a txn. Mirrors the production-side
+ * `services/ticketQueries.createTicket` helper but runs through the
+ * supplied `tx` so the audit row + first message land atomically.
+ */
+export async function createTicketTx(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: any,
+  args: {
+    id: string;
+    partnerId: string;
+    dept: string;
+    agentId: string;
+    agentName: string;
+    agentLang: string;
+    references: Array<{ label: string; value: string }>;
+    createdAt: string;
+    reopened: boolean;
+    reopenCount: number;
+  },
+): Promise<void> {
+  await tx.execute(sql`INSERT INTO tickets (
+    id, partner_id, dept, agent_id, agent_name, agent_lang,
+    "references", status, participants, reopened, reopen_count,
+    created_at, updated_at, queue_entered_at
+  ) VALUES (
+    ${args.id}, ${args.partnerId}, ${args.dept}, ${args.agentId},
+    ${args.agentName}, ${args.agentLang},
+    ${JSON.stringify(args.references)}::jsonb,
+    'open',
+    '[]'::jsonb,
+    ${args.reopened},
+    ${args.reopenCount},
+    ${args.createdAt}, ${args.createdAt}, ${args.createdAt}
+  )`);
+}
+
+/**
  * Read the partner's `departments` JSONB. Used by `lifecycle.transfer`'s
  * preflight to validate the target department id and resolve its name
  * for the system message + audit metadata. Returns an empty array if
