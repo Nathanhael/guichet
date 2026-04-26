@@ -33,9 +33,6 @@ import {
   findRecentClosedTickets,
   findActiveTicketsForAgent,
   findActiveTicketsForSupport,
-  createTicket,
-  closeTicket,
-  returnTicketToQueue,
   replaceTicketLabels,
   findPartnerLabels,
 } from './ticketQueries.js';
@@ -127,88 +124,14 @@ describe('ticketQueries', () => {
     });
   });
 
-  describe('createTicket', () => {
-    it('inserts a ticket', async () => {
-      const insertChain = { values: vi.fn().mockResolvedValue(undefined) };
-      vi.mocked(db.insert).mockReturnValue(insertChain as never);
-      await createTicket({
-        id: 't1', partnerId: 'p1', dept: 'sales', agentId: 'a1',
-        agentName: 'Alice', agentLang: 'en', references: [],
-        status: 'open', createdAt: '2026-01-01', participants: [],
-        reopened: false, reopenCount: 0,
-      });
-      expect(db.insert).toHaveBeenCalled();
-    });
-  });
-
-  describe('closeTicket', () => {
-    it('sets status to closed with timestamp', async () => {
-      const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(undefined) };
-      vi.mocked(db.update).mockReturnValue(chain as never);
-      await closeTicket('t1', 'Bob', 'resolved now');
-      expect(db.update).toHaveBeenCalled();
-    });
-  });
-
-  describe('returnTicketToQueue', () => {
-    it('unassigns support and sets status to open (no supportId guard)', async () => {
-      const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue({ rowCount: 1 }) };
-      vi.mocked(db.update).mockReturnValue(chain as never);
-      const ok = await returnTicketToQueue('t1');
-      expect(ok).toBe(true);
-      expect(db.update).toHaveBeenCalled();
-      expect(chain.set).toHaveBeenCalledWith({
-        supportId: null,
-        supportName: null,
-        supportJoinedAt: null,
-        status: 'open',
-        queueEnteredAt: expect.any(String),
-      });
-    });
-
-    it('bumps queueEnteredAt to NOW on the no-guard branch so the requeued ticket joins the queue at the back', async () => {
-      const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue({ rowCount: 1 }) };
-      vi.mocked(db.update).mockReturnValue(chain as never);
-      const before = new Date().toISOString();
-      await returnTicketToQueue('t-bump');
-      const after = new Date().toISOString();
-
-      const setCall = chain.set.mock.calls[0]?.[0] as { queueEnteredAt?: string };
-      expect(setCall?.queueEnteredAt).toBeDefined();
-      // Stamped between the start and end of the call — proves it's NOW(),
-      // not a stale createdAt or null-default fallback.
-      expect(setCall.queueEnteredAt! >= before).toBe(true);
-      expect(setCall.queueEnteredAt! <= after).toBe(true);
-    });
-
-    it('uses atomic SQL with supportId guard when provided', async () => {
-      vi.mocked(db.execute).mockResolvedValue({ rowCount: 1 } as never);
-      const ok = await returnTicketToQueue('t1', 'support-42');
-      expect(ok).toBe(true);
-      expect(db.execute).toHaveBeenCalled();
-    });
-
-    it('guarded branch SQL includes queue_entered_at = NOW() so position resets atomically with the unassign', async () => {
-      vi.mocked(db.execute).mockResolvedValue({ rowCount: 1 } as never);
-      await returnTicketToQueue('t-guarded', 'support-99');
-
-      // Drizzle's sql template object exposes the literal string fragments via
-      // the `queryChunks` array. Asserting the column + NOW() appears in those
-      // chunks is the cheapest way to verify the guarded branch performs the
-      // queue-position reset atomically with the unassign.
-      const callArgs = vi.mocked(db.execute).mock.calls[0]?.[0] as unknown as {
-        queryChunks: Array<{ value?: string[] } | string>;
-      };
-      const stringified = JSON.stringify(callArgs);
-      expect(stringified).toMatch(/queue_entered_at\s*=\s*NOW\(\)/);
-    });
-
-    it('returns false when race-guarded update affects zero rows', async () => {
-      vi.mocked(db.execute).mockResolvedValue({ rowCount: 0 } as never);
-      const ok = await returnTicketToQueue('t1', 'support-42');
-      expect(ok).toBe(false);
-    });
-  });
+  // Lifecycle-mutation tests (createTicket / closeTicket / returnTicketToQueue
+  // and friends) lived here pre-deepening. Their replacements assert against
+  // PGLite-backed transactions in `services/ticketLifecycle/*.test.ts` —
+  // `reclaim.test.ts` covers returnTicketToQueue + audit invariant,
+  // `leave.test.ts` covers participant updates, `assign.test.ts` covers
+  // assignSupport, `transfer.test.ts` covers transferTicketToDepartment +
+  // whisper note, `close.test.ts` covers closeTicket + closed_at, and
+  // `create.test.ts` covers createTicket + reopen detection.
 
   describe('replaceTicketLabels', () => {
     it('replaces labels in a transaction', async () => {
