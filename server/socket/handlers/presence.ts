@@ -4,22 +4,15 @@ import { Rooms } from '../../utils/rooms.js';
 import * as presenceService from '../../services/presence.js';
 import * as statusTracking from '../../services/statusTracking.js';
 import { requirePartnerScopeWith } from '../partnerScope.js';
-import { notifyPreviewers } from './preview.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
 
 import {
   findTicketForJoin,
   findTicketParticipants,
-  assignSupport,
-  findUpdatedParticipants,
-  returnTicketToQueue,
 } from '../../services/ticketQueries.js';
-import { broadcastQueuePositions } from '../../services/businessHours.js';
-import { insertSystemMessage } from '../../services/systemMessage.js';
 import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/messageQueries.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { findUserName } from '../../services/userQueries.js';
-import { auditTicketAssigned } from '../../services/ticketAudit.js';
 import {
   requireIdentified,
   socketioEventsTotal,
@@ -45,12 +38,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId, supportLang } = parsed;
     socketioEventsTotal.inc({ event: 'support:join' });
     try {
-      // Use verified identity from socket.data — never trust client-supplied supportId/supportName
       const supportId = socket.data.userId;
-      const supportName = socket.data.name;
       const callerPartnerId = socket.data.partnerId;
 
-      // Authorization: only support/admin roles can join
       if (!socket.data.isSupport) {
         return socket.emit('error', { message: 'Not authorized to join tickets' });
       }
@@ -58,17 +48,17 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForJoin);
       if (!ticket) return;
 
-      // HI-01 fix: Prevent joining closed tickets — this would silently re-open them
+      // HI-01: closed tickets cannot be re-opened by a join — block here
+      // for the user-facing error message; the lifecycle would also reject
+      // with TICKET_CLOSED.
       if (ticket.status === 'closed') {
         return socket.emit('error', { message: 'Cannot join a closed ticket' });
       }
 
-      // Idempotency: if the joiner is already a participant (tab re-open,
-      // state rehydrate, duplicate emit), short-circuit to the silent-rejoin
-      // behaviour — refresh the room + history but skip the audit write,
-      // "joined the conversation" whisper, and staff-room broadcast. Prior
-      // behaviour inserted a new system message on every call, producing
-      // stacks of duplicate "X joined" lines in the chat.
+      // Idempotency: silent rejoin path. If the joiner is already a
+      // participant (tab re-open, state rehydrate, duplicate emit), skip
+      // the lifecycle call entirely — no audit write, no whisper, no
+      // staff-room broadcast. Just refresh the room + history.
       const existingParticipants = getParticipants(ticket);
       const alreadyParticipant = existingParticipants.some((p) => p.id === supportId);
 
@@ -81,12 +71,12 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         return;
       }
 
-      // Ghost-heal: if support_id points to a user who either isn't in
-      // participants (stale) or is fully offline (no active sockets),
-      // clear it before assignSupport. Without this, a crashed primary
-      // who never emitted support:leave leaves support_id set, and
-      // assignSupport's COALESCE keeps the ghost — making new joiners
-      // silent secondaries (their later leave doesn't unassign the ticket).
+      // Ghost decision — Redis presence check stays in the handler so the
+      // lifecycle module remains DB-only and PGLite-testable. Mirrors the
+      // legacy invariant exactly: if support_id points to someone who's
+      // either not in participants or fully offline, clear the slot via
+      // the lifecycle's race-guarded path inside the assign txn.
+      let ghostHealPreviousSupportId: string | null = null;
       if (ticket.supportId && ticket.supportId !== supportId) {
         const listedInParticipants = existingParticipants.some(
           (p) => p.id === ticket.supportId,
@@ -99,55 +89,48 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           );
           primaryValid = status !== null;
         }
-        if (!primaryValid) {
-          // Guarded clear — if a concurrent support:join claimed the ticket
-          // between our read and here, the guarded overload (WHERE support_id
-          // = ghostId) no-ops instead of clobbering the fresh claim.
-          await returnTicketToQueue(ticketId, ticket.supportId ?? undefined);
+        if (!primaryValid) ghostHealPreviousSupportId = ticket.supportId;
+      }
+
+      // Denormalize the joiner's B2B-guest flag onto tickets.participants
+      // — lets ChatHeader flag offline guests without a live presence
+      // lookup. findUserName is a cheap single-row read.
+      const joinerInfo = await findUserName(supportId);
+      const baseActor = socketActor(socket);
+      const joinActor = { ...baseActor, isExternal: !!joinerInfo?.isExternal };
+
+      const result = await ctx.lifecycle.assign({
+        ticketId,
+        partnerId: callerPartnerId,
+        actor: joinActor,
+        supportLang,
+        ghostHealPreviousSupportId,
+      });
+
+      if (!result.ok) {
+        switch (result.code) {
+          case 'NOT_AUTHORIZED':
+            return socket.emit('error', { message: 'Not authorized to join tickets' });
+          case 'TICKET_CLOSED':
+            return socket.emit('error', { message: 'Cannot join a closed ticket' });
+          case 'TICKET_NOT_FOUND':
+            return; // requirePartnerScopeWith already emitted the error
+          default:
+            return;
         }
       }
 
-      // Resolve the joiner's Azure B2B guest flag so it can be denormalized
-      // onto tickets.participants — lets ChatHeader flag offline guests
-      // without a live presence lookup. findUserName is a cheap single-row
-      // read; support:join is infrequent.
-      const joinerInfo = await findUserName(supportId);
-      await assignSupport(
-        ticketId,
-        supportId,
-        supportName,
-        supportLang,
-        !!joinerInfo?.isExternal,
-      );
-      auditTicketAssigned({
-        ticketId,
-        partnerId: callerPartnerId,
-        actorId: supportId,
-        supportId,
-        supportName,
-      });
-
-      // Read back updated participants for broadcast
-      const participants = (await findUpdatedParticipants(ticketId)) || [];
+      // Join the ticket room BEFORE dispatching effects so the joiner
+      // receives the message:new and support:joined events in their own
+      // chat tab. History fetch + emit is purely transport — kept here
+      // because the lifecycle has no socket access.
       socket.join(Rooms.ticket(ticketId));
       const { messages: msgRows, hasMore, nextCursor } = await findTicketMessagesPaginated(ticketId, { limit: 100 });
       const msgs = msgRows.map(mapMessageRow);
       const labelIds = await findTicketLabelIds(ticketId);
       socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
 
-      // Insert a staff-only whisper announcing the join, then fan out the
-      // updated participants list to BOTH the ticket room (chat header) AND
-      // the staff room (queue rows of every other support). io.to().to() de-
-      // duplicates by socket id so no one receives the event twice.
-      const joinMsg = await insertSystemMessage(
-        ticketId,
-        `${supportName} joined the conversation`,
-      );
-      ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', joinMsg);
-      ctx.io.to(Rooms.ticket(ticketId)).to(Rooms.staff(callerPartnerId))
-        .emit('support:joined', { ticketId, supportId, supportName, participants });
-      notifyPreviewers(ctx.io, ticketId);
-      await broadcastQueuePositions(callerPartnerId);
+      applyEffects(ctx.io, result.effects);
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[support:join] error'); }
   });
 

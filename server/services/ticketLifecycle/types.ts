@@ -58,7 +58,9 @@ export type LifecycleError =
   /** Actor is in the wrong tenant (returned as TICKET_NOT_FOUND to avoid leakage). */
   | 'NOT_AUTHORIZED'
   /** Caller is not listed in `tickets.participants`. */
-  | 'NOT_A_PARTICIPANT';
+  | 'NOT_A_PARTICIPANT'
+  /** Closed tickets cannot be re-opened by a join — use the reopen flow instead. */
+  | 'TICKET_CLOSED';
 
 /**
  * Discriminated result. Domain rejections are values, not exceptions, so
@@ -82,7 +84,8 @@ export type Result<Ok> =
  */
 export type Effect =
   | { type: 'emit'; rooms: string[]; event: string; payload: unknown }
-  | { type: 'notifyPreviewers'; ticketId: string };
+  | { type: 'notifyPreviewers'; ticketId: string }
+  | { type: 'broadcastQueue'; partnerId: string };
 
 /** Snapshot of `tickets.participants` JSONB rows. */
 export interface Participant {
@@ -134,6 +137,16 @@ export interface TicketLifecycle {
    * (those callers migrate in PR 3 / PR 4).
    */
   returnToQueue(args: ReturnToQueueArgs): Promise<Result<ReturnToQueueOk>>;
+
+  /**
+   * Assigns a support agent to a ticket. Atomic COALESCE — the joiner
+   * becomes primary only if no support is currently assigned; otherwise
+   * they're added as a secondary participant. Optionally clears a
+   * "ghost" primary first (race-guarded by `ghostHealPreviousSupportId`).
+   * Inserts the "X joined the conversation" system message and writes a
+   * `ticket.assigned` audit row — all in one transaction.
+   */
+  assign(args: AssignArgs): Promise<Result<AssignOk>>;
 }
 
 export interface ReclaimArgs {
@@ -186,4 +199,34 @@ export interface ReturnToQueueArgs {
 
 export interface ReturnToQueueOk {
   ticketId: string;
+}
+
+export interface AssignArgs {
+  ticketId: string;
+  partnerId: string;
+  /** The joining support / admin / platform_operator. */
+  actor: UserActor;
+  /**
+   * Per-ticket language for the joining support. Stored on
+   * `tickets.support_lang` via COALESCE — already-set lang is preserved
+   * when a secondary joins. Comes from the socket payload
+   * (`support:join` carries `supportLang`).
+   */
+  supportLang: string;
+  /**
+   * When non-null, the lifecycle clears the stored support_id (race-
+   * guarded by this id) BEFORE the COALESCE assign. Caller computed
+   * the ghost decision via Redis presence check; the lifecycle stays
+   * DB-only.
+   */
+  ghostHealPreviousSupportId?: string | null;
+}
+
+export interface AssignOk {
+  /** Snapshot of participants AFTER the assign. */
+  participants: Participant[];
+  /** True iff the joining actor became primary (no prior support_id). */
+  becamePrimary: boolean;
+  /** True iff the ghost-heal clear actually fired (race-guarded). */
+  ghostHealed: boolean;
 }

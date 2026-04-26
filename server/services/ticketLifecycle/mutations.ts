@@ -76,6 +76,28 @@ export async function readParticipants(
 }
 
 /**
+ * Read the lifecycle-relevant slice of a ticket needed by `lifecycle.assign`'s
+ * preflight (status check + ghost-decision context). Returns null when the
+ * row doesn't exist in the supplied tenant.
+ */
+export async function readForAssign(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exec: any,
+  args: { ticketId: string; partnerId: string },
+): Promise<{ status: string; supportId: string | null; participants: Participant[] } | null> {
+  const res = await exec.execute(sql`SELECT status, support_id, participants
+    FROM tickets
+    WHERE id = ${args.ticketId} AND partner_id = ${args.partnerId}`);
+  const rows = (res.rows ?? res) as Array<{ status: string; support_id: string | null; participants: Participant[] | null }>;
+  if (!rows[0]) return null;
+  return {
+    status: rows[0].status,
+    supportId: rows[0].support_id,
+    participants: rows[0].participants ?? [],
+  };
+}
+
+/**
  * Overwrites `tickets.participants` with the supplied array. Always runs;
  * no race guard. Used by `lifecycle.leave` to drop the leaver from the
  * roster.
@@ -92,4 +114,53 @@ export async function writeParticipantsTx(
   await tx.execute(sql`UPDATE tickets
     SET participants = ${JSON.stringify(args.participants)}::jsonb
     WHERE id = ${args.ticketId}`);
+}
+
+/**
+ * Atomically assign a support agent to a ticket. Idempotent: COALESCE
+ * preserves an existing `support_id` (a concurrent claim wins; the
+ * joiner becomes a secondary), and the participants merge uses JSONB
+ * containment to skip the entry on a duplicate join. Sets `status='open'`
+ * unconditionally — joining a closed ticket is rejected upstream.
+ *
+ * Returns the post-update `support_id` and `participants` so the caller
+ * can decide whether the actor became primary (used in audit metadata).
+ */
+export async function assignSupportTx(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: any,
+  args: {
+    ticketId: string;
+    supportId: string;
+    supportName: string;
+    supportLang: string;
+    supportIsExternal: boolean;
+  },
+): Promise<{ supportId: string | null; participants: Participant[] }> {
+  const participantJson = JSON.stringify({
+    id: args.supportId,
+    name: args.supportName,
+    isExternal: args.supportIsExternal,
+  });
+  const res = await tx.execute(sql`UPDATE tickets SET
+    support_id = COALESCE(support_id, ${args.supportId}),
+    support_name = COALESCE(support_name, ${args.supportName}),
+    support_lang = COALESCE(support_lang, ${args.supportLang}),
+    support_joined_at = COALESCE(support_joined_at, ${new Date().toISOString()}),
+    participants = CASE
+      WHEN NOT (COALESCE(participants, '[]'::jsonb) @> ${`[${participantJson}]`}::jsonb)
+      THEN COALESCE(participants, '[]'::jsonb) || ${participantJson}::jsonb
+      ELSE participants
+    END,
+    status = 'open'
+  WHERE id = ${args.ticketId}
+  RETURNING support_id, participants`);
+  const rows = (res.rows ?? res) as Array<{ support_id: string | null; participants: Participant[] | null }>;
+  if (!rows[0]) {
+    return { supportId: null, participants: [] };
+  }
+  return {
+    supportId: rows[0].support_id,
+    participants: rows[0].participants ?? [],
+  };
 }
