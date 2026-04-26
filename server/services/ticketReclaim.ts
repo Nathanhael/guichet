@@ -2,10 +2,8 @@ import { type Server } from 'socket.io';
 import { db } from '../db.js';
 import { tickets } from '../db/schema.js';
 import { and, isNotNull, lt, ne } from 'drizzle-orm';
-import { insertSystemMessage } from './systemMessage.js';
+import { applyEffects, type TicketLifecycle } from './ticketLifecycle/index.js';
 import { getOfflineAt, getUserStatus } from './presence.js';
-import { returnTicketToQueue } from './ticketQueries.js';
-import { Rooms } from '../utils/rooms.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 
@@ -31,10 +29,13 @@ const RESTART_FALLBACK_MULTIPLIER = 4;
  * wider window so genuinely stale tickets eventually clear without
  * punishing brief disconnects.
  *
- * Reclaimed tickets are returned to the queue (support unassigned, status→open)
- * with a system message for audit trail. Other agents can then pick them up.
+ * The actual mutation+audit+system-message work is delegated to
+ * `lifecycle.reclaim()` so crash-recovery and live operation share one
+ * code path. The lifecycle writes a `ticket.reclaimed` audit row in the
+ * same transaction as the row update — closing the silent audit gap that
+ * existed when this service hand-rolled the orchestration.
  */
-export async function reclaimAbandonedTickets(io: Server): Promise<void> {
+export async function reclaimAbandonedTickets(io: Server, lifecycle: TicketLifecycle): Promise<void> {
   const timeoutMins = config.RECLAIM_TIMEOUT_MINS;
   if (timeoutMins <= 0) return; // disabled
 
@@ -94,24 +95,20 @@ export async function reclaimAbandonedTickets(io: Server): Promise<void> {
     }
 
     try {
-      // Atomic: only reclaim if supportId still matches — prevents clobbering
-      // if another agent picked up the ticket between the presence check and now.
-      // Also strips the outgoing support from the participants JSONB so a stale
-      // support:rejoin can't re-enter after reclaim.
-      const reclaimedOk = await returnTicketToQueue(ticket.id, ticket.supportId);
-      if (!reclaimedOk) continue; // ticket was already reassigned
-
-      await insertSystemMessage(
-        ticket.id,
-        `Auto-released — ${ticket.supportName || 'support agent'} unavailable`,
-      );
-
-      // Notify the partner staff room so queue UIs refresh
-      io.to(Rooms.staff(ticket.partnerId)).emit('ticket:reclaimed', {
+      const result = await lifecycle.reclaim({
         ticketId: ticket.id,
+        partnerId: ticket.partnerId,
         previousSupportId: ticket.supportId,
-        previousSupportName: ticket.supportName,
+        previousSupportName: ticket.supportName ?? null,
       });
+
+      if (!result.ok) {
+        // TICKET_ALREADY_REASSIGNED — race lost; another agent picked it up.
+        // Not an error worth alerting on.
+        continue;
+      }
+
+      applyEffects(io, result.effects);
 
       reclaimed++;
       logger.info(

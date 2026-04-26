@@ -29,6 +29,11 @@ vi.mock('../utils/metrics.js', () => ({
   socketioConnectionsActive: { inc: vi.fn(), dec: vi.fn() },
 }));
 
+// Stub lifecycle — orchestrator tests only check fanout, not lifecycle calls.
+const stubLifecycle = {
+  reclaim: vi.fn(),
+} as any;
+
 // ---- Socket & IO mocks ----
 
 function createMockIo() {
@@ -65,7 +70,7 @@ describe('registerSocketHandlers (orchestrator)', () => {
     const { registerSocketHandlers } = await import('./handlers.js');
     const io = createMockIo();
 
-    registerSocketHandlers(io);
+    registerSocketHandlers(io, { lifecycle: stubLifecycle });
 
     expect(setupRevocationPubSubMock).toHaveBeenCalledOnce();
     expect(setupRevocationPubSubMock).toHaveBeenCalledWith(io);
@@ -77,7 +82,7 @@ describe('registerSocketHandlers (orchestrator)', () => {
     const { registerSocketHandlers } = await import('./handlers.js');
     const io = createMockIo();
 
-    registerSocketHandlers(io);
+    registerSocketHandlers(io, { lifecycle: stubLifecycle });
 
     expect(io.on).toHaveBeenCalledWith('connection', expect.any(Function));
   });
@@ -92,7 +97,7 @@ describe('registerSocketHandlers (orchestrator)', () => {
     const { register: registerDisconnect } = await import('./handlers/disconnect.js');
 
     const io = createMockIo();
-    registerSocketHandlers(io);
+    registerSocketHandlers(io, { lifecycle: stubLifecycle });
 
     const socket = createMockSocket();
     io._connectionHandlers[0](socket);
@@ -114,7 +119,7 @@ describe('broadcastPartnerDeactivation', () => {
     const emitMock = vi.fn();
     io.to.mockReturnValue({ emit: emitMock });
 
-    registerSocketHandlers(io);
+    registerSocketHandlers(io, { lifecycle: stubLifecycle });
     broadcastPartnerDeactivation('partner-1');
 
     expect(io.to).toHaveBeenCalledWith('partner:partner-1');
@@ -129,7 +134,7 @@ describe('broadcastUserDeactivation', () => {
     const emitMock = vi.fn();
     io.to.mockReturnValue({ emit: emitMock });
 
-    registerSocketHandlers(io);
+    registerSocketHandlers(io, { lifecycle: stubLifecycle });
     broadcastUserDeactivation('user-1');
 
     expect(io.to).toHaveBeenCalledWith('user:user-1');
