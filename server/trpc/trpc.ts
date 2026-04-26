@@ -175,3 +175,11 @@ export const destructiveAdminProcedure = adminProcedure.use(blockExternalUsers);
  * different intent: this one protects what guests *see*, not what they *do*.
  */
 export const internalAdminReadProcedure = adminProcedure.use(blockExternalUsers);
+
+/**
+ * Partner-scoped variant of `internalAdminReadProcedure`. Use when the
+ * endpoint needs both the guest gate AND a guaranteed non-null `partnerId`
+ * in `ctx.user.partnerId` (i.e. partner-scoped reads that leak internal
+ * staff identity — e.g. audit-log queries that join on `users.name`).
+ */
+export const partnerInternalAdminReadProcedure = partnerAdminProcedure.use(blockExternalUsers);
