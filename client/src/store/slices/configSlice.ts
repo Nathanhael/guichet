@@ -12,12 +12,20 @@ export interface ConfigSlice {
   removeLabelGlobally: (labelId: string) => void;
   addLabelGlobally: (label: Label) => void;
   updateLabelGlobally: (label: Label) => void;
+  /** Slice-owned reset for the partner-scoped lifecycle (logout). Called by the
+   * authSlice orchestrator; do not call from feature code. Keep in sync with
+   * `configInitialState`. */
+  _resetConfigState: () => void;
 }
 
-export const createConfigSlice: StateCreator<StoreState, [], [], ConfigSlice> = (set) => ({
+const configInitialState: Pick<ConfigSlice, 'appConfig' | 'businessHoursStatus' | 'allLabels'> = {
   appConfig: null,
   businessHoursStatus: null,
   allLabels: [],
+};
+
+export const createConfigSlice: StateCreator<StoreState, [], [], ConfigSlice> = (set) => ({
+  ...configInitialState,
 
   setAppConfig: (config) => set({
     appConfig: config,
@@ -33,4 +41,5 @@ export const createConfigSlice: StateCreator<StoreState, [], [], ConfigSlice> = 
     set((state) => ({
       allLabels: state.allLabels.map((l) => (l.id === label.id ? { ...l, ...label } : l)),
     })),
+  _resetConfigState: () => set(configInitialState),
 });

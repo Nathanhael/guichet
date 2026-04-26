@@ -24,13 +24,27 @@ export interface TicketSlice {
   removeSupportOpenTicket: (ticketId: string) => void;
   setQueuePosition: (pos: { position: number; etaMins: number } | null) => void;
   addTopicAlert: (alert: TopicAlert) => void;
+  /** Slice-owned reset for the partner-scoped lifecycle (logout). Called by the
+   * authSlice orchestrator; do not call from feature code. Keep in sync with
+   * `ticketInitialState`. */
+  _resetTicketState: () => void;
 }
 
 function tabStorageKey(partnerId?: string): string {
   return partnerId ? `guichet:supportOpenTabs:${partnerId}` : 'guichet:supportOpenTabs';
 }
 
-export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = (set, get) => ({
+const ticketInitialState: Pick<
+  TicketSlice,
+  | 'tickets'
+  | 'activeTicketId'
+  | 'unreadTickets'
+  | 'unreadSenders'
+  | 'participantsOnline'
+  | 'supportOpenTickets'
+  | 'queuePosition'
+  | 'topicAlerts'
+> = {
   tickets: [],
   activeTicketId: null,
   unreadTickets: {},
@@ -39,6 +53,10 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
   supportOpenTickets: [],
   queuePosition: null,
   topicAlerts: [],
+};
+
+export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = (set, get) => ({
+  ...ticketInitialState,
 
   setTickets: (tickets) => set({ tickets }),
   addTicket: (ticket) =>
@@ -115,4 +133,5 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
     set((state) => ({
       topicAlerts: [alert, ...state.topicAlerts].slice(0, 50),
     })),
+  _resetTicketState: () => set(ticketInitialState),
 });

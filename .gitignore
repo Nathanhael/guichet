@@ -114,6 +114,7 @@ testing/
 !client/src/hooks/useComposeDraft.test.ts
 !client/src/hooks/useComposeLinkPreview.test.ts
 !client/src/hooks/useKeyboardShortcuts.test.ts
+!client/src/store/__tests__/sliceReset.test.ts
 
 # Test infra (re-tracked)
 !server/vitest.config.ts

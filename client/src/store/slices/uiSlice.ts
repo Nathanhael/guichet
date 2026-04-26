@@ -44,7 +44,29 @@ export interface UISlice {
   setNotificationsEnabled: (enabled: boolean) => void;
   setConnectionStatus: (status: 'connected' | 'disconnected' | 'reconnecting') => void;
   hydrateAccessibilityPrefs: (prefs: { dyslexicMode?: boolean; bionicReading?: boolean; monochromeMode?: boolean; focusMode?: boolean }) => void;
+  /** Slice-owned reset for the session-scoped lifecycle (logout). Resets only
+   * transient session state; device preferences (dark mode, language,
+   * accessibility toggles) are intentionally preserved so they survive a
+   * logout on a personal device. Called by the authSlice orchestrator; do not
+   * call from feature code. */
+  _resetUIState: () => void;
 }
+
+/**
+ * Session-scoped UI fields that reset on logout. Intentionally narrow:
+ * device-pref toggles (dark mode, lang, dyslexic/bionic/monochrome/focus,
+ * sound, notifications, zen, sidebar) persist across logout.
+ */
+const uiResetState: Pick<
+  UISlice,
+  'agentStatus' | 'lightboxImages' | 'lightboxIndex' | 'prefsModifiedLocally' | 'connectionStatus'
+> = {
+  agentStatus: 'online',
+  lightboxImages: [],
+  lightboxIndex: null,
+  prefsModifiedLocally: false,
+  connectionStatus: 'disconnected',
+};
 
 export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, get) => ({
   dyslexicMode: (() => {
@@ -186,4 +208,6 @@ export const createUISlice: StateCreator<StoreState, [], [], UISlice> = (set, ge
       return { dyslexicMode, bionicReading, monochromeMode, focusMode };
     });
   },
+
+  _resetUIState: () => set(uiResetState),
 });

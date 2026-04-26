@@ -14,50 +14,39 @@ export interface AuthSlice {
   logout: () => Promise<void>;
 }
 
-function clearAuthState(set: (partial: Partial<StoreState>) => void) {
+/**
+ * Orchestrate slice-owned resets on logout. Each slice exposes a `_reset*()`
+ * method that resets the fields it owns; this function is the single
+ * registry-style call site. Device preferences (dark mode, lang, a11y
+ * toggles) are intentionally preserved by the uiSlice's reset implementation.
+ *
+ * Adding a new slice? Add a `_resetXState()` to it and one line here.
+ */
+function clearAllPartnerState(
+  set: (partial: Partial<StoreState>) => void,
+  get: () => StoreState,
+) {
   sessionStorage.removeItem('user');
   sessionStorage.removeItem('memberships');
   sessionStorage.removeItem('activeMembershipId');
   sessionStorage.removeItem('activePartnerId');
-  // Reset every partner-scoped or session-scoped in-memory field so that on a
-  // shared device the next user doesn't briefly see the previous user's
-  // labels, alerts, presence, unread counts, or pending modals before the
-  // socket + tRPC queries repopulate. Device preferences (dark mode, lang,
-  // accessibility toggles) are intentionally preserved.
+
+  // Delegate field resets to each slice. Each call dispatches its own set();
+  // React 19 batches the resulting re-renders within this synchronous logout
+  // handler so subscribers re-render once.
+  const state = get();
+  state._resetTicketState();
+  state._resetMessageState();
+  state._resetConfigState();
+  state._resetUIState();
+  state._resetRatingState();
+
+  // authSlice owns identity — reset only what we own.
   set({
-    // auth
     user: null,
     memberships: [],
     activeMembershipId: null,
     activePartnerId: null,
-    // ticket (partner-scoped)
-    tickets: [],
-    activeTicketId: null,
-    unreadTickets: {},
-    unreadSenders: {},
-    participantsOnline: {},
-    supportOpenTickets: [],
-    queuePosition: null,
-    topicAlerts: [],
-    // message (partner-scoped)
-    messages: {},
-    messageCursors: {},
-    onlineSupportUsers: [],
-    onlineAgentIds: [],
-    typingUsers: {},
-    lastRejection: null,
-    // config (partner-scoped)
-    appConfig: null,
-    businessHoursStatus: null,
-    allLabels: [],
-    // rating (user-scoped)
-    ratingPrompt: null,
-    // ui (session-scoped; device prefs preserved)
-    agentStatus: 'online',
-    lightboxImages: [],
-    lightboxIndex: null,
-    prefsModifiedLocally: false,
-    connectionStatus: 'disconnected',
   });
 }
 
@@ -255,7 +244,7 @@ export const createAuthSlice: StateCreator<StoreState, [], [], AuthSlice> = (set
       // stuck in CONNECT_ERROR retry.
       disconnectSocket();
 
-      clearAuthState(set);
+      clearAllPartnerState(set, get);
     },
   };
 };
