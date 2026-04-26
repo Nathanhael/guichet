@@ -4,6 +4,7 @@ import { Ticket } from '../../types';
 import { useT } from '../../i18n';
 import { useStoreShallow } from '../../store/useStore';
 import { getTicketTime } from '../../utils/dateUtils';
+import Avatar from '../ui/Avatar';
 
 interface AgentTicketContextPanelProps {
   ticket: Ticket;
@@ -53,34 +54,38 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
 
   const statusLabel = isClosed
     ? t('status_closed') || 'Closed'
-    : supportJoined
-      ? t('connected_with') || 'Connected'
-      : t('waiting_for_support') || 'Waiting for support…';
+    : t('waiting_for_support') || 'Waiting for support…';
 
   const statusDot = isClosed
     ? 'bg-[var(--color-ink-muted)]'
-    : supportJoined
-      ? 'bg-[var(--color-ok)]'
-      : 'bg-[var(--color-accent-amber)]';
+    : 'bg-[var(--color-accent-amber)]';
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot}`} />
-        <span className="text-[12px] font-medium text-[var(--color-ink)] truncate">{statusLabel}</span>
-      </div>
+      {supportJoined && !isClosed ? (
+        <div className="flex items-center gap-2.5 animate-[v2p-pop_180ms_ease-out]">
+          <Avatar name={ticket.supportName!} size={36} statusDot="online" />
+          <div className="flex flex-col min-w-0">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
+              {t('connected_with') || 'Connected with'}
+            </span>
+            <span className="text-[13px] font-semibold text-[var(--color-ink)] truncate">
+              {ticket.supportName}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full shrink-0 ${statusDot}`} />
+          <span className="text-[12px] font-medium text-[var(--color-ink)] truncate">{statusLabel}</span>
+        </div>
+      )}
 
       <Row label={t('department') || 'Department'}>
         <span className="inline-flex items-center rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)] text-[11px] font-semibold px-2 py-0.5 leading-none">
           {departmentName}
         </span>
       </Row>
-
-      {supportJoined && (
-        <Row label={t('support_agent') || 'Support'}>
-          <span className="font-medium truncate">{ticket.supportName}</span>
-        </Row>
-      )}
 
       {ticket.agentLang && (
         <Row label={t('language') || 'Language'}>
