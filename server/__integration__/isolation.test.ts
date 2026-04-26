@@ -117,6 +117,35 @@ vi.mock('../services/ticketQueries.js', () => ({
   insertRating: insertRatingMock,
 }));
 
+// ---- messageQueries mocks ----
+// Side-effect spies for the partner-scope assertion: each one must NOT be
+// called when the cross-tenant guard fires. The remaining names are
+// shape-completeness stubs so module imports don't trip on undefined.
+const findTicketMessagesPaginatedMock = vi.fn();
+const findMessageForEditMock = vi.fn();
+const findMessageForDeleteMock = vi.fn();
+const findMessageForReactMock = vi.fn();
+const updateMessageTextMock = vi.fn();
+const updateMessageReactionsMock = vi.fn();
+const softDeleteMessageMock = vi.fn();
+const markDeliveredMock = vi.fn();
+const markReadMock = vi.fn();
+
+vi.mock('../services/messageQueries.js', () => ({
+  findTicketMessagesPaginated: findTicketMessagesPaginatedMock,
+  findMessageForEdit: findMessageForEditMock,
+  findMessageForDelete: findMessageForDeleteMock,
+  findMessageForReact: findMessageForReactMock,
+  updateMessageText: updateMessageTextMock,
+  updateMessageReactions: updateMessageReactionsMock,
+  softDeleteMessage: softDeleteMessageMock,
+  markDelivered: markDeliveredMock,
+  markRead: markReadMock,
+  insertMessage: vi.fn(),
+  resolveReplySnippet: vi.fn(),
+  updateMessageLinkPreviews: vi.fn(),
+}));
+
 vi.mock('../config.js', () => ({
   default: {
     JWT_SECRET: 'test-secret-key-only-for-unit-tests-padding-to-reach-sixty-four-c!',
@@ -235,6 +264,15 @@ describe('multi-tenant isolation — socket handlers', () => {
     returnTicketToQueueMock.mockReset();
     replaceTicketLabelsMock.mockReset();
     insertRatingMock.mockReset();
+    findTicketMessagesPaginatedMock.mockReset();
+    findMessageForEditMock.mockReset();
+    findMessageForDeleteMock.mockReset();
+    findMessageForReactMock.mockReset();
+    updateMessageTextMock.mockReset();
+    updateMessageReactionsMock.mockReset();
+    softDeleteMessageMock.mockReset();
+    markDeliveredMock.mockReset();
+    markReadMock.mockReset();
     selectQueue.length = 0;
     insertValuesMock.mockReset();
     insertValuesMock.mockResolvedValue(undefined);
@@ -364,6 +402,166 @@ describe('multi-tenant isolation — socket handlers', () => {
     expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
       message: expect.stringContaining('Not authorized'),
     }));
+  });
+
+  // ── message:* cross-tenant rejection ─────────────────────────────────────
+  // Each test mocks findTicketPartner (called by requirePartnerScope) to
+  // return a ticket on partner-B while the socket lives on partner-A. The
+  // assertion shape is identical: error emit + side-effect mock NOT called.
+  // A dropped guard would skip past requirePartnerScope and reach the
+  // side-effect, failing the second expect.
+
+  it('message:loadMore rejects loading messages from a cross-partner ticket', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'message:loadMore');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    await handler({ ticketId: 'ticket-1', cursor: 'msg-100' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    expect(findTicketMessagesPaginatedMock).not.toHaveBeenCalled();
+  });
+
+  it('message:delivered rejects marking a cross-partner message as delivered', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'message:delivered');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    await handler({ ticketId: 'ticket-1', messageId: 'msg-1' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    expect(markDeliveredMock).not.toHaveBeenCalled();
+  });
+
+  it('message:read rejects marking cross-partner messages as read', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'message:read');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    await handler({ ticketId: 'ticket-1', messageIds: ['msg-1', 'msg-2'] });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    expect(markReadMock).not.toHaveBeenCalled();
+  });
+
+  it('message:edit rejects editing a message on a cross-partner ticket', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'message:edit');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    await handler({ ticketId: 'ticket-1', messageId: 'msg-1', text: 'edited' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    // Assert on the lookup (the FIRST DB call after the guard), not on
+    // updateMessageText: an unmocked findMessageForEdit returns undefined
+    // and the handler short-circuits on `if (!msg) return`, so a dropped
+    // guard would still leave updateMessageText untouched and give a
+    // false-pass. The lookup, by contrast, is reached if and only if the
+    // guard was bypassed.
+    expect(findMessageForEditMock).not.toHaveBeenCalled();
+    expect(updateMessageTextMock).not.toHaveBeenCalled();
+  });
+
+  it('message:delete rejects deleting a message on a cross-partner ticket', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+      isSupport: true,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'message:delete');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    await handler({ ticketId: 'ticket-1', messageId: 'msg-1' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    // Lookup-not-called is the dropped-guard tripwire (see message:edit).
+    expect(findMessageForDeleteMock).not.toHaveBeenCalled();
+    expect(softDeleteMessageMock).not.toHaveBeenCalled();
+  });
+
+  it('message:react rejects reacting to a message on a cross-partner ticket', async () => {
+    const socket = createMockSocket({
+      userId: 'support-1',
+      partnerId: 'partner-A',
+      role: 'support',
+      name: 'Support A',
+      authedUserId: 'support-1',
+      tokenExp: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    io._connectionHandlers[0](socket);
+    const handler = getHandler(socket, 'message:react');
+
+    findTicketPartnerMock.mockResolvedValueOnce({ partnerId: 'partner-B' });
+
+    // '👍' is in REACTION_EMOJIS so the emoji-allowlist check passes and
+    // execution reaches the partner-scope guard rather than short-circuiting
+    // on an invalid-emoji error (which would mask a regression here).
+    await handler({ ticketId: 'ticket-1', messageId: 'msg-1', emoji: '👍' });
+
+    expect(socket.emit).toHaveBeenCalledWith('error', expect.objectContaining({
+      message: expect.stringContaining('Not authorized'),
+    }));
+    // Lookup-not-called is the dropped-guard tripwire (see message:edit).
+    expect(findMessageForReactMock).not.toHaveBeenCalled();
+    expect(updateMessageReactionsMock).not.toHaveBeenCalled();
   });
 
   it('socket:identify prevents non-platform user from accessing unassigned partner', async () => {
