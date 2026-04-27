@@ -46,6 +46,12 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 return res.status(403).json({ error: 'Partner is currently inactive' });
             }
 
+            const userRow = await db
+                .select({ isExternal: users.isExternal })
+                .from(users)
+                .where(eq(users.id, userId))
+                .limit(1);
+
             const token = await buildAuthToken({
                 userId,
                 role: membership.role,
@@ -53,6 +59,7 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 partnerId: membership.partnerId,
                 membershipId: membership.id,
                 isPlatformOperator: req.user.isPlatformOperator,
+                isExternal: !!userRow[0]?.isExternal,
             });
 
             setAuthCookie(res, token, parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY));
@@ -114,6 +121,7 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                     partnerId: undefined,
                     membershipId: undefined,
                     isPlatformOperator: true,
+                    isExternal: !!refreshUser.isExternal,
                 });
                 const accessExpiry = parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY);
                 setAuthCookie(res, token, accessExpiry);
@@ -135,6 +143,7 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 partnerId: membership.partnerId,
                 membershipId: membership.id,
                 isPlatformOperator: !!refreshUser.isPlatformOperator,
+                isExternal: !!refreshUser.isExternal,
             });
 
             const accessExpiry = parseExpiryToSeconds(config.ACCESS_TOKEN_EXPIRY);
@@ -197,6 +206,12 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 return res.status(403).json({ error: 'Partner access denied' });
             }
 
+            const userRow = await db
+                .select({ isExternal: users.isExternal })
+                .from(users)
+                .where(eq(users.id, userId))
+                .limit(1);
+
             const token = await buildAuthToken({
                 userId,
                 role: 'admin',
@@ -204,6 +219,7 @@ export async function registerSessionRoutes(router: express.Router): Promise<voi
                 partnerId: partner.id,
                 membershipId: `platform_${userId}_${partner.id}`,
                 isPlatformOperator: true,
+                isExternal: !!userRow[0]?.isExternal,
             });
 
             logger.info({ userId, partnerId: partner.id }, '[Auth] Platform operator entered partner');

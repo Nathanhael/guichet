@@ -568,6 +568,7 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       partnerId: defaultMembership?.partnerId,
       membershipId: defaultMembership?.id,
       isPlatformOperator: !!user.isPlatformOperator,
+      isExternal: !!user.isExternal,
     });
 
     // Build the SSO payload but store it server-side to avoid exposing user data in URL
