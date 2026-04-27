@@ -65,3 +65,65 @@ describe('role policy helpers', () => {
     expect(canAccessPartnerContext(true, undefined)).toBe(true);
   });
 });
+
+import {
+  canAssignTenantRoleForActor,
+  canChangePresenceForActor,
+  canAccessPartnerContextForActor,
+} from './roles.js';
+import type { UserActor } from './auth/types.js';
+
+const userActor = (overrides: Partial<UserActor> = {}): UserActor => ({
+  kind: 'user',
+  userId: 'u-1',
+  name: 'Test',
+  role: 'admin',
+  partnerId: 'p-1',
+  isPlatformOperator: false,
+  isExternal: false,
+  lang: 'en',
+  ...overrides,
+});
+
+describe('roles — actor-adapted variants', () => {
+  it('canAssignTenantRoleForActor mirrors arg-form result', () => {
+    const actor = userActor({ role: 'admin', isPlatformOperator: false });
+    expect(canAssignTenantRoleForActor(actor, 'support')).toBe(
+      canAssignTenantRole(actor.role, actor.isPlatformOperator, 'support')
+    );
+  });
+
+  it('canAssignTenantRoleForActor returns false for non-admin actors', () => {
+    const actor = userActor({ role: 'support', isPlatformOperator: false });
+    expect(canAssignTenantRoleForActor(actor, 'agent')).toBe(false);
+  });
+
+  it('canAssignTenantRoleForActor returns true for platform operators', () => {
+    const actor = userActor({ role: 'admin', isPlatformOperator: true });
+    expect(canAssignTenantRoleForActor(actor, 'admin')).toBe(true);
+  });
+
+  it('canChangePresenceForActor mirrors arg-form result', () => {
+    const actor = userActor({ role: 'admin' });
+    expect(canChangePresenceForActor(actor, 'u-2')).toBe(
+      canChangePresenceStatus(actor.role, actor.userId, 'u-2', actor.isPlatformOperator)
+    );
+  });
+
+  it('canChangePresenceForActor allows self-status changes for any role', () => {
+    const actor = userActor({ role: 'agent', userId: 'u-1' });
+    expect(canChangePresenceForActor(actor, 'u-1')).toBe(true);
+  });
+
+  it('canAccessPartnerContextForActor returns true for matching partner', () => {
+    const actor = userActor({ partnerId: 'p-1' });
+    expect(canAccessPartnerContextForActor(actor)).toBe(
+      canAccessPartnerContext(actor.isPlatformOperator, actor.partnerId)
+    );
+  });
+
+  it('canAccessPartnerContextForActor honors platform operators', () => {
+    const actor = userActor({ isPlatformOperator: true, partnerId: 'p-7' });
+    expect(canAccessPartnerContextForActor(actor)).toBe(true);
+  });
+});
