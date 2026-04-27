@@ -1,29 +1,15 @@
 import { Socket } from 'socket.io';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
-import { markFirstStaffResponse } from '../../services/sla.js';
-import { isValidMediaUrl } from '../../utils/security.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { requirePartnerScope, requirePartnerScopeWith } from '../partnerScope.js';
-import { notifyPreviewers } from './preview.js';
 import { findTicketForMessage } from '../../services/ticketQueries.js';
-import { findSenderInfo } from '../../services/userQueries.js';
 import {
-  insertMessage,
   findTicketMessagesPaginated,
   markDelivered,
   markRead,
-  resolveReplySnippet,
-  updateMessageLinkPreviews,
 } from '../../services/messageQueries.js';
-import { runSyncGuards, guardRepetition } from '../../services/guards.js';
-import { invalidateSummary, runAiAction } from '../../services/ai/index.js';
-import { unfurlLinks } from '../../services/linkPreview.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
-import { getRedisClients } from '../../utils/redis.js';
-import { db } from '../../db.js';
-import { partners } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
 import { crossLangPickupTotal } from '../../utils/metrics.js';
 import {
   MAX_BATCH_DELETE,
@@ -41,7 +27,6 @@ import {
   messageReactSchema,
   messageLoadMoreSchema,
   type HandlerContext,
-  type SenderInfo,
 } from './types.js';
 
 export interface PrewarmInput {
@@ -101,211 +86,70 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     try {
       const senderId = socket.data.userId;
       if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
-      logger.info({ ticketId, senderId }, '[message:send] Received');
-      if (!ticketId || (!text && !mediaUrl && (!attachments || attachments.length === 0))) return;
-      if (mediaUrl && !isValidMediaUrl(mediaUrl)) return socket.emit('error', { message: 'Invalid media URL' });
+      const partnerId = socket.data.partnerId as string | undefined;
+      if (!partnerId) return;
+
+      // Partner-scope guard for legacy "Not authorized" UX + agentLang
+      // (used for cross-lang metric + prewarm gating).
       const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForMessage);
-      logger.info({ ticketFound: !!ticket, status: ticket?.status }, '[message:send] Ticket lookup');
       if (!ticket || ticket.status === 'closed') return;
 
-      let sender = await findSenderInfo(senderId, ticket.partnerId) as SenderInfo | undefined;
+      const actor = socketActor(socket);
 
-      // CR-03 fix: Platform operators have no membership row — fall back to socket.data
-      if (!sender && socket.data.authedIsPlatformOperator) {
-        sender = {
-          name: socket.data.name as string || senderId,
-          role: 'platform_operator',
-          lang: (socket.data.lang as string) || 'en',
-          // Platform operators are never Azure B2B guests by definition
-          // (they authenticate via our staff SSO path with acct=member).
-          isExternal: false,
-        };
-        logger.info({ senderId }, '[message:send] Platform operator fallback — no membership row');
+      // Cross-lang metric: emit when a support agent sends in a different
+      // language than the ticket's agentLang. Pre-flight observability.
+      if (actor.lang && ticket.agentLang && actor.lang !== ticket.agentLang && actor.isSupport) {
+        crossLangPickupTotal.inc({ partner_id: ticket.partnerId, support_lang: actor.lang, ticket_lang: ticket.agentLang });
       }
 
-      logger.info({ senderFound: !!sender, role: sender?.role }, '[message:send] Sender lookup');
-      if (!sender) return logger.error({ senderId }, '[message:send] sender not found or no membership for ticket partner');
-
-      if (sender.lang && ticket.agentLang && sender.lang !== ticket.agentLang && socket.data.isSupport) {
-        crossLangPickupTotal.inc({ partner_id: ticket.partnerId, support_lang: sender.lang, ticket_lang: ticket.agentLang });
-      }
-
-      // Authorization: only support/admin can send whispers
-      const isWhisper = whisper && socket.data.isSupport;
-      if (whisper && !isWhisper) {
-        logger.warn({ senderId, role: sender.role }, '[message:send] Non-support user attempted whisper');
-      }
-
-      // CR-02: Run content moderation guards (skip for whispers and attachment-only messages)
-      let guardedText = text;
-      const isAttachmentOnly = !!mediaUrl && (!text || text === '[attachment]');
-      if (!isWhisper && !isAttachmentOnly) {
-        // Synchronous guards always run (fail closed — no try/catch bypass)
-        const syncResult = runSyncGuards(text);
-        if (!syncResult.ok) {
-          logger.warn({ senderId, code: syncResult.code }, '[message:send] Blocked by content guard');
-          // Structured rejection event so the client can remove the matching
-          // optimistic message and surface a reason. The legacy 'error' emit
-          // is kept for backwards-compat with older clients that haven't
-          // wired up the message:rejected handler yet.
-          socket.emit('message:rejected', { ticketId, localId, code: syncResult.code });
-          socket.emit('error', { message: `Message blocked: ${syncResult.code}` });
-          return;
-        }
-        guardedText = syncResult.text;
-
-        // Redis-dependent repetition guard (fail open if Redis unavailable)
-        try {
-          const { pubClient } = getRedisClients();
-          const repResult = await guardRepetition(pubClient as Parameters<typeof guardRepetition>[0], guardedText, senderId);
-          if (!repResult.ok) {
-            logger.warn({ senderId, code: repResult.code }, '[message:send] Blocked by content guard');
-            socket.emit('message:rejected', { ticketId, localId, code: repResult.code });
-            socket.emit('error', { message: `Message blocked: ${repResult.code}` });
-            return;
-          }
-        } catch (guardErr) {
-          // Fail open for Redis-dependent guard only — sync guards already passed
-          logger.error({ err: guardErr instanceof Error ? guardErr.message : String(guardErr) }, '[message:send] Repetition guard error (Redis)');
-        }
-      }
-
-      // Validate attachments: max 5, each must have a valid upload URL
-      const validAttachments = Array.isArray(attachments)
-        ? attachments.filter(a => a && typeof a.url === 'string' && a.url.startsWith('/uploads/') && typeof a.name === 'string' && typeof a.size === 'number').slice(0, 5)
-        : undefined;
-
-      const msgPayload = await insertMessage({
-        ticketId,
-        senderId,
-        senderName: sender.name,
-        senderRole: sender.role,
-        senderLang: sender.lang,
-        senderIsExternal: sender.isExternal,
-        text: guardedText,
-        mediaUrl,
-        attachments: validAttachments && validAttachments.length > 0 ? validAttachments : null,
-        whisper: isWhisper,
-        replyToId: replyToId || null,
-      });
-      const messageId = msgPayload.id;
-
-      // SLA: stamp first staff response if applicable
-      try {
-        const slaResult = await markFirstStaffResponse({
-          ticketId,
-          at: msgPayload.createdAt,
-          senderRole: sender.role,
-          isWhisper: !!isWhisper,
-        });
-        if (slaResult.resolvedBreach) {
-          ctx.io.to(Rooms.ticket(ticketId)).emit('sla:resolved', {
-            ticketId,
-            partnerId: slaResult.partnerId,
-            respondedInMinutes: slaResult.respondedInMinutes,
-          });
-        }
-      } catch (slaErr) {
-        logger.error({ err: slaErr instanceof Error ? slaErr.message : String(slaErr), ticketId }, '[message:send] SLA stamp failed (non-fatal)');
-      }
-
-      // Resolve reply snippet for broadcast (if replying to a message)
-      let broadcastPayload: typeof msgPayload & {
-        localId?: string;
-        replyTo?: { id: string; senderName: string; text: string; mediaUrl: string | null } | null;
-        translations?: Record<string, string>;
-      } = localId ? { ...msgPayload, localId } : msgPayload;
-      if (replyToId) {
-        const snippet = await resolveReplySnippet(replyToId);
-        broadcastPayload = { ...broadcastPayload, replyTo: snippet };
-      }
-
-      // Pre-warm cross-lang translations for the agent(s) watching this
-      // ticket in a different language. Gated on partner aiFeatures so
-      // non-translating tenants skip the AI call entirely. Raced against a
-      // 250ms budget so a slow provider never delays message delivery — on
-      // timeout or error the client-side useAutoTranslation still catches up.
-      if (ticket.agentLang && ticket.agentLang !== sender.lang) {
-        try {
-          const partnerRow = await db
-            .select({ aiFeatures: partners.aiFeatures })
-            .from(partners)
-            .where(eq(partners.id, ticket.partnerId))
-            .limit(1);
-          const aiFeatures = (partnerRow[0]?.aiFeatures as Record<string, unknown>) || {};
-          // Local-node iteration avoids the cross-node fetchSockets() RTT on
-          // every message send; same pattern as broadcastTyping in presence.ts.
-          const room = Rooms.ticket(ticketId);
-          const viewerLangs = new Set<string>();
-          for (const peer of ctx.io.sockets.sockets.values()) {
-            if (peer.id === socket.id) continue;
-            if (!peer.rooms.has(room)) continue;
-            const lg = (peer.data.lang as string) || '';
-            if (lg) viewerLangs.add(lg);
-          }
-          const targets = computePrewarmTargets({
-            senderLang: sender.lang,
-            ticketAgentLang: ticket.agentLang ?? null,
-            viewerLangs,
-            aiFeatures: aiFeatures as { translation?: boolean; queueLangAwareness?: boolean },
-          });
-          if (targets.length > 0 && guardedText) {
-            const translations: Record<string, string> = {};
-            const langLabel = (l: string) =>
-              l === 'nl' ? 'Dutch' : l === 'fr' ? 'French' : 'English';
-            const translateAll = Promise.all(targets.map(async (tl) => {
-              try {
-                const res = await runAiAction({
-                  partnerId: ticket.partnerId,
-                  userId: senderId,
-                  feature: 'translation',
-                  action: 'translate',
-                  vars: { text: guardedText, targetLang: langLabel(tl) },
-                  temperature: 0.3,
-                  maxTokens: 1024,
-                });
-                if (res.content) translations[tl] = res.content.trim();
-              } catch (err) {
-                logger.debug({ err: err instanceof Error ? err.message : String(err), tl }, '[message:send] pre-warm translate failed (non-fatal)');
-              }
-            }));
-            const PREWARM_BUDGET_MS = 250;
-            await Promise.race([translateAll, new Promise<void>((resolve) => setTimeout(resolve, PREWARM_BUDGET_MS))]);
-            if (Object.keys(translations).length > 0) {
-              broadcastPayload = { ...broadcastPayload, translations };
-            }
-          }
-        } catch (err) {
-          logger.debug({ err: err instanceof Error ? err.message : String(err) }, '[message:send] pre-warm skipped (non-fatal)');
-        }
-      }
-
-      if (isWhisper) {
-        // CR-01: Whisper messages must only be sent to support/admin sockets, never to end-users.
-        // Local-node iteration: fetchSockets() returns RemoteSocket stubs whose
-        // .data.isSupport is not reliably set across the Redis adapter.
+      // Build viewerLangs only when cross-lang prewarm might apply
+      // (matches legacy gating: skip the local-node socket iteration if
+      // the ticket's agentLang matches the sender's lang).
+      let viewerLangs: Set<string> | undefined;
+      if (ticket.agentLang && ticket.agentLang !== actor.lang) {
+        viewerLangs = new Set<string>();
         const room = Rooms.ticket(ticketId);
         for (const peer of ctx.io.sockets.sockets.values()) {
+          if (peer.id === socket.id) continue;
           if (!peer.rooms.has(room)) continue;
-          if (peer.data.isSupport) {
-            peer.emit('message:new', broadcastPayload);
-          }
+          const lg = (peer.data.lang as string) || '';
+          if (lg) viewerLangs.add(lg);
         }
-      } else {
-        ctx.io.to(Rooms.ticket(ticketId)).emit('message:new', broadcastPayload);
       }
-      notifyPreviewers(ctx.io, ticketId);
-      logger.info({ messageId, whisper: !!isWhisper }, '[message:send] Emitted message:new');
-      // Invalidate cached AI summary for this ticket (fire-and-forget)
-      invalidateSummary(ticketId).catch(() => {});
-      // Fire-and-forget: unfurl link previews
-      if (guardedText && !isWhisper) {
-        unfurlLinks(guardedText).then(async (previews) => {
-          if (previews.length === 0) return;
-          await updateMessageLinkPreviews(messageId, previews);
-          ctx.io.to(Rooms.ticket(ticketId)).emit('message:linkPreview', { ticketId, messageId, linkPreviews: previews });
-        }).catch(() => {});
+
+      const result = await ctx.messageLifecycle.send({
+        ticketId,
+        partnerId,
+        actor,
+        text,
+        mediaUrl,
+        attachments,
+        whisper,
+        replyToId: replyToId || null,
+        localId,
+        viewerLangs,
+      });
+
+      if (!result.ok) {
+        switch (result.code) {
+          case 'GUARD_REJECTED':
+            // Dual emit preserved for legacy backwards-compat (older
+            // clients without message:rejected handler).
+            socket.emit('message:rejected', { ticketId, localId, code: 'GUARD_REJECTED' });
+            socket.emit('error', { message: 'Message blocked: GUARD_REJECTED' });
+            return;
+          case 'INVALID_MEDIA_URL':
+            return socket.emit('error', { message: 'Invalid media URL' });
+          case 'EMPTY_MESSAGE':
+          case 'TICKET_NOT_FOUND':
+          case 'TICKET_CLOSED':
+            return; // legacy treats these silently after the guard above
+          default:
+            return;
+        }
       }
+
+      applyEffects(ctx.io, result.effects);
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:send] error'); }
   });
 

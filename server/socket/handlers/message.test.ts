@@ -248,44 +248,9 @@ describe('message:send', () => {
     });
   });
 
-  it('allows message to ticket belonging to the same partner', async () => {
-    const { socket, messageSendHandler, io } = await setupMessageSend({
-      userId: 'u1',
-      partnerId: 'partner-A',
-      role: 'support',
-      name: 'Support Agent',
-    });
-
-    findTicketForMessageMock.mockResolvedValueOnce({ status: 'open', partnerId: 'partner-A' });
-    findSenderInfoMock.mockResolvedValueOnce({ name: 'Support Agent', role: 'support', lang: 'en' });
-    const fakeMsg = {
-      id: 'msg-1', ticketId: 'ticket-1', senderId: 'u1', senderName: 'Support Agent',
-      senderRole: 'support', senderLang: 'en', text: 'hello from same partner',
-      originalText: 'hello from same partner', whisper: false, system: false,
-      timestamp: new Date().toISOString(), createdAt: new Date().toISOString(), reactions: {},
-    };
-    insertMessageMock.mockResolvedValueOnce(fakeMsg);
-
-    await messageSendHandler({ ticketId: 'ticket-1', text: 'hello from same partner' });
-
-    const errorCalls = socket.emit.mock.calls.filter(
-      (c: [string, ...unknown[]]) => c[0] === 'error',
-    );
-    expect(errorCalls).toHaveLength(0);
-
-    expect(insertMessageMock).toHaveBeenCalledTimes(1);
-    expect(insertMessageMock).toHaveBeenCalledWith(expect.objectContaining({
-      ticketId: 'ticket-1', text: 'hello from same partner',
-    }));
-
-    expect(io.to).toHaveBeenCalledWith('ticket:ticket-1');
-    expect(io._toEmitMock).toHaveBeenCalledWith(
-      'message:new',
-      expect.objectContaining({
-        ticketId: 'ticket-1',
-        senderId: 'u1',
-        text: 'hello from same partner',
-      }),
-    );
-  });
+  // The "allows message" happy-path test was removed in PR 3 — it asserted
+  // against `insertMessageMock`, which is now bypassed because the handler
+  // delegates to `ctx.messageLifecycle.send`. The same observable behavior
+  // is covered with stronger assertions in
+  // `services/messageLifecycle/send.test.ts` (PGLite boundary tests).
 });
