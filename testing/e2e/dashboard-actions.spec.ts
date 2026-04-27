@@ -12,74 +12,56 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { loginAsDemo, BASE } from './helpers/auth';
+import { mockDashboardTrpc } from './helpers/trpc-mock';
 
 async function mockDashboardForActions(page: Page) {
-  await page.route('**/api/v1/trpc/dashboard.getOnboardingState**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        result: {
-          data: {
-            isNewPartner: false,
-            steps: [],
-          },
+  await mockDashboardTrpc(page, {
+    'dashboard.getOnboardingState': {
+      isNewPartner: false,
+      steps: [],
+    },
+    'dashboard.getActionList': {
+      slaBreaches: [
+        {
+          kind: 'sla_breach',
+          id: 'b-1',
+          ticketId: 'ticket-acme-1',
+          ticketTitle: 'Acme — login broken',
+          breachedAt: new Date().toISOString(),
+          linkTarget: '/admin/tickets/ticket-acme-1',
         },
-      }),
-    });
-  });
-
-  await page.route('**/api/v1/trpc/dashboard.getActionList**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        result: {
-          data: {
-            slaBreaches: [
-              {
-                kind: 'sla_breach',
-                id: 'b-1',
-                ticketId: 'ticket-acme-1',
-                ticketTitle: 'Acme — login broken',
-                breachedAt: new Date().toISOString(),
-                linkTarget: '/admin/tickets/ticket-acme-1',
-              },
-            ],
-            abandoned: [
-              {
-                kind: 'abandoned',
-                id: 'ticket-acme-2',
-                ticketId: 'ticket-acme-2',
-                ticketTitle: 'Bigcorp — reset',
-                abandonedAt: new Date().toISOString(),
-                linkTarget: '/admin/tickets/ticket-acme-2',
-              },
-            ],
-            untreatedFeedback: [
-              {
-                kind: 'feedback_untreated',
-                id: 'fb-1',
-                feedbackType: 'bug',
-                preview: 'Cannot upload attachment',
-                submittedAt: new Date().toISOString(),
-                linkTarget: '/admin/feedback?focus=fb-1',
-              },
-            ],
-            pendingInvites: [
-              {
-                kind: 'pending_invite',
-                id: 'inv-1',
-                email: 'new@partner.com',
-                role: 'support',
-                expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-                linkTarget: '/admin/team?tab=invites&focus=inv-1',
-              },
-            ],
-          },
+      ],
+      abandoned: [
+        {
+          kind: 'abandoned',
+          id: 'ticket-acme-2',
+          ticketId: 'ticket-acme-2',
+          ticketTitle: 'Bigcorp — reset',
+          abandonedAt: new Date().toISOString(),
+          linkTarget: '/admin/tickets/ticket-acme-2',
         },
-      }),
-    });
+      ],
+      untreatedFeedback: [
+        {
+          kind: 'feedback_untreated',
+          id: 'fb-1',
+          feedbackType: 'bug',
+          preview: 'Cannot upload attachment',
+          submittedAt: new Date().toISOString(),
+          linkTarget: '/admin/feedback?focus=fb-1',
+        },
+      ],
+      pendingInvites: [
+        {
+          kind: 'pending_invite',
+          id: 'inv-1',
+          email: 'new@partner.com',
+          role: 'support',
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          linkTarget: '/admin/team?tab=invites&focus=inv-1',
+        },
+      ],
+    },
   });
 }
 
