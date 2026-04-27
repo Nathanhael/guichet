@@ -32,12 +32,9 @@ vi.mock('./storage.js', () => ({
 vi.stubGlobal('crypto', { ...crypto, randomUUID: vi.fn(() => 'mock-uuid') });
 
 import {
-  insertMessage,
   findTicketLabelIds,
   findMessageForEdit,
   findMessageForDelete,
-  updateMessageText,
-  softDeleteMessage,
   markDelivered,
   markRead,
   findTicketMessagesPaginated,
@@ -47,57 +44,11 @@ import { db } from '../db/postgres.js';
 describe('messageQueries', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  describe('insertMessage', () => {
-    it('returns a socket-ready message object', async () => {
-      const insertChain = { values: vi.fn().mockResolvedValue(undefined) };
-      vi.mocked(db.insert).mockReturnValue(insertChain as never);
-
-      const result = await insertMessage({
-        ticketId: 't1',
-        senderId: 'u1',
-        senderName: 'Alice',
-        senderRole: 'agent',
-        senderLang: 'en',
-        text: 'Hello',
-      });
-
-      expect(result).toMatchObject({
-        ticketId: 't1',
-        senderId: 'u1',
-        senderName: 'Alice',
-        text: 'Hello',
-        whisper: false,
-        system: false,
-        // senderIsExternal defaults to false when the caller omits it
-        senderIsExternal: false,
-      });
-      expect(result.id).toBeDefined();
-      expect(result.timestamp).toBe(result.createdAt);
-    });
-
-    it('denormalizes senderIsExternal=true onto the row and the return payload', async () => {
-      // Server-authoritative GUEST-badge plumbing: the flag the caller passes
-      // is persisted on the row AND echoed back so socket broadcasts carry
-      // it without a re-fetch.
-      const valuesMock = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(db.insert).mockReturnValue({ values: valuesMock } as never);
-
-      const result = await insertMessage({
-        ticketId: 't1',
-        senderId: 'u-guest',
-        senderName: 'Jane (partner)',
-        senderRole: 'admin',
-        senderLang: 'en',
-        senderIsExternal: true,
-        text: 'Hello from a guest',
-      });
-
-      expect(valuesMock).toHaveBeenCalledWith(
-        expect.objectContaining({ senderIsExternal: true }),
-      );
-      expect(result.senderIsExternal).toBe(true);
-    });
-  });
+  // Tests for `insertMessage`, `updateMessageText`, `updateMessageReactions`,
+  // and `softDeleteMessage` were removed in PR 4 of the messageLifecycle
+  // deepening (issue #50). The functions were absorbed into
+  // `services/messageLifecycle/` and their behavior is now covered by
+  // PGLite boundary tests in that module with stronger assertions.
 
   describe('findTicketLabelIds', () => {
     it('returns label IDs array', async () => {
@@ -129,84 +80,6 @@ describe('messageQueries', () => {
 
       const result = await findMessageForDelete('m1', 't1');
       expect(result).toEqual(msg);
-    });
-  });
-
-  describe('updateMessageText', () => {
-    it('calls db.update with text and editedAt', async () => {
-      const chain = { set: vi.fn().mockReturnThis(), where: vi.fn().mockResolvedValue(undefined) };
-      vi.mocked(db.update).mockReturnValue(chain as never);
-
-      await updateMessageText('m1', 'new text');
-      expect(db.update).toHaveBeenCalled();
-    });
-  });
-
-  describe('softDeleteMessage', () => {
-    function mockExistingMessage(mediaUrl: string | null, attachments: unknown) {
-      const selectChain = {
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue([{ mediaUrl, attachments }]),
-      };
-      vi.mocked(db.select).mockReturnValue(selectChain as never);
-      const updateChain = {
-        set: vi.fn().mockReturnThis(),
-        where: vi.fn().mockResolvedValue(undefined),
-      };
-      vi.mocked(db.update).mockReturnValue(updateChain as never);
-      return { selectChain, updateChain };
-    }
-
-    it('sets deletedAt and clears text, mediaUrl, attachments', async () => {
-      mockExistingMessage(null, null);
-
-      await softDeleteMessage('m1');
-
-      expect(db.update).toHaveBeenCalled();
-    });
-
-    it('deletes the mediaUrl blob from storage', async () => {
-      mockStorageDelete.mockClear();
-      mockExistingMessage('/uploads/photo-abc.png', null);
-
-      await softDeleteMessage('m1');
-
-      expect(mockStorageDelete).toHaveBeenCalledWith('photo-abc.png');
-    });
-
-    it('deletes each attachment blob from storage', async () => {
-      mockStorageDelete.mockClear();
-      mockExistingMessage(null, [
-        { url: '/uploads/a.pdf', name: 'a', mimeType: 'application/pdf', size: 1 },
-        { url: '/uploads/b.jpg', name: 'b', mimeType: 'image/jpeg', size: 2 },
-      ]);
-
-      await softDeleteMessage('m1');
-
-      expect(mockStorageDelete).toHaveBeenCalledWith('a.pdf');
-      expect(mockStorageDelete).toHaveBeenCalledWith('b.jpg');
-    });
-
-    it('skips storage.delete for non-upload URLs', async () => {
-      mockStorageDelete.mockClear();
-      mockExistingMessage('https://external.example/photo.png', [
-        { url: 'https://external.example/a.pdf', name: 'a', mimeType: 'x', size: 1 },
-      ]);
-
-      await softDeleteMessage('m1');
-
-      expect(mockStorageDelete).not.toHaveBeenCalled();
-    });
-
-    it('does not throw when storage.delete fails (fire-and-forget)', async () => {
-      mockStorageDelete.mockClear();
-      mockStorageDelete.mockRejectedValueOnce(new Error('S3 down'));
-      mockExistingMessage('/uploads/x.png', null);
-
-      await expect(softDeleteMessage('m1')).resolves.toBeDefined();
-      // Give the fire-and-forget promise a tick to settle so the rejection
-      // does not surface as an unhandled promise in later tests.
-      await new Promise((r) => setImmediate(r));
     });
   });
 
