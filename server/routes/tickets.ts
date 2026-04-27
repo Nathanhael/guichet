@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { eq, and, ilike, gte, lte, or, desc, type SQL } from 'drizzle-orm';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { db } from '../db/postgres.js';
 import { tickets } from '../db/schema.js';
 import logger from '../utils/logger.js';
@@ -13,7 +13,7 @@ import { escapeLikePattern } from '../utils/security.js';
 const exportRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 5, // 5 exports per 15-minute window per user
-  keyGenerator: (req: Request) => (req as Request & { user?: { id: string } }).user?.id || req.ip || 'unknown',
+  keyGenerator: (req: Request) => (req as Request & { user?: { id: string } }).user?.id || ipKeyGenerator(req.ip ?? 'unknown'),
   message: { error: 'Too many export requests — try again later' },
   standardHeaders: true,
   legacyHeaders: false,

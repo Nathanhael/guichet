@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "npx tsx watch index.ts",
-    "start": "node dist/server/index.js",
-    "build": "Rolldown build",
+    "start": "node dist/index.js",
+    "build": "tsc --project tsconfig.json",
     "db:migrate": "drizzle-kit migrate",
     "db:baseline": "npx tsx scripts/baseline_drizzle.ts",
     "db:backup": "bash scripts/backup.sh",
@@ -37,6 +37,8 @@
     "rate-limit-redis": "^4.3.1",
     "redis": "^5.11.0",
     "socket.io": "^4.8.3",
+    "pino-pretty": "^13.0.0",
+    "swagger-ui-express": "^5.0.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -55,9 +57,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^10.2.1",
     "globals": "^17.5.0",
-    "pino-pretty": "^13.0.0",
     "supertest": "^7.2.2",
-    "swagger-ui-express": "^5.0.1",
     "tsx": "^4.19.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.59.0",
