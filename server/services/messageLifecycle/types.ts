@@ -94,6 +94,24 @@ export interface ReactOk {
   reactions: Record<string, string[]>;
 }
 
+// ─── Edit verb ────────────────────────────────────────────────────────────
+
+export interface EditArgs {
+  ticketId: string;
+  partnerId: string;
+  messageId: string;
+  actor: UserActor;
+  newText: string;
+}
+
+export interface EditOk {
+  messageId: string;
+  /** Final text after sync-guard normalization (e.g. trim). */
+  text: string;
+  /** ISO timestamp of the edit. */
+  editedAt: string;
+}
+
 // ─── Public lifecycle interface ───────────────────────────────────────────
 
 export interface MessageLifecycle {
@@ -103,6 +121,15 @@ export interface MessageLifecycle {
    * the updated reactions map to the ticket room.
    */
   react(args: ReactArgs): Promise<MessageLifecycleResult<ReactOk>>;
+
+  /**
+   * Update a message's text. Restricted to own-message within the
+   * `MAX_EDIT_WINDOW_MS` window; runs the sync content-guard pipeline
+   * (fail-closed) and the Redis-backed repetition guard via the
+   * `RepetitionGuardPort` (fail-open on port error). Emits
+   * `message:edited` and `notifyPreviewers`.
+   */
+  edit(args: EditArgs): Promise<MessageLifecycleResult<EditOk>>;
 }
 
 /**
