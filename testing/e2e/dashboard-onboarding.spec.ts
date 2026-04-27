@@ -13,6 +13,7 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { loginAsDemo, BASE } from './helpers/auth';
+import { mockDashboardTrpc } from './helpers/trpc-mock';
 
 async function mockOnboardingState(
   page: Page,
@@ -26,23 +27,15 @@ async function mockOnboardingState(
     businessHours: 'Set business hours',
     sla: 'Configure SLA',
   };
-  await page.route('**/api/v1/trpc/dashboard.getOnboardingState**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        result: {
-          data: {
-            isNewPartner,
-            steps: stepIds.map((id) => ({
-              id,
-              label: stepLabels[id],
-              done: doneSteps.includes(id),
-            })),
-          },
-        },
-      }),
-    });
+  await mockDashboardTrpc(page, {
+    'dashboard.getOnboardingState': {
+      isNewPartner,
+      steps: stepIds.map((id) => ({
+        id,
+        label: stepLabels[id],
+        done: doneSteps.includes(id),
+      })),
+    },
   });
 }
 
