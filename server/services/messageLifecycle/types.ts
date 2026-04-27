@@ -94,6 +94,21 @@ export interface ReactOk {
   reactions: Record<string, string[]>;
 }
 
+// ─── Delete verb ──────────────────────────────────────────────────────────
+
+export interface DeleteArgs {
+  ticketId: string;
+  partnerId: string;
+  messageId: string;
+  actor: UserActor;
+}
+
+export interface DeleteOk {
+  messageId: string;
+  /** ISO timestamp of the soft-delete. */
+  deletedAt: string;
+}
+
 // ─── Edit verb ────────────────────────────────────────────────────────────
 
 export interface EditArgs {
@@ -130,6 +145,16 @@ export interface MessageLifecycle {
    * `message:edited` and `notifyPreviewers`.
    */
   edit(args: EditArgs): Promise<MessageLifecycleResult<EditOk>>;
+
+  /**
+   * Soft-delete a message. Allowed for staff (support / admin /
+   * platform_operator) on any non-system message, or for the message
+   * owner. Clears text/mediaUrl/attachments and sets deletedAt. Storage
+   * blob cleanup is fire-and-forget AFTER the DB update commits — a
+   * storage outage cannot orphan the DB row. Emits `message:deleted`
+   * and `notifyPreviewers`.
+   */
+  delete(args: DeleteArgs): Promise<MessageLifecycleResult<DeleteOk>>;
 }
 
 /**
