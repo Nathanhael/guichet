@@ -28,18 +28,25 @@ async function gotoSidebarTab(page: Page, label: RegExp): Promise<void> {
 }
 
 test.describe('Guest admin — visible disable treatment', () => {
-  test('Team tab: Invite External is disabled with tooltip', async ({ page }) => {
+  test('Team tab: Invite B2B guest panel is hidden from external guests', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_guest');
     test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
 
     await gotoSidebarTab(page, /^team$/i);
 
-    const inviteBtn = page.getByRole('button', { name: /invite external/i }).first();
-    await inviteBtn.waitFor({ state: 'visible' });
+    // Wait for the Team panel to render (team management heading is the
+    // landmark that proves AdminTeam mounted) before asserting absence.
+    await page.getByRole('heading', { name: /team management/i }).waitFor({
+      state: 'visible',
+      timeout: 10_000,
+    });
 
-    expect(await inviteBtn.getAttribute('data-guest-disabled')).toBe('true');
-    expect(await inviteBtn.isDisabled()).toBe(true);
-    expect(await inviteBtn.getAttribute('title')).toContain('external guest');
+    // The whole "B2B Guest invites" panel is gated behind `!isExternal` in
+    // AdminTeam.tsx — guests cannot invite further guests, so the button is
+    // not rendered at all (replaces the older "render-disabled-with-tooltip"
+    // treatment).
+    const inviteBtn = page.getByRole('button', { name: /invite b2b guest/i });
+    expect(await inviteBtn.count()).toBe(0);
   });
 
   test('Team tab: Remove and dept-edit are disabled + click sends no network', async ({ page }) => {
@@ -122,7 +129,7 @@ test.describe('Guest admin — visible disable treatment', () => {
 
     await gotoSidebarTab(page, /^team$/i);
 
-    const inviteBtn = page.getByRole('button', { name: /invite external/i }).first();
+    const inviteBtn = page.getByRole('button', { name: /invite b2b guest/i }).first();
     await inviteBtn.waitFor({ state: 'visible' });
     expect(await inviteBtn.isDisabled()).toBe(false);
     expect(await inviteBtn.getAttribute('data-guest-disabled')).toBeNull();
