@@ -10,8 +10,11 @@
  *
  * PR 1 ships only `react`. Subsequent PRs add `edit`, `delete`, `send`.
  */
+import { runEdit } from './edit.js';
 import { runReact } from './react.js';
 import type {
+  EditArgs,
+  EditOk,
   MessageLifecycle,
   MessageLifecycleDeps,
   MessageLifecycleResult,
@@ -20,6 +23,8 @@ import type {
 } from './types.js';
 
 export type {
+  EditArgs,
+  EditOk,
   MessageLifecycle,
   MessageLifecycleDeps,
   MessageLifecycleError,
@@ -47,5 +52,7 @@ export function createMessageLifecycle(deps: MessageLifecycleDeps): MessageLifec
   return {
     react: (args: ReactArgs): Promise<MessageLifecycleResult<ReactOk>> =>
       runReact({ db: deps.db }, args),
+    edit: (args: EditArgs): Promise<MessageLifecycleResult<EditOk>> =>
+      runEdit({ db: deps.db, repetitionGuard: deps.ports.repetitionGuard }, args),
   };
 }

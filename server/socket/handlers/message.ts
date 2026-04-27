@@ -11,9 +11,7 @@ import { findSenderInfo } from '../../services/userQueries.js';
 import {
   insertMessage,
   findTicketMessagesPaginated,
-  findMessageForEdit,
   findMessageForDelete,
-  updateMessageText,
   softDeleteMessage,
   markDelivered,
   markRead,
@@ -30,8 +28,6 @@ import { partners } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { crossLangPickupTotal } from '../../utils/metrics.js';
 import {
-  MAX_MESSAGE_LENGTH,
-  MAX_EDIT_WINDOW_MS,
   MAX_BATCH_DELETE,
 } from '../../constants.js';
 import {
@@ -367,47 +363,44 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     try {
       const senderId = socket.data.userId;
       if (!senderId) return;
-      if (newText.trim().length > MAX_MESSAGE_LENGTH) return socket.emit('error', { message: 'Message too long' });
+      const partnerId = socket.data.partnerId as string | undefined;
+      if (!partnerId) return;
 
-      // Verify ticket belongs to caller's partner
-      const ticket = await requirePartnerScope(socket, ticketId);
-      if (!ticket) return;
+      // Partner-scope guard before the lifecycle — preserves the legacy
+      // "Not authorized" wording on cross-tenant access. The lifecycle
+      // would also refuse with TICKET_NOT_FOUND.
+      const partnerCheck = await requirePartnerScope(socket, ticketId);
+      if (!partnerCheck) return;
 
-      // Only allow editing own messages within 15 minutes
-      const msg = await findMessageForEdit(messageId, ticketId);
-      if (!msg) return;
-      if (msg.senderId !== senderId) return socket.emit('error', { message: 'Can only edit your own messages' });
-      if (msg.system) return socket.emit('error', { message: 'Cannot edit system messages' });
-      if (msg.deletedAt) return socket.emit('error', { message: 'Cannot edit deleted messages' });
+      const result = await ctx.messageLifecycle.edit({
+        ticketId,
+        partnerId,
+        messageId,
+        actor: socketActor(socket),
+        newText,
+      });
 
-      const ageMs = Date.now() - new Date(msg.createdAt).getTime();
-      if (ageMs > MAX_EDIT_WINDOW_MS) return socket.emit('error', { message: 'Edit window has expired (15 min)' });
-
-      // CR-01 fix: Run content moderation guards on edited text (mirrors message:send)
-      let guardedText = newText.trim();
-      const syncResult = runSyncGuards(guardedText);
-      if (!syncResult.ok) {
-        logger.warn({ senderId, code: syncResult.code }, '[message:edit] Blocked by content guard');
-        return socket.emit('error', { message: `Edit blocked: ${syncResult.code}` });
-      }
-      guardedText = syncResult.text;
-
-      // Redis-dependent repetition guard (fail open if Redis unavailable)
-      try {
-        const { pubClient } = getRedisClients();
-        const repResult = await guardRepetition(pubClient as Parameters<typeof guardRepetition>[0], guardedText, senderId);
-        if (!repResult.ok) {
-          logger.warn({ senderId, code: repResult.code }, '[message:edit] Blocked by content guard');
-          return socket.emit('error', { message: `Edit blocked: ${repResult.code}` });
+      if (!result.ok) {
+        switch (result.code) {
+          case 'NOT_OWN_MESSAGE':
+            return socket.emit('error', { message: 'Can only edit your own messages' });
+          case 'CANNOT_MUTATE_SYSTEM':
+            return socket.emit('error', { message: 'Cannot edit system messages' });
+          case 'CANNOT_MUTATE_DELETED':
+            return socket.emit('error', { message: 'Cannot edit deleted messages' });
+          case 'EDIT_WINDOW_EXPIRED':
+            return socket.emit('error', { message: 'Edit window has expired (15 min)' });
+          case 'GUARD_REJECTED':
+            return socket.emit('error', { message: 'Edit blocked: GUARD_REJECTED' });
+          case 'TICKET_NOT_FOUND':
+          case 'MESSAGE_NOT_FOUND':
+            return; // partner-scope guard already emitted; message-not-found silent (legacy)
+          default:
+            return;
         }
-      } catch (guardErr) {
-        logger.error({ err: guardErr instanceof Error ? guardErr.message : String(guardErr) }, '[message:edit] Repetition guard error (Redis)');
       }
 
-      const now = await updateMessageText(messageId, guardedText);
-
-      ctx.io.to(Rooms.ticket(ticketId)).emit('message:edited', { ticketId, messageId, text: guardedText, editedAt: now });
-      notifyPreviewers(ctx.io, ticketId);
+      applyEffects(ctx.io, result.effects);
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:edit] error'); }
   });
 
