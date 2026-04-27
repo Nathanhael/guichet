@@ -119,6 +119,51 @@ describe('lifecycle.create', () => {
     });
   });
 
+  it('GUARD_REJECTED: first-message text trips a sync content guard → no ticket created', async () => {
+    await seedPartner({ partnerId: 'p_a' });
+    await handle.db.insert(users).values({ id: 'u_agent', email: 'a@x.test', name: 'Agent' });
+    const lifecycle = createTicketLifecycle({ db: handle.db });
+
+    // 2500 chars trips guardLength (cap = 2000).
+    const longText = 'a'.repeat(2500);
+
+    const result = await lifecycle.create({
+      partnerId: 'p_a',
+      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      dept: 'sales',
+      agentLang: 'en',
+      text: longText,
+    });
+
+    expect(result).toEqual({ ok: false, code: 'GUARD_REJECTED' });
+
+    const ticketRows = await handle.db.select().from(tickets);
+    expect(ticketRows).toHaveLength(0);
+    const messageRows = await handle.db.select().from(messages);
+    expect(messageRows).toHaveLength(0);
+    const auditRows = await handle.db.select().from(auditLog);
+    expect(auditRows).toHaveLength(0);
+  });
+
+  it('first-message guards SKIP when no text is provided (omit-text path stays open)', async () => {
+    await seedPartner({ partnerId: 'p_a' });
+    await handle.db.insert(users).values({ id: 'u_agent', email: 'a@x.test', name: 'Agent' });
+    const lifecycle = createTicketLifecycle({ db: handle.db });
+
+    const result = await lifecycle.create({
+      partnerId: 'p_a',
+      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      dept: 'sales',
+      agentLang: 'en',
+      // text intentionally omitted — caller may create a ticket without an
+      // initial message and post one separately. Guards must not fire.
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data.firstMessage).toBeNull();
+  });
+
   it('reopen detection: matching reference value on a closed ticket → ticket.reopened, reopenCount=1', async () => {
     await seedPartner({ partnerId: 'p_a' });
     await handle.db.insert(users).values({ id: 'u_agent', email: 'a@x.test', name: 'Agent' });

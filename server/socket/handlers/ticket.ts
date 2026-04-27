@@ -95,6 +95,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
             case 'DUPLICATE_TICKET':
               logger.warn({ agentId: socket.data.userId, partnerId }, '[ticket:new] rejected — agent already has an open ticket');
               return socket.emit('error', { message: 'You already have an open ticket' });
+            case 'GUARD_REJECTED':
+              logger.warn({ agentId: socket.data.userId, partnerId }, '[ticket:new] rejected — first message blocked by content guard');
+              return socket.emit('error', { message: 'Message blocked: content guard rejected the first message' });
             default:
               return socket.emit('error', { message: 'Failed to create ticket' });
           }
