@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import crypto from 'crypto';
 import { fileTypeFromBuffer } from 'file-type';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import config from '../config.js';
 import { auth } from '../middleware/auth.js';
 import { getStorage } from '../services/storage.js';
@@ -12,7 +12,7 @@ import { getStorage } from '../services/storage.js';
 const uploadRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 20, // 20 uploads per 15-minute window per user
-  keyGenerator: (req: Request) => (req as Request & { user?: { id: string } }).user?.id || req.ip || 'unknown',
+  keyGenerator: (req: Request) => (req as Request & { user?: { id: string } }).user?.id || ipKeyGenerator(req.ip ?? 'unknown'),
   message: { error: 'Too many uploads — try again later' },
   standardHeaders: true,
   legacyHeaders: false,

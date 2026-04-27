@@ -5,7 +5,7 @@ RUN apk add --no-cache python3 make g++ && npm install -g npm@latest
 COPY package.json package-lock.json* ./
 RUN npm ci
 COPY . .
-RUN npx tsc --project tsconfig.json
+RUN npm run build
 
 # Stage 2: Production dependencies only
 FROM node:24-alpine AS deps
@@ -25,4 +25,4 @@ RUN mkdir -p uploads && chown -R node:node /app
 USER node
 EXPOSE 3001
 ENV NODE_ENV=production
-CMD ["node", "dist/server/index.js"]
+CMD ["node", "dist/index.js"]
