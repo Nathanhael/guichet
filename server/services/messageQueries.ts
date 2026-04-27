@@ -1,85 +1,16 @@
 // server/services/messageQueries.ts
+//
+// Read-side helpers for messages, plus the `updateMessageLinkPreviews` write
+// (still used by the lifecycle dispatcher's `unfurlLinks` effect).
+//
+// The write helpers `insertMessage`, `updateMessageText`,
+// `updateMessageReactions`, and `softDeleteMessage` were absorbed into
+// `services/messageLifecycle/` (PRs 1–3 of the deepening, see issue #50).
 import { eq, and, asc, isNull, inArray, lt, or } from 'drizzle-orm';
 import { db } from '../db/postgres.js';
 import { messages, ticketLabels, users } from '../db/schema.js';
-import logger from '../utils/logger.js';
-import { getStorage } from './storage.js';
 
 import type { LinkPreview } from './linkPreview.js';
-
-export interface InsertMessageData {
-  ticketId: string;
-  senderId: string;
-  senderName: string;
-  senderRole: string;
-  senderLang: string;
-  /**
-   * Azure B2B guest flag snapshot at send time. Denormalized onto the
-   * messages row so MessageBubble can render the GUEST marker on
-   * historical messages without a live presence lookup. Omit/`false` for
-   * system messages and internal staff; pass `true` for external guests.
-   */
-  senderIsExternal?: boolean;
-  text: string;
-  mediaUrl?: string | null;
-  attachments?: Array<{ url: string; name: string; mimeType: string; size: number }> | null;
-  whisper?: boolean;
-  system?: boolean;
-  replyToId?: string | null;
-}
-
-/** Socket-ready message shape returned by insertMessage. */
-export type SocketMessage = Awaited<ReturnType<typeof insertMessage>>;
-
-/**
- * Inserts a chat message and returns a socket-ready message object.
- * Used by: message:send, ticket:new
- */
-export async function insertMessage(data: InsertMessageData) {
-  const id = crypto.randomUUID();
-  const now = new Date().toISOString();
-
-  const senderIsExternal = !!data.senderIsExternal;
-
-  await db.insert(messages).values({
-    id,
-    ticketId: data.ticketId,
-    senderId: data.senderId,
-    senderName: data.senderName,
-    senderRole: data.senderRole,
-    senderLang: data.senderLang,
-    senderIsExternal,
-    text: data.text,
-    mediaUrl: data.mediaUrl || null,
-    attachments: data.attachments || null,
-    whisper: data.whisper ? 1 : 0,
-    system: data.system ? 1 : 0,
-    createdAt: now,
-    reactions: {},
-    replyToId: data.replyToId || null,
-  });
-
-  return {
-    id,
-    ticketId: data.ticketId,
-    senderId: data.senderId,
-    senderName: data.senderName,
-    senderRole: data.senderRole,
-    senderLang: data.senderLang,
-    senderIsExternal,
-    text: data.text,
-    // Client uses originalText for "revert AI improvement" — set to input text at creation time
-    originalText: data.text,
-    mediaUrl: data.mediaUrl || undefined,
-    attachments: data.attachments || undefined,
-    whisper: !!data.whisper,
-    system: !!data.system,
-    timestamp: now,
-    createdAt: now,
-    reactions: {},
-    replyToId: data.replyToId || null,
-  };
-}
 
 export interface PaginatedMessages {
   messages: Array<typeof messages.$inferSelect>;
@@ -193,77 +124,6 @@ export async function findMessageForReact(messageId: string, ticketId: string) {
   return rows[0];
 }
 
-/**
- * Writes updated reactions JSONB to the message row.
- * Used by: message:react
- */
-export async function updateMessageReactions(messageId: string, reactions: Record<string, string[]>) {
-  await db
-    .update(messages)
-    .set({ reactions })
-    .where(eq(messages.id, messageId));
-}
-
-/**
- * Updates message text and sets editedAt timestamp.
- * Used by: message:edit
- */
-export async function updateMessageText(messageId: string, newText: string) {
-  const now = new Date().toISOString();
-  await db
-    .update(messages)
-    .set({ text: newText, editedAt: now })
-    .where(eq(messages.id, messageId));
-  return now;
-}
-
-/**
- * Soft-deletes a message (sets deletedAt, clears text, mediaUrl and attachments)
- * and deletes any uploaded blobs backing the cleared URLs. Blob deletion is
- * fire-and-forget AFTER the DB update commits — a storage outage must not
- * orphan the DB row.
- *
- * Used by: message:delete
- */
-export async function softDeleteMessage(messageId: string) {
-  const [existing] = await db
-    .select({ mediaUrl: messages.mediaUrl, attachments: messages.attachments })
-    .from(messages)
-    .where(eq(messages.id, messageId));
-
-  const filesToDelete: string[] = [];
-  if (existing) {
-    if (existing.mediaUrl && existing.mediaUrl.startsWith('/uploads/')) {
-      filesToDelete.push(existing.mediaUrl.replace(/^\/uploads\//, ''));
-    }
-    const attachments = (existing.attachments ?? []) as Array<{ url?: string }>;
-    for (const att of attachments) {
-      if (att?.url?.startsWith('/uploads/')) {
-        filesToDelete.push(att.url.replace(/^\/uploads\//, ''));
-      }
-    }
-  }
-
-  const now = new Date().toISOString();
-  await db
-    .update(messages)
-    .set({ deletedAt: now, text: '', mediaUrl: null, attachments: null })
-    .where(eq(messages.id, messageId));
-
-  if (filesToDelete.length > 0) {
-    const storage = getStorage();
-    for (const filename of filesToDelete) {
-      storage.delete(filename).catch((err: unknown) => {
-        logger.warn(
-          { messageId, filename, err: err instanceof Error ? err.message : String(err) },
-          '[msgQueries] soft-delete: storage.delete failed',
-        );
-      });
-    }
-  }
-
-  return now;
-}
 
 /**
  * Marks a single message as delivered.
