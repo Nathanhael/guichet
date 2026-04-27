@@ -210,19 +210,21 @@ test.describe('Sprint 1: AI Message Improvement', () => {
     const opened = await openFirstTicket(page);
     test.skip(!opened, 'No ticket available');
 
-    const textArea = page.locator('textarea').first();
-    await textArea.waitFor({ state: 'visible', timeout: 5000 });
+    // Agents on a live ticket use the ProseMirror compose editor (not <textarea>).
+    const editor = page.locator('.ProseMirror').first();
+    await editor.waitFor({ state: 'visible', timeout: 5000 });
 
-    // Type enough text (>= 10 chars)
-    await textArea.fill('This is a message that should trigger the improve button to appear');
+    // Type enough text (>= 10 chars) into ProseMirror
+    await editor.click();
+    await page.keyboard.type('This is a message that should trigger the improve button to appear');
     await page.waitForTimeout(500);
 
     // Look for the improve button (aria-label="Improve message")
     const improveBtn = page.locator('button[aria-label="Improve message"]');
     // May or may not be visible depending on AI config
-    const visible = await improveBtn.isVisible().catch(() => false);
-    // If AI is enabled with 'optional' mode, button should be visible
-    // Just verify no crashes
+    await improveBtn.isVisible().catch(() => false);
+
+    // Verify no crashes
     const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
   });
@@ -235,11 +237,12 @@ test.describe('Sprint 1: AI Message Improvement', () => {
     const opened = await openFirstTicket(page);
     test.skip(!opened, 'No ticket available');
 
-    const textArea = page.locator('textarea').first();
-    await textArea.waitFor({ state: 'visible', timeout: 5000 });
+    const editor = page.locator('.ProseMirror').first();
+    await editor.waitFor({ state: 'visible', timeout: 5000 });
 
     // Type short text (< 10 chars)
-    await textArea.fill('Hi');
+    await editor.click();
+    await page.keyboard.type('Hi');
     await page.waitForTimeout(300);
 
     // Improve button should NOT be visible (text too short)
@@ -256,10 +259,11 @@ test.describe('Sprint 1: AI Message Improvement', () => {
     const opened = await openFirstTicket(page);
     test.skip(!opened, 'No ticket available');
 
-    const textArea = page.locator('textarea').first();
-    await textArea.waitFor({ state: 'visible', timeout: 5000 });
+    const editor = page.locator('.ProseMirror').first();
+    await editor.waitFor({ state: 'visible', timeout: 5000 });
 
-    await textArea.fill('This message needs improvement from the AI system');
+    await editor.click();
+    await page.keyboard.type('This message needs improvement from the AI system');
     await page.waitForTimeout(500);
 
     const improveBtn = page.locator('button[aria-label="Improve message"]');
@@ -278,8 +282,9 @@ test.describe('Sprint 1: AI Message Improvement', () => {
         await revertBtn.click();
         await page.waitForTimeout(500);
 
-        // Original text should be restored
-        const currentText = await textArea.inputValue();
+        // Original text should be restored — ProseMirror exposes its content
+        // via .textContent on the contenteditable root.
+        const currentText = (await editor.textContent()) ?? '';
         expect(currentText).toContain('This message needs improvement');
       }
     }
