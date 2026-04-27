@@ -3,7 +3,9 @@
  *
  * Covers two behaviors introduced in the April 2026 admin-queue rework:
  *   1. AdminTickets renders exactly three queue-filter chips
- *      (All / Open / Pending) and no closed/resolved/date-range controls.
+ *      (All / Unassigned / In chat) — the latter two are hasSupport
+ *      false/true, replacing the old open/pending labels — and drops
+ *      closed/resolved/date-range controls (those moved to Archive).
  *   2. Closing a ticket from AgentView snapshots it into the
  *      Archive view immediately (no 30-day wait for the GDPR job).
  *
@@ -29,7 +31,7 @@ async function gotoArchiveTab(page: Page): Promise<void> {
 }
 
 test.describe('Admin queue — 3-tab layout', () => {
-  test('shows exactly All / Open / Pending and drops closed/date-range controls', async ({ page }) => {
+  test('shows exactly All / Unassigned / In chat and drops closed/date-range controls', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
     test.skip(!res.ok, `Demo login failed (status ${res.status}); skipping`);
     await gotoActiveTicketsTab(page);
@@ -37,23 +39,25 @@ test.describe('Admin queue — 3-tab layout', () => {
     const queueSidebar = page.locator('aside').nth(1);
     await queueSidebar.locator('h2').filter({ hasText: /live_queue|ticket queue/i }).first().waitFor({ timeout: 5000 });
 
-    // Filter chips live inside the queue sidebar header.
-    const chips = queueSidebar.locator('button').filter({ hasText: /^(ALL|OPEN|PENDING|CLOSED|RESOLVED|ACTIVE)$/i });
-    const chipTexts = (await chips.allTextContents()).map((t) => t.trim().toUpperCase());
+    // Filter chips live in the segmented pill at the top of the queue sidebar.
+    // Match the segmented pill specifically — dept/lang chips below also live in
+    // this aside, so a bare `button` filter would pick them up too.
+    const chips = queueSidebar.locator('button').filter({
+      hasText: /^(All|Unassigned|In chat|Open|Pending|Closed|Resolved|Active)$/i,
+    });
+    const chipTexts = (await chips.allTextContents()).map((t) => t.trim());
 
-    expect(chipTexts).toEqual(['ALL', 'OPEN', 'PENDING']);
+    expect(chipTexts).toEqual(['All', 'Unassigned', 'In chat']);
 
     // No date-range inputs in the admin queue (those moved to Archive).
     const dateInputs = queueSidebar.locator('input[type="date"]');
     expect(await dateInputs.count()).toBe(0);
 
-    // All tab should be active by default (the new hasSupport filter = undefined).
-    // Active chip has primary-text bg; rather than match that arbitrary-value Tailwind class,
-    // just assert All renders first (the default on mount).
-    expect(chipTexts[0]).toBe('ALL');
+    // All tab is the default on mount (hasSupport=undefined → no filter).
+    expect(chipTexts[0]).toBe('All');
   });
 
-  test('Open chip sends hasSupport=false and Pending sends hasSupport=true', async ({ page }) => {
+  test('Unassigned chip sends hasSupport=false and In chat sends hasSupport=true', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
     test.skip(!res.ok, 'Demo login failed');
     await gotoActiveTicketsTab(page);
@@ -72,9 +76,9 @@ test.describe('Admin queue — 3-tab layout', () => {
       }
     });
 
-    await queueSidebar.locator('button').filter({ hasText: /^OPEN$/i }).click();
+    await queueSidebar.locator('button').filter({ hasText: /^Unassigned$/i }).click();
     await page.waitForTimeout(500);
-    await queueSidebar.locator('button').filter({ hasText: /^PENDING$/i }).click();
+    await queueSidebar.locator('button').filter({ hasText: /^In chat$/i }).click();
     await page.waitForTimeout(500);
 
     // The most recent two requests should reflect the chip switches.
@@ -94,8 +98,8 @@ test.describe('Admin queue — 3-tab layout', () => {
     const recent = captured.slice(-8);
     const sawHasSupportFalse = recent.some((input) => extractHasSupport(input) === false);
     const sawHasSupportTrue = recent.some((input) => extractHasSupport(input) === true);
-    expect(sawHasSupportFalse, 'expected ticket.list request with hasSupport=false after clicking OPEN').toBe(true);
-    expect(sawHasSupportTrue, 'expected ticket.list request with hasSupport=true after clicking PENDING').toBe(true);
+    expect(sawHasSupportFalse, 'expected ticket.list request with hasSupport=false after clicking Unassigned').toBe(true);
+    expect(sawHasSupportTrue, 'expected ticket.list request with hasSupport=true after clicking In chat').toBe(true);
   });
 });
 
