@@ -13,9 +13,7 @@ import {
   findTicketMessagesPaginated,
   findMessageForEdit,
   findMessageForDelete,
-  findMessageForReact,
   updateMessageText,
-  updateMessageReactions,
   softDeleteMessage,
   markDelivered,
   markRead,
@@ -25,6 +23,7 @@ import {
 import { runSyncGuards, guardRepetition } from '../../services/guards.js';
 import { invalidateSummary, runAiAction } from '../../services/ai/index.js';
 import { unfurlLinks } from '../../services/linkPreview.js';
+import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
 import { getRedisClients } from '../../utils/redis.js';
 import { db } from '../../db.js';
 import { partners } from '../../db/schema.js';
@@ -34,7 +33,6 @@ import {
   MAX_MESSAGE_LENGTH,
   MAX_EDIT_WINDOW_MS,
   MAX_BATCH_DELETE,
-  REACTION_EMOJIS,
 } from '../../constants.js';
 import {
   requireIdentified,
@@ -451,46 +449,51 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     if (!parsed) return;
     if (!checkSocketRateLimit(socket, 'message:react')) return;
     const { ticketId, messageId, emoji } = parsed;
-    logger.info({ ticketId, messageId, emoji }, '[message:react] Received');
     socketioEventsTotal.inc({ event: 'message:react' });
     try {
-      const userId = socket.data.userId;
-      if (!userId) { logger.warn({ userId, ticketId, messageId, emoji }, '[message:react] Missing userId'); return; }
-
-      // Validate emoji is in the allowed set
-      if (!REACTION_EMOJIS.includes(emoji as typeof REACTION_EMOJIS[number])) {
-        return socket.emit('error', { message: 'Invalid reaction emoji' });
+      const partnerId = socket.data.partnerId as string | undefined;
+      if (!partnerId) {
+        logger.warn({ ticketId }, '[message:react] Missing partnerId');
+        return;
       }
 
-      // Tenant isolation
-      const ticket = await requirePartnerScope(socket, ticketId);
-      if (!ticket) { logger.warn({ ticketId }, '[message:react] Partner scope failed'); return; }
+      // Partner-scope guard before the lifecycle — preserves the legacy
+      // "Not authorized" wording on cross-tenant access. The lifecycle
+      // would also refuse with TICKET_NOT_FOUND, but the handler-level
+      // check is the canonical UX (matches `handlers/ticket.ts` close).
+      const partnerCheck = await requirePartnerScope(socket, ticketId);
+      if (!partnerCheck) return;
 
-      // Fetch message and validate
-      const msg = await findMessageForReact(messageId, ticketId);
-      if (!msg) { logger.warn({ messageId, ticketId }, '[message:react] Message not found'); return; }
-      if (msg.system) return socket.emit('error', { message: 'Cannot react to system messages' });
-      if (msg.deletedAt) return socket.emit('error', { message: 'Cannot react to deleted messages' });
+      const result = await ctx.messageLifecycle.react({
+        ticketId,
+        partnerId,
+        messageId,
+        actor: socketActor(socket),
+        emoji,
+      });
 
-      // Toggle reaction: add or remove userId
-      const reactions: Record<string, string[]> = { ...(msg.reactions || {}) };
-      const users = reactions[emoji] || [];
-      const idx = users.indexOf(userId);
-      if (idx >= 0) {
-        users.splice(idx, 1);
-        if (users.length === 0) {
-          delete reactions[emoji];
-        } else {
-          reactions[emoji] = users;
+      if (!result.ok) {
+        switch (result.code) {
+          case 'INVALID_REACTION':
+            return socket.emit('error', { message: 'Invalid reaction emoji' });
+          case 'CANNOT_MUTATE_SYSTEM':
+            return socket.emit('error', { message: 'Cannot react to system messages' });
+          case 'CANNOT_MUTATE_DELETED':
+            return socket.emit('error', { message: 'Cannot react to deleted messages' });
+          case 'TICKET_NOT_FOUND':
+            // Defense-in-depth — the handler-level guard above already
+            // emitted on cross-tenant access; this branch only fires if
+            // the ticket vanished between the guard and the lifecycle call.
+            return;
+          case 'MESSAGE_NOT_FOUND':
+            logger.warn({ messageId, ticketId }, '[message:react] Message not found');
+            return;
+          default:
+            return;
         }
-      } else {
-        reactions[emoji] = [...users, userId];
       }
 
-      await updateMessageReactions(messageId, reactions);
-
-      ctx.io.to(Rooms.ticket(ticketId)).emit('reaction:updated', { ticketId, messageId, reactions });
-      notifyPreviewers(ctx.io, ticketId);
+      applyEffects(ctx.io, result.effects);
     } catch (err: unknown) {
       logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:react] error');
     }

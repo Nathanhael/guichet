@@ -39,6 +39,13 @@ import { initRedis, getRedisClients } from './utils/redis.js';
 import { jwtVerify } from 'jose';
 import { initAiContext } from './services/ai/index.js';
 import { createTicketLifecycle, type TicketLifecycle } from './services/ticketLifecycle/index.js';
+import { createMessageLifecycle, type MessageLifecycle } from './services/messageLifecycle/index.js';
+import {
+  aiTranslationAdapter,
+  httpLinkPreviewAdapter,
+  redisRepetitionAdapter,
+} from './services/messageLifecycle/adapters/index.js';
+import { getStorage } from './services/storage.js';
 import { decrypt } from './services/encryption.js';
 import * as schema from './db/schema.js';
 
@@ -57,6 +64,20 @@ export { httpServer };
 // handlers and the boot-time reclaim sweep so neither has to reach for a
 // module-level singleton.
 export const lifecycle: TicketLifecycle = createTicketLifecycle({ db });
+
+// Message-mutation lifecycle — see issue #49 / #50. PR 1 ships only the
+// `react` verb; subsequent PRs add `edit`, `delete`, `send`. Adapters are
+// wired now even though they aren't all exercised yet, so we don't churn
+// boot wiring per-PR.
+export const messageLifecycle: MessageLifecycle = createMessageLifecycle({
+  db,
+  ports: {
+    linkPreview: httpLinkPreviewAdapter(),
+    aiTranslation: aiTranslationAdapter(),
+    repetitionGuard: redisRepetitionAdapter(),
+  },
+  storage: getStorage(),
+});
 
 const allowedOrigins = config.CORS_ORIGIN.split(',');
 
@@ -507,7 +528,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // Socket.IO handlers
-registerSocketHandlers(io, { lifecycle });
+registerSocketHandlers(io, { lifecycle, messageLifecycle });
 
 setBusinessHoursIo(io);
 setPresenceIo(io);

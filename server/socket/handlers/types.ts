@@ -3,6 +3,7 @@ import { z } from 'zod';
 import logger from '../../utils/logger.js';
 import { isRevoked } from '../../services/sessionRevocation.js';
 import type { TicketLifecycle } from '../../services/ticketLifecycle/index.js';
+import type { MessageLifecycle } from '../../services/messageLifecycle/index.js';
 import { socketioEventsTotal } from '../../utils/metrics.js';
 
 // Re-export so handler modules can reference it without importing metrics directly
@@ -19,6 +20,12 @@ export interface HandlerContext {
    * audit / system-message helpers directly. Wired in `server/app.ts`.
    */
   lifecycle: TicketLifecycle;
+  /**
+   * Message-mutation lifecycle: `react` (PR 1), `edit`/`delete` (PR 2),
+   * `send` (PR 3). Flat sibling to `lifecycle` rather than a `.message`
+   * namespace — see issue #49 (decision Q8). Wired in `server/app.ts`.
+   */
+  messageLifecycle: MessageLifecycle;
 }
 
 // ─── Socket Event Payload Schemas ─────────────────────────────────────────────

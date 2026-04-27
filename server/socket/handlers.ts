@@ -3,6 +3,7 @@ import logger from '../utils/logger.js';
 import { socketioConnectionsActive } from '../utils/metrics.js';
 import { Rooms } from '../utils/rooms.js';
 import type { TicketLifecycle } from '../services/ticketLifecycle/index.js';
+import type { MessageLifecycle } from '../services/messageLifecycle/index.js';
 import type { HandlerContext } from './handlers/types.js';
 import { setupRevocationPubSub, setupJwtMiddleware, setupIdentityMiddleware, register as registerAuth } from './handlers/auth.js';
 import { register as registerTicket } from './handlers/ticket.js';
@@ -30,6 +31,7 @@ export function broadcastUserDeactivation(userId: string) {
 
 export interface RegisterSocketHandlersDeps {
   lifecycle: TicketLifecycle;
+  messageLifecycle: MessageLifecycle;
 }
 
 export function registerSocketHandlers(io: Server, deps: RegisterSocketHandlersDeps) {
@@ -39,6 +41,7 @@ export function registerSocketHandlers(io: Server, deps: RegisterSocketHandlersD
     socketTickets,
     viewerKeyPrefix: VIEWER_KEY_PREFIX,
     lifecycle: deps.lifecycle,
+    messageLifecycle: deps.messageLifecycle,
   };
 
   setupRevocationPubSub(io);
