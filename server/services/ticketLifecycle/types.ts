@@ -17,34 +17,15 @@ import type * as schema from '../../db/schema.js';
 export type LifecycleDb = PgDatabase<any, typeof schema, any>;
 
 /**
- * Identity contract for every lifecycle call. Built by transport-specific
- * helpers (`socketActor(socket)`, `trpcActor(ctx)`, or the in-process
- * `systemActor`). The lifecycle never inspects raw transport context —
- * everything it needs to authorize and audit lives on the actor.
+ * Identity contract for every lifecycle call. Re-exported from the canonical
+ * `services/auth` module — the lifecycle does not maintain a parallel Actor
+ * definition. The lifecycle's `socketActor()` (kept here as a non-null wrapper
+ * to preserve socket-handler call signatures during migration) constructs
+ * actors of this shape.
  */
-export type Actor =
-  | UserActor
-  | SystemActor;
-
-export interface UserActor {
-  kind: 'user';
-  id: string;
-  name: string;
-  role: 'agent' | 'support' | 'admin' | 'platform_operator';
-  /** True for support / admin / platform_operator. Cached so call sites don't re-derive. */
-  isSupport: boolean;
-  /** Azure B2B guest flag. */
-  isExternal: boolean;
-  lang: string;
-  /** Tenant scope. The lifecycle uses this to enforce isolation. */
-  partnerId: string;
-}
-
-export interface SystemActor {
-  kind: 'system';
-  id: '__system__';
-  name: 'System';
-}
+import type { Actor, UserActor, SystemActor } from '../auth/types.js';
+export type { Actor, UserActor, SystemActor };
+export { isUserActor } from '../auth/types.js';
 
 /**
  * Discriminated rejection codes. New ops add new codes; the type system

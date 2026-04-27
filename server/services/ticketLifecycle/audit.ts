@@ -45,7 +45,7 @@ export async function writeAudit(tx: any, args: WriteAuditArgs): Promise<void> {
 
   await tx.insert(auditLog).values({
     action: args.action,
-    actorId: args.actor.kind === 'user' ? args.actor.id : null,
+    actorId: args.actor.kind === 'user' ? args.actor.userId : null,
     partnerId: args.partnerId,
     targetType: 'ticket',
     targetId: args.ticketId,

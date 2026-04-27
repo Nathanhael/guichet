@@ -43,10 +43,10 @@ let lifecycle: MessageLifecycle;
 
 const aliceActor: UserActor = {
   kind: 'user',
-  id: USER_A,
+  userId: USER_A,
   name: 'Alice',
   role: 'agent',
-  isSupport: false,
+  isPlatformOperator: false,
   isExternal: false,
   lang: 'en',
   partnerId: PARTNER_A,
@@ -140,8 +140,8 @@ describe('messageLifecycle.edit', () => {
     await handle.db.insert(partners).values({ id: PARTNER_B, name: 'B', status: 'active' });
     await handle.db.insert(users).values({ id: USER_B, email: 'b@x.test', name: 'Bob' });
     const bobActor: UserActor = {
-      kind: 'user', id: USER_B, name: 'Bob', role: 'agent',
-      isSupport: false, isExternal: false, lang: 'en', partnerId: PARTNER_B,
+      kind: 'user', userId: USER_B, name: 'Bob', role: 'agent',
+      isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_B,
     };
 
     const result = await lifecycle.edit({
@@ -160,8 +160,8 @@ describe('messageLifecycle.edit', () => {
     const USER_C = 'user-c';
     await handle.db.insert(users).values({ id: USER_C, email: 'c@x.test', name: 'Carol' });
     const carolActor: UserActor = {
-      kind: 'user', id: USER_C, name: 'Carol', role: 'agent',
-      isSupport: false, isExternal: false, lang: 'en', partnerId: PARTNER_A,
+      kind: 'user', userId: USER_C, name: 'Carol', role: 'agent',
+      isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_A,
     };
 
     const result = await lifecycle.edit({

@@ -13,6 +13,7 @@
 import { Rooms } from '../../utils/rooms.js';
 import { MAX_NOTE_LENGTH } from '../../constants.js';
 import { snapshotTicketToArchive } from '../archive.js';
+import { isSupportLike } from '../roles.js';
 import logger from '../../utils/logger.js';
 import { writeAudit } from './audit.js';
 import { closeTicketTx, readForClose } from './mutations.js';
@@ -41,7 +42,7 @@ export async function runClose(
   }
 
   // Authorization: support / admin / platform_operator OR the owning agent.
-  if (!args.actor.isSupport && snapshot.agentId !== args.actor.id) {
+  if (!isSupportLike(args.actor.role) && snapshot.agentId !== args.actor.userId) {
     return { ok: false, code: 'NOT_AUTHORIZED' };
   }
 

@@ -87,7 +87,7 @@ export async function runCreate(
   }
 
   const existing = await readActiveTicketForAgent(deps.db, {
-    agentId: args.actor.id,
+    agentId: args.actor.userId,
     partnerId: args.partnerId,
   });
   if (existing) {
@@ -124,7 +124,7 @@ export async function runCreate(
 
   const ticketId = crypto.randomUUID();
   const createdAt = new Date().toISOString();
-  const agentName = args.actor.name || args.actor.id;
+  const agentName = args.actor.name || args.actor.userId;
   let firstMessage: SocketMessage | null = null;
 
   await deps.db.transaction(async (tx) => {
@@ -132,7 +132,7 @@ export async function runCreate(
       id: ticketId,
       partnerId: args.partnerId,
       dept: args.dept,
-      agentId: args.actor.id,
+      agentId: args.actor.userId,
       agentName,
       agentLang: args.agentLang,
       references,
@@ -144,7 +144,7 @@ export async function runCreate(
     if (guardedText?.trim()) {
       firstMessage = await insertAgentMessageTx(tx, {
         ticketId,
-        senderId: args.actor.id,
+        senderId: args.actor.userId,
         senderName: agentName,
         senderLang: args.agentLang,
         senderIsExternal: args.actor.isExternal,
@@ -169,7 +169,7 @@ export async function runCreate(
     id: ticketId,
     partnerId: args.partnerId,
     dept: args.dept,
-    agentId: args.actor.id,
+    agentId: args.actor.userId,
     agentName,
     agentLang: args.agentLang,
     references,
