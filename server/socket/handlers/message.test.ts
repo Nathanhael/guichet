@@ -108,15 +108,15 @@ vi.mock('../../services/ticketQueries.js', () => ({
 }));
 
 // ---- messageQueries mocks ----
-const insertMessageMock = vi.fn();
-
+//
+// PR 4 of the messageLifecycle deepening (issue #50) deleted the absorbed
+// mutation helpers from `messageQueries.ts`. Only the read-side helpers and
+// the `markDelivered`/`markRead` writes (still used by the handler for the
+// non-migrated `:delivered` / `:read` events) remain.
 vi.mock('../../services/messageQueries.js', () => ({
-  insertMessage: insertMessageMock,
   findTicketLabelIds: vi.fn(),
   findMessageForEdit: vi.fn(),
   findMessageForDelete: vi.fn(),
-  updateMessageText: vi.fn(),
-  softDeleteMessage: vi.fn(),
   markDelivered: vi.fn(),
   markRead: vi.fn(),
 }));
@@ -249,8 +249,8 @@ describe('message:send', () => {
   });
 
   // The "allows message" happy-path test was removed in PR 3 — it asserted
-  // against `insertMessageMock`, which is now bypassed because the handler
-  // delegates to `ctx.messageLifecycle.send`. The same observable behavior
-  // is covered with stronger assertions in
+  // against the legacy `insertMessage` mock, which is now bypassed because
+  // the handler delegates to `ctx.messageLifecycle.send`. The same
+  // observable behavior is covered with stronger assertions in
   // `services/messageLifecycle/send.test.ts` (PGLite boundary tests).
 });
