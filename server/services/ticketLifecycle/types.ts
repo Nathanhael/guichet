@@ -93,13 +93,27 @@ export type Result<Ok> =
  * names so the dispatcher can preserve socket.io's `to(a).to(b).emit(...)`
  * de-duplication semantics — broadcasting twice would double-deliver to
  * sockets that sit in both rooms.
+ *
+ * NOTE: this union is shared between `ticketLifecycle` AND `messageLifecycle`
+ * (which reuses `applyEffects` to keep dispatch logic single-sourced). The
+ * message-specific variants (`whisperEmit`, `slaResolved`, `invalidateSummary`,
+ * `unfurlLinks`) live here for that reason. If/when a third lifecycle ever
+ * lands, promote shared bits to a `services/lifecycle/` directory.
  */
 export type Effect =
   | { type: 'emit'; rooms: string[]; event: string; payload: unknown }
   | { type: 'notifyPreviewers'; ticketId: string }
   | { type: 'broadcastQueue'; partnerId: string }
   /** Force every support / admin / platform_operator socket out of the ticket room. */
-  | { type: 'evictSupportFromRoom'; ticketId: string };
+  | { type: 'evictSupportFromRoom'; ticketId: string }
+  /** Staff-only fan-out — emit only to support/admin/platform_operator sockets in the ticket room. */
+  | { type: 'whisperEmit'; ticketId: string; event: string; payload: unknown }
+  /** First-staff-response SLA breach was resolved by the latest send. */
+  | { type: 'slaResolved'; ticketId: string; partnerId: string; respondedInMinutes: number }
+  /** Drop the AI summary cache for a ticket — fire-and-forget. */
+  | { type: 'invalidateSummary'; ticketId: string }
+  /** Unfurl URL metadata in `text` for `messageId`, then broadcast `message:linkPreview`. Background. */
+  | { type: 'unfurlLinks'; ticketId: string; messageId: string; text: string };
 
 /** Snapshot of `tickets.participants` JSONB rows. */
 export interface Participant {
