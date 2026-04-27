@@ -72,7 +72,9 @@ export type LifecycleError =
   /** Agent already has a non-closed ticket. */
   | 'DUPLICATE_TICKET'
   /** mediaUrl failed `isValidMediaUrl()`. */
-  | 'INVALID_MEDIA_URL';
+  | 'INVALID_MEDIA_URL'
+  /** First-message text rejected by the sync content-guard pipeline. */
+  | 'GUARD_REJECTED';
 
 /**
  * Discriminated result. Domain rejections are values, not exceptions, so

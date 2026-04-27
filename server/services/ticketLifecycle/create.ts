@@ -22,6 +22,7 @@ import { Rooms } from '../../utils/rooms.js';
 import { isValidMediaUrl } from '../../utils/security.js';
 import { getBusinessHoursStatus } from '../businessHours.js';
 import type { BusinessHoursSchedule } from '../businessHours.js';
+import { runSyncGuards } from '../guards.js';
 import { writeAudit } from './audit.js';
 import { insertAgentMessageTx, type SocketMessage } from './messages.js';
 import {
@@ -52,6 +53,22 @@ export async function runCreate(
   }
   if (args.mediaUrl && !isValidMediaUrl(args.mediaUrl)) {
     return { ok: false, code: 'INVALID_MEDIA_URL' };
+  }
+
+  // Sync content guards on the first-message text (when provided).
+  // Closes the bypass that existed before — the legacy
+  // `insertAgentMessageTx` path skipped the guard pipeline that
+  // `message:send` runs. Repetition guard is intentionally skipped here
+  // because (a) the agent is enforced one-open-ticket-per-agent, so
+  // intra-ticket repetition is impossible, and (b) the lifecycle has no
+  // Redis dependency yet.
+  let guardedText = args.text;
+  if (args.text && args.text.trim().length > 0) {
+    const syncResult = runSyncGuards(args.text);
+    if (!syncResult.ok) {
+      return { ok: false, code: 'GUARD_REJECTED' };
+    }
+    guardedText = syncResult.text;
   }
 
   const partner = await readPartnerForCreate(deps.db, { partnerId: args.partnerId });
@@ -124,14 +141,14 @@ export async function runCreate(
       reopenCount,
     });
 
-    if (args.text?.trim()) {
+    if (guardedText?.trim()) {
       firstMessage = await insertAgentMessageTx(tx, {
         ticketId,
         senderId: args.actor.id,
         senderName: agentName,
         senderLang: args.agentLang,
         senderIsExternal: args.actor.isExternal,
-        text: args.text,
+        text: guardedText,
         mediaUrl: args.mediaUrl,
       });
     }
