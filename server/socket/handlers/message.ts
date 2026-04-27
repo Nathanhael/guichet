@@ -11,8 +11,6 @@ import { findSenderInfo } from '../../services/userQueries.js';
 import {
   insertMessage,
   findTicketMessagesPaginated,
-  findMessageForDelete,
-  softDeleteMessage,
   markDelivered,
   markRead,
   resolveReplySnippet,
@@ -414,24 +412,34 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     try {
       const senderId = socket.data.userId;
       if (!senderId) return;
+      const partnerId = socket.data.partnerId as string | undefined;
+      if (!partnerId) return;
 
-      const ticket = await requirePartnerScope(socket, ticketId);
-      if (!ticket) return;
+      const partnerCheck = await requirePartnerScope(socket, ticketId);
+      if (!partnerCheck) return;
 
-      const msg = await findMessageForDelete(messageId, ticketId);
-      if (!msg) return;
+      const result = await ctx.messageLifecycle.delete({
+        ticketId,
+        partnerId,
+        messageId,
+        actor: socketActor(socket),
+      });
 
-      // Support/admin can delete any non-system message; others only their own
-      if (!socket.data.isSupport && msg.senderId !== senderId) {
-        return socket.emit('error', { message: 'Can only delete your own messages' });
+      if (!result.ok) {
+        switch (result.code) {
+          case 'NOT_OWN_MESSAGE':
+            return socket.emit('error', { message: 'Can only delete your own messages' });
+          case 'CANNOT_MUTATE_SYSTEM':
+            return socket.emit('error', { message: 'Cannot delete system messages' });
+          case 'TICKET_NOT_FOUND':
+          case 'MESSAGE_NOT_FOUND':
+            return; // partner-scope guard already emitted; not-found silent (legacy)
+          default:
+            return;
+        }
       }
-      if (msg.system) return socket.emit('error', { message: 'Cannot delete system messages' });
-      if (msg.deletedAt) return; // Already deleted
 
-      const now = await softDeleteMessage(messageId);
-
-      ctx.io.to(Rooms.ticket(ticketId)).emit('message:deleted', { ticketId, messageId, deletedAt: now });
-      notifyPreviewers(ctx.io, ticketId);
+      applyEffects(ctx.io, result.effects);
     } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[message:delete] error'); }
   });
 
