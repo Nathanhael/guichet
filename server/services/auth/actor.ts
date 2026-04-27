@@ -1,4 +1,5 @@
 import { TRPCError } from '@trpc/server';
+import type { Socket } from 'socket.io';
 import type { Context } from '../../trpc/context.js';
 import type { Capability, UserActor, UserRole } from './types.js';
 import { can } from './capabilities.js';
@@ -57,5 +58,55 @@ export function trpcActor(ctx: Context, opts?: { capability?: Capability }): Use
       message: `Missing capability: ${opts.capability}`,
     });
   }
+  return actor;
+}
+
+/**
+ * Build a UserActor from an authenticated, identified Socket.io socket.
+ *
+ * Returns null and emits a `socket.emit('error', ...)` when the socket is
+ * not identified, lacks partner scope, or fails the optional capability gate.
+ * Callers should `if (!actor) return;` immediately.
+ *
+ * Reads `socket.data` fields populated by `setupJwtMiddleware` (handshake)
+ * and the `socket:identify` handler. `isExternal` comes from the JWT at
+ * handshake; the identify handler must NOT clobber it.
+ */
+export function socketActor(socket: Socket, opts?: { capability?: Capability }): UserActor | null {
+  const data = socket.data as Record<string, unknown>;
+  if (!data.identified) {
+    socket.emit('error', { message: 'Not identified' });
+    return null;
+  }
+
+  const userId = data.userId as string | undefined;
+  const role = data.role as UserRole | undefined;
+  const partnerId = data.partnerId as string | undefined;
+  const name = (data.name as string | undefined) ?? '';
+  const lang = (data.lang as string | undefined) ?? 'en';
+  const isPlatformOperator = Boolean(data.isPlatformOperator);
+  const isExternal = Boolean(data.isExternal);
+
+  if (!userId || !role || !partnerId) {
+    socket.emit('error', { message: 'Partner scope required' });
+    return null;
+  }
+
+  const actor: UserActor = {
+    kind: 'user',
+    userId,
+    name,
+    role,
+    partnerId,
+    isPlatformOperator,
+    isExternal,
+    lang,
+  };
+
+  if (opts?.capability && !can(actor, opts.capability)) {
+    socket.emit('error', { message: `Missing capability: ${opts.capability}` });
+    return null;
+  }
+
   return actor;
 }

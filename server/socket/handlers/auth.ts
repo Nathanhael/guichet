@@ -250,6 +250,11 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
       socket.data.partnerId = partnerId;
       socket.data.isSupport = isSupport;
       socket.data.lang = userRow.lang || 'en';
+      // Surface isPlatformOperator on socket.data alongside the other identity
+      // fields so socketActor() (services/auth) can read it without falling back
+      // to the handshake-only `authedIsPlatformOperator` key.
+      socket.data.isPlatformOperator =
+        effectiveRole === 'platform_operator' || socket.data.authedIsPlatformOperator === true;
       socket.data.identified = true;
 
       await presenceService.identifyUser(userId, effectiveRole, name, partnerId, isPlatformOp, socket.id);
