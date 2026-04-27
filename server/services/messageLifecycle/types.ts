@@ -94,6 +94,73 @@ export interface ReactOk {
   reactions: Record<string, string[]>;
 }
 
+// ─── Send verb ────────────────────────────────────────────────────────────
+
+export interface MessageAttachment {
+  url: string;
+  name: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface SendArgs {
+  ticketId: string;
+  partnerId: string;
+  actor: UserActor;
+  /** Message text. Empty/whitespace allowed only if mediaUrl or attachments present. */
+  text?: string;
+  mediaUrl?: string;
+  attachments?: MessageAttachment[];
+  /** Caller hint — clamped to false for non-support actors (silent + warn). */
+  whisper?: boolean;
+  replyToId?: string | null;
+  /** Client-generated id echoed back in the broadcast for optimistic reconciliation. */
+  localId?: string;
+  /**
+   * Languages of currently-watching viewers in the ticket room (excluding
+   * the sender). Used to decide which translations to prewarm. Caller
+   * collects these from socket.io's local node iteration.
+   */
+  viewerLangs?: Set<string>;
+}
+
+/**
+ * Socket-ready message shape returned by `send` so the dispatcher can
+ * broadcast it without a re-read. Mirrors the legacy `insertMessage`
+ * return value field-for-field.
+ */
+export interface SendMessage {
+  id: string;
+  ticketId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: string;
+  senderLang: string;
+  senderIsExternal: boolean;
+  text: string;
+  originalText: string;
+  mediaUrl?: string;
+  attachments?: MessageAttachment[] | null;
+  whisper: boolean;
+  system: boolean;
+  timestamp: string;
+  createdAt: string;
+  reactions: Record<string, never>;
+  replyToId: string | null;
+  /** Reply snippet (when replyToId is set + the referenced message exists). */
+  replyTo?: { id: string; senderName: string; text: string; mediaUrl: string | null } | null;
+  /** Cross-language prewarm translations keyed by language code. */
+  translations?: Record<string, string>;
+  /** Echoed for optimistic-UI reconciliation when the caller passed it. */
+  localId?: string;
+}
+
+export interface SendOk {
+  message: SendMessage;
+  /** True iff the message was sent as a staff-only whisper. */
+  isWhisper: boolean;
+}
+
 // ─── Delete verb ──────────────────────────────────────────────────────────
 
 export interface DeleteArgs {
@@ -155,6 +222,16 @@ export interface MessageLifecycle {
    * and `notifyPreviewers`.
    */
   delete(args: DeleteArgs): Promise<MessageLifecycleResult<DeleteOk>>;
+
+  /**
+   * Insert a new message into the ticket. The most-trafficked verb in the
+   * system. Encapsulates the full sender-denorm + content-guard pipeline
+   * (sync fail-closed + Redis fail-open) + attachment validation + whisper
+   * authz clamp + SLA first-staff-response stamp + reply snippet + AI
+   * translation prewarm (raced against 250ms budget) + the broadcast +
+   * preview invalidation + summary cache bust + background link unfurl.
+   */
+  send(args: SendArgs): Promise<MessageLifecycleResult<SendOk>>;
 }
 
 /**

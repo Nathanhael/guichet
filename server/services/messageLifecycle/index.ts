@@ -13,6 +13,7 @@
 import { runDelete } from './delete.js';
 import { runEdit } from './edit.js';
 import { runReact } from './react.js';
+import { runSend } from './send.js';
 import type {
   DeleteArgs,
   DeleteOk,
@@ -23,6 +24,8 @@ import type {
   MessageLifecycleResult,
   ReactArgs,
   ReactOk,
+  SendArgs,
+  SendOk,
 } from './types.js';
 
 export type {
@@ -30,6 +33,7 @@ export type {
   DeleteOk,
   EditArgs,
   EditOk,
+  MessageAttachment,
   MessageLifecycle,
   MessageLifecycleDeps,
   MessageLifecycleError,
@@ -38,6 +42,9 @@ export type {
   MessageLifecycleStorage,
   ReactArgs,
   ReactOk,
+  SendArgs,
+  SendMessage,
+  SendOk,
 } from './types.js';
 
 export type {
@@ -61,5 +68,11 @@ export function createMessageLifecycle(deps: MessageLifecycleDeps): MessageLifec
       runEdit({ db: deps.db, repetitionGuard: deps.ports.repetitionGuard }, args),
     delete: (args: DeleteArgs): Promise<MessageLifecycleResult<DeleteOk>> =>
       runDelete({ db: deps.db, storage: deps.storage }, args),
+    send: (args: SendArgs): Promise<MessageLifecycleResult<SendOk>> =>
+      runSend({
+        db: deps.db,
+        repetitionGuard: deps.ports.repetitionGuard,
+        aiTranslation: deps.ports.aiTranslation,
+      }, args),
   };
 }
