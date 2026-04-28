@@ -376,8 +376,9 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       });
       await db
         .update(users)
-        .set({ name, email, isExternal, ...(nextLang && { lang: nextLang }) })
+        .set({ name, email, ...(nextLang && { lang: nextLang }) })
         .where(eq(users.id, user.id));
+      await flipIsExternal(user.id, isExternal);
       if (nextLang) {
         await db.insert(auditLog).values({
           action: 'user.locale.sso_sync',
