@@ -2,7 +2,7 @@ import { Socket } from 'socket.io';
 import { z } from 'zod';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
-import { requirePartnerScope, requirePartnerScopeWith } from '../partnerScope.js';
+import { requireActorTicketScope, requireActorTicketScopeWith } from '../partnerScope.js';
 import {
   findTicketForClose,
   findTicketForTransfer,
@@ -14,6 +14,7 @@ import { findPartnerConfig } from '../../services/partnerQueries.js';
 import { findUserName } from '../../services/userQueries.js';
 import { autoSummarizeOnClose } from '../../services/ai/index.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
+import { can } from '../../services/auth/capabilities.js';
 import { MAX_LABELS_PER_TICKET } from '../../constants.js';
 import {
   requireIdentified,
@@ -32,34 +33,30 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       if (!requireIdentified(socket)) return;
       const parsed = validatePayload(socket, ticketNewSchema, data);
       if (!parsed) {
-        logger.warn({ socketId: socket.id, userId: socket.data.userId }, '[ticket:new] payload validation failed');
+        logger.warn({ socketId: socket.id }, '[ticket:new] payload validation failed');
         return;
       }
       socketioEventsTotal.inc({ event: 'ticket:new' });
 
       try {
-        const partnerId = socket.data.partnerId;
+        const baseActor = socketActor(socket);
+        if (!baseActor) return;
+
         const { agentLang, dept, references = [], text, mediaUrl } = parsed;
         if (!agentLang || !dept) {
           logger.warn({ agentLang: !!agentLang, dept: !!dept }, '[ticket:new] rejected — missing required fields');
           return socket.emit('error', { message: 'Missing required fields' });
-        }
-        if (!partnerId) {
-          logger.warn({ socketId: socket.id }, '[ticket:new] rejected — no partner context');
-          return socket.emit('error', { message: 'No partner context' });
         }
 
         // Resolve B2B-guest flag for the actor — denormalized into the
         // first-message row inside the lifecycle txn so historical
         // messages render the GUEST badge without a live presence
         // lookup. Cheap single-row read.
-        const agentUser = await findUserName(socket.data.userId);
-        const baseActor = socketActor(socket);
-        if (!baseActor) return;
+        const agentUser = await findUserName(baseActor.userId);
         const createActor = { ...baseActor, isExternal: !!agentUser?.isExternal };
 
         const result = await ctx.lifecycle.create({
-          partnerId,
+          partnerId: baseActor.partnerId,
           actor: createActor,
           dept,
           agentLang,
@@ -71,17 +68,17 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         if (!result.ok) {
           switch (result.code) {
             case 'NOT_AUTHORIZED':
-              logger.warn({ socketId: socket.id, userId: socket.data.userId, role: socket.data.role }, '[ticket:new] rejected — not an agent');
+              logger.warn({ socketId: socket.id, userId: baseActor.userId, role: baseActor.role }, '[ticket:new] rejected — not an agent');
               return socket.emit('error', { message: 'Only agents can create tickets' });
             case 'PARTNER_NOT_ACTIVE':
-              logger.warn({ partnerId }, '[ticket:new] rejected — partner inactive');
+              logger.warn({ partnerId: baseActor.partnerId }, '[ticket:new] rejected — partner inactive');
               return socket.emit('error', { message: 'Partner is currently inactive.' });
             case 'BUSINESS_HOURS_CLOSED': {
               // Re-evaluate the status here so the client gets the same
               // hours payload the legacy handler emitted (next-open
               // timestamp etc.). The lifecycle has already declined the
               // create — this is a transport-tier hint only.
-              const partnerRow = await findPartnerConfig(partnerId);
+              const partnerRow = await findPartnerConfig(baseActor.partnerId);
               const hoursStatus = getBusinessHoursStatus(partnerRow ? {
                 businessHoursSchedule: partnerRow.businessHoursSchedule as BusinessHoursSchedule | null,
               } : undefined);
@@ -94,10 +91,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
             case 'INVALID_MEDIA_URL':
               return socket.emit('error', { message: 'Invalid media URL' });
             case 'DUPLICATE_TICKET':
-              logger.warn({ agentId: socket.data.userId, partnerId }, '[ticket:new] rejected — agent already has an open ticket');
+              logger.warn({ agentId: baseActor.userId, partnerId: baseActor.partnerId }, '[ticket:new] rejected — agent already has an open ticket');
               return socket.emit('error', { message: 'You already have an open ticket' });
             case 'GUARD_REJECTED':
-              logger.warn({ agentId: socket.data.userId, partnerId }, '[ticket:new] rejected — first message blocked by content guard');
+              logger.warn({ agentId: baseActor.userId, partnerId: baseActor.partnerId }, '[ticket:new] rejected — first message blocked by content guard');
               return socket.emit('error', { message: 'Message blocked: content guard rejected the first message' });
             default:
               return socket.emit('error', { message: 'Failed to create ticket' });
@@ -125,24 +122,20 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const { ticketId, closingNotes } = closeParsed;
       socketioEventsTotal.inc({ event: 'ticket:close' });
       try {
-        const senderId = socket.data.userId;
-        const callerPartnerId = socket.data.partnerId;
-        if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
+        const actor = socketActor(socket);
+        if (!actor) return;
 
         // Partner-scope guard before the lifecycle — preserves the legacy
         // "Not authorized" wording and saves the lifecycle a round-trip
         // when the ticket is in another tenant. The lifecycle would also
         // refuse with TICKET_NOT_FOUND, but the handler-level check is
         // the canonical "you don't get to see this exists" UX.
-        const partnerCheck = await requirePartnerScopeWith(socket, ticketId, findTicketForClose);
+        const partnerCheck = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketForClose);
         if (!partnerCheck) return;
-
-        const actor = socketActor(socket);
-        if (!actor) return;
 
         const result = await ctx.lifecycle.close({
           ticketId,
-          partnerId: callerPartnerId,
+          partnerId: actor.partnerId,
           actor,
           closingNotes,
         });
@@ -164,8 +157,8 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
         // Fire-and-forget AI auto-summarize — log on failure so an AI-provider
         // outage leaves a trail instead of silently dropping summaries.
-        autoSummarizeOnClose(callerPartnerId, senderId, ticketId, io).catch((err) => {
-          logger.warn({ err: err instanceof Error ? err.message : String(err), ticketId, partnerId: callerPartnerId }, '[ticket:close] autoSummarize failed (non-fatal)');
+        autoSummarizeOnClose(actor.partnerId, actor.userId, ticketId, io).catch((err) => {
+          logger.warn({ err: err instanceof Error ? err.message : String(err), ticketId, partnerId: actor.partnerId }, '[ticket:close] autoSummarize failed (non-fatal)');
         });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
     });
@@ -178,25 +171,24 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const { ticketId, departmentId, note } = transferParsed;
       socketioEventsTotal.inc({ event: 'ticket:transfer' });
       try {
-        const senderId = socket.data.userId;
-        const senderName = socket.data.name;
-        const callerPartnerId = socket.data.partnerId;
+        const actor = socketActor(socket);
+        if (!actor) return;
 
-        if (!socket.data.isSupport) {
+        // Capability replaces the legacy `socket.data.isSupport` denormalized
+        // flag. Lifecycle would also refuse with NOT_AUTHORIZED, but the
+        // handler-level check preserves the legacy error shape.
+        if (!can(actor, 'use_support_workflows')) {
           return socket.emit('error', { message: 'Only support staff can transfer tickets' });
         }
 
-        const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForTransfer);
+        const ticket = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketForTransfer);
         if (!ticket) return;
-
-        const actor = socketActor(socket);
-        if (!actor) return;
 
         if (departmentId) {
           // Department-change branch — full transfer.
           const result = await ctx.lifecycle.transfer({
             ticketId,
-            partnerId: callerPartnerId,
+            partnerId: actor.partnerId,
             actor,
             toDepartmentId: departmentId,
             note,
@@ -209,7 +201,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
               case 'DEPARTMENT_NOT_FOUND':
                 return socket.emit('error', { message: 'Department not found' });
               case 'TICKET_NOT_FOUND':
-                return; // requirePartnerScopeWith already emitted
+                return; // requireActorTicketScopeWith already emitted
               default:
                 return;
             }
@@ -225,10 +217,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           }
           const result = await ctx.lifecycle.returnToQueue({
             ticketId,
-            partnerId: callerPartnerId,
+            partnerId: actor.partnerId,
             actor,
             previousSupportId: ticket.supportId,
-            systemMessageText: `${senderName} returned ticket to queue`,
+            systemMessageText: `${actor.name} returned ticket to queue`,
           });
 
           if (!result.ok) {
@@ -244,8 +236,8 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           // notice the migration.
           ctx.io.to(Rooms.ticket(ticketId)).emit('ticket:transferred', {
             ticketId,
-            fromId: senderId,
-            fromName: senderName,
+            fromId: actor.userId,
+            fromName: actor.name,
             toId: null,
             toName: null,
           });
@@ -254,7 +246,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           // shouldn't keep receiving the customer's typing / messages.
           socket.leave(Rooms.ticket(ticketId));
 
-          await broadcastQueuePositions(callerPartnerId);
+          await broadcastQueuePositions(actor.partnerId);
         }
       } catch (err: unknown) {
         logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:transfer] error');
@@ -269,16 +261,20 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       }), data);
       if (!labelsParsed) return;
       const { ticketId, labels } = labelsParsed;
-      const role = socket.data.role as string;
-      const LABEL_ROLES = ['support', 'admin', 'platform_operator'];
-      if (!LABEL_ROLES.includes(role)) {
+
+      const actor = socketActor(socket);
+      if (!actor) return;
+
+      // Slice #69: capability replaces the legacy
+      //   LABEL_ROLES = ['support', 'admin', 'platform_operator']
+      // array, which compared role==='platform_operator' (a string never set
+      // on socket.data.role) and so silently rejected operators.
+      if (!can(actor, 'use_support_workflows')) {
         return socket.emit('error', { message: 'Not authorized to update labels' });
       }
-      try {
-        const senderId = socket.data.userId;
-        if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
 
-        const ticket = await requirePartnerScope(socket, ticketId);
+      try {
+        const ticket = await requireActorTicketScope(socket, actor, ticketId);
         if (!ticket) return;
 
         // Validate that all labels belong to this partner

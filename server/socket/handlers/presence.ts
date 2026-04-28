@@ -3,8 +3,9 @@ import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
 import * as presenceService from '../../services/presence.js';
 import * as statusTracking from '../../services/statusTracking.js';
-import { requirePartnerScopeWith } from '../partnerScope.js';
+import { requireActorTicketScopeWith } from '../partnerScope.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
+import { can } from '../../services/auth/capabilities.js';
 
 import {
   findTicketForJoin,
@@ -38,14 +39,17 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId, supportLang } = parsed;
     socketioEventsTotal.inc({ event: 'support:join' });
     try {
-      const supportId = socket.data.userId;
-      const callerPartnerId = socket.data.partnerId;
+      const baseActor = socketActor(socket);
+      if (!baseActor) return;
 
-      if (!socket.data.isSupport) {
+      if (!can(baseActor, 'use_support_workflows')) {
         return socket.emit('error', { message: 'Not authorized to join tickets' });
       }
 
-      const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForJoin);
+      const supportId = baseActor.userId;
+      const callerPartnerId = baseActor.partnerId;
+
+      const ticket = await requireActorTicketScopeWith(socket, baseActor, ticketId, findTicketForJoin);
       if (!ticket) return;
 
       // HI-01: closed tickets cannot be re-opened by a join — block here
@@ -96,8 +100,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       // — lets ChatHeader flag offline guests without a live presence
       // lookup. findUserName is a cheap single-row read.
       const joinerInfo = await findUserName(supportId);
-      const baseActor = socketActor(socket);
-      if (!baseActor) return;
       const joinActor = { ...baseActor, isExternal: !!joinerInfo?.isExternal };
 
       const result = await ctx.lifecycle.assign({
@@ -115,7 +117,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           case 'TICKET_CLOSED':
             return socket.emit('error', { message: 'Cannot join a closed ticket' });
           case 'TICKET_NOT_FOUND':
-            return; // requirePartnerScopeWith already emitted the error
+            return; // requireActorTicketScopeWith already emitted the error
           default:
             return;
         }
@@ -146,10 +148,12 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId } = parsed;
     socketioEventsTotal.inc({ event: 'support:rejoin' });
     try {
-      const supportId = socket.data.userId;
-      if (!socket.data.isSupport) return;
+      const actor = socketActor(socket);
+      if (!actor) return;
+      if (!can(actor, 'use_support_workflows')) return;
 
-      const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketParticipants);
+      const supportId = actor.userId;
+      const ticket = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketParticipants);
       if (!ticket) return;
 
       // Only rejoin if already a participant — prevents abuse
@@ -173,14 +177,12 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const statusParsed = validatePayload(socket, statusSetSchema, data);
     if (!statusParsed) return;
     const { status } = statusParsed;
-    const userId = socket.data.userId;
-    const partnerId = socket.data.partnerId;
-    if (userId && partnerId) {
-      await presenceService.setUserStatus(userId, partnerId, status);
-      await statusTracking.logTransition(userId, partnerId, status);
-      // Re-broadcast online support list so viewer UIs (chat header avatars, queue sidebar) reflect the new status immediately.
-      await presenceService.broadcastOnlineSupport(partnerId);
-    }
+    const actor = socketActor(socket);
+    if (!actor) return;
+    await presenceService.setUserStatus(actor.userId, actor.partnerId, status);
+    await statusTracking.logTransition(actor.userId, actor.partnerId, status);
+    // Re-broadcast online support list so viewer UIs (chat header avatars, queue sidebar) reflect the new status immediately.
+    await presenceService.broadcastOnlineSupport(actor.partnerId);
   });
 
   socket.on('support:leave', async (data: unknown) => {
@@ -190,13 +192,14 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId } = leaveParsed;
     socketioEventsTotal.inc({ event: 'support:leave' });
     try {
-      const callerPartnerId = socket.data.partnerId;
+      const actor = socketActor(socket);
+      if (!actor) return;
 
       // Read the ticket once so the partner-scope check + the
       // ghost-primary decision can share a single round-trip; the
       // lifecycle does its own atomic re-read inside the txn so this is
       // not a TOCTOU surface.
-      const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketParticipants);
+      const ticket = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketParticipants);
       if (!ticket) return;
 
       // Determine `clearPrimary` BEFORE the lifecycle call. The decision
@@ -205,7 +208,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       //   1. Leaver is primary (storedPrimary === leaver) → clear.
       //   2. Stored primary not in remaining participants → clear.
       //   3. Stored primary fully offline → clear.
-      const supportId = socket.data.userId;
+      const supportId = actor.userId;
       const currentParticipants: Participant[] = ticket.participants ?? [];
       const remaining = currentParticipants.filter((p: Participant) => p.id !== supportId);
       const storedPrimary = ticket.supportId;
@@ -214,16 +217,13 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         const primaryValid =
           storedPrimary !== supportId
           && remaining.some((p: Participant) => p.id === storedPrimary)
-          && (await presenceService.getUserStatus(storedPrimary, callerPartnerId)) !== null;
+          && (await presenceService.getUserStatus(storedPrimary, actor.partnerId)) !== null;
         clearPrimary = !primaryValid;
       }
 
-      const actor = socketActor(socket);
-      if (!actor) return;
-
       const result = await ctx.lifecycle.leave({
         ticketId,
-        partnerId: callerPartnerId,
+        partnerId: actor.partnerId,
         actor,
         clearPrimary,
         previousSupportId: storedPrimary ?? null,
@@ -234,7 +234,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
           return socket.emit('error', { message: 'You are not a participant of this ticket' });
         }
         if (result.code === 'TICKET_NOT_FOUND') {
-          return; // requirePartnerScopeWith already emitted the error.
+          return; // requireActorTicketScopeWith already emitted the error.
         }
         return; // any other code → silently log via the lifecycle's own logging path
       }
