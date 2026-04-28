@@ -42,13 +42,13 @@ let handle: TestDbHandle;
 let lifecycle: MessageLifecycle;
 
 const aliceActor: UserActor = {
-  kind: 'user', id: USER_A, name: 'Alice', role: 'agent',
-  isSupport: false, isExternal: false, lang: 'en', partnerId: PARTNER_A,
+  kind: 'user', userId: USER_A, name: 'Alice', role: 'agent',
+  isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_A,
 };
 
 const supportActor: UserActor = {
-  kind: 'user', id: USER_SUPPORT, name: 'Sam', role: 'support',
-  isSupport: true, isExternal: false, lang: 'en', partnerId: PARTNER_A,
+  kind: 'user', userId: USER_SUPPORT, name: 'Sam', role: 'support',
+  isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_A,
 };
 
 async function seedBaseline(): Promise<void> {
@@ -119,8 +119,8 @@ describe('messageLifecycle.send', () => {
     await handle.db.insert(partners).values({ id: PARTNER_B, name: 'B', status: 'active' });
     await handle.db.insert(users).values({ id: USER_B, email: 'b@x.test', name: 'Bob' });
     const bobActor: UserActor = {
-      kind: 'user', id: USER_B, name: 'Bob', role: 'agent',
-      isSupport: false, isExternal: false, lang: 'en', partnerId: PARTNER_B,
+      kind: 'user', userId: USER_B, name: 'Bob', role: 'agent',
+      isPlatformOperator: false, isExternal: false, lang: 'en', partnerId: PARTNER_B,
     };
 
     const result = await lifecycle.send({

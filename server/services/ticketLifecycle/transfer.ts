@@ -15,6 +15,7 @@
  * department queues need refreshing).
  */
 import { Rooms } from '../../utils/rooms.js';
+import { isSupportLike } from '../roles.js';
 import { writeAudit } from './audit.js';
 import {
   insertSystemMessageTx,
@@ -42,7 +43,7 @@ export async function runTransfer(
   deps: TransferDeps,
   args: TransferArgs,
 ): Promise<Result<TransferOk>> {
-  if (!args.actor.isSupport) {
+  if (!isSupportLike(args.actor.role)) {
     return { ok: false, code: 'NOT_AUTHORIZED' };
   }
 
@@ -69,7 +70,7 @@ export async function runTransfer(
     if (trimmedNote) {
       whisperMessage = await insertWhisperMessageTx(tx, {
         ticketId: args.ticketId,
-        senderId: args.actor.id,
+        senderId: args.actor.userId,
         senderName: args.actor.name,
         senderRole: args.actor.role,
         senderLang: args.actor.lang,
@@ -108,7 +109,7 @@ export async function runTransfer(
 
   const transferPayload = {
     ticketId: args.ticketId,
-    fromId: args.actor.id,
+    fromId: args.actor.userId,
     fromName: args.actor.name,
     toDepartment: args.toDepartmentId,
     toDepartmentName: targetDept.name,

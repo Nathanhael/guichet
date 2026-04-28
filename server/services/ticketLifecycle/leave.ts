@@ -50,13 +50,13 @@ export async function runLeave(
   if (!snapshot) {
     return { ok: false, code: 'TICKET_NOT_FOUND' };
   }
-  const isParticipant = snapshot.participants.some((p) => p.id === args.actor.id);
+  const isParticipant = snapshot.participants.some((p) => p.id === args.actor.userId);
   if (!isParticipant) {
     return { ok: false, code: 'NOT_A_PARTICIPANT' };
   }
 
   const remaining: Participant[] = snapshot.participants.filter(
-    (p) => p.id !== args.actor.id,
+    (p) => p.id !== args.actor.userId,
   );
 
   let queueReturned = false;
@@ -127,7 +127,7 @@ export async function runLeave(
       event: 'support:left',
       payload: {
         ticketId: args.ticketId,
-        supportId: args.actor.id,
+        supportId: args.actor.userId,
         supportName: args.actor.name,
         participants: remaining,
         queueReturned,

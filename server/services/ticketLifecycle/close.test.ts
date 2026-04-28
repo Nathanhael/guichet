@@ -12,11 +12,11 @@ import { createTicketLifecycle, type UserActor } from './index.js';
 
 let handle: TestDbHandle;
 
-function actor(args: Partial<UserActor> & { id: string; partnerId: string; name: string }): UserActor {
+function actor(args: Partial<UserActor> & { userId: string; partnerId: string; name: string }): UserActor {
   return {
     kind: 'user',
     role: 'support',
-    isSupport: true,
+    isPlatformOperator: false,
     isExternal: false,
     lang: 'en',
     ...args,
@@ -66,7 +66,7 @@ describe('lifecycle.close', () => {
     const result = await lifecycle.close({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_supp', partnerId: 'p_a', name: 'Sam Support' }),
+      actor: actor({ userId: 'u_supp', partnerId: 'p_a', name: 'Sam Support' }),
       closingNotes: 'Resolved via call.',
     });
 
@@ -111,7 +111,7 @@ describe('lifecycle.close', () => {
     const result = await lifecycle.close({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent', role: 'agent', isSupport: false }),
+      actor: actor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent', role: 'agent' }),
     });
 
     expect(result.ok).toBe(true);
@@ -130,7 +130,7 @@ describe('lifecycle.close', () => {
     const result = await lifecycle.close({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_other_agent', partnerId: 'p_a', name: 'Other', role: 'agent', isSupport: false }),
+      actor: actor({ userId: 'u_other_agent', partnerId: 'p_a', name: 'Other', role: 'agent' }),
     });
 
     expect(result).toEqual({ ok: false, code: 'NOT_AUTHORIZED' });
@@ -145,7 +145,7 @@ describe('lifecycle.close', () => {
     const result = await lifecycle.close({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_supp', partnerId: 'p_a', name: 'Sam' }),
+      actor: actor({ userId: 'u_supp', partnerId: 'p_a', name: 'Sam' }),
     });
 
     expect(result).toEqual({ ok: false, code: 'TICKET_ALREADY_CLOSED' });
@@ -162,7 +162,7 @@ describe('lifecycle.close', () => {
     const result = await lifecycle.close({
       ticketId,
       partnerId: 'p_b',
-      actor: actor({ id: 'u_b_supp', partnerId: 'p_b', name: 'B Support' }),
+      actor: actor({ userId: 'u_b_supp', partnerId: 'p_b', name: 'B Support' }),
     });
 
     expect(result).toEqual({ ok: false, code: 'TICKET_NOT_FOUND' });
@@ -176,7 +176,7 @@ describe('lifecycle.close', () => {
       lifecycle.close({
         ticketId,
         partnerId: 'p_a',
-        actor: actor({ id: 'u_ghost', partnerId: 'p_a', name: 'Ghost' }),
+        actor: actor({ userId: 'u_ghost', partnerId: 'p_a', name: 'Ghost' }),
       }),
     ).rejects.toThrow();
 

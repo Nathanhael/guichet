@@ -52,6 +52,7 @@ export function registerDevLoginRoutes(router: express.Router): void {
           partnerId: defaultMembership?.partnerId,
           membershipId: defaultMembership?.id,
           isPlatformOperator: !!user.isPlatformOperator,
+          isExternal: !!user.isExternal,
         });
 
         await db

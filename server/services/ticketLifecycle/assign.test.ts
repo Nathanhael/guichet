@@ -13,11 +13,11 @@ import { createTicketLifecycle, type UserActor } from './index.js';
 
 let handle: TestDbHandle;
 
-function actor(args: Partial<UserActor> & { id: string; partnerId: string; name: string }): UserActor {
+function actor(args: Partial<UserActor> & { userId: string; partnerId: string; name: string }): UserActor {
   return {
     kind: 'user',
     role: 'support',
-    isSupport: true,
+    isPlatformOperator: false,
     isExternal: false,
     lang: 'en',
     ...args,
@@ -77,7 +77,7 @@ describe('lifecycle.assign', () => {
     const result = await lifecycle.assign({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_joiner', partnerId: 'p_a', name: 'Joe Joiner' }),
+      actor: actor({ userId: 'u_joiner', partnerId: 'p_a', name: 'Joe Joiner' }),
       supportLang: 'fr',
     });
 
@@ -149,7 +149,7 @@ describe('lifecycle.assign', () => {
     const result = await lifecycle.assign({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_secondary', partnerId: 'p_a', name: 'Sandy Secondary' }),
+      actor: actor({ userId: 'u_secondary', partnerId: 'p_a', name: 'Sandy Secondary' }),
       supportLang: 'en',
     });
 
@@ -189,7 +189,7 @@ describe('lifecycle.assign', () => {
     const result = await lifecycle.assign({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_joiner', partnerId: 'p_a', name: 'New Primary' }),
+      actor: actor({ userId: 'u_joiner', partnerId: 'p_a', name: 'New Primary' }),
       supportLang: 'en',
       ghostHealPreviousSupportId: 'u_ghost',
     });
@@ -224,7 +224,7 @@ describe('lifecycle.assign', () => {
     const result = await lifecycle.assign({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_some_agent', partnerId: 'p_a', name: 'Just an Agent', role: 'agent', isSupport: false }),
+      actor: actor({ userId: 'u_some_agent', partnerId: 'p_a', name: 'Just an Agent', role: 'agent' }),
       supportLang: 'en',
     });
 
@@ -248,7 +248,7 @@ describe('lifecycle.assign', () => {
     const result = await lifecycle.assign({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_joiner', partnerId: 'p_a', name: 'Joiner' }),
+      actor: actor({ userId: 'u_joiner', partnerId: 'p_a', name: 'Joiner' }),
       supportLang: 'en',
     });
 
@@ -268,7 +268,7 @@ describe('lifecycle.assign', () => {
     const result = await lifecycle.assign({
       ticketId,
       partnerId: 'p_b',
-      actor: actor({ id: 'u_other', partnerId: 'p_b', name: 'Other' }),
+      actor: actor({ userId: 'u_other', partnerId: 'p_b', name: 'Other' }),
       supportLang: 'en',
     });
 
@@ -291,7 +291,7 @@ describe('lifecycle.assign', () => {
       lifecycle.assign({
         ticketId,
         partnerId: 'p_a',
-        actor: actor({ id: 'u_ghost_user', partnerId: 'p_a', name: 'Ghost User' }),
+        actor: actor({ userId: 'u_ghost_user', partnerId: 'p_a', name: 'Ghost User' }),
         supportLang: 'en',
       }),
     ).rejects.toThrow();

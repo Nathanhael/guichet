@@ -18,11 +18,11 @@ import { createTicketLifecycle, type UserActor } from './index.js';
 
 let handle: TestDbHandle;
 
-function actor(args: Partial<UserActor> & { id: string; partnerId: string; name: string }): UserActor {
+function actor(args: Partial<UserActor> & { userId: string; partnerId: string; name: string }): UserActor {
   return {
     kind: 'user',
     role: 'support',
-    isSupport: true,
+    isPlatformOperator: false,
     isExternal: false,
     lang: 'en',
     ...args,
@@ -97,7 +97,7 @@ describe('lifecycle.transfer (department change)', () => {
     const result = await lifecycle.transfer({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_supp', partnerId: 'p_a', name: 'Sam Support' }),
+      actor: actor({ userId: 'u_supp', partnerId: 'p_a', name: 'Sam Support' }),
       toDepartmentId: 'billing',
       note: 'Customer asking about invoice — context inside.',
     });
@@ -177,7 +177,7 @@ describe('lifecycle.transfer (department change)', () => {
     const result = await lifecycle.transfer({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_supp', partnerId: 'p_a', name: 'Sam' }),
+      actor: actor({ userId: 'u_supp', partnerId: 'p_a', name: 'Sam' }),
       toDepartmentId: 'billing',
     });
 
@@ -206,7 +206,7 @@ describe('lifecycle.transfer (department change)', () => {
     const result = await lifecycle.transfer({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent', role: 'agent', isSupport: false }),
+      actor: actor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent', role: 'agent' }),
       toDepartmentId: 'billing',
     });
 
@@ -228,7 +228,7 @@ describe('lifecycle.transfer (department change)', () => {
     const result = await lifecycle.transfer({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_supp', partnerId: 'p_a', name: 'Sam' }),
+      actor: actor({ userId: 'u_supp', partnerId: 'p_a', name: 'Sam' }),
       toDepartmentId: 'no_such_dept',
     });
 
@@ -258,7 +258,7 @@ describe('lifecycle.transfer (department change)', () => {
     const result = await lifecycle.transfer({
       ticketId,
       partnerId: 'p_b',
-      actor: actor({ id: 'u_supp_b', partnerId: 'p_b', name: 'B Support' }),
+      actor: actor({ userId: 'u_supp_b', partnerId: 'p_b', name: 'B Support' }),
       toDepartmentId: 'billing',
     });
 
@@ -282,7 +282,7 @@ describe('lifecycle.transfer (department change)', () => {
       lifecycle.transfer({
         ticketId,
         partnerId: 'p_a',
-        actor: actor({ id: 'u_ghost_actor', partnerId: 'p_a', name: 'Ghost' }),
+        actor: actor({ userId: 'u_ghost_actor', partnerId: 'p_a', name: 'Ghost' }),
         toDepartmentId: 'billing',
         note: 'should not persist',
       }),

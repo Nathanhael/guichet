@@ -55,7 +55,7 @@ export async function runReact(
 
   const reactions: Record<string, string[]> = { ...(msg.reactions ?? {}) };
   const users = [...(reactions[args.emoji] ?? [])];
-  const idx = users.indexOf(args.actor.id);
+  const idx = users.indexOf(args.actor.userId);
   if (idx >= 0) {
     users.splice(idx, 1);
     if (users.length === 0) {
@@ -64,7 +64,7 @@ export async function runReact(
       reactions[args.emoji] = users;
     }
   } else {
-    reactions[args.emoji] = [...users, args.actor.id];
+    reactions[args.emoji] = [...users, args.actor.userId];
   }
 
   await deps.db
