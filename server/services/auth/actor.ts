@@ -22,14 +22,23 @@ export function actorFactory(
 /**
  * Narrow a tRPC Context into a typed UserActor.
  *
- * Throws TRPCError if the context lacks an authenticated user, partner scope,
- * or fails the optional capability gate. Procedure factories
- * (`partnerScopedProcedure`, etc.) already gate access-level role; trpcActor
- * inside handler bodies is for type narrowing and inline capability checks.
+ * **Convention:** procedure factories (`partnerScopedProcedure`,
+ * `partnerAdminProcedure`, `roleProcedure`, etc.) own role-level gating and
+ * partnerId narrowing. Inside a handler body, `trpcActor(ctx)` is for
+ *   (a) re-narrowing `ctx.user.partnerId` to non-null on a typed object, and
+ *   (b) inline capability enforcement when the gate varies per-handler — e.g.
+ *       the B2B-guest block on destructive admin actions, expressed as
+ *       `trpcActor(ctx, { capability: 'destructive_admin' })`.
  *
- * NOTE: ctx.user does not currently carry `name` or `lang` (JWT does not
- * include them). Slice 1 falls back to '' / 'en'; tighten in slice #71 when
- * tRPC handlers begin consuming actor.name.
+ * Bundle A slice 6 (issue #71) deleted the `blockExternalUsers` middleware
+ * and its three procedure-factory wrappers; the gate moved into the
+ * `destructive_admin` capability rule in `services/auth/capabilities.ts`.
+ * Use `trpcActor(ctx, { capability })` rather than re-introducing a
+ * middleware indirection.
+ *
+ * Throws TRPCError on missing auth, missing partner scope, or capability
+ * denial. `name` and `lang` are not on the JWT today — actor falls back to
+ * `''` / `'en'`. Tighten when those fields arrive on the claim.
  */
 export function trpcActor(ctx: Context, opts?: { capability?: Capability }): UserActor {
   if (!ctx.user) {
