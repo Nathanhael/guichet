@@ -232,7 +232,8 @@ function createMockSocket(data: Record<string, any>) {
   const emitted: Array<{ event: string; args: any[] }> = [];
   const socket: any = {
     id: `socket-${Math.random().toString(36).slice(2)}`,
-    data: { ...data },
+    // Default `identified: true` matches `socket:identify` in production.
+    data: { identified: true, ...data },
     rooms,
     handshake: { auth: {} },
     join: vi.fn((room: string) => rooms.add(room)),
