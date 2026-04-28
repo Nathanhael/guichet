@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, adminProcedure, destructiveAdminProcedure, protectedProcedure } from '../../trpc.js';
+import { router, adminProcedure, partnerAdminProcedure, protectedProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { partners, memberships, auditLog } from '../../../db/schema.js';
 import { eq, and } from 'drizzle-orm';
@@ -9,6 +9,7 @@ import { wrapError } from '../../../utils/trpcErrors.js';
 import { getBusinessHoursStatus, type BusinessHoursSchedule } from '../../../services/businessHours.js';
 import { getPartnerAiConfig } from '../../../services/ai/index.js';
 import config from '../../../config.js';
+import { trpcActor } from '../../../services/auth/index.js';
 
 // simple slugify helper
 function makeSlug(text: string) {
@@ -265,7 +266,7 @@ export const partnerConfigRouter = router({
       }
     }),
 
-  updateDepartments: destructiveAdminProcedure
+  updateDepartments: partnerAdminProcedure
     .input(z.object({
       departments: z.array(z.object({
         id: z.string().optional(),
@@ -286,8 +287,7 @@ export const partnerConfigRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
         const mappedDepartments = input.departments.map(d => ({
           id: d.id ? d.id : makeSlug(d.name),
@@ -298,31 +298,31 @@ export const partnerConfigRouter = router({
 
         await db.update(partners)
           .set({ departments: mappedDepartments })
-          .where(eq(partners.id, partnerId));
+          .where(eq(partners.id, actor.partnerId));
 
         // Auto-sync: admin members always get all department IDs
         const allDeptIds = mappedDepartments.map(d => d.id);
         await db.update(memberships)
           .set({ departments: allDeptIds })
-          .where(and(eq(memberships.partnerId, partnerId), eq(memberships.role, 'admin')));
+          .where(and(eq(memberships.partnerId, actor.partnerId), eq(memberships.role, 'admin')));
 
         await db.insert(auditLog).values({
           action: 'partner.config_updated',
-          actorId: ctx.user.id,
-          partnerId: partnerId,
+          actorId: actor.userId,
+          partnerId: actor.partnerId,
           targetType: 'partner',
-          targetId: partnerId,
+          targetId: actor.partnerId,
           metadata: { details: 'Departments updated' }
         });
 
-        logger.info({ partnerId, count: mappedDepartments.length }, 'Departments updated by Partner Admin');
+        logger.info({ partnerId: actor.partnerId, count: mappedDepartments.length }, 'Departments updated by Partner Admin');
         return { success: true, departments: mappedDepartments };
       } catch (err: unknown) {
         wrapError(err, 'update departments');
       }
     }),
 
-  updateDepartmentSla: destructiveAdminProcedure
+  updateDepartmentSla: partnerAdminProcedure
     .input(z.object({
       departmentId: z.string().min(1),
       sla: z.object({
@@ -332,11 +332,10 @@ export const partnerConfigRouter = router({
       }).nullable(),
     }))
     .mutation(async ({ input, ctx }) => {
-      const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
       return db.transaction(async (tx) => {
-        const [row] = await tx.select({ departments: partners.departments }).from(partners).where(eq(partners.id, partnerId));
+        const [row] = await tx.select({ departments: partners.departments }).from(partners).where(eq(partners.id, actor.partnerId));
         if (!row) throw new TRPCError({ code: 'NOT_FOUND', message: 'Partner not found' });
 
         const departments = (row.departments ?? []) as Array<{ id: string; name: string; description?: string; referenceFields?: unknown[]; sla?: unknown }>;
@@ -352,12 +351,12 @@ export const partnerConfigRouter = router({
         const nextDepartments = [...departments];
         nextDepartments[idx] = nextDept;
 
-        await tx.update(partners).set({ departments: nextDepartments }).where(eq(partners.id, partnerId));
+        await tx.update(partners).set({ departments: nextDepartments }).where(eq(partners.id, actor.partnerId));
 
         await tx.insert(auditLog).values({
           action: 'partner.department.sla_updated',
-          actorId: ctx.user.id,
-          partnerId,
+          actorId: actor.userId,
+          partnerId: actor.partnerId,
           targetType: 'department',
           targetId: input.departmentId,
           metadata: { sla: input.sla },
