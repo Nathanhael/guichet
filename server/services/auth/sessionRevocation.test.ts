@@ -5,7 +5,7 @@ const getMock = vi.fn();
 const setMock = vi.fn();
 const publishMock = vi.fn();
 
-vi.mock('../utils/redis.js', () => ({
+vi.mock('../../utils/redis.js', () => ({
   getRedisClients: vi.fn(() => ({
     pubClient: {
       exists: existsMock,
@@ -17,7 +17,7 @@ vi.mock('../utils/redis.js', () => ({
   })),
 }));
 
-vi.mock('../utils/logger.js', () => ({
+vi.mock('../../utils/logger.js', () => ({
   default: {
     error: vi.fn(),
     info: vi.fn(),

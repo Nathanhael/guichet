@@ -2,7 +2,7 @@ import { router, platformProcedure, publicProcedure, protectedProcedure } from '
 import config from '../../config.js';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { revokeUserSessions } from '../../services/sessionRevocation.js';
+import { revokeUserSessions } from '../../services/auth/index.js';
 import { db } from '../../db.js';
 import { auditLog, users, memberships, partners } from '../../db/schema.js';
 import { eq, and, isNull, desc, asc, sql, count } from 'drizzle-orm';

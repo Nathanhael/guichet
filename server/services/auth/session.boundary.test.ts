@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest';
 import { jwtVerify } from 'jose';
 
-import { buildAuthToken } from '../authSession.js';
+import { buildAuthToken } from './authSession.js';
 import { jwtPayloadSchema } from '../../trpc/context.js';
 import config from '../../config.js';
 import { actorFactory } from './actor.js';

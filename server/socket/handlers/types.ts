@@ -1,7 +1,12 @@
 import { Server, Socket } from 'socket.io';
 import { z } from 'zod';
 import logger from '../../utils/logger.js';
-import { isRevoked } from '../../services/sessionRevocation.js';
+// Deep path on purpose — the auth barrel transitively evaluates flipIsExternal's
+// production wiring (`import { db } from ...`), and several socket-handler tests
+// mock `db.js` partially. Importing isRevoked from the deep file keeps tests
+// from having to extend their db mock with a full barrel surface. Same pattern
+// as services/ticketLifecycle/ uses for the canonical actor.
+import { isRevoked } from '../../services/auth/sessionRevocation.js';
 import type { TicketLifecycle } from '../../services/ticketLifecycle/index.js';
 import type { MessageLifecycle } from '../../services/messageLifecycle/index.js';
 import { socketioEventsTotal } from '../../utils/metrics.js';

@@ -6,10 +6,19 @@ import { eq, and } from 'drizzle-orm';
 import config from '../../config.js';
 import logger from '../../utils/logger.js';
 import { AuthRequest } from '../../middleware/auth.js';
-import { buildAuthToken, getEnterPartnerContext, listUserMemberships, setAuthCookie, clearAuthCookie, parseExpiryToSeconds } from '../../services/authSession.js';
+import {
+  buildAuthToken,
+  getEnterPartnerContext,
+  listUserMemberships,
+  setAuthCookie,
+  clearAuthCookie,
+  parseExpiryToSeconds,
+  revokeToken,
+  createRefreshToken,
+  rotateRefreshToken,
+  revokeAllUserRefreshTokens,
+} from '../../services/auth/index.js';
 import { canAccessPartnerContext, isPlatformAdmin } from '../../services/roles.js';
-import { revokeToken } from '../../services/sessionRevocation.js';
-import { createRefreshToken, rotateRefreshToken, revokeAllUserRefreshTokens } from '../../services/refreshToken.js';
 import { refreshRateLimit, setRefreshCookie, clearRefreshCookie } from './rateLimit.js';
 
 export async function registerSessionRoutes(router: express.Router): Promise<void> {

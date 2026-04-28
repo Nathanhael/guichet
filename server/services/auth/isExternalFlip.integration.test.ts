@@ -10,7 +10,7 @@ import { eq } from 'drizzle-orm';
 import { users } from '../../db/schema.js';
 import { db } from '../../db.js';
 import { initRedis, getRedisClients } from '../../utils/redis.js';
-import { isRevoked } from '../sessionRevocation.js';
+import { isRevoked } from './sessionRevocation.js';
 import { flipIsExternal } from './index.js';
 
 const REDIS_AVAILABLE = !!process.env.REDIS_URL;

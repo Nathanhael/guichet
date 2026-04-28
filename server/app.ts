@@ -27,7 +27,7 @@ import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSched
 import { setIo as setPresenceIo, flushPresenceOnStartup } from './services/presence.js';
 import { runDailyPurge } from './services/gdpr.js';
 import { rollupDay } from './services/statusTracking.js';
-import { cleanupExpiredTokens } from './services/refreshToken.js';
+import { cleanupExpiredTokens } from './services/auth/index.js';
 import { scheduleDailyChainVerify } from './services/chainVerifySchedule.js';
 import { scheduleSlaSweep, setSlaIo } from './services/sla.js';
 import { registerSocketHandlers } from './socket/handlers.js';

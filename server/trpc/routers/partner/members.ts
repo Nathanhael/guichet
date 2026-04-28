@@ -7,8 +7,7 @@ import { TRPCError } from '@trpc/server';
 import logger from '../../../utils/logger.js';
 import { wrapError } from '../../../utils/trpcErrors.js';
 import { canAssignTenantRole } from '../../../services/roles.js';
-import { revokeUserSessions } from '../../../services/sessionRevocation.js';
-import { revokeAllUserRefreshTokens } from '../../../services/refreshToken.js';
+import { revokeUserSessions, revokeAllUserRefreshTokens } from '../../../services/auth/index.js';
 import { escapeLikePattern } from '../../../utils/security.js';
 import { trpcActor } from '../../../services/auth/index.js';
 

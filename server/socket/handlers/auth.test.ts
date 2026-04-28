@@ -49,7 +49,7 @@ vi.mock('../../services/businessHours.js', () => ({
   broadcastAgentStatus: vi.fn(),
 }));
 
-vi.mock('../../services/sessionRevocation.js', () => ({
+vi.mock('../../services/auth/sessionRevocation.js', () => ({
   isRevoked: vi.fn(async () => false),
 }));
 

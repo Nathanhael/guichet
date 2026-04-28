@@ -8,7 +8,7 @@
  */
 import { auditLog } from '../../db/schema.js';
 import { ticketAuditEventsTotal } from '../../utils/metrics.js';
-import type { Actor } from './types.js';
+import type { Actor } from '../auth/types.js';
 
 type AuditAction =
   | 'ticket.reclaimed'
