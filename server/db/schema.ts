@@ -58,8 +58,9 @@ export const users = pgTable('users', {
     focusMode?: boolean;
   }>(),
   // True when the user is an Azure B2B guest (external partner employee invited into our tenant).
-  // Set at SSO callback from the `acct === 1` or `idp` claim. Drives UI GUEST badge and
-  // destructiveAdminProcedure / internalAdminReadProcedure blocklists.
+  // Set at SSO callback from the `acct === 1` or `idp` claim. Drives UI GUEST badge and the
+  // `destructive_admin` capability gate in `services/auth/capabilities.ts` (which blocks B2B
+  // guests from destructive admin tRPC handlers + internal-admin reads).
   isExternal: boolean('is_external').notNull().default(false),
   lastActiveAt: timestamp('last_active_at', { mode: 'string' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
