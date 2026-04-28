@@ -14,6 +14,7 @@ import { getRedisClients } from '../utils/redis.js';
 import { auth, type AuthRequest } from '../middleware/auth.js';
 import { extractLocaleClaim, mapClaimToLocale, computeLocaleUpdate } from '../services/localeSync.js';
 import { getStorage } from '../services/storage.js';
+import { flipIsExternal } from '../services/auth/index.js';
 
 const router = express.Router();
 
@@ -338,7 +339,10 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
           await db.delete(users).where(eq(users.id, user.id));
           return res.redirect(`${clientOrigin}/login?sso_error=invite_expired`);
         }
-        await db.update(users).set({ externalId: oid, name, isExternal }).where(eq(users.id, user.id));
+        // Update the non-flag fields first; let flipIsExternal own the flag
+        // change so the staleness-window revocation cascade is centralized.
+        await db.update(users).set({ externalId: oid, name }).where(eq(users.id, user.id));
+        await flipIsExternal(user.id, isExternal);
         await db.insert(auditLog).values({
           action: 'sso.invite_claimed',
           actorId: user.id,
