@@ -1,9 +1,10 @@
 import { Socket } from 'socket.io';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
-import { requirePartnerScopeWith } from '../partnerScope.js';
+import { requireActorTicketScopeWith } from '../partnerScope.js';
 import { findTicketOwner, insertRating } from '../../services/ticketQueries.js';
 import { MAX_NOTE_LENGTH } from '../../constants.js';
+import { socketActor } from '../../services/ticketLifecycle/index.js';
 import {
   requireIdentified,
   socketioEventsTotal,
@@ -21,14 +22,16 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId, rating, comment } = parsed;
     socketioEventsTotal.inc({ event: 'rating:submit' });
     try {
+      const actor = socketActor(socket);
+      if (!actor) return;
       const intRating = Math.round(rating);
-      const agentId = socket.data.userId; // Server-side identity — never trust client-supplied agentId
+      const agentId = actor.userId; // Server-side identity — never trust client-supplied agentId
 
       // Tenant isolation: verify ticket belongs to caller's partner and caller is the agent
       // Read support_id from the ticket instead of trusting client-provided value
-      const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketOwner);
+      const ticket = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketOwner);
       if (!ticket) return;
-      if (ticket.agentId !== socket.data.userId) {
+      if (ticket.agentId !== agentId) {
         return socket.emit('error', { message: 'Only the ticket agent can submit a rating' });
       }
       if (ticket.status !== 'closed') {
@@ -44,9 +47,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       await insertRating({
         id,
         ticketId,
-        agentId: agentId!,
+        agentId,
         supportId,
-        partnerId: socket.data.partnerId,
+        partnerId: actor.partnerId,
         rating: intRating,
         comment: safeComment,
         dept: ticket.dept ?? null,

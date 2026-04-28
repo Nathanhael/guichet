@@ -4,7 +4,9 @@ import { getRedisClients } from '../../utils/redis.js';
 import { VIEWER_TTL_SECONDS } from '../../constants.js';
 import { Rooms } from '../../utils/rooms.js';
 import { requireIdentified, validatePayload, ticketViewingSchema, type HandlerContext } from './types.js';
-import { requirePartnerScope } from '../partnerScope.js';
+import { requireActorTicketScope } from '../partnerScope.js';
+import { socketActor } from '../../services/ticketLifecycle/index.js';
+import { can } from '../../services/auth/capabilities.js';
 
 export async function addViewer(
   viewerKeyPrefix: string,
@@ -110,36 +112,37 @@ export function register(socket: Socket, ctx: HandlerContext): void {
   // ── Collision Detection: ticket viewing ───────────────────────────────────
   socket.on('ticket:viewing', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
-    if (!socket.data.isSupport) return;
+    const actor = socketActor(socket);
+    if (!actor) return;
+    if (!can(actor, 'use_support_workflows')) return;
     const parsed = validatePayload(socket, ticketViewingSchema, data);
     if (!parsed) return;
     const { ticketId } = parsed;
 
     // Tenant isolation: verify ticket belongs to caller's partner
-    const ticket = await requirePartnerScope(socket, ticketId);
+    const ticket = await requireActorTicketScope(socket, actor, ticketId);
     if (!ticket) return;
-
-    const userId = socket.data.userId as string;
-    const userName = socket.data.name as string;
 
     // Join the socket room if not already in it
     if (!socket.rooms.has(Rooms.ticket(ticketId))) {
       socket.join(Rooms.ticket(ticketId));
     }
 
-    await addViewer(ctx.viewerKeyPrefix, ctx.socketTickets, ticketId, socket.id, userId, userName);
+    await addViewer(ctx.viewerKeyPrefix, ctx.socketTickets, ticketId, socket.id, actor.userId, actor.name);
     await broadcastViewers(ctx.viewerKeyPrefix, ctx.io, ticketId);
   });
 
   socket.on('ticket:left', async (data: unknown) => {
     if (!requireIdentified(socket)) return;
-    if (!socket.data.isSupport) return;
+    const actor = socketActor(socket);
+    if (!actor) return;
+    if (!can(actor, 'use_support_workflows')) return;
     const leftParsed = validatePayload(socket, ticketViewingSchema, data);
     if (!leftParsed) return;
     const { ticketId } = leftParsed;
 
     // Tenant isolation: verify ticket belongs to caller's partner
-    const ticket = await requirePartnerScope(socket, ticketId);
+    const ticket = await requireActorTicketScope(socket, actor, ticketId);
     if (!ticket) return;
 
     await removeViewer(ctx.viewerKeyPrefix, ctx.socketTickets, ticketId, socket.id);

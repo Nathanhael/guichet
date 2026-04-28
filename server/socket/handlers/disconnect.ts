@@ -10,6 +10,12 @@ import { type HandlerContext } from './types.js';
 export function register(socket: Socket, ctx: HandlerContext): void {
   socket.on('disconnect', async () => {
     socketioConnectionsActive.dec();
+    // Slice #70: disconnect cleanup intentionally reads `socket.data.*` directly
+    // instead of going through `socketActor(socket)`. The canonical actor
+    // builder emits an `error` event on missing identity, which is pointless
+    // here — the socket has already gone. We just need userId/partnerId to
+    // look up presence state, and skip cleanup if either is absent (e.g. the
+    // socket disconnected before completing `socket:identify`).
     const userId = socket.data.userId;
     const partnerId = socket.data.partnerId;
     const userName = socket.data.name;

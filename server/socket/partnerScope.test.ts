@@ -9,22 +9,36 @@ vi.mock('../utils/logger.js', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { requirePartnerScope, requirePartnerScopeWith } from './partnerScope.js';
+import { requireActorTicketScope, requireActorTicketScopeWith } from './partnerScope.js';
+import type { UserActor } from '../services/auth/types.js';
 
-function mockSocket(partnerId: string) {
+function mockSocket() {
   return {
-    data: { partnerId, userId: 'u1' },
+    data: { identified: true },
     id: 'socket-1',
     emit: vi.fn(),
-  } as any;
+  } as unknown as Parameters<typeof requireActorTicketScope>[0];
 }
 
-describe('requirePartnerScope', () => {
+function mockActor(partnerId: string): UserActor {
+  return {
+    kind: 'user',
+    userId: 'u1',
+    name: 'Test User',
+    role: 'support',
+    partnerId,
+    isPlatformOperator: false,
+    isExternal: false,
+    lang: 'en',
+  };
+}
+
+describe('requireActorTicketScope', () => {
   it('returns the ticket when partnerId matches', async () => {
     findTicketPartnerMock.mockResolvedValue({ partnerId: 'p1' });
-    const socket = mockSocket('p1');
+    const socket = mockSocket();
 
-    const result = await requirePartnerScope(socket, 'ticket-1');
+    const result = await requireActorTicketScope(socket, mockActor('p1'), 'ticket-1');
 
     expect(result).toEqual({ partnerId: 'p1' });
     expect(socket.emit).not.toHaveBeenCalled();
@@ -32,9 +46,9 @@ describe('requirePartnerScope', () => {
 
   it('returns null and emits error when partnerId does not match', async () => {
     findTicketPartnerMock.mockResolvedValue({ partnerId: 'p2' });
-    const socket = mockSocket('p1');
+    const socket = mockSocket();
 
-    const result = await requirePartnerScope(socket, 'ticket-1');
+    const result = await requireActorTicketScope(socket, mockActor('p1'), 'ticket-1');
 
     expect(result).toBeNull();
     expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Not authorized' });
@@ -42,21 +56,21 @@ describe('requirePartnerScope', () => {
 
   it('returns null when ticket does not exist', async () => {
     findTicketPartnerMock.mockResolvedValue(undefined);
-    const socket = mockSocket('p1');
+    const socket = mockSocket();
 
-    const result = await requirePartnerScope(socket, 'ticket-1');
+    const result = await requireActorTicketScope(socket, mockActor('p1'), 'ticket-1');
 
     expect(result).toBeNull();
     expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Not authorized' });
   });
 });
 
-describe('requirePartnerScopeWith', () => {
+describe('requireActorTicketScopeWith', () => {
   it('returns full query result when partnerId matches', async () => {
     const customQuery = vi.fn().mockResolvedValue({ partnerId: 'p1', status: 'open', supportId: 'u2' });
-    const socket = mockSocket('p1');
+    const socket = mockSocket();
 
-    const result = await requirePartnerScopeWith(socket, 'ticket-1', customQuery);
+    const result = await requireActorTicketScopeWith(socket, mockActor('p1'), 'ticket-1', customQuery);
 
     expect(customQuery).toHaveBeenCalledWith('ticket-1');
     expect(result).toEqual({ partnerId: 'p1', status: 'open', supportId: 'u2' });
@@ -65,9 +79,9 @@ describe('requirePartnerScopeWith', () => {
 
   it('returns null and emits error when partnerId does not match', async () => {
     const customQuery = vi.fn().mockResolvedValue({ partnerId: 'p2', status: 'open' });
-    const socket = mockSocket('p1');
+    const socket = mockSocket();
 
-    const result = await requirePartnerScopeWith(socket, 'ticket-1', customQuery);
+    const result = await requireActorTicketScopeWith(socket, mockActor('p1'), 'ticket-1', customQuery);
 
     expect(result).toBeNull();
     expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Not authorized' });
@@ -75,9 +89,9 @@ describe('requirePartnerScopeWith', () => {
 
   it('returns null when query returns undefined', async () => {
     const customQuery = vi.fn().mockResolvedValue(undefined);
-    const socket = mockSocket('p1');
+    const socket = mockSocket();
 
-    const result = await requirePartnerScopeWith(socket, 'ticket-1', customQuery);
+    const result = await requireActorTicketScopeWith(socket, mockActor('p1'), 'ticket-1', customQuery);
 
     expect(result).toBeNull();
     expect(socket.emit).toHaveBeenCalledWith('error', { message: 'Not authorized' });
