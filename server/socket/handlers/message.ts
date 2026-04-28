@@ -96,6 +96,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       if (!ticket || ticket.status === 'closed') return;
 
       const actor = socketActor(socket);
+      if (!actor) return;
 
       // Cross-lang metric: emit when a support agent sends in a different
       // language than the ticket's agentLang. Pre-flight observability.
@@ -215,11 +216,14 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const partnerCheck = await requirePartnerScope(socket, ticketId);
       if (!partnerCheck) return;
 
+      const actor = socketActor(socket);
+      if (!actor) return;
+
       const result = await ctx.messageLifecycle.edit({
         ticketId,
         partnerId,
         messageId,
-        actor: socketActor(socket),
+        actor,
         newText,
       });
 
@@ -263,11 +267,14 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const partnerCheck = await requirePartnerScope(socket, ticketId);
       if (!partnerCheck) return;
 
+      const actor = socketActor(socket);
+      if (!actor) return;
+
       const result = await ctx.messageLifecycle.delete({
         ticketId,
         partnerId,
         messageId,
-        actor: socketActor(socket),
+        actor,
       });
 
       if (!result.ok) {
@@ -310,11 +317,14 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const partnerCheck = await requirePartnerScope(socket, ticketId);
       if (!partnerCheck) return;
 
+      const actor = socketActor(socket);
+      if (!actor) return;
+
       const result = await ctx.messageLifecycle.react({
         ticketId,
         partnerId,
         messageId,
-        actor: socketActor(socket),
+        actor,
         emoji,
       });
 

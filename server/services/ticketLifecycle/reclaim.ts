@@ -8,7 +8,7 @@ import { Rooms } from '../../utils/rooms.js';
 import { writeAudit } from './audit.js';
 import { insertSystemMessageTx } from './messages.js';
 import { returnTicketToQueueTx } from './mutations.js';
-import { systemActor } from './actor.js';
+import { SYSTEM_ACTOR as systemActor } from '../auth/types.js';
 import type {
   Effect,
   LifecycleDb,
