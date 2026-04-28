@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, adminProcedure, destructiveAdminProcedure, internalAdminReadProcedure } from '../../trpc.js';
+import { router, adminProcedure, partnerAdminProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { partners, users, memberships, auditLog } from '../../../db/schema.js';
 import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
@@ -10,6 +10,7 @@ import { canAssignTenantRole } from '../../../services/roles.js';
 import { revokeUserSessions } from '../../../services/sessionRevocation.js';
 import { revokeAllUserRefreshTokens } from '../../../services/refreshToken.js';
 import { escapeLikePattern } from '../../../utils/security.js';
+import { trpcActor } from '../../../services/auth/index.js';
 
 export const partnerMembersRouter = router({
   listMembers: adminProcedure
@@ -118,13 +119,12 @@ export const partnerMembersRouter = router({
   // so no pagination.
   //
   // External (B2B guest) admins must not see the internal admin roster — names
-  // and emails are sensitive. `internalAdminReadProcedure` enforces the gate
-  // (operators bypass; non-operator guests get FORBIDDEN). Guests keep read
-  // access to the rest of the admin UI.
-  listAdmins: internalAdminReadProcedure
+  // and emails are sensitive. The `destructive_admin` capability enforces the
+  // gate (operators bypass; non-operator guests get FORBIDDEN). Guests keep
+  // read access to the rest of the admin UI.
+  listAdmins: partnerAdminProcedure
     .query(async ({ ctx }) => {
-      const partnerId = ctx.user.partnerId;
-      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
       const rows = await db
         .select({
@@ -137,7 +137,7 @@ export const partnerMembersRouter = router({
         })
         .from(memberships)
         .innerJoin(users, eq(memberships.userId, users.id))
-        .where(and(eq(memberships.partnerId, partnerId), eq(memberships.role, 'admin')))
+        .where(and(eq(memberships.partnerId, actor.partnerId), eq(memberships.role, 'admin')))
         .orderBy(users.name);
 
       return rows;
@@ -201,7 +201,7 @@ export const partnerMembersRouter = router({
       return { total, support, agents, dormant, guests };
     }),
 
-  inviteExternalUser: destructiveAdminProcedure
+  inviteExternalUser: partnerAdminProcedure
     .input(z.object({
       email: z.string().email(),
       name: z.string().min(1),
@@ -210,9 +210,9 @@ export const partnerMembersRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
-        if (!canAssignTenantRole(ctx.user.role, ctx.user.isPlatformOperator, input.role)) {
+        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+
+        if (!canAssignTenantRole(actor.role, actor.isPlatformOperator, input.role)) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Tenant admins cannot assign this role' });
         }
 
@@ -222,7 +222,7 @@ export const partnerMembersRouter = router({
 
         const partner = await db.select({ id: partners.id })
           .from(partners)
-          .where(eq(partners.id, partnerId))
+          .where(eq(partners.id, actor.partnerId))
           .limit(1);
 
         if (partner.length === 0) {
@@ -251,7 +251,7 @@ export const partnerMembersRouter = router({
           await tx.insert(memberships).values({
             id: newMembershipId,
             userId: newUserId,
-            partnerId: partnerId,
+            partnerId: actor.partnerId,
             role: input.role,
             departments: input.role === 'support' ? (input.departments || []) : [],
             source: 'manual'
@@ -259,8 +259,8 @@ export const partnerMembersRouter = router({
 
           await tx.insert(auditLog).values({
             action: 'member.invited',
-            actorId: ctx.user.id,
-            partnerId: partnerId,
+            actorId: actor.userId,
+            partnerId: actor.partnerId,
             targetType: 'user',
             targetId: newUserId,
             metadata: { role: input.role, departments: input.departments, email: input.email }
@@ -274,18 +274,17 @@ export const partnerMembersRouter = router({
       }
     }),
 
-  updateMember: destructiveAdminProcedure
+  updateMember: partnerAdminProcedure
     .input(z.object({
       membershipId: z.string(),
       departments: z.array(z.string()).optional()
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
         const membership = await db.select().from(memberships)
-          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, partnerId))).limit(1);
+          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, actor.partnerId))).limit(1);
 
         if (membership.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
@@ -304,12 +303,12 @@ export const partnerMembersRouter = router({
 
         await db.update(memberships)
           .set({ departments: depts })
-          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, partnerId)));
+          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, actor.partnerId)));
 
         await db.insert(auditLog).values({
           action: 'member.updated',
-          actorId: ctx.user.id,
-          partnerId: partnerId,
+          actorId: actor.userId,
+          partnerId: actor.partnerId,
           targetType: 'user',
           targetId: membership[0].userId,
           metadata: { departments: input.departments }
@@ -321,23 +320,22 @@ export const partnerMembersRouter = router({
       }
     }),
 
-  removeMember: destructiveAdminProcedure
+  removeMember: partnerAdminProcedure
     .input(z.object({
       membershipId: z.string(),
     }))
     .mutation(async ({ input, ctx }) => {
       try {
-        const partnerId = ctx.user.partnerId;
-        if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
         const membership = await db.select().from(memberships)
-          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, partnerId))).limit(1);
+          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, actor.partnerId))).limit(1);
 
         if (membership.length === 0) {
           throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
         }
 
-        if (membership[0].userId === ctx.user.id) {
+        if (membership[0].userId === actor.userId) {
           throw new TRPCError({ code: 'FORBIDDEN', message: 'Cannot remove yourself' });
         }
 
@@ -367,8 +365,8 @@ export const partnerMembersRouter = router({
 
           await tx.insert(auditLog).values({
             action: 'member.removed',
-            actorId: ctx.user.id,
-            partnerId: partnerId,
+            actorId: actor.userId,
+            partnerId: actor.partnerId,
             targetType: 'user',
             targetId: membership[0].userId,
             metadata: { wasExternal }
