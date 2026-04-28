@@ -1,11 +1,8 @@
 import { initTRPC, TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
 import { Context } from './context.js';
 import { UserRole } from '../types/index.js';
 import { isPlatformAdmin, isTenantAdmin } from '../services/roles.js';
 import { DISABLED_FEATURES, type DisabledFeature } from '../constants.js';
-import { db } from '../db.js';
-import { users } from '../db/schema.js';
 
 const t = initTRPC.context<Context>().create();
 
@@ -119,29 +116,25 @@ export const featureGate = (feature: DisabledFeature) =>
  * definition (SSO callback only sets isExternal from Azure B2B claims, and
  * platform operators authenticate via our staff SSO path with `acct=member`).
  *
- * This middleware fetches `users.isExternal` from the DB on each call because
- * the JWT does not carry the flag — adding it would require rotation of all
- * existing tokens across 5 mint sites. The DB hit only fires on destructive
- * admin mutations, which are rare. Revisit if traffic patterns change.
+ * Reads the `isExternal` flag from the JWT claim on `ctx.user`. The claim is
+ * stamped at every mint site (slice #66) and refreshed atomically with any
+ * DB-side flag flip via `flipIsExternal` (slice #67), which revokes every
+ * pre-flip session + refresh-token family — so no stale-token path can use a
+ * pre-flip claim to evade the gate. No DB lookup needed.
  *
  * Applied via `destructiveAdminProcedure` for `adminProcedure`-based routers,
  * or composed manually for `partnerAdminProcedure`-based routers (e.g.
  * webhook router's `gatedPartnerAdmin`).
  */
-export const blockExternalUsers = t.middleware(async ({ ctx, next }) => {
+export const blockExternalUsers = t.middleware(({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
-  // Platform operators are never guests — skip the DB round-trip.
+  // Platform operators are never guests by definition.
   if (isPlatformAdmin(ctx.user.isPlatformOperator)) {
     return next();
   }
-  const row = await db
-    .select({ isExternal: users.isExternal })
-    .from(users)
-    .where(eq(users.id, ctx.user.id))
-    .limit(1);
-  if (row[0]?.isExternal) {
+  if (ctx.user.isExternal) {
     throw new TRPCError({
       code: 'FORBIDDEN',
       message: 'This action is not available to external guest users.',
