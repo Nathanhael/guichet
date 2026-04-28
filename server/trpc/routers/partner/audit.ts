@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { router, partnerAdminProcedure, partnerInternalAdminReadProcedure } from '../../trpc.js';
+import { router, partnerAdminProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { auditLog, users } from '../../../db/schema.js';
 import { eq, desc, gte, lte, and, sql } from 'drizzle-orm';
@@ -8,6 +8,7 @@ import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
 import { wrapError } from '../../../utils/trpcErrors.js';
 import { verifyAuditChain } from '../../../services/archive.js';
+import { trpcActor } from '../../../services/auth/index.js';
 
 const PARTNER_VERIFY_CHAIN_WINDOW_SECS = 60;
 const PARTNER_VERIFY_CHAIN_MAX_PER_WINDOW = 1;
@@ -112,14 +113,16 @@ export const partnerAuditRouter = router({
   // Audit rows leftJoin users.name for the actor — including platform
   // operators who acted on this partner via /enter-partner. B2B guest admins
   // must not see those identities, so this read is gated.
-  getAuditLog: partnerInternalAdminReadProcedure
+  getAuditLog: partnerAdminProcedure
     .input(baseInput.extend({
       limit: z.number().min(1).max(100).default(50),
       cursor: z.string().optional(),
     }))
     .query(async ({ input, ctx }) => {
       try {
-        const conditions = buildConditions(input, ctx.user.partnerId);
+        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+
+        const conditions = buildConditions(input, actor.partnerId);
 
         if (input.cursor) {
           const sepIdx = input.cursor.indexOf('|');
@@ -165,14 +168,16 @@ export const partnerAuditRouter = router({
   // (legacy/adjacent emitters that don't set targetType). Partner-scoped via
   // partnerId so cross-tenant leakage is impossible even if a caller guesses
   // another tenant's ticket id. Same actor-name leak as getAuditLog, so the
-  // same `partnerInternalAdminReadProcedure` gate applies.
-  getForTicket: partnerInternalAdminReadProcedure
+  // same `destructive_admin` capability gate applies.
+  getForTicket: partnerAdminProcedure
     .input(z.object({
       ticketId: z.string(),
       limit: z.number().min(1).max(200).default(100),
     }))
     .query(async ({ input, ctx }) => {
       try {
+        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+
         const results = await db.select({
           id: auditLog.id,
           action: auditLog.action,
@@ -187,7 +192,7 @@ export const partnerAuditRouter = router({
           .from(auditLog)
           .leftJoin(users, eq(auditLog.actorId, users.id))
           .where(and(
-            eq(auditLog.partnerId, ctx.user.partnerId),
+            eq(auditLog.partnerId, actor.partnerId),
             sql`(
               (${auditLog.targetType} = 'ticket' AND ${auditLog.targetId} = ${input.ticketId})
               OR ${auditLog.metadata}->>'ticketId' = ${input.ticketId}
