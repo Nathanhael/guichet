@@ -568,7 +568,10 @@ router.get('/azure/callback', async (req: Request, res: Response) => {
       partnerId: defaultMembership?.partnerId,
       membershipId: defaultMembership?.id,
       isPlatformOperator: !!user.isPlatformOperator,
-      isExternal: !!user.isExternal,
+      // Source from the freshly Azure-derived `isExternal` (line 302), not the
+      // stale `user.isExternal` loaded before the L341 / L375 UPDATEs. Keeps
+      // the JWT claim in sync with the DB row that was just persisted.
+      isExternal,
     });
 
     // Build the SSO payload but store it server-side to avoid exposing user data in URL
