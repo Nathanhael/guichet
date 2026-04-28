@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
-import { router, partnerAdminProcedure, featureGate, blockExternalUsers } from '../trpc.js';
+import { router, partnerAdminProcedure, featureGate } from '../trpc.js';
 import { db } from '../../db.js';
 import { webhooks, webhookLogs } from '../../db/schema.js';
 import { eq, and, desc } from 'drizzle-orm';
 import { notFound } from '../../utils/trpcErrors.js';
 import { validateWebhookUrl } from '../../services/webhookDispatch.js';
 import { encrypt } from '../../services/encryption.js';
+import { trpcActor, assertCan } from '../../services/auth/index.js';
 
 const WEBHOOK_EVENTS = [
   'ticket.created',
@@ -41,11 +42,6 @@ async function verifyWebhookOwnership(id: string, partnerId: string) {
 // DISABLED_FEATURE: Webhooks — gated until feature is production-ready
 const gatedPartnerAdmin = partnerAdminProcedure.use(featureGate('webhooks'));
 
-// Destructive variant — adds the Azure B2B guest block. Used for create,
-// update, regenerateSecret, delete, and test (anything that mutates webhook
-// config, rotates secrets, or triggers outbound deliveries).
-const gatedPartnerAdminNoGuests = gatedPartnerAdmin.use(blockExternalUsers);
-
 export const webhookRouter = router({
   /** List all webhooks for the current partner */
   list: gatedPartnerAdmin.query(async ({ ctx }) => {
@@ -64,13 +60,16 @@ export const webhookRouter = router({
   }),
 
   /** Create a new webhook endpoint */
-  create: gatedPartnerAdminNoGuests
+  create: gatedPartnerAdmin
     .input(z.object({
       url: z.string().url().max(2000),
       events: webhookEventsSchema,
       description: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
+      const actor = trpcActor(ctx);
+      assertCan(actor, 'destructive_admin');
+
       // SSRF protection: validate URL before registering
       await validateWebhookUrl(input.url);
 
@@ -80,13 +79,13 @@ export const webhookRouter = router({
 
       await db.insert(webhooks).values({
         id,
-        partnerId: ctx.user.partnerId,
+        partnerId: actor.partnerId,
         url: input.url,
         secret: encrypt(rawSecret),
         events: input.events,
         description: input.description || null,
         active: true,
-        createdBy: ctx.user.id,
+        createdBy: actor.userId,
         createdAt: now,
         updatedAt: now,
       });
@@ -95,7 +94,7 @@ export const webhookRouter = router({
     }),
 
   /** Update a webhook */
-  update: gatedPartnerAdminNoGuests
+  update: gatedPartnerAdmin
     .input(z.object({
       id: z.string(),
       url: z.string().url().max(2000).optional(),
@@ -104,7 +103,10 @@ export const webhookRouter = router({
       active: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      await verifyWebhookOwnership(input.id, ctx.user.partnerId);
+      const actor = trpcActor(ctx);
+      assertCan(actor, 'destructive_admin');
+
+      await verifyWebhookOwnership(input.id, actor.partnerId);
 
       // SSRF protection: validate URL if being updated
       if (input.url !== undefined) {
@@ -117,31 +119,37 @@ export const webhookRouter = router({
       if (input.description !== undefined) updates.description = input.description;
       if (input.active !== undefined) updates.active = input.active;
 
-      await db.update(webhooks).set(updates).where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)));
+      await db.update(webhooks).set(updates).where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, actor.partnerId)));
       return { success: true };
     }),
 
   /** Regenerate the signing secret for a webhook */
-  regenerateSecret: gatedPartnerAdminNoGuests
+  regenerateSecret: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      await verifyWebhookOwnership(input.id, ctx.user.partnerId);
+      const actor = trpcActor(ctx);
+      assertCan(actor, 'destructive_admin');
+
+      await verifyWebhookOwnership(input.id, actor.partnerId);
 
       const newSecret = randomBytes(32).toString('hex');
       await db.update(webhooks)
         .set({ secret: newSecret, updatedAt: new Date().toISOString() })
-        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)));
+        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, actor.partnerId)));
 
       return { secret: newSecret };
     }),
 
   /** Delete a webhook */
-  delete: gatedPartnerAdminNoGuests
+  delete: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const actor = trpcActor(ctx);
+      assertCan(actor, 'destructive_admin');
+
       await db
         .delete(webhooks)
-        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)));
+        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, actor.partnerId)));
 
       return { success: true };
     }),
@@ -178,14 +186,17 @@ export const webhookRouter = router({
     }),
 
   /** Test-fire a webhook with a sample payload */
-  test: gatedPartnerAdminNoGuests
+  test: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
+      const actor = trpcActor(ctx);
+      assertCan(actor, 'destructive_admin');
+
       // Fetch the specific webhook (verifies ownership and gets secret/url)
       const rows = await db
         .select()
         .from(webhooks)
-        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, ctx.user.partnerId)))
+        .where(and(eq(webhooks.id, input.id), eq(webhooks.partnerId, actor.partnerId)))
         .limit(1);
 
       if (rows.length === 0) throw notFound('Webhook');
