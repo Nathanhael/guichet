@@ -97,6 +97,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       // lookup. findUserName is a cheap single-row read.
       const joinerInfo = await findUserName(supportId);
       const baseActor = socketActor(socket);
+      if (!baseActor) return;
       const joinActor = { ...baseActor, isExternal: !!joinerInfo?.isExternal };
 
       const result = await ctx.lifecycle.assign({
@@ -217,10 +218,13 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         clearPrimary = !primaryValid;
       }
 
+      const actor = socketActor(socket);
+      if (!actor) return;
+
       const result = await ctx.lifecycle.leave({
         ticketId,
         partnerId: callerPartnerId,
-        actor: socketActor(socket),
+        actor,
         clearPrimary,
         previousSupportId: storedPrimary ?? null,
       });

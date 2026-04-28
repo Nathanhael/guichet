@@ -55,6 +55,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         // lookup. Cheap single-row read.
         const agentUser = await findUserName(socket.data.userId);
         const baseActor = socketActor(socket);
+        if (!baseActor) return;
         const createActor = { ...baseActor, isExternal: !!agentUser?.isExternal };
 
         const result = await ctx.lifecycle.create({
@@ -136,10 +137,13 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         const partnerCheck = await requirePartnerScopeWith(socket, ticketId, findTicketForClose);
         if (!partnerCheck) return;
 
+        const actor = socketActor(socket);
+        if (!actor) return;
+
         const result = await ctx.lifecycle.close({
           ticketId,
           partnerId: callerPartnerId,
-          actor: socketActor(socket),
+          actor,
           closingNotes,
         });
 
@@ -186,6 +190,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         if (!ticket) return;
 
         const actor = socketActor(socket);
+        if (!actor) return;
 
         if (departmentId) {
           // Department-change branch — full transfer.
