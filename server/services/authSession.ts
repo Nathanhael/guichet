@@ -77,6 +77,7 @@ export async function buildAuthToken(input: {
   partnerId?: string;
   membershipId?: string;
   isPlatformOperator: boolean;
+  isExternal: boolean;
 }): Promise<string> {
   const jti = crypto.randomUUID();
   const expiresIn = config.ACCESS_TOKEN_EXPIRY || '15m';
@@ -88,6 +89,7 @@ export async function buildAuthToken(input: {
       partnerId: input.partnerId,
       membershipId: input.membershipId,
       isPlatformOperator: input.isPlatformOperator,
+      isExternal: input.isExternal,
     })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()

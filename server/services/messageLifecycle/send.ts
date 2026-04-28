@@ -26,6 +26,7 @@ import { isNull } from 'drizzle-orm';
 
 import { messages, partners, slaBreaches, tickets } from '../../db/schema.js';
 import { runSyncGuards } from '../guards.js';
+import { isSupportLike } from '../roles.js';
 import logger from '../../utils/logger.js';
 import { isValidMediaUrl } from '../../utils/security.js';
 import { Rooms } from '../../utils/rooms.js';
@@ -93,7 +94,7 @@ export async function runSend(
 
     try {
       const repResult = await deps.repetitionGuard.check({
-        senderId: args.actor.id,
+        senderId: args.actor.userId,
         text,
       });
       if (!repResult.ok) {
@@ -110,10 +111,10 @@ export async function runSend(
   // Whisper authz clamp — silently drop whisper:true for non-support
   // actors (preserves legacy behavior). Log at warn so client bugs leave
   // a trail.
-  const isWhisper = !!args.whisper && args.actor.isSupport;
+  const isWhisper = !!args.whisper && isSupportLike(args.actor.role);
   if (args.whisper && !isWhisper) {
     logger.warn(
-      { senderId: args.actor.id, role: args.actor.role },
+      { senderId: args.actor.userId, role: args.actor.role },
       '[messageLifecycle.send] non-support actor attempted whisper — clamped to public',
     );
   }
@@ -124,7 +125,7 @@ export async function runSend(
   await deps.db.insert(messages).values({
     id,
     ticketId: args.ticketId,
-    senderId: args.actor.id,
+    senderId: args.actor.userId,
     senderName: args.actor.name,
     senderRole: args.actor.role,
     senderLang: args.actor.lang,
@@ -140,7 +141,7 @@ export async function runSend(
   const message: SendMessage = {
     id,
     ticketId: args.ticketId,
-    senderId: args.actor.id,
+    senderId: args.actor.userId,
     senderName: args.actor.name,
     senderRole: args.actor.role,
     senderLang: args.actor.lang,
@@ -192,7 +193,7 @@ export async function runSend(
             try {
               const res = await deps.aiTranslation.translate({
                 partnerId: args.partnerId,
-                userId: args.actor.id,
+                userId: args.actor.userId,
                 text,
                 targetLang: tl,
                 budgetMs: PREWARM_BUDGET_MS,

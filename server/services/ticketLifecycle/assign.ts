@@ -10,6 +10,7 @@
  * the metadata's `becamePrimary` field distinguishes them.
  */
 import { Rooms } from '../../utils/rooms.js';
+import { isSupportLike } from '../roles.js';
 import { writeAudit } from './audit.js';
 import { insertSystemMessageTx, type SocketMessage } from './messages.js';
 import {
@@ -33,7 +34,7 @@ export async function runAssign(
   deps: AssignDeps,
   args: AssignArgs,
 ): Promise<Result<AssignOk>> {
-  if (!args.actor.isSupport) {
+  if (!isSupportLike(args.actor.role)) {
     return { ok: false, code: 'NOT_AUTHORIZED' };
   }
 
@@ -69,7 +70,7 @@ export async function runAssign(
 
     const out = await assignSupportTx(tx, {
       ticketId: args.ticketId,
-      supportId: args.actor.id,
+      supportId: args.actor.userId,
       supportName: args.actor.name,
       supportLang: args.supportLang,
       supportIsExternal: args.actor.isExternal,
@@ -88,10 +89,10 @@ export async function runAssign(
       partnerId: args.partnerId,
       actor: args.actor,
       metadata: {
-        supportId: args.actor.id,
+        supportId: args.actor.userId,
         supportName: args.actor.name,
         ghostHealed,
-        becamePrimary: assignedSupportId === args.actor.id,
+        becamePrimary: assignedSupportId === args.actor.userId,
       },
     });
   });
@@ -100,7 +101,7 @@ export async function runAssign(
     throw new Error('lifecycle.assign: txn committed without writing a system message');
   }
 
-  const becamePrimary = assignedSupportId === args.actor.id;
+  const becamePrimary = assignedSupportId === args.actor.userId;
 
   const effects: Effect[] = [
     {
@@ -115,7 +116,7 @@ export async function runAssign(
       event: 'support:joined',
       payload: {
         ticketId: args.ticketId,
-        supportId: args.actor.id,
+        supportId: args.actor.userId,
         supportName: args.actor.name,
         participants,
       },

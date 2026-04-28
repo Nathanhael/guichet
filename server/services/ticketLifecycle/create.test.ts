@@ -13,11 +13,11 @@ import { createTicketLifecycle, type UserActor } from './index.js';
 
 let handle: TestDbHandle;
 
-function agentActor(args: { id: string; partnerId: string; name: string; isExternal?: boolean }): UserActor {
+function agentActor(args: { userId: string; partnerId: string; name: string; isExternal?: boolean }): UserActor {
   return {
     kind: 'user',
     role: 'agent',
-    isSupport: false,
+    isPlatformOperator: false,
     isExternal: args.isExternal ?? false,
     lang: 'en',
     ...args,
@@ -64,7 +64,7 @@ describe('lifecycle.create', () => {
 
     const result = await lifecycle.create({
       partnerId: 'p_a',
-      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
       dept: 'sales',
       agentLang: 'en',
       text: 'Hi, I have a question.',
@@ -129,7 +129,7 @@ describe('lifecycle.create', () => {
 
     const result = await lifecycle.create({
       partnerId: 'p_a',
-      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
       dept: 'sales',
       agentLang: 'en',
       text: longText,
@@ -152,7 +152,7 @@ describe('lifecycle.create', () => {
 
     const result = await lifecycle.create({
       partnerId: 'p_a',
-      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
       dept: 'sales',
       agentLang: 'en',
       // text intentionally omitted — caller may create a ticket without an
@@ -183,7 +183,7 @@ describe('lifecycle.create', () => {
     const lifecycle = createTicketLifecycle({ db: handle.db });
     const result = await lifecycle.create({
       partnerId: 'p_a',
-      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
       dept: 'sales',
       agentLang: 'en',
       references: [{ label: 'Order', value: 'ORD-42' }],
@@ -207,8 +207,8 @@ describe('lifecycle.create', () => {
     const lifecycle = createTicketLifecycle({ db: handle.db });
 
     const supportActorRow: UserActor = {
-      kind: 'user', id: 'u_supp', partnerId: 'p_a', name: 'Supp',
-      role: 'support', isSupport: true, isExternal: false, lang: 'en',
+      kind: 'user', userId: 'u_supp', partnerId: 'p_a', name: 'Supp',
+      role: 'support', isPlatformOperator: false, isExternal: false, lang: 'en',
     };
     const result = await lifecycle.create({
       partnerId: 'p_a',
@@ -229,7 +229,7 @@ describe('lifecycle.create', () => {
 
     const result = await lifecycle.create({
       partnerId: 'p_a',
-      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
       dept: 'sales',
       agentLang: 'en',
     });
@@ -255,7 +255,7 @@ describe('lifecycle.create', () => {
 
     const result = await lifecycle.create({
       partnerId: 'p_a',
-      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
       dept: 'sales',
       agentLang: 'en',
     });
@@ -280,7 +280,7 @@ describe('lifecycle.create', () => {
 
     const result = await lifecycle.create({
       partnerId: 'p_a',
-      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
       dept: 'sales',
       agentLang: 'en',
     });
@@ -298,7 +298,7 @@ describe('lifecycle.create', () => {
 
     const result = await lifecycle.create({
       partnerId: 'p_a',
-      actor: agentActor({ id: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
       dept: 'sales',
       agentLang: 'en',
       mediaUrl: 'javascript:alert(1)',
@@ -319,7 +319,7 @@ describe('lifecycle.create', () => {
     await expect(
       lifecycle.create({
         partnerId: 'p_a',
-        actor: agentActor({ id: 'u_ghost_agent', partnerId: 'p_a', name: 'Ghost' }),
+        actor: agentActor({ userId: 'u_ghost_agent', partnerId: 'p_a', name: 'Ghost' }),
         dept: 'sales',
         agentLang: 'en',
         text: 'should not persist',

@@ -10,6 +10,7 @@ import {
   markRead,
 } from '../../services/messageQueries.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
+import { isSupportLike } from '../../services/roles.js';
 import { crossLangPickupTotal } from '../../utils/metrics.js';
 import {
   MAX_BATCH_DELETE,
@@ -98,7 +99,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
       // Cross-lang metric: emit when a support agent sends in a different
       // language than the ticket's agentLang. Pre-flight observability.
-      if (actor.lang && ticket.agentLang && actor.lang !== ticket.agentLang && actor.isSupport) {
+      if (actor.lang && ticket.agentLang && actor.lang !== ticket.agentLang && isSupportLike(actor.role)) {
         crossLangPickupTotal.inc({ partner_id: ticket.partnerId, support_lang: actor.lang, ticket_lang: ticket.agentLang });
       }
 

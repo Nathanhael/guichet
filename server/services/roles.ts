@@ -1,4 +1,5 @@
 import type { UserRole } from '../types/index.js';
+import type { UserActor } from './auth/types.js';
 
 export function isTenantAdmin(role: UserRole): boolean {
   return role === 'admin';
@@ -46,4 +47,16 @@ export function canChangePresenceStatus(actorRole: UserRole, actorId: string, ta
 
 export function canAccessPartnerContext(isPlatformOperator: boolean, partnerId?: string | null): boolean {
   return isPlatformOperator || !!partnerId;
+}
+
+export function canAssignTenantRoleForActor(actor: UserActor, targetRole: UserRole): boolean {
+  return canAssignTenantRole(actor.role, actor.isPlatformOperator, targetRole);
+}
+
+export function canChangePresenceForActor(actor: UserActor, targetUserId: string): boolean {
+  return canChangePresenceStatus(actor.role, actor.userId, targetUserId, actor.isPlatformOperator);
+}
+
+export function canAccessPartnerContextForActor(actor: UserActor): boolean {
+  return canAccessPartnerContext(actor.isPlatformOperator, actor.partnerId);
 }

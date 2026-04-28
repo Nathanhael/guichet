@@ -38,10 +38,10 @@ let lifecycle: MessageLifecycle;
 
 const aliceActor: UserActor = {
   kind: 'user',
-  id: USER_A,
+  userId: USER_A,
   name: 'Alice',
   role: 'agent',
-  isSupport: false,
+  isPlatformOperator: false,
   isExternal: false,
   lang: 'en',
   partnerId: PARTNER_A,
@@ -124,10 +124,10 @@ describe('messageLifecycle.react', () => {
 
     const bobActor: UserActor = {
       kind: 'user',
-      id: USER_B,
+      userId: USER_B,
       name: 'Bob',
       role: 'agent',
-      isSupport: false,
+      isPlatformOperator: false,
       isExternal: false,
       lang: 'en',
       partnerId: PARTNER_B,
@@ -243,10 +243,10 @@ describe('messageLifecycle.react', () => {
     await handle.db.insert(users).values({ id: USER_B, email: 'b@x.test', name: 'Bob' });
     const bobActor: UserActor = {
       kind: 'user',
-      id: USER_B,
+      userId: USER_B,
       name: 'Bob',
       role: 'agent',
-      isSupport: false,
+      isPlatformOperator: false,
       isExternal: false,
       lang: 'en',
       partnerId: PARTNER_A,

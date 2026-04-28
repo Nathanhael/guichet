@@ -14,6 +14,7 @@ import { and, eq } from 'drizzle-orm';
 import { messages, tickets } from '../../db/schema.js';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
+import { isSupportLike } from '../roles.js';
 
 import type {
   DeleteArgs,
@@ -56,7 +57,7 @@ export async function runDelete(
     return { ok: true, data: { messageId: args.messageId, deletedAt: existing.deletedAt }, effects: [] };
   }
   // Authz: staff or own message.
-  if (!args.actor.isSupport && existing.senderId !== args.actor.id) {
+  if (!isSupportLike(args.actor.role) && existing.senderId !== args.actor.userId) {
     return { ok: false, code: 'NOT_OWN_MESSAGE' };
   }
 

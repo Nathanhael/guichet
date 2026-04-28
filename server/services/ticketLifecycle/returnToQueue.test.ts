@@ -12,11 +12,11 @@ import { createTicketLifecycle, systemActor, type UserActor } from './index.js';
 
 let handle: TestDbHandle;
 
-function userActor(args: { id: string; partnerId: string; name: string }): UserActor {
+function userActor(args: { userId: string; partnerId: string; name: string }): UserActor {
   return {
     kind: 'user',
     role: 'support',
-    isSupport: true,
+    isPlatformOperator: false,
     isExternal: false,
     lang: 'en',
     ...args,
@@ -69,7 +69,7 @@ describe('lifecycle.returnToQueue', () => {
     const result = await lifecycle.returnToQueue({
       ticketId,
       partnerId: 'p_a',
-      actor: userActor({ id: 'u_supp', partnerId: 'p_a', name: 'Support' }),
+      actor: userActor({ userId: 'u_supp', partnerId: 'p_a', name: 'Support' }),
       previousSupportId: 'u_supp',
       systemMessageText: 'Support returned ticket to queue',
     });
@@ -135,7 +135,7 @@ describe('lifecycle.returnToQueue', () => {
     const result = await lifecycle.returnToQueue({
       ticketId,
       partnerId: 'p_a',
-      actor: userActor({ id: 'u_supp', partnerId: 'p_a', name: 'Support' }),
+      actor: userActor({ userId: 'u_supp', partnerId: 'p_a', name: 'Support' }),
       previousSupportId: 'u_supp',
       systemMessageText: 'Support returned ticket to queue',
     });

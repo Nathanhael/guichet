@@ -57,7 +57,7 @@ export async function runEdit(
   if (!msg) return { ok: false, code: 'MESSAGE_NOT_FOUND' };
   if (msg.system) return { ok: false, code: 'CANNOT_MUTATE_SYSTEM' };
   if (msg.deletedAt) return { ok: false, code: 'CANNOT_MUTATE_DELETED' };
-  if (msg.senderId !== args.actor.id) {
+  if (msg.senderId !== args.actor.userId) {
     return { ok: false, code: 'NOT_OWN_MESSAGE' };
   }
   const ageMs = Date.now() - new Date(msg.createdAt).getTime();
@@ -75,7 +75,7 @@ export async function runEdit(
   // Redis-backed repetition guard via port — fail-open on infra error.
   try {
     const repResult = await deps.repetitionGuard.check({
-      senderId: args.actor.id,
+      senderId: args.actor.userId,
       text: guardedText,
     });
     if (!repResult.ok) {

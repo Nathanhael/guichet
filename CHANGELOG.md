@@ -5,7 +5,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Bundle A slice 1 — `services/auth/` foundation** (issue #66) — new consolidated auth module exposing a canonical `Actor`, a 7-capability authorization vocabulary (`tenant_admin`, `platform_admin`, `support_like`, `use_support_workflows`, `manage_tenant`, `export_tickets`, `destructive_admin`), and `socketActor` / `trpcActor` / `actorFactory` builders. JWT payload now carries an `isExternal` claim populated at all 5 mint sites (SSO, dev-login, refresh, switch-partner, enter-partner); tokens missing the claim deserialize to `false` for the rollout window. Express auth middleware and Socket.io `setupJwtMiddleware` read the claim onto `req.user.isExternal` / `socket.data.isExternal`. New boundary suite (`capabilities.test.ts`, `actor.test.ts`, `jwt.test.ts`, `session.boundary.test.ts`). No production socket-handler or tRPC-router callsite changed in this slice — those migrate in slices #68–#71.
+
 ### Changed
+- **`services/ticketLifecycle/` Actor migration** — `types.ts` and `actor.ts` re-export the canonical `Actor` shape from `services/auth`. `UserActor.id` renamed to `userId`, `isSupport` cached field dropped (callers use `isSupportLike(actor.role)`), `isPlatformOperator` added. `services/messageLifecycle/` consumers and a single socket-handler read of `actor.isSupport` updated to the new shape.
 - **Code-review pass batches 9–12 (2026-04-23 → 24)** — four incremental cleanups, no behavioral change; 702 server + 255 client tests green throughout.
   - **Batch 9 — perf** (`fc285c3`) — hot-path RTT shaves across tRPC query paths; unlocked index on stats range queries.
   - **Batch 10 — error sanitization + dead code** (`01308f7`) — tRPC errors scrubbed of internal details (messages, stack traces) before leaving the server; dead exports removed across routers.

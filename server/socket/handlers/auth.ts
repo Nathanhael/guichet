@@ -151,7 +151,7 @@ export function setupJwtMiddleware(io: Server): void {
       }
 
       const { payload: decoded } = await jwtVerify(token, jwtSecret, { algorithms: ['HS256'] }) as {
-        payload: { userId: string; role: string; partnerId?: string; jti?: string; iat?: number; exp?: number; isPlatformOperator?: boolean };
+        payload: { userId: string; role: string; partnerId?: string; jti?: string; iat?: number; exp?: number; isPlatformOperator?: boolean; isExternal?: boolean };
       };
 
       const revoked = await isRevoked({ userId: decoded.userId, jti: decoded.jti, iat: decoded.iat });
@@ -163,6 +163,9 @@ export function setupJwtMiddleware(io: Server): void {
       socket.data.authedUserId = decoded.userId;
       socket.data.authedPartnerId = decoded.partnerId; // H-8: store JWT partnerId for validation
       socket.data.authedIsPlatformOperator = !!decoded.isPlatformOperator;
+      // isExternal is the source of truth for B2B-guest gating across socket events.
+      // Sourced from JWT at handshake; the identify handler must NOT overwrite this.
+      socket.data.isExternal = !!decoded.isExternal;
       socket.data.tokenExp = decoded.exp; // seconds since epoch
       socket.data.jti = decoded.jti;
       socket.data.iat = decoded.iat;
@@ -247,6 +250,11 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
       socket.data.partnerId = partnerId;
       socket.data.isSupport = isSupport;
       socket.data.lang = userRow.lang || 'en';
+      // Surface isPlatformOperator on socket.data alongside the other identity
+      // fields so socketActor() (services/auth) can read it without falling back
+      // to the handshake-only `authedIsPlatformOperator` key.
+      socket.data.isPlatformOperator =
+        effectiveRole === 'platform_operator' || socket.data.authedIsPlatformOperator === true;
       socket.data.identified = true;
 
       await presenceService.identifyUser(userId, effectiveRole, name, partnerId, isPlatformOp, socket.id);

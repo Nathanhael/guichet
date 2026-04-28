@@ -14,11 +14,11 @@ import { createTicketLifecycle, type UserActor } from './index.js';
 
 let handle: TestDbHandle;
 
-function actor(overrides: Partial<UserActor> & { id: string; partnerId: string; name: string }): UserActor {
+function actor(overrides: Partial<UserActor> & { userId: string; partnerId: string; name: string }): UserActor {
   return {
     kind: 'user',
     role: 'support',
-    isSupport: true,
+    isPlatformOperator: false,
     isExternal: false,
     lang: 'en',
     ...overrides,
@@ -81,7 +81,7 @@ describe('lifecycle.leave', () => {
     const result = await lifecycle.leave({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_supp', partnerId: 'p_a', name: 'Primary u_supp' }),
+      actor: actor({ userId: 'u_supp', partnerId: 'p_a', name: 'Primary u_supp' }),
       clearPrimary: true,
       previousSupportId: 'u_supp',
     });
@@ -142,7 +142,7 @@ describe('lifecycle.leave', () => {
     const result = await lifecycle.leave({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_secondary', partnerId: 'p_a', name: 'Secondary u_secondary' }),
+      actor: actor({ userId: 'u_secondary', partnerId: 'p_a', name: 'Secondary u_secondary' }),
       clearPrimary: false,
     });
 
@@ -172,7 +172,7 @@ describe('lifecycle.leave', () => {
     const result = await lifecycle.leave({
       ticketId,
       partnerId: 'p_a',
-      actor: actor({ id: 'u_outsider', partnerId: 'p_a', name: 'Outsider' }),
+      actor: actor({ userId: 'u_outsider', partnerId: 'p_a', name: 'Outsider' }),
       clearPrimary: false,
     });
 
@@ -194,7 +194,7 @@ describe('lifecycle.leave', () => {
     const result = await lifecycle.leave({
       ticketId,
       partnerId: 'p_b',
-      actor: actor({ id: 'u_primary', partnerId: 'p_b', name: 'Primary' }),
+      actor: actor({ userId: 'u_primary', partnerId: 'p_b', name: 'Primary' }),
       clearPrimary: false,
     });
 
@@ -240,7 +240,7 @@ describe('lifecycle.leave', () => {
       lifecycle.leave({
         ticketId,
         partnerId: 'p_a',
-        actor: actor({ id: 'u_ghost_in_participants_only', partnerId: 'p_a', name: 'Ghost' }),
+        actor: actor({ userId: 'u_ghost_in_participants_only', partnerId: 'p_a', name: 'Ghost' }),
         clearPrimary: false,
       }),
     ).rejects.toThrow();
