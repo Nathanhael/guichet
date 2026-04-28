@@ -139,3 +139,13 @@ describe('flipIsExternal — revocation cascade', () => {
     expect(revokeMock).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('flipIsExternal — error modes', () => {
+  it('throws when the userId does not exist', async () => {
+    const revokeMock = vi.fn().mockResolvedValue(0);
+    const flip = createFlipIsExternal({ db: handle.db, revokeUserSessions: revokeMock });
+
+    await expect(flip('u-nonexistent', true)).rejects.toThrow(/not found/i);
+    expect(revokeMock).not.toHaveBeenCalled();
+  });
+});
