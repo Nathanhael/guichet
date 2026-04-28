@@ -188,8 +188,8 @@ const PARTNER_USERS: SeedUser[] = [
   // lucas/sophie/qa no longer lose their support_id mid-test.
   { id: 'support_vm',     name: 'ViewModes Support', email: 'support_vm@acme.test', lang: 'en', role: 'support', departments: ['DSC', 'FOT', 'TEC'] },
   // Azure B2B guest admin fixture — same admin permissions as Emma, but
-  // `users.isExternal = true` trips `destructiveAdminProcedure` and the UI
-  // visible-disable treatment. Used by guest-admin-visible-disable.spec.ts.
+  // `users.isExternal = true` trips the `destructive_admin` capability gate
+  // and the UI visible-disable treatment. Used by guest-admin-visible-disable.spec.ts.
   { id: 'admin_guest',    name: 'Gina Guest',     email: 'gina@external.test',   lang: 'en', role: 'admin',   departments: [], isExternal: true },
 ];
 

@@ -107,72 +107,9 @@ export const featureGate = (feature: DisabledFeature) =>
     return next();
   });
 
-/**
- * Blocks Azure B2B guest users (`users.isExternal = true`) from destructive
- * admin mutations. Guests keep read access to admin panels but cannot touch
- * secrets, grant/revoke access, or mutate tenant structure.
- *
- * Platform operators always bypass: they are never marked as external by
- * definition (SSO callback only sets isExternal from Azure B2B claims, and
- * platform operators authenticate via our staff SSO path with `acct=member`).
- *
- * Reads the `isExternal` flag from the JWT claim on `ctx.user`. The claim is
- * stamped at every mint site (slice #66) and refreshed atomically with any
- * DB-side flag flip via `flipIsExternal` (slice #67), which revokes every
- * pre-flip session + refresh-token family — so no stale-token path can use a
- * pre-flip claim to evade the gate. No DB lookup needed.
- *
- * Applied via `destructiveAdminProcedure` for `adminProcedure`-based routers,
- * or composed manually for `partnerAdminProcedure`-based routers (e.g.
- * webhook router's `gatedPartnerAdmin`).
- */
-export const blockExternalUsers = t.middleware(({ ctx, next }) => {
-  if (!ctx.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
-  }
-  // Platform operators are never guests by definition.
-  if (isPlatformAdmin(ctx.user.isPlatformOperator)) {
-    return next();
-  }
-  if (ctx.user.isExternal) {
-    throw new TRPCError({
-      code: 'FORBIDDEN',
-      message: 'This action is not available to external guest users.',
-    });
-  }
-  return next();
-});
-
-/**
- * Admin procedure with external-guest block. Three-way dichotomy for admin
- * routes against B2B guests:
- *
- * - `destructiveAdminProcedure` — admin **mutations** a guest may not perform
- *   (secrets, grant/revoke access, tenant-structure changes).
- * - `internalAdminReadProcedure` — admin **reads** that expose internal-only
- *   PII a guest may not see (e.g. the internal admin roster).
- * - Plain `adminProcedure` — admin reads safe for guests (the default; covers
- *   the majority of routes).
- *
- * Both gated procedures share the `blockExternalUsers` middleware. Operator
- * bypass is handled inside the middleware.
- */
-export const destructiveAdminProcedure = adminProcedure.use(blockExternalUsers);
-
-/**
- * Admin read procedure that hides internal-only PII from B2B guest viewers.
- * Use for any admin **read** endpoint whose result set would leak the identity
- * or contact details of internal staff to a guest partner organization.
- *
- * Sibling of `destructiveAdminProcedure`; same `blockExternalUsers` gate,
- * different intent: this one protects what guests *see*, not what they *do*.
- */
-export const internalAdminReadProcedure = adminProcedure.use(blockExternalUsers);
-
-/**
- * Partner-scoped variant of `internalAdminReadProcedure`. Use when the
- * endpoint needs both the guest gate AND a guaranteed non-null `partnerId`
- * in `ctx.user.partnerId` (i.e. partner-scoped reads that leak internal
- * staff identity — e.g. audit-log queries that join on `users.name`).
- */
-export const partnerInternalAdminReadProcedure = partnerAdminProcedure.use(blockExternalUsers);
+// B2B-guest gating moved into `services/auth/capabilities.ts` (`destructive_admin`
+// rule) in Bundle A slice 6 (issue #71). Handlers now resolve the gate inline
+// via `trpcActor(ctx, { capability: 'destructive_admin' })` from
+// `services/auth/index.js`. Single source of truth for the rule lives next to
+// the rest of the capability vocabulary; per-call DB lookups are gone (the
+// flag travels on the JWT claim, refreshed atomically by `flipIsExternal`).
