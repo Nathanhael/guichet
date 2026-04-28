@@ -7,7 +7,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { notFound } from '../../utils/trpcErrors.js';
 import { validateWebhookUrl } from '../../services/webhookDispatch.js';
 import { encrypt } from '../../services/encryption.js';
-import { trpcActor, assertCan } from '../../services/auth/index.js';
+import { trpcActor } from '../../services/auth/index.js';
 
 const WEBHOOK_EVENTS = [
   'ticket.created',
@@ -67,8 +67,7 @@ export const webhookRouter = router({
       description: z.string().max(200).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx);
-      assertCan(actor, 'destructive_admin');
+      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
       // SSRF protection: validate URL before registering
       await validateWebhookUrl(input.url);
@@ -103,8 +102,7 @@ export const webhookRouter = router({
       active: z.boolean().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx);
-      assertCan(actor, 'destructive_admin');
+      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
       await verifyWebhookOwnership(input.id, actor.partnerId);
 
@@ -127,8 +125,7 @@ export const webhookRouter = router({
   regenerateSecret: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx);
-      assertCan(actor, 'destructive_admin');
+      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
       await verifyWebhookOwnership(input.id, actor.partnerId);
 
@@ -144,8 +141,7 @@ export const webhookRouter = router({
   delete: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx);
-      assertCan(actor, 'destructive_admin');
+      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
       await db
         .delete(webhooks)
@@ -189,8 +185,7 @@ export const webhookRouter = router({
   test: gatedPartnerAdmin
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const actor = trpcActor(ctx);
-      assertCan(actor, 'destructive_admin');
+      const actor = trpcActor(ctx, { capability: 'destructive_admin' });
 
       // Fetch the specific webhook (verifies ownership and gets secret/url)
       const rows = await db
