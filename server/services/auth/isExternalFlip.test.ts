@@ -98,3 +98,44 @@ describe('flipIsExternal — idempotent no-flip', () => {
     expect(auditRows).toHaveLength(0);
   });
 });
+
+describe('flipIsExternal — revocation cascade', () => {
+  it('calls revokeUserSessions exactly once with the userId on actual flip', async () => {
+    await handle.db.insert(users).values({
+      id: 'u-cascade',
+      email: 'cascade@x.test',
+      name: 'Cascade',
+      isExternal: false,
+    });
+
+    const revokeMock = vi.fn().mockResolvedValue(0);
+    const flip = createFlipIsExternal({ db: handle.db, revokeUserSessions: revokeMock });
+
+    await flip('u-cascade', true);
+
+    expect(revokeMock).toHaveBeenCalledTimes(1);
+    expect(revokeMock).toHaveBeenCalledWith('u-cascade');
+  });
+
+  it('still returns flipped=true and persists the UPDATE when revoke throws (DB write is the source of truth)', async () => {
+    await handle.db.insert(users).values({
+      id: 'u-cascade-fail',
+      email: 'cascadefail@x.test',
+      name: 'Cascade Fail',
+      isExternal: false,
+    });
+
+    const revokeMock = vi.fn().mockRejectedValue(new Error('Redis down'));
+    const flip = createFlipIsExternal({ db: handle.db, revokeUserSessions: revokeMock });
+
+    const result = await flip('u-cascade-fail', true);
+
+    expect(result.flipped).toBe(true);
+    const [row] = await handle.db
+      .select({ isExternal: users.isExternal })
+      .from(users)
+      .where(eq(users.id, 'u-cascade-fail'));
+    expect(row.isExternal).toBe(true);
+    expect(revokeMock).toHaveBeenCalledTimes(1);
+  });
+});
