@@ -188,9 +188,10 @@ the Guichet user as external.
   - **Internal-only PII reads** — `internalAdminReadProcedure` (and the partner-scoped variant `partnerInternalAdminReadProcedure`, which preserves the non-null `partnerId` guarantee) throw FORBIDDEN for the same callers. Applied to admin reads whose result set would leak the identity or contact details of internal staff to a guest partner organization. Currently: `partner.listAdmins` (admin roster), `partner.audit.getAuditLog` and `getForTicket` (actor `users.name` join leaks platform-operator identities).
   - Plain `adminProcedure` covers the default case: admin reads safe for guests.
 - **UI signal**: a brutalist `GUEST` badge renders next to guest names in `UserMenu`, `AdminTeam`, and the SupportView team panel. Driven by `users.isExternal` exposed via `trpc.user.me` and batch-looked-up in `trpc.status.getTeamStatus`.
-- Platform operators are never external by definition (staff authenticate via our tenant as members, `acct !== 1`). The middleware short-circuits before its DB lookup for operators.
+- Platform operators are never external by definition (staff authenticate via our tenant as members, `acct !== 1`). The middleware short-circuits for operators regardless of the JWT claim.
+- The middleware reads the `isExternal` flag from the JWT claim on `ctx.user` (slice #66 stamps it at every mint site). Pre-flip tokens cannot evade the gate because slice #67 makes every flag flip atomically revoke the user's sessions + refresh-token families before the next request can land.
 
-SSO callback wiring lives in `server/routes/sso.ts`; guard middleware in `server/trpc/trpc.ts` (`blockExternalUsers`).
+SSO callback wiring lives in `server/routes/sso.ts`; guard middleware in `server/trpc/trpc.ts` (`blockExternalUsers`); JWT-flip cascade in `server/services/auth/isExternalFlip.ts`.
 
 ## Current Implementation Rules
 
