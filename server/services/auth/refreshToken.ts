@@ -1,10 +1,10 @@
 import crypto from 'crypto';
 import { eq, and, isNull, lt, sql } from 'drizzle-orm';
-import { db } from '../db.js';
-import { refreshTokens } from '../db/schema.js';
-import config from '../config.js';
+import { db } from '../../db.js';
+import { refreshTokens } from '../../db/schema.js';
+import config from '../../config.js';
 import { parseExpiryToSeconds } from './authSession.js';
-import logger from '../utils/logger.js';
+import logger from '../../utils/logger.js';
 
 function hashToken(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');

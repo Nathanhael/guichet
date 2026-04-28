@@ -12,13 +12,13 @@ import { describe, it, expect } from 'vitest';
 describe('Refresh Token Infrastructure', () => {
   describe('config.ts', () => {
     it('exports ACCESS_TOKEN_EXPIRY with default 15m', async () => {
-      const { default: config } = await import('../config.js');
+      const { default: config } = await import('../../config.js');
       expect((config as Record<string, unknown>).ACCESS_TOKEN_EXPIRY).toBeDefined();
       expect((config as Record<string, unknown>).ACCESS_TOKEN_EXPIRY).toBe('15m');
     });
 
     it('exports REFRESH_TOKEN_EXPIRY with default 7d', async () => {
-      const { default: config } = await import('../config.js');
+      const { default: config } = await import('../../config.js');
       expect((config as Record<string, unknown>).REFRESH_TOKEN_EXPIRY).toBeDefined();
       expect((config as Record<string, unknown>).REFRESH_TOKEN_EXPIRY).toBe('7d');
     });
@@ -26,12 +26,12 @@ describe('Refresh Token Infrastructure', () => {
 
   describe('db/schema.ts', () => {
     it('exports refreshTokens table', async () => {
-      const schema = await import('../db/schema.js');
+      const schema = await import('../../db/schema.js');
       expect(schema.refreshTokens).toBeDefined();
     });
 
     it('refreshTokens table has tokenHash column', async () => {
-      const schema = await import('../db/schema.js');
+      const schema = await import('../../db/schema.js');
       const table = schema.refreshTokens;
       const { getTableColumns } = await import('drizzle-orm');
       const cols = getTableColumns(table);
@@ -39,7 +39,7 @@ describe('Refresh Token Infrastructure', () => {
     });
 
     it('refreshTokens table has family column', async () => {
-      const schema = await import('../db/schema.js');
+      const schema = await import('../../db/schema.js');
       const table = schema.refreshTokens;
       const { getTableColumns } = await import('drizzle-orm');
       const cols = getTableColumns(table);
@@ -47,7 +47,7 @@ describe('Refresh Token Infrastructure', () => {
     });
 
     it('refreshTokens table has userId, expiresAt, revokedAt, createdAt columns', async () => {
-      const schema = await import('../db/schema.js');
+      const schema = await import('../../db/schema.js');
       const table = schema.refreshTokens;
       const { getTableColumns } = await import('drizzle-orm');
       const cols = getTableColumns(table);

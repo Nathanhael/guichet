@@ -7,7 +7,7 @@ import config from '../config.js';
 const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 import { UserRole } from '../types/index.js';
 import { isPlatformAdmin } from '../services/roles.js';
-import { isRevoked } from '../services/sessionRevocation.js';
+import { isRevoked } from '../services/auth/index.js';
 
 export const jwtPayloadSchema = z.object({
   userId: z.string(),

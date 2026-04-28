@@ -54,7 +54,7 @@ const {
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
-vi.mock('../db.js', () => ({
+vi.mock('../../db.js', () => ({
   db: {
     execute: dbExecuteMock,
     insert: dbInsertMock,
@@ -63,7 +63,7 @@ vi.mock('../db.js', () => ({
   },
 }));
 
-vi.mock('../db/schema.js', () => ({
+vi.mock('../../db/schema.js', () => ({
   refreshTokens: {
     id: { name: 'id' },
     userId: { name: 'userId' },
@@ -87,7 +87,7 @@ vi.mock('drizzle-orm', async () => {
   };
 });
 
-vi.mock('../config.js', () => ({
+vi.mock('../../config.js', () => ({
   default: {
     REFRESH_TOKEN_EXPIRY: '7d',
     ACCESS_TOKEN_EXPIRY: '15m',
@@ -105,7 +105,7 @@ vi.mock('./authSession.js', () => ({
   }),
 }));
 
-vi.mock('../utils/logger.js', () => ({
+vi.mock('../../utils/logger.js', () => ({
   default: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
 }));
 
@@ -117,7 +117,7 @@ import {
   revokeFamily,
   revokeAllUserRefreshTokens,
 } from './refreshToken.js';
-import logger from '../utils/logger.js';
+import logger from '../../utils/logger.js';
 import crypto from 'crypto';
 
 function sha256(s: string): string {

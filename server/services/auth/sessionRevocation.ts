@@ -1,5 +1,5 @@
-import { getRedisClients } from '../utils/redis.js';
-import logger from '../utils/logger.js';
+import { getRedisClients } from '../../utils/redis.js';
+import logger from '../../utils/logger.js';
 import { revokeAllUserRefreshTokens } from './refreshToken.js';
 
 const REVOKED_TOKEN_PREFIX = 'auth:revoked:jti:';

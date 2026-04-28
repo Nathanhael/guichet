@@ -17,15 +17,15 @@ import type * as schema from '../../db/schema.js';
 export type LifecycleDb = PgDatabase<any, typeof schema, any>;
 
 /**
- * Identity contract for every lifecycle call. Re-exported from the canonical
+ * Identity contract for every lifecycle call. Imported from the canonical
  * `services/auth` module — the lifecycle does not maintain a parallel Actor
- * definition. The lifecycle's `socketActor()` (kept here as a non-null wrapper
- * to preserve socket-handler call signatures during migration) constructs
- * actors of this shape.
+ * definition. Bundle A slice 7 (#72) dropped the re-export shim that this
+ * file used to expose; downstream files now import Actor types straight from
+ * `services/auth/types.js` (or from the lifecycle barrel, which re-routes
+ * to `services/auth/types.js` directly via deep import for test-mocking
+ * reasons documented at the barrel).
  */
-import type { Actor, UserActor, SystemActor } from '../auth/types.js';
-export type { Actor, UserActor, SystemActor };
-export { isUserActor } from '../auth/types.js';
+import type { Actor, UserActor } from '../auth/types.js';
 
 /**
  * Discriminated rejection codes. New ops add new codes; the type system

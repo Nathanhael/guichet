@@ -1,5 +1,5 @@
 import { db } from '../../db.js';
-import { revokeUserSessions } from '../sessionRevocation.js';
+import { revokeUserSessions } from './sessionRevocation.js';
 import { createFlipIsExternal } from './isExternalFlip.js';
 
 export type {
@@ -18,6 +18,37 @@ export { actorFactory, trpcActor, socketActor } from './actor.js';
 
 export type { FlipDeps, FlipResult } from './isExternalFlip.js';
 export { createFlipIsExternal } from './isExternalFlip.js';
+
+// Session lifecycle — folded into services/auth/ in Bundle A slice 7 (#72).
+// JWT mint + cookie helpers, refresh-token rotation, and the Redis-backed
+// session-revocation API all live here now. Importers should pull from this
+// barrel rather than reaching for deep paths.
+export {
+  buildAuthResponse,
+  buildAuthToken,
+  setAuthCookie,
+  clearAuthCookie,
+  listUserMemberships,
+  getEnterPartnerContext,
+  parseExpiryToSeconds,
+} from './authSession.js';
+export type { SessionMembership } from './authSession.js';
+
+export {
+  createRefreshToken,
+  rotateRefreshToken,
+  revokeFamily,
+  revokeAllUserRefreshTokens,
+  cleanupExpiredTokens,
+} from './refreshToken.js';
+
+export {
+  REVOCATION_CHANNEL,
+  revokeToken,
+  revokeUserSessions,
+  isRevoked,
+} from './sessionRevocation.js';
+export type { RevocationEvent, RevocationPayload } from './sessionRevocation.js';
 
 /**
  * Production-bound `flipIsExternal`. Closes the staleness window when a

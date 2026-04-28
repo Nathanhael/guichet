@@ -12,7 +12,7 @@ import { findActiveTicketsForAgent, findActiveTicketsForSupport } from '../../se
 import { broadcastAgentStatus } from '../../services/businessHours.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../../services/roles.js';
 import * as statusTracking from '../../services/statusTracking.js';
-import { isRevoked } from '../../services/sessionRevocation.js';
+import { isRevoked } from '../../services/auth/sessionRevocation.js';
 import { UserRole } from '../../types/index.js';
 import { type HandlerContext } from './types.js';
 
@@ -94,7 +94,7 @@ export function setupRevocationPubSub(io: Server): void {
   // 5-minute polling window (REVOCATION_CHECK_INTERVAL_MS).
   const { subClient } = getRedisClients();
   if (subClient) {
-    import('../../services/sessionRevocation.js').then(({ REVOCATION_CHANNEL }) => {
+    import('../../services/auth/sessionRevocation.js').then(({ REVOCATION_CHANNEL }) => {
       subClient.subscribe(REVOCATION_CHANNEL, (message: string) => {
         try {
           const event = JSON.parse(message) as { type: string; jti?: string; userId?: string; revokedAfter?: number };

@@ -17,7 +17,7 @@ vi.mock('../utils/logger.js', () => ({
   },
 }));
 
-vi.mock('../services/sessionRevocation.js', () => ({
+vi.mock('../services/auth/index.js', () => ({
   isRevoked: isRevokedMock,
 }));
 

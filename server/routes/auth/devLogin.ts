@@ -12,8 +12,8 @@ import {
   listUserMemberships,
   setAuthCookie,
   parseExpiryToSeconds,
-} from '../../services/authSession.js';
-import { createRefreshToken } from '../../services/refreshToken.js';
+  createRefreshToken,
+} from '../../services/auth/index.js';
 import { setRefreshCookie } from './rateLimit.js';
 
 /**

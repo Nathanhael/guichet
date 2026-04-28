@@ -2,9 +2,9 @@ import { SignJWT } from 'jose';
 import crypto from 'crypto';
 import type { Response } from 'express';
 import { eq, and, isNull } from 'drizzle-orm';
-import { db } from '../db.js';
-import { memberships, partners, users } from '../db/schema.js';
-import config from '../config.js';
+import { db } from '../../db.js';
+import { memberships, partners, users } from '../../db/schema.js';
+import config from '../../config.js';
 
 const jwtSecret = new TextEncoder().encode(config.JWT_SECRET);
 

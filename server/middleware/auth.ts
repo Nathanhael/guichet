@@ -7,7 +7,7 @@ import { UserRole } from '../types/index.js';
 import { jwtPayloadSchema } from '../trpc/context.js';
 import logger from '../utils/logger.js';
 import { canManageTenant, canUseSupportWorkflows, isPlatformAdmin } from '../services/roles.js';
-import { isRevoked } from '../services/sessionRevocation.js';
+import { isRevoked } from '../services/auth/index.js';
 
 export interface AuthRequest extends Request {
   user?: {

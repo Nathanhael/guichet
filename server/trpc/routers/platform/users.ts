@@ -5,7 +5,7 @@ import { users, memberships, partners, auditLog } from '../../../db/schema.js';
 import { eq, desc, sql, isNull, and, inArray } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { randomUUID } from 'crypto';
-import { revokeUserSessions } from '../../../services/sessionRevocation.js';
+import { revokeUserSessions } from '../../../services/auth/index.js';
 import logger from '../../../utils/logger.js';
 import { wrapError } from '../../../utils/trpcErrors.js';
 
