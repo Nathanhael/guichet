@@ -103,6 +103,7 @@ function makeCaller(overrides: Partial<{
   partnerId: string | null;
   role: string;
   isPlatformOperator: boolean;
+  isExternal: boolean;
 }> = {}) {
   return partnerAuditRouter.createCaller({
     user: {
@@ -110,20 +111,10 @@ function makeCaller(overrides: Partial<{
       partnerId: overrides.partnerId === undefined ? 'p-tenant-a' : overrides.partnerId,
       role: (overrides.role ?? 'admin') as 'admin',
       isPlatformOperator: overrides.isPlatformOperator ?? false,
+      isExternal: overrides.isExternal ?? false,
       departments: [],
     },
   } as unknown as CallerCtx);
-}
-
-/** First select() call: blockExternalUsers — .from(users).where(...).limit(1) */
-function mockIsExternalLookup(isExternal: boolean) {
-  dbSelectMock.mockImplementationOnce(() => ({
-    from: () => ({
-      where: () => ({
-        limit: () => Promise.resolve([{ isExternal }]),
-      }),
-    }),
-  }));
 }
 
 /** Audit query: .from(auditLog).leftJoin(...).where(...).orderBy(...).limit(...) */
@@ -149,10 +140,10 @@ describe('partner.audit.getAuditLog — guest gating', () => {
   });
 
   it('returns audit rows for an internal admin caller (isExternal=false)', async () => {
-    mockIsExternalLookup(false);
+    // Slice #71: blockExternalUsers reads ctx.user.isExternal directly — no DB lookup.
     mockAuditQuery([ROW]);
 
-    const caller = makeCaller({ id: 'caller-internal', role: 'admin' });
+    const caller = makeCaller({ id: 'caller-internal', role: 'admin', isExternal: false });
     const result = await caller.getAuditLog({ limit: 50 });
 
     expect(result.items).toEqual([ROW]);
@@ -172,12 +163,11 @@ describe('partner.audit.getAuditLog — guest gating', () => {
   });
 
   it('throws FORBIDDEN for a B2B guest admin caller (isExternal=true)', async () => {
-    mockIsExternalLookup(true);
-
     const caller = makeCaller({
       id: 'caller-guest',
       role: 'admin',
       isPlatformOperator: false,
+      isExternal: true,
     });
 
     await expect(caller.getAuditLog({ limit: 50 })).rejects.toMatchObject({ code: 'FORBIDDEN' });
@@ -190,10 +180,9 @@ describe('partner.audit.getForTicket — guest gating', () => {
   });
 
   it('returns ticket audit rows for an internal admin caller', async () => {
-    mockIsExternalLookup(false);
     mockAuditQuery([ROW]);
 
-    const caller = makeCaller({ id: 'caller-internal', role: 'admin' });
+    const caller = makeCaller({ id: 'caller-internal', role: 'admin', isExternal: false });
     const result = await caller.getForTicket({ ticketId: 't-1', limit: 100 });
 
     expect(result).toEqual([ROW]);
@@ -213,12 +202,11 @@ describe('partner.audit.getForTicket — guest gating', () => {
   });
 
   it('throws FORBIDDEN for a B2B guest admin caller', async () => {
-    mockIsExternalLookup(true);
-
     const caller = makeCaller({
       id: 'caller-guest',
       role: 'admin',
       isPlatformOperator: false,
+      isExternal: true,
     });
 
     await expect(

@@ -19,9 +19,10 @@ const {
   const limitMock = vi.fn();
 
   dbSelectMock.mockReturnValue({ from: fromMock });
-  // fromMock supports both chain shapes used in this router:
-  //   - audit query: from → leftJoin → where → orderBy → limit
-  //   - blockExternalUsers middleware: from → where → limit (single .limit(1))
+  // Audit query chain: from → leftJoin → where → orderBy → limit. The
+  // blockExternalUsers middleware no longer hits the DB after slice #71 — it
+  // reads ctx.user.isExternal directly — so the legacy `from → where → limit`
+  // single-limit shape is intentionally absent here.
   fromMock.mockReturnValue({ leftJoin: leftJoinMock, where: whereMock });
   leftJoinMock.mockReturnValue({ where: whereMock });
   // whereMock returns both next steps so isExternal lookup can call .limit()
