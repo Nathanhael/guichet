@@ -2,7 +2,7 @@ import { Socket } from 'socket.io';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
-import { requirePartnerScope, requirePartnerScopeWith } from '../partnerScope.js';
+import { requireActorTicketScope, requireActorTicketScopeWith } from '../partnerScope.js';
 import { findTicketForMessage } from '../../services/ticketQueries.js';
 import {
   findTicketMessagesPaginated,
@@ -57,7 +57,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId, cursor } = parsed;
 
     try {
-      const ticket = await requirePartnerScope(socket, ticketId);
+      const actor = socketActor(socket);
+      if (!actor) return;
+      const ticket = await requireActorTicketScope(socket, actor, ticketId);
       if (!ticket) return;
 
       const { messages: msgRows, hasMore, nextCursor } = await findTicketMessagesPaginated(ticketId, {
@@ -85,18 +87,13 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId, text, mediaUrl, attachments, whisper, replyToId, localId } = parsed;
     socketioEventsTotal.inc({ event: 'message:send' });
     try {
-      const senderId = socket.data.userId;
-      if (!senderId) return socket.emit('error', { message: 'Not authenticated' });
-      const partnerId = socket.data.partnerId as string | undefined;
-      if (!partnerId) return;
+      const actor = socketActor(socket);
+      if (!actor) return;
 
       // Partner-scope guard for legacy "Not authorized" UX + agentLang
       // (used for cross-lang metric + prewarm gating).
-      const ticket = await requirePartnerScopeWith(socket, ticketId, findTicketForMessage);
+      const ticket = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketForMessage);
       if (!ticket || ticket.status === 'closed') return;
-
-      const actor = socketActor(socket);
-      if (!actor) return;
 
       // Cross-lang metric: emit when a support agent sends in a different
       // language than the ticket's agentLang. Pre-flight observability.
@@ -121,7 +118,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
       const result = await ctx.messageLifecycle.send({
         ticketId,
-        partnerId,
+        partnerId: actor.partnerId,
         actor,
         text,
         mediaUrl,
@@ -162,8 +159,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     if (!parsed) return;
     const { ticketId, messageId } = parsed;
     try {
+      const actor = socketActor(socket);
+      if (!actor) return;
       // Tenant isolation: verify ticket belongs to caller's partner
-      const ticket = await requirePartnerScope(socket, ticketId);
+      const ticket = await requireActorTicketScope(socket, actor, ticketId);
       if (!ticket) return;
 
       // Only update messages that belong to this ticket
@@ -179,8 +178,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     if (!parsed) return;
     const { ticketId, messageIds } = parsed;
     try {
+      const actor = socketActor(socket);
+      if (!actor) return;
       // Tenant isolation: verify ticket belongs to caller's partner
-      const ticket = await requirePartnerScope(socket, ticketId);
+      const ticket = await requireActorTicketScope(socket, actor, ticketId);
       if (!ticket) return;
 
       // Limit array length to prevent DoS
@@ -205,23 +206,18 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId, messageId, text: newText } = parsed;
     socketioEventsTotal.inc({ event: 'message:edit' });
     try {
-      const senderId = socket.data.userId;
-      if (!senderId) return;
-      const partnerId = socket.data.partnerId as string | undefined;
-      if (!partnerId) return;
+      const actor = socketActor(socket);
+      if (!actor) return;
 
       // Partner-scope guard before the lifecycle — preserves the legacy
       // "Not authorized" wording on cross-tenant access. The lifecycle
       // would also refuse with TICKET_NOT_FOUND.
-      const partnerCheck = await requirePartnerScope(socket, ticketId);
+      const partnerCheck = await requireActorTicketScope(socket, actor, ticketId);
       if (!partnerCheck) return;
-
-      const actor = socketActor(socket);
-      if (!actor) return;
 
       const result = await ctx.messageLifecycle.edit({
         ticketId,
-        partnerId,
+        partnerId: actor.partnerId,
         messageId,
         actor,
         newText,
@@ -259,20 +255,15 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId, messageId } = parsed;
     socketioEventsTotal.inc({ event: 'message:delete' });
     try {
-      const senderId = socket.data.userId;
-      if (!senderId) return;
-      const partnerId = socket.data.partnerId as string | undefined;
-      if (!partnerId) return;
-
-      const partnerCheck = await requirePartnerScope(socket, ticketId);
-      if (!partnerCheck) return;
-
       const actor = socketActor(socket);
       if (!actor) return;
 
+      const partnerCheck = await requireActorTicketScope(socket, actor, ticketId);
+      if (!partnerCheck) return;
+
       const result = await ctx.messageLifecycle.delete({
         ticketId,
-        partnerId,
+        partnerId: actor.partnerId,
         messageId,
         actor,
       });
@@ -304,9 +295,9 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { ticketId, messageId, emoji } = parsed;
     socketioEventsTotal.inc({ event: 'message:react' });
     try {
-      const partnerId = socket.data.partnerId as string | undefined;
-      if (!partnerId) {
-        logger.warn({ ticketId }, '[message:react] Missing partnerId');
+      const actor = socketActor(socket);
+      if (!actor) {
+        logger.warn({ ticketId }, '[message:react] Missing actor');
         return;
       }
 
@@ -314,15 +305,12 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       // "Not authorized" wording on cross-tenant access. The lifecycle
       // would also refuse with TICKET_NOT_FOUND, but the handler-level
       // check is the canonical UX (matches `handlers/ticket.ts` close).
-      const partnerCheck = await requirePartnerScope(socket, ticketId);
+      const partnerCheck = await requireActorTicketScope(socket, actor, ticketId);
       if (!partnerCheck) return;
-
-      const actor = socketActor(socket);
-      if (!actor) return;
 
       const result = await ctx.messageLifecycle.react({
         ticketId,
-        partnerId,
+        partnerId: actor.partnerId,
         messageId,
         actor,
         emoji,
