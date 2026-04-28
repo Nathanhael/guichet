@@ -161,9 +161,13 @@ function createMockSocket(data: Record<string, any> = {}) {
   const rooms = new Set<string>();
   const emitted: Array<{ event: string; args: any[] }> = [];
 
+  // Default `identified: true` matches what `socket:identify` sets in
+  // production (`handlers/auth.ts`). `socketActor()` requires this flag,
+  // and tests that explicitly check the unidentified path can still rely
+  // on `requireIdentified` bailing first because they pass no userId.
   const socket: any = {
     id: 'socket-1',
-    data: { ...data },
+    data: { identified: true, ...data },
     rooms,
     handshake: { auth: {} },
     join: vi.fn((room: string) => rooms.add(room)),
