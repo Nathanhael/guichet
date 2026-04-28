@@ -73,3 +73,28 @@ describe('flipIsExternal — actual flip', () => {
     expect(row.isExternal).toBe(false);
   });
 });
+
+describe('flipIsExternal — idempotent no-flip', () => {
+  it('returns flipped=false and writes nothing when nextValue equals current', async () => {
+    await handle.db.insert(users).values({
+      id: 'u-stable',
+      email: 'stable@x.test',
+      name: 'Stable',
+      isExternal: false,
+    });
+
+    const revokeMock = vi.fn().mockResolvedValue(0);
+    const flip = createFlipIsExternal({ db: handle.db, revokeUserSessions: revokeMock });
+
+    const result = await flip('u-stable', false);
+
+    expect(result.flipped).toBe(false);
+    expect(revokeMock).not.toHaveBeenCalled();
+
+    const auditRows = await handle.db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.targetId, 'u-stable'));
+    expect(auditRows).toHaveLength(0);
+  });
+});
