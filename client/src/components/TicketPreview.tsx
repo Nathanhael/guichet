@@ -1,16 +1,16 @@
 import { useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { useT } from '../i18n';
-import MessageBubble from './MessageBubble';
+import Message from './chat/Message';
 import { trpc } from '../utils/trpc';
-import { Ticket, Message } from '../types';
+import { Ticket, Message as MessageType } from '../types';
 import Button from './ui/Button';
 import Pill from './ui/Pill';
 import { getSocket } from '../hooks/useSocket';
 
 interface TicketPreviewProps {
   ticket: Ticket;
-  messages?: Message[];
+  messages?: MessageType[];
   onJoin?: () => void;
   onClose: () => void;
   joinDisabled?: boolean;
@@ -28,7 +28,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
     { enabled: !!ticket.id && (!propMessages || propMessages.length === 0) }
   );
 
-  const messages = (propMessages && propMessages.length > 0) ? propMessages : ((messageQuery.data?.messages as unknown as Message[]) || []);
+  const messages = (propMessages && propMessages.length > 0) ? propMessages : ((messageQuery.data?.messages as unknown as MessageType[]) || []);
 
   useEffect(() => {
     if (messages.length > 0 && scrollRef.current) {
@@ -115,7 +115,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
               const timeDiffPrev = prevMsg ? (new Date(msgTime).getTime() - new Date(prevTime).getTime()) : 0;
               const timeDiffNext = nextMsg ? (new Date(nextTime).getTime() - new Date(msgTime).getTime()) : 0;
               return (
-                <MessageBubble
+                <Message
                   key={msg.id}
                   message={msg}
                   ticketId={ticket.id}
