@@ -48,7 +48,12 @@ test.describe('Platform — Verify Now rate-limit countdown', () => {
 
   test('second click within the window surfaces a live "Retry in Ns" countdown', async ({ page }) => {
     const login = await loginAsDemo(page, 'platform_bart');
-    test.skip(!login.ok, `Dev login failed (status ${login.status}); skipping`);
+    if (!login.ok) {
+      throw new Error(
+        `Fixture user 'platform_bart' failed to log in (status ${login.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoPlatformTab(page, /^health$/i);
 

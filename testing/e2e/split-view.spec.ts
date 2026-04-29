@@ -15,8 +15,13 @@ const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 test.describe('Split View Modes', () => {
   test('support view handles viewport resize without crashing', async ({ page }) => {
     const res = await loginAsDemo(page, 'support_lucas');
-    test.skip(!res.ok, 'support_lucas not seeded');
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'support_lucas' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
 
     // Start wide
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -51,8 +56,13 @@ test.describe('Split View Modes', () => {
 
   test('split-stack auto-falls back when fewer than 2 tabs', async ({ page }) => {
     const res = await loginAsDemo(page, 'support_lucas');
-    test.skip(!res.ok, 'support_lucas not seeded');
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'support_lucas' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
 
     // With 0 tabs, setting split-stack via localStorage should auto-revert
     await page.evaluate(() => {
@@ -70,13 +80,21 @@ test.describe('Split View Modes', () => {
 
   test('queue sidebar collapses and expands', async ({ page }) => {
     const res = await loginAsDemo(page, 'support_lucas');
-    test.skip(!res.ok, 'support_lucas not seeded');
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'support_lucas' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
 
-    // Sidebar should be visible initially
-    const sidebar = page.locator('aside').first();
-    const sidebarVisible = await sidebar.isVisible({ timeout: 3000 }).catch(() => false);
-    test.skip(!sidebarVisible, 'Sidebar not visible');
+    // Sidebar (the queue panel) should be visible initially. Post-Phase-9
+    // the queue is a `<div>` (not `<aside>`); match by the queue header text
+    // across locales.
+    const queueHeader = page
+      .getByText(/^queue$|^file d.attente$|^wachtrij$/i)
+      .first();
+    await expect(queueHeader).toBeVisible({ timeout: 10_000 });
 
     // Collapse via Ctrl+B
     await page.keyboard.press('Control+b');
