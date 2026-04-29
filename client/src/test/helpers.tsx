@@ -54,14 +54,24 @@ export function makeUser(overrides: Partial<GlobalUser> = {}): GlobalUser {
 /* ------------------------------------------------------------------ */
 
 interface MutationMock {
-  mutate: ReturnType<typeof vi.fn>;
+  // Intersection: callable as a typed mutator AND retains vi.fn's mock API
+  // (mockImplementation, toHaveBeenCalledWith, etc).
+  mutate: ((input: unknown) => void) & ReturnType<typeof vi.fn>;
   isPending: boolean;
+  isSuccess?: boolean;
+  data?: unknown;
+  error?: { message: string } | null;
+  reset?: (() => void) & ReturnType<typeof vi.fn>;
 }
 
 export function makeMutationMock(overrides: Partial<MutationMock> = {}): MutationMock {
   return {
-    mutate: vi.fn(),
+    mutate: vi.fn() as MutationMock['mutate'],
     isPending: false,
+    isSuccess: false,
+    data: undefined,
+    error: null,
+    reset: vi.fn() as MutationMock['reset'],
     ...overrides,
   };
 }
