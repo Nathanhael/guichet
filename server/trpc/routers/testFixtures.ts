@@ -28,13 +28,20 @@
  * `partnerId`. The `check-trpc-tenant-isolation.mjs` guard allowlists this
  * file (alongside `support.ts` and `platform/**`).
  *
- * Procedures land in subsequent slice 1 tasks (createTicket, cleanup,
- * resetAgentStatus). This file ships in Task 2 as the skeleton.
+ * Fixture-emitted audit rows use a labeled `audit.test_fixture.*` action
+ * that platform audit views filter out by default — keeps the audit log
+ * readable during E2E runs without breaking the chain hash.
  */
+import crypto from 'node:crypto';
 import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { eq } from 'drizzle-orm';
 import { router, protectedProcedure } from '../trpc.js';
 import config from '../../config.js';
+import { db } from '../../db.js';
+import { auditLog, partners, tickets, users } from '../../db/schema.js';
 import { assertNotProduction } from '../../utils/assertNotProduction.js';
+import logger from '../../utils/logger.js';
 
 assertNotProduction('testFixtures router');
 
@@ -47,8 +54,105 @@ export const fixtureProcedure = protectedProcedure.use(({ next }) => {
   return next();
 });
 
+const createTicketInput = z.object({
+  partnerId: z.string().min(1),
+  agentId: z.string().min(1).default('agent_julie'),
+  departmentId: z.string().min(1).optional(),
+});
+
+interface PartnerDepartment {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export const testFixturesRouter = router({
-  // Procedures land in tasks 3-5: createTicket, cleanup, resetAgentStatus.
+  /**
+   * Insert an open, unassigned ticket directly. Skips lifecycle.create's
+   * production-only preflight (business hours, dup-ticket-per-agent,
+   * agent-role gate) because fixtures stage state, not user behavior.
+   * The ticket is queryable by support immediately.
+   */
+  createTicket: fixtureProcedure
+    .input(createTicketInput)
+    .mutation(async ({ input, ctx }) => {
+      const [partner] = await db
+        .select()
+        .from(partners)
+        .where(eq(partners.id, input.partnerId))
+        .limit(1);
+      if (!partner) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Partner not found: ${input.partnerId}`,
+        });
+      }
+
+      const [agent] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, input.agentId))
+        .limit(1);
+      if (!agent) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Fixture agent not found: ${input.agentId}`,
+        });
+      }
+
+      const partnerDepartments = (partner.departments as PartnerDepartment[] | null) ?? [];
+      const dept = input.departmentId ?? partnerDepartments[0]?.id;
+      if (!dept) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Partner ${input.partnerId} has no departments and no departmentId was provided`,
+        });
+      }
+      if (input.departmentId && !partnerDepartments.some((d) => d.id === input.departmentId)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Department not found on partner: ${input.departmentId}`,
+        });
+      }
+
+      const ticketId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      await db.transaction(async (tx) => {
+        await tx.insert(tickets).values({
+          id: ticketId,
+          partnerId: input.partnerId,
+          dept,
+          agentId: agent.id,
+          agentName: agent.name,
+          agentLang: agent.lang ?? 'en',
+          references: [],
+          status: 'open',
+          participants: [],
+          reopened: false,
+          reopenCount: 0,
+          createdAt: now,
+          updatedAt: now,
+          queueEnteredAt: now,
+        });
+
+        await tx.insert(auditLog).values({
+          partnerId: input.partnerId,
+          action: 'audit.test_fixture.ticket_created',
+          actorId: ctx.user.id,
+          targetType: 'ticket',
+          targetId: ticketId,
+          metadata: { fixtureBy: ctx.user.id },
+        });
+      });
+
+      logger.info(
+        { ticketId, partnerId: input.partnerId, agentId: agent.id, dept, fixtureBy: ctx.user.id },
+        '[testFixtures] Created ticket',
+      );
+
+      return { ticketId };
+    }),
 });
 
 export type TestFixturesRouter = typeof testFixturesRouter;
