@@ -15,15 +15,18 @@ import { loginAsDemo } from './helpers/auth';
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 
 test.describe('Support View', () => {
-  let loginOk = false;
   test.beforeEach(async ({ page }) => {
     const res = await loginAsDemo(page, 'support_lucas');
-    loginOk = !!res.ok;
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'support_lucas' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
   });
 
   test('queue sidebar is visible with tickets', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login API failed — support_lucas may not be seeded');
     // The queue sidebar should show ticket list or sidebar navigation
     const sidebar = page.locator('aside').first();
     const queue = page.getByText(/queue|wachtrij|file d'attente|ticket/i).first();
@@ -53,17 +56,14 @@ test.describe('Support View', () => {
   });
 
   test('archive tab shows closed tickets', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login API failed — support_lucas may not be seeded');
-    // The archive affordance is only rendered for support/admin roles and
-    // the panel contents depend on whether any tickets have been closed. On a
-    // fresh --e2e seed there are no closed tickets, so this test must tolerate
-    // both "tab not visible" (soft-skip) and "tab visible, click, no crash".
+    // The archive affordance renders for support/admin roles. The panel
+    // contents depend on closed-ticket count — even an empty archive should
+    // mount cleanly, so we assert the tab is reachable and produces no error.
     const archiveTab = page.getByText(/^archive$|archieven/i).first();
-    const archiveVisible = await archiveTab.isVisible({ timeout: 3000 }).catch(() => false);
-    test.skip(!archiveVisible, 'Archive tab not visible on SupportView in current seed');
+    await expect(archiveTab).toBeVisible({ timeout: 10_000 });
 
     await archiveTab.click();
-    await page.waitForTimeout(1000);
+    await page.waitForLoadState('networkidle');
 
     // After clicking, assert the app didn't crash and the shell is still there.
     const errorVisible = await page.getByText(/error|crash|oops/i).first().isVisible().catch(() => false);
