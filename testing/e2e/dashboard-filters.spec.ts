@@ -18,7 +18,12 @@ import { loginAsDemo, BASE } from './helpers/auth';
 test.describe('Admin Dashboard — URL-persisted filters', () => {
   test.beforeEach(async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
-    test.skip(!res.ok, 'admin_emma seed not available');
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
     await page.goto(`${BASE}/`);
     await page.waitForLoadState('load');
   });
