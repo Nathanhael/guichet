@@ -3,9 +3,13 @@
  * Tenant-isolation guard: fails CI if any tRPC router outside the
  * allowlist accepts a client-supplied `partnerId` in its input schema.
  *
- * Allowlist: `support.ts` and anything under `platform/`. Platform
- * operators cross tenants only via `platform.*` endpoints or by calling
- * `POST /enter-partner` to mint a fresh JWT with the target partnerId.
+ * Allowlist:
+ *   - `support.ts` (cross-partner read for support workflows)
+ *   - `testFixtures.ts` (E2E fixture API; non-prod only — Bundle D, RFC #82)
+ *   - anything under `platform/` (platform operator surface)
+ *
+ * Platform operators cross tenants only via `platform.*` endpoints or by
+ * calling `POST /enter-partner` to mint a fresh JWT with the target partnerId.
  *
  * Usage: node server/scripts/check-trpc-tenant-isolation.mjs [rootDir]
  *   rootDir defaults to `server/trpc/routers` (resolved relative to cwd).
@@ -29,7 +33,15 @@ function walk(dir) {
 
 function isAllowlisted(relPath) {
   const parts = relPath.split(/[\\/]/);
-  if (parts[parts.length - 1] === 'support.ts') return true;
+  const last = parts[parts.length - 1];
+  if (last === 'support.ts') return true;
+  if (last === 'testFixtures.ts') return true;
+  // testFixtures.boundary.test.ts and other adjacent test files do not need
+  // partnerId in their schemas; the allowlist only kicks in for the router
+  // file itself, but the script walks .ts files broadly so we hit `.test.ts`
+  // and `.boundary.test.ts` too — let those through if they happen to mention
+  // partnerId for fixture-shape inputs.
+  if (last.startsWith('testFixtures.') && last.endsWith('.ts')) return true;
   if (parts[0] === 'platform') return true;
   return false;
 }
