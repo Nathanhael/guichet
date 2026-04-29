@@ -1,33 +1,35 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
+import { assertNotProduction } from './assertNotProduction.js';
 
 describe('assertNotProduction', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+
   afterEach(() => {
-    vi.resetModules();
-    vi.doUnmock('../config.js');
+    if (originalNodeEnv === undefined) {
+      delete process.env.NODE_ENV;
+    } else {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
   });
 
-  it('returns silently when NODE_ENV !== production', async () => {
-    vi.doMock('../config.js', () => ({ default: { NODE_ENV: 'development' } }));
-    const { assertNotProduction } = await import('./assertNotProduction.js');
+  it('returns silently when NODE_ENV !== production', () => {
+    process.env.NODE_ENV = 'development';
     expect(() => assertNotProduction()).not.toThrow();
     expect(() => assertNotProduction('test fixtures')).not.toThrow();
   });
 
-  it('throws when NODE_ENV === production', async () => {
-    vi.doMock('../config.js', () => ({ default: { NODE_ENV: 'production' } }));
-    const { assertNotProduction } = await import('./assertNotProduction.js');
+  it('throws when NODE_ENV === production', () => {
+    process.env.NODE_ENV = 'production';
     expect(() => assertNotProduction()).toThrow(/Production-restricted module/);
   });
 
-  it('includes the supplied reason in the error message', async () => {
-    vi.doMock('../config.js', () => ({ default: { NODE_ENV: 'production' } }));
-    const { assertNotProduction } = await import('./assertNotProduction.js');
+  it('includes the supplied reason in the error message', () => {
+    process.env.NODE_ENV = 'production';
     expect(() => assertNotProduction('test fixtures')).toThrow(/test fixtures/);
   });
 
-  it('default error message names the file as production-restricted', async () => {
-    vi.doMock('../config.js', () => ({ default: { NODE_ENV: 'production' } }));
-    const { assertNotProduction } = await import('./assertNotProduction.js');
+  it('default error message names the file as production-restricted', () => {
+    process.env.NODE_ENV = 'production';
     expect(() => assertNotProduction()).toThrow(/must not be imported when NODE_ENV=production/);
   });
 });
