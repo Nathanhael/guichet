@@ -37,7 +37,6 @@ import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { eq, gte, inArray, and, isNull, sql } from 'drizzle-orm';
 import { router, protectedProcedure } from '../trpc.js';
-import config from '../../config.js';
 import { db } from '../../db.js';
 import { agentStatusLog, auditLog, partners, tickets, users } from '../../db/schema.js';
 import { assertNotProduction } from '../../utils/assertNotProduction.js';
@@ -47,7 +46,10 @@ import logger from '../../utils/logger.js';
 assertNotProduction('testFixtures router');
 
 export const fixtureProcedure = protectedProcedure.use(({ next }) => {
-  if (config.NODE_ENV === 'production') {
+  // Read process.env directly rather than config.NODE_ENV so the prod-only
+  // boundary test can flip NODE_ENV without triggering config.ts's prod
+  // validation cascade (which calls process.exit on missing prod env vars).
+  if (process.env.NODE_ENV === 'production') {
     // NOT_FOUND (not FORBIDDEN) so a misbehaving caller can't fingerprint
     // production by error code.
     throw new TRPCError({ code: 'NOT_FOUND', message: 'Test fixtures unavailable' });
