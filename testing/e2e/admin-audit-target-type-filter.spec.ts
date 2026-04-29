@@ -20,7 +20,12 @@ async function gotoAdminTab(page: Page, label: RegExp): Promise<void> {
 test.describe('Admin — audit log targetType filter', () => {
   test('selecting target type issues a filtered getAuditLog query', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
-    test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoAdminTab(page, /audit log/i);
 
@@ -77,7 +82,12 @@ test.describe('Admin — audit log targetType filter', () => {
 
   test('clicking an audit row opens the metadata drawer with JSON', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
-    test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoAdminTab(page, /audit log/i);
 
