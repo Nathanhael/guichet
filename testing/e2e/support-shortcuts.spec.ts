@@ -11,16 +11,19 @@
  *   - Seeded demo database (support_lucas)
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { test, expect } from './helpers/fixtures';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 
 async function openFirstTicket(page: Page) {
-  const ticketItem = page.locator('aside li, aside button').first();
-  if (await ticketItem.isVisible({ timeout: 5000 }).catch(() => false)) {
+  // data-ticket-row is stamped by QueueTicketRow — distinguishes real ticket rows
+  // from collapsible section headers that the legacy `aside li` selector matched.
+  const ticketItem = page.locator('li[data-ticket-row]').first();
+  if (await ticketItem.isVisible({ timeout: 10000 }).catch(() => false)) {
     await ticketItem.click();
-    await page.waitForTimeout(500);
+    await page.waitForLoadState('networkidle');
     return true;
   }
   return false;
@@ -56,17 +59,34 @@ test.describe('SupportView keyboard shortcuts', () => {
     await expect(palette).toBeHidden();
   });
 
-  test('Ctrl+Enter opens the close-ticket confirmation when a ticket is active', async ({ page }) => {
+  test('Ctrl+Enter opens the close-ticket confirmation when a ticket is active', async ({ page, ticketFixture }) => {
     const result = await loginAsDemo(page, 'support_lucas');
     if (!result.ok) throw new Error(`login failed for support_lucas: ${result.status}`);
 
+    const partnerId = await page.evaluate(() => sessionStorage.getItem('activePartnerId'));
+    if (!partnerId) throw new Error('loginAsDemo did not seed activePartnerId');
+    await ticketFixture.create({ partnerId });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
     const opened = await openFirstTicket(page);
-    test.skip(!opened, 'No tickets in the queue to exercise Ctrl+Enter');
+    if (!opened) throw new Error('Could not open the fixture-created ticket from the queue');
+
+    // The fixture creates an unassigned ticket; Ctrl+Enter close is gated on
+    // the active user being the support assignee, so click Join first.
+    const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
+    if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await joinBtn.click();
+      await page.waitForLoadState('networkidle');
+    }
 
     await page.keyboard.press('Control+Enter');
 
-    // triggerCloseTicket surfaces the shared ConfirmDialog with title "Close ticket?"
-    await expect(page.getByText(/close ticket\?/i)).toBeVisible();
+    // triggerCloseTicket surfaces the shared ConfirmDialog. Title is locale-
+    // dependent (lucas's seed lang is fr), so match against all locales.
+    await expect(
+      page.getByText(/close ticket\?|fermer le ticket|ticket sluiten/i),
+    ).toBeVisible();
   });
 
   test('palette shows always-visible Tier-2 shortcut hints', async ({ page }) => {
