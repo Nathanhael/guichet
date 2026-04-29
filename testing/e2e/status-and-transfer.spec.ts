@@ -1,43 +1,42 @@
 /**
  * E2E: Agent Status Visibility & Department Transfer
  *
- * Tests the StatusPicker component, team capacity badge, My Stats panel,
- * and department transfer menu.
+ * Tests the StatusPicker component, team capacity badge, and department
+ * transfer menu.
  *
- * Prerequisites:
- *   - Server running at E2E_BASE_URL
- *   - Seeded demo database (seed.ts)
+ * Bundle D / RFC #82 migration: replaces 19 fixture-state predicate skips
+ * with hard errors on demo-login failure (per the wiki pattern at
+ * `wiki/patterns/e2e-skip-as-silent-failure.md`) and `ticketFixture.create()`
+ * for the Department Transfer tests that need a ticket in the queue.
  */
 
-import { test, expect } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from './helpers/fixtures';
 import { loginAsDemo } from './helpers/auth';
-
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 
 // ---------------------------------------------------------------------------
 // StatusPicker
 // ---------------------------------------------------------------------------
 
 test.describe('StatusPicker', () => {
-  let loginOk = false;
-
   test.beforeEach(async ({ page }) => {
     const res = await loginAsDemo(page, 'support_lucas');
-    loginOk = !!res.ok;
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'support_lucas' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
   });
 
   test('shows status picker button in nav', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-
     // Phase 9 chrome unification: status quick-toggles live inside UserMenuChip.
     const userMenu = page.locator('button[aria-haspopup="dialog"]').first();
     await expect(userMenu).toBeVisible({ timeout: 10000 });
   });
 
   test('shows 2 status options when opened', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-
     const userMenu = page.locator('button[aria-haspopup="dialog"]').first();
     await expect(userMenu).toBeVisible({ timeout: 10000 });
     await userMenu.click();
@@ -52,8 +51,6 @@ test.describe('StatusPicker', () => {
   });
 
   test('status options each have a colored dot', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-
     const userMenu = page.locator('button[aria-haspopup="dialog"]').first();
     await expect(userMenu).toBeVisible({ timeout: 10000 });
     await userMenu.click();
@@ -65,8 +62,6 @@ test.describe('StatusPicker', () => {
   });
 
   test('changes status on selection', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-
     const userMenu = page.locator('button[aria-haspopup="dialog"]').first();
     await expect(userMenu).toBeVisible({ timeout: 10000 });
     await userMenu.click();
@@ -77,15 +72,12 @@ test.describe('StatusPicker', () => {
     // Position 1 = Away (STATUSES[1] in UserMenuChip.tsx). Position-based
     // selection is locale-stable.
     await statusBtns.nth(1).click();
-    await page.waitForTimeout(500);
 
     // Active button gets the accent-soft background token.
-    await expect(statusBtns.nth(1)).toHaveClass(/accent-soft/);
+    await expect(statusBtns.nth(1)).toHaveClass(/accent-soft/, { timeout: 5000 });
   });
 
   test('persists status across page reload', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-
     const userMenu = page.locator('button[aria-haspopup="dialog"]').first();
     await expect(userMenu).toBeVisible({ timeout: 10000 });
     await userMenu.click();
@@ -93,19 +85,22 @@ test.describe('StatusPicker', () => {
     const dialog = page.getByRole('dialog');
     const statusBtns = dialog.locator('button:has(span.rounded-full.w-2.h-2)');
     await statusBtns.nth(1).click();
-    await page.waitForTimeout(500);
+    await expect(statusBtns.nth(1)).toHaveClass(/accent-soft/, { timeout: 5000 });
 
     // Reload — status restoration happens via socket `status:restored` on reconnect.
     await page.reload();
-    await page.waitForLoadState('load');
-    await page.waitForTimeout(3000);
+    await page.waitForLoadState('networkidle');
 
     // Menu chip should still render cleanly post-reload. The exact restored
     // state depends on Redis presence state and socket timing — we only
     // assert the trigger mounts and no error banner appeared.
     const userMenuAfter = page.locator('button[aria-haspopup="dialog"]').first();
     await expect(userMenuAfter).toBeVisible({ timeout: 10000 });
-    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    const errorVisible = await page
+      .getByText(/error|crash/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
     expect(errorVisible).toBeFalsy();
   });
 });
@@ -115,36 +110,38 @@ test.describe('StatusPicker', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Team Capacity Badge', () => {
-  let loginOk = false;
-
   test.beforeEach(async ({ page }) => {
     const res = await loginAsDemo(page, 'support_lucas');
-    loginOk = !!res.ok;
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'support_lucas' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
   });
 
-  test('shows Team Capacity label in SupportNav when other support online', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-
-    // The capacity badge is conditional on totalOnline > 0, so we check for the
-    // label or the X/Y count badge. The badge renders in SupportNav.
-    // With only one user online the badge may not appear — verify no crash instead.
-    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+  test('SupportNav renders without errors when only one support is online', async ({ page }) => {
+    // The capacity badge is conditional on totalOnline > 0. With one user
+    // online the badge may not appear — assert no crash AND if the badge
+    // shows up, it shows a numeric ratio.
+    const errorVisible = await page
+      .getByText(/error|crash/i)
+      .first()
+      .isVisible()
+      .catch(() => false);
     expect(errorVisible).toBeFalsy();
 
-    // If the badge is present, verify it shows a numeric ratio
     const capacityBadge = page.getByText(/Team Capacity/i).first();
-    const isVisible = await capacityBadge.isVisible().catch(() => false);
-    if (isVisible) {
+    if (await capacityBadge.isVisible().catch(() => false)) {
       await expect(capacityBadge).toBeVisible();
-      // The adjacent count span should exist and contain a slash
       const countSpan = page.locator('span').filter({ hasText: /\d+ \/ \d+/ }).first();
       await expect(countSpan).toBeVisible({ timeout: 5000 });
     }
   });
 
   test('capacity badge appears when two support users are online', async ({ browser }) => {
-    // Use two browser contexts to ensure multiple online support users
+    // Use two browser contexts to ensure multiple online support users.
     const ctx1 = await browser.newContext();
     const ctx2 = await browser.newContext();
     const page1 = await ctx1.newPage();
@@ -154,24 +151,29 @@ test.describe('Team Capacity Badge', () => {
       const res1 = await loginAsDemo(page1, 'support_lucas');
       const res2 = await loginAsDemo(page2, 'support_sophie');
       if (!res1.ok || !res2.ok) {
-        test.skip(true, 'One or more demo logins failed');
-        return;
+        throw new Error(
+          `Demo logins failed: lucas=${res1.status} sophie=${res2.status}. ` +
+            'Check server/seed.ts — both users must be seeded.',
+        );
       }
 
-      await page1.waitForTimeout(3000);
-      await page2.waitForTimeout(3000);
+      await page1.waitForLoadState('networkidle');
+      await page2.waitForLoadState('networkidle');
 
-      // With both online, page1 should show the capacity badge
+      // With both online, page1 should show the capacity badge.
       const capacityLabel = page1.getByText(/Team Capacity/i).first();
-      const badgeVisible = await capacityLabel.isVisible().catch(() => false);
+      const badgeVisible = await capacityLabel.isVisible({ timeout: 5000 }).catch(() => false);
       if (badgeVisible) {
         await expect(capacityLabel).toBeVisible();
-        // Count badge: e.g. "1 / 2" or "2 / 2"
         const countBadge = page1.locator('span').filter({ hasText: /\d+ \/ \d+/ }).first();
         await expect(countBadge).toBeVisible({ timeout: 5000 });
       } else {
-        // Capacity badge is rendered only when totalOnline > 0; confirm no errors
-        const err1 = await page1.getByText(/error|crash/i).first().isVisible().catch(() => false);
+        // Capacity badge is rendered only when totalOnline > 0; confirm no errors.
+        const err1 = await page1
+          .getByText(/error|crash/i)
+          .first()
+          .isVisible()
+          .catch(() => false);
         expect(err1).toBeFalsy();
       }
     } finally {
@@ -182,165 +184,142 @@ test.describe('Team Capacity Badge', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Department Transfer Menu
+// Department Transfer
 // ---------------------------------------------------------------------------
 
 test.describe('Department Transfer', () => {
-  let loginOk = false;
-
-  test.beforeEach(async ({ page }) => {
-    // Use support_jan — member of wavelink partner which has open tickets
+  test.beforeEach(async ({ page, ticketFixture }) => {
     const res = await loginAsDemo(page, 'support_lucas');
-    loginOk = !!res.ok;
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'support_lucas' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+
+    const partnerId = await page.evaluate(() => sessionStorage.getItem('activePartnerId'));
+    if (!partnerId) {
+      throw new Error('loginAsDemo did not seed activePartnerId — partner-membership regression');
+    }
+
+    // Bundle D: stage a fresh open ticket in support_lucas's queue. Without
+    // this, the test depended on whatever ticket the seed left behind, which
+    // got drained by earlier specs and triggered the silent skip pattern.
+    await ticketFixture.create({ partnerId });
+
+    // Reload so the queue refetches and the new ticket lands in the sidebar.
+    // (The fixture's direct-INSERT bypasses the socket emission that production
+    // ticket creates trigger; reload is the cheapest path to a deterministic
+    // queue state.)
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await page.setViewportSize({ width: 1600, height: 900 });
   });
 
   test('Transfer button is visible when a ticket is open', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-    await page.setViewportSize({ width: 1600, height: 900 });
-
-    // Check if queue has tickets
-    const queueEmpty = page.getByText(/queue.empty|0 in.queue/i).first();
-    const isEmpty = await queueEmpty.isVisible({ timeout: 3000 }).catch(() => false);
-    if (isEmpty) {
-      test.skip(true, 'No tickets in queue — seed database with open tickets');
-      return;
-    }
-
-    // Open a ticket from the queue sidebar
-    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow).
+    // Open the fixture-created ticket from the queue sidebar.
+    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow);
     // `cursor-pointer` alone matched collapsible section headers too.
     const ticketItem = page.locator('li[data-ticket-row]').first();
-    const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
-    if (!hasTicket) {
-      test.skip(true, 'No clickable tickets found in queue');
-      return;
-    }
+    await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
-    // Support agent may need to "Join" the ticket first before toolbar appears
-    const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
-    const joinVisible = await joinBtn.isVisible({ timeout: 3000 }).catch(() => false);
-    if (joinVisible) {
-      await joinBtn.click();
-      await page.waitForTimeout(2000);
-    }
-
-    // Transfer button is in the chat toolbar, visible on sm+ screens
-    const transferBtn = page.getByRole('button', { name: /transfer|overdragen|transférer/i }).first();
-    await expect(transferBtn).toBeVisible({ timeout: 10000 });
-  });
-
-  test('transfer menu shows Return to queue and department options', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-    await page.setViewportSize({ width: 1600, height: 900 });
-
-    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow).
-    // `cursor-pointer` alone matched collapsible section headers too.
-    const ticketItem = page.locator('li[data-ticket-row]').first();
-    const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
-    if (!hasTicket) {
-      test.skip(true, 'No tickets in queue');
-      return;
-    }
-    await ticketItem.click();
-    await page.waitForTimeout(1500);
-
-    // Join if needed
+    // Support agent may need to "Join" the ticket first before toolbar appears.
     const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
     if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await joinBtn.click();
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('networkidle');
     }
 
-    const transferBtn = page.getByRole('button', { name: /transfer|overdragen|transférer/i }).first();
-    const transferVisible = await transferBtn.isVisible({ timeout: 10000 }).catch(() => false);
-    if (!transferVisible) {
-      test.skip(true, 'Transfer button not visible');
-      return;
+    // Transfer button is in the chat toolbar, visible on sm+ screens.
+    const transferBtn = page
+      .getByRole('button', { name: /transfer|overdragen|transférer/i })
+      .first();
+    await expect(transferBtn).toBeVisible({ timeout: 10000 });
+  });
+
+  test('transfer menu shows department section header', async ({ page }) => {
+    const ticketItem = page.locator('li[data-ticket-row]').first();
+    await expect(ticketItem).toBeVisible({ timeout: 10000 });
+    await ticketItem.click();
+    await page.waitForLoadState('networkidle');
+
+    const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
+    if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await joinBtn.click();
+      await page.waitForLoadState('networkidle');
     }
+
+    const transferBtn = page
+      .getByRole('button', { name: /transfer|overdragen|transférer/i })
+      .first();
+    await expect(transferBtn).toBeVisible({ timeout: 10000 });
     await transferBtn.click();
-    await page.waitForTimeout(500);
 
     // Phase-9 ChatHeader removed the standalone "Return to queue" item from
     // the Transfer menu — `support:leave` (the X close button) already covers
     // that flow. The menu now opens straight to the "Transfer to department"
-    // section header + dept option list. Assert that header instead.
-    await expect(page.getByText(/transfer to department|overdragen naar afdeling|transférer au département/i).first()).toBeVisible({ timeout: 5000 });
+    // section header + dept option list.
+    await expect(
+      page
+        .getByText(/transfer to department|overdragen naar afdeling|transférer au département/i)
+        .first(),
+    ).toBeVisible({ timeout: 5000 });
   });
 
-  test('transfer menu shows department section header', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-    await page.setViewportSize({ width: 1600, height: 900 });
-
-    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow).
-    // `cursor-pointer` alone matched collapsible section headers too.
+  test('transfer menu shows department options list', async ({ page }) => {
     const ticketItem = page.locator('li[data-ticket-row]').first();
-    const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
-    if (!hasTicket) {
-      test.skip(true, 'No tickets in queue');
-      return;
-    }
+    await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
     const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
     if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await joinBtn.click();
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('networkidle');
     }
 
-    const transferBtn = page.getByRole('button', { name: /transfer|overdragen|transférer/i }).first();
-    const transferVisible = await transferBtn.isVisible({ timeout: 10000 }).catch(() => false);
-    if (!transferVisible) {
-      test.skip(true, 'Transfer button not visible');
-      return;
-    }
+    const transferBtn = page
+      .getByRole('button', { name: /transfer|overdragen|transférer/i })
+      .first();
+    await expect(transferBtn).toBeVisible({ timeout: 10000 });
     await transferBtn.click();
-    await page.waitForTimeout(500);
 
-    // Phase-9 ChatHeader: Transfer menu only renders when `transferDepartments.length > 0`
-    // and opens to the "Transfer to department" section header. The standalone
-    // "Return to queue" entry was removed (support:leave / X covers that flow).
-    const deptHeader = page.getByText(/transfer to department|overdragen naar afdeling|transférer au département/i).first();
+    // Phase-9 ChatHeader: Transfer menu only renders when
+    // `transferDepartments.length > 0` and opens to the "Transfer to department"
+    // section header.
+    const deptHeader = page
+      .getByText(/transfer to department|overdragen naar afdeling|transférer au département/i)
+      .first();
     await expect(deptHeader).toBeVisible({ timeout: 5000 });
   });
 
   test('transfer menu has a note input field', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login failed — user may not be seeded');
-    await page.setViewportSize({ width: 1600, height: 900 });
-
-    // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow).
-    // `cursor-pointer` alone matched collapsible section headers too.
     const ticketItem = page.locator('li[data-ticket-row]').first();
-    const hasTicket = await ticketItem.isVisible({ timeout: 5000 }).catch(() => false);
-    if (!hasTicket) {
-      test.skip(true, 'No tickets in queue');
-      return;
-    }
+    await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
-    await page.waitForTimeout(1500);
+    await page.waitForLoadState('networkidle');
 
     const joinBtn = page.getByRole('button', { name: /join|deelnemen/i }).first();
     if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await joinBtn.click();
-      await page.waitForTimeout(2000);
+      await page.waitForLoadState('networkidle');
     }
 
-    const transferBtn = page.getByRole('button', { name: /transfer|overdragen|transférer/i }).first();
-    const transferVisible = await transferBtn.isVisible({ timeout: 10000 }).catch(() => false);
-    if (!transferVisible) {
-      test.skip(true, 'Transfer button not visible');
-      return;
-    }
+    const transferBtn = page
+      .getByRole('button', { name: /transfer|overdragen|transférer/i })
+      .first();
+    await expect(transferBtn).toBeVisible({ timeout: 10000 });
     await transferBtn.click();
-    await page.waitForTimeout(500);
 
-    // Note input field inside the transfer dropdown
-    const noteInput = page.locator('input[type="text"][placeholder*="context" i], input[type="text"][placeholder*="agent" i], input[type="text"][placeholder*="volgende" i]').first();
-    const inputVisible = await noteInput.isVisible().catch(() => false);
-    expect(inputVisible).toBeTruthy();
+    // Note input field inside the transfer dropdown.
+    const noteInput = page
+      .locator(
+        'input[type="text"][placeholder*="context" i], input[type="text"][placeholder*="agent" i], input[type="text"][placeholder*="volgende" i]',
+      )
+      .first();
+    await expect(noteInput).toBeVisible({ timeout: 5000 });
   });
 });
-
