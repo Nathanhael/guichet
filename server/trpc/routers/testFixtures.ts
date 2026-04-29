@@ -35,12 +35,13 @@
 import crypto from 'node:crypto';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { eq, gte, inArray, and } from 'drizzle-orm';
 import { router, protectedProcedure } from '../trpc.js';
 import config from '../../config.js';
 import { db } from '../../db.js';
-import { auditLog, partners, tickets, users } from '../../db/schema.js';
+import { agentStatusLog, auditLog, partners, tickets, users } from '../../db/schema.js';
 import { assertNotProduction } from '../../utils/assertNotProduction.js';
+import { getRedisClients } from '../../utils/redis.js';
 import logger from '../../utils/logger.js';
 
 assertNotProduction('testFixtures router');
@@ -152,6 +153,59 @@ export const testFixturesRouter = router({
       );
 
       return { ticketId };
+    }),
+
+  /**
+   * Idempotent + stale-safe cleanup. Tickets are deleted by id (FK cascade
+   * removes messages, ticket_labels, ratings). Stale ids are no-ops.
+   *
+   * For userIds: removes any agent_status_log rows in the last 24 hours
+   * and deletes the `presence:<userId>` Redis hash. The `partner:presence:*`
+   * set is not touched — its membership becomes stale but reads through
+   * `presence:<userId>` return null, so the user appears offline.
+   */
+  cleanup: fixtureProcedure
+    .input(
+      z.object({
+        ticketIds: z.array(z.string().min(1)).optional(),
+        userIds: z.array(z.string().min(1)).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const ticketIds = input.ticketIds ?? [];
+      const userIds = input.userIds ?? [];
+
+      if (ticketIds.length > 0) {
+        await db.delete(tickets).where(inArray(tickets.id, ticketIds));
+      }
+
+      if (userIds.length > 0) {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        await db
+          .delete(agentStatusLog)
+          .where(
+            and(inArray(agentStatusLog.userId, userIds), gte(agentStatusLog.startedAt, since)),
+          );
+
+        const { pubClient } = getRedisClients();
+        if (pubClient) {
+          for (const uid of userIds) {
+            try {
+              await pubClient.del(`presence:${uid}`);
+            } catch (err) {
+              logger.warn(
+                { err: err instanceof Error ? err.message : String(err), uid },
+                '[testFixtures.cleanup] Failed to clear presence key',
+              );
+            }
+          }
+        }
+      }
+
+      logger.info(
+        { ticketIds: ticketIds.length, userIds: userIds.length },
+        '[testFixtures] Cleanup',
+      );
     }),
 });
 
