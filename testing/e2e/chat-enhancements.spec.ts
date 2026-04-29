@@ -1,62 +1,22 @@
-import { execSync } from 'node:child_process';
-import { test, expect, type Page } from '@playwright/test';
+import { type Page } from '@playwright/test';
+import { test, expect } from './helpers/fixtures';
 import { loginAsDemo } from './helpers/auth';
 
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
-
-/** Open the first available ticket in the sidebar (support view). */
+/**
+ * Open the first available ticket in the support sidebar.
+ *
+ * Bundle D / RFC #82 simplification: the test creates its own ticket via
+ * `ticketFixture.create({ agentId: 'agent_qa' })` in beforeEach, so the queue
+ * is guaranteed to have an unassigned (`variant="queue"`) ticket. The legacy
+ * "Other Agents" fallback is gone — if the ticket isn't visible, that's a real
+ * regression, not a fixture-state predicate.
+ */
 async function openFirstTicket(page: Page) {
-  // QueueTicketRow stamps `data-ticket-row` + `data-ticket-variant` on its
-  // `<li>`. Preferred targets are "mine" or "queue":
-  //   - "queue"  → unassigned (first test run after a fresh seed)
-  //   - "mine"   → tickets this support user has in an active tab in *this*
-  //                browser context (supportOpenTickets client state)
-  // Fallback is "other":
-  //   - Every click-into-ticket flips the server-side ticket.supportId, but
-  //     `supportOpenTickets` is a local zustand slice with no persistence.
-  //     On the NEXT test's fresh login it resets to [], so any ticket we
-  //     joined (including the seeded one) shows up under "Other Agents"
-  //     instead of "Mine". That section is collapsed by default.
-  // Strategy: try mine-or-queue (5 s budget — fast path for fresh/early
-  // tests), then fall back to expanding "Other Agents" and clicking the
-  // first row there.
-  const mineOrQueue = page
-    .locator(
-      'li[data-ticket-row][data-ticket-variant="mine"], ' +
-      'li[data-ticket-row][data-ticket-variant="queue"]'
-    )
+  // QueueTicketRow stamps `data-ticket-row` + `data-ticket-variant` on its `<li>`.
+  const ticket = page
+    .locator('li[data-ticket-row][data-ticket-variant="queue"], li[data-ticket-row][data-ticket-variant="mine"]')
     .first();
-
-  let ticket = mineOrQueue;
-  try {
-    await mineOrQueue.waitFor({ state: 'visible', timeout: 5000 });
-  } catch {
-    // Fall back to the "Claimed by others" section. Its header is an <li>
-    // containing the localized label (en="Claimed by others",
-    // nl="Door anderen opgepakt", fr="Pris par d'autres"); clicking it
-    // toggles the collapsible. Match by either the variant attribute on
-    // a child row's parent or by the localized header text.
-    //
-    // If no rows exist in any section (parallel specs may have drained
-    // every ticket assigned to this support user before this test runs),
-    // the header itself is absent — surface that as a skip so the test
-    // doesn't masquerade as a real selector failure.
-    const otherToggle = page
-      .locator('li', { hasText: /claimed by others|door anderen|pris par/i })
-      .first();
-    if (!await otherToggle.isVisible({ timeout: 15000 }).catch(() => false)) {
-      test.skip(true, 'No tickets available in any sidebar section — queue drained by prior specs');
-      return;
-    }
-    await otherToggle.click();
-    ticket = page
-      .locator('li[data-ticket-row][data-ticket-variant="other"]')
-      .first();
-    if (!await ticket.isVisible({ timeout: 10000 }).catch(() => false)) {
-      test.skip(true, 'Other-section header rendered but contains no rows — queue drained');
-      return;
-    }
-  }
+  await expect(ticket).toBeVisible({ timeout: 15_000 });
 
   // Trigger the QueueTicketRow's onMouseEnter/onFocus prefetch for the lazy
   // ComposeArea chunk *before* we click. `.hover()` dispatches mouseenter
@@ -64,110 +24,49 @@ async function openFirstTicket(page: Page) {
   // fetch only starts when the chat window renders, and the 35 s `.ProseMirror`
   // wait below races the 460 KB `vendor-editor` download on cold Docker cache.
   await ticket.hover();
-  // Settle for in-flight queue re-renders and give the prefetch a few frames
-  // before the click triggers the mount itself.
   await page.waitForTimeout(300);
   await ticket.click();
 
-  // SupportView shows a preview first — need to click "Join" to open the chat
+  // SupportView shows a preview first — need to click "Join" to open the chat.
   const joinBtn = page.getByRole('button', { name: /^join$|^accept$|deelnemen|rejoindre/i });
   try {
     await joinBtn.waitFor({ state: 'visible', timeout: 5000 });
     await joinBtn.click();
   } catch {
-    // Already joined — ticket opened directly into chat (tab was already open)
+    // Already joined — ticket opened directly into chat (tab was already open).
   }
 
   // Wait for the chat window to load (compose editor mounts).
-  // ComposeArea is lazy-loaded (vendor-editor chunk ~462 KB), so the first
-  // mount in a fresh browser context can be slower than later mounts — give
-  // it a generous timeout to absorb cold-cache chunk fetch + Suspense boot.
-  // 35 s rather than the previous 25 s because Docker volume I/O + Vite dev
-  // server + React.Suspense + Tiptap boot exceeded 25 s on slow runners.
-  await page.locator('.ProseMirror').first()
-    .waitFor({ state: 'visible', timeout: 35000 });
-}
-
-/**
- * Seed a fresh open ticket as agent_qa so the support queue isn't empty.
- * Runs once before all tests in this file. Uses a throwaway browser context
- * so the support tests can login independently and see the ticket.
- */
-async function seedOpenTicket(browser: import('@playwright/test').Browser) {
-  const ctx = await browser.newContext();
-  const page = await ctx.newPage();
-  try {
-    // agent_qa (not agent_julie) — the latter has a pre-seeded DSC ticket
-    // which the server's 1-ticket-per-agent guard would reject silently when
-    // we try to create another here. agent_qa starts empty.
-    const login = await loginAsDemo(page, 'agent_qa', { waitFor: 'networkidle' });
-    if (!login.ok) throw new Error(`Seed: agent login failed (status ${(login as { status?: number }).status})`);
-
-    await page.waitForTimeout(2000);
-
-    // If a chat window is already open (e.g. from a previous unclosed ticket), we're done.
-    const composeArea = page.locator('.ProseMirror');
-    if (await composeArea.isVisible({ timeout: 3000 }).catch(() => false)) return;
-
-    // Pick the Dispatch department — minimal seed dept DSC. support_qa
-    // covers DSC/FOT/TEC so the ticket shows up in its queue regardless.
-    const dispatchBtn = page.locator('button').filter({ hasText: /dispatch/i }).first();
-    await dispatchBtn.waitFor({ state: 'visible', timeout: 5000 });
-    await dispatchBtn.click();
-
-    // Fill reference fields (DSC dept declares one reference field
-    // "Order ID"; looping defensively in case the schema grows).
-    const refInputs = page.locator('input[type="text"]');
-    await refInputs.first().waitFor({ state: 'visible', timeout: 5000 });
-    const refCount = await refInputs.count();
-    for (let i = 0; i < refCount; i++) {
-      await refInputs.nth(i).fill(`CHAT-ENH-${i + 1}`);
-    }
-
-    // Fill problem description
-    const problemTextarea = page.locator('textarea').first();
-    await problemTextarea.waitFor({ state: 'visible', timeout: 5000 });
-    await problemTextarea.fill('Seed ticket for chat-enhancements suite');
-
-    // Submit — "Connect with support" button on the TicketForm.
-    const submitBtn = page.locator('button').filter({ hasText: /connect|create|submit|aanmaken|verstuur/i }).first();
-    await submitBtn.click();
-
-    // Wait for the chat window to become available (ticket creation succeeded)
-    await composeArea.waitFor({ state: 'visible', timeout: 15000 });
-  } finally {
-    await ctx.close();
-  }
+  // ComposeArea is lazy-loaded (vendor-editor chunk ~462 KB) so first mount in
+  // a fresh browser context can be slow — give it 35s for cold-cache + Suspense.
+  await page.locator('.ProseMirror').first().waitFor({ state: 'visible', timeout: 35000 });
 }
 
 test.describe('Chat Enhancements', () => {
   test.setTimeout(60000);
 
-  test.beforeAll(async ({ browser }) => {
-    await seedOpenTicket(browser);
-  });
-
-  // Close any open tickets agent_qa owns so the seeded CHAT-ENH ticket
-  // doesn't leak into sibling specs (notably chat-flow.spec.ts, where
-  // the 1-ticket-per-agent guard would silently reject a fresh ticket
-  // and the `alreadyInChat` probe would race the pre-existing chat).
-  // Runs a direct SQL UPDATE via the docker db container — simpler than
-  // re-authenticating to the UI to click a close button.
-  test.afterAll(() => {
-    try {
-      execSync(
-        `docker compose exec -T db psql -U user -d guichet -c "UPDATE tickets SET status='closed' WHERE agent_id='agent_qa' AND status <> 'closed';"`,
-        { stdio: 'ignore' }
+  test.beforeEach(async ({ page, ticketFixture }) => {
+    // Login as support_qa first so the fixture call inherits the auth cookie.
+    const login = await loginAsDemo(page, 'support_qa', { waitFor: 'networkidle' });
+    if (!login.ok) {
+      throw new Error(
+        `Fixture user 'support_qa' failed to log in (status ${login.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
       );
-    } catch {
-      // Non-fatal — cleanup is best-effort. If docker is unavailable or
-      // the ticket was already closed, the next spec will still fail
-      // visibly on the real assertion rather than on cleanup noise.
     }
+    const partnerId = await page.evaluate(() => sessionStorage.getItem('activePartnerId'));
+    if (!partnerId) throw new Error('loginAsDemo did not seed activePartnerId');
+
+    // Bundle D: stage a fresh ticket from agent_qa so support_qa's queue has a
+    // deterministic unassigned row. Auto-cleanup runs in afterEach.
+    await ticketFixture.create({ partnerId, agentId: 'agent_qa' });
+
+    // Reload so the queue refetches and picks up the new ticket.
+    await page.reload();
+    await page.waitForLoadState('networkidle');
   });
 
   test('delivery checkmarks visible on sent messages', async ({ page }) => {
-    await loginAsDemo(page, 'support_qa', { waitFor: 'networkidle' });
     await openFirstTicket(page);
 
     // Send a test message
@@ -188,17 +87,8 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('markdown renders in messages', async ({ page }) => {
-    await loginAsDemo(page, 'support_qa', { waitFor: 'networkidle' });
     await openFirstTicket(page);
 
-    // Send a message with markdown bold syntax. Playwright's .fill() on
-    // a contenteditable bypasses ProseMirror's input rule pipeline, so
-    // we focus the editor and type via page.keyboard instead — that
-    // fires real keystrokes which Tiptap sees and which will also
-    // trigger markdown input rules (** auto-converts to bold as you
-    // type the closing pair). We use a plain "Testing bold rendering"
-    // phrase and wrap only "bold" with the rules so the bubble's
-    // rendered HTML still contains <strong>bold</strong>.
     const textarea = page.locator('.ProseMirror');
     await textarea.click();
     await page.keyboard.type('Testing ');
@@ -209,20 +99,17 @@ test.describe('Chat Enhancements', () => {
     // Wait for message to render on the server round-trip
     await page.waitForTimeout(1500);
 
-    // The MessageContent component renders markdown in a .msg-markdown div.
-    // Either the Tiptap input rules already produced a <strong> in the
-    // compose buffer (serializing to **bold** markdown on send), or the
-    // receiver's marked pipeline produces it. Either way the bubble
-    // must contain a <strong>bold</strong>.
     const strongEl = page.locator('.msg-markdown strong').filter({ hasText: /bold/i });
     await expect(strongEl.last()).toBeVisible({ timeout: 5000 });
   });
 
   test('reply to a message', async ({ page }) => {
-    await loginAsDemo(page, 'support_qa', { waitFor: 'networkidle' });
     await openFirstTicket(page);
 
-    // Wait for messages to load
+    // Send an initial message so we have something to reply to.
+    const textarea = page.locator('.ProseMirror');
+    await textarea.fill('Initial message for reply test ' + Date.now());
+    await textarea.press('Enter');
     await page.waitForTimeout(1500);
 
     // Find a non-system message bubble to reply to
@@ -244,15 +131,10 @@ test.describe('Chat Enhancements', () => {
     }
 
     // Verify reply banner appears above textarea with "Replying to" text.
-    // Soft-Product redesign moved the banner accent off `border-accent-blue`
-    // to the token-driven `border-l-[3px] border-[var(--color-accent)]`
-    // pattern shared with QuoteBlock — match by text only since it's the
-    // most stable signal.
     const replyBanner = page.getByText(/Replying to|Antwoord aan|Répondre|Repondre/i);
     await expect(replyBanner.first()).toBeVisible({ timeout: 3000 });
 
     // Type and send a reply
-    const textarea = page.locator('.ProseMirror');
     await textarea.fill('This is a reply message ' + Date.now());
     await textarea.press('Enter');
 
@@ -267,15 +149,13 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('jump-to-bottom FAB', async ({ page }) => {
-    await loginAsDemo(page, 'support_qa', { waitFor: 'networkidle' });
     await openFirstTicket(page);
 
     // Wait for messages to load
     await page.waitForTimeout(1500);
 
-    // The FAB only appears when the message list is actually scrollable. On a
-    // freshly-seeded ticket with one message the container may fit its content
-    // exactly — send enough messages to guarantee scroll overflow.
+    // The FAB only appears when the message list is actually scrollable. Send
+    // enough messages to guarantee scroll overflow.
     const textarea = page.locator('.ProseMirror');
     for (let i = 0; i < 12; i++) {
       await textarea.fill(`FAB seed message ${i + 1} — padding the scroll container so there is room to scroll back up`);
@@ -288,9 +168,11 @@ test.describe('Chat Enhancements', () => {
     const scrollContainer = page.locator('.overflow-y-auto.custom-scrollbar').first();
     await expect(scrollContainer).toBeVisible();
 
-    // Sanity-check: the container must actually be scrollable for the FAB to be possible.
+    // Sanity-check: the container must be scrollable for the FAB assertion to be meaningful.
+    // 12 padded messages always overflow at the default Playwright viewport;
+    // hard-fail if not (it would be a layout regression).
     const scrollable = await scrollContainer.evaluate((el) => el.scrollHeight > el.clientHeight + 10);
-    test.skip(!scrollable, 'Message list is not scrollable after seeding messages — skipping FAB assertion');
+    expect(scrollable).toBe(true);
 
     // Scroll up to top to trigger the FAB
     await scrollContainer.evaluate((el) => { el.scrollTop = 0; });
@@ -302,10 +184,7 @@ test.describe('Chat Enhancements', () => {
     });
     await page.waitForTimeout(500);
 
-    // The FAB button has aria-label "Scroll to bottom" (or localized variant:
-    // "Scroll naar beneden" / "Défiler vers le bas"). Match the Lucide
-    // ArrowDown SVG inside the absolute-positioned button as a locale-stable
-    // fallback.
+    // The FAB button has aria-label "Scroll to bottom" (or localized variant).
     const fab = page.locator('button[aria-label*="scroll" i], button[aria-label*="défiler" i], button[aria-label*="naar beneden" i]');
     await expect(fab.first()).toBeVisible({ timeout: 3000 });
 
@@ -318,7 +197,6 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('label picker opens and shows labels', async ({ page }) => {
-    await loginAsDemo(page, 'support_qa', { waitFor: 'networkidle' });
     await openFirstTicket(page);
 
     // Wait for labels to load from store (tRPC query)
@@ -326,24 +204,20 @@ test.describe('Chat Enhancements', () => {
 
     // Find the "+" label button in the header (aria-label "Add label" or translated)
     const addLabelBtn = page.locator('button[aria-label="Add label"], button[aria-label="Label toevoegen"], button[aria-label="Ajouter un label"]');
-    const btnVisible = await addLabelBtn.isVisible().catch(() => false);
-
-    // Label picker only renders when isSupport && allLabels.length > 0
-    // Skip assertion if button not visible (labels may not be loaded or role check differs)
-    test.skip(!btnVisible, 'Label picker button not visible — labels may not be loaded for this partner/role');
+    // Bundle D: assert the button is present. Label picker only renders when
+    // `isSupport && allLabels.length > 0` — for the seeded acme partner with
+    // labels seeded, this should always be visible. If it disappears that's a
+    // real regression (label seed dropped, or role check broke).
+    await expect(addLabelBtn).toBeVisible({ timeout: 10_000 });
 
     // Click to open the dropdown
     await addLabelBtn.click();
 
-    // The LabelPicker dropdown has min-w-[220px] class (widened in the
-    // variant-B refactor that unified the label slot).
+    // The LabelPicker dropdown has min-w-[220px] class.
     const dropdown = page.locator('.min-w-\\[220px\\]');
     await expect(dropdown).toBeVisible({ timeout: 3000 });
 
-    // Verify it contains at least one label item (button with a colored dot and text).
-    // Soft-Product redesign dropped `font-mono` from the label name span —
-    // it's now plain text-[12px] text-[var(--color-ink)]. Assert label rows
-    // render with non-empty visible text instead of a class match.
+    // Verify it contains at least one label item.
     const labelItems = dropdown.locator('button');
     const labelCount = await labelItems.count();
     expect(labelCount).toBeGreaterThan(0);
@@ -355,16 +229,16 @@ test.describe('Chat Enhancements', () => {
   });
 
   test('date separator renders', async ({ page }) => {
-    await loginAsDemo(page, 'support_qa', { waitFor: 'networkidle' });
     await openFirstTicket(page);
 
-    // Wait for messages to load
+    // Send a message so the conversation has at least one message + separator.
+    const textarea = page.locator('.ProseMirror');
+    await textarea.fill('Date separator test ' + Date.now());
+    await textarea.press('Enter');
     await page.waitForTimeout(2000);
 
-    // The FAB test earlier in this file sent 12 padding messages, so the ticket
-    // may have many messages and auto-scroll to bottom. Date separators live at
-    // the TOP of each day-group of messages — scroll the container to top so the
-    // first separator is in the DOM and unambiguously visible.
+    // Date separators live at the TOP of each day-group. Scroll to top to
+    // guarantee the first separator is in the DOM and unambiguously visible.
     const scrollContainer = page.locator('.overflow-y-auto.custom-scrollbar').first();
     if (await scrollContainer.isVisible({ timeout: 2000 }).catch(() => false)) {
       await scrollContainer.evaluate((el) => { el.scrollTop = 0; });
@@ -373,37 +247,24 @@ test.describe('Chat Enhancements', () => {
 
     // Date separators are centered pills styled with the soft-product
     // token: `bg-[var(--color-bg-elevated)] rounded-[var(--radius-pill)]`.
-    // Match by the rounded-pill class + text content (locale-flexible:
-    // EN "Today" / NL "Vandaag" / FR "Aujourd'hui" + abbreviated day/month
-    // names).
     const dateSeparator = page.locator('span.shrink-0.rounded-\\[var\\(--radius-pill\\)\\]').filter({
       hasText: /Today|Yesterday|Vandaag|Gisteren|Aujourd'hui|Hier|Mon|Tue|Wed|Thu|Fri|Sat|Sun|lun|mar|mer|jeu|ven|sam|dim|maa|din|woe|don|vri|zat|zon|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i,
     });
 
     // At least one date separator should be present (first message always gets one).
-    // Use toBeAttached instead of toBeVisible so the assertion tolerates off-viewport
-    // elements caused by dense message lists.
     await expect(dateSeparator.first()).toBeAttached({ timeout: 5000 });
   });
 
   test('multi-file upload input accepts multiple', async ({ page }) => {
-    await loginAsDemo(page, 'support_qa', { waitFor: 'networkidle' });
     await openFirstTicket(page);
 
-    // Wait for the compose area to mount (the textarea is already visible at this
-    // point thanks to openFirstTicket, but the file input inside the sibling
-    // <label> may need another tick).
     await page.waitForTimeout(500);
 
-    // Target the ComposeArea file input by its `accept` attribute — it's the only
-    // input on the page that accepts image/* AND .pdf (see ComposeArea.tsx:466).
-    // This avoids matching any unrelated hidden file inputs and is resilient to
-    // i18n changes in the aria-label.
+    // Target the ComposeArea file input by its `accept` attribute.
     const fileInput = page.locator('input[type="file"][accept*=".pdf"]');
     await expect(fileInput).toHaveCount(1, { timeout: 5000 });
 
-    // Verify it has the `multiple` attribute (Track E: multi-file upload).
-    // Playwright returns '' for valueless boolean attributes.
+    // Verify it has the `multiple` attribute.
     await expect(fileInput).toHaveAttribute('multiple', '');
 
     // And that it accepts both images and documents
