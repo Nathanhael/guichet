@@ -56,12 +56,20 @@ export function makeUser(overrides: Partial<GlobalUser> = {}): GlobalUser {
 interface MutationMock {
   mutate: ReturnType<typeof vi.fn>;
   isPending: boolean;
+  isSuccess?: boolean;
+  data?: unknown;
+  error?: { message: string } | null;
+  reset?: ReturnType<typeof vi.fn>;
 }
 
 export function makeMutationMock(overrides: Partial<MutationMock> = {}): MutationMock {
   return {
     mutate: vi.fn(),
     isPending: false,
+    isSuccess: false,
+    data: undefined,
+    error: null,
+    reset: vi.fn(),
     ...overrides,
   };
 }
