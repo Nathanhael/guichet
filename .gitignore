@@ -39,6 +39,9 @@ logs/
 .DS_Store
 Thumbs.db
 
+# Session scratch (Claude / Codex / other tooling debris)
+.tmp_*
+
 # IDEs
 .vscode/
 .idea/
