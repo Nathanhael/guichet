@@ -124,6 +124,7 @@ testing/
 !client/src/components/ui/__tests__/FormModal.TypedConfirm.test.tsx
 !client/src/components/chat/__tests__/Message.test.tsx
 !client/src/components/chat/__tests__/Message.lazy.test.tsx
+!client/src/components/chat/__tests__/Message.kind.test.tsx
 
 # Test infra (re-tracked)
 !server/vitest.config.ts
