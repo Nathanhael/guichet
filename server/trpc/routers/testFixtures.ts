@@ -35,7 +35,7 @@
 import crypto from 'node:crypto';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { eq, gte, inArray, and } from 'drizzle-orm';
+import { eq, gte, inArray, and, isNull, sql } from 'drizzle-orm';
 import { router, protectedProcedure } from '../trpc.js';
 import config from '../../config.js';
 import { db } from '../../db.js';
@@ -187,24 +187,87 @@ export const testFixturesRouter = router({
             and(inArray(agentStatusLog.userId, userIds), gte(agentStatusLog.startedAt, since)),
           );
 
-        const { pubClient } = getRedisClients();
-        if (pubClient) {
-          for (const uid of userIds) {
-            try {
-              await pubClient.del(`presence:${uid}`);
-            } catch (err) {
-              logger.warn(
-                { err: err instanceof Error ? err.message : String(err), uid },
-                '[testFixtures.cleanup] Failed to clear presence key',
-              );
-            }
-          }
-        }
+        // Redis presence keys are scoped `presence:<partnerId>:<userId>` —
+        // we don't have partnerId here, so we skip Redis cleanup. The 24h
+        // TTL handles staleness; a subsequent identifyUser will reinitialize
+        // the hash. Tests that need deterministic Redis state should call
+        // `resetAgentStatus` (which is partner-scoped) instead.
       }
 
       logger.info(
         { ticketIds: ticketIds.length, userIds: userIds.length },
         '[testFixtures] Cleanup',
+      );
+    }),
+
+  /**
+   * Stage agent presence + status_log for a deterministic starting state.
+   * Closes any currently-open status row (sets endedAt + duration), inserts
+   * a new open row with the requested status, and writes the Redis presence
+   * hash so subsequent reads see the staged status.
+   *
+   * The hash is written even if it didn't previously exist — a subsequent
+   * `identifyUser` (triggered by the socket connect on page reload) preserves
+   * the status field per the existing Lua-script convention. Net: tests
+   * stage presence BEFORE the socket connects, and the connect respects it.
+   */
+  resetAgentStatus: fixtureProcedure
+    .input(
+      z.object({
+        userId: z.string().min(1),
+        partnerId: z.string().min(1),
+        status: z.enum(['online', 'away']).default('online'),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const now = new Date().toISOString();
+
+      await db.transaction(async (tx) => {
+        // Close any currently-open status row for this user/partner.
+        await tx
+          .update(agentStatusLog)
+          .set({
+            endedAt: now,
+            duration: sql`EXTRACT(EPOCH FROM (${now}::timestamp - ${agentStatusLog.startedAt}))::int`,
+          })
+          .where(
+            and(
+              eq(agentStatusLog.userId, input.userId),
+              eq(agentStatusLog.partnerId, input.partnerId),
+              isNull(agentStatusLog.endedAt),
+            ),
+          );
+
+        // Insert new open row with the requested status.
+        await tx.insert(agentStatusLog).values({
+          userId: input.userId,
+          partnerId: input.partnerId,
+          status: input.status,
+          startedAt: now,
+        });
+      });
+
+      // Write Redis presence hash field. The hash key format mirrors
+      // services/presence.ts hashKey() — `presence:<partnerId>:<userId>`.
+      const { pubClient } = getRedisClients();
+      if (pubClient) {
+        try {
+          const key = `presence:${input.partnerId}:${input.userId}`;
+          await pubClient.hSet(key, {
+            status: input.status,
+            statusChangedAt: now,
+          });
+        } catch (err) {
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err), userId: input.userId },
+            '[testFixtures.resetAgentStatus] Failed to write presence hash',
+          );
+        }
+      }
+
+      logger.info(
+        { userId: input.userId, partnerId: input.partnerId, status: input.status },
+        '[testFixtures] Reset agent status',
       );
     }),
 });
