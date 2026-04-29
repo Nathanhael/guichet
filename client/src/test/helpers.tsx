@@ -8,6 +8,7 @@
 
 import { vi } from 'vitest';
 import type { Partner, GlobalUser } from '../components/platform/types';
+import type { Message } from '../types';
 
 /* ------------------------------------------------------------------ */
 /*  i18n mock – returns the key itself so assertions are language-agnostic */
@@ -83,6 +84,67 @@ interface QueryMock<T> {
 
 export function makeQueryMock<T>(data: T): QueryMock<T> {
   return { data, isLoading: false };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Message factories — Bundle C slice 2 (#77)                          */
+/* ------------------------------------------------------------------ */
+
+let _msgIdCounter = 0;
+export function makeMessage(overrides: Partial<Message> = {}): Message {
+  _msgIdCounter += 1;
+  const id = `msg-${_msgIdCounter}`;
+  const ts = new Date(2026, 3, 29, 12, 0, _msgIdCounter).toISOString();
+  return {
+    id,
+    ticketId: 't-1',
+    senderId: 'u-1',
+    senderName: 'Alice',
+    senderRole: 'agent',
+    senderLang: 'en',
+    originalText: `Test message ${_msgIdCounter}`,
+    improvedText: '',
+    processedText: '',
+    text: `Test message ${_msgIdCounter}`,
+    whisper: false,
+    system: false,
+    translationSkipped: false,
+    fallback: false,
+    timestamp: ts,
+    createdAt: ts,
+    reactions: {},
+    ...overrides,
+  };
+}
+
+export function makeMessageWithAttachment(overrides: Partial<Message> = {}): Message {
+  return makeMessage({
+    attachments: [{ url: '/uploads/x.png', name: 'x.png', mimeType: 'image/png', size: 1234 }],
+    ...overrides,
+  });
+}
+
+export function makeMessageWithQuote(overrides: Partial<Message> = {}): Message {
+  return makeMessage({
+    replyTo: { id: 'msg-orig', senderName: 'Bob', text: 'Original message' },
+    ...overrides,
+  });
+}
+
+export function makeMessageWithLinkPreview(overrides: Partial<Message> = {}): Message {
+  return makeMessage({
+    linkPreviews: [{ url: 'https://example.com', title: 'Example', description: 'Site description' }],
+    ...overrides,
+  });
+}
+
+export function makeDeletedMessage(overrides: Partial<Message> = {}): Message {
+  return makeMessage({
+    deletedAt: new Date().toISOString(),
+    text: '',
+    originalText: '',
+    ...overrides,
+  });
 }
 
 export function makeUseUtilsMock() {

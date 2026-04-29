@@ -122,6 +122,8 @@ testing/
 !client/src/store/__tests__/sliceReset.test.ts
 !client/src/components/ui/__tests__/FormModal.test.tsx
 !client/src/components/ui/__tests__/FormModal.TypedConfirm.test.tsx
+!client/src/components/chat/__tests__/Message.test.tsx
+!client/src/components/chat/__tests__/Message.lazy.test.tsx
 
 # Test infra (re-tracked)
 !server/vitest.config.ts
