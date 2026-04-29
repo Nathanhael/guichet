@@ -64,7 +64,12 @@ test.describe('Admin queue — 3-tab layout', () => {
 
   test('Unassigned chip sends hasSupport=false and In chat sends hasSupport=true', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
-    test.skip(!res.ok, 'Demo login failed');
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
     await gotoActiveTicketsTab(page);
 
     const queueSidebar = page.locator('aside').nth(1);

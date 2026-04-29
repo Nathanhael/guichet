@@ -122,19 +122,21 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
     try {
       const agentRes = await loginAsDemo(agentPage, 'agent_julie');
       const supportRes = await loginAsDemo(supportPage, 'support_lucas');
-      test.skip(!agentRes.ok || !supportRes.ok, 'Seed users not available');
+      if (!agentRes.ok || !supportRes.ok) {
+        throw new Error(`Demo logins failed: julie=${agentRes.status} lucas=${supportRes.status}`);
+      }
 
       await agentPage.waitForTimeout(3000);
       await supportPage.waitForTimeout(3000);
 
       // Agent must have an active chat
       const agentHasChat = await agentPage.locator('.ProseMirror, [contenteditable]').first().isVisible({ timeout: 5000 }).catch(() => false);
-      test.skip(!agentHasChat, 'Agent has no active ticket');
+      if (!agentHasChat) throw new Error('Agent has no active ticket');
 
       // Support: find Julie's ticket — may be under "My Chats" (assigned) or "Queue" (unassigned)
       const ticketRow = supportPage.getByText('Julie Agent').first();
       const ticketVisible = await ticketRow.isVisible({ timeout: 10000 }).catch(() => false);
-      test.skip(!ticketVisible, 'Julie\'s ticket not in support queue');
+      if (!ticketVisible) throw new Error('Julie\'s ticket not in support queue');
 
       // Click to select/preview, then join to enter socket room + open tab
       await ticketRow.click();
@@ -151,7 +153,7 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
       // Wait for compose editor
       const supportEditor = supportPage.locator('.ProseMirror, [contenteditable]').first();
       const editorReady = await supportEditor.isVisible({ timeout: 10000 }).catch(() => false);
-      test.skip(!editorReady, 'Support editor not visible — ticket may not show Join for assigned support');
+      if (!editorReady) throw new Error('Support editor not visible — ticket may not show Join for assigned support');
       if (editorReady) {
         await supportEditor.click();
         const replyMsg = `Support reply ${Date.now()}`;
@@ -185,7 +187,9 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
     try {
       const agentRes = await loginAsDemo(agentPage, 'agent_julie');
       const supportRes = await loginAsDemo(supportPage, 'support_lucas');
-      test.skip(!agentRes.ok || !supportRes.ok, 'Seed users not available');
+      if (!agentRes.ok || !supportRes.ok) {
+        throw new Error(`Demo logins failed: julie=${agentRes.status} lucas=${supportRes.status}`);
+      }
 
       await agentPage.waitForTimeout(3000);
       await supportPage.waitForTimeout(3000);
@@ -210,7 +214,7 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
 
       // Support closes the ticket
       const closed = await closeCurrentTicket(supportPage);
-      test.skip(!closed, 'Could not close ticket from support');
+      if (!closed) throw new Error('Could not close ticket from support');
 
       // Agent should see rating modal or return to ticket form
       await agentPage.waitForTimeout(3000);
