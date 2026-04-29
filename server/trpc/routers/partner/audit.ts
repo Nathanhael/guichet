@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, partnerAdminProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { auditLog, users } from '../../../db/schema.js';
-import { eq, desc, gte, lte, and, sql } from 'drizzle-orm';
+import { eq, desc, gte, lte, and, sql, notLike } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
@@ -71,6 +71,11 @@ const baseInput = z.object({
   dateTo: z.string().optional(),
 });
 
+// Audit rows emitted by `trpc.testFixtures.*` (Bundle D, RFC #82) use the
+// `audit.test_fixture.*` action namespace. Always filtered out of the
+// partner-facing audit views — partner admins should never see fixture noise.
+const FIXTURE_ACTION_PATTERN = 'audit.test_fixture.%';
+
 function buildConditions(
   input: z.infer<typeof baseInput>,
   partnerId: string,
@@ -84,6 +89,10 @@ function buildConditions(
   if (input.dateTo) conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
   if (input.wasExternal === true) {
     conditions.push(sql`${auditLog.metadata}->>'wasExternal' = 'true'`);
+  }
+  // Bundle D: hide fixture rows. No opt-in flag for partner views.
+  if (!input.action?.startsWith('audit.test_fixture.')) {
+    conditions.push(notLike(auditLog.action, FIXTURE_ACTION_PATTERN));
   }
   return conditions;
 }
@@ -197,6 +206,8 @@ export const partnerAuditRouter = router({
               (${auditLog.targetType} = 'ticket' AND ${auditLog.targetId} = ${input.ticketId})
               OR ${auditLog.metadata}->>'ticketId' = ${input.ticketId}
             )`,
+            // Bundle D: hide fixture rows from per-ticket audit drawer.
+            notLike(auditLog.action, FIXTURE_ACTION_PATTERN),
           ))
           .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
           .limit(input.limit);
