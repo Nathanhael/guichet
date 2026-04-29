@@ -17,7 +17,12 @@ async function gotoPlatformTab(page: Page, label: RegExp): Promise<void> {
 test.describe('Platform — audit log drawer + targetType filter', () => {
   test('targetType dropdown is populated from server and the filter reaches the query', async ({ page }) => {
     const login = await loginAsDemo(page, 'platform_bart');
-    test.skip(!login.ok, `Dev login failed (status ${login.status}); skipping`);
+    if (!login.ok) {
+      throw new Error(
+        `Fixture user 'platform_bart' failed to log in (status ${login.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoPlatformTab(page, /^audit$/i);
 
@@ -60,7 +65,12 @@ test.describe('Platform — audit log drawer + targetType filter', () => {
 
   test('clicking a platform audit row opens the drawer with valid JSON', async ({ page }) => {
     const login = await loginAsDemo(page, 'platform_bart');
-    test.skip(!login.ok, `Dev login failed (status ${login.status}); skipping`);
+    if (!login.ok) {
+      throw new Error(
+        `Fixture user 'platform_bart' failed to log in (status ${login.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoPlatformTab(page, /^audit$/i);
 

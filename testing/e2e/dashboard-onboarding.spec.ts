@@ -42,7 +42,12 @@ async function mockOnboardingState(
 test.describe('Admin Dashboard — onboarding mode', () => {
   test.beforeEach(async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
-    test.skip(!res.ok, 'admin_emma seed not available');
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
   });
 
   test('renders the 4-step checklist when isNewPartner=true', async ({ page }) => {

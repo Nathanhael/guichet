@@ -91,7 +91,12 @@ test('SLA lifecycle: admin configures → breach appears → support replies →
   try {
     // ── Step 1: Admin enables SLA on DSC department ─────────────────────────
     const adminRes = await loginAsDemo(adminPage, 'admin_emma');
-    test.skip(!adminRes.ok, `admin_emma dev-login failed (${adminRes.status})`);
+    if (!adminRes.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${adminRes.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
     await adminPage.waitForTimeout(1500);
 
     // AdminView uses plain <aside><button> nav items — not role="tab".
@@ -147,7 +152,12 @@ test('SLA lifecycle: admin configures → breach appears → support replies →
 
     // ── Step 2: Agent creates a fresh DSC ticket ─────────────────────────────
     const agentRes = await loginAsDemo(agentPage, 'agent_marc');
-    test.skip(!agentRes.ok, `agent_marc dev-login failed (${agentRes.status})`);
+    if (!agentRes.ok) {
+      throw new Error(
+        `Fixture user 'agent_marc' failed to log in (status ${agentRes.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
     await agentPage.waitForTimeout(2000);
 
     // TicketForm renders department buttons. Click DSC (Dispatch).
@@ -195,7 +205,12 @@ test('SLA lifecycle: admin configures → breach appears → support replies →
 
     // ── Step 5: Support claims the ticket and replies ───────────────────────
     const supportRes = await loginAsDemo(supportPage, 'support_lucas');
-    test.skip(!supportRes.ok, `support_lucas dev-login failed (${supportRes.status})`);
+    if (!supportRes.ok) {
+      throw new Error(
+        `Fixture user 'support_lucas' failed to log in (status ${supportRes.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
     await supportPage.waitForTimeout(2000);
 
     // Support sees Marc Agent's unassigned ticket in the queue. The agent

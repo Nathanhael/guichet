@@ -49,7 +49,12 @@ test.describe('Full Chat Flow: Agent -> Support -> Close -> Rate', () => {
       // DSC/FOT/TEC so the created ticket always lands in its queue.
       const agentLogin = await loginAsDemo(agentPage, 'agent_flow');
       const supportLogin = await loginAsDemo(supportPage, 'support_flow');
-      test.skip(!agentLogin.ok || !supportLogin.ok, 'Demo login failed — seed data may be missing');
+      if (!agentLogin.ok || !supportLogin.ok) {
+        throw new Error(
+          `Demo logins failed: agent_flow=${agentLogin.status} support_flow=${supportLogin.status}. ` +
+            'Check server/seed.ts — both fixture users must be seeded.',
+        );
+      }
 
       // ── Phase 2: Agent creates a new ticket ────────────────────────────
       await agentPage.waitForTimeout(3000);
