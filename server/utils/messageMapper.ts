@@ -63,7 +63,7 @@ export function mapMessageRow(row: MessageRow): Message {
     senderName: row.sender_name ?? row.senderName ?? '',
     senderRole,
     senderLang,
-    // Denormalized GUEST flag from migration 0006 — drives MessageBubble's
+    // Denormalized GUEST flag from migration 0006 — drives chat/Message's
     // amber guest badge without relying on live presence.
     senderIsExternal: Boolean(row.sender_is_external ?? row.senderIsExternal),
     originalText,

@@ -141,7 +141,7 @@ export const messages = pgTable('messages', {
   senderRole: text('sender_role'),
   senderLang: text('sender_lang'),
   // Denormalized at insert time so historical messages can still render the
-  // GUEST badge in MessageBubble without a live presence lookup. Sourced from
+  // GUEST badge in chat/Message without a live presence lookup. Sourced from
   // `users.isExternal` via `findSenderInfo`. System messages are always false.
   senderIsExternal: boolean('sender_is_external').notNull().default(false),
   text: text('text'),

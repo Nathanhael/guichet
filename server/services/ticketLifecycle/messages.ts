@@ -41,7 +41,7 @@ interface AgentMessageArgs extends BaseMessageArgs {
 /**
  * Socket-ready system/whisper message shape. Mirrors the object returned
  * by the legacy `insertMessage` helper so the lifecycle's emit effects
- * deliver exactly the shape MessageBubble already renders.
+ * deliver exactly the shape chat/Message already renders.
  */
 export interface SocketMessage {
   id: string;

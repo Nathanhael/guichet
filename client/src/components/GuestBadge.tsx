@@ -23,7 +23,7 @@ interface GuestBadgeProps {
  *   - QueueSidebar team rows
  *   - AdminTeam row identity column
  *   - ChatHeader participant line
- *   - MessageBubble sender label
+ *   - Message sender label (chat bubble)
  *   - UserMenu self-view
  *
  * Styling: outlined amber pill to distinguish from the solid role badges
