@@ -103,7 +103,12 @@ async function inviteGuest(
 test.describe('Invite → Audit Log → Pending Invites worklist', () => {
   test('invite external guest surfaces member.invited entry in Audit Log tab', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
-    test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     const email = uniqueEmail();
 
@@ -123,85 +128,36 @@ test.describe('Invite → Audit Log → Pending Invites worklist', () => {
     await expect(rowWithEmail).toBeVisible({ timeout: 10_000 });
   });
 
-  test('removed guest shows member.removed rows when wasExternal filter is enabled', async ({ page }) => {
-    // The "B2B Guest invites" panel split (commit 36339bc) moved fresh invites
-    // out of the main team table — they now live as chip pills under the
-    // "B2B Guest invites" header until Azure SSO stamps `externalId`. The
-    // table only renders activated members, so the Trash2 Remove button this
-    // test depends on cannot be reached for a freshly invited user without
-    // either (a) running a SQL UPDATE to fake the Azure link or (b) adding a
-    // pre-activated test fixture to seed.ts. Both are bigger than the scope
-    // of this spec triage; the `member.removed` + wasExternal=true audit path
-    // is exercised by server/__integration__ instead.
-    test.skip(true, 'Pending invites no longer surface in team table — see comment');
-    void page; // silence unused-arg for the skipped body below
-
-    const res = await loginAsDemo(page, 'admin_emma');
-    test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
-
-    const email = uniqueEmail();
-
-    await gotoAdminTab(page, /^team$/i);
-    // Use 'support' role so the member appears in the default Team table
-    // (listMembers has excludeAdmin: true, hiding admin invites from the list).
-    await inviteGuest(page, email, 'E2E To Remove', 'support');
-
-    // Invalidation repopulates the team table — give it a beat then find the row.
-    await page.waitForTimeout(1500);
-    const row = page.locator('tr', { hasText: email }).first();
-    await row.waitFor({ state: 'visible', timeout: 15_000 });
-
-    // The row's Remove control is now an icon-only Trash2 button with
-    // aria-label `Remove ${member.name}` (not bare "Remove"), and it's
-    // hidden via opacity-0 until the row is hovered. Hover the row to
-    // un-hide it, then click via aria-label prefix match.
-    await row.hover();
-    await row.locator('button[aria-label^="Remove "]').first().click();
-
-    // Custom ConfirmDialog (not native) opens; its confirm button still
-    // reads exactly "Remove" (anchored regex matches only the dialog button,
-    // not the row's `Remove ${name}` label).
-    const confirmBtn = page.getByRole('button', { name: /^remove$/i }).last();
-    const removePromise = page.waitForResponse(
-      r => /trpc\/partner\.removeMember/.test(r.url()) && r.request().method() === 'POST',
-      { timeout: 10_000 },
-    );
-    await confirmBtn.click();
-    const removeResp = await removePromise;
-    expect(removeResp.status()).toBe(200);
-    await page.waitForTimeout(500);
-
-    // Audit Log tab → check "Guest (external) actions only" + filter member.removed.
-    await gotoAdminTab(page, /audit log/i);
-
-    const wasExternalCheckbox = page.locator('#was-external-filter');
-    await wasExternalCheckbox.waitFor({ state: 'visible', timeout: 10_000 });
-    await wasExternalCheckbox.check();
-
-    const actionSelect = page.locator('select').filter({ has: page.locator('option[value="member.removed"]') }).first();
-    await actionSelect.selectOption('member.removed');
-    await page.waitForTimeout(1000);
-
-    // At least one row visible, and every row's Details column reads "(guest)"
-    // per formatDetails() — proves wasExternal=true metadata flowed through.
-    const detailsCells = page.locator('tbody tr td:nth-child(5)');
-    const count = await detailsCells.count();
-    expect(count).toBeGreaterThan(0);
-    const detailsTexts = await detailsCells.allTextContents();
-    expect(detailsTexts.every(t => /guest/i.test(t))).toBe(true);
-  });
+  // The "removed guest shows member.removed rows when wasExternal filter is enabled"
+  // test was deleted in Bundle D / RFC #82 cleanup. Pending invites no longer
+  // surface in the team table since the "B2B Guest invites" panel split (commit
+  // 36339bc); the table only renders activated members, so the Trash2 Remove
+  // button this test depended on cannot be reached for a freshly invited user
+  // without faking the Azure link or adding a pre-activated test fixture to
+  // seed.ts. The `member.removed` + wasExternal=true audit path is exercised by
+  // `server/__integration__/*` at the service layer instead.
 
   test('platform operator Pending Invites tab lists unlinked external members', async ({ page }) => {
     // Seed a pending invite first as the tenant admin.
     const loginEmma = await loginAsDemo(page, 'admin_emma');
-    test.skip(!loginEmma.ok, `Dev login admin_emma failed (${loginEmma.status})`);
+    if (!loginEmma.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${loginEmma.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     const email = uniqueEmail();
     await gotoAdminTab(page, /^team$/i);
     await inviteGuest(page, email, 'E2E Pending', 'admin');
 
     const loginBart = await loginAsDemo(page, 'platform_bart', { lang: 'en' });
-    test.skip(!loginBart.ok, `Dev login platform_bart failed (${loginBart.status})`);
+    if (!loginBart.ok) {
+      throw new Error(
+        `Fixture user 'platform_bart' failed to log in (status ${loginBart.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
     await page.waitForTimeout(2000);
 
     await gotoPlatformTab(page, /invites|uitnodigingen|invitations/i);
@@ -218,7 +174,12 @@ test.describe('Invite → Audit Log → Pending Invites worklist', () => {
   test('platform operator can revoke a pending invite → row disappears, mutation returns 200', async ({ page }) => {
     // Seed a pending invite as admin_emma.
     const loginEmma = await loginAsDemo(page, 'admin_emma');
-    test.skip(!loginEmma.ok, `Dev login admin_emma failed (${loginEmma.status})`);
+    if (!loginEmma.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${loginEmma.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     const email = uniqueEmail();
     await gotoAdminTab(page, /^team$/i);
@@ -227,7 +188,12 @@ test.describe('Invite → Audit Log → Pending Invites worklist', () => {
     // Switch to platform operator.
     await page.evaluate(() => sessionStorage.clear());
     const loginBart = await loginAsDemo(page, 'platform_bart', { lang: 'en' });
-    test.skip(!loginBart.ok, `Dev login platform_bart failed (${loginBart.status})`);
+    if (!loginBart.ok) {
+      throw new Error(
+        `Fixture user 'platform_bart' failed to log in (status ${loginBart.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
     await page.waitForTimeout(2000);
 
     await gotoPlatformTab(page, /invites|uitnodigingen|invitations/i);
