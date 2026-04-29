@@ -30,7 +30,12 @@ async function gotoSidebarTab(page: Page, label: RegExp): Promise<void> {
 test.describe('Guest admin — visible disable treatment', () => {
   test('Team tab: Invite B2B guest panel is hidden from external guests', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_guest');
-    test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_guest' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoSidebarTab(page, /^team$/i);
 
@@ -51,7 +56,12 @@ test.describe('Guest admin — visible disable treatment', () => {
 
   test('Team tab: Remove and dept-edit are disabled + click sends no network', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_guest');
-    test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_guest' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoSidebarTab(page, /^team$/i);
 
@@ -99,7 +109,12 @@ test.describe('Guest admin — visible disable treatment', () => {
 
   test('Departments tab: Add / Edit / Delete are all disabled for guests', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_guest');
-    test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_guest' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoSidebarTab(page, /^departments$/i);
 
@@ -125,7 +140,12 @@ test.describe('Guest admin — visible disable treatment', () => {
 
   test('Internal admin (Emma) sees the same controls enabled — sanity check', async ({ page }) => {
     const res = await loginAsDemo(page, 'admin_emma');
-    test.skip(!res.ok, `Dev login failed (status ${res.status}); skipping`);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'admin_emma' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
 
     await gotoSidebarTab(page, /^team$/i);
 
