@@ -27,7 +27,9 @@ async function closeCurrentTicket(page: Page): Promise<boolean> {
   return true;
 }
 
-test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
+// Bundle D follow-up: removed describe.serial so test 4 (rating modal) can
+// run independently of test 3's failure.
+test.describe('Agent Flow — Ticket Lifecycle', () => {
   test('agent can view or create a ticket', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_julie');
     if (!res.ok) {
@@ -106,28 +108,30 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
     await expect(page.getByText(testMsg).first()).toBeVisible({ timeout: 8000 });
   });
 
-  test('support joins and exchanges messages with agent', async ({ browser }) => {
-    // Bundle D: multi-context flow with serial-cadence ticket-state coupling.
-    // Same pattern as support-flow's multi-context tests. The single-context
-    // flows above (test 1 + 2) cover the core agent behaviors. Out of slice 2
-    // mechanical scope — needs deeper rewrite to use ticketFixture across
-    // contexts.
+  test('support joins and exchanges messages with agent', async ({ page, browser }) => {
+    // Bundle D follow-up: lucas's queue shows julie's ticket under "Claimed
+    // by others" (collapsed) because lucas's `supportOpenTickets` zustand state
+    // is empty on a fresh page even though server-side supportId=lucas. The
+    // `getByText('Julie Agent')` finds the row by text but it's inside the
+    // collapsed section. Needs either a click-to-expand step or a session-
+    // restoration helper that pre-populates supportOpenTickets.
     test.fixme();
+    test.setTimeout(60_000);
 
-    const agentCtx = await browser.newContext();
+    // Test-scope page = julie (the agent). Support gets a separate context.
+    const agentRes = await loginAsDemo(page, 'agent_julie');
+    if (!agentRes.ok) throw new Error(`agent_julie login failed (${agentRes.status})`);
+
     const supportCtx = await browser.newContext();
-    const agentPage = await agentCtx.newPage();
     const supportPage = await supportCtx.newPage();
+    const agentPage = page; // alias for clarity below
 
     try {
-      const agentRes = await loginAsDemo(agentPage, 'agent_julie');
       const supportRes = await loginAsDemo(supportPage, 'support_lucas');
-      if (!agentRes.ok || !supportRes.ok) {
-        throw new Error(`Demo logins failed: julie=${agentRes.status} lucas=${supportRes.status}`);
-      }
+      if (!supportRes.ok) throw new Error(`support_lucas login failed (${supportRes.status})`);
 
-      await agentPage.waitForTimeout(3000);
-      await supportPage.waitForTimeout(3000);
+      await agentPage.waitForLoadState('networkidle');
+      await supportPage.waitForLoadState('networkidle');
 
       // Agent must have an active chat
       const agentHasChat = await agentPage.locator('.ProseMirror, [contenteditable]').first().isVisible({ timeout: 5000 }).catch(() => false);
@@ -170,29 +174,30 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
         expect(replyVisible).toBeTruthy();
       }
     } finally {
-      await agentCtx.close();
       await supportCtx.close();
     }
   });
 
-  test('closing ticket shows rating modal and returns to form', async ({ browser }) => {
-    // Bundle D: same multi-context fragility — see fixme above.
+  test('closing ticket shows rating modal and returns to form', async ({ page, browser }) => {
+    // Bundle D follow-up: same "Claimed by others" collapsed-section issue
+    // as test 3 — lucas can't reach julie's ticket to close it.
     test.fixme();
+    test.setTimeout(60_000);
 
-    const agentCtx = await browser.newContext();
+    // Test-scope page = julie. Support in a separate context.
+    const agentRes = await loginAsDemo(page, 'agent_julie');
+    if (!agentRes.ok) throw new Error(`agent_julie login failed (${agentRes.status})`);
+
     const supportCtx = await browser.newContext();
-    const agentPage = await agentCtx.newPage();
     const supportPage = await supportCtx.newPage();
+    const agentPage = page;
 
     try {
-      const agentRes = await loginAsDemo(agentPage, 'agent_julie');
       const supportRes = await loginAsDemo(supportPage, 'support_lucas');
-      if (!agentRes.ok || !supportRes.ok) {
-        throw new Error(`Demo logins failed: julie=${agentRes.status} lucas=${supportRes.status}`);
-      }
+      if (!supportRes.ok) throw new Error(`support_lucas login failed (${supportRes.status})`);
 
-      await agentPage.waitForTimeout(3000);
-      await supportPage.waitForTimeout(3000);
+      await agentPage.waitForLoadState('networkidle');
+      await supportPage.waitForLoadState('networkidle');
 
       // Support must be in the ticket (from previous test or already joined)
       const supportEditor = supportPage.locator('.ProseMirror, [contenteditable]').first();
@@ -226,7 +231,6 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
       // Either rating modal shows or we're back at the form (both indicate close worked)
       expect(ratingVisible || formVisible).toBeTruthy();
     } finally {
-      await agentCtx.close();
       await supportCtx.close();
     }
   });
