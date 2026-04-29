@@ -22,15 +22,18 @@ async function clickPlatformTab(page: Page, tabName: RegExp, timeout = 15000) {
 }
 
 test.describe('Platform Dashboard', () => {
-  let loginOk = false;
   test.beforeEach(async ({ page }) => {
     const res = await loginAsDemo(page, 'platform_bart', { lang: 'en' });
-    loginOk = !!res.ok;
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'platform_bart' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
   });
 
   test('platform view loads without errors', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login API failed — platform_bart may not be seeded');
     await page.waitForTimeout(1000);
     // Phase 9 chrome unification dropped the visible "GUICHET" wordmark — the
     // platform sidebar now opens with `<UserMenuChip subtitleOverride="Platform operator" />`
@@ -45,7 +48,6 @@ test.describe('Platform Dashboard', () => {
   });
 
   test('tab bar renders all platform tabs', async ({ page }) => {
-    test.skip(!loginOk, 'Demo login API failed — platform_bart may not be seeded');
     await page.waitForTimeout(1000);
     const expectedTabs = ['partners', 'users', 'sso', 'security', 'health', 'config', 'audit', 'archive'];
     let foundTabs = 0;
@@ -180,7 +182,12 @@ test.describe('Platform View - Responsive Layout', () => {
   test('platform view works on mobile viewport', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     const res = await loginAsDemo(page, 'platform_bart', { lang: 'en' });
-    test.skip(!res.ok, 'Demo login API failed — platform_bart may not be seeded');
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'platform_bart' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
     await page.waitForTimeout(2000);
 
     const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
