@@ -2,9 +2,9 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
 import { ArrowDown } from 'lucide-react';
-import MessageBubble from '../MessageBubble';
+import Message from './Message';
 import SearchBar from './SearchBar';
-import { Ticket, Message } from '../../types';
+import { Ticket, Message as MessageType } from '../../types';
 import { formatDate } from '../../utils/dateUtils';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { AppRouter } from '../../../../server/trpc/router';
@@ -19,7 +19,7 @@ interface CursorInfo {
 
 interface MessageListProps {
   ticket: Ticket;
-  messages: Message[];
+  messages: MessageType[];
   cursorInfo?: CursorInfo;
   onLoadOlder: () => void;
   scrollContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -30,7 +30,7 @@ interface MessageListProps {
   firstUnreadIndex: number | null;
   showScrollButton: boolean;
   onScrollToBottom: () => void;
-  onReply?: (message: Message) => void;
+  onReply?: (message: MessageType) => void;
   searchOpen?: boolean;
   searchQuery?: string;
   onSearchQueryChange?: (q: string) => void;
@@ -224,7 +224,7 @@ export default function MessageList({
                       <div className="flex-1 border-t border-dashed border-[var(--color-whisper-ink)] opacity-40" />
                     </div>
                   )}
-                  <MessageBubble
+                  <Message
                     message={msg}
                     ticketId={ticket.id}
                     isGroupStart={isGroupStart}

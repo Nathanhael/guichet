@@ -1,13 +1,20 @@
+import { lazy, Suspense } from 'react';
 import BionicText from '../BionicText';
 import { Message } from '../../types';
-import AttachmentGrid from './AttachmentGrid';
-import QuoteBlock from './QuoteBlock';
-import LinkPreviewCard from './LinkPreviewCard';
 import { hasMarkdownSyntax, renderMarkdown } from '../../utils/markdown';
 import { getFileTypeLabel } from '../../utils/fileUtils';
 import { FileText } from 'lucide-react';
 import { highlightText } from '../../utils/highlightText';
 import useStore from '../../store/useStore';
+
+// Bundle C slice 2 (#77): lazy-load AttachmentGrid / QuoteBlock /
+// LinkPreviewCard. Plain-text messages — the dominant case in any support
+// session — pay zero parse cost for these three fragments. Suspense
+// fallbacks are stable-height divs sized to the typical fragment height to
+// prevent layout shift on first attachment-bearing render.
+const AttachmentGrid = lazy(() => import('./AttachmentGrid'));
+const QuoteBlock = lazy(() => import('./QuoteBlock'));
+const LinkPreviewCard = lazy(() => import('./LinkPreviewCard'));
 
 interface MessageContentProps {
   message: Message;
@@ -30,19 +37,21 @@ export default function MessageContent({
       {message.replyTo && (() => {
         const reply = message.replyTo;
         return (
-          <QuoteBlock
-            senderName={reply.senderName}
-            text={reply.text}
-            isDeleted={!reply.text && !reply.mediaUrl}
-            onClick={() => {
-              const el = document.getElementById(`msg-${reply.id}`);
-              if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                el.classList.add('bg-[var(--color-accent-soft)]');
-                setTimeout(() => el.classList.remove('bg-[var(--color-accent-soft)]'), 1000);
-              }
-            }}
-          />
+          <Suspense fallback={<div style={{ minHeight: 44 }} aria-hidden="true" />}>
+            <QuoteBlock
+              senderName={reply.senderName}
+              text={reply.text}
+              isDeleted={!reply.text && !reply.mediaUrl}
+              onClick={() => {
+                const el = document.getElementById(`msg-${reply.id}`);
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  el.classList.add('bg-[var(--color-accent-soft)]');
+                  setTimeout(() => el.classList.remove('bg-[var(--color-accent-soft)]'), 1000);
+                }
+              }}
+            />
+          </Suspense>
         );
       })()}
 
@@ -68,7 +77,9 @@ export default function MessageContent({
 
       {/* Multi-file attachments */}
       {!isDeleted && message.attachments && message.attachments.length > 0 && (
-        <AttachmentGrid attachments={message.attachments} ticketId={message.ticketId} />
+        <Suspense fallback={<div style={{ minHeight: 80 }} aria-hidden="true" />}>
+          <AttachmentGrid attachments={message.attachments} ticketId={message.ticketId} />
+        </Suspense>
       )}
 
       {/* Legacy single image — backward compat */}
@@ -109,11 +120,13 @@ export default function MessageContent({
 
       {/* Link previews */}
       {!isDeleted && message.linkPreviews && message.linkPreviews.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {message.linkPreviews.map((preview) => (
-            <LinkPreviewCard key={preview.url} {...preview} />
-          ))}
-        </div>
+        <Suspense fallback={<div style={{ minHeight: 80 }} aria-hidden="true" />}>
+          <div className="flex flex-col gap-1">
+            {message.linkPreviews.map((preview) => (
+              <LinkPreviewCard key={preview.url} {...preview} />
+            ))}
+          </div>
+        </Suspense>
       )}
     </>
   );
