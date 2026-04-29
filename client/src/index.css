@@ -231,7 +231,7 @@ html, body, [data-theme-transition] {
 }
 
 /* ===== MESSAGE BUBBLE UTILITIES =====
-   Only MessageBubble uses these today. Keep them as utility shells so the
+   Only chat/Message uses these today. Keep them as utility shells so the
    bubble shape stays consistent across received / sent / whisper variants. */
 
 @utility bubble-received {

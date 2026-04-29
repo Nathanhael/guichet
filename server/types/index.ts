@@ -40,7 +40,7 @@ export interface Message {
   senderLang: string;
   /**
    * Azure B2B guest flag snapshot at send time, denormalized onto the
-   * messages row (migration 0006). Drives MessageBubble's GUEST badge
+   * messages row (migration 0006). Drives chat/Message's GUEST badge
    * on the client. Always false for system messages.
    */
   senderIsExternal: boolean;

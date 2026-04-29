@@ -99,7 +99,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
     }
   }, [messageQuery.data, ticketId, setMessages]);
 
-  // tRPC: AI Config (to show/hide Improve button and pass to MessageBubble)
+  // tRPC: AI Config (to show/hide Improve button and pass to Message)
   const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
     enabled: !!user,
     staleTime: 60_000,
