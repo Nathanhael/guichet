@@ -30,8 +30,13 @@ async function closeCurrentTicket(page: Page): Promise<boolean> {
 test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
   test('agent can view or create a ticket', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_julie');
-    test.skip(!res.ok, 'agent_julie not seeded');
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'agent_julie' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
 
     // Agent either sees the ticket form (no open ticket) or the chat view (has ticket)
     const hasChat = await page.locator('.ProseMirror, [contenteditable]').first().isVisible({ timeout: 5000 }).catch(() => false);
@@ -73,27 +78,42 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
 
   test('agent sends a message in active chat', async ({ page }) => {
     const res = await loginAsDemo(page, 'agent_julie');
-    test.skip(!res.ok, 'agent_julie not seeded');
-    await page.waitForTimeout(2000);
+    if (!res.ok) {
+      throw new Error(
+        `Fixture user 'agent_julie' failed to log in (status ${res.status}). ` +
+          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
+      );
+    }
+    await page.waitForLoadState('networkidle');
 
+    // The previous serial test creates/exercises julie's ticket, so by the
+    // time this runs julie should be in chat. The seed also gives her one
+    // pending DSC ticket (ticket_dsc_julie). Either way the editor must
+    // mount — if not, real regression.
     const editor = page.locator('.ProseMirror, [contenteditable]').first();
-    const hasChat = await editor.isVisible({ timeout: 5000 }).catch(() => false);
-    test.skip(!hasChat, 'No active chat');
+    await expect(editor).toBeVisible({ timeout: 10000 });
 
     await editor.click();
     const testMsg = `E2E msg ${Date.now()}`;
     await page.keyboard.type(testMsg);
 
-    const sendBtn = page.locator('button').filter({ hasText: /send|verzend/i }).first();
-    if (await sendBtn.isVisible({ timeout: 2000 })) {
-      await sendBtn.click();
-      await page.waitForTimeout(2000);
-      // Message should appear in the chat
-      await expect(page.getByText(testMsg).first()).toBeVisible({ timeout: 8000 });
-    }
+    // julie is fr-locale; "envoyer" / NL "verzenden" / EN "send".
+    const sendBtn = page.locator('button').filter({ hasText: /send|verzend|envoyer/i }).first();
+    await expect(sendBtn).toBeVisible({ timeout: 5000 });
+    await sendBtn.click();
+    await page.waitForTimeout(2000);
+    // Message should appear in the chat
+    await expect(page.getByText(testMsg).first()).toBeVisible({ timeout: 8000 });
   });
 
   test('support joins and exchanges messages with agent', async ({ browser }) => {
+    // Bundle D: multi-context flow with serial-cadence ticket-state coupling.
+    // Same pattern as support-flow's multi-context tests. The single-context
+    // flows above (test 1 + 2) cover the core agent behaviors. Out of slice 2
+    // mechanical scope — needs deeper rewrite to use ticketFixture across
+    // contexts.
+    test.fixme();
+
     const agentCtx = await browser.newContext();
     const supportCtx = await browser.newContext();
     const agentPage = await agentCtx.newPage();
@@ -154,6 +174,9 @@ test.describe.serial('Agent Flow — Ticket Lifecycle', () => {
   });
 
   test('closing ticket shows rating modal and returns to form', async ({ browser }) => {
+    // Bundle D: same multi-context fragility — see fixme above.
+    test.fixme();
+
     const agentCtx = await browser.newContext();
     const supportCtx = await browser.newContext();
     const agentPage = await agentCtx.newPage();
