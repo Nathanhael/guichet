@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { router, platformProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { auditLog, auditArchive, archivedTickets, users, systemSettings, partners } from '../../../db/schema.js';
-import { eq, desc, gte, lte, ilike, and, sql } from 'drizzle-orm';
+import { eq, desc, gte, lte, ilike, and, sql, notLike } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { getRedisClients } from '../../../utils/redis.js';
 import logger from '../../../utils/logger.js';
@@ -12,6 +12,12 @@ import { escapeLikePattern } from '../../../utils/security.js';
 
 const VERIFY_CHAIN_WINDOW_SECS = 60;
 const VERIFY_CHAIN_MAX_PER_WINDOW = 1;
+
+// Audit rows emitted by `trpc.testFixtures.*` (Bundle D, RFC #82) use a
+// dedicated `audit.test_fixture.*` action namespace so they can be excluded
+// from operator-facing views without breaking the chain hash. Default-hide;
+// callers explicitly opt-in via `includeFixtures: true` for debugging.
+const FIXTURE_ACTION_PATTERN = 'audit.test_fixture.%';
 
 // Union of every targetType platform operators can see — partner-scoped rows
 // bubble up here too. Keep in sync with `targetType:` literals emitted by both
@@ -129,6 +135,7 @@ export const platformAuditRouter = router({
       dateTo: z.string().optional(),
       limit: z.number().min(1).max(100).default(50),
       cursor: z.string().optional(),
+      includeFixtures: z.boolean().default(false),
     }))
     .query(async ({ input }) => {
       try {
@@ -144,6 +151,13 @@ export const platformAuditRouter = router({
         }
         if (input.dateTo) {
           conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
+        }
+
+        // Bundle D: hide fixture-emitted rows by default. Caller opts-in
+        // explicitly OR filters by a fixture action — both bypass the filter.
+        const callerWantsFixtureAction = input.action?.startsWith('audit.test_fixture.') ?? false;
+        if (!input.includeFixtures && !callerWantsFixtureAction) {
+          conditions.push(notLike(auditLog.action, FIXTURE_ACTION_PATTERN));
         }
 
         if (input.cursor) {
@@ -196,6 +210,7 @@ export const platformAuditRouter = router({
       targetType: z.string().optional(),
       dateFrom: z.string().optional(),
       dateTo: z.string().optional(),
+      includeFixtures: z.boolean().default(false),
     }))
     .query(async ({ input }) => {
       try {
@@ -210,6 +225,12 @@ export const platformAuditRouter = router({
         }
         if (input.dateTo) {
           conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
+        }
+
+        // Bundle D: hide fixture-emitted rows by default. Same logic as getAuditLog.
+        const callerWantsFixtureAction = input.action?.startsWith('audit.test_fixture.') ?? false;
+        if (!input.includeFixtures && !callerWantsFixtureAction) {
+          conditions.push(notLike(auditLog.action, FIXTURE_ACTION_PATTERN));
         }
 
         const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -414,6 +435,10 @@ export const platformAuditRouter = router({
         const conditions = [sql`${auditLog.partnerId} IS NOT NULL`];
         if (input.dateFrom) conditions.push(gte(auditLog.createdAt, `${input.dateFrom}T00:00:00`));
         if (input.dateTo) conditions.push(lte(auditLog.createdAt, `${input.dateTo}T23:59:59.999`));
+        // Bundle D: cross-partner activity should never reflect fixture noise.
+        // No opt-in flag here — the rollup is for spotting unusual partner
+        // activity, and fixture rows would skew the signal.
+        conditions.push(notLike(auditLog.action, FIXTURE_ACTION_PATTERN));
 
         // Aggregate per partner: total count + last activity timestamp. The
         // top-action sub-aggregate is computed client-side from a second
