@@ -65,6 +65,23 @@ export function aiTranslationAdapter(): AiTranslationPort {
   };
 }
 
+// ─── moderation ──────────────────────────────────────────────────────────
+
+import { getModerator } from '../../moderator/instance.js';
+import type { ModerationPort } from '../ports.js';
+
+/**
+ * Returns a port that delegates to the boot-time Moderator singleton via
+ * the registry. The closure defers `getModerator()` until first use, so
+ * the messageLifecycle factory can be constructed at module load (before
+ * `setModerator` runs inside `initRedis().then(...)`).
+ */
+export function moderationAdapter(): ModerationPort {
+  return {
+    moderate: (text, ctx) => getModerator().moderate(text, ctx),
+  };
+}
+
 // ─── repetitionGuard ─────────────────────────────────────────────────────
 
 export function redisRepetitionAdapter(): RepetitionGuardPort {
