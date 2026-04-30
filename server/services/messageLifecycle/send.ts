@@ -25,12 +25,12 @@ import { and, eq } from 'drizzle-orm';
 import { isNull } from 'drizzle-orm';
 
 import { messages, partners, slaBreaches, tickets } from '../../db/schema.js';
-import { runSyncGuards } from '../guards.js';
 import { isSupportLike } from '../roles.js';
 import logger from '../../utils/logger.js';
 import { isValidMediaUrl } from '../../utils/security.js';
 import { Rooms } from '../../utils/rooms.js';
 
+import { recordGuardBlock } from './guardAudit.js';
 import type { Effect } from '../ticketLifecycle/index.js';
 import type {
   MessageLifecycleDeps,
@@ -39,10 +39,17 @@ import type {
   SendMessage,
   SendOk,
 } from './types.js';
-import type { AiTranslationPort, RepetitionGuardPort } from './ports.js';
+import type { AiTranslationPort, ModerationPort, RepetitionGuardPort } from './ports.js';
 
 export interface SendDeps {
   db: MessageLifecycleDeps['db'];
+  moderation: ModerationPort;
+  /**
+   * Legacy port — slice 5 of the moderator deepening deletes this. The send
+   * pipeline no longer reads from it; only the type slot remains so the
+   * lifecycle factory can keep wiring `redisRepetitionAdapter` until edit.ts
+   * also migrates and the slot can be dropped wholesale.
+   */
   repetitionGuard: RepetitionGuardPort;
   aiTranslation: AiTranslationPort;
 }
@@ -80,32 +87,34 @@ export async function runSend(
         .slice(0, 5)
     : undefined;
 
-  // Content guards on text. Skipped for whisper + attachment-only sends —
-  // matches the legacy handler. Attachment-only = mediaUrl present and
-  // text is empty / `[attachment]` placeholder.
+  // Content moderation on text. Skipped for attachment-only sends — matches
+  // the legacy handler. Attachment-only = mediaUrl present and text is empty
+  // / `[attachment]` placeholder. The moderator owns guard order, per-scope
+  // dispatch (here: message:send runs all 7 guards), and the multi-trigger
+  // reporting that lands in audit_log on block.
   const isAttachmentOnly = !!args.mediaUrl && (!args.text || args.text === '[attachment]');
   let text = args.text ?? '';
   if (!isAttachmentOnly) {
-    const syncResult = runSyncGuards(text);
-    if (!syncResult.ok) {
+    const result = await deps.moderation.moderate(text, {
+      senderId: args.actor.userId,
+      partnerId: args.partnerId,
+      scope: 'message:send',
+    });
+    if (result.decision === 'block') {
+      await recordGuardBlock({
+        db: deps.db,
+        actorId: args.actor.userId,
+        partnerId: args.partnerId,
+        ticketId: args.ticketId,
+        scope: 'message:send',
+        original: result.original,
+        sanitized: result.sanitized,
+        triggered: result.triggered,
+        blockingCode: result.blockingCode!,
+      });
       return { ok: false, code: 'GUARD_REJECTED' };
     }
-    text = syncResult.text;
-
-    try {
-      const repResult = await deps.repetitionGuard.check({
-        senderId: args.actor.userId,
-        text,
-      });
-      if (!repResult.ok) {
-        return { ok: false, code: 'GUARD_REJECTED' };
-      }
-    } catch (err) {
-      logger.error(
-        { err: err instanceof Error ? err.message : String(err) },
-        '[messageLifecycle.send] repetition guard threw — failing open',
-      );
-    }
+    text = result.sanitized;
   }
 
   // Whisper authz clamp — silently drop whisper:true for non-support
