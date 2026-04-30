@@ -111,6 +111,16 @@ describe('Availability — boundary contract', () => {
     expect(roster.map(r => r.userId)).toEqual(['u1']);
   });
 
+  it('admin attach triggers support:online broadcast but admin is not in the roster', async () => {
+    bc.reset();
+    await av.socket.attach({ userId: 'admin-1', partnerId: 'p1', socketId: 's-1', role: 'admin', name: 'The Admin' });
+    // Eligibility: admin attach triggered the broadcast.
+    expect(bc.events.some(e => e.kind === 'support:online')).toBe(true);
+    // Content: admin is NOT in the roster.
+    const roster = await av.onlineSupport('p1');
+    expect(roster.find(u => u.userId === 'admin-1')).toBeUndefined();
+  });
+
   it('socket.attach broadcasts support:online when role can use support workflows', async () => {
     bc.reset();
     await attachAsSupport('u1', 'p1');

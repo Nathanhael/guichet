@@ -55,6 +55,11 @@ export class Availability {
   }
 
   async onlineSupport(partnerId: string): Promise<SupportEntry[]> {
+    // Eligibility (who receives `support:online`) is broader than content (who's IN it):
+    // admins + platform operators receive the broadcast (they watch the queue) but are
+    // not themselves listed — only role === 'support' staff appear in the queue roster.
+    // Mirrors legacy presence.ts:112. Do NOT widen this filter without revisiting
+    // canUseSupportWorkflows + queue-assignment semantics.
     const users = await this.deps.live.listOnline(partnerId);
     return users
       .filter(u => u.role === 'support' && !u.isPlatformOperator)
