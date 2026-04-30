@@ -54,3 +54,16 @@ export interface RepetitionGuardPort {
    */
   check(args: { senderId: string; text: string }): Promise<RepetitionGuardResult>;
 }
+
+// Re-export the moderation contract so messageLifecycle callers don't
+// need to know it lives in `services/moderator/`. The Moderator class
+// implements ModerationPort directly. Slices 2-5 of the moderator
+// deepening migrate sites away from RepetitionGuardPort to ModerationPort;
+// the legacy interface stays exported until slice 5.
+export type {
+  GuardCode,
+  ModerationContext,
+  ModerationPort,
+  ModerationResult,
+  ModerationScope,
+} from '../moderator/index.js';
