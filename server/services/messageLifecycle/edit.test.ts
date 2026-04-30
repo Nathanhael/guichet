@@ -20,17 +20,19 @@ import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { MAX_EDIT_WINDOW_MS } from '../../constants.js';
-import { messages, partners, tickets, users } from '../../db/schema.js';
+import { auditLog, messages, partners, tickets, users } from '../../db/schema.js';
 import { createTestDb, type TestDbHandle } from '../../test/pglite-setup.js';
 import type { UserActor } from '../ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './index.js';
+import type { ModerationContext, ModerationPort, ModerationResult } from './ports.js';
 import {
-  alwaysBlockGuard,
   alwaysOkGuard,
+  blockingModerator,
+  cannedModerator,
   cannedTranslation,
   inMemoryLinkPreview,
+  passingModerator,
   recordingStorage,
-  throwingGuard,
 } from './test/stubs.js';
 
 const PARTNER_A = 'partner-a';
@@ -76,13 +78,17 @@ async function seedBaseline(opts: { messageCreatedAt?: string } = {}): Promise<v
   });
 }
 
-function buildLifecycle(opts: { repetitionGuard?: ReturnType<typeof alwaysOkGuard> } = {}): MessageLifecycle {
+function buildLifecycle(opts: {
+  moderation?: ModerationPort,
+  repetitionGuard?: ReturnType<typeof alwaysOkGuard>,
+} = {}): MessageLifecycle {
   return createMessageLifecycle({
     db: handle.db,
     ports: {
       linkPreview: inMemoryLinkPreview(),
       aiTranslation: cannedTranslation(),
       repetitionGuard: opts.repetitionGuard ?? alwaysOkGuard(),
+      moderation: opts.moderation ?? passingModerator(),
     },
     storage: recordingStorage().storage,
   });
@@ -205,41 +211,72 @@ describe('messageLifecycle.edit', () => {
     expect(result).toEqual({ ok: false, code: 'EDIT_WINDOW_EXPIRED' });
   });
 
-  it('rejects with GUARD_REJECTED when sync guards reject the new text (empty)', async () => {
-    const result = await lifecycle.edit({
+  it('rejects with GUARD_REJECTED when moderator blocks the edit', async () => {
+    const blockingLifecycle = buildLifecycle({
+      moderation: blockingModerator('guard_too_short'),
+    });
+
+    const result = await blockingLifecycle.edit({
       ticketId: TICKET_A, partnerId: PARTNER_A, messageId: MESSAGE_A,
       actor: aliceActor, newText: '   ',
     });
 
-    expect(result).toEqual({ ok: false, code: 'GUARD_REJECTED' });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('GUARD_REJECTED');
 
+    // Original message text is unchanged.
     const [row] = await handle.db
       .select({ text: messages.text }).from(messages).where(eq(messages.id, MESSAGE_A));
     expect(row.text).toBe('hello');
   });
 
-  it('rejects with GUARD_REJECTED when repetition guard blocks the edit', async () => {
-    const blockingLifecycle = buildLifecycle({ repetitionGuard: alwaysBlockGuard() });
+  it('writes message.guard_blocked audit row on edit block (scope=message:edit)', async () => {
+    const blockingLifecycle = buildLifecycle({
+      moderation: cannedModerator({
+        decision: 'block',
+        blockingCode: 'guard_threat',
+        original: 'i will hurt you',
+        sanitized: 'i will hurt you',
+        triggered: ['guard_threat'],
+      }),
+    });
 
     const result = await blockingLifecycle.edit({
       ticketId: TICKET_A, partnerId: PARTNER_A, messageId: MESSAGE_A,
-      actor: aliceActor, newText: 'spam spam spam',
+      actor: aliceActor, newText: 'i will hurt you',
     });
+    expect(result.ok).toBe(false);
 
-    expect(result).toEqual({ ok: false, code: 'GUARD_REJECTED' });
+    const auditRows = await handle.db.select().from(auditLog)
+      .where(eq(auditLog.action, 'message.guard_blocked'));
+    expect(auditRows).toHaveLength(1);
+    const metadata = auditRows[0].metadata as Record<string, unknown>;
+    expect(metadata.scope).toBe('message:edit');
+    expect(metadata.original).toBe('i will hurt you');
+    expect(metadata.blockingCode).toBe('guard_threat');
+    expect(auditRows[0].targetId).toBe(TICKET_A);
   });
 
-  it('proceeds when repetition guard throws (fail-open)', async () => {
-    const flakyLifecycle = buildLifecycle({ repetitionGuard: throwingGuard() });
+  it('passes scope=message:edit to the moderator', async () => {
+    let capturedCtx: ModerationContext | null = null;
+    const captureModeration: ModerationPort = {
+      async moderate(text, ctx): Promise<ModerationResult> {
+        capturedCtx = ctx;
+        return { decision: 'pass', blockingCode: null, original: text, sanitized: text, triggered: [] };
+      },
+    };
+    const captureLifecycle = buildLifecycle({ moderation: captureModeration });
 
-    const result = await flakyLifecycle.edit({
+    await captureLifecycle.edit({
       ticketId: TICKET_A, partnerId: PARTNER_A, messageId: MESSAGE_A,
-      actor: aliceActor, newText: 'updated under redis outage',
+      actor: aliceActor, newText: 'updated text',
     });
 
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.data.text).toBe('updated under redis outage');
+    expect(capturedCtx).not.toBeNull();
+    expect(capturedCtx!.scope).toBe('message:edit');
+    expect(capturedCtx!.senderId).toBe(USER_A);
+    expect(capturedCtx!.partnerId).toBe(PARTNER_A);
   });
 
   it('rejects with CANNOT_MUTATE_DELETED for a soft-deleted tombstone', async () => {
