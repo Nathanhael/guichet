@@ -1,5 +1,5 @@
 // server/services/moderator/repetition.ts
-import type { createClient } from 'redis';
+import type { RedisClientType } from 'redis';
 import { getRepetitionCount } from '../repetitionStore.js';
 
 export interface RepetitionObservation {
@@ -17,8 +17,14 @@ export interface RepetitionPort {
   observe(input: RepetitionObservation): Promise<{ count: number }>;
 }
 
+/**
+ * Redis dep type matches `utils/redis.ts`'s `RedisClient` alias. The two
+ * `RedisClientType` declarations the SDK exposes (one carries the modules
+ * generic, one doesn't) trip equivalence checks; the cast in `observe`
+ * mirrors the pattern in `messageLifecycle/adapters/redisRepetitionAdapter`.
+ */
 export interface RedisRepetitionDeps {
-  redis: ReturnType<typeof createClient> | null;
+  redis: RedisClientType | null;
 }
 
 export class RedisRepetition implements RepetitionPort {
@@ -27,7 +33,7 @@ export class RedisRepetition implements RepetitionPort {
   async observe(input: RepetitionObservation): Promise<{ count: number }> {
     const normalized = input.text.trim().toLowerCase();
     const count = await getRepetitionCount(
-      this.deps.redis,
+      this.deps.redis as Parameters<typeof getRepetitionCount>[0],
       input.senderId,
       normalized,
     );
