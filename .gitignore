@@ -92,6 +92,7 @@ testing/
 # Server unit tests (co-located)
 !server/services/*.test.ts
 !server/services/ai/*.test.ts
+!server/services/availability/__tests__/*.test.ts
 !server/services/auth/*.test.ts
 !server/services/ticketLifecycle/*.test.ts
 !server/services/messageLifecycle/*.test.ts
