@@ -65,7 +65,11 @@ export function createMessageLifecycle(deps: MessageLifecycleDeps): MessageLifec
     react: (args: ReactArgs): Promise<MessageLifecycleResult<ReactOk>> =>
       runReact({ db: deps.db }, args),
     edit: (args: EditArgs): Promise<MessageLifecycleResult<EditOk>> =>
-      runEdit({ db: deps.db, repetitionGuard: deps.ports.repetitionGuard }, args),
+      runEdit({
+        db: deps.db,
+        moderation: deps.ports.moderation,
+        repetitionGuard: deps.ports.repetitionGuard,
+      }, args),
     delete: (args: DeleteArgs): Promise<MessageLifecycleResult<DeleteOk>> =>
       runDelete({ db: deps.db, storage: deps.storage }, args),
     send: (args: SendArgs): Promise<MessageLifecycleResult<SendOk>> =>
