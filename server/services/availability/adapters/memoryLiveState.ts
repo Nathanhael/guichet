@@ -17,6 +17,8 @@ export class MemoryLiveState implements LiveStatePort {
   private sockets = new Map<string, Set<string>>();       // key: `${partnerId}:${userId}` -> set of socketIds
   private partnerSets = new Map<string, Set<string>>();   // key: partnerId -> set of userIds
   private offlineAt = new Map<string, Date>();            // key: `${partnerId}:${userId}`
+  /** Persists status across socket disconnections so reconnect sees prior status. */
+  private lastStatus = new Map<string, AgentStatus>();    // key: `${partnerId}:${userId}`
 
   /** Tunable Redis-failure simulation for atomicity tests. */
   public failNextWrite = false;
@@ -41,6 +43,9 @@ export class MemoryLiveState implements LiveStatePort {
     set.delete(socketId);
     if (set.size === 0) {
       this.sockets.delete(key);
+      // Preserve the last-known status before dropping the hash so reconnect can restore it.
+      const hash = this.hashes.get(key);
+      if (hash) this.lastStatus.set(key, hash.status);
       this.hashes.delete(key);
       this.partnerSets.get(partnerId)?.delete(userId);
     }
@@ -58,13 +63,15 @@ export class MemoryLiveState implements LiveStatePort {
     if (existing) {
       this.hashes.set(key, { ...existing, name: input.name, role: input.role, partnerId: input.partnerId, isPlatformOperator: input.isPlatformOperator });
     } else {
+      // Seed from last-known status on reconnect; default to 'online' for first-ever identify.
+      const status = this.lastStatus.get(key) ?? 'online';
       this.hashes.set(key, {
         userId: input.userId,
         name: input.name,
         role: input.role,
         partnerId: input.partnerId,
         isPlatformOperator: input.isPlatformOperator,
-        status: 'online',
+        status,
         statusChangedAt: new Date().toISOString(),
       });
     }
@@ -120,6 +127,7 @@ export class MemoryLiveState implements LiveStatePort {
     this.sockets.clear();
     this.partnerSets.clear();
     this.offlineAt.clear();
+    this.lastStatus.clear();
     return { deleted };
   }
 }
