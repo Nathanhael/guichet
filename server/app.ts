@@ -38,6 +38,9 @@ import { register } from './utils/metrics.js';
 import { initRedis, getRedisClients } from './utils/redis.js';
 import { jwtVerify } from 'jose';
 import { initAiContext } from './services/ai/index.js';
+import { Moderator } from './services/moderator/index.js';
+import { setModerator } from './services/moderator/instance.js';
+import { RedisRepetition } from './services/moderator/repetition.js';
 import { createTicketLifecycle, type TicketLifecycle } from './services/ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './services/messageLifecycle/index.js';
 import {
@@ -124,6 +127,16 @@ initRedis().then(({ pubClient, subClient }) => {
     },
   });
   logger.info('AI context initialized');
+
+  // Initialize Moderator. Mirrors initAiContext: constructed after Redis
+  // is ready so RedisRepetition gets the live pubClient. No consumers
+  // wired yet — slices 2-4 of the moderator-deepening plan migrate the
+  // three lifecycle call sites.
+  setModerator(new Moderator({
+    repetition: new RedisRepetition({ redis: pubClient ?? null }),
+    logger,
+  }));
+  logger.info('Moderator initialized');
 }).catch(err => {
   logger.error({ err }, 'Failed to initialize Redis');
 });
