@@ -10,7 +10,10 @@
  */
 import type {
   AiTranslationPort,
+  GuardCode,
   LinkPreviewPort,
+  ModerationPort,
+  ModerationResult,
   RepetitionGuardPort,
   LinkPreview,
 } from '../ports.js';
@@ -59,6 +62,57 @@ export function cannedTranslation(
     },
   };
   return port;
+}
+
+// ─── moderation ──────────────────────────────────────────────────────────
+
+/** Always passes — sanitizes nothing. The default for happy-path tests. */
+export function passingModerator(): ModerationPort {
+  return {
+    async moderate(text): Promise<ModerationResult> {
+      return {
+        decision: 'pass',
+        blockingCode: null,
+        original: text,
+        sanitized: text.trim(),
+        triggered: [],
+      };
+    },
+  };
+}
+
+/**
+ * Always blocks with the supplied code. Sanitized echoes original; triggered
+ * contains only the blocking code. Use `cannedModerator` if a richer triggered
+ * array (e.g. caps_notice + offensive) is needed.
+ */
+export function blockingModerator(blockingCode: GuardCode = 'guard_offensive'): ModerationPort {
+  return {
+    async moderate(text): Promise<ModerationResult> {
+      return {
+        decision: 'block',
+        blockingCode,
+        original: text,
+        sanitized: text,
+        triggered: [blockingCode],
+      };
+    },
+  };
+}
+
+/** Returns a fully canned ModerationResult — caller controls every field. */
+export function cannedModerator(result: Partial<ModerationResult>): ModerationPort {
+  return {
+    async moderate(text): Promise<ModerationResult> {
+      return {
+        decision: result.decision ?? 'pass',
+        blockingCode: result.blockingCode ?? null,
+        original: result.original ?? text,
+        sanitized: result.sanitized ?? text,
+        triggered: result.triggered ?? [],
+      };
+    },
+  };
 }
 
 // ─── repetitionGuard ─────────────────────────────────────────────────────
