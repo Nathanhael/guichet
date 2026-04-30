@@ -8,7 +8,10 @@ export interface LiveStatePort {
    *  When the SCARD reaches 0 the adapter MUST drop the user hash + per-partner set member. */
   detachSocket(partnerId: string, userId: string, socketId: string): Promise<{ socketCount: number }>;
   socketCount(partnerId: string, userId: string): Promise<number>;
-  /** Upsert identity fields. Status is set to 'online' on first seen, preserved on reconnect. */
+  /** Upsert identity fields. Status is set to 'online' on first seen, preserved on reconnect.
+   *  ALSO adds the user to the per-partner online set (`SET_PREFIX` in Redis) — this is the
+   *  point at which the user becomes visible to listOnline. Symmetric with detachSocket which
+   *  removes them on SCARD=0. */
   upsertIdentity(input: {
     partnerId: string;
     userId: string;

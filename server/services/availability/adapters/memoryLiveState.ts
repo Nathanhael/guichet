@@ -30,9 +30,6 @@ export class MemoryLiveState implements LiveStatePort {
     const set = this.sockets.get(key) ?? new Set();
     set.add(socketId);
     this.sockets.set(key, set);
-    const partnerSet = this.partnerSets.get(partnerId) ?? new Set();
-    partnerSet.add(userId);
-    this.partnerSets.set(partnerId, partnerSet);
     return { socketCount: set.size };
   }
 
@@ -75,6 +72,11 @@ export class MemoryLiveState implements LiveStatePort {
         statusChangedAt: new Date().toISOString(),
       });
     }
+    // Add to partner-set — symmetric with detachSocket which removes on SCARD=0.
+    // Redis adapter does this inside the Lua of upsertIdentity (SADD sKey userId).
+    const partnerSet = this.partnerSets.get(input.partnerId) ?? new Set();
+    partnerSet.add(input.userId);
+    this.partnerSets.set(input.partnerId, partnerSet);
   }
 
   async readStatus(partnerId: string, userId: string) {
