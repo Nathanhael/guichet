@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { tickets } from '../db/schema.js';
 import { and, isNotNull, lt, ne } from 'drizzle-orm';
 import { applyEffects, type TicketLifecycle } from './ticketLifecycle/index.js';
-import { getOfflineAt, getUserStatus } from './presence.js';
+import { getAvailability } from './availability/index.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 
@@ -68,16 +68,22 @@ export async function reclaimAbandonedTickets(io: Server, lifecycle: TicketLifec
   if (candidates.length === 0) return;
 
   let reclaimed = 0;
+  const availability = getAvailability();
 
   for (const ticket of candidates) {
     if (!ticket.supportId || !ticket.partnerId) continue;
 
-    // Only reclaim if the agent is fully offline (no sockets at all)
-    const status = await getUserStatus(ticket.supportId, ticket.partnerId);
-    if (status !== null) continue; // agent is online/away/busy — don't reclaim
+    // Only reclaim if the agent is fully offline (no sockets at all).
+    // `getStatus` returns null iff the live-state hash has been deleted, which happens
+    // only when the last socket disconnects (Lua DEL in detachSocket).
+    const status = await availability.advanced.getStatus(ticket.supportId, ticket.partnerId);
+    if (status !== null) continue;
 
     // Primary check: how long has the agent actually been offline?
-    const offlineAt = await getOfflineAt(ticket.supportId, ticket.partnerId);
+    // `advanced.offlineSince` returns null when online; we already gated on `status !== null`,
+    // so by here the agent IS offline — this returns the marker (or null if Redis lost it,
+    // in which case the restart fallback below kicks in).
+    const offlineAt = await availability.advanced.offlineSince(ticket.supportId, ticket.partnerId);
     let offlineForMs: number;
     if (offlineAt) {
       offlineForMs = now - offlineAt.getTime();
