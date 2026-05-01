@@ -21,12 +21,12 @@ export class Availability {
 
   // ── Hot path ──────────────────────────────────────────────────────────────
 
-  async setStatus(userId: string, partnerId: string, status: AgentStatus): Promise<void> {
+  async setStatus(userId: string, partnerId: string, status: AgentStatus): Promise<{ applied: boolean }> {
     const at = this.deps.clock.now();
 
     // Skip never-identified users early (matches presence.setUserStatus's hExists guard).
     const exists = (await this.deps.live.readStatus(partnerId, userId)) !== null;
-    if (!exists) return;
+    if (!exists) return { applied: false };
 
     // 1. PG transaction: close prior row + open new row.
     await this.deps.log.closeAndOpen({ userId, partnerId, nextStatus: status, at });
@@ -39,7 +39,7 @@ export class Availability {
         // (e.g. last socket disconnected). Compensate the PG row so the
         // transition log doesn't show a status that the live state never reflected.
         await this.deps.log.rollbackTransition({ userId, partnerId, at });
-        return;
+        return { applied: false };
       }
     } catch (err) {
       await this.deps.log.rollbackTransition({ userId, partnerId, at });
@@ -48,6 +48,7 @@ export class Availability {
 
     // 3. Broadcast — best-effort; failures don't roll back state.
     await this.broadcastSupportRoster(partnerId);
+    return { applied: true };
   }
 
   async isOnline(userId: string, partnerId: string): Promise<boolean> {

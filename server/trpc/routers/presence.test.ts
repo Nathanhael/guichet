@@ -15,7 +15,7 @@ const { mockAvailability } = vi.hoisted(() => ({
       onlineUsers: vi.fn().mockResolvedValue([]),
       getStatus: vi.fn().mockResolvedValue(null),
     },
-    setStatus: vi.fn().mockResolvedValue(undefined),
+    setStatus: vi.fn().mockResolvedValue({ applied: true }),
   },
 }));
 

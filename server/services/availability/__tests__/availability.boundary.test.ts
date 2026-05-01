@@ -27,7 +27,8 @@ describe('Availability — boundary contract', () => {
   it('setStatus writes Redis hash, opens new PG row, broadcasts roster', async () => {
     await attachAsSupport('u1', 'p1');
     bc.reset();
-    await av.setStatus('u1', 'p1', 'away');
+    const result = await av.setStatus('u1', 'p1', 'away');
+    expect(result.applied).toBe(true);
     expect(await live.readStatus('p1', 'u1')).toBe('away');
     const open = log.rows.find(r => r.userId === 'u1' && r.endedAt === null);
     expect(open?.status).toBe('away');
@@ -92,7 +93,8 @@ describe('Availability — boundary contract', () => {
   });
 
   it('setStatus is a no-op when user has no live-state hash (never identified)', async () => {
-    await av.setStatus('ghost', 'p1', 'away');
+    const result = await av.setStatus('ghost', 'p1', 'away');
+    expect(result.applied).toBe(false);
     expect(log.rows.length).toBe(0);
     expect(bc.events.length).toBe(0);
   });
