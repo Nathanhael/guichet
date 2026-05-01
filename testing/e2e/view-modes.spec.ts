@@ -103,7 +103,12 @@ test.describe('ViewModeDropdown', () => {
     }
   });
 
-  test('ViewModeDropdown button is visible in ChatTabBar when a ticket is open', async ({ page }) => {
+  // FIXME: cross-test partner-state pollution — `openFirstQueueTicket` requires
+  // at least one DSC/FOT/TEC ticket in support_vm's queue, but parallel specs
+  // running against the same partner drain or claim queue tickets first.
+  // Per Bundle D escape hatch (`test.fixme` for cross-test multi-context state);
+  // proper fix is partner-isolation per spec file, tracked separately.
+  test.fixme('ViewModeDropdown button is visible in ChatTabBar when a ticket is open', async ({ page }) => {
     // ViewModeDropdown was relocated out of SupportNav and is now rendered
     // only by ChatTabBar (when at least one ticket tab is open). The
     // `showViewMode` prop on SettingsPopover exists but no nav currently
@@ -182,7 +187,8 @@ test.describe('Focus Mode', () => {
     tabBarMounted = await openFirstQueueTicket(page);
   });
 
-  test('focus mode hides the queue sidebar', async ({ page }) => {
+  // FIXME: cross-test partner-state pollution — see comment above `ViewModeDropdown`.
+  test.fixme('focus mode hides the queue sidebar', async ({ page }) => {
     if (!tabBarMounted) {
       throw new Error(
         'No queue ticket available — cannot mount ChatTabBar. Seed must include ' +
@@ -341,7 +347,8 @@ test.describe('Split View', () => {
     return true;
   }
 
-  test('split view falls back to normal with fewer than 2 tabs open', async ({ page }) => {
+  // FIXME: cross-test partner-state pollution — see comment above `ViewModeDropdown`.
+  test.fixme('split view falls back to normal with fewer than 2 tabs open', async ({ page }) => {
     if (!tabBarMounted) {
       throw new Error(
         'No queue ticket available — cannot mount ChatTabBar. Seed must include ' +

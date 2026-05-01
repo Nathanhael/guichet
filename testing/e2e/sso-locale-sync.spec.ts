@@ -53,7 +53,13 @@ test.describe('SSO locale sync — UI', () => {
     expect(pageText).not.toMatch(/[\u{1F1E6}-\u{1F1FF}]/u);
   });
 
-  test('non-SSO user sees no "SYNCED FROM SSO" badge', async ({ page }) => {
+  // FIXME: cross-test SSO-flag pollution — Lucas is a non-SSO seed user, but
+  // parallel specs that exercise the SSO claim flow flip Lucas's
+  // `lang_synced_from_sso` flag and don't reset it. By the time this test
+  // checks the badge state, Lucas has the flag set from another spec.
+  // Per Bundle D escape hatch (`test.fixme` for cross-test multi-context state);
+  // proper fix is per-spec user isolation, tracked separately.
+  test.fixme('non-SSO user sees no "SYNCED FROM SSO" badge', async ({ page }) => {
     await loginViaDemo(page, /Lucas Support/i);
 
     // Phase 9 chrome unification: the LanguageSwitcher renders inside the
