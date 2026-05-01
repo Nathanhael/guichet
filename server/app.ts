@@ -53,6 +53,7 @@ import { createMessageLifecycle, type MessageLifecycle } from './services/messag
 import {
   aiTranslationAdapter,
   httpLinkPreviewAdapter,
+  moderationAdapter,
   redisRepetitionAdapter,
 } from './services/messageLifecycle/adapters/index.js';
 import { getStorage } from './services/storage.js';
@@ -85,6 +86,7 @@ export const messageLifecycle: MessageLifecycle = createMessageLifecycle({
     linkPreview: httpLinkPreviewAdapter(),
     aiTranslation: aiTranslationAdapter(),
     repetitionGuard: redisRepetitionAdapter(),
+    moderation: moderationAdapter(),
   },
   storage: getStorage(),
 });
