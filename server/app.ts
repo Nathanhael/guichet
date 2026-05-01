@@ -73,8 +73,13 @@ export { httpServer };
 // transition (reclaim today; leave/returnToQueue/assign/transfer/close/create
 // land in subsequent PRs). Wired once here and passed explicitly to socket
 // handlers and the boot-time reclaim sweep so neither has to reach for a
-// module-level singleton.
-export const lifecycle: TicketLifecycle = createTicketLifecycle({ db });
+// module-level singleton. The `moderation` port is a closure that lazily
+// resolves the boot-time Moderator singleton on each call, so module-load
+// ordering doesn't matter.
+export const lifecycle: TicketLifecycle = createTicketLifecycle({
+  db,
+  ports: { moderation: moderationAdapter() },
+});
 
 // Message-mutation lifecycle — see issue #49 / #50. PR 1 ships only the
 // `react` verb; subsequent PRs add `edit`, `delete`, `send`. Adapters are

@@ -18,11 +18,12 @@
 import crypto from 'node:crypto';
 
 import { RECENT_CLOSED_TICKETS_LIMIT } from '../../constants.js';
+import { auditLog } from '../../db/schema.js';
 import { Rooms } from '../../utils/rooms.js';
 import { isValidMediaUrl } from '../../utils/security.js';
 import { getBusinessHoursStatus } from '../businessHours.js';
 import type { BusinessHoursSchedule } from '../businessHours.js';
-import { runSyncGuards } from '../guards.js';
+import type { ModerationPort } from '../moderator/index.js';
 import { writeAudit } from './audit.js';
 import { insertAgentMessageTx, type SocketMessage } from './messages.js';
 import {
@@ -42,6 +43,7 @@ import type {
 
 export interface CreateDeps {
   db: LifecycleDb;
+  moderation: ModerationPort;
 }
 
 export async function runCreate(
@@ -55,20 +57,38 @@ export async function runCreate(
     return { ok: false, code: 'INVALID_MEDIA_URL' };
   }
 
-  // Sync content guards on the first-message text (when provided).
-  // Closes the bypass that existed before — the legacy
-  // `insertAgentMessageTx` path skipped the guard pipeline that
-  // `message:send` runs. Repetition guard is intentionally skipped here
-  // because (a) the agent is enforced one-open-ticket-per-agent, so
-  // intra-ticket repetition is impossible, and (b) the lifecycle has no
-  // Redis dependency yet.
+  // Content moderation on first-message text. `scope: 'ticket:create'` runs
+  // ALL 7 guards including repetition (D9 behavior change). The 1-ticket-per-
+  // agent constraint means intra-user repetition can only happen across
+  // sequential closed tickets — exactly the spam pattern repetition catches.
+  // On block, audit row lands outside any transaction (the ticket transaction
+  // never opens because we return before `db.transaction`).
   let guardedText = args.text;
   if (args.text && args.text.trim().length > 0) {
-    const syncResult = runSyncGuards(args.text);
-    if (!syncResult.ok) {
+    const moderationResult = await deps.moderation.moderate(args.text, {
+      senderId: args.actor.userId,
+      partnerId: args.partnerId,
+      scope: 'ticket:create',
+    });
+    if (moderationResult.decision === 'block') {
+      await deps.db.insert(auditLog).values({
+        action: 'ticket.guard_blocked',
+        actorId: args.actor.userId,
+        partnerId: args.partnerId,
+        targetType: 'ticket',
+        targetId: null,
+        metadata: {
+          scope: 'ticket:create',
+          original: moderationResult.original,
+          sanitized: moderationResult.sanitized,
+          triggered: moderationResult.triggered,
+          blockingCode: moderationResult.blockingCode,
+          dept: args.dept,
+        },
+      });
       return { ok: false, code: 'GUARD_REJECTED' };
     }
-    guardedText = syncResult.text;
+    guardedText = moderationResult.sanitized;
   }
 
   const partner = await readPartnerForCreate(deps.db, { partnerId: args.partnerId });

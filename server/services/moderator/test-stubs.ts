@@ -1,4 +1,9 @@
 // server/services/moderator/test-stubs.ts
+import type {
+  GuardCode,
+  ModerationPort,
+  ModerationResult,
+} from './index.js';
 import type { RepetitionPort, RepetitionObservation } from './repetition.js';
 
 /**
@@ -32,4 +37,51 @@ export class ThrowingRepetition implements RepetitionPort {
   async observe(): Promise<never> {
     throw new Error('redis offline (test stub)');
   }
+}
+
+// ─── ModerationPort stubs (consumed by lifecycle tests) ──────────────────
+
+/** Always passes. The default for happy-path lifecycle tests. */
+export function passingModerator(): ModerationPort {
+  return {
+    async moderate(text): Promise<ModerationResult> {
+      return {
+        decision: 'pass',
+        blockingCode: null,
+        original: text,
+        sanitized: text.trim(),
+        triggered: [],
+      };
+    },
+  };
+}
+
+/** Always blocks with the given code. Triggered echoes the blocking code. */
+export function blockingModerator(blockingCode: GuardCode = 'guard_offensive'): ModerationPort {
+  return {
+    async moderate(text): Promise<ModerationResult> {
+      return {
+        decision: 'block',
+        blockingCode,
+        original: text,
+        sanitized: text,
+        triggered: [blockingCode],
+      };
+    },
+  };
+}
+
+/** Returns a fully canned ModerationResult — caller controls every field. */
+export function cannedModerator(result: Partial<ModerationResult>): ModerationPort {
+  return {
+    async moderate(text): Promise<ModerationResult> {
+      return {
+        decision: result.decision ?? 'pass',
+        blockingCode: result.blockingCode ?? null,
+        original: result.original ?? text,
+        sanitized: result.sanitized ?? text,
+        triggered: result.triggered ?? [],
+      };
+    },
+  };
 }
