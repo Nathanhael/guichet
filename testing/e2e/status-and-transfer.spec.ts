@@ -217,7 +217,15 @@ test.describe('Department Transfer', () => {
     await page.setViewportSize({ width: 1600, height: 900 });
   });
 
-  test('Transfer button is visible when a ticket is open', async ({ page }) => {
+  // FIXME: cross-test partner-state pollution — `ticketFixture.create()` lands
+  // its ticket in the Acme partner queue, but parallel specs (support-flow,
+  // agent-flow, etc.) running against the same partner claim/close tickets
+  // concurrently. By the time this test reaches the queue sidebar, the
+  // fixture-created ticket is often already in another support's "Claimed by
+  // others" section instead of the queued list. Per Bundle D escape hatch
+  // (`test.fixme` for cross-test multi-context state); proper fix is partner-
+  // isolation per spec file, tracked in a separate issue.
+  test.fixme('Transfer button is visible when a ticket is open', async ({ page }) => {
     // Open the fixture-created ticket from the queue sidebar.
     // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow);
     // `cursor-pointer` alone matched collapsible section headers too.
@@ -240,7 +248,7 @@ test.describe('Department Transfer', () => {
     await expect(transferBtn).toBeVisible({ timeout: 10000 });
   });
 
-  test('transfer menu shows department section header', async ({ page }) => {
+  test.fixme('transfer menu shows department section header', async ({ page }) => {
     const ticketItem = page.locator('li[data-ticket-row]').first();
     await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
@@ -269,7 +277,7 @@ test.describe('Department Transfer', () => {
     ).toBeVisible({ timeout: 5000 });
   });
 
-  test('transfer menu shows department options list', async ({ page }) => {
+  test.fixme('transfer menu shows department options list', async ({ page }) => {
     const ticketItem = page.locator('li[data-ticket-row]').first();
     await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
@@ -296,7 +304,7 @@ test.describe('Department Transfer', () => {
     await expect(deptHeader).toBeVisible({ timeout: 5000 });
   });
 
-  test('transfer menu has a note input field', async ({ page }) => {
+  test.fixme('transfer menu has a note input field', async ({ page }) => {
     const ticketItem = page.locator('li[data-ticket-row]').first();
     await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
