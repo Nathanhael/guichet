@@ -30,13 +30,13 @@ export const presenceRouter = router({
       if (!partnerId) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
       }
-      const availability = getAvailability();
-      // Preserve legacy NOT_FOUND UX: setStatus is a silent no-op for never-identified users.
-      const exists = (await availability.advanced.getStatus(input.userId, partnerId)) !== null;
-      if (!exists) {
+      // setStatus returns { applied: false } for never-identified users (and for
+      // the TOCTOU window where the hash was deleted between the existence
+      // check and the write). One round-trip instead of two.
+      const result = await getAvailability().setStatus(input.userId, partnerId, input.status);
+      if (!result.applied) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not online' });
       }
-      await availability.setStatus(input.userId, partnerId, input.status);
       return { success: true };
     }),
 });
