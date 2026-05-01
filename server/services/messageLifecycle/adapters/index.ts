@@ -8,14 +8,13 @@
  */
 import { invalidateSummary } from '../../ai/summaryCache.js';
 import { runAiAction } from '../../ai/runAction.js';
-import { guardRepetition } from '../../guards.js';
 import { unfurlLinks } from '../../linkPreview.js';
-import { getRedisClients } from '../../../utils/redis.js';
+import { getModerator } from '../../moderator/instance.js';
 
 import type {
   AiTranslationPort,
   LinkPreviewPort,
-  RepetitionGuardPort,
+  ModerationPort,
 } from '../ports.js';
 
 // ─── linkPreview ─────────────────────────────────────────────────────────
@@ -67,9 +66,6 @@ export function aiTranslationAdapter(): AiTranslationPort {
 
 // ─── moderation ──────────────────────────────────────────────────────────
 
-import { getModerator } from '../../moderator/instance.js';
-import type { ModerationPort } from '../ports.js';
-
 /**
  * Returns a port that delegates to the boot-time Moderator singleton via
  * the registry. The closure defers `getModerator()` until first use, so
@@ -79,29 +75,5 @@ import type { ModerationPort } from '../ports.js';
 export function moderationAdapter(): ModerationPort {
   return {
     moderate: (text, ctx) => getModerator().moderate(text, ctx),
-  };
-}
-
-// ─── repetitionGuard ─────────────────────────────────────────────────────
-
-export function redisRepetitionAdapter(): RepetitionGuardPort {
-  return {
-    async check(args) {
-      const { pubClient } = getRedisClients();
-      const result = await guardRepetition(
-        pubClient as Parameters<typeof guardRepetition>[0],
-        args.text,
-        args.senderId,
-      );
-      if (result.ok) return { ok: true };
-      // Guard codes from `services/guards.ts` are like `guard_repetition`,
-      // `guard_offensive`, etc. Map the repetition-specific code through;
-      // anything else is shaped as `flood` for now (caller treats both as
-      // a `GUARD_REJECTED` rejection).
-      return {
-        ok: false,
-        code: result.code === 'guard_repetition' ? 'repetition' : 'flood',
-      };
-    },
   };
 }

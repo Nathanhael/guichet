@@ -72,10 +72,3 @@ export interface Rating {
   createdAt?: string;
 }
 
-export interface GuardResult {
-  ok: boolean;
-  code: string;
-  sanitized?: string | null;
-  text?: string;
-}
-

@@ -26,7 +26,6 @@ import type { UserActor } from '../ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './index.js';
 import type { ModerationContext, ModerationPort, ModerationResult } from './ports.js';
 import {
-  alwaysOkGuard,
   blockingModerator,
   cannedModerator,
   cannedTranslation,
@@ -80,14 +79,12 @@ async function seedBaseline(opts: { messageCreatedAt?: string } = {}): Promise<v
 
 function buildLifecycle(opts: {
   moderation?: ModerationPort,
-  repetitionGuard?: ReturnType<typeof alwaysOkGuard>,
 } = {}): MessageLifecycle {
   return createMessageLifecycle({
     db: handle.db,
     ports: {
       linkPreview: inMemoryLinkPreview(),
       aiTranslation: cannedTranslation(),
-      repetitionGuard: opts.repetitionGuard ?? alwaysOkGuard(),
       moderation: opts.moderation ?? passingModerator(),
     },
     storage: recordingStorage().storage,
