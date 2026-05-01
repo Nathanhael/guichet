@@ -51,11 +51,6 @@ vi.mock('../../services/businessHours.js', () => ({
   broadcastAgentStatus: vi.fn(),
 }));
 
-vi.mock('../../services/presence.js', () => ({
-  setUserStatus: vi.fn(async () => {}),
-  getUserStatus: vi.fn(async () => null),
-}));
-
 const findTicketPartnerMock = vi.fn();
 const findPartnerLabelsMock = vi.fn();
 const replaceTicketLabelsMock = vi.fn();
@@ -103,11 +98,6 @@ vi.mock('../../services/sla.js', () => ({
 vi.mock('../../services/ai/index.js', () => ({
   invalidateSummary: vi.fn(async () => {}),
   autoSummarizeOnClose: vi.fn(async () => {}),
-}));
-
-vi.mock('../../services/statusTracking.js', () => ({
-  logTransition: vi.fn(async () => {}),
-  closeOpenRow: vi.fn(async () => {}),
 }));
 
 vi.mock('../../utils/redis.js', () => ({

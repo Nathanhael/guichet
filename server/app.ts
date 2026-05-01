@@ -24,9 +24,8 @@ import config from './config.js';
 import logger from './utils/logger.js';
 import { auth as authMiddleware, AuthRequest } from './middleware/auth.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
-import { setIo as setPresenceIo, flushPresenceOnStartup } from './services/presence.js';
 import { runDailyPurge } from './services/gdpr.js';
-import { rollupDay } from './services/statusTracking.js';
+
 import { cleanupExpiredTokens } from './services/auth/index.js';
 import { scheduleDailyChainVerify } from './services/chainVerifySchedule.js';
 import { scheduleSlaSweep, setSlaIo } from './services/sla.js';
@@ -41,6 +40,14 @@ import { initAiContext } from './services/ai/index.js';
 import { Moderator } from './services/moderator/index.js';
 import { setModerator } from './services/moderator/instance.js';
 import { RedisRepetition } from './services/moderator/repetition.js';
+import {
+  Availability,
+  RedisLiveState,
+  DrizzleTransitionLog,
+  SocketIoBroadcast,
+  initAvailability,
+  getAvailability,
+} from './services/availability/index.js';
 import { createTicketLifecycle, type TicketLifecycle } from './services/ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './services/messageLifecycle/index.js';
 import {
@@ -142,6 +149,23 @@ initRedis().then(({ pubClient, subClient }) => {
     logger,
   }));
   logger.info('Moderator initialized');
+
+  // Initialize the availability module — owns Redis live state + PG transition
+  // log + broadcast fanout (RFC #88).
+  const availability = new Availability({
+    live: new RedisLiveState({ redis: pubClient, logger }),
+    log: new DrizzleTransitionLog({
+      db,
+      schema: { agentStatusLog: schema.agentStatusLog, dailyAgentStatus: schema.dailyAgentStatus },
+      logger,
+    }),
+    broadcast: new SocketIoBroadcast({ io, logger }),
+    clock: { now: () => new Date() },
+  });
+  initAvailability(availability);
+  logger.info('Availability module initialized');
+  availability.flushOnBoot().catch((err) =>
+    logger.warn({ err }, '[availability] Startup flush failed (non-fatal)'));
 }).catch(err => {
   logger.error({ err }, 'Failed to initialize Redis');
 });
@@ -447,10 +471,6 @@ app.get('/metrics', async (req: Request, res: Response) => {
 });
 
 
-// Flush stale presence on startup — all socket IDs from the previous process
-// are dead. Users re-register via socket:identify on reconnect.
-flushPresenceOnStartup().catch((err) => logger.warn({ err }, '[presence] Startup flush failed (non-fatal)'));
-
 const gdprRunner = createTaskRunner('gdpr-purge');
 const tokenCleanupRunner = createTaskRunner('token-cleanup');
 
@@ -528,12 +548,13 @@ setInterval(async () => {
   try {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const allPartners = await db.select({ id: schema.partners.id }).from(schema.partners);
+    const av = getAvailability();
     for (const p of allPartners) {
-      await rollupDay(p.id, yesterday);
+      await av.reports.rollupDay(p.id, yesterday);
     }
-    logger.info({ date: yesterday }, '[statusTracking] Hourly rollup complete');
+    logger.info({ date: yesterday }, '[availability] Hourly rollup complete');
   } catch (err) {
-    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[statusTracking] Rollup error');
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[availability] Rollup error');
   }
 }, 60 * 60 * 1000).unref();
 
@@ -549,7 +570,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 registerSocketHandlers(io, { lifecycle, messageLifecycle });
 
 setBusinessHoursIo(io);
-setPresenceIo(io);
 
 // SLA sweep — every SLA_SWEEP_INTERVAL_MS (default 60s). Set env=0 to disable.
 setSlaIo(io);
