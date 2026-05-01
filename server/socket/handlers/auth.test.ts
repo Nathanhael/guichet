@@ -33,14 +33,15 @@ vi.mock('../../services/userQueries.js', () => ({
   findTargetSupport: vi.fn(),
 }));
 
-const identifyUserMock = vi.fn();
+const { mockAvailability } = vi.hoisted(() => ({
+  mockAvailability: {
+    socket: { attach: vi.fn().mockResolvedValue(undefined), detach: vi.fn().mockResolvedValue({ fullyOffline: false, role: '', partnerId: '', isPlatformOperator: false }) },
+    advanced: { getStatus: vi.fn().mockResolvedValue(null) },
+  },
+}));
 
-vi.mock('../../services/presence.js', () => ({
-  identifyUser: identifyUserMock,
-  decrementUserCount: vi.fn(),
-  broadcastOnlineSupport: vi.fn(),
-  getUserStatus: vi.fn(async () => null),
-  setUserStatus: vi.fn(async () => {}),
+vi.mock('../../services/availability/index.js', () => ({
+  getAvailability: () => mockAvailability,
 }));
 
 vi.mock('../../services/businessHours.js', () => ({
@@ -56,11 +57,6 @@ vi.mock('../../services/auth/sessionRevocation.js', () => ({
 vi.mock('../../services/roles.js', () => ({
   canUseSupportWorkflows: (role: string) => role === 'support' || role === 'admin',
   isPlatformAdmin: (v: boolean) => v,
-}));
-
-vi.mock('../../services/statusTracking.js', () => ({
-  logTransition: vi.fn(async () => {}),
-  closeOpenRow: vi.fn(async () => {}),
 }));
 
 const findActiveTicketsForSupportMock = vi.fn();
@@ -266,16 +262,15 @@ describe('socket:identify', () => {
     // H-1 regression: viewer lang must be stored on socket.data so the
     // message:send pre-warm can fan out per-viewer translations.
     expect(socket.data.lang).toBe('fr');
-    // identifyUser signature gained a 6th `socketId` arg — the handler
-    // now passes socket.id through so presence can track per-socket.
-    expect(identifyUserMock).toHaveBeenCalledWith(
-      'u1',
-      'support',
-      'Test User',
-      'partner-1',
-      false,
-      expect.any(String),
-    );
+    // availability.socket.attach carries userId, role, name, partnerId, socketId, isPlatformOperator.
+    expect(mockAvailability.socket.attach).toHaveBeenCalledWith({
+      userId: 'u1',
+      partnerId: 'partner-1',
+      socketId: expect.any(String),
+      role: 'support',
+      name: 'Test User',
+      isPlatformOperator: false,
+    });
     expect(socket.join).toHaveBeenCalledWith('partner:partner-1');
     expect(socket.join).toHaveBeenCalledWith('user:u1');
   });
