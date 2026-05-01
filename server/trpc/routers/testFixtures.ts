@@ -249,8 +249,12 @@ export const testFixturesRouter = router({
         });
       });
 
-      // Write Redis presence hash field. The hash key format mirrors
-      // services/presence.ts hashKey() — `presence:<partnerId>:<userId>`.
+      // LAYOUT DEPENDENCY: this fixture writes directly to the Redis presence
+      // hash key layout owned by `services/availability/adapters/redisLiveState.ts`.
+      // If that adapter renames the prefix or changes the hash structure, update
+      // this fixture in lockstep — there is no shared key constant. The fixture
+      // intentionally bypasses Availability so tests can stage state BEFORE a
+      // socket connects (Availability.socket.attach requires a real socket id).
       const { pubClient } = getRedisClients();
       if (pubClient) {
         try {

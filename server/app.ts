@@ -24,9 +24,8 @@ import config from './config.js';
 import logger from './utils/logger.js';
 import { auth as authMiddleware, AuthRequest } from './middleware/auth.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
-import { setIo as setPresenceIo, flushPresenceOnStartup } from './services/presence.js';
 import { runDailyPurge } from './services/gdpr.js';
-import { rollupDay } from './services/statusTracking.js';
+import { getAvailability } from './services/availability/instance.js';
 import { cleanupExpiredTokens } from './services/auth/index.js';
 import { scheduleDailyChainVerify } from './services/chainVerifySchedule.js';
 import { scheduleSlaSweep, setSlaIo } from './services/sla.js';
@@ -448,9 +447,8 @@ app.get('/metrics', async (req: Request, res: Response) => {
 });
 
 
-// Flush stale presence on startup — all socket IDs from the previous process
-// are dead. Users re-register via socket:identify on reconnect.
-flushPresenceOnStartup().catch((err) => logger.warn({ err }, '[presence] Startup flush failed (non-fatal)'));
+// Stale-presence startup flush is owned by availability.flushOnBoot() which
+// runs inside the initRedis().then() block above (after setAvailability).
 
 const gdprRunner = createTaskRunner('gdpr-purge');
 const tokenCleanupRunner = createTaskRunner('token-cleanup');
@@ -530,11 +528,11 @@ setInterval(async () => {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const allPartners = await db.select({ id: schema.partners.id }).from(schema.partners);
     for (const p of allPartners) {
-      await rollupDay(p.id, yesterday);
+      await getAvailability().reports.rollupDay(p.id, yesterday);
     }
-    logger.info({ date: yesterday }, '[statusTracking] Hourly rollup complete');
+    logger.info({ date: yesterday }, '[availability] Hourly rollup complete');
   } catch (err) {
-    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[statusTracking] Rollup error');
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[availability] Rollup error');
   }
 }, 60 * 60 * 1000).unref();
 
@@ -550,7 +548,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 registerSocketHandlers(io, { lifecycle, messageLifecycle });
 
 setBusinessHoursIo(io);
-setPresenceIo(io);
+// Availability's broadcast adapter takes io at construction (inside
+// initRedis().then() above) — no module-level `setIo()` call needed.
 
 // SLA sweep — every SLA_SWEEP_INTERVAL_MS (default 60s). Set env=0 to disable.
 setSlaIo(io);
