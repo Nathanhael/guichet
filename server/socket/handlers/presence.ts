@@ -1,8 +1,7 @@
 import { Socket } from 'socket.io';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
-import * as presenceService from '../../services/presence.js';
-import * as statusTracking from '../../services/statusTracking.js';
+import { getAvailability } from '../../services/availability/instance.js';
 import { requireActorTicketScopeWith } from '../partnerScope.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
 import { can } from '../../services/auth/capabilities.js';
@@ -87,7 +86,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         );
         let primaryValid = false;
         if (listedInParticipants) {
-          const status = await presenceService.getUserStatus(
+          const status = await getAvailability().advanced.getStatus(
             ticket.supportId,
             callerPartnerId,
           );
@@ -179,10 +178,10 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const { status } = statusParsed;
     const actor = socketActor(socket);
     if (!actor) return;
-    await presenceService.setUserStatus(actor.userId, actor.partnerId, status);
-    await statusTracking.logTransition(actor.userId, actor.partnerId, status);
-    // Re-broadcast online support list so viewer UIs (chat header avatars, queue sidebar) reflect the new status immediately.
-    await presenceService.broadcastOnlineSupport(actor.partnerId);
+    // The availability module owns the PG-first / Redis-second / broadcast-last
+    // atomicity contract. On Redis-write failure the PG row is rolled back —
+    // closes the silent-divergence bug the legacy two-call dance had.
+    await getAvailability().setStatus(actor.userId, actor.partnerId, status);
   });
 
   socket.on('support:leave', async (data: unknown) => {
@@ -217,7 +216,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         const primaryValid =
           storedPrimary !== supportId
           && remaining.some((p: Participant) => p.id === storedPrimary)
-          && (await presenceService.getUserStatus(storedPrimary, actor.partnerId)) !== null;
+          && (await getAvailability().advanced.getStatus(storedPrimary, actor.partnerId)) !== null;
         clearPrimary = !primaryValid;
       }
 
