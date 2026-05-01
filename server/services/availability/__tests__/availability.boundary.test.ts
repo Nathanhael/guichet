@@ -37,7 +37,7 @@ describe('Availability — boundary contract', () => {
 
   it('setStatus rolls back PG row when Redis fails', async () => {
     await attachAsSupport('u1', 'p1');
-    const rowsBefore = JSON.parse(JSON.stringify(log.rows));
+    const rowsBefore = structuredClone(log.rows);
     live.failNextWrite = true;
     await expect(av.setStatus('u1', 'p1', 'away')).rejects.toThrow();
     expect(log.rows).toEqual(rowsBefore); // PG state unchanged
