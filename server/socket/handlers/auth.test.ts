@@ -33,14 +33,14 @@ vi.mock('../../services/userQueries.js', () => ({
   findTargetSupport: vi.fn(),
 }));
 
-const identifyUserMock = vi.fn();
+const attachMock = vi.fn();
+const getStatusMock = vi.fn(async () => null);
 
-vi.mock('../../services/presence.js', () => ({
-  identifyUser: identifyUserMock,
-  decrementUserCount: vi.fn(),
-  broadcastOnlineSupport: vi.fn(),
-  getUserStatus: vi.fn(async () => null),
-  setUserStatus: vi.fn(async () => {}),
+vi.mock('../../services/availability/instance.js', () => ({
+  getAvailability: () => ({
+    socket: { attach: attachMock, detach: vi.fn() },
+    advanced: { getStatus: getStatusMock },
+  }),
 }));
 
 vi.mock('../../services/businessHours.js', () => ({
@@ -56,11 +56,6 @@ vi.mock('../../services/auth/sessionRevocation.js', () => ({
 vi.mock('../../services/roles.js', () => ({
   canUseSupportWorkflows: (role: string) => role === 'support' || role === 'admin',
   isPlatformAdmin: (v: boolean) => v,
-}));
-
-vi.mock('../../services/statusTracking.js', () => ({
-  logTransition: vi.fn(async () => {}),
-  closeOpenRow: vi.fn(async () => {}),
 }));
 
 const findActiveTicketsForSupportMock = vi.fn();
@@ -266,16 +261,16 @@ describe('socket:identify', () => {
     // H-1 regression: viewer lang must be stored on socket.data so the
     // message:send pre-warm can fan out per-viewer translations.
     expect(socket.data.lang).toBe('fr');
-    // identifyUser signature gained a 6th `socketId` arg — the handler
-    // now passes socket.id through so presence can track per-socket.
-    expect(identifyUserMock).toHaveBeenCalledWith(
-      'u1',
-      'support',
-      'Test User',
-      'partner-1',
-      false,
-      expect.any(String),
-    );
+    // The handler now delegates the per-socket presence tracking +
+    // PG row open + roster broadcast to availability.socket.attach().
+    expect(attachMock).toHaveBeenCalledWith(expect.objectContaining({
+      userId: 'u1',
+      partnerId: 'partner-1',
+      role: 'support',
+      name: 'Test User',
+      isPlatformOperator: false,
+      socketId: expect.any(String),
+    }));
     expect(socket.join).toHaveBeenCalledWith('partner:partner-1');
     expect(socket.join).toHaveBeenCalledWith('user:u1');
   });

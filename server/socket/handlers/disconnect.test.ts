@@ -17,15 +17,14 @@ vi.mock('../../utils/metrics.js', () => ({
   socketioEventsTotal: { inc: vi.fn() },
 }));
 
-const decrementUserCountMock = vi.fn();
+const detachMock = vi.fn();
 const broadcastAgentStatusMock = vi.fn();
 
-vi.mock('../../services/presence.js', () => ({
-  identifyUser: vi.fn(),
-  decrementUserCount: decrementUserCountMock,
-  broadcastOnlineSupport: vi.fn(),
-  getUserStatus: vi.fn(async () => null),
-  setUserStatus: vi.fn(async () => {}),
+vi.mock('../../services/availability/instance.js', () => ({
+  getAvailability: () => ({
+    socket: { attach: vi.fn(), detach: detachMock },
+    advanced: { getStatus: vi.fn(async () => null) },
+  }),
 }));
 
 vi.mock('../../services/businessHours.js', () => ({
@@ -36,11 +35,6 @@ vi.mock('../../services/businessHours.js', () => ({
 
 vi.mock('../../services/sessionRevocation.js', () => ({
   isRevoked: vi.fn(async () => false),
-}));
-
-vi.mock('../../services/statusTracking.js', () => ({
-  logTransition: vi.fn(async () => {}),
-  closeOpenRow: vi.fn(async () => {}),
 }));
 
 vi.mock('../../utils/redis.js', () => ({
@@ -102,7 +96,7 @@ describe('disconnect handler', () => {
     socket.rooms.add('partner:partner-1');
     socket.to.mockReturnValue({ emit: toEmitMock });
 
-    decrementUserCountMock.mockResolvedValueOnce({ removed: true, role: 'agent' });
+    detachMock.mockResolvedValueOnce({ removed: true, role: 'agent' });
 
     const ctx = {
       io,
@@ -122,10 +116,13 @@ describe('disconnect handler', () => {
     });
     expect(typingCalls.length).toBe(2);
 
-    // Should decrement presence — the third arg is socket.id, which the
-    // handler now passes through so the socket-set-based presence tracker
-    // can SREM the exact socket that's disconnecting.
-    expect(decrementUserCountMock).toHaveBeenCalledWith('u1', 'partner-1', expect.any(String));
+    // Should call availability.socket.detach with the disconnecting socket.id
+    // so the socket-set-based presence tracker can SREM the exact socket.
+    expect(detachMock).toHaveBeenCalledWith({
+      userId: 'u1',
+      partnerId: 'partner-1',
+      socketId: expect.any(String),
+    });
 
     // Should broadcast agent offline status since role was 'agent'
     expect(broadcastAgentStatusMock).toHaveBeenCalledWith('u1', false);
