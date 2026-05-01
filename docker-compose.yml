@@ -49,6 +49,20 @@ services:
       - AI_TIMEOUT_MS=${AI_TIMEOUT_MS:-60000}
       - OLLAMA_KEEPALIVE=${OLLAMA_KEEPALIVE:-30m}
       - RECLAIM_TIMEOUT_MINS=${RECLAIM_TIMEOUT_MINS:-30}
+      - AZURE_AD_TENANT_ID=${AZURE_AD_TENANT_ID:-}
+      - AZURE_AD_CLIENT_ID=${AZURE_AD_CLIENT_ID:-}
+      - AZURE_AD_CLIENT_SECRET=${AZURE_AD_CLIENT_SECRET:-}
+      - AZURE_AD_REDIRECT_URI=${AZURE_AD_REDIRECT_URI:-}
+      - INTERNAL_EMAIL_DOMAINS=${INTERNAL_EMAIL_DOMAINS:-}
+      # Docker bridge has no IPv6 route; Microsoft endpoints have AAAA records.
+      # Force Node DNS resolver to prefer IPv4 so SSO/JWKS fetches don't ENETUNREACH.
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+    sysctls:
+      # Disable IPv6 inside the container so the resolver returns only A records.
+      # NODE_OPTIONS=--dns-result-order=ipv4first alone is not enough: Node's
+      # fetch (undici) does not honor it for the connect path on Node 24.
+      - net.ipv6.conf.all.disable_ipv6=1
+      - net.ipv6.conf.default.disable_ipv6=1
     volumes:
       - ./server:/app
       - server_node_modules:/app/node_modules

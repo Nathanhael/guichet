@@ -76,18 +76,19 @@ export default function LoginView() {
     }
 
     const hash = window.location.hash;
-    if (hash.startsWith('#sso_callback=')) {
+    if (hash.startsWith('#sso_token=')) {
+      const opaqueToken = hash.slice('#sso_token='.length);
       setIsSsoVerifying(true);
       window.history.replaceState({}, document.title, window.location.pathname);
-      fetch('/api/v1/auth/me', { credentials: 'include' })
+      fetch(`/api/v1/auth/sso/exchange?token=${encodeURIComponent(opaqueToken)}`, { credentials: 'include' })
         .then(async (res) => {
-          if (!res.ok) throw new Error('SSO session verification failed');
+          if (!res.ok) throw new Error(`SSO exchange failed: ${res.status}`);
           const data = await res.json();
           handleLoginSuccess(data.user, data.memberships || []);
         })
         .catch((err) => {
-          console.error('[SSO] Failed to verify session with server', err);
-          setError('SSO login failed');
+          console.error('[SSO] Failed to redeem opaque token', err);
+          setError(t('login_failed'));
         })
         .finally(() => {
           setIsSsoVerifying(false);
