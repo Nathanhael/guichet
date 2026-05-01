@@ -17,20 +17,25 @@ import { and, eq } from 'drizzle-orm';
 
 import { MAX_EDIT_WINDOW_MS } from '../../constants.js';
 import { messages, tickets } from '../../db/schema.js';
-import { runSyncGuards } from '../guards.js';
-import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
 
+import { recordGuardBlock } from './guardAudit.js';
 import type {
   EditArgs,
   EditOk,
   MessageLifecycleDeps,
   MessageLifecycleResult,
 } from './types.js';
-import type { RepetitionGuardPort } from './ports.js';
+import type { ModerationPort, RepetitionGuardPort } from './ports.js';
 
 export interface EditDeps {
   db: MessageLifecycleDeps['db'];
+  moderation: ModerationPort;
+  /**
+   * Legacy port — slice 5 of the moderator deepening deletes this. The edit
+   * pipeline no longer reads from it; the slot remains until slice 5 drops
+   * it from `MessageLifecyclePorts`.
+   */
   repetitionGuard: RepetitionGuardPort;
 }
 
@@ -65,28 +70,30 @@ export async function runEdit(
     return { ok: false, code: 'EDIT_WINDOW_EXPIRED' };
   }
 
-  // Sync guards always run (fail-closed — no try/catch bypass).
-  const syncResult = runSyncGuards(args.newText);
-  if (!syncResult.ok) {
+  // Content moderation. `scope: 'message:edit'` skips repetition (re-editing
+  // identical text is normal); the moderator owns that policy. On block, the
+  // audit-row write captures original + every triggered guard so an incident
+  // reviewer sees what the user actually typed.
+  const result = await deps.moderation.moderate(args.newText, {
+    senderId: args.actor.userId,
+    partnerId: args.partnerId,
+    scope: 'message:edit',
+  });
+  if (result.decision === 'block') {
+    await recordGuardBlock({
+      db: deps.db,
+      actorId: args.actor.userId,
+      partnerId: args.partnerId,
+      ticketId: args.ticketId,
+      scope: 'message:edit',
+      original: result.original,
+      sanitized: result.sanitized,
+      triggered: result.triggered,
+      blockingCode: result.blockingCode!,
+    });
     return { ok: false, code: 'GUARD_REJECTED' };
   }
-  const guardedText = syncResult.text;
-
-  // Redis-backed repetition guard via port — fail-open on infra error.
-  try {
-    const repResult = await deps.repetitionGuard.check({
-      senderId: args.actor.userId,
-      text: guardedText,
-    });
-    if (!repResult.ok) {
-      return { ok: false, code: 'GUARD_REJECTED' };
-    }
-  } catch (err) {
-    logger.error(
-      { err: err instanceof Error ? err.message : String(err) },
-      '[messageLifecycle.edit] repetition guard threw — failing open',
-    );
-  }
+  const guardedText = result.sanitized;
 
   const editedAt = new Date().toISOString();
   await deps.db
