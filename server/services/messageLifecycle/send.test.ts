@@ -20,17 +20,19 @@
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { messages, partners, slaBreaches, tickets, users } from '../../db/schema.js';
+import { auditLog, messages, partners, slaBreaches, tickets, users } from '../../db/schema.js';
 import { createTestDb, type TestDbHandle } from '../../test/pglite-setup.js';
 import type { UserActor } from '../ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './index.js';
+import type { ModerationPort } from './ports.js';
 import {
-  alwaysBlockGuard,
   alwaysOkGuard,
+  blockingModerator,
+  cannedModerator,
   cannedTranslation,
   inMemoryLinkPreview,
+  passingModerator,
   recordingStorage,
-  throwingGuard,
 } from './test/stubs.js';
 
 const PARTNER_A = 'partner-a';
@@ -64,6 +66,7 @@ async function seedBaseline(): Promise<void> {
 }
 
 function buildLifecycle(opts: {
+  moderation?: ModerationPort,
   repetitionGuard?: ReturnType<typeof alwaysOkGuard>,
 } = {}): MessageLifecycle {
   return createMessageLifecycle({
@@ -72,6 +75,7 @@ function buildLifecycle(opts: {
       linkPreview: inMemoryLinkPreview(),
       aiTranslation: cannedTranslation(),
       repetitionGuard: opts.repetitionGuard ?? alwaysOkGuard(),
+      moderation: opts.moderation ?? passingModerator(),
     },
     storage: recordingStorage().storage,
   });
@@ -150,39 +154,34 @@ describe('messageLifecycle.send', () => {
     expect(result).toEqual({ ok: false, code: 'EMPTY_MESSAGE' });
   });
 
-  it('rejects with GUARD_REJECTED when sync guards trip on the text', async () => {
-    // 'AAAAA...' (over 2000 chars) trips guard_too_long, or empty trips
-    // guard_too_short. Use a 2500-char string to trip the length cap.
-    const longText = 'a'.repeat(2500);
-    const result = await lifecycle.send({
-      ticketId: TICKET_A, partnerId: PARTNER_A, actor: aliceActor, text: longText,
+  it('rejects with GUARD_REJECTED when moderator blocks on a sync guard', async () => {
+    const blockingLifecycle = buildLifecycle({
+      moderation: blockingModerator('guard_too_long'),
     });
 
-    expect(result).toEqual({ ok: false, code: 'GUARD_REJECTED' });
+    const result = await blockingLifecycle.send({
+      ticketId: TICKET_A, partnerId: PARTNER_A, actor: aliceActor, text: 'oversized text',
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('GUARD_REJECTED');
     const rows = await handle.db.select().from(messages).where(eq(messages.ticketId, TICKET_A));
     expect(rows).toHaveLength(0);
   });
 
-  it('rejects with GUARD_REJECTED when repetition guard blocks the send', async () => {
-    const blockingLifecycle = buildLifecycle({ repetitionGuard: alwaysBlockGuard() });
+  it('rejects with GUARD_REJECTED when moderator blocks on repetition', async () => {
+    const blockingLifecycle = buildLifecycle({
+      moderation: blockingModerator('guard_repetition'),
+    });
 
     const result = await blockingLifecycle.send({
       ticketId: TICKET_A, partnerId: PARTNER_A, actor: aliceActor, text: 'spam',
     });
 
-    expect(result).toEqual({ ok: false, code: 'GUARD_REJECTED' });
-  });
-
-  it('proceeds when repetition guard throws (fail-open)', async () => {
-    const flakyLifecycle = buildLifecycle({ repetitionGuard: throwingGuard() });
-
-    const result = await flakyLifecycle.send({
-      ticketId: TICKET_A, partnerId: PARTNER_A, actor: aliceActor, text: 'send under outage',
-    });
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.data.message.text).toBe('send under outage');
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('GUARD_REJECTED');
   });
 
   it('support actor with whisper:true returns whisperEmit effect (not emit)', async () => {
@@ -366,6 +365,7 @@ describe('messageLifecycle.send', () => {
         linkPreview: inMemoryLinkPreview(),
         aiTranslation: cannedTranslation({ 'hello|fr': 'bonjour', 'hello|nl': 'hallo' }),
         repetitionGuard: alwaysOkGuard(),
+        moderation: passingModerator(),
       },
       storage: recordingStorage().storage,
     });
@@ -387,6 +387,7 @@ describe('messageLifecycle.send', () => {
         linkPreview: inMemoryLinkPreview(),
         aiTranslation: cannedTranslation({ 'hello|fr': 'bonjour' }),
         repetitionGuard: alwaysOkGuard(),
+        moderation: passingModerator(),
       },
       storage: recordingStorage().storage,
     });
@@ -409,8 +410,51 @@ describe('messageLifecycle.send', () => {
 
     expect(result).toEqual({ ok: false, code: 'INVALID_MEDIA_URL' });
   });
+
+  it('writes message.guard_blocked audit row on block with original + triggered', async () => {
+    const blockingLifecycle = buildLifecycle({
+      moderation: cannedModerator({
+        decision: 'block',
+        blockingCode: 'guard_offensive',
+        original: 'FUCK YOU MORON',
+        sanitized: 'Fuck you moron',
+        triggered: ['guard_all_caps_notice', 'guard_offensive'],
+      }),
+    });
+
+    const result = await blockingLifecycle.send({
+      ticketId: TICKET_A, partnerId: PARTNER_A,
+      actor: aliceActor, text: 'FUCK YOU MORON',
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.code).toBe('GUARD_REJECTED');
+
+    const auditRows = await handle.db.select().from(auditLog)
+      .where(eq(auditLog.action, 'message.guard_blocked'));
+    expect(auditRows).toHaveLength(1);
+    const row = auditRows[0];
+    expect(row.actorId).toBe(USER_A);
+    expect(row.partnerId).toBe(PARTNER_A);
+    expect(row.targetType).toBe('ticket');
+    expect(row.targetId).toBe(TICKET_A);
+    const metadata = row.metadata as Record<string, unknown>;
+    expect(metadata.scope).toBe('message:send');
+    expect(metadata.original).toBe('FUCK YOU MORON');
+    expect(metadata.sanitized).toBe('Fuck you moron');
+    expect(metadata.triggered).toEqual(['guard_all_caps_notice', 'guard_offensive']);
+    expect(metadata.blockingCode).toBe('guard_offensive');
+  });
+
+  it('does not write audit row when moderator passes', async () => {
+    const result = await lifecycle.send({
+      ticketId: TICKET_A, partnerId: PARTNER_A, actor: aliceActor, text: 'hello world',
+    });
+    expect(result.ok).toBe(true);
+    const auditRows = await handle.db.select().from(auditLog)
+      .where(eq(auditLog.action, 'message.guard_blocked'));
+    expect(auditRows).toHaveLength(0);
+  });
 });
 
 void supportActor;
-void alwaysBlockGuard;
-void throwingGuard;

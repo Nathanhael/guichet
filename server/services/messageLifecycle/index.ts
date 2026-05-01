@@ -71,6 +71,7 @@ export function createMessageLifecycle(deps: MessageLifecycleDeps): MessageLifec
     send: (args: SendArgs): Promise<MessageLifecycleResult<SendOk>> =>
       runSend({
         db: deps.db,
+        moderation: deps.ports.moderation,
         repetitionGuard: deps.ports.repetitionGuard,
         aiTranslation: deps.ports.aiTranslation,
       }, args),
