@@ -11,7 +11,6 @@
 import type {
   AiTranslationPort,
   LinkPreviewPort,
-  RepetitionGuardPort,
   LinkPreview,
 } from '../ports.js';
 import type { MessageLifecycleStorage } from '../types.js';
@@ -70,35 +69,6 @@ export {
   blockingModerator,
   cannedModerator,
 } from '../../moderator/test-stubs.js';
-
-// ─── repetitionGuard ─────────────────────────────────────────────────────
-
-export function alwaysOkGuard(): RepetitionGuardPort {
-  return {
-    async check() {
-      return { ok: true };
-    },
-  };
-}
-
-export function alwaysBlockGuard(
-  code: 'repetition' | 'flood' = 'repetition',
-): RepetitionGuardPort {
-  return {
-    async check() {
-      return { ok: false, code };
-    },
-  };
-}
-
-/** Useful for the "fail-open on port error" test — the lifecycle catches. */
-export function throwingGuard(): RepetitionGuardPort {
-  return {
-    async check(): Promise<never> {
-      throw new Error('redis offline');
-    },
-  };
-}
 
 // ─── storage ─────────────────────────────────────────────────────────────
 
