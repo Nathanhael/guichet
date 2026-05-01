@@ -38,6 +38,13 @@ import { register } from './utils/metrics.js';
 import { initRedis, getRedisClients } from './utils/redis.js';
 import { jwtVerify } from 'jose';
 import { initAiContext } from './services/ai/index.js';
+import {
+  Availability,
+  RedisLiveState,
+  DrizzleTransitionLog,
+  SocketIoBroadcast,
+  initAvailability,
+} from './services/availability/index.js';
 import { createTicketLifecycle, type TicketLifecycle } from './services/ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './services/messageLifecycle/index.js';
 import {
@@ -124,6 +131,21 @@ initRedis().then(({ pubClient, subClient }) => {
     },
   });
   logger.info('AI context initialized');
+
+  // Initialize the availability module — parallel with presence/statusTracking
+  // during the migration. Callers will be flipped over slice-by-slice (RFC #88).
+  const availability = new Availability({
+    live: new RedisLiveState({ redis: pubClient, logger }),
+    log: new DrizzleTransitionLog({
+      db,
+      schema: { agentStatusLog: schema.agentStatusLog, dailyAgentStatus: schema.dailyAgentStatus },
+      logger,
+    }),
+    broadcast: new SocketIoBroadcast({ io, logger }),
+    clock: { now: () => new Date() },
+  });
+  initAvailability(availability);
+  logger.info('Availability module initialized (parallel with legacy presence/statusTracking)');
 }).catch(err => {
   logger.error({ err }, 'Failed to initialize Redis');
 });
