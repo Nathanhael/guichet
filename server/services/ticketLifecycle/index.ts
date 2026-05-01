@@ -76,8 +76,27 @@ export type {
   TransferOk,
 } from './types.js';
 
+import type { ModerationPort } from '../moderator/index.js';
+import { passingModerator } from '../moderator/test-stubs.js';
+
+/**
+ * Cross-boundary ports for the ticket lifecycle. The first one — `moderation`
+ * — lands with the moderator deepening (slice 4). Future ports follow the same
+ * shape.
+ */
+export interface TicketLifecyclePorts {
+  moderation: ModerationPort;
+}
+
 export interface TicketLifecycleDeps {
   db: LifecycleDb;
+  /**
+   * Optional in tests for backward compat: callers that don't exercise
+   * `create.ts` (assign / close / leave / reclaim / returnToQueue / transfer)
+   * can omit `ports` and the factory falls back to a passing moderator.
+   * Production wiring in `app.ts` always supplies the live moderator.
+   */
+  ports?: TicketLifecyclePorts;
 }
 
 /**
@@ -86,6 +105,7 @@ export interface TicketLifecycleDeps {
  * injects the node-postgres pool. Same module, same code path.
  */
 export function createTicketLifecycle(deps: TicketLifecycleDeps): TicketLifecycle {
+  const moderation: ModerationPort = deps.ports?.moderation ?? passingModerator();
   return {
     reclaim: (args: ReclaimArgs): Promise<Result<ReclaimOk>> =>
       runReclaim({ db: deps.db, partnerId: args.partnerId }, args),
@@ -100,6 +120,6 @@ export function createTicketLifecycle(deps: TicketLifecycleDeps): TicketLifecycl
     close: (args: CloseArgs): Promise<Result<CloseOk>> =>
       runClose({ db: deps.db }, args),
     create: (args: CreateArgs): Promise<Result<CreateOk>> =>
-      runCreate({ db: deps.db }, args),
+      runCreate({ db: deps.db, moderation }, args),
   };
 }

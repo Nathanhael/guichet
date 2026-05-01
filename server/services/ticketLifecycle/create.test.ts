@@ -9,7 +9,26 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { auditLog, messages, partners, tickets, users } from '../../db/schema.js';
 import { createTestDb, type TestDbHandle } from '../../test/pglite-setup.js';
-import { createTicketLifecycle, type UserActor } from './index.js';
+import { Moderator } from '../moderator/index.js';
+import {
+  blockingModerator,
+  cannedModerator,
+  MemoryRepetition,
+} from '../moderator/test-stubs.js';
+import { createTicketLifecycle, type TicketLifecycle, type UserActor } from './index.js';
+
+/**
+ * Builds a real Moderator backed by MemoryRepetition. Used in tests that
+ * exercise actual guard behavior (the `GUARD_REJECTED` length test, the D9
+ * repetition test). Tests that don't care about moderation rely on the
+ * factory's default `passingModerator()` and call `createTicketLifecycle({ db })`.
+ */
+function lifecycleWithRealModerator(): TicketLifecycle {
+  return createTicketLifecycle({
+    db: handle.db,
+    ports: { moderation: new Moderator({ repetition: new MemoryRepetition() }) },
+  });
+}
 
 let handle: TestDbHandle;
 
@@ -122,7 +141,7 @@ describe('lifecycle.create', () => {
   it('GUARD_REJECTED: first-message text trips a sync content guard → no ticket created', async () => {
     await seedPartner({ partnerId: 'p_a' });
     await handle.db.insert(users).values({ id: 'u_agent', email: 'a@x.test', name: 'Agent' });
-    const lifecycle = createTicketLifecycle({ db: handle.db });
+    const lifecycle = lifecycleWithRealModerator();
 
     // 2500 chars trips guardLength (cap = 2000).
     const longText = 'a'.repeat(2500);
@@ -141,8 +160,115 @@ describe('lifecycle.create', () => {
     expect(ticketRows).toHaveLength(0);
     const messageRows = await handle.db.select().from(messages);
     expect(messageRows).toHaveLength(0);
-    const auditRows = await handle.db.select().from(auditLog);
-    expect(auditRows).toHaveLength(0);
+    // The audit row for ticket.guard_blocked IS expected (slice 4 closes the
+    // audit gap). The legacy assertion that "no audit rows exist" is replaced
+    // by the dedicated audit-row test below.
+    const blockRows = await handle.db.select().from(auditLog).where(eq(auditLog.action, 'ticket.guard_blocked'));
+    expect(blockRows).toHaveLength(1);
+  });
+
+  it('writes ticket.guard_blocked audit row on guard-block with original + triggered', async () => {
+    await seedPartner({ partnerId: 'p_a' });
+    await handle.db.insert(users).values({ id: 'u_agent', email: 'a@x.test', name: 'Agent' });
+    const lifecycle = createTicketLifecycle({
+      db: handle.db,
+      ports: {
+        moderation: cannedModerator({
+          decision: 'block',
+          blockingCode: 'guard_offensive',
+          original: 'FUCK YOU MORON',
+          sanitized: 'Fuck you moron',
+          triggered: ['guard_all_caps_notice', 'guard_offensive'],
+        }),
+      },
+    });
+
+    const result = await lifecycle.create({
+      partnerId: 'p_a',
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      dept: 'sales',
+      agentLang: 'en',
+      text: 'FUCK YOU MORON',
+    });
+
+    expect(result).toEqual({ ok: false, code: 'GUARD_REJECTED' });
+
+    const auditRows = await handle.db.select().from(auditLog).where(eq(auditLog.action, 'ticket.guard_blocked'));
+    expect(auditRows).toHaveLength(1);
+    expect(auditRows[0].targetId).toBeNull();
+    expect(auditRows[0].actorId).toBe('u_agent');
+    expect(auditRows[0].partnerId).toBe('p_a');
+    const metadata = auditRows[0].metadata as Record<string, unknown>;
+    expect(metadata.scope).toBe('ticket:create');
+    expect(metadata.original).toBe('FUCK YOU MORON');
+    expect(metadata.triggered).toEqual(['guard_all_caps_notice', 'guard_offensive']);
+    expect(metadata.blockingCode).toBe('guard_offensive');
+    expect(metadata.dept).toBe('sales');
+  });
+
+  it('D9: blocks 3rd identical first-message text via repetition (scope=ticket:create runs all guards)', async () => {
+    await seedPartner({ partnerId: 'p_a' });
+    await handle.db.insert(users).values({ id: 'u_agent', email: 'a@x.test', name: 'Agent' });
+    // Use a real Moderator + MemoryRepetition so the repetition counter
+    // increments across the three create calls.
+    const lifecycle = lifecycleWithRealModerator();
+    const text = 'identical issue description';
+
+    const r1 = await lifecycle.create({
+      partnerId: 'p_a',
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      dept: 'sales',
+      agentLang: 'en',
+      text,
+    });
+    expect(r1.ok).toBe(true);
+    if (!r1.ok) return;
+    // Close the ticket so the 1-ticket-per-agent guard doesn't intercept.
+    await handle.db.update(tickets).set({ status: 'closed' }).where(eq(tickets.id, r1.data.ticket.id));
+
+    const r2 = await lifecycle.create({
+      partnerId: 'p_a',
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      dept: 'sales',
+      agentLang: 'en',
+      text,
+    });
+    expect(r2.ok).toBe(true);
+    if (!r2.ok) return;
+    await handle.db.update(tickets).set({ status: 'closed' }).where(eq(tickets.id, r2.data.ticket.id));
+
+    const r3 = await lifecycle.create({
+      partnerId: 'p_a',
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      dept: 'sales',
+      agentLang: 'en',
+      text,
+    });
+
+    expect(r3).toEqual({ ok: false, code: 'GUARD_REJECTED' });
+    const blockRows = await handle.db.select().from(auditLog).where(eq(auditLog.action, 'ticket.guard_blocked'));
+    expect(blockRows).toHaveLength(1);
+    expect((blockRows[0].metadata as Record<string, unknown>).blockingCode).toBe('guard_repetition');
+  });
+
+  it('does NOT call moderator when text is omitted', async () => {
+    await seedPartner({ partnerId: 'p_a' });
+    await handle.db.insert(users).values({ id: 'u_agent', email: 'a@x.test', name: 'Agent' });
+    // Even a blocking moderator must not see this call — text is undefined.
+    const lifecycle = createTicketLifecycle({
+      db: handle.db,
+      ports: { moderation: blockingModerator('guard_offensive') },
+    });
+
+    const result = await lifecycle.create({
+      partnerId: 'p_a',
+      actor: agentActor({ userId: 'u_agent', partnerId: 'p_a', name: 'Agent' }),
+      dept: 'sales',
+      agentLang: 'en',
+      // text intentionally omitted
+    });
+
+    expect(result.ok).toBe(true);
   });
 
   it('first-message guards SKIP when no text is provided (omit-text path stays open)', async () => {
