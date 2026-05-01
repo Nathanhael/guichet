@@ -38,6 +38,11 @@ import { register } from './utils/metrics.js';
 import { initRedis, getRedisClients } from './utils/redis.js';
 import { jwtVerify } from 'jose';
 import { initAiContext } from './services/ai/index.js';
+import { Availability } from './services/availability/index.js';
+import { setAvailability } from './services/availability/instance.js';
+import { RedisLiveState } from './services/availability/adapters/redisLiveState.js';
+import { DrizzleTransitionLog } from './services/availability/adapters/drizzleTransitionLog.js';
+import { SocketIoBroadcast } from './services/availability/adapters/socketIoBroadcast.js';
 import { createTicketLifecycle, type TicketLifecycle } from './services/ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './services/messageLifecycle/index.js';
 import {
@@ -102,7 +107,7 @@ const io = new Server(httpServer, {
 });
 
 // Redis setup for Socket.io and Health Checks
-initRedis().then(({ pubClient, subClient }) => {
+initRedis().then(async ({ pubClient, subClient }) => {
   if (pubClient && subClient) {
     io.adapter(createAdapter(pubClient, subClient));
     logger.info('Socket.io Redis adapter initialized');
@@ -124,6 +129,20 @@ initRedis().then(({ pubClient, subClient }) => {
     },
   });
   logger.info('AI context initialized');
+
+  // Initialize Availability. Mirrors Moderator/AiContext: constructed after
+  // Redis + io are ready. No consumers wired yet — slices 2-5 of the
+  // availability-deepening plan migrate the socket/tRPC/ticketReclaim sites.
+  const availability = new Availability({
+    live: new RedisLiveState({ redis: pubClient ?? null }),
+    log: new DrizzleTransitionLog({ db }),
+    broadcast: new SocketIoBroadcast(io),
+    clock: { now: () => new Date() },
+    logger,
+  });
+  setAvailability(availability);
+  await availability.flushOnBoot();
+  logger.info('Availability initialized');
 }).catch(err => {
   logger.error({ err }, 'Failed to initialize Redis');
 });
