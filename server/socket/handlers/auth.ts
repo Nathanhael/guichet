@@ -6,12 +6,11 @@ import logger from '../../utils/logger.js';
 
 import { Rooms } from '../../utils/rooms.js';
 import { getRedisClients } from '../../utils/redis.js';
-import * as presenceService from '../../services/presence.js';
+import { getAvailability } from '../../services/availability/index.js';
 import { findUserById, findMembership } from '../../services/userQueries.js';
 import { findActiveTicketsForAgent, findActiveTicketsForSupport } from '../../services/ticketQueries.js';
 import { broadcastAgentStatus } from '../../services/businessHours.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../../services/roles.js';
-import * as statusTracking from '../../services/statusTracking.js';
 import { isRevoked } from '../../services/auth/sessionRevocation.js';
 import { UserRole } from '../../types/index.js';
 import { type HandlerContext } from './types.js';
@@ -257,30 +256,34 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
         effectiveRole === 'platform_operator' || socket.data.authedIsPlatformOperator === true;
       socket.data.identified = true;
 
-      await presenceService.identifyUser(userId, effectiveRole, name, partnerId, isPlatformOp, socket.id);
+      const availability = getAvailability();
 
-      // Join partner-wide room (for events all users need: partner:deactivated, hours:closed, etc.)
+      // availability.socket.attach: SADD socket id, upsertIdentity (preserves status on reconnect),
+      // clear offlineAt, open transition-log row on first connect, broadcast support:online (if support)
+      // or agents:online (if agent). Replaces legacy presenceService.identifyUser + statusTracking.logTransition.
+      await availability.socket.attach({
+        userId,
+        partnerId,
+        socketId: socket.id,
+        role: effectiveRole,
+        name,
+        isPlatformOperator: isPlatformOp,
+      });
+
+      // Join partner-wide room (broadcasts handled by socket.attach above for support/agent).
       socket.join(Rooms.partner(partnerId));
-
-      // Staff (support/admin/platform) get a separate room for ticket-level broadcasts.
-      // Agents must NOT receive other users' ticket data — they only see their own via ticket:created:self.
-      if (isSupport) {
-        socket.join(Rooms.staff(partnerId));
-        await presenceService.broadcastOnlineSupport(partnerId);
-      }
-
-      // Join private user room for individual kill switches
+      if (isSupport) socket.join(Rooms.staff(partnerId));
       socket.join(Rooms.user(userId));
 
       if (effectiveRole === 'agent') {
+        // socket.attach already emitted agents:online to the staff room — no second broadcast needed.
+        // broadcastAgentStatus is the businessHours module's separate signal, kept as-is.
         broadcastAgentStatus(userId, true);
-        presenceService.broadcastOnlineAgents(partnerId);
       }
 
-      // Restore persisted status to client and open status tracking row
+      // Restore persisted status to the client (status:restored event) — only emit if non-default.
       if (isSupport) {
-        const persistedStatus = await presenceService.getUserStatus(userId, partnerId);
-        await statusTracking.logTransition(userId, partnerId, persistedStatus || 'online');
+        const persistedStatus = await availability.advanced.getStatus(userId, partnerId);
         if (persistedStatus && persistedStatus !== 'online') {
           socket.emit('status:restored', { status: persistedStatus });
         }

@@ -204,12 +204,6 @@ vi.mock('../utils/messageMapper.js', () => ({
   mapMessageRow: (row: any) => row,
 }));
 
-vi.mock('../services/presence.js', () => ({
-  identifyUser: vi.fn(),
-  decrementUserCount: vi.fn(),
-  broadcastOnlineSupport: vi.fn(),
-}));
-
 vi.mock('../services/businessHours.js', () => ({
   getBusinessHoursStatus: vi.fn(() => ({ isOpen: true })),
   broadcastQueuePositions: vi.fn(),

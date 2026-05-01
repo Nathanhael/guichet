@@ -17,15 +17,18 @@ vi.mock('../../utils/metrics.js', () => ({
   socketioEventsTotal: { inc: vi.fn() },
 }));
 
-const decrementUserCountMock = vi.fn();
 const broadcastAgentStatusMock = vi.fn();
 
-vi.mock('../../services/presence.js', () => ({
-  identifyUser: vi.fn(),
-  decrementUserCount: decrementUserCountMock,
-  broadcastOnlineSupport: vi.fn(),
-  getUserStatus: vi.fn(async () => null),
-  setUserStatus: vi.fn(async () => {}),
+const { mockAvailability } = vi.hoisted(() => ({
+  mockAvailability: {
+    socket: {
+      attach: vi.fn().mockResolvedValue(undefined),
+      detach: vi.fn().mockResolvedValue({ fullyOffline: false, role: '', partnerId: '', isPlatformOperator: false }),
+    },
+  },
+}));
+vi.mock('../../services/availability/index.js', () => ({
+  getAvailability: () => mockAvailability,
 }));
 
 vi.mock('../../services/businessHours.js', () => ({
@@ -36,11 +39,6 @@ vi.mock('../../services/businessHours.js', () => ({
 
 vi.mock('../../services/sessionRevocation.js', () => ({
   isRevoked: vi.fn(async () => false),
-}));
-
-vi.mock('../../services/statusTracking.js', () => ({
-  logTransition: vi.fn(async () => {}),
-  closeOpenRow: vi.fn(async () => {}),
 }));
 
 vi.mock('../../utils/redis.js', () => ({
@@ -102,7 +100,7 @@ describe('disconnect handler', () => {
     socket.rooms.add('partner:partner-1');
     socket.to.mockReturnValue({ emit: toEmitMock });
 
-    decrementUserCountMock.mockResolvedValueOnce({ removed: true, role: 'agent' });
+    mockAvailability.socket.detach.mockResolvedValueOnce({ fullyOffline: true, role: 'agent', partnerId: 'partner-1', isPlatformOperator: false });
 
     const ctx = {
       io,
@@ -122,10 +120,8 @@ describe('disconnect handler', () => {
     });
     expect(typingCalls.length).toBe(2);
 
-    // Should decrement presence — the third arg is socket.id, which the
-    // handler now passes through so the socket-set-based presence tracker
-    // can SREM the exact socket that's disconnecting.
-    expect(decrementUserCountMock).toHaveBeenCalledWith('u1', 'partner-1', expect.any(String));
+    // Should call availability.socket.detach with userId, partnerId, socketId
+    expect(mockAvailability.socket.detach).toHaveBeenCalledWith({ userId: 'u1', partnerId: 'partner-1', socketId: expect.any(String) });
 
     // Should broadcast agent offline status since role was 'agent'
     expect(broadcastAgentStatusMock).toHaveBeenCalledWith('u1', false);

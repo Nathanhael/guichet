@@ -1,7 +1,6 @@
 import { Socket } from 'socket.io';
 import logger from '../../utils/logger.js';
-import * as presenceService from '../../services/presence.js';
-import * as statusTracking from '../../services/statusTracking.js';
+import { getAvailability } from '../../services/availability/index.js';
 import { broadcastAgentStatus } from '../../services/businessHours.js';
 import { socketioConnectionsActive } from '../../utils/metrics.js';
 import { removeViewerFromAll, broadcastViewers } from './collision.js';
@@ -38,18 +37,17 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
     if (userId && partnerId) {
       try {
-        const result = await presenceService.decrementUserCount(userId, partnerId, socket.id);
-        if (result && result.removed) {
-          if (result.role === 'agent') {
-            broadcastAgentStatus(userId, false);
-            presenceService.broadcastOnlineAgents(partnerId);
-          }
-          // Close status tracking row when user fully disconnects (all roles)
-          await statusTracking.closeOpenRow(userId, partnerId);
+        const result = await getAvailability().socket.detach({ userId, partnerId, socketId: socket.id });
+        if (result.fullyOffline && result.role === 'agent') {
+          broadcastAgentStatus(userId, false);
+          // socket.detach broadcasts the updated agents:online roster; broadcastAgentStatus
+          // is a separate businessHours signal for this specific user going offline — keep it.
         }
+        // Note: closeOpenRow on full-offline is now handled inside availability.socket.detach
+        // (added in slice 3 — opens row on first attach, closes on last detach).
       } catch (err) {
         // M-06: Don't let presence errors crash the disconnect handler
-        logger.error({ err: err instanceof Error ? err.message : String(err), userId }, '[socket] Presence decrement error on disconnect');
+        logger.error({ err: err instanceof Error ? err.message : String(err), userId }, '[socket] availability.detach error on disconnect');
       }
     }
   });
