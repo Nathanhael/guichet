@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { tickets } from '../db/schema.js';
 import { and, isNotNull, lt, ne } from 'drizzle-orm';
 import { applyEffects, type TicketLifecycle } from './ticketLifecycle/index.js';
-import { getOfflineAt, getUserStatus } from './presence.js';
+import { getAvailability } from './availability/instance.js';
 import config from '../config.js';
 import logger from '../utils/logger.js';
 
@@ -72,12 +72,14 @@ export async function reclaimAbandonedTickets(io: Server, lifecycle: TicketLifec
   for (const ticket of candidates) {
     if (!ticket.supportId || !ticket.partnerId) continue;
 
-    // Only reclaim if the agent is fully offline (no sockets at all)
-    const status = await getUserStatus(ticket.supportId, ticket.partnerId);
-    if (status !== null) continue; // agent is online/away/busy — don't reclaim
+    // Only reclaim if the agent is fully offline (no sockets at all). The
+    // availability module's getStatus returns null when the user has no Redis
+    // hash — i.e., they fully disconnected (or never identified).
+    const status = await getAvailability().advanced.getStatus(ticket.supportId, ticket.partnerId);
+    if (status !== null) continue;
 
     // Primary check: how long has the agent actually been offline?
-    const offlineAt = await getOfflineAt(ticket.supportId, ticket.partnerId);
+    const offlineAt = await getAvailability().advanced.offlineSince(ticket.supportId, ticket.partnerId);
     let offlineForMs: number;
     if (offlineAt) {
       offlineForMs = now - offlineAt.getTime();

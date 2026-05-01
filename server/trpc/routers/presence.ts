@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { router, protectedProcedure, partnerScopedProcedure } from '../trpc.js';
-import * as presenceService from '../../services/presence.js';
+import { getAvailability } from '../../services/availability/instance.js';
 import { TRPCError } from '@trpc/server';
 import { canChangePresenceStatus } from '../../services/roles.js';
 
@@ -10,8 +10,7 @@ export const presenceRouter = router({
       userId: z.string(),
     }))
     .query(async ({ input, ctx }) => {
-      const onlineUsers = await presenceService.getOnlineUsersForPartner(ctx.user.partnerId);
-      const online = onlineUsers.some(u => u.userId === input.userId);
+      const online = await getAvailability().isOnline(input.userId, ctx.user.partnerId);
       return { online };
     }),
 
@@ -30,10 +29,15 @@ export const presenceRouter = router({
       if (!partnerId) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
       }
-      const updated = await presenceService.setUserStatus(input.userId, partnerId, input.status);
-      if (!updated) {
+
+      // The availability module handles "user not identified" as a silent no-op
+      // (no Redis hash exists). To preserve the legacy NOT_FOUND error, gate on
+      // online state first.
+      const isOnline = await getAvailability().isOnline(input.userId, partnerId);
+      if (!isOnline) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not online' });
       }
+      await getAvailability().setStatus(input.userId, partnerId, input.status);
       return { success: true };
     }),
 });
