@@ -147,8 +147,6 @@ export interface Ticket {
   agentName: string | null;
   agentLang: string | null;
   references?: Array<{ label: string; value: string }> | null;
-  cdbId?: string | null; // legacy
-  dareRef?: string | null; // legacy
   status: 'open' | 'pending' | 'closed' | 'resolved';
   supportId?: string | null;
   supportName?: string | null;
