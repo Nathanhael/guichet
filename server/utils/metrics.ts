@@ -182,4 +182,14 @@ export const crossLangPickupTotal = new client.Counter({
   labelNames: ['partner_id', 'support_lang', 'ticket_lang'],
 });
 
+// Moderator repetition fail-open counter. Incremented when the RepetitionPort
+// throws (e.g. Redis offline) and the Moderator falls back to pass. Lets ops
+// distinguish "repetition guard is silently broken" from "repetition guard is
+// just not firing". `scope` is one of message:send / message:edit / ticket:create.
+export const moderatorRepetitionFailopenTotal = new client.Counter({
+  name: 'guichet_moderator_repetition_failopen_total',
+  help: 'Number of times moderator repetition check failed open due to port error',
+  labelNames: ['scope'],
+});
+
 export const register = client.register;
