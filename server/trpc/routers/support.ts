@@ -4,7 +4,7 @@ import { router, roleProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { partners, tickets } from '../../db/schema.js';
 import { and, eq, isNull, inArray } from 'drizzle-orm';
-import { getOnlineUsersForPartner } from '../../services/presence.js';
+import { getAvailability } from '../../services/availability/index.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
 import { assertMembership } from '../../services/membership.js';
 import type { UserRole } from '../../types/index.js';
@@ -64,7 +64,7 @@ export const supportRouter = router({
       const flags = (partner[0].aiFeatures as Record<string, unknown>) || {};
       if (flags.queueLangAwareness !== true) return [];
 
-      const online = await getOnlineUsersForPartner(input.partnerId);
+      const online = await getAvailability().advanced.onlineUsers(input.partnerId);
       const staffByLang: Record<SupportedLang, number> = { nl: 0, fr: 0, en: 0 };
       for (const u of online) {
         if (!canUseSupportWorkflows(u.role as UserRole, false)) continue;

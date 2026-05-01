@@ -250,7 +250,7 @@ export const testFixturesRouter = router({
       });
 
       // Write Redis presence hash field. The hash key format mirrors
-      // services/presence.ts hashKey() — `presence:<partnerId>:<userId>`.
+      // services/availability/adapters/redisLiveState.ts hashKey() — `presence:<partnerId>:<userId>`.
       const { pubClient } = getRedisClients();
       if (pubClient) {
         try {
