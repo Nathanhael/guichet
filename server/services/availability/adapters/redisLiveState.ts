@@ -185,6 +185,24 @@ export class RedisLiveState implements LiveStatePort {
     return out;
   }
 
+  async seedTestHash(input: { partnerId: string; userId: string; status: AgentStatus }) {
+    if (!this.r) return;
+    // Two-step seed:
+    //   1. last_status — picked up by upsertIdentity's Lua on the next first-attach
+    //      (this is THE mechanism for status restoration on reconnect, so writing
+    //      here guarantees the next socket:identify preserves the staged status).
+    //   2. If the hash already exists (user is mid-session), update the hash's
+    //      status field so currently-attached sockets see the new state.
+    await this.r.set(lastStatusKey(input.partnerId, input.userId), input.status, { EX: TTL_SECONDS });
+    const exists = await this.r.hExists(hashKey(input.partnerId, input.userId), 'userId');
+    if (exists) {
+      await this.r.hSet(hashKey(input.partnerId, input.userId), {
+        status: input.status,
+        statusChangedAt: new Date().toISOString(),
+      });
+    }
+  }
+
   async flushAll() {
     if (!this.r) return { deleted: 0 };
     let deleted = 0;

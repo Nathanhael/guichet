@@ -40,7 +40,7 @@ import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
 import { agentStatusLog, auditLog, partners, tickets, users } from '../../db/schema.js';
 import { assertNotProduction } from '../../utils/assertNotProduction.js';
-import { getRedisClients } from '../../utils/redis.js';
+import { getAvailability } from '../../services/availability/index.js';
 import logger from '../../utils/logger.js';
 
 assertNotProduction('testFixtures router');
@@ -249,22 +249,23 @@ export const testFixturesRouter = router({
         });
       });
 
-      // Write Redis presence hash field. The hash key format mirrors
-      // services/availability/adapters/redisLiveState.ts hashKey() — `presence:<partnerId>:<userId>`.
-      const { pubClient } = getRedisClients();
-      if (pubClient) {
-        try {
-          const key = `presence:${input.partnerId}:${input.userId}`;
-          await pubClient.hSet(key, {
-            status: input.status,
-            statusChangedAt: now,
-          });
-        } catch (err) {
-          logger.warn(
-            { err: err instanceof Error ? err.message : String(err), userId: input.userId },
-            '[testFixtures.resetAgentStatus] Failed to write presence hash',
-          );
-        }
+      // Stage Redis presence via the orchestrator seam. Writes to `last_status`
+      // (so the next socket:identify reads it as the seed status) and updates
+      // the live hash if the user is currently mid-session. Production-guarded
+      // inside `availability.advanced.seedTestHash`. Replaces the previous
+      // direct Redis hSet that hard-coded the `presence:<partnerId>:<userId>`
+      // key layout (#110).
+      try {
+        await getAvailability().advanced.seedTestHash({
+          partnerId: input.partnerId,
+          userId: input.userId,
+          status: input.status,
+        });
+      } catch (err) {
+        logger.warn(
+          { err: err instanceof Error ? err.message : String(err), userId: input.userId },
+          '[testFixtures.resetAgentStatus] Failed to seed availability state',
+        );
       }
 
       logger.info(
