@@ -7,7 +7,6 @@ import { presenceRouter } from './routers/presence.js';
 import { feedbackRouter } from './routers/feedback.js';
 import { ratingRouter } from './routers/rating.js';
 import { savedViewRouter } from './routers/savedView.js';
-import { statsRouter } from './routers/stats.js';
 import { userRouter } from './routers/user.js';
 import { platformRouter } from './routers/platform/index.js';
 import { partnerRouter } from './routers/partner/index.js';
@@ -44,7 +43,6 @@ export const appRouter = router({
   feedback: feedbackRouter,
   rating: ratingRouter,
   savedView: savedViewRouter,
-  stats: statsRouter,
   support: supportRouter,
   dashboard: dashboardRouter,
   user: userRouter,
