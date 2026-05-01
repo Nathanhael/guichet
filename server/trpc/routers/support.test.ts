@@ -1,4 +1,13 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+
+// No Redis in the test environment — return empty online-user list so the
+// staffing-imbalance logic works with zero online staff (matches the pre-migration
+// behaviour where getOnlineUsersForPartner returned [] when Redis was absent).
+vi.mock('../../services/availability/index.js', () => ({
+  getAvailability: () => ({
+    advanced: { onlineUsers: vi.fn().mockResolvedValue([]) },
+  }),
+}));
 import { classifyImbalance } from './support.js';
 
 describe('classifyImbalance', () => {

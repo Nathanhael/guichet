@@ -2,18 +2,23 @@
  * Dashboard Z3 — Staffing heatmap query layer.
  *
  * Pulls 28 days of `daily_stats.hourly` rows for the partner plus the
- * matching `daily_agent_status` rows for the staff-count overlay (Z3b).
+ * matching agent status rows for the staff-count overlay (Z3b).
  * The deep service folds them into the dow×hour matrix; this layer is
  * the raw fetch + JSONB → number[] coercion.
  *
  * `daily_stats.hourly` is a JSONB column populated by the live-day rollup
  * and the GDPR purge as a 24-element array. We coerce defensively here
  * because legacy rows may have stored an object map.
+ *
+ * Agent status rows are read via `availability.reports.teamDaily` instead
+ * of querying `daily_agent_status` directly, keeping the dashboard behind
+ * the availability module boundary.
  */
 
 import { and, eq, gte, lte } from 'drizzle-orm';
 import { db } from '../../db.js';
-import { dailyAgentStatus, dailyStats } from '../../db/schema.js';
+import { dailyStats } from '../../db/schema.js';
+import { getAvailability } from '../availability/index.js';
 import type {
   AgentStatusRow,
   DailyStatsRow,
@@ -53,7 +58,7 @@ export async function fetchStaffingHeatmapData(
   const fromDate = from.toISOString().slice(0, 10);
   const toDate = to.toISOString().slice(0, 10);
 
-  const [statsRows, agentRows] = await Promise.all([
+  const [statsRows, agentRowsRaw] = await Promise.all([
     db
       .select({ date: dailyStats.date, hourly: dailyStats.hourly })
       .from(dailyStats)
@@ -64,20 +69,7 @@ export async function fetchStaffingHeatmapData(
           lte(dailyStats.date, toDate),
         ),
       ),
-    db
-      .select({
-        date: dailyAgentStatus.date,
-        userId: dailyAgentStatus.userId,
-        onlineSeconds: dailyAgentStatus.onlineSeconds,
-      })
-      .from(dailyAgentStatus)
-      .where(
-        and(
-          eq(dailyAgentStatus.partnerId, partnerId),
-          gte(dailyAgentStatus.date, fromDate),
-          lte(dailyAgentStatus.date, toDate),
-        ),
-      ),
+    getAvailability().reports.teamDaily(partnerId, fromDate, toDate),
   ]);
 
   return {
@@ -85,7 +77,7 @@ export async function fetchStaffingHeatmapData(
       date: r.date,
       hourly: coerceHourly(r.hourly),
     })),
-    agentStatus: agentRows.map((r) => ({
+    agentStatus: agentRowsRaw.map((r) => ({
       date: r.date,
       userId: r.userId,
       onlineSeconds: r.onlineSeconds,
