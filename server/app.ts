@@ -24,9 +24,9 @@ import config from './config.js';
 import logger from './utils/logger.js';
 import { auth as authMiddleware, AuthRequest } from './middleware/auth.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
-import { setIo as setPresenceIo, flushPresenceOnStartup } from './services/presence.js';
+import { setIo as setPresenceIo } from './services/presence.js'; // legacy shim — slice 9 removes
 import { runDailyPurge } from './services/gdpr.js';
-import { rollupDay } from './services/statusTracking.js';
+
 import { cleanupExpiredTokens } from './services/auth/index.js';
 import { scheduleDailyChainVerify } from './services/chainVerifySchedule.js';
 import { scheduleSlaSweep, setSlaIo } from './services/sla.js';
@@ -44,6 +44,7 @@ import {
   DrizzleTransitionLog,
   SocketIoBroadcast,
   initAvailability,
+  getAvailability,
 } from './services/availability/index.js';
 import { createTicketLifecycle, type TicketLifecycle } from './services/ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './services/messageLifecycle/index.js';
@@ -146,6 +147,8 @@ initRedis().then(({ pubClient, subClient }) => {
   });
   initAvailability(availability);
   logger.info('Availability module initialized (parallel with legacy presence/statusTracking)');
+  availability.flushOnBoot().catch((err) =>
+    logger.warn({ err }, '[availability] Startup flush failed (non-fatal)'));
 }).catch(err => {
   logger.error({ err }, 'Failed to initialize Redis');
 });
@@ -451,9 +454,6 @@ app.get('/metrics', async (req: Request, res: Response) => {
 });
 
 
-// Flush stale presence on startup — all socket IDs from the previous process
-// are dead. Users re-register via socket:identify on reconnect.
-flushPresenceOnStartup().catch((err) => logger.warn({ err }, '[presence] Startup flush failed (non-fatal)'));
 
 const gdprRunner = createTaskRunner('gdpr-purge');
 const tokenCleanupRunner = createTaskRunner('token-cleanup');
@@ -532,12 +532,13 @@ setInterval(async () => {
   try {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
     const allPartners = await db.select({ id: schema.partners.id }).from(schema.partners);
+    const av = getAvailability();
     for (const p of allPartners) {
-      await rollupDay(p.id, yesterday);
+      await av.reports.rollupDay(p.id, yesterday);
     }
-    logger.info({ date: yesterday }, '[statusTracking] Hourly rollup complete');
+    logger.info({ date: yesterday }, '[availability] Hourly rollup complete');
   } catch (err) {
-    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[statusTracking] Rollup error');
+    logger.error({ err: err instanceof Error ? err.message : String(err) }, '[availability] Rollup error');
   }
 }, 60 * 60 * 1000).unref();
 
