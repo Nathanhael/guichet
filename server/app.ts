@@ -24,7 +24,6 @@ import config from './config.js';
 import logger from './utils/logger.js';
 import { auth as authMiddleware, AuthRequest } from './middleware/auth.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
-import { setIo as setPresenceIo } from './services/presence.js'; // legacy shim — slice 9 removes
 import { runDailyPurge } from './services/gdpr.js';
 
 import { cleanupExpiredTokens } from './services/auth/index.js';
@@ -454,7 +453,6 @@ app.get('/metrics', async (req: Request, res: Response) => {
 });
 
 
-
 const gdprRunner = createTaskRunner('gdpr-purge');
 const tokenCleanupRunner = createTaskRunner('token-cleanup');
 
@@ -554,7 +552,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 registerSocketHandlers(io, { lifecycle, messageLifecycle });
 
 setBusinessHoursIo(io);
-setPresenceIo(io);
 
 // SLA sweep — every SLA_SWEEP_INTERVAL_MS (default 60s). Set env=0 to disable.
 setSlaIo(io);
