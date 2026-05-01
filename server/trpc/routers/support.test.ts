@@ -1,5 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { classifyImbalance } from './support.js';
+
+// Test mode has no Redis, so the availability registry is empty. Stub
+// getAvailability so getStaffingByLanguage's onlineUsers() call returns []
+// (matches the pre-availability test environment where getOnlineUsersForPartner
+// returned [] when pubClient was null).
+vi.mock('../../services/availability/instance.js', () => ({
+  getAvailability: () => ({
+    advanced: { onlineUsers: async () => [] },
+  }),
+}));
 
 describe('classifyImbalance', () => {
   it('returns ok when support/ticket ratio is at least 1:5', () => {

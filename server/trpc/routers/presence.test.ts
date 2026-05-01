@@ -2,20 +2,23 @@
  * Behavior test for presence.getOnlineStatus after dropping `partnerId` from
  * the input schema. The endpoint must:
  *   1. Accept input of shape { userId } (no partnerId field).
- *   2. Call presenceService.getOnlineUsersForPartner with the JWT's partnerId
- *      — not a client-supplied value.
+ *   2. Call availability.isOnline with the JWT's partnerId — not a
+ *      client-supplied value.
  *   3. Reject callers whose JWT has no partnerId (partnerScopedProcedure).
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-const { getOnlineUsersForPartnerMock } = vi.hoisted(() => ({
-  getOnlineUsersForPartnerMock: vi.fn(),
+const { isOnlineMock, setStatusMock } = vi.hoisted(() => ({
+  isOnlineMock: vi.fn(),
+  setStatusMock: vi.fn(),
 }));
 
-vi.mock('../../services/presence.js', () => ({
-  getOnlineUsersForPartner: getOnlineUsersForPartnerMock,
-  setUserStatus: vi.fn(),
+vi.mock('../../services/availability/instance.js', () => ({
+  getAvailability: () => ({
+    isOnline: isOnlineMock,
+    setStatus: setStatusMock,
+  }),
 }));
 
 import { appRouter } from '../router.js';
@@ -36,8 +39,8 @@ const makeUser = (overrides: Record<string, unknown> = {}) => ({
 
 describe('presence.getOnlineStatus', () => {
   beforeEach(() => {
-    getOnlineUsersForPartnerMock.mockReset();
-    getOnlineUsersForPartnerMock.mockResolvedValue([]);
+    isOnlineMock.mockReset();
+    isOnlineMock.mockResolvedValue(false);
   });
 
   it('accepts input with only { userId } (no partnerId field required)', async () => {
@@ -47,16 +50,16 @@ describe('presence.getOnlineStatus', () => {
     });
   });
 
-  it('queries presence service using ctx.user.partnerId (JWT), ignoring any input.partnerId', async () => {
+  it('queries availability service using ctx.user.partnerId (JWT), ignoring any input.partnerId', async () => {
     const caller = appRouter.createCaller({
       user: makeUser({ partnerId: 'partner-a' }),
     } as unknown as CallerCtx);
     await caller.presence.getOnlineStatus({ userId: 'target' } as { userId: string });
-    expect(getOnlineUsersForPartnerMock).toHaveBeenCalledWith('partner-a');
+    expect(isOnlineMock).toHaveBeenCalledWith('target', 'partner-a');
   });
 
-  it('returns online=true when the target user is in the JWT partner online set', async () => {
-    getOnlineUsersForPartnerMock.mockResolvedValueOnce([{ userId: 'target', role: 'support' }]);
+  it('returns online=true when availability reports the target online', async () => {
+    isOnlineMock.mockResolvedValueOnce(true);
     const caller = appRouter.createCaller({ user: makeUser() } as unknown as CallerCtx);
     const result = await caller.presence.getOnlineStatus({ userId: 'target' } as { userId: string });
     expect(result).toEqual({ online: true });
