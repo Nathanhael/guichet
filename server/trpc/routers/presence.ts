@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { router, protectedProcedure, partnerScopedProcedure } from '../trpc.js';
-import * as presenceService from '../../services/presence.js';
+import { getAvailability } from '../../services/availability/index.js';
 import { TRPCError } from '@trpc/server';
 import { canChangePresenceStatus } from '../../services/roles.js';
 
@@ -10,7 +10,7 @@ export const presenceRouter = router({
       userId: z.string(),
     }))
     .query(async ({ input, ctx }) => {
-      const onlineUsers = await presenceService.getOnlineUsersForPartner(ctx.user.partnerId);
+      const onlineUsers = await getAvailability().advanced.onlineUsers(ctx.user.partnerId);
       const online = onlineUsers.some(u => u.userId === input.userId);
       return { online };
     }),
@@ -30,10 +30,13 @@ export const presenceRouter = router({
       if (!partnerId) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
       }
-      const updated = await presenceService.setUserStatus(input.userId, partnerId, input.status);
-      if (!updated) {
+      const availability = getAvailability();
+      // Preserve legacy NOT_FOUND UX: setStatus is a silent no-op for never-identified users.
+      const exists = (await availability.advanced.getStatus(input.userId, partnerId)) !== null;
+      if (!exists) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not online' });
       }
+      await availability.setStatus(input.userId, partnerId, input.status);
       return { success: true };
     }),
 });

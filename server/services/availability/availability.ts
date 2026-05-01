@@ -70,7 +70,9 @@ export class Availability {
 
   socket = {
     attach: async (p: AttachInput): Promise<void> => {
-      await this.deps.live.attachSocket(p.partnerId, p.userId, p.socketId);
+      const { socketCount } = await this.deps.live.attachSocket(p.partnerId, p.userId, p.socketId);
+      const wasFullyOffline = socketCount === 1; // we just added the first one
+
       await this.deps.live.upsertIdentity({
         partnerId: p.partnerId,
         userId: p.userId,
@@ -79,6 +81,19 @@ export class Availability {
         isPlatformOperator: !!p.isPlatformOperator,
       });
       await this.deps.live.clearOfflineAt(p.partnerId, p.userId);
+
+      // Open a transition-log row on first connect, preserving any previously-set status.
+      // On reconnect (socketCount > 1) the existing open row stays — we don't churn rows
+      // for tab refreshes / HMR / multi-tab.
+      if (wasFullyOffline) {
+        const status = (await this.deps.live.readStatus(p.partnerId, p.userId)) ?? 'online';
+        await this.deps.log.openRow({
+          userId: p.userId,
+          partnerId: p.partnerId,
+          status,
+          startedAt: this.deps.clock.now(),
+        });
+      }
 
       if (canUseSupportWorkflows(p.role, !!p.isPlatformOperator)) {
         await this.broadcastSupportRoster(p.partnerId);
@@ -99,7 +114,10 @@ export class Availability {
       const isPlatformOperator = userBefore?.isPlatformOperator ?? false;
 
       if (fullyOffline) {
-        await this.deps.live.markOfflineAt(p.partnerId, p.userId, this.deps.clock.now());
+        const at = this.deps.clock.now();
+        await this.deps.live.markOfflineAt(p.partnerId, p.userId, at);
+        // Close the open transition-log row that socket.attach opened on first connect.
+        await this.deps.log.closeOpenRow({ userId: p.userId, partnerId: p.partnerId, endedAt: at });
         if (canUseSupportWorkflows(role, isPlatformOperator)) {
           await this.broadcastSupportRoster(p.partnerId);
         }

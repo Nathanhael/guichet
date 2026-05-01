@@ -37,7 +37,7 @@ describe('Availability — boundary contract', () => {
 
   it('setStatus rolls back PG row when Redis fails', async () => {
     await attachAsSupport('u1', 'p1');
-    const rowsBefore = JSON.parse(JSON.stringify(log.rows));
+    const rowsBefore = structuredClone(log.rows);
     live.failNextWrite = true;
     await expect(av.setStatus('u1', 'p1', 'away')).rejects.toThrow();
     expect(log.rows).toEqual(rowsBefore); // PG state unchanged
@@ -131,5 +131,19 @@ describe('Availability — boundary contract', () => {
     bc.reset();
     await av.socket.attach({ userId: 'a1', partnerId: 'p1', socketId: 's-1', role: 'agent', name: 'Agent' });
     expect(bc.events.some(e => e.kind === 'agents:online')).toBe(true);
+  });
+
+  it('socket.attach opens a transition-log row on first connect (not on reconnect)', async () => {
+    await attachAsSupport('u1', 'p1', 's-1');
+    expect(log.rows.filter(r => r.userId === 'u1' && r.endedAt === null)).toHaveLength(1);
+    await attachAsSupport('u1', 'p1', 's-2'); // second connect, same user, still online
+    expect(log.rows.filter(r => r.userId === 'u1' && r.endedAt === null)).toHaveLength(1); // still 1, no new row
+  });
+
+  it('socket.detach closes the transition-log row on last disconnect', async () => {
+    await attachAsSupport('u1', 'p1', 's-1');
+    await av.socket.detach({ userId: 'u1', partnerId: 'p1', socketId: 's-1' });
+    const last = log.rows[log.rows.length - 1];
+    expect(last.endedAt).toEqual(now);
   });
 });
