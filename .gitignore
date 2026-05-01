@@ -95,6 +95,7 @@ testing/
 !server/services/auth/*.test.ts
 !server/services/ticketLifecycle/*.test.ts
 !server/services/messageLifecycle/*.test.ts
+!server/services/availability/*.test.ts
 !server/socket/*.test.ts
 !server/socket/handlers/*.test.ts
 !server/middleware/*.test.ts
