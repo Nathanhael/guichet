@@ -26,17 +26,11 @@ import type {
   MessageLifecycleDeps,
   MessageLifecycleResult,
 } from './types.js';
-import type { ModerationPort, RepetitionGuardPort } from './ports.js';
+import type { ModerationPort } from './ports.js';
 
 export interface EditDeps {
   db: MessageLifecycleDeps['db'];
   moderation: ModerationPort;
-  /**
-   * Legacy port — slice 5 of the moderator deepening deletes this. The edit
-   * pipeline no longer reads from it; the slot remains until slice 5 drops
-   * it from `MessageLifecyclePorts`.
-   */
-  repetitionGuard: RepetitionGuardPort;
 }
 
 export async function runEdit(

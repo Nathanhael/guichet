@@ -22,7 +22,6 @@ import type {
   AiTranslationPort,
   LinkPreviewPort,
   ModerationPort,
-  RepetitionGuardPort,
 } from './ports.js';
 
 /**
@@ -37,15 +36,9 @@ export interface MessageLifecyclePorts {
   linkPreview: LinkPreviewPort;
   aiTranslation: AiTranslationPort;
   /**
-   * Legacy repetition-only guard. Slice 2 of the moderator deepening migrates
-   * `send.ts` to the unified `moderation` port; subsequent slices migrate
-   * `edit.ts`. The legacy field stays in the type until slice 5 deletes it.
-   */
-  repetitionGuard: RepetitionGuardPort;
-  /**
    * Unified content moderator. Owns guard order + per-scope dispatch +
-   * multi-trigger reporting + original-text preservation. Wired in slice 2;
-   * consumed by send.ts (slice 2) and edit.ts (slice 3).
+   * multi-trigger reporting + original-text preservation. Consumed by
+   * `send.ts` (scope='message:send') and `edit.ts` (scope='message:edit').
    */
   moderation: ModerationPort;
 }

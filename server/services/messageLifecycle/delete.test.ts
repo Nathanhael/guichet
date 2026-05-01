@@ -23,9 +23,9 @@ import { createTestDb, type TestDbHandle } from '../../test/pglite-setup.js';
 import type { UserActor } from '../ticketLifecycle/index.js';
 import { createMessageLifecycle, type MessageLifecycle } from './index.js';
 import {
-  alwaysOkGuard,
   cannedTranslation,
   inMemoryLinkPreview,
+  passingModerator,
   recordingStorage,
   type RecordingStorageHandle,
 } from './test/stubs.js';
@@ -89,7 +89,7 @@ beforeEach(async () => {
     ports: {
       linkPreview: inMemoryLinkPreview(),
       aiTranslation: cannedTranslation(),
-      repetitionGuard: alwaysOkGuard(),
+      moderation: passingModerator(),
     },
     storage: storage.storage,
   });

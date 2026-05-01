@@ -49,10 +49,13 @@ export type {
 
 export type {
   AiTranslationPort,
+  GuardCode,
   LinkPreview,
   LinkPreviewPort,
-  RepetitionGuardPort,
-  RepetitionGuardResult,
+  ModerationContext,
+  ModerationPort,
+  ModerationResult,
+  ModerationScope,
 } from './ports.js';
 
 // Re-export the shared lifecycle primitives so callers don't need to know
@@ -65,18 +68,13 @@ export function createMessageLifecycle(deps: MessageLifecycleDeps): MessageLifec
     react: (args: ReactArgs): Promise<MessageLifecycleResult<ReactOk>> =>
       runReact({ db: deps.db }, args),
     edit: (args: EditArgs): Promise<MessageLifecycleResult<EditOk>> =>
-      runEdit({
-        db: deps.db,
-        moderation: deps.ports.moderation,
-        repetitionGuard: deps.ports.repetitionGuard,
-      }, args),
+      runEdit({ db: deps.db, moderation: deps.ports.moderation }, args),
     delete: (args: DeleteArgs): Promise<MessageLifecycleResult<DeleteOk>> =>
       runDelete({ db: deps.db, storage: deps.storage }, args),
     send: (args: SendArgs): Promise<MessageLifecycleResult<SendOk>> =>
       runSend({
         db: deps.db,
         moderation: deps.ports.moderation,
-        repetitionGuard: deps.ports.repetitionGuard,
         aiTranslation: deps.ports.aiTranslation,
       }, args),
   };

@@ -54,7 +54,6 @@ import {
   aiTranslationAdapter,
   httpLinkPreviewAdapter,
   moderationAdapter,
-  redisRepetitionAdapter,
 } from './services/messageLifecycle/adapters/index.js';
 import { getStorage } from './services/storage.js';
 import { decrypt } from './services/encryption.js';
@@ -90,7 +89,6 @@ export const messageLifecycle: MessageLifecycle = createMessageLifecycle({
   ports: {
     linkPreview: httpLinkPreviewAdapter(),
     aiTranslation: aiTranslationAdapter(),
-    repetitionGuard: redisRepetitionAdapter(),
     moderation: moderationAdapter(),
   },
   storage: getStorage(),

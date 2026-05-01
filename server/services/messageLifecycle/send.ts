@@ -39,18 +39,11 @@ import type {
   SendMessage,
   SendOk,
 } from './types.js';
-import type { AiTranslationPort, ModerationPort, RepetitionGuardPort } from './ports.js';
+import type { AiTranslationPort, ModerationPort } from './ports.js';
 
 export interface SendDeps {
   db: MessageLifecycleDeps['db'];
   moderation: ModerationPort;
-  /**
-   * Legacy port — slice 5 of the moderator deepening deletes this. The send
-   * pipeline no longer reads from it; only the type slot remains so the
-   * lifecycle factory can keep wiring `redisRepetitionAdapter` until edit.ts
-   * also migrates and the slot can be dropped wholesale.
-   */
-  repetitionGuard: RepetitionGuardPort;
   aiTranslation: AiTranslationPort;
 }
 
