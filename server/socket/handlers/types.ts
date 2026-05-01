@@ -38,7 +38,6 @@ export interface HandlerContext {
 // Each schema has a corresponding TypeScript type inferred from it.
 
 export const ticketNewSchema = z.object({
-  agentId: z.string().optional(), // Deprecated — server uses socket.data.userId instead
   agentLang: z.string().min(1).max(10),
   dept: z.string().min(1).max(100),
   references: z.array(z.object({ label: z.string().max(100), value: z.string().max(500) })).max(20).optional(),

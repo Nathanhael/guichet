@@ -31,12 +31,7 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
   const departments = (activeMembership?.manifest?.departments || []) as { id: string; name: string }[];
   const departmentName = departments.find((d) => d.id === ticket.dept)?.name || ticket.dept;
 
-  const references = ticket.references || [];
-  const legacyRef =
-    !references.length && (ticket.cdbId || ticket.dareRef)
-      ? [{ label: ticket.cdbId ? 'CDB' : 'DARE', value: ticket.cdbId || ticket.dareRef || '' }]
-      : [];
-  const allRefs = references.length ? references : legacyRef;
+  const allRefs = ticket.references || [];
 
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   useEffect(() => {
