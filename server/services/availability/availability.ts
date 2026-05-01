@@ -154,6 +154,29 @@ export class Availability {
       ]);
       return { status, online, offlineSince };
     },
+    /**
+     * Test-only escape hatch for E2E fixtures (`testFixtures.resetAgentStatus`).
+     * Stages a status that will be observed by the next socket:identify connect
+     * — the LiveStatePort writes to the `last_status` key (Redis) / lastStatus
+     * map (memory), which `upsertIdentity` reads on the next first-attach.
+     *
+     * Throws in production. The testFixtures router is module-load-guarded too,
+     * but defense in depth — this method should never reach a prod runtime even
+     * if a misconfigured caller imports it.
+     */
+    seedTestHash: async (input: {
+      partnerId: string;
+      userId: string;
+      status: AgentStatus;
+    }): Promise<void> => {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('availability.advanced.seedTestHash is non-production only');
+      }
+      if (!this.deps.live.seedTestHash) {
+        throw new Error('LiveStatePort adapter does not implement seedTestHash');
+      }
+      return this.deps.live.seedTestHash(input);
+    },
   };
 
   // ── Reports (PG-only) ─────────────────────────────────────────────────────
