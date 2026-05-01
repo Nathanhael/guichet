@@ -4,8 +4,7 @@ import { TRPCError } from '@trpc/server';
 import { inArray } from 'drizzle-orm';
 import { db } from '../../db.js';
 import { users } from '../../db/schema.js';
-import * as statusTracking from '../../services/statusTracking.js';
-import * as presenceService from '../../services/presence.js';
+import { getAvailability } from '../../services/availability/index.js';
 
 export const statusRouter = router({
   /** Get current online statuses for all support staff in the caller's partner */
@@ -15,7 +14,7 @@ export const statusRouter = router({
       if (!partnerId) {
         throw new TRPCError({ code: 'BAD_REQUEST', message: 'No partner context' });
       }
-      const onlineUsers = await presenceService.getOnlineUsersForPartner(partnerId);
+      const onlineUsers = await getAvailability().advanced.onlineUsers(partnerId);
       if (onlineUsers.length === 0) return [];
       // Batch-fetch isExternal for the team so the client can render GUEST
       // badges. One query for the whole team regardless of size — cheap, no
@@ -52,7 +51,7 @@ export const statusRouter = router({
       if (!isSelf && !isAdmin) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Not authorized' });
       }
-      return statusTracking.getAgentDailyStats(input.userId, partnerId, input.fromDate, input.toDate);
+      return getAvailability().reports.agentDaily(input.userId, partnerId, input.fromDate, input.toDate);
     }),
 
   /** Get daily time-in-status for all agents in partner (admin only) */
@@ -69,6 +68,6 @@ export const statusRouter = router({
       if (ctx.user.role !== 'admin' && !ctx.user.isPlatformOperator) {
         throw new TRPCError({ code: 'FORBIDDEN', message: 'Admin access required' });
       }
-      return statusTracking.getTeamDailyStats(partnerId, input.fromDate, input.toDate);
+      return getAvailability().reports.teamDaily(partnerId, input.fromDate, input.toDate);
     }),
 });

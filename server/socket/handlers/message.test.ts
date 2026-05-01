@@ -41,14 +41,6 @@ vi.mock('../../services/partnerQueries.js', () => ({
   findPartnerConfig: vi.fn(),
 }));
 
-vi.mock('../../services/presence.js', () => ({
-  identifyUser: vi.fn(),
-  decrementUserCount: vi.fn(),
-  broadcastOnlineSupport: vi.fn(),
-  getUserStatus: vi.fn(async () => null),
-  setUserStatus: vi.fn(async () => {}),
-}));
-
 vi.mock('../../services/businessHours.js', () => ({
   getBusinessHoursStatus: vi.fn(() => ({ isOpen: true, message: 'Open' })),
   broadcastQueuePositions: vi.fn(),
@@ -67,11 +59,6 @@ vi.mock('../../services/roles.js', () => ({
 vi.mock('../../services/ai/index.js', () => ({
   invalidateSummary: vi.fn(async () => {}),
   autoSummarizeOnClose: vi.fn(async () => {}),
-}));
-
-vi.mock('../../services/statusTracking.js', () => ({
-  logTransition: vi.fn(async () => {}),
-  closeOpenRow: vi.fn(async () => {}),
 }));
 
 vi.mock('../../services/sla.js', () => ({
