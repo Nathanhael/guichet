@@ -1,7 +1,6 @@
 import { Socket } from 'socket.io';
 import logger from '../../utils/logger.js';
-import * as presenceService from '../../services/presence.js';
-import * as statusTracking from '../../services/statusTracking.js';
+import { getAvailability } from '../../services/availability/instance.js';
 import { broadcastAgentStatus } from '../../services/businessHours.js';
 import { socketioConnectionsActive } from '../../utils/metrics.js';
 import { removeViewerFromAll, broadcastViewers } from './collision.js';
@@ -38,18 +37,23 @@ export function register(socket: Socket, ctx: HandlerContext): void {
 
     if (userId && partnerId) {
       try {
-        const result = await presenceService.decrementUserCount(userId, partnerId, socket.id);
-        if (result && result.removed) {
-          if (result.role === 'agent') {
-            broadcastAgentStatus(userId, false);
-            presenceService.broadcastOnlineAgents(partnerId);
-          }
-          // Close status tracking row when user fully disconnects (all roles)
-          await statusTracking.closeOpenRow(userId, partnerId);
+        // Availability owns: socket detach + offline-marker + PG row close +
+        // roster broadcast on full-offline transition. The handler only adds
+        // the agent-presence businessHours hook (purely UI-state, not availability).
+        const result = await getAvailability().socket.detach({
+          userId,
+          partnerId,
+          socketId: socket.id,
+        });
+        if (result.removed && result.role === 'agent') {
+          broadcastAgentStatus(userId, false);
         }
       } catch (err) {
-        // M-06: Don't let presence errors crash the disconnect handler
-        logger.error({ err: err instanceof Error ? err.message : String(err), userId }, '[socket] Presence decrement error on disconnect');
+        // M-06: Don't let availability errors crash the disconnect handler
+        logger.error(
+          { err: err instanceof Error ? err.message : String(err), userId },
+          '[socket] availability.detach error on disconnect',
+        );
       }
     }
   });

@@ -6,12 +6,11 @@ import logger from '../../utils/logger.js';
 
 import { Rooms } from '../../utils/rooms.js';
 import { getRedisClients } from '../../utils/redis.js';
-import * as presenceService from '../../services/presence.js';
+import { getAvailability } from '../../services/availability/instance.js';
 import { findUserById, findMembership } from '../../services/userQueries.js';
 import { findActiveTicketsForAgent, findActiveTicketsForSupport } from '../../services/ticketQueries.js';
 import { broadcastAgentStatus } from '../../services/businessHours.js';
 import { canUseSupportWorkflows, isPlatformAdmin } from '../../services/roles.js';
-import * as statusTracking from '../../services/statusTracking.js';
 import { isRevoked } from '../../services/auth/sessionRevocation.js';
 import { UserRole } from '../../types/index.js';
 import { type HandlerContext } from './types.js';
@@ -257,7 +256,18 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
         effectiveRole === 'platform_operator' || socket.data.authedIsPlatformOperator === true;
       socket.data.identified = true;
 
-      await presenceService.identifyUser(userId, effectiveRole, name, partnerId, isPlatformOp, socket.id);
+      // Single deep call replaces presenceService.identifyUser + broadcastOnlineSupport
+      // + broadcastOnlineAgents + getUserStatus + statusTracking.logTransition. The
+      // availability module owns the two-store coordination + roster broadcasts; the
+      // socket handler keeps only the room-joining (transport-layer concern).
+      await getAvailability().socket.attach({
+        userId,
+        partnerId,
+        socketId: socket.id,
+        role: effectiveRole,
+        name,
+        isPlatformOperator: isPlatformOp,
+      });
 
       // Join partner-wide room (for events all users need: partner:deactivated, hours:closed, etc.)
       socket.join(Rooms.partner(partnerId));
@@ -266,7 +276,6 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
       // Agents must NOT receive other users' ticket data — they only see their own via ticket:created:self.
       if (isSupport) {
         socket.join(Rooms.staff(partnerId));
-        await presenceService.broadcastOnlineSupport(partnerId);
       }
 
       // Join private user room for individual kill switches
@@ -274,13 +283,13 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
 
       if (effectiveRole === 'agent') {
         broadcastAgentStatus(userId, true);
-        presenceService.broadcastOnlineAgents(partnerId);
       }
 
-      // Restore persisted status to client and open status tracking row
+      // Restore persisted status to client. The PG row + roster broadcast already
+      // happened inside `availability.socket.attach`; we only need the client-side
+      // status:restored emit when the preserved status is non-default.
       if (isSupport) {
-        const persistedStatus = await presenceService.getUserStatus(userId, partnerId);
-        await statusTracking.logTransition(userId, partnerId, persistedStatus || 'online');
+        const persistedStatus = await getAvailability().advanced.getStatus(userId, partnerId);
         if (persistedStatus && persistedStatus !== 'online') {
           socket.emit('status:restored', { status: persistedStatus });
         }
