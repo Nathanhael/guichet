@@ -105,7 +105,13 @@ export class DrizzleTransitionLog implements TransitionLogPort {
     const rows = await db.select().from(schema.agentStatusLog).where(and(
       eq(schema.agentStatusLog.partnerId, partnerId),
       lte(schema.agentStatusLog.startedAt, dayEnd),
-      gte(sql`COALESCE(${schema.agentStatusLog.endedAt}, NOW()::text)`, dayStart),
+      // `endedAt` is `timestamp` (mode 'string'); `NOW()` is `timestamptz`.
+      // Cast NOW to timestamp so COALESCE has consistent types, and cast the
+      // ISO-string `dayStart` to timestamp so the comparison happens at the
+      // timestamp type (text comparison would mismatch — Postgres' default
+      // text repr of timestamp uses a space, not 'T', and ASCII space < 'T'
+      // breaks lexical ordering for ISO 8601 strings).
+      gte(sql`COALESCE(${schema.agentStatusLog.endedAt}, NOW()::timestamp)`, sql`${dayStart}::timestamp`),
     ));
 
     const userTotals = new Map<string, Record<string, number>>();
