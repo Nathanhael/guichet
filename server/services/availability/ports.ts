@@ -27,6 +27,17 @@ export interface LiveStatePort {
   clearOfflineAt(partnerId: string, userId: string): Promise<void>;
   listOnline(partnerId: string): Promise<OnlineUser[]>;
   flushAll(): Promise<{ deleted: number }>;
+  /** Test-only: stage a status that will be observed by the next socket:identify
+   *  connect. Writes to the `last_status` (Redis) / lastStatus map (memory)
+   *  so `upsertIdentity` reads it on first attach. Also updates the live hash's
+   *  status field if the user is currently mid-session. Optional — adapters
+   *  may omit if they don't need test seeding. The orchestrator's
+   *  `advanced.seedTestHash` adds a production guard before delegating here. */
+  seedTestHash?(input: {
+    partnerId: string;
+    userId: string;
+    status: AgentStatus;
+  }): Promise<void>;
 }
 
 export interface TransitionLogPort {
