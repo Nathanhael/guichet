@@ -140,10 +140,23 @@ export default function SupportView() {
   // whispers). Rejects are pruned from the tab list via support:rejoin:denied.
   // Caps total tabs at MAX_OPEN_CHATS — overflow stays visible under OTHER
   // AGENTS in the queue until the user closes a tab to pick them up.
+  //
+  // Reads `ticketsQuery.data` directly rather than the zustand `tickets`
+  // mirror: the mirror is populated by a separate effect (line 122) that
+  // commits AFTER this one fires on the same render. If we used `tickets`,
+  // the one-shot guard would lock with `tickets=[]` on the first fire and
+  // owned tickets would never rehydrate — they'd land in the "Claimed by
+  // others" rail instead of "My Chats" on every fresh page load.
   const hasRestoredRef = useRef(false);
   useEffect(() => {
     if (hasRestoredRef.current) return;
     if (!ticketsQuery.isSuccess || !user?.id) return;
+    // ticketsQuery.data is `Ticket[] | { tickets, nextCursor }` — only the
+    // array form carries the restore-source we need. Mirror the
+    // `Array.isArray` check the setTickets effect at line 122 uses, and
+    // hold the guard until we have data, so a transient paginated /
+    // pre-data render can't lock the one-shot with an empty source.
+    if (!Array.isArray(ticketsQuery.data)) return;
     hasRestoredRef.current = true;
     const socket = getSocket();
     if (!socket) return;
@@ -153,7 +166,8 @@ export default function SupportView() {
     };
     socket.on('support:rejoin:denied', onDenied);
 
-    const validTicketIds = new Set(tickets.map((tk) => tk.id));
+    const source = ticketsQuery.data;
+    const validTicketIds = new Set(source.map((tk) => tk.id));
     const rejoined = new Set<string>();
 
     for (const ticketId of supportOpenTickets) {
@@ -165,7 +179,7 @@ export default function SupportView() {
       }
     }
 
-    const owned = tickets
+    const owned = source
       .filter((tk) => tk.supportId === user.id && tk.status !== 'closed' && !rejoined.has(tk.id))
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
     const available = Math.max(0, MAX_OPEN_CHATS - rejoined.size);
@@ -176,7 +190,7 @@ export default function SupportView() {
     }
 
     return () => { socket.off('support:rejoin:denied', onDenied); };
-  }, [ticketsQuery.isSuccess, user?.id, tickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket]);
+  }, [ticketsQuery.isSuccess, ticketsQuery.data, user?.id, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket]);
 
   // Derived state
   const openTabTickets = useMemo(
