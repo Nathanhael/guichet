@@ -51,7 +51,12 @@ Run-Step "migrate" @("docker compose exec server npx drizzle-kit migrate")
 # Vite production build runs in its own step so Rolldown/Vite regressions (like
 # the flag-emoji hash_placeholder panic) fail CI even when e2e is skipped.
 Run-Step "build" @("docker compose exec client npm run build")
-Run-Step "e2e" @("npx playwright test")
+# `$env:CI = '1'` flips playwright.config.ts:7 from `retries: 0` to `retries: 2`.
+# Local CI hits transient worker-spawn races (`Cannot find module 'playwright/lib/common/process.js'`
+# at 0ms) when something concurrent touches `node_modules` mid-run — Drive sync,
+# antivirus realtime-scan, or a parallel-session npm op. Retries absorb the flake
+# without masking real failures: a structurally broken test still fails 3×.
+Run-Step "e2e" @('$env:CI = "1"; npx playwright test')
 
 $stopwatch.Stop()
 Write-Host "`n========================================" -ForegroundColor White
