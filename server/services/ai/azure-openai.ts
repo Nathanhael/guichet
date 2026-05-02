@@ -45,7 +45,7 @@ export class AzureOpenAiProvider implements AiProvider {
         body: JSON.stringify({
           messages: params.messages,
           temperature: params.temperature ?? 0.7,
-          max_tokens: params.maxTokens,
+          max_completion_tokens: params.maxTokens,
         }),
         signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
       });
@@ -85,7 +85,7 @@ export class AzureOpenAiProvider implements AiProvider {
         body: JSON.stringify({
           messages: params.messages,
           temperature: params.temperature ?? 0.7,
-          max_tokens: params.maxTokens,
+          max_completion_tokens: params.maxTokens,
           stream: true,
         }),
         signal: AbortSignal.timeout(config.AI_TIMEOUT_MS),
