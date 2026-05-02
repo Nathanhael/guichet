@@ -3,8 +3,11 @@ import fs from 'fs';
 import path from 'path';
 
 describe('Repetition store atomicity (#26)', () => {
+  // Source moved from `services/repetitionStore.ts` into the moderator
+  // package as part of the moderator extraction; the atomicity contract
+  // still belongs to the repetition pipeline so the assertions stay.
   const repSource = fs.readFileSync(
-    path.resolve(__dirname, '../services/repetitionStore.ts'), 'utf-8'
+    path.resolve(__dirname, '../services/moderator/repetition.ts'), 'utf-8'
   );
 
   it('uses a Lua script for atomic check-and-increment', () => {
