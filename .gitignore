@@ -109,6 +109,9 @@ testing/
 # Server cross-cutting integration tests
 !server/__integration__/**/*.test.ts
 
+# Server route/router/service tests under __tests__/ (mirrors source tree depth)
+!server/__tests__/**/*.test.ts
+
 # Server lifecycle test substrate (PGLite-based; ships with the suite)
 !server/test/**/*.ts
 
