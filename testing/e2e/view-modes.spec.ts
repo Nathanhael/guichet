@@ -4,34 +4,18 @@
  * Tests the ViewModeDropdown component, preview mode empty state and ticket card,
  * split view fallback behaviour, and focus mode sidebar toggling.
  *
+ * #117: migrated to `partnerFixture` for parallel-worker isolation. Each
+ * test gets its own partner + support user + queue ticket; the seed
+ * `support_vm` user is no longer referenced. The previous `releaseOwnClaims`
+ * raw-psql workaround for cross-test queue pollution is gone.
+ *
  * Prerequisites:
  *   - Server running at E2E_BASE_URL
- *   - Seeded demo database (seed.ts)
+ *   - Seeded `platform_bart` operator (used by partnerFixture for bootstrap auth)
  */
 
-import { execSync } from 'node:child_process';
-import { test, expect, type Page } from '@playwright/test';
-import { loginAsDemo } from './helpers/auth';
-
-const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
-
-/**
- * Un-join only this spec's own claims (support_vm) so each test starts with
- * the queue tickets unassigned. Previously this was a GLOBAL wipe that reset
- * every support_id in the DB, which raced with parallel specs that had just
- * claimed tickets as lucas/sophie/qa. Scoping to support_vm keeps this spec
- * self-isolating without clobbering anyone else's state.
- * Silent on failure so the real assertion still surfaces the underlying issue.
- */
-function releaseOwnClaims(): void {
-  try {
-    execSync(
-      `docker compose exec -T db psql -U user -d guichet -c ` +
-      `"UPDATE tickets SET support_id = NULL, status = 'open' WHERE support_id = 'support_vm' AND status <> 'closed';"`,
-      { stdio: 'ignore' }
-    );
-  } catch { /* non-fatal */ }
-}
+import { test, expect } from './helpers/partnerFixture';
+import type { Page } from '@playwright/test';
 
 /**
  * ChatTabBar (and its child ViewModeDropdown) only mounts when at least
@@ -71,44 +55,21 @@ async function openFirstQueueTicket(page: Page): Promise<boolean> {
 // ---------------------------------------------------------------------------
 
 test.describe('ViewModeDropdown', () => {
-  test.beforeAll(() => releaseOwnClaims());
+  test.beforeEach(async ({ page, partnerFixture }) => {
+    // Per #117: fresh partner + support user + queue ticket per test.
+    const { userId } = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.loginAs(userId, { waitFor: 'networkidle' });
+    await partnerFixture.createTicket();
 
-  test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_vm');
-    if (!res.ok) {
-      throw new Error(
-        `Fixture user 'support_vm' failed to log in (status ${res.status}). ` +
-          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
-      );
-    }
+    // Reload so the queue refetches and the new ticket lands in the sidebar.
+    await page.reload();
     await page.waitForLoadState('networkidle');
-    // ViewModeDropdown is rendered inside ChatTabBar (see
-    // client/src/components/support/ChatTabBar.tsx:67), which only mounts
-    // when there's at least one open chat tab. Click the first ticket in
-    // the queue to open it — this brings ChatTabBar (and thus the
-    // ViewModeDropdown button) into the DOM.
-    {
-      const firstTicket = page.locator('li.cursor-pointer').first();
-      if (await firstTicket.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await firstTicket.click();
-        // Click the Join button if it appears (support may need to claim the ticket)
-        const joinBtn = page.getByRole('button', { name: /join|accept|deelnemen|rejoindre/i });
-        if (await joinBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
-          await joinBtn.click();
-        }
-        // Wait for the chat textarea to appear — proxy for ChatTabBar being mounted
-        await page.locator('.ProseMirror').first()
-          .waitFor({ state: 'visible', timeout: 10000 }).catch(() => null);
-      }
-    }
   });
 
-  // FIXME: cross-test partner-state pollution — `openFirstQueueTicket` requires
-  // at least one DSC/FOT/TEC ticket in support_vm's queue, but parallel specs
-  // running against the same partner drain or claim queue tickets first.
-  // Per Bundle D escape hatch (`test.fixme` for cross-test multi-context state);
-  // proper fix is partner-isolation per spec file, tracked separately.
-  test.fixme('ViewModeDropdown button is visible in ChatTabBar when a ticket is open', async ({ page }) => {
+  test('ViewModeDropdown button is visible in ChatTabBar when a ticket is open', async ({ page }) => {
     // ViewModeDropdown was relocated out of SupportNav and is now rendered
     // only by ChatTabBar (when at least one ticket tab is open). The
     // `showViewMode` prop on SettingsPopover exists but no nav currently
@@ -128,7 +89,7 @@ test.describe('ViewModeDropdown', () => {
     if (!opened) {
       throw new Error(
         'Could not open a queue ticket to mount ChatTabBar. The seed must contain ' +
-          'at least one DSC/FOT/TEC ticket visible to support_vm.',
+          'a queue ticket visible to the fixture support user — partnerFixture.createTicket() should have seeded one.',
       );
     }
 
@@ -156,11 +117,6 @@ test.describe('ViewModeDropdown', () => {
 // Focus Mode via Dropdown
 // ---------------------------------------------------------------------------
 //
-// Focus Mode runs before Split View because Split View's 2-tab test claims
-// multiple queue tickets as support_vm, draining the shared seeded queue.
-// Focus Mode uses support_vm and only needs one queue ticket to mount
-// ChatTabBar — placing it first keeps it deterministic.
-//
 // NOTE: A previous `Preview Mode` describe block was deleted here. It tested
 // a view mode that doesn't exist in `ViewModeDropdown.tsx` — the real options
 // are `normal`, `split-grid`, `split-stack`, `focus`. The tests had been
@@ -171,28 +127,26 @@ test.describe('ViewModeDropdown', () => {
 test.describe('Focus Mode', () => {
   let tabBarMounted = false;
 
-  test.beforeAll(() => releaseOwnClaims());
-  test.beforeEach(() => releaseOwnClaims());
+  test.beforeEach(async ({ page, partnerFixture }) => {
+    // Per #117: fresh partner + support user + queue ticket per test.
+    const { userId } = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.loginAs(userId, { waitFor: 'networkidle' });
+    await partnerFixture.createTicket();
 
-  test.beforeEach(async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_vm');
-    if (!res.ok) {
-      throw new Error(
-        `Fixture user 'support_vm' failed to log in (status ${res.status}). ` +
-          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
-      );
-    }
     await page.setViewportSize({ width: 1600, height: 900 });
+    await page.reload();
     await page.waitForLoadState('networkidle');
     tabBarMounted = await openFirstQueueTicket(page);
   });
 
-  // FIXME: cross-test partner-state pollution — see comment above `ViewModeDropdown`.
-  test.fixme('focus mode hides the queue sidebar', async ({ page }) => {
+  test('focus mode hides the queue sidebar', async ({ page }) => {
     if (!tabBarMounted) {
       throw new Error(
         'No queue ticket available — cannot mount ChatTabBar. Seed must include ' +
-          'a DSC/FOT/TEC ticket visible to support_vm.',
+          'a queue ticket visible to the fixture support user — partnerFixture.createTicket() should have seeded one.',
       );
     }
 
@@ -243,7 +197,7 @@ test.describe('Focus Mode', () => {
     if (!tabBarMounted) {
       throw new Error(
         'No queue ticket available — cannot mount ChatTabBar. Seed must include ' +
-          'a DSC/FOT/TEC ticket visible to support_vm.',
+          'a queue ticket visible to the fixture support user — partnerFixture.createTicket() should have seeded one.',
       );
     }
 
@@ -300,21 +254,20 @@ test.describe('Focus Mode', () => {
 test.describe('Split View', () => {
   let tabBarMounted = false;
 
-  test.beforeAll(() => releaseOwnClaims());
-  test.beforeEach(() => releaseOwnClaims());
+  test.beforeEach(async ({ page, partnerFixture }) => {
+    // Per #117: fresh partner + support user + queue ticket per test.
+    // The body-fixme'd `split view shows multiple chat panels` test would
+    // need 2+ tickets but is out of slice scope; the migrated fallback test
+    // below only needs 1.
+    const { userId } = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.loginAs(userId, { waitFor: 'networkidle' });
+    await partnerFixture.createTicket();
 
-  test.beforeEach(async ({ page }) => {
-    // support_vm covers all three departments (DSC/FOT/TEC). Dedicated to
-    // this spec so Split View's multi-ticket claim doesn't race with
-    // chat-enhancements (which owns support_qa).
-    const res = await loginAsDemo(page, 'support_vm');
-    if (!res.ok) {
-      throw new Error(
-        `Fixture user 'support_vm' failed to log in (status ${res.status}). ` +
-          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
-      );
-    }
     await page.setViewportSize({ width: 1600, height: 900 });
+    await page.reload();
     await page.waitForLoadState('networkidle');
     tabBarMounted = await openFirstQueueTicket(page);
   });
@@ -347,12 +300,11 @@ test.describe('Split View', () => {
     return true;
   }
 
-  // FIXME: cross-test partner-state pollution — see comment above `ViewModeDropdown`.
-  test.fixme('split view falls back to normal with fewer than 2 tabs open', async ({ page }) => {
+  test('split view falls back to normal with fewer than 2 tabs open', async ({ page }) => {
     if (!tabBarMounted) {
       throw new Error(
         'No queue ticket available — cannot mount ChatTabBar. Seed must include ' +
-          'a DSC/FOT/TEC ticket visible to support_vm.',
+          'a queue ticket visible to the fixture support user — partnerFixture.createTicket() should have seeded one.',
       );
     }
     const activated = await openSplitMode(page);
@@ -374,12 +326,12 @@ test.describe('Split View', () => {
   });
 
   test('split view shows multiple chat panels when 2+ tabs are open', async ({ page }) => {
-    // Bundle D: this test requires 2+ tickets seeded for support_vm with both
-    // tabs joinable. Migrating to ticketFixture would need fixture-create at
-    // describe-scope (not page-scope) since the beforeEach already opens one
-    // ticket. Marked fixme as out-of-scope mechanical migration — the
-    // ViewModeDropdown wiring itself is covered by the prior test in this file
-    // and the Split View fallback test below.
+    // Still fixme'd post-#117 migration: this test needs 2+ joinable queue
+    // tickets, but the partnerFixture beforeEach seeds only 1 (matching what
+    // the other tests in this describe need). Migrating would require either
+    // a 2-ticket variant of beforeEach or a per-test fixture call — out of
+    // mechanical-migration scope. The fallback test above already covers the
+    // single-tab path; multi-panel rendering is verified by the unit suite.
     test.fixme();
 
     await page.waitForTimeout(1500);

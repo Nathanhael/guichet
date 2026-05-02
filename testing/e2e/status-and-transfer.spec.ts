@@ -6,12 +6,14 @@
  *
  * Bundle D / RFC #82 migration: replaces 19 fixture-state predicate skips
  * with hard errors on demo-login failure (per the wiki pattern at
- * `wiki/patterns/e2e-skip-as-silent-failure.md`) and `ticketFixture.create()`
- * for the Department Transfer tests that need a ticket in the queue.
+ * `wiki/patterns/e2e-skip-as-silent-failure.md`).
+ *
+ * #117: Department Transfer migrated to `partnerFixture` for parallel-worker
+ * isolation. StatusPicker + Team Capacity Badge stay on the shared seed —
+ * they don't depend on queue-state and were never flaky.
  */
 
-import { expect } from '@playwright/test';
-import { test } from './helpers/fixtures';
+import { test, expect } from './helpers/partnerFixture';
 import { loginAsDemo } from './helpers/auth';
 
 // ---------------------------------------------------------------------------
@@ -188,44 +190,32 @@ test.describe('Team Capacity Badge', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Department Transfer', () => {
-  test.beforeEach(async ({ page, ticketFixture }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
-    if (!res.ok) {
-      throw new Error(
-        `Fixture user 'support_lucas' failed to log in (status ${res.status}). ` +
-          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
-      );
-    }
+  test.beforeEach(async ({ page, partnerFixture }) => {
+    // Per #117: each test gets its own partner + support user + ticket.
+    // No more sharing Acme with parallel specs that claim/close tickets
+    // mid-flight.
+    const { userId } = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.loginAs(userId, { waitFor: 'networkidle' });
 
-    const partnerId = await page.evaluate(() => sessionStorage.getItem('activePartnerId'));
-    if (!partnerId) {
-      throw new Error('loginAsDemo did not seed activePartnerId — partner-membership regression');
-    }
-
-    // Bundle D: stage a fresh open ticket in support_lucas's queue. Without
-    // this, the test depended on whatever ticket the seed left behind, which
-    // got drained by earlier specs and triggered the silent skip pattern.
-    await ticketFixture.create({ partnerId });
+    // Stage a ticket in this partner's queue. Default departmentId = first
+    // dept (`general`) — matches the support user's department so it's
+    // visible in the queue sidebar.
+    await partnerFixture.createTicket();
 
     // Reload so the queue refetches and the new ticket lands in the sidebar.
-    // (The fixture's direct-INSERT bypasses the socket emission that production
-    // ticket creates trigger; reload is the cheapest path to a deterministic
-    // queue state.)
+    // (The fixture's direct-INSERT bypasses the socket emission that
+    // production ticket creates trigger; reload is the cheapest path to a
+    // deterministic queue state.)
     await page.reload();
     await page.waitForLoadState('networkidle');
 
     await page.setViewportSize({ width: 1600, height: 900 });
   });
 
-  // FIXME: cross-test partner-state pollution — `ticketFixture.create()` lands
-  // its ticket in the Acme partner queue, but parallel specs (support-flow,
-  // agent-flow, etc.) running against the same partner claim/close tickets
-  // concurrently. By the time this test reaches the queue sidebar, the
-  // fixture-created ticket is often already in another support's "Claimed by
-  // others" section instead of the queued list. Per Bundle D escape hatch
-  // (`test.fixme` for cross-test multi-context state); proper fix is partner-
-  // isolation per spec file, tracked in a separate issue.
-  test.fixme('Transfer button is visible when a ticket is open', async ({ page }) => {
+  test('Transfer button is visible when a ticket is open', async ({ page }) => {
     // Open the fixture-created ticket from the queue sidebar.
     // Prefer real ticket rows (data-ticket-row stamped by QueueTicketRow);
     // `cursor-pointer` alone matched collapsible section headers too.
@@ -248,7 +238,7 @@ test.describe('Department Transfer', () => {
     await expect(transferBtn).toBeVisible({ timeout: 10000 });
   });
 
-  test.fixme('transfer menu shows department section header', async ({ page }) => {
+  test('transfer menu shows department section header', async ({ page }) => {
     const ticketItem = page.locator('li[data-ticket-row]').first();
     await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
@@ -277,7 +267,7 @@ test.describe('Department Transfer', () => {
     ).toBeVisible({ timeout: 5000 });
   });
 
-  test.fixme('transfer menu shows department options list', async ({ page }) => {
+  test('transfer menu shows department options list', async ({ page }) => {
     const ticketItem = page.locator('li[data-ticket-row]').first();
     await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
@@ -304,7 +294,7 @@ test.describe('Department Transfer', () => {
     await expect(deptHeader).toBeVisible({ timeout: 5000 });
   });
 
-  test.fixme('transfer menu has a note input field', async ({ page }) => {
+  test('transfer menu has a note input field', async ({ page }) => {
     const ticketItem = page.locator('li[data-ticket-row]').first();
     await expect(ticketItem).toBeVisible({ timeout: 10000 });
     await ticketItem.click();
