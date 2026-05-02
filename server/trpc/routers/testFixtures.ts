@@ -39,7 +39,7 @@ import { z } from 'zod';
 import { eq, gte, inArray, and, isNull, sql } from 'drizzle-orm';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { agentStatusLog, auditLog, memberships, partners, tickets, users } from '../../db/schema.js';
+import { agentStatusLog, archivedTickets, auditLog, memberships, partners, tickets, users } from '../../db/schema.js';
 import { assertNotProduction } from '../../utils/assertNotProduction.js';
 import { getAvailability } from '../../services/availability/index.js';
 import { type BusinessHoursSchedule } from '../../services/businessHours.js';
@@ -172,9 +172,15 @@ export const testFixturesRouter = router({
    * audit_log, labels, canned_responses, webhooks, kb_articles, and the
    * other partner-scoped tables.
    *
-   * The `archived_tickets` FK is `onDelete: 'restrict'` for compliance, but
-   * freshly-spawned test partners never enter the archive flow so cascade
-   * won't trip. Stale ids return `{ deleted: false }` (idempotent).
+   * The `archived_tickets` FK is `onDelete: 'restrict'` for compliance:
+   * production paths preserve the archive even if the partner row goes
+   * away (different retention windows). Test partners can enter the
+   * archive flow whenever a spec joins + closes a ticket — `lifecycle.close`
+   * snapshots into `archived_tickets` post-commit. Some specs leave a
+   * close behind via UI flow ("close ticket" tests), some via implicit
+   * cascade paths under reload — either way, fixture cleanup needs to
+   * own the archive rows it generated. Clear them BEFORE deletePartner
+   * so the restrict FK doesn't trip. Idempotent on stale ids.
    */
   deletePartner: fixtureProcedure
     .input(
@@ -183,13 +189,22 @@ export const testFixturesRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
+      const archiveCleared = await db
+        .delete(archivedTickets)
+        .where(eq(archivedTickets.partnerId, input.partnerId))
+        .returning({ id: archivedTickets.id });
+
       const result = await db
         .delete(partners)
         .where(eq(partners.id, input.partnerId))
         .returning({ id: partners.id });
 
       logger.info(
-        { partnerId: input.partnerId, deleted: result.length },
+        {
+          partnerId: input.partnerId,
+          deleted: result.length,
+          archivedTicketsCleared: archiveCleared.length,
+        },
         '[testFixtures] Deleted partner',
       );
 
