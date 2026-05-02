@@ -22,8 +22,9 @@ const exportRateLimit = rateLimit({
 const router = express.Router();
 
 /**
- * LEGACY EXPORT ROUTE
- * Kept because tRPC is not ideal for direct binary/CSV downloads in browser windows.
+ * BINARY EXPORT ROUTE
+ * Express (not tRPC) because tRPC is not ideal for direct binary/CSV downloads
+ * in browser windows.
  */
 router.get('/export', auth, authorize(['admin', 'support']), exportRateLimit, validateQuery(z.object({
   partnerId: z.string().optional(),

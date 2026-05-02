@@ -132,10 +132,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       if (!result.ok) {
         switch (result.code) {
           case 'GUARD_REJECTED':
-            // Dual emit preserved for legacy backwards-compat (older
-            // clients without message:rejected handler).
             socket.emit('message:rejected', { ticketId, localId, code: 'GUARD_REJECTED' });
-            socket.emit('error', { message: 'Message blocked: GUARD_REJECTED' });
             return;
           case 'INVALID_MEDIA_URL':
             return socket.emit('error', { message: 'Invalid media URL' });

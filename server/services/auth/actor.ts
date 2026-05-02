@@ -58,7 +58,7 @@ export function trpcActor(ctx: Context, opts?: { capability?: Capability }): Use
     role: ctx.user.role as UserRole,
     partnerId: ctx.user.partnerId,
     isPlatformOperator: ctx.user.isPlatformOperator,
-    isExternal: ctx.user.isExternal ?? false,
+    isExternal: ctx.user.isExternal,
     lang: userLike.lang ?? 'en',
   };
   if (opts?.capability && !can(actor, opts.capability)) {
