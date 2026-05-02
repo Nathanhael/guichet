@@ -13,7 +13,8 @@
  *   - Seeded demo database (agent_julie, support_lucas, admin_emma, platform_bart)
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from './helpers/partnerFixture';
+import type { Page } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
@@ -575,118 +576,128 @@ test.describe('Sprint 2: Collision Detection', () => {
     await expect(viewerBanner).not.toBeVisible();
   });
 
-  test('two users viewing same ticket see collision banner', async ({ browser }) => {
-    // Bundle D: multi-context test with fixture-state coupling. Out of slice 2
-    // mechanical scope. Collision detection itself is covered by
-    // collision-detection.spec.ts (currently fixme'd) and the integration tests
-    // at server/__integration__/.
+  test('two users viewing same ticket see collision banner', async ({ browser, page, partnerFixture }) => {
+    // #117 follow-up (2026-05-02 body-fixme migration, slice A1):
+    // Migration to partnerFixture surfaced a misclassification — the
+    // failure is NOT shared-seed pollution. The collision banner UI was
+    // deleted (see ChatHeader.tsx:596 "Collision Detection bar
+    // intentionally removed — viewer names are surfaced elsewhere
+    // (queue sidebar, avatars)"). Server-side ticket:viewing /
+    // ticket:left / ticket:viewers socket plumbing remains intact (see
+    // server/socket/handlers/collision.ts and the tenant-isolation
+    // coverage at server/__integration__/isolation.test.ts:602+) but no
+    // client component renders the broadcast viewer list — fixture
+    // bootstrap is irrelevant when there's no UI surface to assert on.
+    // Tracked under the body-fixme migration plan as a Group reclassification.
     test.fixme();
 
-    const context1 = await browser.newContext();
-    const context2 = await browser.newContext();
-    const page1 = await context1.newPage();
-    const page2 = await context2.newPage();
+    const lucas = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    const sophie = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.createTicket();
+
+    // page1 = fixture's bootstrap page; swap session to lucas, then reload
+    // so SupportView's queue refetches the fresh ticket.
+    await partnerFixture.loginAs(lucas.userId, { waitFor: 'networkidle' });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const ctx2 = await browser.newContext();
+    const page2 = await ctx2.newPage();
 
     try {
-      // Login as two different support users
-      const res1 = await loginAsDemo(page1, 'support_lucas');
-      const res2 = await loginAsDemo(page2, 'support_sophie');
-      if (!res1.ok || !res2.ok) {
-        throw new Error(`Demo logins failed: lucas=${res1.status} sophie=${res2.status}`);
+      const res2 = await loginAsDemo(page2, sophie.userId, { waitFor: 'networkidle' });
+      if (!res2.ok) {
+        throw new Error(`sophie loginAsDemo failed: ${res2.status}`);
       }
 
-      await page1.waitForTimeout(2000);
-      await page2.waitForTimeout(2000);
-
-      // Both users open the first ticket in queue
-      const opened1 = await openFirstTicket(page1);
+      // Both users open the (only) ticket in queue.
+      const opened1 = await openFirstTicket(page);
       if (!opened1) throw new Error('No ticket available (page1)');
-      await page1.waitForTimeout(1500);
+      await page.waitForTimeout(1500);
 
       const opened2 = await openFirstTicket(page2);
       if (!opened2) throw new Error('No ticket available (page2)');
       await page2.waitForTimeout(3000);
 
-      // Check if either user sees "also viewing this ticket"
-      // (They must be on the same ticket for the banner to show)
-      const banner1 = page1.getByText(/also viewing this ticket/i).first();
+      // Deterministic: with a single-ticket queue both users are on the
+      // same ticket, so the collision banner must show on at least one
+      // page. Probe both to absorb whichever-arrived-second timing.
+      const banner1 = page.getByText(/also viewing this ticket/i).first();
       const banner2 = page2.getByText(/also viewing this ticket/i).first();
 
       const visible1 = await banner1.isVisible({ timeout: 5000 }).catch(() => false);
       const visible2 = await banner2.isVisible({ timeout: 5000 }).catch(() => false);
 
-      // If both users opened the same ticket, at least one should see the banner
-      // If they opened different tickets, neither will see it — that's also valid
-      // Just verify no crashes
-      const error1 = await page1.getByText(/error|crash/i).first().isVisible().catch(() => false);
+      expect(visible1 || visible2).toBe(true);
+
+      const error1 = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
       const error2 = await page2.getByText(/error|crash/i).first().isVisible().catch(() => false);
       expect(error1).toBeFalsy();
       expect(error2).toBeFalsy();
-
-      // If they're on the same ticket, validate the banner content
-      if (visible1 || visible2) {
-        if (visible1) {
-          await expect(banner1).toContainText(/also viewing/i);
-        }
-        if (visible2) {
-          await expect(banner2).toContainText(/also viewing/i);
-        }
-      }
     } finally {
-      await context1.close();
-      await context2.close();
+      await ctx2.close();
     }
   });
 
-  test('leaving a ticket removes collision banner for others', async ({ browser }) => {
-    // Bundle D: same multi-context fragility as sibling collision test above.
+  test('leaving a ticket removes collision banner for others', async ({ browser, page, partnerFixture }) => {
+    // #117 follow-up (2026-05-02 body-fixme migration, slice A1):
+    // Same misclassification as sibling test — collision banner UI was
+    // removed; server socket plumbing remains. See sibling for full context.
     test.fixme();
 
-    const context1 = await browser.newContext();
-    const context2 = await browser.newContext();
-    const page1 = await context1.newPage();
-    const page2 = await context2.newPage();
+    const lucas = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    const sophie = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.createTicket();
+
+    await partnerFixture.loginAs(lucas.userId, { waitFor: 'networkidle' });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const ctx2 = await browser.newContext();
+    const page2 = await ctx2.newPage();
 
     try {
-      const res1 = await loginAsDemo(page1, 'support_lucas');
-      const res2 = await loginAsDemo(page2, 'support_sophie');
-      if (!res1.ok || !res2.ok) {
-        throw new Error(`Demo logins failed: lucas=${res1.status} sophie=${res2.status}`);
+      const res2 = await loginAsDemo(page2, sophie.userId, { waitFor: 'networkidle' });
+      if (!res2.ok) {
+        throw new Error(`sophie loginAsDemo failed: ${res2.status}`);
       }
 
-      await page1.waitForTimeout(2000);
-      await page2.waitForTimeout(2000);
-
-      // User 1 opens a ticket
-      const opened1 = await openFirstTicket(page1);
+      // User 1 opens the ticket first.
+      const opened1 = await openFirstTicket(page);
       if (!opened1) throw new Error('No ticket available (page1)');
-      await page1.waitForTimeout(1000);
+      await page.waitForTimeout(1000);
 
-      // User 2 opens the same ticket
+      // User 2 opens the same ticket.
       const opened2 = await openFirstTicket(page2);
       if (!opened2) throw new Error('No ticket available (page2)');
       await page2.waitForTimeout(3000);
 
-      // Check if banner appeared
-      const banner1 = page1.getByText(/also viewing this ticket/i).first();
-      const bannerWasVisible = await banner1.isVisible({ timeout: 3000 }).catch(() => false);
+      const banner1 = page.getByText(/also viewing this ticket/i).first();
+      await expect(banner1).toBeVisible({ timeout: 5000 });
 
-      if (bannerWasVisible) {
-        // User 2 navigates away (close the page)
-        await page2.close();
-        await page1.waitForTimeout(3000);
+      // User 2 disconnects entirely (close the page → socket disconnect).
+      await ctx2.close();
 
-        // Banner should disappear on page1 after user2 disconnects
-        const bannerStillVisible = await banner1.isVisible({ timeout: 3000 }).catch(() => false);
-        // This tests the disconnect cleanup — banner should be gone
-        // (Timing-dependent, so we just verify no crashes)
-      }
-
-      const error1 = await page1.getByText(/error|crash/i).first().isVisible().catch(() => false);
-      expect(error1).toBeFalsy();
+      // Banner should clear on page1 after the socket-disconnect cleanup
+      // propagates. expect.poll keeps the test deterministic without a
+      // fixed sleep.
+      await expect
+        .poll(() => banner1.isVisible().catch(() => false), { timeout: 10000 })
+        .toBe(false);
     } finally {
-      await context1.close().catch(() => {});
-      await context2.close().catch(() => {});
+      await ctx2.close().catch(() => {});
     }
   });
 });
