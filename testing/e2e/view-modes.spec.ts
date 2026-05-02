@@ -187,13 +187,13 @@ test.describe('Focus Mode', () => {
   });
 
   test('switching back to Normal from Focus restores the layout', async ({ page }) => {
-    // Bundle D: Focus option appears in the dropdown but the lookup against
-    // `.border-border-heavy` / `[class*="border-heavy"]` containers does not
-    // match the soft-product redesign's dropdown wrapper class. UI selector
-    // drift — out of slice 2 mechanical scope. The earlier test in this file
-    // (`focus mode hides the queue sidebar`) covers the focus-mode entry path.
-    test.fixme();
-
+    // #117 follow-up (2026-05-02 body-fixme migration, slice C2):
+    // Pre-migration scoped via `.border-border-heavy` — the brutalist-era
+    // dropdown wrapper class. Soft-product `ViewModeDropdown` uses a
+    // body-portalled `<div style="top: …; right: …">` with no stable
+    // wrapper class; scoping by the inline-style attribute is the
+    // structural replacement (only the portal menu has both `top:` and
+    // `right:` in its inline style — the trigger has none).
     if (!tabBarMounted) {
       throw new Error(
         'No queue ticket available — cannot mount ChatTabBar. Seed must include ' +
@@ -201,7 +201,6 @@ test.describe('Focus Mode', () => {
       );
     }
 
-    // Locate the view mode trigger
     const modeBtn = page.locator(
       'button[aria-label*="View Mode"], button[aria-label*="Weergavemodus"], button[aria-label*="affichage"]'
     ).first();
@@ -212,33 +211,30 @@ test.describe('Focus Mode', () => {
 
     await expect(trigger, 'ViewModeDropdown trigger should be present when ChatTabBar is mounted').toBeVisible({ timeout: 10000 });
 
-    // Enter Focus mode
-    await trigger.click();
-    await page.waitForTimeout(400);
+    // Portal-rendered menu — distinguishable from the trigger by its inline
+    // top/right positioning style. Re-locate after each open so we don't
+    // hold a stale reference once Playwright re-snapshots the DOM.
+    const menuLocator = () =>
+      page.locator('div[style*="top:"][style*="right:"]').last();
 
-    // Find Focus in dropdown — scope to dropdown container to avoid "Training / Focus"
-    const dropdown1 = page.locator('.border-border-heavy, [class*="border-heavy"]').last();
+    await trigger.click();
+    const dropdown1 = menuLocator();
     const focusOption = dropdown1.locator('button').filter({ hasText: /focus/i }).first();
-    if (!await focusOption.isVisible({ timeout: 5000 }).catch(() => false)) {
-      throw new Error('Focus option not found in dropdown (Normal-restore test) — UI regression');
-    }
+    await expect(focusOption).toBeVisible({ timeout: 5000 });
     await focusOption.click();
     await page.waitForTimeout(800);
 
-    // In focus mode the trigger should still be visible (it's in the nav)
-    // Re-open dropdown and select Normal
+    // Re-open and select Normal. With the trigger now displaying "Focus" the
+    // unscoped /^focus$/ pattern would double-match (trigger + menu); the
+    // portal-style scope keeps the lookup honest.
     await trigger.click();
-    await page.waitForTimeout(400);
-
-    const dropdown2 = page.locator('.border-border-heavy, [class*="border-heavy"]').last();
+    const dropdown2 = menuLocator();
     const normalOption = dropdown2.locator('button').filter({ hasText: /normal|normaal/i }).first();
-    if (!await normalOption.isVisible({ timeout: 5000 }).catch(() => false)) {
-      throw new Error('Normal option not found in dropdown — UI regression');
-    }
+    await expect(normalOption).toBeVisible({ timeout: 5000 });
     await normalOption.click();
     await page.waitForTimeout(800);
 
-    // No crash after switching back
+    // No crash after switching back.
     const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
     expect(errorVisible).toBeFalsy();
 
@@ -325,80 +321,105 @@ test.describe('Split View', () => {
     await expect(trigger).toBeVisible({ timeout: 8000 });
   });
 
-  test('split view shows multiple chat panels when 2+ tabs are open', async ({ page }) => {
-    // Still fixme'd post-#117 migration: this test needs 2+ joinable queue
-    // tickets, but the partnerFixture beforeEach seeds only 1 (matching what
-    // the other tests in this describe need). Migrating would require either
-    // a 2-ticket variant of beforeEach or a per-test fixture call — out of
-    // mechanical-migration scope. The fallback test above already covers the
-    // single-tab path; multi-panel rendering is verified by the unit suite.
-    test.fixme();
+});
 
-    await page.waitForTimeout(1500);
+// ---------------------------------------------------------------------------
+// Split View — multi-tab variant (own describe so the beforeEach can seed
+// 2 unassigned tickets BEFORE any join, instead of inheriting Split View's
+// 1-ticket-then-auto-join setup).
+// ---------------------------------------------------------------------------
 
-    const queueCount = page.getByText(/\d+\s*queued/i).first();
-    if (!(await queueCount.isVisible({ timeout: 5000 }).catch(() => false))) {
-      throw new Error('No tickets in queue (post-fixme guard)');
-    }
-    const countText = await queueCount.textContent();
-    const numTickets = parseInt(countText || '0', 10);
-    if (numTickets < 2) {
-      throw new Error(`Fewer than 2 tickets in queue (found: ${numTickets})`);
-    }
-    const ticketItems = page.locator('ul').locator('li');
-    const count = await ticketItems.count();
-    if (count < 2) {
-      throw new Error(`Fewer than 2 ticket list items (found: ${count})`);
-    }
+test.describe('Split View — Multi-Tab', () => {
+  async function openSplitMode(page: Page): Promise<boolean> {
+    const modeBtn = page.locator(
+      'button[aria-label*="View Mode"], button[aria-label*="Weergavemodus"], button[aria-label*="affichage"]'
+    ).first();
+    const iconBtn = page.locator('button').filter({ hasText: /[▣▥▤□]/ }).first();
 
-    // Open first ticket
-    await ticketItems.nth(0).click();
-    await page.waitForTimeout(1500);
+    const primaryVisible = await modeBtn.isVisible({ timeout: 8000 }).catch(() => false);
+    const trigger = primaryVisible ? modeBtn : iconBtn;
+    if (!await trigger.isVisible({ timeout: 8000 }).catch(() => false)) return false;
 
-    // Join if needed
-    const joinBtn1 = page.getByRole('button', { name: /join|deelnemen|rejoindre/i }).first();
-    if (await joinBtn1.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await joinBtn1.click();
-      await page.waitForTimeout(2000);
-    }
+    await trigger.click();
+    await page.waitForTimeout(400);
 
-    // Open second ticket
-    await ticketItems.nth(1).click();
-    await page.waitForTimeout(1500);
+    const splitOption = page.getByText(/grid 2×2|raster 2×2|grille 2×2/i).first();
+    if (!await splitOption.isVisible({ timeout: 5000 }).catch(() => false)) return false;
+    await splitOption.click();
+    await page.waitForTimeout(800);
+    return true;
+  }
 
-    const joinBtn2 = page.getByRole('button', { name: /join|deelnemen|rejoindre/i }).first();
-    if (await joinBtn2.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await joinBtn2.click();
-      await page.waitForTimeout(2000);
-    }
+  test('split view shows multiple chat panels when 2+ tabs are open', async ({ page, partnerFixture }) => {
+    // #117 follow-up (2026-05-02 body-fixme migration, slice C3):
+    // Pre-migration this test just hoped the seed had ≥2 unassigned
+    // queue tickets, which broke as soon as parallel specs claimed
+    // them. Post-migration we own a fresh partner — seed two tickets
+    // BEFORE login so they're both visible from page mount, then join
+    // each in turn. Avoids the "claim leaks via post-reload zustand
+    // empty + queue refetch race" trap that breaks if we try to extend
+    // the inherited Split View beforeEach (which already auto-joins
+    // its single ticket).
+    const { userId } = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.createTicket();
+    await partnerFixture.createTicket();
 
-    // Now switch to split mode
+    await partnerFixture.loginAs(userId, { waitFor: 'networkidle' });
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    // Two queue rows, both unassigned.
+    const queueRows = page.locator('li[data-ticket-row][data-ticket-variant="queue"]');
+    await expect
+      .poll(() => queueRows.count(), { timeout: 10000 })
+      .toBeGreaterThanOrEqual(2);
+
+    // Open + join the first ticket.
+    await queueRows.first().click();
+    await page.waitForLoadState('networkidle');
+    const joinBtn1 = page.getByRole('button', { name: /^join$|^deelnemen$|^rejoindre$|jump in/i }).first();
+    await expect(joinBtn1).toBeVisible({ timeout: 5000 });
+    await joinBtn1.click();
+    await page.waitForLoadState('networkidle');
+
+    // Open + join the second ticket. After joining the first, the
+    // queue-variant set shrinks by 1 — the previously-second row is now
+    // first.
+    const remainingQueue = page.locator('li[data-ticket-row][data-ticket-variant="queue"]');
+    await expect(remainingQueue.first()).toBeVisible({ timeout: 5000 });
+    await remainingQueue.first().click();
+    await page.waitForLoadState('networkidle');
+    const joinBtn2 = page.getByRole('button', { name: /^join$|^deelnemen$|^rejoindre$|jump in/i }).first();
+    await expect(joinBtn2).toBeVisible({ timeout: 5000 });
+    await joinBtn2.click();
+    await page.waitForLoadState('networkidle');
+
+    // Two tabs in the bar before we switch view modes. ChatTabBar renders
+    // a counter "<n>/<MAX_OPEN_CHATS>" — Normal mode only mounts the active
+    // tab's ProseMirror, so checking editor count here would be wrong.
+    await expect(page.getByText(/^\s*2\s*\/\s*4\s*$/)).toBeVisible({ timeout: 8000 });
+
     const activated = await openSplitMode(page);
-    if (!activated) {
-      throw new Error('ViewModeDropdown not found — UI regression');
-    }
+    expect(activated, 'ViewModeDropdown should activate split mode').toBe(true);
 
-    // In split view we expect 2 chat panel containers side by side.
-    // Look for 2 message input areas or 2 distinct chat header sections.
-    const chatInputs = page.locator(
-      'textarea[placeholder], input[placeholder*="message" i], input[placeholder*="bericht" i]'
-    );
-    const inputCount = await chatInputs.count();
+    // Split-grid renders both ChatWindows side-by-side. Only the ACTIVE
+    // panel mounts a ProseMirror — siblings render in `compact` mode which
+    // suppresses the compose area entirely (see ChatWindow:430). Count
+    // the chat-header Transfer buttons instead — every rendered ChatWindow
+    // has one regardless of compact, and the queue sidebar has none.
+    await expect
+      .poll(
+        () => page.getByRole('button', { name: /transfer|overdragen|transférer/i }).count(),
+        { timeout: 5000 },
+      )
+      .toBeGreaterThanOrEqual(2);
 
-    if (inputCount >= 2) {
-      expect(inputCount).toBeGreaterThanOrEqual(2);
-    } else {
-      // Fallback: look for 2 chat header elements
-      const chatHeaders = page.locator('[class*="chat-header"], [class*="ChatHeader"], [class*="ticket-header"]');
-      const headerCount = await chatHeaders.count();
-      if (headerCount >= 2) {
-        expect(headerCount).toBeGreaterThanOrEqual(2);
-      } else {
-        // At minimum no error should have occurred
-        const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-        expect(errorVisible).toBeFalsy();
-      }
-    }
+    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
+    expect(errorVisible).toBeFalsy();
   });
 });
 
