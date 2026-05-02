@@ -112,8 +112,12 @@ services:
       - ./client:/app
       - client_node_modules:/app/node_modules
       # Required: client TS imports AppRouter type from /server/trpc/router.
-      # If tsc --noEmit fails with 100+ collision errors, recreate: docker compose up -d client --force-recreate
+      # router.ts pulls in db/, services/, utils/ transitively, so client tsc
+      # needs server's node_modules to resolve pg/drizzle/pino/etc. Without
+      # this mount, tsc fails with 800+ collision errors because AppRouter
+      # type degrades when its dep chain can't resolve.
       - ./server:/server:ro
+      - server_node_modules:/server/node_modules:ro
     depends_on:
       server:
         condition: service_healthy
