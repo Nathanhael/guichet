@@ -11,14 +11,24 @@ describe('Presence reconnect includes status (#25)', () => {
     'utf-8'
   );
 
-  it('sets status to online in the identifyUser Lua script', () => {
-    // The Lua script handles both new and existing connections atomically.
-    // Verify that the script sets status to 'online' in both branches.
+  it('seeds status from last_status (falls back to online) on first identify', () => {
+    // Issue #88 changed the contract: the script no longer hard-codes
+    // status='online'. On first-ever identify (hash missing) it seeds
+    // status from the persisted last_status key, defaulting to 'online'.
+    // On reconnect (hash still alive) status is preserved by NOT being
+    // written. Asserts both halves of that contract.
     const luaStart = presenceSource.indexOf('local exists = redis.call');
     const luaEnd = presenceSource.indexOf('return exists', luaStart);
     const luaBlock = presenceSource.slice(luaStart, luaEnd);
 
-    expect(luaBlock).toMatch(/['"]status['"]\s*,\s*['"]online['"]/);
+    // First-identify branch: status field is HSET, seeded from last_status with 'online' default.
+    expect(luaBlock).toMatch(/redis\.call\(\s*['"]GET['"]\s*,\s*lastStatusKey\s*\)\s*or\s*['"]online['"]/);
+    expect(luaBlock).toMatch(/['"]status['"]\s*,\s*seedStatus/);
+
+    // Reconnect branch: status field is NOT in the second HSET (would clobber a manually-set 'away').
+    const elseStart = luaBlock.indexOf('else');
+    const elseBlock = luaBlock.slice(elseStart);
+    expect(elseBlock).not.toMatch(/['"]status['"]\s*,/);
   });
 
   it('includes all required fields in the identifyUser Lua script', () => {
