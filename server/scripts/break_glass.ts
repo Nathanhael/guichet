@@ -53,6 +53,11 @@ async function main() {
       role: 'admin',
       departments: [],
       isPlatformOperator: true,
+      // Break-glass minted only for platform operators (internal staff). B2B
+      // guests cannot be platform operators (TENANT_IDENTITY_SPEC), so this
+      // is structurally false — but writing it explicitly keeps the JWT
+      // schema satisfied without relying on the legacy `?? false` fallback.
+      isExternal: false,
     })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
