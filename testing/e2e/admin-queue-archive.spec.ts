@@ -12,7 +12,8 @@
  * Uses demo fixtures: admin_emma (ACME tenant admin) and agent_kevin.
  */
 
-import { test, expect, type BrowserContext, type Page } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import { test as partnerTest, expect as partnerExpect } from './helpers/partnerFixture';
 import { loginAsDemo } from './helpers/auth';
 
 async function gotoActiveTicketsTab(page: Page): Promise<void> {
@@ -113,77 +114,65 @@ test.describe('Admin queue — 3-tab layout', () => {
   });
 });
 
-test.describe.serial('Close → archive snapshot', () => {
-  let agentCtx: BrowserContext | null = null;
-  let adminCtx: BrowserContext | null = null;
-
-  test.afterAll(async () => {
-    await agentCtx?.close();
-    await adminCtx?.close();
-  });
-
-  test('closed agent ticket appears in admin Archive view', async ({ browser }) => {
-    agentCtx = await browser.newContext();
-    const agent = await agentCtx.newPage();
-    // Force EN locale so the close button + confirm-dialog "Yes" match the
-    // English regexes below. agent_thomas's seed lang is 'nl'; we override
-    // here without changing the seed.
-    const agentLogin = await loginAsDemo(agent, 'agent_thomas', { lang: 'en' });
-    if (!agentLogin.ok) {
-      throw new Error(
-        `Fixture user 'agent_thomas' failed to log in (status ${agentLogin.status}). ` +
-          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
-      );
-    }
-
-    // Thomas lands on his active ticket. Capture its id from the URL params
-    // that AgentView keeps in sessionStorage, so we can grep the archive for it.
-    const ticketId = await agent.evaluate(() => {
-      const raw = sessionStorage.getItem('activeTicketId');
-      return raw || null;
+// #117 follow-up (2026-05-02): migrated to partnerFixture from the
+// seed-Acme + agent_thomas pattern. Pre-migration this test depended on
+// agent_thomas having his pre-seeded TEC pending ticket alive at run time,
+// but earlier runs of THIS SAME test would close that ticket and leave him
+// looking at the new-ticket form — close button gone, test fails. Same
+// Group A "shared seed claim/close pollution" failure mode the body-fixme
+// migration solved for support-flow / agent-flow / view-modes / collision-
+// detection. Other two tests in this file (3-tab layout + chip-filter
+// requests) stay on the seed pattern — they're stateless UI-only assertions.
+partnerTest.describe('Close → archive snapshot', () => {
+  partnerTest('closed agent ticket appears in admin Archive view', async ({ page, browser, partnerFixture }) => {
+    // Test-scope page = agent. Mint a fresh agent + admin on the spec's
+    // partner; stage a ticket for the agent so AgentView mounts the chat
+    // instead of the new-ticket form.
+    const agent = await partnerFixture.createUser({
+      role: 'agent',
+      departments: ['general'],
+      lang: 'en', // Force EN so the close button + "Yes" confirm match the regexes below.
     });
+    const admin = await partnerFixture.createUser({ role: 'admin' });
+    await partnerFixture.createTicket({ agentId: agent.userId });
 
-    // Close the active ticket — if none exists, create + close so the test
-    // still exercises the snapshot path.
-    // agent_thomas always has a pre-seeded TEC pending ticket (per seed.ts);
-    // the close button must be visible. Lang override above forces EN; the
-    // accessible-name match is case-insensitive (CSS uppercases the visible
-    // text but accessible name is plain "Close").
-    const closeBtn = agent.locator('button').filter({ hasText: /^close$/i }).first();
-    await expect(closeBtn).toBeVisible({ timeout: 10_000 });
+    await partnerFixture.loginAs(agent.userId, { waitFor: 'networkidle' });
+
+    // Agent lands on the chat for their staged ticket — close button is
+    // in ChatHeader's primary action slot.
+    const closeBtn = page.locator('button').filter({ hasText: /^close$/i }).first();
+    await partnerExpect(closeBtn).toBeVisible({ timeout: 10_000 });
     await closeBtn.click();
-    const confirm = agent.locator('[role="dialog"] button').filter({ hasText: /yes/i }).first();
+    const confirm = page.locator('[role="dialog"] button').filter({ hasText: /yes/i }).first();
     await confirm.waitFor({ state: 'visible', timeout: 3000 });
-    const closeTimestampMs = Date.now();
     await confirm.click();
 
-    // Sanity: ticket view should unmount after close. The post-close UI
-    // varies (sometimes a new-ticket form, sometimes a "Connect with support"
-    // landing) so assert the chat compose area is gone instead of pinning
-    // to specific page text.
-    await expect(
-      agent.locator('paragraph').filter({ hasText: /Type a message/i }).first(),
+    // Compose area gone after close. The post-close UI varies (new-ticket
+    // form vs. "Connect with support" landing) so anchor on the absence of
+    // the editor placeholder rather than specific empty-state text.
+    await partnerExpect(
+      page.locator('paragraph').filter({ hasText: /Type a message/i }).first(),
     ).not.toBeVisible({ timeout: 10_000 });
 
-    // Switch to admin and verify the archive view mounts cleanly.
-    adminCtx = await browser.newContext();
-    const admin = await adminCtx.newPage();
-    const adminLogin = await loginAsDemo(admin, 'admin_emma');
-    if (!adminLogin.ok) {
-      throw new Error(
-        `Fixture user 'admin_emma' failed to log in (status ${adminLogin.status}). ` +
-          'Check server/seed.ts — this is a test setup bug, not a skip condition.',
-      );
-    }
-    await gotoArchiveTab(admin);
+    // Switch to admin context and verify the archive view mounts cleanly.
+    const adminCtx = await browser.newContext();
+    try {
+      const adminPage = await adminCtx.newPage();
+      const adminLogin = await loginAsDemo(adminPage, admin.userId, { waitFor: 'networkidle' });
+      if (!adminLogin.ok) {
+        throw new Error(`admin loginAsDemo failed: ${adminLogin.status}`);
+      }
+      await gotoArchiveTab(adminPage);
 
-    // Bundle D scope: assert the archive view chrome mounts. The pre-archive
-    // snapshot path that surfaces freshly-closed tickets in the archive table
-    // depends on a worker run that is timing-fragile under E2E load — moved
-    // out-of-scope for slice 2 (predicate-skip elimination only).
-    const deptFilter = admin.locator('select[aria-label="Filter by department"]');
-    await expect(deptFilter).toBeVisible({ timeout: 10_000 });
-    void closeTimestampMs;
-    void ticketId;
+      // Same scope as the pre-migration assertion: archive-view chrome
+      // mounts (the dept filter select). The freshly-closed-ticket-shows-
+      // in-archive-table assertion stays out of scope — `archiveTickets`
+      // is run by a scheduler, not a per-close synchronous insert, so
+      // surfacing it deterministically would need a worker-trigger fixture.
+      const deptFilter = adminPage.locator('select[aria-label="Filter by department"]');
+      await partnerExpect(deptFilter).toBeVisible({ timeout: 10_000 });
+    } finally {
+      await adminCtx.close();
+    }
   });
 });
