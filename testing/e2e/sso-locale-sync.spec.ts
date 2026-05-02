@@ -18,10 +18,11 @@
  *
  * Prerequisites:
  *   - Server running at E2E_BASE_URL (default http://localhost:3001)
- *   - Seeded demo database (Lucas Support = local auth user, no external_id)
+ *   - Seeded `platform_bart` operator (used by partnerFixture for bootstrap auth)
  */
 
-import { test, expect, Page } from '@playwright/test';
+import { test, expect } from './helpers/partnerFixture';
+import type { Page } from '@playwright/test';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
 
@@ -30,13 +31,6 @@ async function waitForApp(page: Page) {
   await page.waitForLoadState('load');
   await page.waitForSelector('h1', { timeout: 15000 });
   await page.locator('button').first().waitFor({ state: 'visible', timeout: 10000 });
-}
-
-async function loginViaDemo(page: Page, name: RegExp) {
-  await waitForApp(page);
-  await page.getByRole('button', { name: /demo mode/i }).click();
-  await page.getByRole('button', { name }).first().click();
-  await page.waitForLoadState('networkidle');
 }
 
 test.describe('SSO locale sync — UI', () => {
@@ -53,14 +47,13 @@ test.describe('SSO locale sync — UI', () => {
     expect(pageText).not.toMatch(/[\u{1F1E6}-\u{1F1FF}]/u);
   });
 
-  // FIXME: cross-test SSO-flag pollution — Lucas is a non-SSO seed user, but
-  // parallel specs that exercise the SSO claim flow flip Lucas's
-  // `lang_synced_from_sso` flag and don't reset it. By the time this test
-  // checks the badge state, Lucas has the flag set from another spec.
-  // Per Bundle D escape hatch (`test.fixme` for cross-test multi-context state);
-  // proper fix is per-spec user isolation, tracked separately.
-  test.fixme('non-SSO user sees no "SYNCED FROM SSO" badge', async ({ page }) => {
-    await loginViaDemo(page, /Lucas Support/i);
+  // Migrated to partnerFixture (#117): a fresh fixture user has no
+  // external_id and no `lang_synced_from_sso` flag, so the badge state
+  // is deterministic regardless of what other parallel specs do to seed
+  // users. Replaces the previous fixme that pointed at Lucas-the-shared-seed.
+  test('non-SSO user sees no "SYNCED FROM SSO" badge', async ({ page, partnerFixture }) => {
+    const { userId } = await partnerFixture.createUser({ role: 'support', lang: 'en' });
+    await partnerFixture.loginAs(userId, { waitFor: 'networkidle' });
 
     // Phase 9 chrome unification: the LanguageSwitcher renders inside the
     // UserMenuChip dialog; legacy SettingsPopover trigger is gone.
@@ -71,12 +64,20 @@ test.describe('SSO locale sync — UI', () => {
     await expect(page.getByRole('button', { name: /^english$/i })).toBeVisible();
   });
 
-  test('manual language pick persists across logout', async ({ page }) => {
-    await loginViaDemo(page, /Lucas Support/i);
+  test('manual language pick persists across logout', async ({ page, partnerFixture }) => {
+    const { userId } = await partnerFixture.createUser({ role: 'support', lang: 'en' });
+    await partnerFixture.loginAs(userId, { waitFor: 'networkidle' });
 
-    // Open user menu chip, pick Nederlands.
+    // Open user menu chip, pick Nederlands. waitForResponse closes the
+    // inherent race between the click (which fires `user.setLocale` in the
+    // background) and the getLocaleInfo query — without it, the query can
+    // read stale data on a slow server.
     await page.locator('button[aria-haspopup="dialog"]').first().click();
+    const setLocaleResponse = page.waitForResponse((res) =>
+      res.url().includes('/api/v1/trpc/user.setLocale') && res.ok(),
+    );
     await page.getByRole('button', { name: /^nederlands$/i }).click();
+    await setLocaleResponse;
 
     // getLocaleInfo now returns lang='nl'.
     const info = await page.request.get(`${BASE}/api/v1/trpc/user.getLocaleInfo`, {
@@ -86,8 +87,6 @@ test.describe('SSO locale sync — UI', () => {
     const payload = await info.json();
     expect(payload.result.data.lang).toBe('nl');
 
-    // Restore English so subsequent test runs start clean (seed default is 'en').
-    await page.getByRole('button', { name: /^english$/i }).click();
-    await page.waitForTimeout(200);
+    // No restore step needed — fresh fixture user is dropped in teardown.
   });
 });

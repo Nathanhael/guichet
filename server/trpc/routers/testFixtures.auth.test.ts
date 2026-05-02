@@ -45,6 +45,30 @@ describe('testFixtures — auth boundary', () => {
     vi.clearAllMocks();
   });
 
+  it('createPartner rejects unauthenticated callers with UNAUTHORIZED', async () => {
+    await expect(
+      unauthCaller().createPartner({}),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('deletePartner rejects unauthenticated callers with UNAUTHORIZED', async () => {
+    await expect(
+      unauthCaller().deletePartner({ partnerId: 'test-abc123' }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('createUser rejects unauthenticated callers with UNAUTHORIZED', async () => {
+    await expect(
+      unauthCaller().createUser({ partnerId: 'test-abc123' }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('deleteUser rejects unauthenticated callers with UNAUTHORIZED', async () => {
+    await expect(
+      unauthCaller().deleteUser({ userId: 'test-user-abc123' }),
+    ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
   it('createTicket rejects unauthenticated callers with UNAUTHORIZED', async () => {
     await expect(
       unauthCaller().createTicket({ partnerId: 'acme' }),
@@ -61,6 +85,37 @@ describe('testFixtures — auth boundary', () => {
     await expect(
       unauthCaller().resetAgentStatus({ userId: 'u-1', partnerId: 'acme' }),
     ).rejects.toMatchObject({ code: 'UNAUTHORIZED' });
+  });
+
+  it('createPartner does not touch the DB when caller is unauth', async () => {
+    await expect(
+      unauthCaller().createPartner({}),
+    ).rejects.toThrow();
+    expect(dbMock.transaction).not.toHaveBeenCalled();
+    expect(dbMock.insert).not.toHaveBeenCalled();
+  });
+
+  it('deletePartner does not touch the DB when caller is unauth', async () => {
+    await expect(
+      unauthCaller().deletePartner({ partnerId: 'test-abc123' }),
+    ).rejects.toThrow();
+    expect(dbMock.delete).not.toHaveBeenCalled();
+  });
+
+  it('createUser does not touch the DB when caller is unauth', async () => {
+    await expect(
+      unauthCaller().createUser({ partnerId: 'test-abc123' }),
+    ).rejects.toThrow();
+    expect(dbMock.transaction).not.toHaveBeenCalled();
+    expect(dbMock.insert).not.toHaveBeenCalled();
+    expect(dbMock.select).not.toHaveBeenCalled();
+  });
+
+  it('deleteUser does not touch the DB when caller is unauth', async () => {
+    await expect(
+      unauthCaller().deleteUser({ userId: 'test-user-abc123' }),
+    ).rejects.toThrow();
+    expect(dbMock.delete).not.toHaveBeenCalled();
   });
 
   it('createTicket does not touch the DB when caller is unauth', async () => {
