@@ -63,6 +63,13 @@ const createTicketInput = z.object({
   partnerId: z.string().min(1),
   agentId: z.string().min(1).default('agent_julie'),
   departmentId: z.string().min(1).optional(),
+  /**
+   * Pre-stamp the ticket as already-claimed by a support user. Used by the
+   * SupportView rehydration regression spec (#120) to reproduce the
+   * "claimed-on-fresh-page" state that #119 fixed. Skipping → ticket is
+   * unassigned (the default).
+   */
+  supportId: z.string().min(1).optional(),
 });
 
 interface PartnerDepartment {
@@ -334,6 +341,25 @@ export const testFixturesRouter = router({
         });
       }
 
+      // Optional pre-stamped support claim — skips the lifecycle.assign +
+      // socket support:join path; just sets the columns the SupportView
+      // hydration filter (`tk.supportId === user.id`) reads on page load.
+      let support: typeof agent | null = null;
+      if (input.supportId) {
+        const [row] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, input.supportId))
+          .limit(1);
+        if (!row) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: `Fixture support user not found: ${input.supportId}`,
+          });
+        }
+        support = row;
+      }
+
       const partnerDepartments = (partner.departments as PartnerDepartment[] | null) ?? [];
       const dept = input.departmentId ?? partnerDepartments[0]?.id;
       if (!dept) {
@@ -362,7 +388,13 @@ export const testFixturesRouter = router({
           agentLang: agent.lang ?? 'en',
           references: [],
           status: 'open',
-          participants: [],
+          participants: support
+            ? [{ id: support.id, name: support.name, role: 'support', lang: support.lang ?? 'en' }]
+            : [],
+          supportId: support?.id ?? null,
+          supportName: support?.name ?? null,
+          supportLang: support?.lang ?? null,
+          supportJoinedAt: support ? now : null,
           reopened: false,
           reopenCount: 0,
           createdAt: now,

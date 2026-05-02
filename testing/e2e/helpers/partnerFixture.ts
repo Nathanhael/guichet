@@ -71,6 +71,13 @@ export interface CreateTicketOptions {
   agentId?: string;
   /** Default: `partnerFixture.departments[0].id`. */
   departmentId?: string;
+  /**
+   * Pre-stamp the ticket as already-claimed by a support user. Skips the
+   * lifecycle.assign + socket support:join path; just sets the columns the
+   * SupportView hydration filter reads on page load. Used by the rehydration
+   * regression spec (#120) to reproduce the bug fixed in #119.
+   */
+  supportId?: string;
 }
 
 export interface PartnerFixture {
@@ -170,6 +177,7 @@ export const test = base.extend<{ partnerFixture: PartnerFixture }>({
             partnerId: created.partnerId,
             agentId: opts.agentId,
             departmentId: opts.departmentId,
+            supportId: opts.supportId,
           },
         );
         return ticketId;
