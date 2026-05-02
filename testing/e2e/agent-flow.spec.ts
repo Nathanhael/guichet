@@ -7,7 +7,8 @@
  * Seed users: agent_julie (agent), support_lucas (support, DSC/FOT)
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from './helpers/partnerFixture';
+import type { Page } from '@playwright/test';
 import { loginAsDemo } from './helpers/auth';
 
 const BASE = process.env.E2E_BASE_URL || 'http://localhost:3001';
@@ -108,128 +109,148 @@ test.describe('Agent Flow — Ticket Lifecycle', () => {
     await expect(page.getByText(testMsg).first()).toBeVisible({ timeout: 8000 });
   });
 
-  test('support joins and exchanges messages with agent', async ({ page, browser }) => {
-    // Bundle D follow-up: lucas's queue shows julie's ticket under "Claimed
-    // by others" (collapsed) because lucas's `supportOpenTickets` zustand state
-    // is empty on a fresh page even though server-side supportId=lucas. The
-    // `getByText('Julie Agent')` finds the row by text but it's inside the
-    // collapsed section. Needs either a click-to-expand step or a session-
-    // restoration helper that pre-populates supportOpenTickets.
-    test.fixme();
+  test('support joins and exchanges messages with agent', async ({ page, browser, partnerFixture }) => {
+    // #117 follow-up (2026-05-02 body-fixme migration, slice B): the
+    // pre-migration symptom — julie's ticket appearing under lucas's
+    // collapsed "Claimed by others" section because his
+    // `supportOpenTickets` zustand state is empty on a fresh page —
+    // doesn't manifest with a fresh-partner setup. The fixture ticket
+    // starts unassigned (queue) so the support user is the first to
+    // claim it, and lands in his "My Chats" cleanly instead of being
+    // stuck in the collapsed Claimed-by-others rail.
+    //
+    // This means migration unblocks the test as a side effect. The
+    // separate question — does the prod zustand-restoration bug bite
+    // real users when a support staff with a server-assigned ticket
+    // lands on a fresh page? — is NOT proven absent by this test. If
+    // the bug surfaces in QA, file a separate issue for a session-
+    // restoration repro.
     test.setTimeout(60_000);
 
-    // Test-scope page = julie (the agent). Support gets a separate context.
-    const agentRes = await loginAsDemo(page, 'agent_julie');
-    if (!agentRes.ok) throw new Error(`agent_julie login failed (${agentRes.status})`);
+    const agent = await partnerFixture.createUser({
+      role: 'agent',
+      departments: ['general'],
+    });
+    const lucas = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.createTicket({ agentId: agent.userId });
 
-    const supportCtx = await browser.newContext();
-    const supportPage = await supportCtx.newPage();
-    const agentPage = page; // alias for clarity below
-
-    try {
-      const supportRes = await loginAsDemo(supportPage, 'support_lucas');
-      if (!supportRes.ok) throw new Error(`support_lucas login failed (${supportRes.status})`);
-
-      await agentPage.waitForLoadState('networkidle');
-      await supportPage.waitForLoadState('networkidle');
-
-      // Agent must have an active chat
-      const agentHasChat = await agentPage.locator('.ProseMirror, [contenteditable]').first().isVisible({ timeout: 5000 }).catch(() => false);
-      if (!agentHasChat) throw new Error('Agent has no active ticket');
-
-      // Support: find Julie's ticket — may be under "My Chats" (assigned) or "Queue" (unassigned)
-      const ticketRow = supportPage.getByText('Julie Agent').first();
-      const ticketVisible = await ticketRow.isVisible({ timeout: 10000 }).catch(() => false);
-      if (!ticketVisible) throw new Error('Julie\'s ticket not in support queue');
-
-      // Click to select/preview, then join to enter socket room + open tab
-      await ticketRow.click();
-      await supportPage.waitForTimeout(1500);
-
-      // Join button should appear in preview (even for pre-assigned tickets,
-      // since this browser session hasn't emitted support:join yet)
-      const joinBtn = supportPage.getByText(/join|jump in/i).first();
-      if (await joinBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-        await joinBtn.click();
-        await supportPage.waitForTimeout(3000);
-      }
-
-      // Wait for compose editor
-      const supportEditor = supportPage.locator('.ProseMirror, [contenteditable]').first();
-      const editorReady = await supportEditor.isVisible({ timeout: 10000 }).catch(() => false);
-      if (!editorReady) throw new Error('Support editor not visible — ticket may not show Join for assigned support');
-      if (editorReady) {
-        await supportEditor.click();
-        const replyMsg = `Support reply ${Date.now()}`;
-        await supportPage.keyboard.type(replyMsg);
-
-        const sendBtn = supportPage.locator('button').filter({ hasText: /send|verzend/i }).first();
-        if (await sendBtn.isVisible({ timeout: 2000 })) {
-          await sendBtn.click();
-          await supportPage.waitForTimeout(2000);
-        }
-
-        // Agent should see support's reply
-        const replyVisible = await agentPage.getByText(replyMsg).isVisible({ timeout: 10000 }).catch(() => false);
-        expect(replyVisible).toBeTruthy();
-      }
-    } finally {
-      await supportCtx.close();
-    }
-  });
-
-  test('closing ticket shows rating modal and returns to form', async ({ page, browser }) => {
-    // Bundle D follow-up: same "Claimed by others" collapsed-section issue
-    // as test 3 — lucas can't reach julie's ticket to close it.
-    test.fixme();
-    test.setTimeout(60_000);
-
-    // Test-scope page = julie. Support in a separate context.
-    const agentRes = await loginAsDemo(page, 'agent_julie');
-    if (!agentRes.ok) throw new Error(`agent_julie login failed (${agentRes.status})`);
+    // Test-scope page = agent. The fixture's bootstrap session is
+    // platform_bart; swap to the fresh agent and reload so AgentView
+    // hydrates with the freshly-seeded ticket.
+    await partnerFixture.loginAs(agent.userId, { waitFor: 'networkidle' });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
 
     const supportCtx = await browser.newContext();
     const supportPage = await supportCtx.newPage();
     const agentPage = page;
 
     try {
-      const supportRes = await loginAsDemo(supportPage, 'support_lucas');
-      if (!supportRes.ok) throw new Error(`support_lucas login failed (${supportRes.status})`);
-
-      await agentPage.waitForLoadState('networkidle');
-      await supportPage.waitForLoadState('networkidle');
-
-      // Support must be in the ticket (from previous test or already joined)
-      const supportEditor = supportPage.locator('.ProseMirror, [contenteditable]').first();
-      const supportInChat = await supportEditor.isVisible({ timeout: 5000 }).catch(() => false);
-
-      if (!supportInChat) {
-        // Try to join Julie's ticket
-        const ticketRow = supportPage.getByText('Julie Agent').first();
-        if (await ticketRow.isVisible({ timeout: 5000 })) {
-          await ticketRow.click();
-          await supportPage.waitForTimeout(1000);
-          const joinBtn = supportPage.getByText(/join|jump in/i).first();
-          if (await joinBtn.isVisible({ timeout: 3000 })) {
-            await joinBtn.click();
-            await supportPage.waitForTimeout(2000);
-          }
-        }
+      const supportRes = await loginAsDemo(supportPage, lucas.userId, { waitFor: 'networkidle' });
+      if (!supportRes.ok) {
+        throw new Error(`lucas loginAsDemo failed: ${supportRes.status}`);
       }
 
-      // Support closes the ticket
+      // Agent should have landed on chat for the seeded ticket.
+      await expect(agentPage.locator('.ProseMirror, [contenteditable]').first()).toBeVisible({ timeout: 10000 });
+
+      // Support: pick the unassigned queue row (no pre-existing My Chats
+      // tickets on a fresh fixture user).
+      const ticketRow = supportPage.locator('li[data-ticket-row][data-ticket-variant="queue"]').first();
+      await expect(ticketRow).toBeVisible({ timeout: 10000 });
+      await ticketRow.click();
+      await supportPage.waitForLoadState('networkidle');
+
+      const joinBtn = supportPage.getByText(/^join$|^jump in$|^deelnemen$|^rejoindre$/i).first();
+      await expect(joinBtn).toBeVisible({ timeout: 5000 });
+      await joinBtn.click();
+      await supportPage.waitForLoadState('networkidle');
+
+      const supportEditor = supportPage.locator('.ProseMirror, [contenteditable]').first();
+      await expect(supportEditor).toBeVisible({ timeout: 10000 });
+
+      await supportEditor.click();
+      const replyMsg = `Support reply ${Date.now()}`;
+      await supportPage.keyboard.type(replyMsg);
+
+      const sendBtn = supportPage.locator('button').filter({ hasText: /send|verzend|envoyer/i }).first();
+      await expect(sendBtn).toBeVisible({ timeout: 5000 });
+      await sendBtn.click();
+
+      // Agent's chat should pick up the support reply via socket — no reload
+      // needed; message:new propagates to the ticket room both peers are in.
+      await expect(agentPage.getByText(replyMsg).first()).toBeVisible({ timeout: 10000 });
+    } finally {
+      await supportCtx.close();
+    }
+  });
+
+  test('closing ticket shows rating modal and returns to form', async ({ page, browser, partnerFixture }) => {
+    // #117 follow-up (2026-05-02 body-fixme migration, slice B): same
+    // fixture pattern as the sibling join-and-message test. Fresh
+    // partner with one agent + one support user + one queued ticket;
+    // support joins and closes; agent sees rating modal or empty form.
+    test.setTimeout(60_000);
+
+    const agent = await partnerFixture.createUser({
+      role: 'agent',
+      departments: ['general'],
+    });
+    const lucas = await partnerFixture.createUser({
+      role: 'support',
+      departments: ['general'],
+    });
+    await partnerFixture.createTicket({ agentId: agent.userId });
+
+    await partnerFixture.loginAs(agent.userId, { waitFor: 'networkidle' });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    const supportCtx = await browser.newContext();
+    const supportPage = await supportCtx.newPage();
+    const agentPage = page;
+
+    try {
+      const supportRes = await loginAsDemo(supportPage, lucas.userId, { waitFor: 'networkidle' });
+      if (!supportRes.ok) {
+        throw new Error(`lucas loginAsDemo failed: ${supportRes.status}`);
+      }
+
+      // Agent on chat.
+      await expect(agentPage.locator('.ProseMirror, [contenteditable]').first()).toBeVisible({ timeout: 10000 });
+
+      // Support joins from queue.
+      const ticketRow = supportPage.locator('li[data-ticket-row][data-ticket-variant="queue"]').first();
+      await expect(ticketRow).toBeVisible({ timeout: 10000 });
+      await ticketRow.click();
+      await supportPage.waitForLoadState('networkidle');
+
+      const joinBtn = supportPage.getByText(/^join$|^jump in$|^deelnemen$|^rejoindre$/i).first();
+      await expect(joinBtn).toBeVisible({ timeout: 5000 });
+      await joinBtn.click();
+      await supportPage.waitForLoadState('networkidle');
+
+      await expect(supportPage.locator('.ProseMirror, [contenteditable]').first()).toBeVisible({ timeout: 10000 });
+
+      // Support closes the ticket.
       const closed = await closeCurrentTicket(supportPage);
-      if (!closed) throw new Error('Could not close ticket from support');
+      if (!closed) throw new Error('Could not close ticket from support side');
 
-      // Agent should see rating modal or return to ticket form
-      await agentPage.waitForTimeout(3000);
+      // Agent should see either the rating modal OR the back-to-form state
+      // — both prove the close propagated to the agent's view.
       const ratingModal = agentPage.getByText(/rate|beoordeel|how was/i).first();
-      const ticketForm = agentPage.getByText(/Dispatch|DSC/i).first();
-      const ratingVisible = await ratingModal.isVisible({ timeout: 8000 }).catch(() => false);
-      const formVisible = await ticketForm.isVisible({ timeout: 3000 }).catch(() => false);
+      const ticketForm = agentPage.getByText(/general|support|department/i).first();
 
-      // Either rating modal shows or we're back at the form (both indicate close worked)
-      expect(ratingVisible || formVisible).toBeTruthy();
+      await expect
+        .poll(async () => {
+          const r = await ratingModal.isVisible().catch(() => false);
+          const f = await ticketForm.isVisible().catch(() => false);
+          return r || f;
+        }, { timeout: 12000 })
+        .toBe(true);
     } finally {
       await supportCtx.close();
     }
