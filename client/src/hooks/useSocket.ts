@@ -219,29 +219,42 @@ export function useSocket(): Socket | null {
 
     const handleAgentStatus = ({ ticketId, agentId: _agentId, online }: { ticketId: string; agentId: string; online: boolean }) => {
       const state = useStore.getState();
+      // Read previous state BEFORE setting so we can detect transitions and
+      // dedupe duplicate `agent:status` events (server may re-emit on flaky
+      // sockets — without this guard each emit added another system bubble).
+      const previousOnline = state.participantsOnline?.[ticketId];
       state.setParticipantOnline(ticketId, online);
-      if (!online) {
-        const i18nKey = 'i18n:agent_disconnected';
-        state.addMessage(ticketId, {
-          id: `system-offline-${Date.now()}`,
-          ticketId,
-          senderId: '__system__',
-          senderName: 'System',
-          senderRole: 'admin',
-          senderLang: 'en',
-          originalText: i18nKey,
-          improvedText: i18nKey,
-          processedText: i18nKey,
-          text: i18nKey,
-          timestamp: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          system: 1,
-          whisper: 0,
-          translationSkipped: 1,
-          fallback: 0,
-          reactions: {},
-        });
+
+      // Emit only on transitions, never on the first observation when the
+      // agent is already online (no event happened, nothing to announce).
+      let i18nKey: string | null = null;
+      if (online && previousOnline === false) {
+        i18nKey = 'i18n:agent_reconnected';
+      } else if (!online && previousOnline !== false) {
+        i18nKey = 'i18n:agent_disconnected';
       }
+      if (!i18nKey) return;
+
+      const idPrefix = online ? 'system-online' : 'system-offline';
+      state.addMessage(ticketId, {
+        id: `${idPrefix}-${Date.now()}`,
+        ticketId,
+        senderId: '__system__',
+        senderName: 'System',
+        senderRole: 'admin',
+        senderLang: 'en',
+        originalText: i18nKey,
+        improvedText: i18nKey,
+        processedText: i18nKey,
+        text: i18nKey,
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        system: 1,
+        whisper: 0,
+        translationSkipped: 1,
+        fallback: 0,
+        reactions: {},
+      });
     };
 
     const handleMessageEdited = ({ ticketId, messageId, text, editedAt }: { ticketId: string; messageId: string; text: string; editedAt: string }) => {

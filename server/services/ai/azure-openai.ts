@@ -7,6 +7,20 @@ import type {
 } from './types.js';
 import { getAiContext } from './context.js';
 
+// Whisper sniffs format from filename extension. Map our accepted MIME types
+// to the canonical extension Azure expects. Keep aligned with `ALLOWED_MIME`
+// in `routes/aiTranscribe.ts`.
+const MIME_TO_EXT: Record<string, string> = {
+  'audio/webm': 'webm',
+  'audio/wav': 'wav',
+  'audio/wave': 'wav',
+  'audio/x-wav': 'wav',
+  'audio/mpeg': 'mp3',
+  'audio/mp4': 'mp4',
+  'audio/ogg': 'ogg',
+  'audio/x-m4a': 'm4a',
+};
+
 /**
  * Azure OpenAI provider.
  * Uses Azure's deployment-based API with SSE streaming.
@@ -149,7 +163,11 @@ export class AzureOpenAiProvider implements AiProvider {
     const url = `${this.baseUrl}/openai/deployments/${this.whisperDeployment}/audio/transcriptions?api-version=${this.apiVersion}`;
     const form = new FormData();
     const blob = new Blob([new Uint8Array(params.audio)], { type: params.mimeType });
-    form.append('file', blob, 'audio');
+    // Azure Whisper sniffs format from filename extension, not Content-Type.
+    // A bare 'audio' (no extension) returns HTTP 400 "Unrecognized file format"
+    // even when params.mimeType is e.g. 'audio/webm'.
+    const ext = MIME_TO_EXT[params.mimeType] ?? 'webm';
+    form.append('file', blob, `audio.${ext}`);
     form.append('response_format', 'verbose_json');
     if (params.languageHint) {
       form.append('language', params.languageHint);
