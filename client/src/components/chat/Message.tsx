@@ -281,6 +281,8 @@ export default function Message({
               isDeleted={isDeleted}
               bionicReading={bionicReading}
               highlightQuery={highlightQuery}
+              viewerLang={user?.lang || 'en'}
+              translationEnabled={translationEnabled}
             />
           )}
         </div>

@@ -22,6 +22,11 @@ interface MessageContentProps {
   isDeleted: boolean;
   bionicReading: boolean;
   highlightQuery?: string;
+  /** Viewer's UI language; passed through so the reply-quote can translate
+   *  cross-lang quote previews to keep monolingual readers in flow. */
+  viewerLang?: string;
+  /** Per-partner AI translation gate. */
+  translationEnabled?: boolean;
 }
 
 export default function MessageContent({
@@ -30,6 +35,8 @@ export default function MessageContent({
   isDeleted,
   bionicReading,
   highlightQuery,
+  viewerLang,
+  translationEnabled,
 }: MessageContentProps) {
   return (
     <>
@@ -39,9 +46,13 @@ export default function MessageContent({
         return (
           <Suspense fallback={<div style={{ minHeight: 44 }} aria-hidden="true" />}>
             <QuoteBlock
+              parentMessageId={reply.id}
               senderName={reply.senderName}
+              senderLang={reply.senderLang ?? null}
               text={reply.text}
               isDeleted={!reply.text && !reply.mediaUrl}
+              viewerLang={viewerLang}
+              translationEnabled={translationEnabled}
               onClick={() => {
                 const el = document.getElementById(`msg-${reply.id}`);
                 if (el) {
