@@ -66,6 +66,7 @@ const en: Record<string, string> = {
     improve_modal_title: 'AI improved your message',
     improve_modal_original_label: 'Original',
     improve_modal_improved_label: 'Improved',
+    improve_modal_esc_hint: 'to close',
     improve_send_improved: 'Send improved',
     improve_send_original: 'Send original',
     improve_thumbs_up_aria: 'Rate AI output thumbs up',

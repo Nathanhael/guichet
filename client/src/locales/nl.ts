@@ -63,6 +63,7 @@ const nl: Record<string, string> = {
     improve_modal_title: 'AI heeft je bericht verbeterd',
     improve_modal_original_label: 'Origineel',
     improve_modal_improved_label: 'Verbeterd',
+    improve_modal_esc_hint: 'om te sluiten',
     improve_send_improved: 'Verbeterde versie versturen',
     improve_send_original: 'Origineel versturen',
     improve_thumbs_up_aria: 'AI-resultaat positief beoordelen',

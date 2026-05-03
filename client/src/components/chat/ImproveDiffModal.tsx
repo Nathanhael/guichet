@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ThumbsUp, ThumbsDown, Sparkles } from 'lucide-react';
 import { useT } from '../../i18n';
 import { trpc } from '../../utils/trpc';
@@ -40,30 +40,7 @@ export default function ImproveDiffModal({
 
   const canSubmitFeedback = pending.usageLogId !== null;
 
-  // Keyboard control for the modal:
-  //   Enter             → Send improved (primary action)
-  //   Shift+Enter       → Send original
-  //   Esc               → Modal primitive's own dismiss handler closes the
-  //                       overlay (no send) — we do not bind it here.
-  // The handler runs while the modal is mounted and aware of any focused
-  // input via target check, so dictation in a future inner field still gets
-  // the Enter key. Today the modal has no text inputs but the guard is cheap.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.defaultPrevented) return;
-      if (e.key !== 'Enter') return;
-      const tag = (e.target as HTMLElement | null)?.tagName;
-      const editable = (e.target as HTMLElement | null)?.isContentEditable;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return;
-      e.preventDefault();
-      if (e.shiftKey) onSendOriginal();
-      else onSendImproved();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onSendImproved, onSendOriginal]);
-
-  function handleThumbs(rating: 'up' | 'down') {
+  const handleThumbs = useCallback((rating: 'up' | 'down') => {
     if (!canSubmitFeedback || feedbackChoice !== null) return;
     setFeedbackChoice(rating);
     submitFeedback
@@ -79,7 +56,44 @@ export default function ImproveDiffModal({
         // pressed state so the user can try the other thumb.
         setFeedbackChoice(null);
       });
-  }
+  }, [canSubmitFeedback, feedbackChoice, submitFeedback, pending.usageLogId, pending.original, pending.improved]);
+
+  // Keyboard control for the modal:
+  //   Enter             → Send improved (primary action)
+  //   Shift+Enter       → Send original
+  //   ArrowUp           → Thumbs up   (only when feedback is available)
+  //   ArrowDown         → Thumbs down (only when feedback is available)
+  //   Esc               → Modal primitive's own dismiss handler closes the
+  //                       overlay (no send) — we do not bind it here.
+  // The handler skips when focus is inside an INPUT/TEXTAREA/contenteditable
+  // so future inner fields cannot get hijacked.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.defaultPrevented) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const editable = (e.target as HTMLElement | null)?.isContentEditable;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return;
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (e.shiftKey) onSendOriginal();
+        else onSendImproved();
+        return;
+      }
+      if (e.key === 'ArrowUp' && canSubmitFeedback && feedbackChoice === null) {
+        e.preventDefault();
+        handleThumbs('up');
+        return;
+      }
+      if (e.key === 'ArrowDown' && canSubmitFeedback && feedbackChoice === null) {
+        e.preventDefault();
+        handleThumbs('down');
+        return;
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onSendImproved, onSendOriginal, canSubmitFeedback, feedbackChoice, handleThumbs]);
 
   return (
     <Modal
@@ -128,9 +142,14 @@ export default function ImproveDiffModal({
                 : ''}
             </span>
             <div className="ml-auto flex items-center gap-1">
+              <span className="text-[10px] font-mono text-[var(--color-ink-muted)] opacity-60 mr-1 select-none" aria-hidden="true">
+                ↑ / ↓
+              </span>
               <button
                 type="button"
                 aria-label={t('improve_thumbs_up_aria') || 'Rate AI output thumbs up'}
+                aria-keyshortcuts="ArrowUp"
+                title={`${t('improve_thumbs_up_aria') || 'Thumbs up'} (↑)`}
                 aria-pressed={feedbackChoice === 'up'}
                 disabled={feedbackChoice !== null}
                 onClick={() => handleThumbs('up')}
@@ -145,6 +164,8 @@ export default function ImproveDiffModal({
               <button
                 type="button"
                 aria-label={t('improve_thumbs_down_aria') || 'Rate AI output thumbs down'}
+                aria-keyshortcuts="ArrowDown"
+                title={`${t('improve_thumbs_down_aria') || 'Thumbs down'} (↓)`}
                 aria-pressed={feedbackChoice === 'down'}
                 disabled={feedbackChoice !== null}
                 onClick={() => handleThumbs('down')}
@@ -161,11 +182,23 @@ export default function ImproveDiffModal({
         )}
       </ModalBody>
       <ModalFooter>
+        <span className="mr-auto self-center text-[11px] text-[var(--color-ink-muted)] flex items-center gap-1.5">
+          <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] opacity-80 select-none">
+            Esc
+          </kbd>
+          {t('improve_modal_esc_hint') || 'to close'}
+        </span>
         <Button variant="secondary" onClick={onSendOriginal}>
           {t('improve_send_original') || 'Send original'}
+          <kbd className="ml-2 text-[10px] font-mono font-normal px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-current opacity-60 select-none">
+            Shift+Enter
+          </kbd>
         </Button>
         <Button variant="primary" onClick={onSendImproved}>
           {t('improve_send_improved') || 'Send improved'}
+          <kbd className="ml-2 text-[10px] font-mono font-normal px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-current opacity-60 select-none">
+            Enter
+          </kbd>
         </Button>
       </ModalFooter>
     </Modal>
