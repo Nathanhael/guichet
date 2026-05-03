@@ -234,8 +234,8 @@ describe('emitAiConfigAudits', () => {
       actor: { kind: 'user', userId: 'u' },
       partnerId: 'p',
       before: {
-        aiProvider: 'ollama',
-        aiModel: 'llama3',
+        aiProvider: 'openai-compatible',
+        aiModel: 'lmstudio-community/llama3-8b',
         aiConfig: { apiKey: 'sk-old1234', baseUrl: 'https://a', deployment: 'old' },
       },
       after: {

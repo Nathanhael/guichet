@@ -128,7 +128,7 @@ Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR p
 
 ## 8. AI Service Layer
 
-- **Provider Abstraction**: `server/services/ai/` implements a factory pattern supporting Ollama (local/free), Azure OpenAI, and any OpenAI-compatible API (LM Studio, Groq, Together AI). Switch with one env var (`AI_PROVIDER`). All AI modules use `AiContext` dependency injection (wired at boot) and import via the barrel `index.ts` — never directly.
+- **Provider Abstraction**: `server/services/ai/` implements a factory pattern supporting Azure OpenAI and any OpenAI-compatible API (LM Studio, Groq, Together AI). Switch with one env var (`AI_PROVIDER`). All AI modules use `AiContext` dependency injection (wired at boot) and import via the barrel `index.ts` — never directly.
 - **Per-Tenant Configuration**: Each partner has `aiEnabled` flag and `aiFeatures` JSONB controlling which AI capabilities are active (message improvement, summarization, translation, auto-summarize on close). Platform admins toggle features in the Edit Partner modal.
 - **Message Improvement**: Role-aware rewriting — agents get clarity-focused rewrites, support gets actionable step-by-step rewrites. Optional or forced modes with revert-to-original.
 - **Chat Summarization**: On-demand summaries via `ai.summarizeChat`, cached in Redis. AI Copilot Sidebar in SupportView for quick context.

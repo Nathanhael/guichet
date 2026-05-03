@@ -23,7 +23,7 @@ export const partners = pgTable('partners', {
   status: text('status').notNull().default('active'),
   // AI configuration
   aiEnabled: boolean('ai_enabled').default(false),
-  aiProvider: text('ai_provider').default('ollama'),
+  aiProvider: text('ai_provider').default('azure'),
   aiModel: text('ai_model'),
   aiConfig: jsonb('ai_config').default({}),
   aiFeatures: jsonb('ai_features').default({}),

@@ -4,9 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../config.js', () => ({
   default: {
     AI_ENABLED: true,
-    AI_PROVIDER: 'ollama',
-    OLLAMA_HOST: 'http://localhost:11434',
-    OLLAMA_MODEL: 'llama3',
+    AI_PROVIDER: 'azure',
     AI_BASE_URL: undefined,
     AI_API_KEY: undefined,
     AZURE_OPENAI_DEPLOYMENT: undefined,

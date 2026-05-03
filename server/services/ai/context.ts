@@ -36,9 +36,6 @@ export interface AiContext {
     AI_BASE_URL?: string;
     AI_API_KEY?: string;
     AI_TIMEOUT_MS: number;
-    OLLAMA_HOST: string;
-    OLLAMA_MODEL: string;
-    OLLAMA_KEEPALIVE: string;
     AZURE_OPENAI_DEPLOYMENT?: string;
     NODE_ENV: string;
     REDIS_URL: string;

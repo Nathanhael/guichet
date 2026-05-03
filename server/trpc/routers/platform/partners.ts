@@ -127,7 +127,7 @@ export const platformPartnersRouter = router({
           deployment: z.string().optional(),
           whisperDeployment: z.string().optional(),
         }).optional(),
-        aiProvider: z.enum(['ollama', 'azure-openai', 'openai-compatible']).optional(),
+        aiProvider: z.enum(['azure', 'azure-openai', 'openai-compatible']).optional(),
         aiModel: z.string().optional(),
         aiPiiRedaction: z.enum(['on', 'off']).nullable().optional(),
         aiAuditVerbosity: z.enum(['metadata', 'full']).nullable().optional(),
