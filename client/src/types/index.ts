@@ -27,7 +27,6 @@ export interface PartnerManifest {
   departments: { id: string; name: string; description?: string; welcomeMessage?: string; referenceFields?: Array<{ label: string; optional?: boolean }> }[];
   aiRules?: string;
   themeConfig?: ThemeConfig;
-  ollamaModel?: string;
 }
 
 export interface Membership {

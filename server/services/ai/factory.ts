@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm';
 import type { AiProvider } from './types.js';
 import { getAiContext } from './context.js';
 import { validateAiBaseUrl, validateResolvedAiUrl } from './validateUrl.js';
-import { OllamaProvider } from './ollama.js';
 import { AzureOpenAiProvider } from './azure-openai.js';
 import { OpenAiCompatibleProvider } from './openai-compatible.js';
 
@@ -33,12 +32,6 @@ function buildProvider(
   const { config } = getAiContext();
 
   switch (providerName) {
-    case 'ollama':
-      return new OllamaProvider(
-        opts.baseUrl || config.OLLAMA_HOST,
-        opts.model || config.OLLAMA_MODEL,
-      );
-
     case 'azure':
     case 'azure-openai': {
       const baseUrl = opts.baseUrl || config.AI_BASE_URL;
@@ -70,7 +63,7 @@ function buildProvider(
  *
  * Resolution order:
  * 1. If `partnerId` is provided, check `partners.ai_provider` + `partners.ai_config`
- * 2. Fall back to global env vars (`AI_PROVIDER`, `OLLAMA_HOST`, etc.)
+ * 2. Fall back to global env vars (`AI_PROVIDER`, `AI_BASE_URL`, etc.)
  * 3. Cache provider instances per config hash
  */
 export async function getProvider(partnerId?: string): Promise<AiProvider> {
@@ -136,7 +129,7 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
   }
 
   // ── Global fallback ───────────────────────────────────────────────────────
-  const key = cacheKey(config.AI_PROVIDER, config.AI_BASE_URL, config.OLLAMA_HOST);
+  const key = cacheKey(config.AI_PROVIDER, config.AI_BASE_URL);
 
   if (!providerCache.has(key)) {
     if (providerCache.size >= MAX_CACHE_SIZE) {

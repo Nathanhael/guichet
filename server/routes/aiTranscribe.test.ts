@@ -171,7 +171,7 @@ describe('POST /transcribe', () => {
   });
 
   it('returns 501 when provider has no transcribe method', async () => {
-    providerOverride = { name: 'ollama', transcribe: undefined };
+    providerOverride = { name: 'openai-compatible', transcribe: undefined };
     const app = await buildApp();
     const res = await request(app)
       .post('/transcribe')
