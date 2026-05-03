@@ -146,7 +146,7 @@ export const aiRouter = router({
    * Reuses the provider's internal isAvailable() cache.
    */
   healthCheck: partnerScopedProcedure.query(async ({ ctx }) => {
-    let available = false;
+    let available: boolean;
     try {
       const provider = await getProvider(ctx.user.partnerId);
       available = await provider.isAvailable();

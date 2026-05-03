@@ -154,7 +154,6 @@ async function setupLabelsHandler(actorOverrides: Record<string, unknown>) {
     ...actorOverrides,
   });
   // ctx shape required by register()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   register(socket as any, { io, socketTickets: new Map(), viewerKeyPrefix: 'ticket:viewers:' } as any);
   const call = socket.on.mock.calls.find((c) => (c as unknown[])[0] === 'ticket:labels:update');
   return { socket, handler: call?.[1] as ((data: unknown) => Promise<void>) | undefined };

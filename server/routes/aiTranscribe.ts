@@ -69,7 +69,7 @@ router.post('/transcribe', auth, (req: AuthRequest, res: Response) => {
     // Resolve language hint from user.lang (spec decision 10).
     let languageHint: UserLang | undefined;
     try {
-      const rows = await (db as any).select({ lang: schema.users.lang })
+      const rows = await db.select({ lang: schema.users.lang })
         .from(schema.users)
         .where(eq(schema.users.id, userId))
         .limit(1);
@@ -100,7 +100,7 @@ router.post('/transcribe', auth, (req: AuthRequest, res: Response) => {
         await logUsage({
           partnerId,
           userId,
-          action: 'transcribe' as any,
+          action: 'transcribe',
           provider: provider.name,
           model: 'whisper',
           inputTokens: 0,
@@ -117,7 +117,7 @@ router.post('/transcribe', auth, (req: AuthRequest, res: Response) => {
       await logUsage({
         partnerId,
         userId,
-        action: 'transcribe' as any,
+        action: 'transcribe',
         provider: provider.name,
         model: 'whisper',
         inputTokens: 0,
