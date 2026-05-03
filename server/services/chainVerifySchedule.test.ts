@@ -17,7 +17,6 @@ const {
   onConflictDoUpdateMock,
   selectLimitMock,
   verifyAuditChainMock,
-  chainFailuresIncMock,
   broadcastWebhookMock,
 } = vi.hoisted(() => {
   const onConflictDoUpdateMock = vi.fn().mockResolvedValue(undefined);
@@ -36,7 +35,6 @@ const {
     onConflictDoUpdateMock,
     selectLimitMock,
     verifyAuditChainMock: vi.fn(),
-    chainFailuresIncMock: vi.fn(),
     broadcastWebhookMock: vi.fn(),
   };
 });
@@ -60,10 +58,6 @@ vi.mock('drizzle-orm', async () => {
 
 vi.mock('../utils/logger.js', () => ({
   default: { error: vi.fn(), info: vi.fn(), warn: vi.fn(), debug: vi.fn() },
-}));
-
-vi.mock('../utils/metrics.js', () => ({
-  auditChainVerifyFailures: { inc: chainFailuresIncMock },
 }));
 
 vi.mock('./webhookDispatch.js', () => ({
@@ -90,7 +84,6 @@ describe('runChainVerify — persistence + return shape', () => {
     onConflictDoUpdateMock.mockClear();
     selectLimitMock.mockReset();
     selectLimitMock.mockResolvedValue([]);
-    chainFailuresIncMock.mockClear();
     broadcastWebhookMock.mockClear();
   });
 
@@ -122,7 +115,6 @@ describe('runChainVerify — persistence + return shape', () => {
     // No audit rows / no webhook on success
     expect(dbInsertMock).toHaveBeenCalledTimes(2);
     expect(broadcastWebhookMock).not.toHaveBeenCalled();
-    expect(chainFailuresIncMock).not.toHaveBeenCalled();
   });
 
   it('broken chain: writes audit_log system.chain_broken_detected and broadcasts critical webhook', async () => {
@@ -152,8 +144,7 @@ describe('runChainVerify — persistence + return shape', () => {
     expect(audit.metadata.severity).toBe('critical');
     expect(audit.metadata.scheduled).toBe(false);
 
-    // Counter + webhook on critical
-    expect(chainFailuresIncMock).toHaveBeenCalledWith({ severity: 'critical' });
+    // Webhook on critical
     expect(broadcastWebhookMock).toHaveBeenCalledTimes(1);
     const [event, payload] = broadcastWebhookMock.mock.calls[0] as [
       string,
@@ -182,7 +173,6 @@ describe('runChainVerify — persistence + return shape', () => {
     const audit = auditRow![0] as { metadata: { severity: string } };
     expect(audit.metadata.severity).toBe('warn');
 
-    expect(chainFailuresIncMock).toHaveBeenCalledWith({ severity: 'warn' });
     // Warn-level failures don't page — only hash tampers do.
     expect(broadcastWebhookMock).not.toHaveBeenCalled();
   });

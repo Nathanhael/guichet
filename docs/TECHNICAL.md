@@ -89,34 +89,23 @@ Guichet's audit log is a first-class operations surface, not a silent table. Imp
 - **Cross-Partner Activity Panel**: `trpc.platform.getCrossPartnerActivity` returns per-partner event totals + `lastEventAt` for the selected window. Top-N rollup (≤50 partners, 10 shown in UI). Click a row to scope the audit log below by `partnerId` — first-line signal for "which tenant is unusually noisy?" Aggregate-only by design; the scoped filter is where raw investigation happens.
 - **Partner-Scoped Audit Log** (`AdminAudit`): Partner admins see their slice + a per-admin verify-chain UI (no platform access required).
 - **Ticket Audit Drawer**: Every ticket row exposes its lifecycle events (`ticket.created` / `ticket.assigned` / `ticket.transferred` / `ticket.closed` / `ticket.reopened`) via `services/ticketAudit.ts`. The emitter writes `ticket.*` actions into `audit_log`; the partner audit router and platform audit view filter `ticket.*` out by default so security-relevant rows stay uncluttered. Co-mingling would dilute the platform view and push chain hashing past its useful throughput.
-- **Chain-Broken Webhook**: Side-channel notification to partner-configured URL, independent of Prometheus/Alertmanager — compliance operators wanted a channel that didn't depend on the monitoring stack being healthy.
+- **Chain-Broken Webhook**: Side-channel notification to partner-configured URL.
+- **Live Socket Push**: When `chainVerifySchedule` detects a critical break, the server emits `audit:chain:broken` to the `platform:operators` room so the Health page lights up instantly without waiting for the next poll.
 - **Staleness Banner** in the audit log when the last successful chain-verify is >24h old.
 - **JSON + CSV Export** of the filtered audit view.
 
-### Metrics (`server/utils/metrics.ts`)
+### In-App Tripwires (Health page)
 
-| Metric | Labels | Meaning |
+`trpc.platform.getSystemHealth` (polled every 5 min when the Health tab is visible, plus refetch on focus + socket-push invalidate) surfaces these alert flags directly in PlatformView:
+
+| Flag | Source | Severity |
 |---|---|---|
-| `guichet_audit_chain_verify_runs_total` | `result` | Verify runs grouped by `valid` / `broken` / `error` |
-| `guichet_audit_chain_broken_total` | — | Page-worthy counter — nonzero = tamper or infra fault |
-| `guichet_ticket_audit_events_total` | `action` | Ticket lifecycle emissions; flatline = broken emitter |
-| `guichet_gdpr_purge_runs_total` | `outcome` | Daily purge runs: `success` / `chain_aborted` / `error` |
-| `guichet_gdpr_rows_purged_total` | `scope` | Row-level granularity (`ai_usage_log`, `invites`, …) |
-
-GDPR purge increments `chain_aborted` **before** throwing, so a missing-run alert doesn't double-fire on top of a chain-integrity alert. A purge that attempted and bailed is still a purge attempt from the observability view.
-
-### Alert Rules (`monitoring/alerts.yml`)
-
-- **AuditChainTamperDetected** — immediate page on any broken chain.
-- **AuditChainVerifyServiceError** — verify service errored on DB/Redis; fix before compliance run.
-- **AuditChainStaleness** — no successful verify in 48h.
-- **TicketAuditEmitterSilenced** — **self-arming.** Fires when 30m of zero events followed 1h+ of prior activity (via `offset 30m` lookback). Silent in idle tenants; pages only when an active emitter goes dark post-deploy.
-- **GdprPurgeMissing** — no purge run in 48h; retention is slipping past the 30-day cutoff.
-- **GdprPurgeChainAborted** — purge aborted because chain verify failed; pairs with the tamper alert.
-
-### Grafana Dashboard (`monitoring/grafana/dashboards/guichet.json`)
-
-Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR purge run counts (stat by outcome), and rows-purged time series.
+| `chainBroken` | `system_settings.audit_chain_verify_history` last entry `valid===false && !error` | critical |
+| `chainStale` | last verify >25h ago (or never) | warning |
+| `slaBreachBurst` | `count(sla_breaches WHERE breached_at > now()-1h) >= 5` | warning |
+| GDPR purge missing | last `system.gdpr_purge` audit row >25h ago | warning |
+| GDPR purge failed | most recent purge attempt errored | critical |
+| Postgres / Redis down | live ping | critical |
 
 ---
 
@@ -145,7 +134,7 @@ Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR p
 
 - **Knowledge Base**: Per-partner `kb_articles` table with title, body, category. Full CRUD via `trpc.kb.*` router. Admin UI in `AdminKnowledgeBase` component.
 - **Webhooks**: Partners configure webhook endpoints (`webhooks` table) with event subscriptions and HMAC signing secrets. `webhookDispatch.ts` delivers events with retry logic. Delivery history in `webhook_logs`. Admin UI in `AdminWebhooks`.
-- **SLA Monitoring**: Per-department first-response SLA (`sla_breaches` table + `tickets.first_staff_response_at`). Config in `AdminDepartments` (enable flag + threshold minutes + warn%). Breach worker (`services/slaSweep.ts`) sweeps every `SLA_SWEEP_INTERVAL_MS` (default 60000, 0 disables). Business-hours-aware elapsed counter skips off-hours. `SlaIndicator` pill renders in `ChatHeader`; QueueSidebar adds a red left-border on breached rows. Metrics: `guichet_sla_breaches_total`, `guichet_sla_sweep_runs_total`, `guichet_sla_first_response_minutes`. Alert rules live in `monitoring/alerts.yml`: `SlaBreachRateHigh`, `SlaWorkerDown`, `SlaResolutionLag`.
+- **SLA Monitoring**: Per-department first-response SLA (`sla_breaches` table + `tickets.first_staff_response_at`). Config in `AdminDepartments` (enable flag + threshold minutes + warn%). Breach worker (`services/sla.ts`) sweeps every `SLA_SWEEP_INTERVAL_MS` (default 60000, 0 disables). Business-hours-aware elapsed counter skips off-hours. `SlaIndicator` pill renders in `ChatHeader`; QueueSidebar adds a red left-border on breached rows. Burst alert (≥5 breaches in the last hour) is surfaced on the Health page as `slaBreachBurst`.
 - **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with auto-prompt. Staff satisfaction dashboard with per-agent breakdown and date filtering. In-app feedback via `app_feedback` table and `FeedbackModal`.
 
 ---

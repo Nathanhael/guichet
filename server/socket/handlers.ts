@@ -1,6 +1,5 @@
 import { Server } from 'socket.io';
 import logger from '../utils/logger.js';
-import { socketioConnectionsActive } from '../utils/metrics.js';
 import { Rooms } from '../utils/rooms.js';
 import type { TicketLifecycle } from '../services/ticketLifecycle/index.js';
 import type { MessageLifecycle } from '../services/messageLifecycle/index.js';
@@ -49,7 +48,6 @@ export function registerSocketHandlers(io: Server, deps: RegisterSocketHandlersD
   setupIdentityMiddleware(io);
 
   io.on('connection', (socket) => {
-    socketioConnectionsActive.inc();
     registerAuth(socket, ctx);
     registerTicket(socket, ctx);
     registerMessage(socket, ctx);

@@ -7,7 +7,6 @@ import { MAX_NOTE_LENGTH } from '../../constants.js';
 import { socketActor } from '../../services/ticketLifecycle/index.js';
 import {
   requireIdentified,
-  socketioEventsTotal,
   validatePayload,
   ratingSubmitSchema,
   type HandlerContext,
@@ -20,7 +19,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const parsed = validatePayload(socket, ratingSubmitSchema, data);
     if (!parsed) return;
     const { ticketId, rating, comment } = parsed;
-    socketioEventsTotal.inc({ event: 'rating:submit' });
     try {
       const actor = socketActor(socket);
       if (!actor) return;

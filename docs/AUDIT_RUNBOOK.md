@@ -7,10 +7,10 @@ observability counters.
 
 Treat this as the first document to open when:
 
-- Prometheus fires `AuditChainTamperDetected`
-- Prometheus fires `AuditChainVerifyServiceError`
-- Prometheus fires `TicketAuditEmitterSilenced`
-- Prometheus fires `GdprPurgeMissing` or `GdprPurgeChainAborted`
+- The Health page in PlatformView shows a red `Audit chain integrity broken` banner (or the live `audit:chain:broken` socket toast pops)
+- The Health page shows the amber `Audit chain has not been verified in over 25 hours` banner
+- The Health page shows `GDPR purge failed` / `GDPR purge overdue` banners
+- The chain-broken webhook fired (configured in `partner.webhooks`)
 - A tenant admin reports the partner verify button erroring out
 - An auditor asks for chain-integrity attestation evidence
 - The audit drawer renders empty for tickets that should have lifecycle rows
@@ -23,12 +23,12 @@ Treat this as the first document to open when:
 |---|---|---|
 | WORM audit archive | `server/services/archive.ts` | Immutable copy of `audit_log` with a SHA-256 hash chain. |
 | Chain verify service | `server/services/archive.ts::verifyAuditChain` | Recomputes the full chain and returns `{ valid, checked, brokenAt, ... }`. |
-| Shared verify runner | `server/services/chainVerifySchedule.ts::runChainVerify` | Persists results to `system_settings`, broadcasts webhooks, increments metrics. Used by both the operator button and the daily scheduler. |
+| Shared verify runner | `server/services/chainVerifySchedule.ts::runChainVerify` | Persists results to `system_settings`, broadcasts the chain-broken webhook, and emits the `audit:chain:broken` socket event to the platform-operators room on critical breaks. Used by both the operator button and the daily scheduler. |
 | Daily scheduler | `server/services/chainVerifySchedule.ts::scheduleDailyChainVerify` | Armed at boot with a 10–40m startup jitter, then a 24h interval. Uses synthetic actor `system-scheduler`. |
 | Platform verify UI | `client/src/components/admin/PlatformSystemHealth.tsx` | "Verify chain" button + staleness banner + run history table + CSV export. |
 | Partner verify UI | `client/src/components/admin/PartnerAuditVerify.tsx` | Per-tenant verify button — returns the partner-scoped slice only. |
-| Ticket lifecycle module | `server/services/ticketLifecycle/` | Owns every state transition that produces an audit row. Emits ticket.created / closed / assigned / transferred / returned_to_queue / reopened / **left / reclaimed**. The audit insert runs INSIDE the lifecycle transaction — a DB failure rolls back the whole event (intentional behavior change from the legacy fire-and-forget emitter). The action counter `guichet_ticket_audit_events_total` is still incremented before the DB write so the metric reflects user-observable reality even on rollback. |
-| GDPR purge | `server/services/gdpr.ts::runDailyPurge` | Daily retention enforcement. Emits `guichet_gdpr_purge_runs_total` and `guichet_gdpr_rows_purged_total`. Refuses to run if the chain fails to verify. |
+| Ticket lifecycle module | `server/services/ticketLifecycle/` | Owns every state transition that produces an audit row. Emits ticket.created / closed / assigned / transferred / returned_to_queue / reopened / **left / reclaimed**. The audit insert runs INSIDE the lifecycle transaction — a DB failure rolls back the whole event. |
+| GDPR purge | `server/services/gdpr.ts::runDailyPurge` | Daily retention enforcement. Refuses to run if the chain fails to verify; surfaces last-run + outcome via the Health page. |
 
 ---
 
@@ -53,9 +53,9 @@ on scheduler rows so operators can distinguish the two at a glance.
 Chain integrity is cheap to verify and expensive to forget. Without a daily
 run, a tamper that happened in week 1 could sit undetected for months until
 someone clicks the button. The scheduler turns chain verification into a
-liveness signal: if `guichet_audit_chain_verify_failures_total` ever
-increments, we find out within 24h of the event, not whenever someone
-happened to visit System Health.
+liveness signal: a critical break flips the `chainBroken` flag on the
+in-app Health page and pushes `audit:chain:broken` to the operator room
+within 24h of the event, not whenever someone happened to visit System Health.
 
 The 10–40 minute startup jitter prevents stampedes when a cluster of
 servers restarts simultaneously (e.g. after a deploy).
@@ -120,20 +120,20 @@ Payload shape (`audit.chain_broken`):
 }
 ```
 
-The counter `guichet_audit_chain_verify_failures_total{severity="critical"}`
-is incremented in the same path — so Prometheus and webhook subscribers both
-see the event regardless of which external system is receiving the signal.
+The same code path also pushes the `audit:chain:broken` socket event to
+the `platform:operators` room — the Health page in PlatformView lights up
+instantly without waiting for the next 5-minute poll.
 
-Service-level errors increment `{severity="warn"}` and DO NOT broadcast —
-those are infra alarms for the operator, not compliance signals for the
-tenant.
+Service-level errors (severity=warn) DO NOT broadcast or push — those are
+infra alarms for the operator, not compliance signals for the tenant.
 
 ---
 
 ## 5. Response playbook — chain tamper detected
 
-Triggered by: `AuditChainTamperDetected` Prometheus alert OR a `critical`
-row in the verify history with `brokenAt` set.
+Triggered by: red `Audit chain integrity broken` banner on the Health page,
+the `audit:chain:broken` socket toast, OR a `critical` row in the verify
+history with `brokenAt` set.
 
 1. **Freeze new writes to the archive.** Set the archive service to
    read-only by pausing the archiver cron if running. This prevents the
@@ -163,8 +163,9 @@ row in the verify history with `brokenAt` set.
 
 ## 6. Response playbook — verify service error
 
-Triggered by: `AuditChainVerifyServiceError` Prometheus alert OR
-`guichet_audit_chain_verify_failures_total{severity="warn"}` ticking.
+Triggered by: a verify history row with `error` set (severity=warn) — the
+Health page chain panel shows status `ERROR` and the run history table
+records the wrapped reason.
 
 This means the verify itself couldn't run — a db read timeout, a Redis
 outage blocking the rate limiter, or the archive store being unreachable.
@@ -176,14 +177,17 @@ It is NOT a tamper signal.
 4. Manually re-run verify via System Health to clear the staleness banner.
 5. Confirm the scheduler resumed normal ticks (one success entry per 24h).
 
-The GDPR purge will also refuse to run while verify is erroring out (see
-`GdprPurgeChainAborted`) — fix this first, then re-run the purge.
+The GDPR purge will also refuse to run while verify is erroring out — fix
+this first, then re-run the purge.
 
 ---
 
 ## 7. Response playbook — ticket emitter silenced
 
-Triggered by: `TicketAuditEmitterSilenced` Prometheus alert.
+Triggered by: an unexplained gap in `audit_log` rows for `ticket.*` actions
+during a window with normal ticket traffic. (No active alert fires for this
+condition after the Prometheus removal — review when investigating other
+tamper / staleness signals.)
 
 The ticket lifecycle counter went from nonzero to zero without a
 corresponding drop in ticket traffic. Likely causes:
@@ -211,9 +215,10 @@ the next create/close/assign/transfer/leave/reclaim action.
 
 ## 8. Response playbook — GDPR purge not running
 
-Triggered by: `GdprPurgeMissing` (48h of zero runs) or `GdprPurgeChainAborted`.
+Triggered by: amber `GDPR purge overdue` banner on the Health page (last
+`system.gdpr_purge` audit row >25h ago) or red `GDPR purge failed` banner.
 
-### GdprPurgeMissing
+### GDPR purge overdue (no recent run)
 
 1. Check `[purge]` logs for the last arming message (`Purge scheduled with
    jitter`) — this logs on every boot.
@@ -225,9 +230,10 @@ Triggered by: `GdprPurgeMissing` (48h of zero runs) or `GdprPurgeChainAborted`.
    catch up, manually trigger the purge via the platform admin tools
    (`trpc.platform.runPurge`).
 
-### GdprPurgeChainAborted
+### GDPR purge aborted by chain failure
 
-This is a compound alert — the chain is broken AND the purge has hit it.
+If the most recent `[purge]` log entry shows `AUDIT_CHAIN_VERIFY_FAIL_MSG`,
+the chain was broken AND the purge has refused to run as a precaution.
 
 1. Fix the chain first (section 5 or 6).
 2. Manually re-run the purge after chain is verified.
@@ -238,21 +244,7 @@ This is a compound alert — the chain is broken AND the purge has hit it.
 
 ---
 
-## 9. Grafana panel glossary
-
-Dashboard: `monitoring/grafana/dashboards/guichet.json`.
-
-| Panel | Metric | What it tells you |
-|---|---|---|
-| Ticket Lifecycle Events/s | `guichet_ticket_audit_events_total` | Liveness of the audit emitter, split by action. Flatlines = broken wiring. |
-| GDPR Purge Runs (24h) | `guichet_gdpr_purge_runs_total` | Did retention enforcement run today? Split by outcome (success / chain_aborted / error). |
-| GDPR Rows Purged (24h) | `guichet_gdpr_rows_purged_total` | Rolling 24h row counts by scope. Zero on idle tenants is expected. |
-| Chain verify failures | `guichet_audit_chain_verify_failures_total` | Split by severity. `critical` = tamper. `warn` = infra. |
-| Webhook delivery outcome | `guichet_webhook_deliveries_total` | Split by event and status class. >25% 5xx/error = partner endpoint broken. |
-
----
-
-## 10. Retention windows
+## 9. Retention windows
 
 | Data | Retention | Defined in |
 |---|---|---|
@@ -268,7 +260,7 @@ Dashboard: `monitoring/grafana/dashboards/guichet.json`.
 
 ---
 
-## 11. Test coverage — what locks these invariants
+## 10. Test coverage — what locks these invariants
 
 | Invariant | Test file |
 |---|---|

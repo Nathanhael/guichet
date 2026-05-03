@@ -274,6 +274,7 @@ export function register(socket: Socket, _ctx: HandlerContext): void {
       socket.join(Rooms.partner(partnerId));
       if (isSupport) socket.join(Rooms.staff(partnerId));
       socket.join(Rooms.user(userId));
+      if (isPlatformOp) socket.join(Rooms.platformOperators());
 
       if (effectiveRole === 'agent') {
         // socket.attach already emitted agents:online to the staff room — no second broadcast needed.

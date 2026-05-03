@@ -15,7 +15,6 @@ import { mapMessageRow } from '../../utils/messageMapper.js';
 import { findUserName } from '../../services/userQueries.js';
 import {
   requireIdentified,
-  socketioEventsTotal,
   validatePayload,
   supportJoinSchema,
   supportLeaveSchema,
@@ -36,7 +35,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const parsed = validatePayload(socket, supportJoinSchema, data);
     if (!parsed) return;
     const { ticketId, supportLang } = parsed;
-    socketioEventsTotal.inc({ event: 'support:join' });
     try {
       const baseActor = socketActor(socket);
       if (!baseActor) return;
@@ -145,7 +143,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const parsed = validatePayload(socket, supportLeaveSchema, data); // same shape: { ticketId }
     if (!parsed) return;
     const { ticketId } = parsed;
-    socketioEventsTotal.inc({ event: 'support:rejoin' });
     try {
       const actor = socketActor(socket);
       if (!actor) return;
@@ -187,7 +184,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const leaveParsed = validatePayload(socket, supportLeaveSchema, data);
     if (!leaveParsed) return;
     const { ticketId } = leaveParsed;
-    socketioEventsTotal.inc({ event: 'support:leave' });
     try {
       const actor = socketActor(socket);
       if (!actor) return;

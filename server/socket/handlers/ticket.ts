@@ -17,7 +17,6 @@ import { can } from '../../services/auth/capabilities.js';
 import { MAX_LABELS_PER_TICKET } from '../../constants.js';
 import {
   requireIdentified,
-  socketioEventsTotal,
   validatePayload,
   ticketNewSchema,
   ticketCloseSchema,
@@ -33,7 +32,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         logger.warn({ socketId: socket.id }, '[ticket:new] payload validation failed');
         return;
       }
-      socketioEventsTotal.inc({ event: 'ticket:new' });
 
       try {
         const baseActor = socketActor(socket);
@@ -117,7 +115,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const closeParsed = validatePayload(socket, ticketCloseSchema, data);
       if (!closeParsed) return;
       const { ticketId, closingNotes } = closeParsed;
-      socketioEventsTotal.inc({ event: 'ticket:close' });
       try {
         const actor = socketActor(socket);
         if (!actor) return;
@@ -160,7 +157,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       const transferParsed = validatePayload(socket, ticketTransferSchema, data);
       if (!transferParsed) return;
       const { ticketId, departmentId, note } = transferParsed;
-      socketioEventsTotal.inc({ event: 'ticket:transfer' });
       try {
         const actor = socketActor(socket);
         if (!actor) return;

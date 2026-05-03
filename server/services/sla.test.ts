@@ -109,12 +109,7 @@ const h = vi.hoisted(() => {
 
   const dbMock = { update: updateMock, select: selectMock, insert: insertMock };
 
-  const resolutionsIncMock = vi.fn();
-  const firstResponseObserveMock = vi.fn();
   const breachesIncMock = vi.fn();
-  const sweepRunsIncMock = vi.fn();
-  const sweepDurationEndTimerMock = vi.fn();
-  const sweepDurationStartTimerMock = vi.fn(() => sweepDurationEndTimerMock);
 
   return {
     ticketsUpdateReturnQueue,
@@ -132,12 +127,7 @@ const h = vi.hoisted(() => {
     updateMock,
     selectMock,
     insertMock,
-    resolutionsIncMock,
-    firstResponseObserveMock,
     breachesIncMock,
-    sweepRunsIncMock,
-    sweepDurationStartTimerMock,
-    sweepDurationEndTimerMock,
   };
 });
 
@@ -154,17 +144,6 @@ vi.mock('drizzle-orm', () => ({
   eq: (a: unknown, b: unknown) => ({ op: 'eq', a, b }),
   inArray: (a: unknown, values: unknown[]) => ({ op: 'inArray', a, values }),
   isNull: (a: unknown) => ({ op: 'isNull', a }),
-}));
-
-vi.mock('../utils/metrics.js', () => ({
-  slaResolutionsTotal: { inc: h.resolutionsIncMock },
-  slaFirstResponseMinutes: { observe: h.firstResponseObserveMock },
-  slaBreachesTotal: { inc: h.breachesIncMock },
-  slaSweepRunsTotal: { inc: h.sweepRunsIncMock },
-  slaSweepDurationSeconds: {
-    observe: vi.fn(),
-    startTimer: h.sweepDurationStartTimerMock,
-  },
 }));
 
 vi.mock('../utils/logger.js', () => ({
@@ -187,12 +166,7 @@ beforeEach(() => {
   h.ticketsSelectReturnQueue.length = 0;
   h.slaBreachesInsertReturnQueue.length = 0;
   h.slaBreachesInsertValuesCalls.length = 0;
-  h.resolutionsIncMock.mockClear();
-  h.firstResponseObserveMock.mockClear();
   h.breachesIncMock.mockClear();
-  h.sweepRunsIncMock.mockClear();
-  h.sweepDurationStartTimerMock.mockClear();
-  h.sweepDurationEndTimerMock.mockClear();
   h.updateMock.mockClear();
   h.selectMock.mockClear();
   h.insertMock.mockClear();
@@ -307,11 +281,6 @@ describe('markFirstStaffResponse', () => {
     expect(result.resolvedBreach).toBe(false);
     expect(h.ticketsSetCalls).toHaveLength(1);
     expect(h.ticketsSetCalls[0]).toEqual({ firstStaffResponseAt: at });
-    // first-response histogram observation is always recorded on stamp.
-    expect(h.firstResponseObserveMock).toHaveBeenCalledWith(
-      { partner_id: PARTNER_ID, department: DEPT },
-      20,
-    );
   });
 
   it('ignores whisper messages', async () => {
@@ -320,8 +289,6 @@ describe('markFirstStaffResponse', () => {
     expect(result.stamped).toBe(false);
     expect(result.resolvedBreach).toBe(false);
     expect(h.updateMock).not.toHaveBeenCalled();
-    expect(h.firstResponseObserveMock).not.toHaveBeenCalled();
-    expect(h.resolutionsIncMock).not.toHaveBeenCalled();
   });
 
   it('ignores agent (non-staff) messages', async () => {
@@ -330,11 +297,9 @@ describe('markFirstStaffResponse', () => {
     expect(result.stamped).toBe(false);
     expect(result.resolvedBreach).toBe(false);
     expect(h.updateMock).not.toHaveBeenCalled();
-    expect(h.firstResponseObserveMock).not.toHaveBeenCalled();
-    expect(h.resolutionsIncMock).not.toHaveBeenCalled();
   });
 
-  it('returns stamped=false and does not emit metrics when ticket already has first_staff_response_at', async () => {
+  it('returns stamped=false when ticket already has first_staff_response_at', async () => {
     // Guarded UPDATE returns zero rows (row's first_staff_response_at is not null).
     h.ticketsUpdateReturnQueue.push([]);
 
@@ -342,13 +307,11 @@ describe('markFirstStaffResponse', () => {
 
     expect(result.stamped).toBe(false);
     expect(result.resolvedBreach).toBe(false);
-    expect(h.firstResponseObserveMock).not.toHaveBeenCalled();
-    expect(h.resolutionsIncMock).not.toHaveBeenCalled();
     // breaches update should NOT be attempted when ticket update stamped nothing.
     expect(h.breachesSetCalls).toHaveLength(0);
   });
 
-  it('resolves existing sla_breach row and increments resolutions counter', async () => {
+  it('resolves existing sla_breach row', async () => {
     h.ticketsUpdateReturnQueue.push([{ partnerId: PARTNER_ID, dept: DEPT, createdAt: CREATED_AT }]);
     h.breachesUpdateReturnQueue.push([{ id: 'b_001' }]);
 
@@ -363,11 +326,6 @@ describe('markFirstStaffResponse', () => {
 
     expect(h.breachesSetCalls).toHaveLength(1);
     expect(h.breachesSetCalls[0]).toEqual({ resolvedAt: at, resolvedReason: 'first_response' });
-    expect(h.resolutionsIncMock).toHaveBeenCalledWith({ partner_id: PARTNER_ID, department: DEPT });
-    expect(h.firstResponseObserveMock).toHaveBeenCalledWith(
-      { partner_id: PARTNER_ID, department: DEPT },
-      40,
-    );
   });
 
   it('accepts platform_operator as staff role', async () => {
@@ -380,10 +338,6 @@ describe('markFirstStaffResponse', () => {
     expect(result.stamped).toBe(true);
     expect(h.ticketsSetCalls).toHaveLength(1);
     expect(h.ticketsSetCalls[0]).toEqual({ firstStaffResponseAt: at });
-    expect(h.firstResponseObserveMock).toHaveBeenCalledWith(
-      { partner_id: PARTNER_ID, department: DEPT },
-      5,
-    );
   });
 });
 
@@ -445,7 +399,6 @@ describe('runSlaSweep', () => {
       dept: 'general',
       thresholdMinutes: 30,
     });
-    expect(h.breachesIncMock).toHaveBeenCalledWith({ partner_id: 'pA', department: 'general' });
 
     // Second run: same inputs, but the onConflictDoNothing on ticketId means the insert returns [].
     h.partnersSelectReturnQueue.push([PARTNER_WITH_SLA]);

@@ -10,14 +10,11 @@ import {
   markRead,
 } from '../../services/messageQueries.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
-import { isSupportLike } from '../../services/roles.js';
-import { crossLangPickupTotal } from '../../utils/metrics.js';
 import {
   MAX_BATCH_DELETE,
 } from '../../constants.js';
 import {
   requireIdentified,
-  socketioEventsTotal,
   validatePayload,
   checkSocketRateLimit,
   messageSendSchema,
@@ -85,7 +82,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     if (!parsed) return;
     if (!checkSocketRateLimit(socket, 'message:send')) return;
     const { ticketId, text, mediaUrl, attachments, whisper, replyToId, localId, improvedFromUsageLogId } = parsed;
-    socketioEventsTotal.inc({ event: 'message:send' });
     try {
       const actor = socketActor(socket);
       if (!actor) return;
@@ -94,12 +90,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       // (used for cross-lang metric + prewarm gating).
       const ticket = await requireActorTicketScopeWith(socket, actor, ticketId, findTicketForMessage);
       if (!ticket || ticket.status === 'closed') return;
-
-      // Cross-lang metric: emit when a support agent sends in a different
-      // language than the ticket's agentLang. Pre-flight observability.
-      if (actor.lang && ticket.agentLang && actor.lang !== ticket.agentLang && isSupportLike(actor.role)) {
-        crossLangPickupTotal.inc({ partner_id: ticket.partnerId, support_lang: actor.lang, ticket_lang: ticket.agentLang });
-      }
 
       // Build viewerLangs only when cross-lang prewarm might apply
       // (matches legacy gating: skip the local-node socket iteration if
@@ -202,7 +192,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     if (!parsed) return;
     if (!checkSocketRateLimit(socket, 'message:edit')) return;
     const { ticketId, messageId, text: newText } = parsed;
-    socketioEventsTotal.inc({ event: 'message:edit' });
     try {
       const actor = socketActor(socket);
       if (!actor) return;
@@ -251,7 +240,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const parsed = validatePayload(socket, messageDeleteSchema, data);
     if (!parsed) return;
     const { ticketId, messageId } = parsed;
-    socketioEventsTotal.inc({ event: 'message:delete' });
     try {
       const actor = socketActor(socket);
       if (!actor) return;
@@ -291,7 +279,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     if (!parsed) return;
     if (!checkSocketRateLimit(socket, 'message:react')) return;
     const { ticketId, messageId, emoji } = parsed;
-    socketioEventsTotal.inc({ event: 'message:react' });
     try {
       const actor = socketActor(socket);
       if (!actor) {
