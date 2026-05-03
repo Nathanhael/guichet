@@ -34,10 +34,6 @@ const configSchema = z.object({
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       ])
     ),
-    METRICS_TOKEN: z.preprocess(
-      (v) => (v === '' ? undefined : v),
-      z.string().min(16).optional()
-    ),
     AZURE_STORAGE_CONNECTION_STRING: z.string().optional(),
     AZURE_STORAGE_CONTAINER: z.string().default('uploads'),
     AWS_S3_BUCKET: z.string().optional(),
@@ -94,7 +90,6 @@ const parseResult = configSchema.safeParse({
     LOG_LEVEL: process.env.LOG_LEVEL,
     UPLOAD_MAX_SIZE: process.env.UPLOAD_MAX_SIZE,
     UPLOAD_ALLOWED_TYPES: process.env.UPLOAD_ALLOWED_TYPES,
-    METRICS_TOKEN: process.env.METRICS_TOKEN,
     REDIS_URL: process.env.REDIS_URL,
     AI_ENABLED: process.env.AI_ENABLED,
     AI_PROVIDER: process.env.AI_PROVIDER,

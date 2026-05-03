@@ -19,4 +19,7 @@ export const Rooms = {
 
   /** Private user room — for kill switches and targeted disconnects */
   user: (userId: string) => `user:${userId}` as const,
+
+  /** Platform-operator room — receives system-wide pushes (audit:chain:broken, etc.) */
+  platformOperators: () => 'platform:operators' as const,
 } as const;

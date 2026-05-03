@@ -12,11 +12,6 @@ vi.mock('../../utils/logger.js', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('../../utils/metrics.js', () => ({
-  socketioConnectionsActive: { inc: vi.fn(), dec: vi.fn() },
-  socketioEventsTotal: { inc: vi.fn() },
-}));
-
 const broadcastAgentStatusMock = vi.fn();
 
 const { mockAvailability } = vi.hoisted(() => ({

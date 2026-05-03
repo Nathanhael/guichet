@@ -29,12 +29,10 @@ import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSched
 import { runDailyPurge } from './services/gdpr.js';
 
 import { cleanupExpiredTokens } from './services/auth/index.js';
-import { scheduleDailyChainVerify } from './services/chainVerifySchedule.js';
+import { scheduleDailyChainVerify, setChainVerifyIo } from './services/chainVerifySchedule.js';
 import { scheduleSlaSweep, setSlaIo } from './services/sla.js';
 import { registerSocketHandlers } from './socket/handlers.js';
-import { metricsMiddleware } from './middleware/metrics.js';
 import { createTaskRunner } from './utils/taskRunner.js';
-import { register } from './utils/metrics.js';
 
 import { initRedis, getRedisClients } from './utils/redis.js';
 import { initAiContext } from './services/ai/index.js';
@@ -272,13 +270,9 @@ const trpcLimiter = rateLimit({
 
 
 app.use((req: Request, _res: Response, next: NextFunction) => {
-  // Per-request logging at info is a flood in production — Prometheus metrics
-  // already cover method/path/status/duration. Keep at debug for local tracing.
   logger.debug({ method: req.method, path: req.path }, `Incoming ${req.method} request`);
   next();
 });
-
-app.use(metricsMiddleware);
 
 // Uploads proxy — requires authentication AND tenant ownership (SEC-6).
 // JWT cookie + caller`s partnerId must match the partner that owns the
@@ -414,33 +408,6 @@ if (process.env.NODE_ENV === 'test') {
 
 app.use('/api/v1', v1Router);
 
-app.get('/metrics', async (req: Request, res: Response) => {
-  const remoteIp = req.socket.remoteAddress;
-  const isLocal = remoteIp === '127.0.0.1' || remoteIp === '::1' || remoteIp === '::ffff:127.0.0.1';
-  // Accept either X-Metrics-Token (custom) or Authorization: Bearer (Prometheus native).
-  // Prometheus scrape_configs can emit Bearer natively via credentials_file; custom
-  // headers aren't supported in scrape_configs, hence the dual acceptance.
-  const authHeader = req.headers.authorization;
-  const bearerToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
-    ? authHeader.slice(7)
-    : undefined;
-  const tokenHeader = req.headers['x-metrics-token'] ?? bearerToken;
-
-  if (config.METRICS_TOKEN) {
-    // Token is configured: require it (localhost bypass stays)
-    if (tokenHeader !== config.METRICS_TOKEN && !isLocal) {
-      return res.status(403).json({ error: 'Forbidden' });
-    }
-  } else if (!isLocal) {
-    // No token configured and not localhost: fail closed
-    return res.status(403).json({ error: 'Forbidden: METRICS_TOKEN not configured' });
-  }
-
-  res.set('Content-Type', register.contentType);
-  res.end(await register.metrics());
-});
-
-
 const gdprRunner = createTaskRunner('gdpr-purge');
 const tokenCleanupRunner = createTaskRunner('token-cleanup');
 
@@ -543,6 +510,7 @@ setBusinessHoursIo(io);
 
 // SLA sweep — every SLA_SWEEP_INTERVAL_MS (default 60s). Set env=0 to disable.
 setSlaIo(io);
+setChainVerifyIo(io);
 const stopSlaScheduler = scheduleSlaSweep();
 
 // Graceful shutdown — drain connections on SIGTERM/SIGINT (Docker stop, Ctrl+C)

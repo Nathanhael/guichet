@@ -9,11 +9,6 @@ import { canUseSupportWorkflows } from '../../services/roles.js';
 import { assertMembership } from '../../services/membership.js';
 import type { UserRole } from '../../types/index.js';
 import logger from '../../utils/logger.js';
-import {
-  queueUnclaimedByLang,
-  queueOldestUnclaimedSeconds,
-  queueStaffingImbalance,
-} from '../../utils/metrics.js';
 
 export interface ImbalanceInput {
   online: number;
@@ -111,14 +106,6 @@ export const supportRouter = router({
           imbalanceLevel: classifyImbalance({ online: staffByLang[lang], waiting, oldestWaitMinutes: oldest }),
         };
       });
-
-      const levelCode: Record<ImbalanceLevel, number> = { ok: 0, thin: 1, critical: 2 };
-      for (const row of result) {
-        queueUnclaimedByLang.set({ partner_id: input.partnerId, lang: row.lang }, row.unclaimedTickets);
-        const oldestSeconds = rowsByLang[row.lang].oldestMinutes * 60;
-        queueOldestUnclaimedSeconds.set({ partner_id: input.partnerId, lang: row.lang }, oldestSeconds);
-        queueStaffingImbalance.set({ partner_id: input.partnerId, lang: row.lang }, levelCode[row.imbalanceLevel]);
-      }
 
       logger.debug({ partnerId: input.partnerId, result }, '[support.getStaffingByLanguage]');
       return result;

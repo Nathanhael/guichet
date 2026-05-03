@@ -7,7 +7,6 @@
  * for invisible audit gaps. The lifecycle closes that door.
  */
 import { auditLog } from '../../db/schema.js';
-import { ticketAuditEventsTotal } from '../../utils/metrics.js';
 import type { Actor } from '../auth/types.js';
 
 type AuditAction =
@@ -38,11 +37,6 @@ interface WriteAuditArgs {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function writeAudit(tx: any, args: WriteAuditArgs): Promise<void> {
-  // Increment Prometheus first so the user-observable graph reflects reality
-  // even if we crash on the insert. Existing alert rules
-  // (TicketAuditEmitterSilenced, AuditChainStaleness) observe this metric.
-  ticketAuditEventsTotal.inc({ action: args.action });
-
   await tx.insert(auditLog).values({
     action: args.action,
     actorId: args.actor.kind === 'user' ? args.actor.userId : null,

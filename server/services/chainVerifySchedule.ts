@@ -11,9 +11,15 @@ import { db } from '../db.js';
 import { auditLog, systemSettings } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import logger from '../utils/logger.js';
-import { auditChainVerifyFailures } from '../utils/metrics.js';
 import { broadcastWebhook } from './webhookDispatch.js';
 import { verifyAuditChain } from './archive.js';
+import { Rooms } from '../utils/rooms.js';
+import type { Server } from 'socket.io';
+
+let io: Server | null = null;
+/** Wired at app boot — lets runChainVerify push `audit:chain:broken`
+ *  to platform operators in real time without polling. */
+export function setChainVerifyIo(socketIo: Server) { io = socketIo; }
 
 export const LAST_VERIFY_KEY = 'audit_chain_last_verify';
 export const VERIFY_HISTORY_KEY = 'audit_chain_verify_history';
@@ -90,7 +96,6 @@ export async function runChainVerify(actor: RunnerActor): Promise<ChainVerifyRec
 
   if (!result.valid) {
     const severity: 'warn' | 'critical' = result.error ? 'warn' : 'critical';
-    auditChainVerifyFailures.inc({ severity });
     await db.insert(auditLog).values({
       action: result.error ? 'system.chain_verify_error' : 'system.chain_broken_detected',
       actorId: actor.id,
@@ -111,6 +116,13 @@ export async function runChainVerify(actor: RunnerActor): Promise<ChainVerifyRec
         ranAt: record.ranAt,
         ranBy: record.ranBy,
         ranByName: record.ranByName,
+      });
+      // Push to platform-operators room so the Health page lights up instantly
+      // without waiting for the next 5-minute poll. UI listens on `audit:chain:broken`.
+      io?.to(Rooms.platformOperators()).emit('audit:chain:broken', {
+        checked: result.checked,
+        brokenAt: result.brokenAt ?? null,
+        ranAt: record.ranAt,
       });
     }
   }

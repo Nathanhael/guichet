@@ -25,10 +25,6 @@ vi.mock('../utils/logger.js', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock('../utils/metrics.js', () => ({
-  socketioConnectionsActive: { inc: vi.fn(), dec: vi.fn() },
-}));
-
 // Stub lifecycle — orchestrator tests only check fanout, not lifecycle calls.
 const stubLifecycle = {
   reclaim: vi.fn(),

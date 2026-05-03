@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
-import { Database, Server, ShieldCheck, ExternalLink, Download } from 'lucide-react';
+import { Database, Server, ShieldCheck, Download } from 'lucide-react';
+import { getSocket } from '../../hooks/useSocket';
 
 function parseRetryAfter(message: string | undefined): number | null {
   if (!message) return null;
@@ -65,11 +66,33 @@ function StatusDot({ ok }: { ok: boolean }) {
 export default function PlatformSystemHealth() {
   const t = useT();
   const utils = trpc.useUtils();
+  // Polling cadence: 5 min when visible, paused in background. Tab focus and
+  // socket-pushed `audit:chain:broken` events trigger an immediate refetch so
+  // the chain-tamper alert is effectively instant without per-minute spam.
   const { data: health, isLoading, isError, error, refetch } = trpc.platform.getSystemHealth.useQuery(undefined, {
-    refetchInterval: 10000,
+    refetchInterval: 5 * 60 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
     retry: 1,
   });
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+
+  // Live push: server emits `audit:chain:broken` to platform operators when
+  // chainVerifySchedule detects a tamper. Listening here just invalidates the
+  // health query so the banner re-renders immediately instead of waiting for
+  // the next 5-minute poll.
+  useEffect(() => {
+    const socket = getSocket();
+    const onBroken = () => {
+      utils.platform.getSystemHealth.invalidate();
+      utils.platform.getLastChainVerify.invalidate();
+      utils.platform.getChainVerifyHistory.invalidate();
+    };
+    socket.on('audit:chain:broken', onBroken);
+    return () => {
+      socket.off('audit:chain:broken', onBroken);
+    };
+  }, [utils]);
 
   const { data: lastVerify } = trpc.platform.getLastChainVerify.useQuery(undefined, {
     retry: false,
@@ -105,16 +128,23 @@ export default function PlatformSystemHealth() {
     return () => clearInterval(id);
   }, [chainVerify.error]);
 
-  const alerts: { id: string; message: string }[] = [];
+  const alerts: { id: string; message: string; severity: 'critical' | 'warning' }[] = [];
   if (health) {
-    if (!health.redis) alerts.push({ id: 'redis-down', message: t('redis_unreachable') });
-    if (!health.postgres) alerts.push({ id: 'pg-down', message: t('postgres_unreachable') });
-    if (!health.gdprSuccess) alerts.push({ id: 'gdpr-failed', message: t('gdpr_purge_failed') });
+    if (!health.redis) alerts.push({ id: 'redis-down', message: t('redis_unreachable'), severity: 'critical' });
+    if (!health.postgres) alerts.push({ id: 'pg-down', message: t('postgres_unreachable'), severity: 'critical' });
+    if (health.chainBroken) alerts.push({ id: 'chain-broken', message: 'Audit chain integrity broken — investigate immediately.', severity: 'critical' });
+    if (!health.gdprSuccess) alerts.push({ id: 'gdpr-failed', message: t('gdpr_purge_failed'), severity: 'critical' });
     const lastRun = new Date(health.gdprLastRun).getTime();
-    // Date.now() in render gates a "purge overdue" alert; acceptable since the
-    // worst case is showing the banner a render late, and health data refreshes.
     // eslint-disable-next-line react-hooks/purity
-    if (Date.now() - lastRun > 25 * 60 * 60 * 1000) alerts.push({ id: 'gdpr-overdue', message: t('gdpr_purge_overdue') });
+    if (Date.now() - lastRun > 25 * 60 * 60 * 1000) alerts.push({ id: 'gdpr-overdue', message: t('gdpr_purge_overdue'), severity: 'warning' });
+    if (health.chainStale) alerts.push({ id: 'chain-stale', message: 'Audit chain has not been verified in over 25 hours.', severity: 'warning' });
+    if (health.slaBreachBurst >= health.slaBreachBurstThreshold) {
+      alerts.push({
+        id: 'sla-burst',
+        message: `${health.slaBreachBurst} SLA breaches recorded in the last hour (threshold ${health.slaBreachBurstThreshold}).`,
+        severity: 'warning',
+      });
+    }
   }
   const visibleAlerts = alerts.filter(a => !dismissedAlerts.includes(a.id));
 
@@ -139,7 +169,14 @@ export default function PlatformSystemHealth() {
           <h2 className={SECTION_H}>{t('alerts')}</h2>
           <div className="space-y-2">
             {visibleAlerts.map(alert => (
-              <div key={alert.id} className={`${CARD} p-4 flex justify-between items-center gap-4 border-l-4 border-[var(--color-urgent)]`}>
+              <div
+                key={alert.id}
+                className={`${CARD} p-4 flex justify-between items-center gap-4 border-l-4 ${
+                  alert.severity === 'critical'
+                    ? 'border-[var(--color-urgent)]'
+                    : 'border-[var(--color-accent-amber)]'
+                }`}
+              >
                 <span className="text-[13px] font-medium text-[var(--color-ink)]">{alert.message}</span>
                 <button
                   onClick={() => setDismissedAlerts(d => [...d, alert.id])}
@@ -390,27 +427,6 @@ export default function PlatformSystemHealth() {
         </div>
       </div>
 
-      <div>
-        <h2 className={SECTION_H}>{t('observability')}</h2>
-        <div className="flex gap-3 flex-wrap">
-          <a
-            href={`http://${window.location.hostname}:3000`}
-            target="_blank"
-            rel="noreferrer"
-            className={SECONDARY_BTN}
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> Grafana Dashboards
-          </a>
-          <a
-            href={`http://${window.location.hostname}:9090`}
-            target="_blank"
-            rel="noreferrer"
-            className={SECONDARY_BTN}
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> Prometheus Metrics
-          </a>
-        </div>
-      </div>
     </div>
   );
 }

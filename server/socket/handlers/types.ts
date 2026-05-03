@@ -9,10 +9,6 @@ import logger from '../../utils/logger.js';
 import { isRevoked } from '../../services/auth/sessionRevocation.js';
 import type { TicketLifecycle } from '../../services/ticketLifecycle/index.js';
 import type { MessageLifecycle } from '../../services/messageLifecycle/index.js';
-import { socketioEventsTotal } from '../../utils/metrics.js';
-
-// Re-export so handler modules can reference it without importing metrics directly
-export { socketioEventsTotal };
 
 export interface HandlerContext {
   io: Server;

@@ -26,11 +26,6 @@ vi.mock('../../utils/logger.js', () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-vi.mock('../../utils/metrics.js', () => ({
-  socketioConnectionsActive: { inc: vi.fn(), dec: vi.fn() },
-  socketioEventsTotal: { inc: vi.fn() },
-}));
-
 vi.mock('../../services/sessionRevocation.js', () => ({
   isRevoked: vi.fn(async () => false),
 }));

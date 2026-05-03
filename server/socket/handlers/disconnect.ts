@@ -2,13 +2,11 @@ import { Socket } from 'socket.io';
 import logger from '../../utils/logger.js';
 import { getAvailability } from '../../services/availability/index.js';
 import { broadcastAgentStatus } from '../../services/businessHours.js';
-import { socketioConnectionsActive } from '../../utils/metrics.js';
 import { removeViewerFromAll, broadcastViewers } from './collision.js';
 import { type HandlerContext } from './types.js';
 
 export function register(socket: Socket, ctx: HandlerContext): void {
   socket.on('disconnect', async () => {
-    socketioConnectionsActive.dec();
     // Slice #70: disconnect cleanup intentionally reads `socket.data.*` directly
     // instead of going through `socketActor(socket)`. The canonical actor
     // builder emits an `error` event on missing identity, which is pointless

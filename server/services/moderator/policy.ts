@@ -1,5 +1,4 @@
 // server/services/moderator/policy.ts
-import { moderatorRepetitionFailopenTotal } from '../../utils/metrics.js';
 import type {
   GuardCode,
   ModerationContext,
@@ -102,8 +101,7 @@ export async function runPolicy(
         return finalize(original, current, triggered, 'guard_repetition');
       }
     } catch (err) {
-      // Fail-open: count the silence.
-      moderatorRepetitionFailopenTotal.inc({ scope: ctx.scope });
+      // Fail-open: log the silence.
       deps.logger?.warn(
         { err: err instanceof Error ? err.message : String(err), scope: ctx.scope },
         '[moderator] repetition port threw — failing open',

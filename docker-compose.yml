@@ -42,9 +42,6 @@ services:
       # encryption.ts reads `FIELD_ENCRYPTION_SECRET || AI_KEY_ENCRYPTION_SECRET` so either works.
       - FIELD_ENCRYPTION_SECRET=${FIELD_ENCRYPTION_SECRET:?FIELD_ENCRYPTION_SECRET must be set in .env}
       - AI_KEY_ENCRYPTION_SECRET=${AI_KEY_ENCRYPTION_SECRET:-}
-      # METRICS_TOKEN — shared secret between /metrics and Prometheus scraper.
-      # Dev default matches the value in monitoring/prometheus.yml so scraping works out of the box.
-      - METRICS_TOKEN=${METRICS_TOKEN:-dev-only-metrics-token-replace-in-prod}
       - AI_PROVIDER=${AI_PROVIDER:-azure}
       - AI_TIMEOUT_MS=${AI_TIMEOUT_MS:-60000}
       - AI_BASE_URL=${AI_BASE_URL:-}
@@ -133,69 +130,7 @@ services:
       retries: 5
       start_period: 60s
 
-  # Monitoring stack — opt-in via `--profile monitoring`. Default `docker compose up`
-  # skips Prometheus, Alertmanager, and Grafana. Bring them up only when you want
-  # to scrape `/metrics` or view dashboards: `docker compose --profile monitoring up`.
-  prometheus:
-    image: prom/prometheus:latest
-    profiles: ["monitoring"]
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
-      - prometheus_data:/prometheus
-    ports:
-      - "127.0.0.1:9090:9090"
-    depends_on:
-      server:
-        condition: service_healthy
-      alertmanager:
-        condition: service_started
-
-  # Alertmanager: receives fired alerts from Prometheus, groups/dedupes them,
-  # and dispatches to Slack/webhook receivers per monitoring/alertmanager.yml.
-  # Env-interpolated webhook URLs are expanded at container start via
-  # `--config.expand-env` so the file can ship secret-free.
-  alertmanager:
-    image: prom/alertmanager:latest
-    profiles: ["monitoring"]
-    command:
-      - '--config.file=/etc/alertmanager/alertmanager.yml'
-      - '--storage.path=/alertmanager'
-      - '--config.expand-env=true'
-    volumes:
-      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-      - alertmanager_data:/alertmanager
-    environment:
-      # Single generic webhook URL — set in .env when you wire a real receiver
-      # (ntfy.sh, pipedream, custom ops endpoint). Until then alerts fire but
-      # POST to a dead localhost URL and fail silently.
-      - ALERTMANAGER_WEBHOOK_URL=${ALERTMANAGER_WEBHOOK_URL:-}
-      # Optional per-receiver overrides — take precedence over ALERTMANAGER_WEBHOOK_URL
-      - ALERTMANAGER_DEFAULT_WEBHOOK_URL=${ALERTMANAGER_DEFAULT_WEBHOOK_URL:-}
-      - ALERTMANAGER_AUDIT_WEBHOOK_URL=${ALERTMANAGER_AUDIT_WEBHOOK_URL:-}
-      - ALERTMANAGER_ONCALL_WEBHOOK_URL=${ALERTMANAGER_ONCALL_WEBHOOK_URL:-}
-      - ALERTMANAGER_INTEGRATIONS_WEBHOOK_URL=${ALERTMANAGER_INTEGRATIONS_WEBHOOK_URL:-}
-    ports:
-      - "127.0.0.1:9093:9093"
-
-  grafana:
-    image: grafana/grafana:latest
-    profiles: ["monitoring"]
-    volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
-      - grafana_data:/var/lib/grafana
-    ports:
-      - "127.0.0.1:3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set in .env}
-    depends_on:
-      - prometheus
-
 volumes:
   postgres_data:
-  prometheus_data:
-  alertmanager_data:
-  grafana_data:
   server_node_modules:
   client_node_modules:

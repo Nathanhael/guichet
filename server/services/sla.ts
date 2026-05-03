@@ -2,13 +2,6 @@ import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db.js';
 import { tickets, slaBreaches, partners } from '../db/schema.js';
-import {
-  slaResolutionsTotal,
-  slaFirstResponseMinutes,
-  slaBreachesTotal,
-  slaSweepRunsTotal,
-  slaSweepDurationSeconds,
-} from '../utils/metrics.js';
 import logger from '../utils/logger.js';
 import config from '../config.js';
 import { resolveSchedule, type BusinessHoursSchedule, type BusinessHoursDayKey } from './businessHours.js';
@@ -133,13 +126,9 @@ export async function markFirstStaffResponse(input: StaffResponseInput): Promise
     .returning({ id: slaBreaches.id });
 
   const resolvedBreach = resolvedRows.length > 0;
-  if (resolvedBreach) {
-    slaResolutionsTotal.inc({ partner_id: partnerId, department: dept });
-  }
 
   const createdMs = new Date(createdAt).getTime();
   const respondedInMinutes = Math.max(0, Math.round((new Date(input.at).getTime() - createdMs) / 60_000));
-  slaFirstResponseMinutes.observe({ partner_id: partnerId, department: dept }, respondedInMinutes);
 
   logger.info({ ticketId: input.ticketId, partnerId, dept, resolvedBreach }, '[sla] first staff response stamped');
 
@@ -160,91 +149,84 @@ export type SweepSummary = {
 type DepartmentRecord = { id: string; name: string; sla?: DepartmentSlaConfig };
 
 export async function runSlaSweep(now: Date = new Date()): Promise<SweepSummary> {
-  const endTimer = slaSweepDurationSeconds.startTimer();
   const summary: SweepSummary = { partnersChecked: 0, ticketsChecked: 0, breachesInserted: 0 };
 
-  try {
-    const activePartners = await db.select().from(partners).where(eq(partners.status, 'active'));
+  const activePartners = await db.select().from(partners).where(eq(partners.status, 'active'));
 
-    for (const partner of activePartners as Array<{
-      id: string;
-      departments: DepartmentRecord[] | null;
-      businessHoursSchedule?: BusinessHoursSchedule | null;
-    }>) {
-      summary.partnersChecked++;
-      const departments = (partner.departments ?? []) as DepartmentRecord[];
-      const slaDepts = departments.filter((d) => d.sla?.enabled);
-      if (slaDepts.length === 0) continue;
+  for (const partner of activePartners as Array<{
+    id: string;
+    departments: DepartmentRecord[] | null;
+    businessHoursSchedule?: BusinessHoursSchedule | null;
+  }>) {
+    summary.partnersChecked++;
+    const departments = (partner.departments ?? []) as DepartmentRecord[];
+    const slaDepts = departments.filter((d) => d.sla?.enabled);
+    if (slaDepts.length === 0) continue;
 
-      const schedule = resolveSchedule(partner);
+    const schedule = resolveSchedule(partner);
 
-      // Only sweep tickets that could still be resolved by a staff reply.
-      // Closed/resolved tickets stay out — the partial index
-      // `idx_tickets_open_unresponded` is gated on the same predicate.
-      const openTickets = await db.select({
-        id: tickets.id,
-        dept: tickets.dept,
-        createdAt: tickets.createdAt,
-      })
-        .from(tickets)
-        .where(and(
-          eq(tickets.partnerId, partner.id),
-          inArray(tickets.status, ['open', 'pending']),
-          isNull(tickets.firstStaffResponseAt),
-        ));
+    // Only sweep tickets that could still be resolved by a staff reply.
+    // Closed/resolved tickets stay out — the partial index
+    // `idx_tickets_open_unresponded` is gated on the same predicate.
+    const openTickets = await db.select({
+      id: tickets.id,
+      dept: tickets.dept,
+      createdAt: tickets.createdAt,
+    })
+      .from(tickets)
+      .where(and(
+        eq(tickets.partnerId, partner.id),
+        inArray(tickets.status, ['open', 'pending']),
+        isNull(tickets.firstStaffResponseAt),
+      ));
 
-      for (const ticket of openTickets as Array<{ id: string; dept: string; createdAt: string }>) {
-        summary.ticketsChecked++;
-        const dept = slaDepts.find((d) => d.id === ticket.dept);
-        if (!dept || !dept.sla) continue;
+    for (const ticket of openTickets as Array<{ id: string; dept: string; createdAt: string }>) {
+      summary.ticketsChecked++;
+      const dept = slaDepts.find((d) => d.id === ticket.dept);
+      if (!dept || !dept.sla) continue;
 
-        const state = computeSlaState({
-          ticketCreatedAt: ticket.createdAt,
-          firstStaffResponseAt: null,
-          sla: dept.sla,
-          schedule,
-          now,
-        });
+      const state = computeSlaState({
+        ticketCreatedAt: ticket.createdAt,
+        firstStaffResponseAt: null,
+        sla: dept.sla,
+        schedule,
+        now,
+      });
 
-        if (state.status !== 'breached') continue;
+      if (state.status !== 'breached') continue;
 
-        // Idempotent insert keyed off unique(ticket_id). onConflictDoNothing
-        // → returning() gives us [] on conflict, one row on fresh insert.
-        const inserted = await db.insert(slaBreaches).values({
-          id: `sla_${crypto.randomUUID()}`,
+      // Idempotent insert keyed off unique(ticket_id). onConflictDoNothing
+      // → returning() gives us [] on conflict, one row on fresh insert.
+      const inserted = await db.insert(slaBreaches).values({
+        id: `sla_${crypto.randomUUID()}`,
+        ticketId: ticket.id,
+        partnerId: partner.id,
+        dept: ticket.dept,
+        thresholdMinutes: dept.sla.firstResponseMinutes,
+        breachedAt: now.toISOString(),
+      }).onConflictDoNothing({ target: slaBreaches.ticketId }).returning({ id: slaBreaches.id });
+
+      if (inserted.length > 0) {
+        summary.breachesInserted++;
+
+        // Socket broadcast — short-circuits when io is null (tests that
+        // don't opt-in via setSlaIo never hit emit).
+        io?.to(`ticket:${ticket.id}`).emit('sla:breach', {
           ticketId: ticket.id,
           partnerId: partner.id,
-          dept: ticket.dept,
-          thresholdMinutes: dept.sla.firstResponseMinutes,
-          breachedAt: now.toISOString(),
-        }).onConflictDoNothing({ target: slaBreaches.ticketId }).returning({ id: slaBreaches.id });
+          department: ticket.dept,
+          overdueMinutes: state.overdueMinutes,
+        });
 
-        if (inserted.length > 0) {
-          summary.breachesInserted++;
-          slaBreachesTotal.inc({ partner_id: partner.id, department: ticket.dept });
-
-          // Socket broadcast — short-circuits when io is null (tests that
-          // don't opt-in via setSlaIo never hit emit).
-          io?.to(`ticket:${ticket.id}`).emit('sla:breach', {
-            ticketId: ticket.id,
-            partnerId: partner.id,
-            department: ticket.dept,
-            overdueMinutes: state.overdueMinutes,
-          });
-
-          logger.info(
-            { ticketId: ticket.id, partnerId: partner.id, dept: ticket.dept, overdueMinutes: state.overdueMinutes },
-            '[sla] breach recorded',
-          );
-        }
+        logger.info(
+          { ticketId: ticket.id, partnerId: partner.id, dept: ticket.dept, overdueMinutes: state.overdueMinutes },
+          '[sla] breach recorded',
+        );
       }
     }
-
-    slaSweepRunsTotal.inc();
-    return summary;
-  } finally {
-    endTimer();
   }
+
+  return summary;
 }
 
 export function scheduleSlaSweep(): () => void {
