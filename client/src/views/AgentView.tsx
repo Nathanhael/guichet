@@ -100,6 +100,23 @@ export default function AgentView() {
     [tickets, user?.id],
   );
 
+  // Per-membership persistence key for the focused ticket. Without this, the
+  // Zustand store reset on hard-refresh wiped the focus and the agent had to
+  // hunt for the ticket they were on. SupportView already does this for its
+  // tab list (`guichet:activeTab:${membershipId}`).
+  const ticketStorageKey = activeMembershipId ? `guichet:activeTicket:${activeMembershipId}` : null;
+
+  // Hydrate from localStorage when the store has no focus yet. We only honour
+  // the saved id when it still matches a non-closed ticket — closed/transferred
+  // tickets fall through to the auto-route below.
+  useEffect(() => {
+    if (!ticketStorageKey || activeTicketId) return;
+    const saved = localStorage.getItem(ticketStorageKey);
+    if (saved && tickets.some((tk) => tk.id === saved && tk.status !== 'closed')) {
+      setActiveTicketId(saved);
+    }
+  }, [ticketStorageKey, activeTicketId, tickets, setActiveTicketId]);
+
   // Auto-route to the agent's open ticket. Agents have a 1-ticket limit and
   // cannot "leave" the chat panel — the only way out is to close the ticket.
   useEffect(() => {
@@ -107,6 +124,16 @@ export default function AgentView() {
       setActiveTicketId(agentTicket.id);
     }
   }, [agentTicket, activeTicketId, setActiveTicketId]);
+
+  // Persist focus changes so the next refresh lands on the same ticket.
+  useEffect(() => {
+    if (!ticketStorageKey) return;
+    if (activeTicketId) {
+      localStorage.setItem(ticketStorageKey, activeTicketId);
+    } else {
+      localStorage.removeItem(ticketStorageKey);
+    }
+  }, [ticketStorageKey, activeTicketId]);
 
   // tRPC ticket list
   const { data: ticketList } = trpc.ticket.list.useQuery(
