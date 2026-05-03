@@ -63,6 +63,44 @@ function StatusDot({ ok }: { ok: boolean }) {
   );
 }
 
+type PillKind = 'valid' | 'broken' | 'error';
+
+function StatusPill({ kind }: { kind: PillKind }) {
+  const styles: Record<PillKind, string> = {
+    valid: 'bg-[var(--color-ok-soft,rgba(34,197,94,0.12))] text-[var(--color-ok)]',
+    broken: 'bg-[var(--color-urgent-soft,rgba(239,68,68,0.12))] text-[var(--color-urgent)]',
+    error: 'bg-[var(--color-accent-amber-soft,rgba(245,158,11,0.14))] text-[var(--color-accent-amber)]',
+  };
+  const label: Record<PillKind, string> = { valid: 'VALID', broken: 'BROKEN', error: 'ERROR' };
+  return (
+    <span
+      className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] text-[11px] font-semibold tracking-[0.04em] ${styles[kind]}`}
+    >
+      {label[kind]}
+    </span>
+  );
+}
+
+function recordKind(r: { valid?: boolean; error?: string | null }): PillKind {
+  if (r.error) return 'error';
+  return r.valid ? 'valid' : 'broken';
+}
+
+/** Compact "5 min ago" / "2 h ago" / "3 d ago" — falls back to absolute date past 30 days. */
+function relativeTime(iso: string, now: number = Date.now()): string {
+  const then = new Date(iso).getTime();
+  const sec = Math.max(0, Math.round((now - then) / 1000));
+  if (sec < 45) return 'just now';
+  if (sec < 90) return '1 min ago';
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr} h ago`;
+  const day = Math.round(hr / 24);
+  if (day < 30) return `${day} d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
 export default function PlatformSystemHealth() {
   const t = useT();
   const utils = trpc.useUtils();
@@ -76,6 +114,8 @@ export default function PlatformSystemHealth() {
     retry: 1,
   });
   const [dismissedAlerts, setDismissedAlerts] = useState<string[]>([]);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const HISTORY_PREVIEW = 5;
 
   // Live push: server emits `audit:chain:broken` to platform operators when
   // chainVerifySchedule detects a tamper. Listening here just invalidates the
@@ -311,39 +351,61 @@ export default function PlatformSystemHealth() {
             <p className="text-[12px] text-[var(--color-ink-muted)] animate-pulse">Scanning archive…</p>
           )}
 
-          {lastVerify && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div>
-                <p className={FIELD_LABEL}>Status</p>
-                {lastVerify.error ? (
-                  <p className="text-[18px] font-medium text-[var(--color-accent-amber)] mt-1.5">ERROR</p>
-                ) : lastVerify.valid ? (
-                  <p className="text-[18px] font-medium text-[var(--color-ok)] mt-1.5">VALID</p>
-                ) : (
-                  <p className="text-[18px] font-medium text-[var(--color-urgent)] mt-1.5">BROKEN</p>
-                )}
-              </div>
-              <div>
-                <p className={FIELD_LABEL}>Entries Checked</p>
-                <p className="text-[18px] font-medium text-[var(--color-ink)] mt-1.5 tabular-nums">{lastVerify.checked.toLocaleString()}</p>
-              </div>
-              <div>
-                <p className={FIELD_LABEL}>Last Verified</p>
-                <p className="text-[13px] text-[var(--color-ink)] mt-1.5 tabular-nums">{new Date(lastVerify.ranAt).toLocaleString()}</p>
-                {lastVerify.ranBy === 'system-scheduler' ? (
-                  <p className="text-[11px] text-[var(--color-ink-muted)] mt-1 flex items-center gap-1.5">
-                    <span className="inline-block px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-                      Scheduled
-                    </span>
-                    {lastVerify.ranByName || 'Daily scheduler'}
-                  </p>
-                ) : lastVerify.ranByName ? (
-                  <p className="text-[11px] text-[var(--color-ink-muted)] mt-1">By {lastVerify.ranByName}</p>
-                ) : lastVerify.ranBy ? (
-                  <p className="text-[11px] text-[var(--color-ink-muted)] mt-1">By {lastVerify.ranBy}</p>
-                ) : null}
-              </div>
-              {lastVerify.brokenAt && (
+          {lastVerify && (() => {
+            const kind = recordKind(lastVerify);
+            const headlineColor =
+              kind === 'valid'
+                ? 'text-[var(--color-ok)]'
+                : kind === 'broken'
+                  ? 'text-[var(--color-urgent)]'
+                  : 'text-[var(--color-accent-amber)]';
+            const headlineMark = kind === 'valid' ? '✓' : kind === 'broken' ? '✕' : '!';
+            const totalRuns = chainHistory?.length ?? 1;
+            return (
+              <div className="space-y-5">
+                <p
+                  className={`text-[13px] font-medium flex items-center gap-2 ${headlineColor}`}
+                  data-testid="chain-headline-summary"
+                >
+                  <span aria-hidden="true">{headlineMark}</span>
+                  {kind === 'valid' && (
+                    <>
+                      Chain healthy · {totalRuns} run{totalRuns === 1 ? '' : 's'} verified · last {relativeTime(lastVerify.ranAt)}
+                    </>
+                  )}
+                  {kind === 'broken' && <>Chain integrity broken — investigate immediately.</>}
+                  {kind === 'error' && <>Last verification could not complete — see error below.</>}
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div>
+                    <p className={FIELD_LABEL}>Status</p>
+                    <div className="mt-1.5">
+                      <StatusPill kind={kind} />
+                    </div>
+                  </div>
+                  <div>
+                    <p className={FIELD_LABEL}>Entries Checked</p>
+                    <p className="text-[18px] font-medium text-[var(--color-ink)] mt-1.5 tabular-nums">{lastVerify.checked.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className={FIELD_LABEL}>Last Verified</p>
+                    <p className="text-[14px] font-medium text-[var(--color-ink)] mt-1.5">{relativeTime(lastVerify.ranAt)}</p>
+                    <p className="text-[11px] text-[var(--color-ink-muted)] mt-0.5 tabular-nums">{new Date(lastVerify.ranAt).toLocaleString()}</p>
+                    {lastVerify.ranBy === 'system-scheduler' ? (
+                      <p className="text-[11px] text-[var(--color-ink-muted)] mt-1 flex items-center gap-1.5">
+                        <span className="inline-block px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
+                          Scheduled
+                        </span>
+                        {lastVerify.ranByName || 'Daily scheduler'}
+                      </p>
+                    ) : lastVerify.ranByName ? (
+                      <p className="text-[11px] text-[var(--color-ink-muted)] mt-1">By {lastVerify.ranByName}</p>
+                    ) : lastVerify.ranBy ? (
+                      <p className="text-[11px] text-[var(--color-ink-muted)] mt-1">By {lastVerify.ranBy}</p>
+                    ) : null}
+                  </div>
+                  {lastVerify.brokenAt && (
                 <div className="md:col-span-3 pt-4 border-t border-[var(--color-border)]">
                   <p className={`${FIELD_LABEL} text-[var(--color-urgent)]`}>Broken At (archive id)</p>
                   <p className="font-mono text-[12px] break-all text-[var(--color-ink)] mt-1.5">{lastVerify.brokenAt}</p>
@@ -355,26 +417,45 @@ export default function PlatformSystemHealth() {
                   <p className="font-mono text-[12px] break-all text-[var(--color-ink)] mt-1.5">{lastVerify.error}</p>
                 </div>
               )}
-            </div>
-          )}
+                </div>
+              </div>
+            );
+          })()}
 
           {!lastVerify && !chainVerify.isPending && (
             <p className="text-[12px] text-[var(--color-ink-muted)]">No verification has been run yet.</p>
           )}
 
-          {chainHistory && chainHistory.length > 1 && (
+          {chainHistory && chainHistory.length > 1 && (() => {
+            const visible = historyExpanded
+              ? chainHistory
+              : chainHistory.slice(0, HISTORY_PREVIEW);
+            const hiddenCount = chainHistory.length - visible.length;
+            return (
             <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
               <div className="flex items-center justify-between mb-3">
                 <p className={FIELD_LABEL}>Run History</p>
-                <button
-                  type="button"
-                  onClick={() => exportChainHistoryCsv(chainHistory)}
-                  data-testid="export-chain-history-csv"
-                  className={SECONDARY_BTN}
-                  title="Download full chain verification history as CSV for compliance attestation"
-                >
-                  <Download className="h-3.5 w-3.5" /> Export CSV
-                </button>
+                <div className="flex items-center gap-2">
+                  {chainHistory.length > HISTORY_PREVIEW && (
+                    <button
+                      type="button"
+                      onClick={() => setHistoryExpanded(v => !v)}
+                      className={SECONDARY_BTN}
+                      data-testid="chain-history-toggle"
+                    >
+                      {historyExpanded ? 'Show less' : `Show all (${chainHistory.length})`}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => exportChainHistoryCsv(chainHistory)}
+                    data-testid="export-chain-history-csv"
+                    className={SECONDARY_BTN}
+                    title="Download full chain verification history as CSV for compliance attestation"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Export CSV
+                  </button>
+                </div>
               </div>
               <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] overflow-hidden">
                 <table
@@ -390,20 +471,15 @@ export default function PlatformSystemHealth() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
-                    {chainHistory.map((h, i) => (
+                    {visible.map((h, i) => (
                       <tr key={`${h.ranAt}-${i}`}>
-                        <td className="p-3 text-[12px] text-[var(--color-ink-soft)] tabular-nums whitespace-nowrap">
-                          {new Date(h.ranAt).toLocaleString()}
+                        <td className="p-3 text-[12px] text-[var(--color-ink)] whitespace-nowrap">
+                          <div className="text-[12px]">{relativeTime(h.ranAt)}</div>
+                          <div className="text-[10px] text-[var(--color-ink-muted)] tabular-nums mt-0.5">
+                            {new Date(h.ranAt).toLocaleString()}
+                          </div>
                         </td>
-                        <td className="p-3 text-[12px] font-medium">
-                          {h.error ? (
-                            <span className="text-[var(--color-accent-amber)]">ERROR</span>
-                          ) : h.valid ? (
-                            <span className="text-[var(--color-ok)]">VALID</span>
-                          ) : (
-                            <span className="text-[var(--color-urgent)]">BROKEN</span>
-                          )}
-                        </td>
+                        <td className="p-3"><StatusPill kind={recordKind(h)} /></td>
                         <td className="p-3 text-[12px] text-[var(--color-ink-soft)] tabular-nums">{h.checked.toLocaleString()}</td>
                         <td className="p-3 text-[12px] text-[var(--color-ink-soft)]">
                           {h.ranBy === 'system-scheduler' ? (
@@ -422,8 +498,14 @@ export default function PlatformSystemHealth() {
                   </tbody>
                 </table>
               </div>
+              {!historyExpanded && hiddenCount > 0 && (
+                <p className="text-[11px] text-[var(--color-ink-muted)] mt-2 text-center">
+                  {hiddenCount} earlier run{hiddenCount === 1 ? '' : 's'} hidden
+                </p>
+              )}
             </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
