@@ -190,6 +190,11 @@ export const messages = pgTable('messages', {
   index('idx_messages_ticket_created').on(table.ticketId, table.createdAt),
   index('idx_messages_reply_to_id').on(table.replyToId),
   index('idx_messages_search_vector').using('gin', table.searchVector),
+  // Tenant-isolation gate on the `/uploads` proxy: filename → owning partnerId
+  // via `services/uploadOwnership.lookupFilePartnerId`. JSONB containment hits
+  // the GIN index; legacy single-image messages use `media_url`.
+  index('idx_messages_attachments_gin').using('gin', table.attachments),
+  index('idx_messages_media_url').on(table.mediaUrl),
 ]);
 
 export const ratings = pgTable('ratings', {
