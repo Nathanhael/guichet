@@ -207,7 +207,7 @@ export interface Message {
    */
   improvedAt?: string | null;
   replyToId?: string | null;
-  replyTo?: { id: string; senderName: string; text: string; mediaUrl?: string | null } | null;
+  replyTo?: { id: string; senderName: string; senderLang?: string | null; text: string; mediaUrl?: string | null } | null;
   reactions: Record<string, string[]>;
   linkPreviews?: Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }> | null;
   translations?: Record<string, string>;
