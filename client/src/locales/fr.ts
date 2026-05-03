@@ -77,6 +77,7 @@ const fr: Record<string, string> = {
     translated_for_recipient: 'traduit pour le destinataire',
     show_translation: 'Afficher la traduction',
     show_original: 'Afficher l\'original',
+    hide_original: 'Masquer l\'original',
 
     // AI badge tooltips (slice 3)
     ai_badge_translated: 'Traduit par l\'IA',

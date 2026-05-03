@@ -81,6 +81,7 @@ const en: Record<string, string> = {
     translated_for_recipient: 'translated for recipient',
     show_translation: 'Show translation',
     show_original: 'Show original',
+    hide_original: 'Hide original',
 
     // AI badge tooltips (slice 3)
     ai_badge_translated: 'Translated by AI',
