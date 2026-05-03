@@ -16,6 +16,7 @@ import { useComposeLinkPreview } from '../../hooks/useComposeLinkPreview';
 import { useComposeAiImprove } from '../../hooks/useComposeAiImprove';
 import { useAiHealth } from '../../hooks/useAiHealth';
 import { useVoiceTranscribe } from '../../hooks/useVoiceTranscribe';
+import { useAutoTranslation } from '../../hooks/useTranslation';
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
@@ -175,6 +176,21 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   });
   const showMicButton = voiceEnabled && voice.isSupported;
   const elapsedLabel = `${Math.floor(voice.elapsedSec / 60)}:${String(voice.elapsedSec % 60).padStart(2, '0')}`;
+
+  // Translate the reply-to preview body when the source language differs from
+  // the viewer's. Reuses the same Redis cache key as the message bubble's
+  // QuoteBlock so a parent already rendered above hits the cache on click.
+  const replyTranslation = useAutoTranslation({
+    messageId: replyingTo?.id ?? '',
+    text: replyingTo?.text ?? '',
+    senderLang: replyingTo?.senderLang ?? '',
+    viewerLang: user?.lang || 'en',
+    enabled: !!replyingTo && aiConfig?.translation === true,
+  });
+  useEffect(() => {
+    if (replyTranslation.needsTranslation) replyTranslation.translate();
+  }, [replyTranslation]);
+  const replyDisplayText = replyTranslation.translated ?? (replyingTo?.text || '[Attachment]');
 
   // Imperative handle lives AFTER `voice` + `showMicButton` are in scope so
   // the toggleMic closure can read them. Keep this single useImperativeHandle
@@ -337,7 +353,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               <div className="text-[11px] font-semibold text-[var(--color-accent)] truncate">
                 {t('replying_to') || 'Replying to'} {replyingTo.senderName}
               </div>
-              <div className="text-[12px] text-[var(--color-ink-soft)] truncate">{replyingTo.text || '[Attachment]'}</div>
+              <div className="text-[12px] text-[var(--color-ink-soft)] truncate">{replyDisplayText}</div>
             </div>
             <button onClick={onClearReply} className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] p-1 shrink-0"><X size={14} /></button>
           </div>
