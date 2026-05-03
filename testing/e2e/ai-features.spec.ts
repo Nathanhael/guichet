@@ -51,9 +51,7 @@ async function enableAiFeatures(page: Page) {
           aiEnabled: true,
           aiFeatures: {
             messageImprovement: 'optional',
-            chatSummarization: true,
             translation: true,
-            autoSummarizeOnClose: true,
           },
         },
       }),
@@ -95,14 +93,6 @@ function mockAiResponses(page: Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           result: { data: { improved: 'This is an AI-improved version of the message with better clarity and structure.' } },
-        }),
-      });
-    } else if (url.includes('ai.summarizeChat')) {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          result: { data: { summary: 'The agent reported a network connectivity issue. Support suggested restarting the router. The issue is pending resolution.', cached: false } },
         }),
       });
     } else if (url.includes('ai.translateMessage')) {
@@ -161,9 +151,7 @@ test.describe('Sprint 1: Per-Tenant AI Configuration', () => {
           aiEnabled: true,
           aiFeatures: {
             messageImprovement: 'optional',
-            chatSummarization: true,
             translation: true,
-            autoSummarizeOnClose: true,
           },
         },
       },
@@ -336,103 +324,6 @@ test.describe('Sprint 1: AI Message Improvement', () => {
   });
 });
 
-// ── Sprint 1: Feature 3 — AI Chat Summarization ────────────────────────────
-
-test.describe('Sprint 1: AI Chat Summarization', () => {
-  test.beforeEach(async ({ page }) => {
-    await enableAiFeatures(page);
-  });
-
-  test('summarize button visible for support users', async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
-    if (!res.ok) {
-      throw new Error(
-        `Demo login failed (status ${res.status}). Check server/seed.ts.`,
-      );
-    }
-    await page.waitForTimeout(2000);
-
-    const opened = await openFirstTicket(page);
-    if (!opened) {
-      throw new Error(
-        'Could not open a ticket — seed must include a ticket visible to the test user.',
-      );
-    }
-
-    // Look for the summarize button
-    const summarizeBtn = page.locator('button[aria-label="Summarize conversation"]');
-    // May or may not be visible depending on AI config + ticket state (not closed)
-    const visible = await summarizeBtn.isVisible({ timeout: 5000 }).catch(() => false);
-
-    // Verify page loaded without errors
-    const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-    expect(errorVisible).toBeFalsy();
-  });
-
-  test('summarize button NOT visible for agents', async ({ page }) => {
-    const res = await loginAsDemo(page, 'agent_julie');
-    if (!res.ok) {
-      throw new Error(
-        `Demo login failed (status ${res.status}). Check server/seed.ts.`,
-      );
-    }
-    await page.waitForTimeout(2000);
-
-    const opened = await openFirstTicket(page);
-    if (!opened) {
-      throw new Error(
-        'Could not open a ticket — seed must include a ticket visible to the test user.',
-      );
-    }
-
-    // Agents should NOT see the summarize button
-    const summarizeBtn = page.locator('button[aria-label="Summarize conversation"]');
-    await expect(summarizeBtn).not.toBeVisible();
-  });
-
-  test('clicking summarize shows summary card (mocked)', async ({ page }) => {
-    await mockAiResponses(page);
-    const res = await loginAsDemo(page, 'support_lucas');
-    if (!res.ok) {
-      throw new Error(
-        `Demo login failed (status ${res.status}). Check server/seed.ts.`,
-      );
-    }
-    await page.waitForTimeout(2000);
-
-    const opened = await openFirstTicket(page);
-    if (!opened) {
-      throw new Error(
-        'Could not open a ticket — seed must include a ticket visible to the test user.',
-      );
-    }
-
-    const summarizeBtn = page.locator('button[aria-label="Summarize conversation"]');
-    if (await summarizeBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-      await summarizeBtn.click();
-      await page.waitForTimeout(2000);
-
-      // Summary card should appear with "AI Summary" label
-      const summaryCard = page.getByText(/AI Summary/i).first();
-      const cardVisible = await summaryCard.isVisible({ timeout: 5000 }).catch(() => false);
-      if (cardVisible) {
-        await expect(summaryCard).toBeVisible();
-
-        // Should have refresh and dismiss buttons
-        const refreshBtn = page.locator('button[aria-label="Refresh summary"]');
-        const dismissBtn = page.locator('button[aria-label="Dismiss summary"]');
-        await expect(refreshBtn).toBeVisible();
-        await expect(dismissBtn).toBeVisible();
-
-        // Dismiss the summary
-        await dismissBtn.click();
-        await page.waitForTimeout(500);
-        await expect(summaryCard).not.toBeVisible();
-      }
-    }
-  });
-});
-
 // ── Sprint 2: Feature 4 — AI Translation ───────────────────────────────────
 
 test.describe('Sprint 2: AI Translation', () => {
@@ -498,79 +389,9 @@ test.describe('Sprint 2: AI Translation', () => {
   });
 });
 
-// ── Sprint 2: Feature 6 — AI Auto-Summarize on Close ───────────────────────
-
-test.describe('Sprint 2: AI Auto-Summarize on Close', () => {
-  test('auto-summarize config is part of AI features', async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
-    if (!res.ok) {
-      throw new Error(
-        `Demo login failed (status ${res.status}). Check server/seed.ts.`,
-      );
-    }
-
-    const configRes = await page.request.get(
-      `${BASE}/api/v1/trpc/partner.getAiConfig`,
-      { failOnStatusCode: false }
-    );
-    expect(configRes.status()).toBe(200);
-    const body = await configRes.json();
-    const cfg = body.result?.data;
-    expect(cfg).toBeDefined();
-    // Should have autoSummarizeOnClose field
-    expect(cfg).toHaveProperty('autoSummarizeOnClose');
-    expect(typeof cfg.autoSummarizeOnClose).toBe('boolean');
-  });
-
-  test('closed tickets show closing notes area', async ({ page }) => {
-    const res = await loginAsDemo(page, 'support_lucas');
-    if (!res.ok) {
-      throw new Error(
-        `Demo login failed (status ${res.status}). Check server/seed.ts.`,
-      );
-    }
-    await page.waitForTimeout(2000);
-
-    // Navigate to archive tab
-    const archiveTab = page.getByText(/archive/i).first();
-    if (await archiveTab.isVisible().catch(() => false)) {
-      await archiveTab.click();
-      await page.waitForTimeout(1500);
-
-      // Try to open a closed ticket
-      const archivedTicket = page.locator('aside li').first();
-      if (await archivedTicket.isVisible().catch(() => false)) {
-        await archivedTicket.click();
-        await page.waitForTimeout(1000);
-        // Closed ticket view should render without errors
-        const errorVisible = await page.getByText(/error|crash/i).first().isVisible().catch(() => false);
-        expect(errorVisible).toBeFalsy();
-      }
-    }
-  });
-});
-
 // ── Cross-cutting: AI features respect role restrictions ────────────────────
 
 test.describe('AI Feature Access Control', () => {
-  test('agent cannot access summarize endpoint', async ({ page }) => {
-    const res = await loginAsDemo(page, 'agent_julie');
-    if (!res.ok) {
-      throw new Error(
-        `Demo login failed (status ${res.status}). Check server/seed.ts.`,
-      );
-    }
-
-    // Agents should get FORBIDDEN when trying to summarize
-    const summarizeRes = await page.request.post(`${BASE}/api/v1/trpc/ai.summarizeChat`, {
-      data: { ticketId: 'nonexistent' },
-      failOnStatusCode: false,
-    });
-
-    // Should be forbidden or bad request (not 200)
-    expect(summarizeRes.status()).not.toBe(200);
-  });
-
   test('agent CAN access improve endpoint', async ({ page }) => {
     await enableAiFeatures(page);
     const res = await loginAsDemo(page, 'agent_julie');

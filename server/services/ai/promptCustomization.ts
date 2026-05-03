@@ -10,7 +10,6 @@ interface PartnerTerms {
 interface PartnerCustomInstructions {
   improve?: string;
   translate?: string;
-  summarize?: string;
 }
 
 const PRESERVE_RE = /\{\{preserve_terms\}\}/g;
@@ -62,8 +61,8 @@ export async function applyPartnerCustomization(
   const forbiddenList = (terms.forbidden ?? []).join(', ');
   let result = prompt.replace(PRESERVE_RE, preserveList).replace(FORBIDDEN_RE, forbiddenList);
 
-  // Custom instructions only apply to the three "user-facing" AI actions.
-  if (action === 'improve' || action === 'translate' || action === 'summarize') {
+  // Custom instructions only apply to the user-facing AI actions.
+  if (action === 'improve' || action === 'translate') {
     const prefix = instructions[action];
     if (prefix && prefix.trim().length > 0) {
       result = `${prefix}\n\n${result}`;

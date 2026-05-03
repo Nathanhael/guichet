@@ -37,9 +37,6 @@ export interface AiTranslationPort {
     targetLang: string;
     budgetMs: number;
   }): Promise<string | null>;
-
-  /** Drop cached AI summary for a ticket. Fire-and-forget contract. */
-  invalidateSummary(ticketId: string): Promise<void>;
 }
 
 // Re-export the moderation contract so messageLifecycle callers don't

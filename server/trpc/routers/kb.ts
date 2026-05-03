@@ -118,13 +118,12 @@ export const kbRouter = router({
 
       // Try AI-powered ranking
       try {
-        const { getProvider } = await import('../../services/ai/factory.js');
+        const { getProvider, isAiEnabled } = await import('../../services/ai/factory.js');
         const { logUsage } = await import('../../services/ai/usage.js');
         const { checkRateLimit } = await import('../../services/ai/rateLimit.js');
-        const { isFeatureEnabled } = await import('../../services/ai/config.js');
 
-        // Feature gate: require AI to be enabled for this partner
-        const enabled = await isFeatureEnabled(ctx.user.partnerId, 'chatSummarization');
+        // Gate on global + per-partner AI enablement
+        const enabled = await isAiEnabled(ctx.user.partnerId);
         if (!enabled) throw new Error('AI features disabled for this partner');
 
         // Rate limit check

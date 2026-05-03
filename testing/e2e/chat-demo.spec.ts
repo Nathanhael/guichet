@@ -35,9 +35,7 @@ async function enableAiFeatures(page: Page) {
           aiEnabled: true,
           aiFeatures: {
             messageImprovement: 'optional',
-            chatSummarization: true,
             translation: true,
-            autoSummarizeOnClose: true,
           },
         },
       }),

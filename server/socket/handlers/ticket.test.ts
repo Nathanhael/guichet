@@ -95,10 +95,7 @@ vi.mock('../../services/sla.js', () => ({
   calculateSlaDueDate: vi.fn(() => new Date()),
 }));
 
-vi.mock('../../services/ai/index.js', () => ({
-  invalidateSummary: vi.fn(async () => {}),
-  autoSummarizeOnClose: vi.fn(async () => {}),
-}));
+vi.mock('../../services/ai/index.js', () => ({}));
 
 vi.mock('../../utils/redis.js', () => ({
   getRedisClients: vi.fn(() => ({ pubClient: null, subClient: null })),

@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { StoreState, Ticket, TopicAlert } from '../../types';
+import { StoreState, Ticket } from '../../types';
 
 export interface TicketSlice {
   tickets: Ticket[];
@@ -9,7 +9,6 @@ export interface TicketSlice {
   participantsOnline: Record<string, boolean>;
   supportOpenTickets: string[];
   queuePosition: { position: number; etaMins: number } | null;
-  topicAlerts: TopicAlert[];
 
   setTickets: (tickets: Ticket[]) => void;
   addTicket: (ticket: Ticket) => void;
@@ -23,7 +22,6 @@ export interface TicketSlice {
   addSupportOpenTicket: (ticketId: string) => void;
   removeSupportOpenTicket: (ticketId: string) => void;
   setQueuePosition: (pos: { position: number; etaMins: number } | null) => void;
-  addTopicAlert: (alert: TopicAlert) => void;
   /** Slice-owned reset for the partner-scoped lifecycle (logout). Called by the
    * authSlice orchestrator; do not call from feature code. Keep in sync with
    * `ticketInitialState`. */
@@ -43,7 +41,6 @@ const ticketInitialState: Pick<
   | 'participantsOnline'
   | 'supportOpenTickets'
   | 'queuePosition'
-  | 'topicAlerts'
 > = {
   tickets: [],
   activeTicketId: null,
@@ -52,7 +49,6 @@ const ticketInitialState: Pick<
   participantsOnline: {},
   supportOpenTickets: [],
   queuePosition: null,
-  topicAlerts: [],
 };
 
 export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = (set, get) => ({
@@ -129,9 +125,5 @@ export const createTicketSlice: StateCreator<StoreState, [], [], TicketSlice> = 
       return { supportOpenTickets: next };
     }),
   setQueuePosition: (pos) => set({ queuePosition: pos }),
-  addTopicAlert: (alert) =>
-    set((state) => ({
-      topicAlerts: [alert, ...state.topicAlerts].slice(0, 50),
-    })),
   _resetTicketState: () => set(ticketInitialState),
 });

@@ -12,7 +12,6 @@ import {
 import { getBusinessHoursStatus, broadcastQueuePositions, BusinessHoursSchedule } from '../../services/businessHours.js';
 import { findPartnerConfig } from '../../services/partnerQueries.js';
 import { findUserName } from '../../services/userQueries.js';
-import { autoSummarizeOnClose } from '../../services/ai/index.js';
 import { applyEffects, socketActor } from '../../services/ticketLifecycle/index.js';
 import { can } from '../../services/auth/capabilities.js';
 import { MAX_LABELS_PER_TICKET } from '../../constants.js';
@@ -27,8 +26,6 @@ import {
 } from './types.js';
 
 export function register(socket: Socket, ctx: HandlerContext): void {
-  const { io } = ctx;
-
     socket.on('ticket:new', async (data: unknown) => {
       if (!requireIdentified(socket)) return;
       const parsed = validatePayload(socket, ticketNewSchema, data);
@@ -154,12 +151,6 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         }
 
         applyEffects(ctx.io, result.effects);
-
-        // Fire-and-forget AI auto-summarize — log on failure so an AI-provider
-        // outage leaves a trail instead of silently dropping summaries.
-        autoSummarizeOnClose(actor.partnerId, actor.userId, ticketId, io).catch((err) => {
-          logger.warn({ err: err instanceof Error ? err.message : String(err), ticketId, partnerId: actor.partnerId }, '[ticket:close] autoSummarize failed (non-fatal)');
-        });
       } catch (err: unknown) { logger.error({ err: err instanceof Error ? err.message : String(err) }, '[ticket:close] error'); }
     });
 

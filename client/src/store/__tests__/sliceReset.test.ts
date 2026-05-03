@@ -52,7 +52,6 @@ describe('slice reset registry', () => {
         participantsOnline: { t1: true },
         supportOpenTickets: ['t1', 't2'],
         queuePosition: { position: 2, etaMins: 5 },
-        topicAlerts: [{ id: 'a1' } as never],
       });
 
       useStore.getState()._resetTicketState();
@@ -65,7 +64,6 @@ describe('slice reset registry', () => {
       expect(s.participantsOnline).toEqual({});
       expect(s.supportOpenTickets).toEqual([]);
       expect(s.queuePosition).toBeNull();
-      expect(s.topicAlerts).toEqual([]);
     });
 
     it('does not touch other slices', () => {

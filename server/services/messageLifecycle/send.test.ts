@@ -14,8 +14,8 @@
  *   6. Empty message (no text/mediaUrl/attachments) → EMPTY_MESSAGE.
  *   7. Invalid mediaUrl → INVALID_MEDIA_URL.
  *   8. Happy path — INSERT, return ok with effects array containing
- *      emit/whisperEmit, notifyPreviewers, invalidateSummary, unfurlLinks
- *      in documented order; SLA stamp produces conditional slaResolved.
+ *      emit/whisperEmit, notifyPreviewers, unfurlLinks in documented order;
+ *      SLA stamp produces conditional slaResolved.
  */
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -89,7 +89,7 @@ afterEach(async () => {
 });
 
 describe('messageLifecycle.send', () => {
-  it('inserts a message + returns broadcast + notifyPreviewers + invalidateSummary effects', async () => {
+  it('inserts a message + returns broadcast + notifyPreviewers effects', async () => {
     const result = await lifecycle.send({
       ticketId: TICKET_A,
       partnerId: PARTNER_A,
@@ -106,7 +106,6 @@ describe('messageLifecycle.send', () => {
       expect.objectContaining({ type: 'emit', event: 'message:new' }),
     );
     expect(result.effects).toContainEqual({ type: 'notifyPreviewers', ticketId: TICKET_A });
-    expect(result.effects).toContainEqual({ type: 'invalidateSummary', ticketId: TICKET_A });
 
     const rows = await handle.db.select().from(messages).where(eq(messages.ticketId, TICKET_A));
     expect(rows).toHaveLength(1);
@@ -304,7 +303,7 @@ describe('messageLifecycle.send', () => {
     expect(result.effects.find(e => e.type === 'unfurlLinks')).toBeUndefined();
   });
 
-  it('returns effects in documented order: broadcast → slaResolved → notifyPreviewers → invalidateSummary → unfurlLinks', async () => {
+  it('returns effects in documented order: broadcast → slaResolved → notifyPreviewers → unfurlLinks', async () => {
     await handle.db.insert(slaBreaches).values({
       id: 'breach-order', ticketId: TICKET_A, partnerId: PARTNER_A, dept: 'general',
       thresholdMinutes: 30,
@@ -323,7 +322,6 @@ describe('messageLifecycle.send', () => {
       'emit',
       'slaResolved',
       'notifyPreviewers',
-      'invalidateSummary',
       'unfurlLinks',
     ]);
   });

@@ -22,9 +22,7 @@ import { applyPartnerCustomization } from './promptCustomization.js';
 
 type AiFeature =
   | 'messageImprovement'
-  | 'chatSummarization'
   | 'translation'
-  | 'autoSummarizeOnClose'
   | 'cannedTranslation';
 
 interface RunAiActionOpts {
@@ -68,11 +66,13 @@ export async function runAiAction(
     });
   }
 
-  // 3. Build prompt — interpolate user vars, then apply partner glossary +
-  //    custom-instruction prefix (slice 8.5).
+  // 3. Build prompt — apply partner glossary + custom-instruction prefix
+  //    BEFORE interpolating user vars. Glossary placeholders ({{preserve_terms}},
+  //    {{forbidden_terms}}) must be substituted before interpolate runs, since
+  //    interpolate replaces any unknown {{x}} with empty string.
   const template = await getPromptTemplate(opts.action, opts.partnerId);
-  const interpolated = interpolate(template, opts.vars);
-  const prompt = await applyPartnerCustomization(interpolated, opts.action, opts.partnerId);
+  const customized = await applyPartnerCustomization(template, opts.action, opts.partnerId);
+  const prompt = interpolate(customized, opts.vars);
 
   // 4. Call provider
   const provider = await getProvider(opts.partnerId);

@@ -5,9 +5,7 @@ export type ImprovementMode = 'off' | 'optional' | 'forced';
 
 export interface AiFeatures {
   messageImprovement?: ImprovementMode;
-  chatSummarization?: boolean;
   translation?: boolean;
-  autoSummarizeOnClose?: boolean;
   queueLangAwareness?: boolean;
   voiceTranscription?: boolean;
   cannedTranslation?: boolean;
@@ -20,9 +18,7 @@ const IMPROVEMENT_LEVEL: Record<ImprovementMode, number> = {
 };
 
 const BOOLEAN_FEATURES: ReadonlyArray<keyof AiFeatures> = [
-  'chatSummarization',
   'translation',
-  'autoSummarizeOnClose',
   'queueLangAwareness',
   'voiceTranscription',
   'cannedTranslation',

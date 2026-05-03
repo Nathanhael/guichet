@@ -14,7 +14,7 @@ The database has been overhauled for type safety and performance:
 - **Azure Identity Prep**: Added `email` and `external_id` columns to support OIDC integration.
 - **System Configuration**: Added `system_settings` table to store global infrastructure parameters (like mail provider credentials) manageable via the Platform UI.
 - **AI & Analytics Tables**: `ai_prompt_templates` (per-partner prompt customization), `ai_usage_log` (provider usage tracking with token counts and latency), `ratings` (ticket CSAT), `app_feedback` (in-app user feedback).
-- **Integration Tables**: `kb_articles` (per-partner knowledge base), `webhooks` + `webhook_logs` (event dispatch with HMAC signing and delivery tracking), `topic_alerts` (topic/incident-clustering alert rules with configurable thresholds), `partner_group_mappings` (SSO group→role/department mapping).
+- **Integration Tables**: `kb_articles` (per-partner knowledge base), `webhooks` + `webhook_logs` (event dispatch with HMAC signing and delivery tracking), `partner_group_mappings` (SSO group→role/department mapping).
 - **User Personalization**: `saved_views` (per-user saved ticket filter configurations per partner).
 
 ---
@@ -141,11 +141,10 @@ Extended with chain-verify result panel, ticket lifecycle stacked series, GDPR p
 
 ---
 
-## 9. Knowledge Base, Webhooks & Topic Alerts
+## 9. Knowledge Base, Webhooks & SLA
 
 - **Knowledge Base**: Per-partner `kb_articles` table with title, body, category. Full CRUD via `trpc.kb.*` router. Admin UI in `AdminKnowledgeBase` component.
 - **Webhooks**: Partners configure webhook endpoints (`webhooks` table) with event subscriptions and HMAC signing secrets. `webhookDispatch.ts` delivers events with retry logic. Delivery history in `webhook_logs`. Admin UI in `AdminWebhooks`.
-- **Topic Alerts**: Configurable incident-detection rules (`topic_alerts` table) firing on conversation-clustering thresholds. Admin UI in `AdminAlerts` lets staff acknowledge / resolve active alerts.
 - **SLA Monitoring**: Per-department first-response SLA (`sla_breaches` table + `tickets.first_staff_response_at`). Config in `AdminDepartments` (enable flag + threshold minutes + warn%). Breach worker (`services/slaSweep.ts`) sweeps every `SLA_SWEEP_INTERVAL_MS` (default 60000, 0 disables). Business-hours-aware elapsed counter skips off-hours. `SlaIndicator` pill renders in `ChatHeader`; QueueSidebar adds a red left-border on breached rows. Metrics: `guichet_sla_breaches_total`, `guichet_sla_sweep_runs_total`, `guichet_sla_first_response_minutes`. Alert rules live in `monitoring/alerts.yml`: `SlaBreachRateHigh`, `SlaWorkerDown`, `SlaResolutionLag`.
 - **CSAT Ratings**: Post-close ticket ratings (`ratings` table) with auto-prompt. Staff satisfaction dashboard with per-agent breakdown and date filtering. In-app feedback via `app_feedback` table and `FeedbackModal`.
 

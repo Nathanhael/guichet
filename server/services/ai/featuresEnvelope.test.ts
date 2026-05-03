@@ -28,7 +28,6 @@ describe('validateAiFeaturesEnvelope', () => {
     const f: AiFeatures = {
       messageImprovement: 'optional',
       translation: true,
-      chatSummarization: false,
       voiceTranscription: true,
     };
     expect(validateAiFeaturesEnvelope(f, f).ok).toBe(true);
@@ -117,26 +116,22 @@ describe('validateAiFeaturesEnvelope', () => {
     }
   });
 
-  it('covers all 6 boolean features (chatSummarization, translation, autoSummarizeOnClose, queueLangAwareness, voiceTranscription, cannedTranslation)', () => {
+  it('covers all 4 boolean features (translation, queueLangAwareness, voiceTranscription, cannedTranslation)', () => {
     const allOn: AiFeatures = {
-      chatSummarization: true,
       translation: true,
-      autoSummarizeOnClose: true,
       queueLangAwareness: true,
       voiceTranscription: true,
       cannedTranslation: true,
     };
     const allOff: AiFeatures = {
-      chatSummarization: false,
       translation: false,
-      autoSummarizeOnClose: false,
       queueLangAwareness: false,
       voiceTranscription: false,
       cannedTranslation: false,
     };
     const blocked = validateAiFeaturesEnvelope(allOn, allOff);
     expect(blocked.ok).toBe(false);
-    if (!blocked.ok) expect(blocked.violations).toHaveLength(6);
+    if (!blocked.ok) expect(blocked.violations).toHaveLength(4);
 
     const subset = validateAiFeaturesEnvelope(allOff, allOn);
     expect(subset.ok).toBe(true);

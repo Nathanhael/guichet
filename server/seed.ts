@@ -205,7 +205,7 @@ async function wipeDatabase() {
       webhook_logs, webhooks, ai_usage_log, daily_ai_usage, ai_prompt_templates,
       saved_views, refresh_tokens, ticket_labels, ratings, app_feedback,
       messages, tickets, archived_tickets, audit_archive, audit_log,
-      daily_stats, topic_alerts, canned_responses, kb_articles,
+      daily_stats, canned_responses, kb_articles,
       partner_group_mappings, labels, memberships, system_settings,
       daily_agent_status, agent_status_log,
       users, partners

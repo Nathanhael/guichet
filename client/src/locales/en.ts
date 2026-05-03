@@ -786,5 +786,24 @@ const en: Record<string, string> = {
     transcribe_failed: 'Transcription failed. Please try again.',
     transcribe_too_long: 'Recording stopped at the 60-second limit.',
     transcribe_empty: 'No speech detected.',
+
+    // Admin AI customization
+    admin_tab_ai: 'AI',
+    admin_ai_title: 'AI Customization',
+    admin_ai_desc: 'Tune how AI assists your team',
+    admin_ai_glossary_title: 'Glossary',
+    admin_ai_glossary_help: 'Words the AI must always preserve verbatim or never use. Comma-separated.',
+    admin_ai_glossary_preserve_label: 'Preserve verbatim',
+    admin_ai_glossary_preserve_help: 'Acronyms and brand names the AI should never translate or rephrase. Example: FTTP, MVNO, VoIP.',
+    admin_ai_glossary_forbidden_label: 'Forbidden words',
+    admin_ai_glossary_forbidden_help: 'Terms the AI must never use in suggestions. Example: competitor brand names.',
+    admin_ai_instructions_title: 'Custom instructions',
+    admin_ai_instructions_help: 'Free-form guidance prepended to the prompt for each action.',
+    admin_ai_instructions_improve_label: 'Improve',
+    admin_ai_instructions_improve_help: 'Applied when staff click Improve on a draft message — bias tone, register, or formatting.',
+    admin_ai_instructions_translate_label: 'Translate',
+    admin_ai_instructions_translate_help: 'Applied when staff translate a draft — bias formality or domain wording.',
+    admin_ai_save: 'Save',
+    admin_ai_saved_toast: 'AI customization saved',
 };
 export default en;

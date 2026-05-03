@@ -774,5 +774,24 @@ const fr: Record<string, string> = {
     transcribe_failed: 'Échec de la transcription. Réessayez.',
     transcribe_too_long: 'Enregistrement arrêté à la limite de 60 secondes.',
     transcribe_empty: 'Aucune parole détectée.',
+
+    // Admin AI customization
+    admin_tab_ai: 'IA',
+    admin_ai_title: 'Personnalisation IA',
+    admin_ai_desc: 'Affinez l’aide apportée par l’IA à votre équipe',
+    admin_ai_glossary_title: 'Glossaire',
+    admin_ai_glossary_help: 'Mots que l’IA doit toujours préserver ou ne jamais utiliser. Séparés par des virgules.',
+    admin_ai_glossary_preserve_label: 'Préserver à l’identique',
+    admin_ai_glossary_preserve_help: 'Acronymes et noms de marque que l’IA ne doit jamais traduire ni reformuler. Exemple : FTTP, MVNO, VoIP.',
+    admin_ai_glossary_forbidden_label: 'Mots interdits',
+    admin_ai_glossary_forbidden_help: 'Termes que l’IA ne doit jamais utiliser dans ses suggestions. Exemple : noms de concurrents.',
+    admin_ai_instructions_title: 'Instructions personnalisées',
+    admin_ai_instructions_help: 'Directives libres ajoutées au prompt pour chaque action.',
+    admin_ai_instructions_improve_label: 'Améliorer',
+    admin_ai_instructions_improve_help: 'Appliqué quand le support clique sur Améliorer — orientez le ton, le registre ou le format.',
+    admin_ai_instructions_translate_label: 'Traduire',
+    admin_ai_instructions_translate_help: 'Appliqué lors d’une traduction — orientez la formalité ou le vocabulaire métier.',
+    admin_ai_save: 'Enregistrer',
+    admin_ai_saved_toast: 'Personnalisation IA enregistrée',
 };
 export default fr;

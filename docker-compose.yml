@@ -133,8 +133,12 @@ services:
       retries: 5
       start_period: 60s
 
+  # Monitoring stack — opt-in via `--profile monitoring`. Default `docker compose up`
+  # skips Prometheus, Alertmanager, and Grafana. Bring them up only when you want
+  # to scrape `/metrics` or view dashboards: `docker compose --profile monitoring up`.
   prometheus:
     image: prom/prometheus:latest
+    profiles: ["monitoring"]
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
@@ -153,6 +157,7 @@ services:
   # `--config.expand-env` so the file can ship secret-free.
   alertmanager:
     image: prom/alertmanager:latest
+    profiles: ["monitoring"]
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
@@ -175,6 +180,7 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    profiles: ["monitoring"]
     volumes:
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards

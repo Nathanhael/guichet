@@ -6,7 +6,6 @@
  * Wired in `server/app.ts` alongside `createMessageLifecycle`. Test code
  * imports nothing from here — it uses the in-memory stubs in `../test/stubs.ts`.
  */
-import { invalidateSummary } from '../../ai/summaryCache.js';
 import { runAiAction } from '../../ai/runAction.js';
 import { unfurlLinks } from '../../linkPreview.js';
 import { getModerator } from '../../moderator/instance.js';
@@ -34,10 +33,9 @@ const LANG_LABEL: Record<string, string> = {
 };
 
 /**
- * Wraps `runAiAction` for translation + the existing `invalidateSummary`
- * Redis-cache helper. The `budgetMs` parameter is honored at the call-site
- * race in the lifecycle, not inside the adapter — `runAiAction` itself
- * has its own internal timeouts.
+ * Wraps `runAiAction` for translation. The `budgetMs` parameter is honored
+ * at the call-site race in the lifecycle, not inside the adapter —
+ * `runAiAction` itself has its own internal timeouts.
  */
 export function aiTranslationAdapter(): AiTranslationPort {
   return {
@@ -60,7 +58,6 @@ export function aiTranslationAdapter(): AiTranslationPort {
         return null;
       }
     },
-    invalidateSummary: (ticketId) => invalidateSummary(ticketId),
   };
 }
 

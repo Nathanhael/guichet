@@ -8,7 +8,6 @@ import type { Server } from 'socket.io';
 import logger from '../../utils/logger.js';
 import { Rooms } from '../../utils/rooms.js';
 import { broadcastQueuePositions } from '../businessHours.js';
-import { invalidateSummary as invalidateAiSummary } from '../ai/summaryCache.js';
 import { unfurlLinks } from '../linkPreview.js';
 import { updateMessageLinkPreviews } from '../messageQueries.js';
 import type { Effect } from './types.js';
@@ -87,11 +86,6 @@ export function applyEffects(io: Server, effects: Effect[]): void {
             partnerId: effect.partnerId,
             respondedInMinutes: effect.respondedInMinutes,
           });
-          break;
-        case 'invalidateSummary':
-          // Fire-and-forget — the AI summary cache bust is a best-effort
-          // post-commit nicety; the helper logs its own errors.
-          void invalidateAiSummary(effect.ticketId).catch(() => {});
           break;
         case 'unfurlLinks': {
           // Background: extract OG metadata, persist on the message row,

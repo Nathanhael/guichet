@@ -16,7 +16,7 @@
  *  - reply snippet resolution (when `replyToId` is set)
  *  - 250ms AI translation prewarm race per viewer language
  *  - effect array assembled in documented order: emit (or whisperEmit)
- *    → slaResolved? → notifyPreviewers → invalidateSummary → unfurlLinks
+ *    → slaResolved? → notifyPreviewers → unfurlLinks
  */
 import crypto from 'node:crypto';
 
@@ -278,7 +278,6 @@ export async function runSend(
   }
 
   effects.push({ type: 'notifyPreviewers', ticketId: args.ticketId });
-  effects.push({ type: 'invalidateSummary', ticketId: args.ticketId });
 
   // Background unfurl link previews (only for non-whisper public sends).
   if (!isWhisper && text && URL_REGEX.test(text)) {

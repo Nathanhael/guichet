@@ -14,13 +14,11 @@ import AdminCannedResponses from '../components/admin/AdminCannedResponses';
 // import AdminWebhooks from '../components/admin/AdminWebhooks';
 import AdminBusinessHours from '../components/admin/AdminBusinessHours';
 import AdminDepartments from '../components/admin/AdminDepartments';
-import AdminAlerts from '../components/admin/AdminAlerts';
 import AdminAi from '../components/admin/AdminAi';
 import AdminTeam from '../components/admin/AdminTeam';
 import AdminAuditLog from '../components/admin/AdminAuditLog';
 import PartnerUnavailable from '../components/PartnerUnavailable';
 import {
-  Flame,
   Building2,
   Users,
   FileText,
@@ -45,7 +43,6 @@ const LoadingFallback = () => (
 type AdminTab =
   | 'dashboard'
   | 'satisfaction'
-  | 'alerts'
   | 'team'
   | 'business_hours'
   | 'departments'
@@ -142,7 +139,6 @@ export default function AdminView() {
             <div className="flex flex-col gap-0.5">
               {navItem('dashboard', t('dashboard'), <LayoutDashboard className="h-4 w-4" />)}
               {navItem('satisfaction', 'Satisfaction', <Star className="h-4 w-4" />)}
-              {navItem('alerts', 'Alerts', <Flame className="h-4 w-4" />)}
             </div>
 
             <NavGroupLabel>Operations</NavGroupLabel>
@@ -186,7 +182,6 @@ export default function AdminView() {
           {view === 'dashboard' && <Suspense fallback={<LoadingFallback />}><DashboardView /></Suspense>}
           {view === 'satisfaction' && <Suspense fallback={<LoadingFallback />}><AdminSatisfaction /></Suspense>}
           {view === 'team' && <AdminTeam />}
-          {view === 'alerts' && <AdminAlerts />}
           {view === 'business_hours' && <AdminBusinessHours />}
           {view === 'departments' && <AdminDepartments />}
           {view === 'tickets' && <AdminTickets />}

@@ -22,14 +22,10 @@ Conversation:
 
 Suggested reply:`,
 
-  summarize: `Summarize this support conversation in 2-3 sentences. Include: the problem reported, what has been tried, and the current status.
-
-Conversation:
-<user_content>
-{{messages}}
-</user_content>`,
-
   improve: `Rewrite the following message to be clearer, more professional, and well-structured. Keep the same meaning, tone, AND language as the original — if the original is Dutch, reply in Dutch; French stays French; English stays English. Do not add information that wasn't in the original. Reply with ONLY the rewritten message itself — no preamble, no surrounding quotes, no commentary, no "Here's a clearer version" introduction.
+
+Words to preserve verbatim (never translate or rephrase): {{preserve_terms}}.
+Forbidden words (never use in the rewrite): {{forbidden_terms}}.
 
 Original message:
 <user_content>
@@ -39,6 +35,9 @@ Original message:
 Improved message:`,
 
   translate: `Translate the following text to {{targetLang}}. Preserve the tone and meaning. Reply with ONLY the translation, nothing else.
+
+Words to preserve verbatim (copy exactly, do not translate): {{preserve_terms}}.
+Forbidden words (never use in the translation): {{forbidden_terms}}.
 
 Text:
 <user_content>

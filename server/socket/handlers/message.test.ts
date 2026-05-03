@@ -56,10 +56,7 @@ vi.mock('../../services/roles.js', () => ({
   isPlatformAdmin: (v: boolean) => v,
 }));
 
-vi.mock('../../services/ai/index.js', () => ({
-  invalidateSummary: vi.fn(async () => {}),
-  autoSummarizeOnClose: vi.fn(async () => {}),
-}));
+vi.mock('../../services/ai/index.js', () => ({}));
 
 vi.mock('../../services/sla.js', () => ({
   parseSlaConfig: vi.fn(() => null),

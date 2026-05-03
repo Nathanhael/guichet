@@ -1,22 +1,16 @@
 import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
 import { router, partnerScopedProcedure } from '../trpc.js';
-import { notFound, forbidden } from '../../utils/trpcErrors.js';
+import { notFound } from '../../utils/trpcErrors.js';
 import { db } from '../../db.js';
 import { aiUsageLog, aiFeedback } from '../../db/schema.js';
 import {
-  getCachedSummary,
-  setCachedSummary,
-  formatMessagesForAi,
   runAiAction,
-  verifyTicketOwnership,
-  fetchTicketMessages,
   getCachedTranslation,
   setCachedTranslation,
   getProvider,
 } from '../../services/ai/index.js';
 import { getEffectiveAuditVerbosity } from '../../services/ai/auditVerbosity.js';
-import { canUseSupportWorkflows } from '../../services/roles.js';
 
 export const aiRouter = router({
   /**
@@ -83,61 +77,6 @@ export const aiRouter = router({
       await setCachedTranslation(input.messageId, input.targetLang, translated);
 
       return { translated };
-    }),
-
-  /**
-   * Summarize a chat conversation.
-   * Only available to support/admin users.
-   * Results are cached in Redis with a 30-min TTL.
-   */
-  summarizeChat: partnerScopedProcedure
-    .input(z.object({
-      ticketId: z.string(),
-      refresh: z.boolean().optional().default(false),
-    }))
-    .mutation(async ({ input, ctx }) => {
-      const partnerId = ctx.user.partnerId;
-
-      // Only support/admin can summarize
-      if (!canUseSupportWorkflows(ctx.user.role, ctx.user.isPlatformOperator)) {
-        throw forbidden('Only support staff can summarize chats');
-      }
-
-      // Verify ticket exists and belongs to this partner
-      const ticket = await verifyTicketOwnership(input.ticketId, partnerId);
-      if (!ticket) throw notFound('Ticket');
-
-      // Check cache (unless refresh is requested)
-      if (!input.refresh) {
-        const cached = await getCachedSummary(input.ticketId);
-        if (cached) return { summary: cached, cached: true };
-      }
-
-      // Fetch messages
-      const userMessages = await fetchTicketMessages(input.ticketId);
-
-      if (userMessages.length === 0) {
-        return { summary: 'No messages to summarize.', cached: false };
-      }
-
-      const formatted = formatMessagesForAi(userMessages);
-
-      const result = await runAiAction({
-        partnerId,
-        userId: ctx.user.id,
-        feature: 'chatSummarization',
-        action: 'summarize',
-        vars: { messages: formatted },
-        temperature: 0.3,
-        maxTokens: 512,
-      });
-
-      const summary = result.content.trim();
-
-      // Cache the result
-      await setCachedSummary(input.ticketId, summary);
-
-      return { summary, cached: false };
     }),
 
   /**

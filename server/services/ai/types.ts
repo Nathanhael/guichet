@@ -39,7 +39,6 @@ export interface AiProvider {
 export type AiAction =
   | 'classify'
   | 'suggest'
-  | 'summarize'
   | 'improve'
   | 'translate'
   | 'match_canned'
@@ -82,10 +81,8 @@ export type ImprovementMode = 'off' | 'optional' | 'forced';
 export interface PartnerAiConfig {
   /** 'off' = disabled, 'optional' = sparkle button, 'forced' = auto-improve on send */
   messageImprovement?: ImprovementMode;
-  chatSummarization?: boolean;
   /** When true, messages are auto-translated based on senderLang vs viewerLang */
   translation?: boolean;
-  autoSummarizeOnClose?: boolean;
   /** When true, support staff can dictate replies via mic; backend exposes /transcribe */
   voiceTranscription?: boolean;
   /** When true, canned responses are auto-translated to NL/FR/EN; admin-editable. */
