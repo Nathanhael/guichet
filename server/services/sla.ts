@@ -1,7 +1,7 @@
 import { toZonedTime, formatInTimeZone } from 'date-fns-tz';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db.js';
-import { tickets, slaBreaches, partners, topicAlerts } from '../db/schema.js';
+import { tickets, slaBreaches, partners } from '../db/schema.js';
 import {
   slaResolutionsTotal,
   slaFirstResponseMinutes,
@@ -222,18 +222,6 @@ export async function runSlaSweep(now: Date = new Date()): Promise<SweepSummary>
         if (inserted.length > 0) {
           summary.breachesInserted++;
           slaBreachesTotal.inc({ partner_id: partner.id, department: ticket.dept });
-
-          // Denormalized projection into topic_alerts (spec §Data Model).
-          await db.insert(topicAlerts).values({
-            id: `alert_sla_${crypto.randomUUID()}`,
-            partnerId: partner.id,
-            dept: ticket.dept,
-            topic: 'SLA breach',
-            summary: `Ticket ${ticket.id} exceeded ${dept.sla.firstResponseMinutes}m first-response SLA by ${state.overdueMinutes}m`,
-            severity: 'high',
-            ticketCount: 1,
-            status: 'active',
-          }).onConflictDoNothing();
 
           // Socket broadcast — short-circuits when io is null (tests that
           // don't opt-in via setSlaIo never hit emit).

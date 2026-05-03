@@ -107,18 +107,14 @@ export const platformPartnersRouter = router({
         aiEnabled: z.boolean().optional(),
         aiFeatures: z.object({
           messageImprovement: z.enum(['off', 'optional', 'forced']).optional(),
-          chatSummarization: z.boolean().optional(),
           translation: z.boolean().optional(),
-          autoSummarizeOnClose: z.boolean().optional(),
           queueLangAwareness: z.boolean().optional(),
           voiceTranscription: z.boolean().optional(),
           cannedTranslation: z.boolean().optional(),
         }).optional(),
         aiFeaturesAvailable: z.object({
           messageImprovement: z.enum(['off', 'optional', 'forced']).optional(),
-          chatSummarization: z.boolean().optional(),
           translation: z.boolean().optional(),
-          autoSummarizeOnClose: z.boolean().optional(),
           queueLangAwareness: z.boolean().optional(),
           voiceTranscription: z.boolean().optional(),
           cannedTranslation: z.boolean().optional(),

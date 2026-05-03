@@ -22,13 +22,11 @@ const h = vi.hoisted(() => {
   // Each entry is the rows the next slaBreaches insert returning() resolves to.
   const slaBreachesInsertReturnQueue: unknown[][] = [];
   const slaBreachesInsertValuesCalls: Rec[] = [];
-  const topicAlertsInsertValuesCalls: Rec[] = [];
 
   const tableMarkers = {
     tickets: Symbol('tickets'),
     slaBreaches: Symbol('slaBreaches'),
     partners: Symbol('partners'),
-    topicAlerts: Symbol('topicAlerts'),
   };
 
   function makeTicketsUpdateChain() {
@@ -84,20 +82,16 @@ const h = vi.hoisted(() => {
   const selectMock = vi.fn((_projection?: unknown) => makeSelectChain());
 
   // INSERT chain — supports .values(...).onConflictDoNothing(...).returning(...)
-  // as well as the bare .values(...).onConflictDoNothing() for topic_alerts.
   function makeInsertChain(marker: symbol) {
     const chain: Rec = {};
     chain.values = (row: Rec | Rec[]) => {
       const single = Array.isArray(row) ? row[0] : row;
       if (marker === tableMarkers.slaBreaches) slaBreachesInsertValuesCalls.push(single);
-      else if (marker === tableMarkers.topicAlerts) topicAlertsInsertValuesCalls.push(single);
-      // onConflictDoNothing can be chained with .returning() OR awaited directly.
       const tail: Rec = {};
       tail.returning = async () => {
         if (marker === tableMarkers.slaBreaches) return slaBreachesInsertReturnQueue.shift() ?? [];
         return [];
       };
-      // Make the tail itself thenable so `await chain.values(...).onConflictDoNothing()` works.
       tail.then = (onFulfilled: (v: unknown) => unknown, onRejected?: (r: unknown) => unknown) =>
         Promise.resolve(undefined).then(onFulfilled, onRejected);
       const mid: Rec = {};
@@ -110,7 +104,6 @@ const h = vi.hoisted(() => {
   const insertMock = vi.fn((table: unknown) => {
     const marker = (table as Rec | undefined)?.__marker as symbol | undefined;
     if (marker === tableMarkers.slaBreaches) return makeInsertChain(tableMarkers.slaBreaches);
-    if (marker === tableMarkers.topicAlerts) return makeInsertChain(tableMarkers.topicAlerts);
     throw new Error('db.insert called with unexpected table');
   });
 
@@ -134,7 +127,6 @@ const h = vi.hoisted(() => {
     ticketsSelectReturnQueue,
     slaBreachesInsertReturnQueue,
     slaBreachesInsertValuesCalls,
-    topicAlertsInsertValuesCalls,
     tableMarkers,
     dbMock,
     updateMock,
@@ -155,7 +147,6 @@ vi.mock('../db/schema.js', () => ({
   tickets: { __marker: h.tableMarkers.tickets, id: 'id', partnerId: 'partner_id', dept: 'dept', createdAt: 'created_at', firstStaffResponseAt: 'first_staff_response_at' },
   slaBreaches: { __marker: h.tableMarkers.slaBreaches, id: 'id', ticketId: 'ticket_id', resolvedAt: 'resolved_at', resolvedReason: 'resolved_reason' },
   partners: { __marker: h.tableMarkers.partners, id: 'id', status: 'status' },
-  topicAlerts: { __marker: h.tableMarkers.topicAlerts, id: 'id', partnerId: 'partner_id' },
 }));
 
 vi.mock('drizzle-orm', () => ({
@@ -196,7 +187,6 @@ beforeEach(() => {
   h.ticketsSelectReturnQueue.length = 0;
   h.slaBreachesInsertReturnQueue.length = 0;
   h.slaBreachesInsertValuesCalls.length = 0;
-  h.topicAlertsInsertValuesCalls.length = 0;
   h.resolutionsIncMock.mockClear();
   h.firstResponseObserveMock.mockClear();
   h.breachesIncMock.mockClear();
@@ -440,8 +430,6 @@ describe('runSlaSweep', () => {
   }
 
   it('writes one sla_breaches row per breached ticket and is idempotent on re-run', async () => {
-    // First run: partners lookup returns the SLA partner, tickets lookup returns one breaching ticket,
-    // slaBreaches insert returns the inserted row (new breach), topicAlerts insert resolves silently.
     h.partnersSelectReturnQueue.push([PARTNER_WITH_SLA]);
     h.ticketsSelectReturnQueue.push([breachingTicket('t1')]);
     h.slaBreachesInsertReturnQueue.push([{ id: 'b1' }]);
@@ -457,15 +445,6 @@ describe('runSlaSweep', () => {
       dept: 'general',
       thresholdMinutes: 30,
     });
-    // Projection into topic_alerts should happen once.
-    expect(h.topicAlertsInsertValuesCalls).toHaveLength(1);
-    expect(h.topicAlertsInsertValuesCalls[0]).toMatchObject({
-      partnerId: 'pA',
-      dept: 'general',
-      topic: 'SLA breach',
-      ticketCount: 1,
-    });
-    // Breach counter incremented with snake_case labels.
     expect(h.breachesIncMock).toHaveBeenCalledWith({ partner_id: 'pA', department: 'general' });
 
     // Second run: same inputs, but the onConflictDoNothing on ticketId means the insert returns [].
@@ -475,8 +454,6 @@ describe('runSlaSweep', () => {
 
     const second = await runSlaSweep();
     expect(second.breachesInserted).toBe(0);
-    // The topic_alerts insert must NOT happen on the idempotent re-run.
-    expect(h.topicAlertsInsertValuesCalls).toHaveLength(1); // unchanged from first run
   });
 
   it('does not see tickets from other partners (cross-tenant isolation)', async () => {
@@ -494,7 +471,6 @@ describe('runSlaSweep', () => {
     expect(summary.partnersChecked).toBe(1);
     expect(summary.breachesInserted).toBe(0);
     expect(h.slaBreachesInsertValuesCalls).toHaveLength(0);
-    expect(h.topicAlertsInsertValuesCalls).toHaveLength(0);
     expect(h.breachesIncMock).not.toHaveBeenCalled();
   });
 

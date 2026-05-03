@@ -10,8 +10,6 @@ const tsvector = customType<{ data: string }>({
 // Enums
 export const roleEnum = pgEnum('user_role', ['agent', 'support', 'admin', 'platform_operator']);
 export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'pending', 'closed', 'resolved']);
-export const severityEnum = pgEnum('severity', ['low', 'medium', 'high', 'critical']);
-export const alertStatusEnum = pgEnum('alert_status', ['active', 'acknowledged', 'resolved']);
 export const membershipSourceEnum = pgEnum('membership_source', ['sso', 'manual']);
 
 export const partners = pgTable('partners', {
@@ -267,21 +265,6 @@ export const dailyStats = pgTable('daily_stats', {
   hourly: jsonb('hourly').default({}),
 }, (table) => [
   primaryKey({ columns: [table.date, table.partnerId] }),
-]);
-
-export const topicAlerts = pgTable('topic_alerts', {
-  id: text('id').primaryKey(),
-  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
-  dept: text('dept').notNull(),
-  topic: text('topic').notNull(),
-  summary: text('summary').notNull(),
-  severity: severityEnum('severity').default('medium'),
-  ticketCount: integer('ticket_count').notNull(),
-  status: alertStatusEnum('status').default('active'),
-  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
-  resolvedAt: timestamp('resolved_at', { mode: 'string' }),
-}, (table) => [
-  index('idx_alerts_partner_status').on(table.partnerId, table.status),
 ]);
 
 export const slaBreaches = pgTable('sla_breaches', {

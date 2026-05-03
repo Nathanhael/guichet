@@ -4,9 +4,7 @@ import { getAiContext } from './context.js';
 
 const DEFAULT_CONFIG: PartnerAiConfig = {
   messageImprovement: 'off',
-  chatSummarization: false,
   translation: false,
-  autoSummarizeOnClose: false,
 };
 
 /**
@@ -42,9 +40,7 @@ export async function getPartnerAiConfig(partnerId: string): Promise<PartnerAiCo
 
   return {
     messageImprovement: improvementMode,
-    chatSummarization: features.chatSummarization === true,
     translation: features.translation === true,
-    autoSummarizeOnClose: features.autoSummarizeOnClose === true,
     voiceTranscription: features.voiceTranscription === true,
     cannedTranslation: features.cannedTranslation === true,
   };
@@ -58,9 +54,7 @@ export async function isFeatureEnabled(
   partnerId: string,
   feature:
     | 'messageImprovement'
-    | 'chatSummarization'
     | 'translation'
-    | 'autoSummarizeOnClose'
     | 'voiceTranscription'
     | 'cannedTranslation',
 ): Promise<boolean> {

@@ -243,7 +243,7 @@ export interface MessageLifecycle {
    * (sync fail-closed + Redis fail-open) + attachment validation + whisper
    * authz clamp + SLA first-staff-response stamp + reply snippet + AI
    * translation prewarm (raced against 250ms budget) + the broadcast +
-   * preview invalidation + summary cache bust + background link unfurl.
+   * preview invalidation + background link unfurl.
    */
   send(args: SendArgs): Promise<MessageLifecycleResult<SendOk>>;
 }

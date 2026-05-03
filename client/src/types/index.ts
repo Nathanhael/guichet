@@ -159,7 +159,6 @@ export interface Ticket {
   closedBy?: string | null;
   participants: Participant[];
   labels: string[];
-  summary?: string | null;
   reopened?: boolean | null;
   reopenCount?: number | null;
 }
@@ -338,15 +337,3 @@ export interface Rating {
   createdAt: string;
 }
 
-export interface TopicAlert {
-  id: string;
-  partnerId: string;
-  dept: string;
-  topic: string;
-  summary: string;
-  severity: 'low' | 'medium' | 'high';
-  ticketCount: number;
-  status: 'active' | 'acknowledged' | 'resolved';
-  createdAt: string;
-  resolvedAt?: string | null;
-}

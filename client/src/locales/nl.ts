@@ -774,5 +774,24 @@ const nl: Record<string, string> = {
     transcribe_failed: 'Transcriptie mislukt. Probeer opnieuw.',
     transcribe_too_long: 'Opname gestopt bij de limiet van 60 seconden.',
     transcribe_empty: 'Geen spraak gedetecteerd.',
+
+    // Admin AI customization
+    admin_tab_ai: 'AI',
+    admin_ai_title: 'AI-aanpassing',
+    admin_ai_desc: 'Stem af hoe AI je team helpt',
+    admin_ai_glossary_title: 'Woordenlijst',
+    admin_ai_glossary_help: 'Woorden die de AI altijd letterlijk moet behouden of nooit mag gebruiken. Komma-gescheiden.',
+    admin_ai_glossary_preserve_label: 'Letterlijk behouden',
+    admin_ai_glossary_preserve_help: 'Afkortingen en merknamen die de AI nooit mag vertalen of herformuleren. Voorbeeld: FTTP, MVNO, VoIP.',
+    admin_ai_glossary_forbidden_label: 'Verboden woorden',
+    admin_ai_glossary_forbidden_help: 'Termen die de AI nooit mag gebruiken in suggesties. Voorbeeld: namen van concurrenten.',
+    admin_ai_instructions_title: 'Aangepaste instructies',
+    admin_ai_instructions_help: 'Vrije richtlijnen die voor elke actie aan de prompt worden toegevoegd.',
+    admin_ai_instructions_improve_label: 'Verbeteren',
+    admin_ai_instructions_improve_help: 'Toegepast wanneer support op Verbeteren klikt — stuur toon, register of opmaak.',
+    admin_ai_instructions_translate_label: 'Vertalen',
+    admin_ai_instructions_translate_help: 'Toegepast bij het vertalen van een bericht — stuur formaliteit of vakjargon.',
+    admin_ai_save: 'Opslaan',
+    admin_ai_saved_toast: 'AI-aanpassing opgeslagen',
 };
 export default nl;

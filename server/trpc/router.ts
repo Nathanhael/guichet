@@ -10,7 +10,6 @@ import { savedViewRouter } from './routers/savedView.js';
 import { userRouter } from './routers/user.js';
 import { platformRouter } from './routers/platform/index.js';
 import { partnerRouter } from './routers/partner/index.js';
-import { alertsRouter } from './routers/alerts.js';
 import { cannedResponseRouter } from './routers/cannedResponse.js';
 import { kbRouter } from './routers/kb.js';
 import { webhookRouter } from './routers/webhook.js';
@@ -48,7 +47,6 @@ export const appRouter = router({
   user: userRouter,
   platform: platformRouter,
   partner: partnerRouter,
-  alerts: alertsRouter,
   webhook: webhookRouter,
   linkPreview: linkPreviewRouter,
   sla: slaRouter,

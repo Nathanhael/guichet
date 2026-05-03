@@ -4,8 +4,7 @@ import { playNotificationSound } from '../utils/notificationSound';
 import { io, Socket } from 'socket.io-client';
 import useStore, { useStoreShallow } from '../store/useStore';
 import { SOCKET_URL } from '../config';
-import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, TopicAlert, Participant } from '../types';
-import { isTenantAdmin } from '../utils/roles';
+import { Ticket, Message, OnlineSupport, Label, BusinessHoursStatus, Participant } from '../types';
 
 let socket: Socket | null = null;
 /** Module-level guard so listeners are attached exactly once for the singleton socket */
@@ -62,7 +61,6 @@ export function useSocket(): Socket | null {
     setTyping, 
     setOnlineSupportUsers,
     setOnlineAgentIds,
-    addTopicAlert,
     setActiveTicketId,
   } = useStoreShallow((s) => ({
     user: s.user,
@@ -75,7 +73,6 @@ export function useSocket(): Socket | null {
     setTyping: s.setTyping,
     setOnlineSupportUsers: s.setOnlineSupportUsers,
     setOnlineAgentIds: s.setOnlineAgentIds,
-    addTopicAlert: s.addTopicAlert,
     setActiveTicketId: s.setActiveTicketId,
   }));
   
@@ -406,19 +403,6 @@ export function useSocket(): Socket | null {
       }
     };
 
-    const handleTopicAlert = (alert: TopicAlert) => {
-      const state = useStore.getState();
-      if (isTenantAdmin(state.user?.role)) {
-        addTopicAlert(alert);
-        if (state.notificationsEnabled) {
-          notify(`Topic alert: ${alert.topic || 'Trending'}`, {
-            body: alert.summary || '',
-            tag: `alert-${alert.id}`,
-          });
-        }
-      }
-    };
-
     const handlePartnerDeactivated = ({ partnerId }: { partnerId: string }) => {
       const state = useStore.getState();
       const updatedMemberships = state.memberships.map(m =>
@@ -477,7 +461,6 @@ export function useSocket(): Socket | null {
     s.on('label:created', handleLabelCreated);
     s.on('label:updated', handleLabelUpdated);
     s.on('hours:closed', handleHoursClosed);
-    s.on('topic:alert', handleTopicAlert);
     s.on('partner:deactivated', handlePartnerDeactivated);
     s.on('user:deactivated', handleUserDeactivated);
     s.on('auth:expired', handleAuthExpired);
@@ -517,7 +500,6 @@ export function useSocket(): Socket | null {
       s.off('label:created', handleLabelCreated);
       s.off('label:updated', handleLabelUpdated);
       s.off('hours:closed', handleHoursClosed);
-      s.off('topic:alert', handleTopicAlert);
       s.off('partner:deactivated', handlePartnerDeactivated);
       s.off('user:deactivated', handleUserDeactivated);
       s.off('auth:expired', handleAuthExpired);
@@ -527,7 +509,7 @@ export function useSocket(): Socket | null {
     // is a no-op while logged out; without `user` in the deps, the effect never
     // re-runs after login and listeners stay un-attached — the UI receives no
     // socket events until a hard refresh.
-  }, [user, addMessage, addTicket, setMessages, setOnlineSupportUsers, setOnlineAgentIds, setTyping, updateTicket, setBusinessHoursStatus, addTopicAlert, setActiveTicketId]);
+  }, [user, addMessage, addTicket, setMessages, setOnlineSupportUsers, setOnlineAgentIds, setTyping, updateTicket, setBusinessHoursStatus, setActiveTicketId]);
 
   // Only construct the singleton socket once we have a user, so the login
   // screen does not spin up a pre-auth socket that fails JWT middleware and

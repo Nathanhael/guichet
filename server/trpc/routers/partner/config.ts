@@ -379,7 +379,6 @@ export const partnerConfigRouter = router({
       aiCustomInstructions: z.object({
         improve: z.string().max(2000).optional(),
         translate: z.string().max(2000).optional(),
-        summarize: z.string().max(2000).optional(),
       }).optional(),
     }))
     .mutation(async ({ input, ctx }) => {
@@ -430,7 +429,6 @@ export const partnerConfigRouter = router({
       aiCustomInstructions: {
         improve: instructions.improve ?? '',
         translate: instructions.translate ?? '',
-        summarize: instructions.summarize ?? '',
       },
     };
   }),

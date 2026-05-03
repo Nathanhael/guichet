@@ -10,9 +10,7 @@ interface EditPartnerModalProps {
 }
 
 const BOOLEAN_FEATURES: { key: Exclude<keyof AiFeatures, 'messageImprovement'>; label: string; description: string }[] = [
-  { key: 'chatSummarization', label: 'Chat Summarization', description: 'Generate summaries of support conversations' },
   { key: 'translation', label: 'Auto-Translation', description: 'Automatically translate messages between nl/en/fr based on user language' },
-  { key: 'autoSummarizeOnClose', label: 'Auto-Summarize on Close', description: 'Generate summary when ticket is closed' },
   { key: 'queueLangAwareness', label: 'Queue Language Awareness', description: 'Show per-language staffing header + cross-lang banner; pre-warm translations for cross-lang tickets' },
   { key: 'voiceTranscription', label: 'Voice Transcription', description: 'Support staff can dictate replies via microphone (Azure Whisper)' },
   { key: 'cannedTranslation', label: 'Canned Translation', description: 'Auto-translate canned responses to nl/fr/en at write-time; admin-editable' },

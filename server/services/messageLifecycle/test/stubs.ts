@@ -33,31 +33,16 @@ export function inMemoryLinkPreview(
 
 // ─── aiTranslation ───────────────────────────────────────────────────────
 
-/**
- * Returns canned translations keyed by `${sourceText}|${targetLang}`.
- * `summaries` is a recording set so tests can assert which ticketIds had
- * their AI summary cache busted.
- */
-export interface CannedTranslationHandle {
-  port: AiTranslationPort;
-  summaries: Set<string>;
-}
-
+/** Returns canned translations keyed by `${sourceText}|${targetLang}`. */
 export function cannedTranslation(
   fixtures: Record<string, string> = {},
-): AiTranslationPort & { __summaries: Set<string> } {
-  const summaries = new Set<string>();
-  const port: AiTranslationPort & { __summaries: Set<string> } = {
-    __summaries: summaries,
+): AiTranslationPort {
+  return {
     async translate(args): Promise<string | null> {
       const key = `${args.text}|${args.targetLang}`;
       return fixtures[key] ?? null;
     },
-    async invalidateSummary(ticketId: string): Promise<void> {
-      summaries.add(ticketId);
-    },
   };
-  return port;
 }
 
 // ─── moderation ──────────────────────────────────────────────────────────

@@ -79,9 +79,9 @@ export type Result<Ok> =
  *
  * NOTE: this union is shared between `ticketLifecycle` AND `messageLifecycle`
  * (which reuses `applyEffects` to keep dispatch logic single-sourced). The
- * message-specific variants (`whisperEmit`, `slaResolved`, `invalidateSummary`,
- * `unfurlLinks`) live here for that reason. If/when a third lifecycle ever
- * lands, promote shared bits to a `services/lifecycle/` directory.
+ * message-specific variants (`whisperEmit`, `slaResolved`, `unfurlLinks`)
+ * live here for that reason. If/when a third lifecycle ever lands, promote
+ * shared bits to a `services/lifecycle/` directory.
  */
 export type Effect =
   | { type: 'emit'; rooms: string[]; event: string; payload: unknown }
@@ -93,8 +93,6 @@ export type Effect =
   | { type: 'whisperEmit'; ticketId: string; event: string; payload: unknown }
   /** First-staff-response SLA breach was resolved by the latest send. */
   | { type: 'slaResolved'; ticketId: string; partnerId: string; respondedInMinutes: number }
-  /** Drop the AI summary cache for a ticket — fire-and-forget. */
-  | { type: 'invalidateSummary'; ticketId: string }
   /** Unfurl URL metadata in `text` for `messageId`, then broadcast `message:linkPreview`. Background. */
   | { type: 'unfurlLinks'; ticketId: string; messageId: string; text: string };
 
