@@ -6,44 +6,17 @@ import path from 'path';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const appSource = readFileSync(path.join(__dirname, '../app.ts'), 'utf-8');
 
-describe('SEC-6: /uploads route authentication guard', () => {
-  it('should import jwtVerify from jose in app.ts', () => {
-    expect(appSource).toMatch(/import\s*\{[^}]*jwtVerify[^}]*\}\s*from\s*['"]jose['"]/);
+// SEC-6 + tenant-isolation gate are enforced by middleware/uploadProxy.ts.
+// Behavioral coverage (401 / 403 / 404 / 200 / path-traversal) lives in
+// middleware/uploadProxy.test.ts. This file only asserts that app.ts wires
+// the gate so the handler can`t be silently bypassed by a future edit that
+// drops the route.
+describe('SEC-6: /uploads is mounted behind the tenant gate', () => {
+  it('imports the upload proxy handler', () => {
+    expect(appSource).toMatch(/import\s*\{\s*uploadProxyHandler\s*\}\s*from\s*['"][^'"]*uploadProxy[^'"]*['"]/);
   });
 
-  it('should have a JWT cookie check before serving uploads', () => {
-    // Find the /uploads block — must contain guichet_token check before file serving
-    const uploadsBlock = appSource.match(
-      /app\.use\(['"]\/uploads['"][\s\S]*?storage\.read\(/
-    );
-    expect(uploadsBlock).not.toBeNull();
-
-    const block = uploadsBlock![0];
-
-    // Must check guichet_token cookie
-    expect(block).toContain('guichet_token');
-
-    // Must call jwtVerify
-    expect(block).toMatch(/jwtVerify\(/);
-
-    // Must respond 401 when no token
-    expect(block).toContain('401');
-
-    // Auth check must come BEFORE storage read
-    const authCheckPos = block.indexOf('guichet_token');
-    const storagePos = block.indexOf('storage.read');
-    expect(authCheckPos).toBeLessThan(storagePos);
-  });
-
-  it('should return 401 json error when token is missing', () => {
-    expect(appSource).toContain("'Authentication required'");
-  });
-
-  it('should use config.JWT_SECRET for verification', () => {
-    expect(appSource).toMatch(/jwtVerify\(token,\s*new TextEncoder/);
-  });
-
-  it('should guard against path traversal', () => {
-    expect(appSource).toContain('..');
+  it('mounts the proxy at /uploads using the imported handler', () => {
+    expect(appSource).toMatch(/app\.use\(\s*['"]\/uploads['"]\s*,\s*uploadProxyHandler\s*\)/);
   });
 });
