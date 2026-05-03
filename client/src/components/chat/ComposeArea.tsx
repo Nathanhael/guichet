@@ -647,7 +647,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           pending={pendingImprove}
           onSendImproved={() => { void confirmSendImproved(); }}
           onSendOriginal={() => { void confirmSendOriginal(); }}
-          onDismiss={dismissImprove}
+          onDismiss={() => { dismissImprove(); compose.focus(); }}
         />
       )}
     </form>

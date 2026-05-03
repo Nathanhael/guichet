@@ -63,6 +63,7 @@ const fr: Record<string, string> = {
     improve_modal_title: "L'IA a am\u00e9lior\u00e9 votre message",
     improve_modal_original_label: 'Original',
     improve_modal_improved_label: 'Am\u00e9lior\u00e9',
+    improve_modal_esc_hint: 'pour fermer',
     improve_send_improved: 'Envoyer la version am\u00e9lior\u00e9e',
     improve_send_original: "Envoyer l'original",
     improve_thumbs_up_aria: 'Noter positivement la suggestion IA',
