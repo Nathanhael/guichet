@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ThumbsUp, ThumbsDown, Sparkles } from 'lucide-react';
 import { useT } from '../../i18n';
 import { trpc } from '../../utils/trpc';
@@ -39,6 +39,29 @@ export default function ImproveDiffModal({
   const [feedbackToast, setFeedbackToast] = useState(false);
 
   const canSubmitFeedback = pending.usageLogId !== null;
+
+  // Keyboard control for the modal:
+  //   Enter             → Send improved (primary action)
+  //   Shift+Enter       → Send original
+  //   Esc               → Modal primitive's own dismiss handler closes the
+  //                       overlay (no send) — we do not bind it here.
+  // The handler runs while the modal is mounted and aware of any focused
+  // input via target check, so dictation in a future inner field still gets
+  // the Enter key. Today the modal has no text inputs but the guard is cheap.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.defaultPrevented) return;
+      if (e.key !== 'Enter') return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      const editable = (e.target as HTMLElement | null)?.isContentEditable;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || editable) return;
+      e.preventDefault();
+      if (e.shiftKey) onSendOriginal();
+      else onSendImproved();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onSendImproved, onSendOriginal]);
 
   function handleThumbs(rating: 'up' | 'down') {
     if (!canSubmitFeedback || feedbackChoice !== null) return;

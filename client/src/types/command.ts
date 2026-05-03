@@ -26,6 +26,7 @@ export interface Command {
 export interface ChatWindowHandle {
   focusTextarea: () => void;
   toggleWhisper: () => void;
+  toggleMic: () => void;
   openTransferMenu: () => void;
   triggerCloseTicket: () => void;
 }
