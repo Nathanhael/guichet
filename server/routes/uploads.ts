@@ -7,6 +7,7 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import config from '../config.js';
 import { auth } from '../middleware/auth.js';
 import { getStorage } from '../services/storage.js';
+import { stripImageMetadata } from '../services/exifStrip.js';
 
 // HI-06 fix: Rate limit uploads to prevent abuse by authenticated users
 const uploadRateLimit = rateLimit({
@@ -70,18 +71,24 @@ router.post('/', auth, uploadRateLimit, memoryGuard, (req: Request, res: Respons
 
     if (!req.file) return res.status(400).json({ error: 'No file received' });
 
+    let detectedMime: string | undefined;
     try {
       const meta = await fileTypeFromBuffer(req.file.buffer);
       if (meta && !config.UPLOAD_ALLOWED_TYPES.includes(meta.mime)) {
         return res.status(400).json({ error: 'Invalid file type' });
       }
+      detectedMime = meta?.mime;
     } catch {
       return res.status(500).json({ error: 'Error validating file' });
     }
 
+    // Strip EXIF / GPS / camera fingerprint from images before storage.
+    // Non-image MIMEs (PDF, Office, CSV, text) pass through unchanged.
+    const cleanBuffer = await stripImageMetadata(req.file.buffer, detectedMime ?? req.file.mimetype);
+
     const filename = `${crypto.randomUUID()}${path.extname(req.file.originalname)}`;
     const storage = getStorage();
-    const url = await storage.upload(req.file.buffer, filename, req.file.mimetype);
+    const url = await storage.upload(cleanBuffer, filename, req.file.mimetype);
     res.json({ url });
   });
 });
@@ -102,18 +109,21 @@ router.post('/multi', auth, uploadRateLimit, memoryGuard, (req: Request, res: Re
     const results: Array<{ url: string; name: string; mimeType: string; size: number }> = [];
 
     for (const file of files) {
+      let detectedMime: string | undefined;
       try {
         const detected = await fileTypeFromBuffer(file.buffer);
         if (detected && !config.UPLOAD_ALLOWED_TYPES.includes(detected.mime)) {
           continue; // Skip invalid files
         }
+        detectedMime = detected?.mime;
       } catch {
         continue;
       }
 
+      const cleanBuffer = await stripImageMetadata(file.buffer, detectedMime ?? file.mimetype);
       const filename = `${crypto.randomUUID()}${path.extname(file.originalname)}`;
-      const url = await storage.upload(file.buffer, filename, file.mimetype);
-      results.push({ url, name: file.originalname, mimeType: file.mimetype, size: file.size });
+      const url = await storage.upload(cleanBuffer, filename, file.mimetype);
+      results.push({ url, name: file.originalname, mimeType: file.mimetype, size: cleanBuffer.length });
     }
 
     if (results.length === 0) return res.status(400).json({ error: 'No valid files' });
