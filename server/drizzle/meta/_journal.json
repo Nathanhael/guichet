@@ -92,6 +92,20 @@
       "when": 1777815467620,
       "tag": "0012_add_attachments_filename_index",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1777822926220,
+      "tag": "0013_canned_translations",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1778083200000,
+      "tag": "0014_drop_topic_alerts",
+      "breakpoints": true
     }
   ]
 }

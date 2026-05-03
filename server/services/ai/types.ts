@@ -88,6 +88,8 @@ export interface PartnerAiConfig {
   autoSummarizeOnClose?: boolean;
   /** When true, support staff can dictate replies via mic; backend exposes /transcribe */
   voiceTranscription?: boolean;
+  /** When true, canned responses are auto-translated to NL/FR/EN; admin-editable. */
+  cannedTranslation?: boolean;
   rateLimits?: {
     perMinute?: number;
     perDay?: number;

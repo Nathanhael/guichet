@@ -80,6 +80,16 @@ export interface CreateTicketOptions {
   supportId?: string;
 }
 
+export interface SeedCannedOptions {
+  title: string;
+  body: string;
+  sourceLang?: FixtureLang;
+  bodyTranslations?: Partial<Record<FixtureLang, string>>;
+  staleTranslations?: Partial<Record<FixtureLang, boolean>>;
+  dept?: string;
+  shortcut?: string;
+}
+
 export interface PartnerFixture {
   partnerId: string;
   departments: PartnerDepartment[];
@@ -91,6 +101,8 @@ export interface PartnerFixture {
   createTicket(opts?: CreateTicketOptions): Promise<string>;
   /** Stage agent presence + status_log to a known state (scoped to this partner). */
   resetAgentStatus(opts: { userId: string; status?: FixtureStatus }): Promise<void>;
+  /** Seed a canned response with explicit body + translations (skips AI). */
+  seedCanned(opts: SeedCannedOptions): Promise<string>;
 }
 
 // ── Internals ────────────────────────────────────────────────────────────
@@ -189,6 +201,24 @@ export const test = base.extend<{ partnerFixture: PartnerFixture }>({
           partnerId: created.partnerId,
           status: opts.status ?? 'online',
         });
+      },
+
+      async seedCanned(opts) {
+        const { cannedId } = await callTrpc<{ cannedId: string }>(
+          page,
+          'testFixtures.seedCanned',
+          {
+            partnerId: created.partnerId,
+            title: opts.title,
+            body: opts.body,
+            sourceLang: opts.sourceLang ?? 'en',
+            bodyTranslations: opts.bodyTranslations ?? {},
+            staleTranslations: opts.staleTranslations ?? {},
+            dept: opts.dept,
+            shortcut: opts.shortcut,
+          },
+        );
+        return cannedId;
       },
     };
 

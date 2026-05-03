@@ -81,10 +81,22 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
     };
   }, []);
 
-  const { data: responses } = trpc.cannedResponse.list.useQuery(
-    { dept },
-    { enabled: !!user }
+  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, {
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+  const featureOn = !!aiConfigQuery.data?.cannedTranslation;
+  const usePickerEndpoint = featureOn && !!ticketId;
+
+  const { data: pickerResponses } = trpc.cannedResponse.getForPicker.useQuery(
+    { ticketId: ticketId ?? '', dept },
+    { enabled: !!user && usePickerEndpoint },
   );
+  const { data: listResponses } = trpc.cannedResponse.list.useQuery(
+    { dept },
+    { enabled: !!user && !usePickerEndpoint },
+  );
+  const responses = usePickerEndpoint ? pickerResponses : listResponses;
 
   const query = inputText.startsWith('/') ? inputText.slice(1).toLowerCase() : '';
 

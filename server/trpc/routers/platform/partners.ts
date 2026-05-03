@@ -112,6 +112,7 @@ export const platformPartnersRouter = router({
           autoSummarizeOnClose: z.boolean().optional(),
           queueLangAwareness: z.boolean().optional(),
           voiceTranscription: z.boolean().optional(),
+          cannedTranslation: z.boolean().optional(),
         }).optional(),
         aiFeaturesAvailable: z.object({
           messageImprovement: z.enum(['off', 'optional', 'forced']).optional(),
@@ -120,6 +121,7 @@ export const platformPartnersRouter = router({
           autoSummarizeOnClose: z.boolean().optional(),
           queueLangAwareness: z.boolean().optional(),
           voiceTranscription: z.boolean().optional(),
+          cannedTranslation: z.boolean().optional(),
         }).nullable().optional(),
         aiConfig: z.object({
           baseUrl: z.string().url().optional(),

@@ -46,6 +46,7 @@ export async function getPartnerAiConfig(partnerId: string): Promise<PartnerAiCo
     translation: features.translation === true,
     autoSummarizeOnClose: features.autoSummarizeOnClose === true,
     voiceTranscription: features.voiceTranscription === true,
+    cannedTranslation: features.cannedTranslation === true,
   };
 }
 
@@ -60,7 +61,8 @@ export async function isFeatureEnabled(
     | 'chatSummarization'
     | 'translation'
     | 'autoSummarizeOnClose'
-    | 'voiceTranscription',
+    | 'voiceTranscription'
+    | 'cannedTranslation',
 ): Promise<boolean> {
   const aiConfig = await getPartnerAiConfig(partnerId);
   const val = aiConfig[feature];

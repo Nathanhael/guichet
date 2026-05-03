@@ -24,7 +24,8 @@ type AiFeature =
   | 'messageImprovement'
   | 'chatSummarization'
   | 'translation'
-  | 'autoSummarizeOnClose';
+  | 'autoSummarizeOnClose'
+  | 'cannedTranslation';
 
 interface RunAiActionOpts {
   partnerId: string;

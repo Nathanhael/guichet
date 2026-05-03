@@ -580,6 +580,14 @@ const nl: Record<string, string> = {
     shortcut: 'Sneltoets',
     body_preview: 'Voorbeeld',
     variables_hint: 'Variabelen: {{agentName}} {{supportName}} {{ticketId}}',
+    admin_canned_translate_label: 'Vertaling',
+    admin_canned_translate_source_lang: 'Brontaal',
+    admin_canned_translate_regenerate: 'Opnieuw vertalen',
+    admin_canned_translate_stale: 'Bron gewijzigd — vertaling is mogelijk verouderd',
+    admin_canned_translate_backfill_banner: '{count} standaardantwoorden hebben nog geen vertaling',
+    admin_canned_translate_backfill_button: 'Alles vertalen',
+    admin_canned_translate_translating: 'Vertalen…',
+    admin_canned_translate_no_translation: 'Nog geen vertaling',
 
     // Knowledge Base
     knowledge_base: 'Kennisbank',

@@ -580,6 +580,14 @@ const fr: Record<string, string> = {
     shortcut: 'Raccourci',
     body_preview: 'Aper\u00e7u du contenu',
     variables_hint: 'Variables : {{agentName}} {{supportName}} {{ticketId}}',
+    admin_canned_translate_label: 'Traduction',
+    admin_canned_translate_source_lang: 'Langue source',
+    admin_canned_translate_regenerate: 'R\u00e9g\u00e9n\u00e9rer',
+    admin_canned_translate_stale: 'Source modifi\u00e9e \u2014 la traduction est peut-\u00eatre p\u00e9rim\u00e9e',
+    admin_canned_translate_backfill_banner: '{count} r\u00e9ponses pr\u00e9d\u00e9finies n\u2019ont pas encore de traduction',
+    admin_canned_translate_backfill_button: 'Tout traduire',
+    admin_canned_translate_translating: 'Traduction\u2026',
+    admin_canned_translate_no_translation: 'Pas encore de traduction',
 
     // Knowledge Base
     knowledge_base: 'Base de connaissances',

@@ -39,7 +39,7 @@ import { z } from 'zod';
 import { eq, gte, inArray, and, isNull, sql } from 'drizzle-orm';
 import { router, protectedProcedure } from '../trpc.js';
 import { db } from '../../db.js';
-import { agentStatusLog, archivedTickets, auditLog, memberships, partners, tickets, users } from '../../db/schema.js';
+import { agentStatusLog, archivedTickets, auditLog, cannedResponses, memberships, partners, tickets, users } from '../../db/schema.js';
 import { assertNotProduction } from '../../utils/assertNotProduction.js';
 import { getAvailability } from '../../services/availability/index.js';
 import { type BusinessHoursSchedule } from '../../services/businessHours.js';
@@ -418,6 +418,72 @@ export const testFixturesRouter = router({
       );
 
       return { ticketId };
+    }),
+
+  /**
+   * Insert a canned response with explicit body + body_translations. Skips the
+   * production `cannedResponse.create` mutation's AI-translation roundtrip so
+   * specs can stage a fully-populated multi-lang canned without configuring
+   * an AI provider. Caller controls sourceLang and the translations map.
+   */
+  seedCanned: fixtureProcedure
+    .input(
+      z.object({
+        partnerId: z.string().min(1),
+        title: z.string().min(1).max(100),
+        body: z.string().min(1).max(5000),
+        sourceLang: z.enum(['nl', 'fr', 'en']).default('en'),
+        bodyTranslations: z.object({
+          nl: z.string().max(5000).optional(),
+          fr: z.string().max(5000).optional(),
+          en: z.string().max(5000).optional(),
+        }).strict().default({}),
+        staleTranslations: z.object({
+          nl: z.boolean().optional(),
+          fr: z.boolean().optional(),
+          en: z.boolean().optional(),
+        }).strict().default({}),
+        dept: z.string().min(1).optional(),
+        shortcut: z.string().max(50).optional(),
+      }),
+    )
+    .mutation(async ({ input, ctx }) => {
+      const [partner] = await db
+        .select()
+        .from(partners)
+        .where(eq(partners.id, input.partnerId))
+        .limit(1);
+      if (!partner) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Partner not found: ${input.partnerId}`,
+        });
+      }
+
+      const cannedId = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      await db.insert(cannedResponses).values({
+        id: cannedId,
+        partnerId: input.partnerId,
+        dept: input.dept ?? null,
+        title: input.title,
+        body: input.body,
+        shortcut: input.shortcut ?? null,
+        sourceLang: input.sourceLang,
+        bodyTranslations: input.bodyTranslations as Record<string, string>,
+        staleTranslations: input.staleTranslations as Record<string, boolean>,
+        createdBy: ctx.user.id,
+        createdAt: now,
+        updatedAt: now,
+      });
+
+      logger.info(
+        { cannedId, partnerId: input.partnerId, sourceLang: input.sourceLang, fixtureBy: ctx.user.id },
+        '[testFixtures] Seeded canned response',
+      );
+
+      return { cannedId };
     }),
 
   /**

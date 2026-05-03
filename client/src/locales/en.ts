@@ -606,6 +606,14 @@ const en: Record<string, string> = {
     shortcut: 'Shortcut',
     body_preview: 'Body Preview',
     variables_hint: 'Variables: {{agentName}} {{supportName}} {{ticketId}}',
+    admin_canned_translate_label: 'Translation',
+    admin_canned_translate_source_lang: 'Source language',
+    admin_canned_translate_regenerate: 'Regenerate',
+    admin_canned_translate_stale: 'Source changed — translation may be out of date',
+    admin_canned_translate_backfill_banner: "{count} canned responses don't have translations yet",
+    admin_canned_translate_backfill_button: 'Translate all',
+    admin_canned_translate_translating: 'Translating…',
+    admin_canned_translate_no_translation: 'No translation yet',
 
     // Knowledge Base
     knowledge_base: 'Knowledge Base',
