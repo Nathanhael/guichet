@@ -24,6 +24,7 @@ import { sql, eq } from 'drizzle-orm';
 import config from './config.js';
 import logger from './utils/logger.js';
 import { auth as authMiddleware, AuthRequest } from './middleware/auth.js';
+import { uploadProxyHandler } from './middleware/uploadProxy.js';
 import { setIo as setBusinessHoursIo, getBusinessHoursStatus, BusinessHoursSchedule } from './services/businessHours.js';
 import { runDailyPurge } from './services/gdpr.js';
 
@@ -36,7 +37,6 @@ import { createTaskRunner } from './utils/taskRunner.js';
 import { register } from './utils/metrics.js';
 
 import { initRedis, getRedisClients } from './utils/redis.js';
-import { jwtVerify } from 'jose';
 import { initAiContext } from './services/ai/index.js';
 import { Moderator } from './services/moderator/index.js';
 import { setModerator } from './services/moderator/instance.js';
@@ -280,44 +280,11 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 
 app.use(metricsMiddleware);
 
-// Uploads require authentication — prevents public access to uploaded files (SEC-6).
-// Files are served through the storage backend (local disk or Azure Blob Storage).
-app.use('/uploads', async (req: Request, res: Response) => {
-  const token = req.cookies?.guichet_token;
-  if (!token) {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-  try {
-    await jwtVerify(token, new TextEncoder().encode(config.JWT_SECRET));
-  } catch {
-    return res.status(401).json({ error: 'Authentication required' });
-  }
-  // Extract and normalize filename — reject traversal attempts
-  const raw = req.path.replace(/^\//, '');
-  const filePath = path.posix.normalize(raw);
-  if (!filePath || filePath.startsWith('..') || filePath.includes('/../') || filePath.includes('\\') || filePath.includes('\0')) {
-    return res.status(400).json({ error: 'Invalid path' });
-  }
-  try {
-    const { getStorage } = await import('./services/storage.js');
-    const storage = getStorage();
-    const buffer = await storage.read(filePath);
-    // Infer content type from extension
-    const ext = path.extname(filePath).toLowerCase();
-    const mimeMap: Record<string, string> = {
-      '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
-      '.webp': 'image/webp', '.gif': 'image/gif', '.pdf': 'application/pdf',
-      '.txt': 'text/plain', '.csv': 'text/csv',
-      '.doc': 'application/msword', '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      '.xls': 'application/vnd.ms-excel', '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    };
-    res.setHeader('Content-Type', mimeMap[ext] || 'application/octet-stream');
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    res.send(buffer);
-  } catch {
-    return res.status(404).json({ error: 'File not found' });
-  }
-});
+// Uploads proxy — requires authentication AND tenant ownership (SEC-6).
+// JWT cookie + caller`s partnerId must match the partner that owns the
+// requested file via `messages.attachments` / legacy `messages.mediaUrl`.
+// See `middleware/uploadProxy.ts` for the gate logic.
+app.use('/uploads', uploadProxyHandler);
 
 // API v1 Routing
 const v1Router = express.Router();
