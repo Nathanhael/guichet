@@ -77,6 +77,7 @@ const nl: Record<string, string> = {
     translated_for_recipient: 'vertaald naar ontvanger',
     show_translation: 'Toon vertaling',
     show_original: 'Toon origineel',
+    hide_original: 'Verberg origineel',
 
     // AI badge tooltips (slice 3)
     ai_badge_translated: 'Vertaald door AI',

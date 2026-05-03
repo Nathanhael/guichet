@@ -131,8 +131,12 @@ export default function Message({
   const isSenderExternal = !!message.senderIsExternal;
 
   const originalDisplayText = isDeleted ? (t('message_deleted') || 'This message was deleted') : (message.text || '');
-  // Show translated text if available and user hasn't toggled to original.
-  const displayText = (!isDeleted && translated && !showOriginal) ? translated : originalDisplayText;
+  // Translated text is always primary when available — UX decision 2026-05-03:
+  // monolingual support staff couldn't read the original after the legacy
+  // toggle, so "Show original" now reveals the source text underneath the
+  // bubble instead of swapping the bubble's contents.
+  const displayText = (!isDeleted && translated) ? translated : originalDisplayText;
+  const showOriginalReveal = !isDeleted && !!translated && showOriginal;
 
   const langToLocale: Record<string, string> = { nl: 'nl-BE', fr: 'fr-BE', en: 'en-GB' };
   const timeLocale = langToLocale[user?.lang || 'en'] || 'en-GB';
@@ -281,6 +285,19 @@ export default function Message({
           )}
         </div>
 
+        {/* Original text reveal: when the viewer asks to see the source,
+            we expand it under the translated bubble instead of swapping —
+            monolingual viewers always keep the readable translation in
+            front of them. */}
+        {showOriginalReveal && (
+          <div className="mt-1.5 px-3 py-1.5 rounded-[var(--radius-bubble)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[12px] text-[var(--color-ink-soft)] italic whitespace-pre-wrap break-words">
+            <span className="not-italic font-mono text-[10px] uppercase tracking-wide text-[var(--color-ink-muted)] mr-1.5">
+              {message.senderLang}
+            </span>
+            {originalDisplayText}
+          </div>
+        )}
+
         {/* Translation indicator */}
         {needsTranslation && !isDeleted && (
           <div className="flex items-center gap-2 mt-1.5 -mb-0.5">
@@ -294,7 +311,9 @@ export default function Message({
                 onClick={() => setShowOriginal(!showOriginal)}
                 className="text-[11px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink-soft)] underline underline-offset-2"
               >
-                {showOriginal ? (t('show_translation') || 'Show translation') : (t('show_original') || `Show original (${message.senderLang})`)}
+                {showOriginal
+                  ? (t('hide_original') || 'Hide original')
+                  : (t('show_original') || `Show original (${message.senderLang})`)}
               </button>
             ) : null}
           </div>
