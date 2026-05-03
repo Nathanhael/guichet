@@ -84,7 +84,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
     const parsed = validatePayload(socket, messageSendSchema, data);
     if (!parsed) return;
     if (!checkSocketRateLimit(socket, 'message:send')) return;
-    const { ticketId, text, mediaUrl, attachments, whisper, replyToId, localId } = parsed;
+    const { ticketId, text, mediaUrl, attachments, whisper, replyToId, localId, improvedFromUsageLogId } = parsed;
     socketioEventsTotal.inc({ event: 'message:send' });
     try {
       const actor = socketActor(socket);
@@ -127,6 +127,7 @@ export function register(socket: Socket, ctx: HandlerContext): void {
         replyToId: replyToId || null,
         localId,
         viewerLangs,
+        improvedFromUsageLogId,
       });
 
       if (!result.ok) {

@@ -450,6 +450,34 @@ describe('messageLifecycle.send', () => {
       .where(eq(auditLog.action, 'message.guard_blocked'));
     expect(auditRows).toHaveLength(0);
   });
+
+  // ── Slice 7.5: improvedAt stamp on AI-improved sends ──────────────────────
+  it('stamps improvedAt on the inserted row when improvedFromUsageLogId is provided', async () => {
+    const result = await lifecycle.send({
+      ticketId: TICKET_A, partnerId: PARTNER_A, actor: aliceActor,
+      text: 'AI-rewritten reply', improvedFromUsageLogId: 'usage-log-99',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const rows = await handle.db.select().from(messages).where(eq(messages.ticketId, TICKET_A));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].improvedAt).toBeTruthy();
+    expect(typeof rows[0].improvedAt).toBe('string');
+    expect(result.data.message.improvedAt).toBeTruthy();
+  });
+
+  it('leaves improvedAt NULL when improvedFromUsageLogId is omitted', async () => {
+    const result = await lifecycle.send({
+      ticketId: TICKET_A, partnerId: PARTNER_A, actor: aliceActor, text: 'plain reply',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const rows = await handle.db.select().from(messages).where(eq(messages.ticketId, TICKET_A));
+    expect(rows[0].improvedAt).toBeNull();
+    expect(result.data.message.improvedAt).toBeUndefined();
+  });
 });
 
 void supportActor;

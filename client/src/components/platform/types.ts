@@ -1,4 +1,4 @@
-export type PlatformTab = 'partners' | 'users' | 'invites' | 'sso' | 'health' | 'audit' | 'archive';
+export type PlatformTab = 'partners' | 'users' | 'invites' | 'sso' | 'ai-security' | 'health' | 'audit' | 'archive';
 export type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 export interface PartnerMembership {
@@ -16,6 +16,7 @@ export interface AiFeatures {
   translation?: boolean;
   autoSummarizeOnClose?: boolean;
   queueLangAwareness?: boolean;
+  voiceTranscription?: boolean;
 }
 
 export interface Partner {

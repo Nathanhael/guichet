@@ -54,6 +54,11 @@ And this customer message:
 </user_content>
 
 Which canned response best matches? Reply with ONLY the response ID, or "none" if no good match.`,
+
+  // Transcribe is a binary audio→text action handled by the provider directly
+  // (Azure Whisper). The prompt-template path is bypassed; this entry exists
+  // only to satisfy the Record<AiAction, string> exhaustiveness check.
+  transcribe: '',
 };
 
 /**

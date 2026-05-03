@@ -14,6 +14,7 @@ import { createContext } from './trpc/context.js';
 import { appRouter } from './trpc/router.js';
 
 import uploadRoutes from './routes/uploads.js';
+import aiTranscribeRoutes from './routes/aiTranscribe.js';
 
 import authRoutes from './routes/auth/index.js';
 import ssoRoutes from './routes/sso.js';
@@ -136,6 +137,7 @@ initRedis().then(({ pubClient, subClient }) => {
       messages: schema.messages,
       aiPromptTemplates: schema.aiPromptTemplates,
       aiUsageLog: schema.aiUsageLog,
+      systemSettings: schema.systemSettings,
     },
   });
   logger.info('AI context initialized');
@@ -337,6 +339,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 v1Router.use('/tickets', ticketRoutes); // Kept for export support
 v1Router.use('/uploads', uploadLimiter, uploadRoutes);
+v1Router.use('/ai', aiTranscribeRoutes);
 
 v1Router.use('/auth', authLimiter, authRoutes);
 v1Router.use('/auth/sso', authLimiter, ssoRoutes);

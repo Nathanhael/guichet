@@ -63,6 +63,14 @@ const en: Record<string, string> = {
     ai_improved: 'AI improved',
     ai_will_improve: 'AI will improve before sending',
     revert_to_original: 'Revert to original',
+    improve_modal_title: 'AI improved your message',
+    improve_modal_original_label: 'Original',
+    improve_modal_improved_label: 'Improved',
+    improve_send_improved: 'Send improved',
+    improve_send_original: 'Send original',
+    improve_thumbs_up_aria: 'Rate AI output thumbs up',
+    improve_thumbs_down_aria: 'Rate AI output thumbs down',
+    improve_feedback_thanks_toast: 'Thanks for the feedback',
     add_message_or_send: 'Add a message or press Enter to send',
     confirm_delete_message: 'Delete this message? This cannot be undone.',
 
@@ -72,6 +80,10 @@ const en: Record<string, string> = {
     translated_for_recipient: 'translated for recipient',
     show_translation: 'Show translation',
     show_original: 'Show original',
+
+    // AI badge tooltips (slice 3)
+    ai_badge_translated: 'Translated by AI',
+    ai_badge_improved: 'Improved by AI',
 
     // Ticket list
     no_tickets: 'No tickets found.',
@@ -174,6 +186,20 @@ const en: Record<string, string> = {
     config_feature_identity: 'Security policies — password complexity, session timeouts, MFA enforcement, and lockout thresholds for platform operator accounts',
     audit_tab: 'Audit',
     archive_tab: 'Archive',
+    'ai-security_tab': 'AI Security',
+    platform_tab_ai_security: 'AI Security',
+    ai_security_panel_desc: 'Global AI security defaults applied to every partner unless explicitly overridden.',
+    ai_security_pii_label: 'PII Redaction',
+    ai_security_pii_hint: 'Strip emails, phone numbers, and ID numbers from messages before they are sent to the AI provider.',
+    ai_security_pii_on: 'On — strip emails / phones / IDs before AI calls',
+    ai_security_pii_off: 'Off',
+    ai_security_audit_label: 'Audit Verbosity',
+    ai_security_audit_hint: 'Controls how much AI request data is written to the audit log.',
+    ai_security_audit_metadata: 'Metadata only — log tokens, cost, action',
+    ai_security_audit_full: 'Full content — also log full prompts and responses',
+    ai_security_save: 'Save',
+    ai_security_saved_toast: 'AI security defaults saved.',
+    ai_security_save_error: 'Could not save AI security defaults.',
     last_active: 'Last Active',
     never: 'Never',
     status_linked_sso: 'Linked (SSO)',
@@ -248,6 +274,14 @@ const en: Record<string, string> = {
     inactive_status: 'INACTIVE',
     placeholder_partner_id: 'e.g. acme-corp',
     placeholder_partner_name: 'e.g. Acme Corporation',
+
+    // Slice 10c: per-partner security overrides
+    edit_partner_security_title: 'Security Overrides',
+    edit_partner_pii_label: 'PII Redaction',
+    edit_partner_pii_help: 'Strip personally identifiable information from AI prompts. Inherit uses the platform default.',
+    edit_partner_audit_label: 'Audit Verbosity',
+    edit_partner_audit_help: 'How much AI request detail to log. Metadata records counts only; Full includes prompt content. Inherit uses the platform default.',
+    edit_partner_inherit_option: 'Inherit',
 
     // Health
     loading_system_health: 'Loading System Health...',
@@ -731,5 +765,16 @@ const en: Record<string, string> = {
     queue_staffing_waiting: '{n} waiting',
     queue_staffing_oldest: 'oldest {duration}',
     chat_cross_lang_banner: 'Replies are auto-translated to {lang} for the agent.',
+
+    // Voice transcription (slice 5)
+    voice_start: 'Start dictation',
+    voice_stop: 'Stop dictation',
+    voice_transcribing: 'Transcribing…',
+    mic_blocked: 'Microphone blocked — open browser settings to allow.',
+    mic_no_device: 'No microphone detected.',
+    mic_unsupported: 'Voice dictation is not supported in this browser.',
+    transcribe_failed: 'Transcription failed. Please try again.',
+    transcribe_too_long: 'Recording stopped at the 60-second limit.',
+    transcribe_empty: 'No speech detected.',
 };
 export default en;

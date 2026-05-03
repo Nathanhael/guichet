@@ -28,7 +28,7 @@ function cacheKey(provider: string, ...parts: (string | undefined)[]): string {
  */
 function buildProvider(
   providerName: string,
-  opts: { baseUrl?: string; apiKey?: string; model?: string; deployment?: string } = {},
+  opts: { baseUrl?: string; apiKey?: string; model?: string; deployment?: string; whisperDeployment?: string } = {},
 ): AiProvider {
   const { config } = getAiContext();
 
@@ -47,7 +47,7 @@ function buildProvider(
       if (!baseUrl) throw new Error('AI_BASE_URL is required for Azure OpenAI');
       if (!apiKey) throw new Error('AI_API_KEY is required for Azure OpenAI');
       if (!deployment) throw new Error('AZURE_OPENAI_DEPLOYMENT is required for Azure OpenAI');
-      return new AzureOpenAiProvider(baseUrl, apiKey, deployment);
+      return new AzureOpenAiProvider(baseUrl, apiKey, deployment, opts.whisperDeployment);
     }
 
     case 'openai-compatible': {
@@ -127,6 +127,7 @@ export async function getProvider(partnerId?: string): Promise<AiProvider> {
             apiKey,
             model: partner.aiModel ?? undefined,
             deployment: aiConfig.deployment as string | undefined,
+            whisperDeployment: aiConfig.whisperDeployment as string | undefined,
           }),
         );
       }

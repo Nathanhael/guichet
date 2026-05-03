@@ -127,6 +127,13 @@ export interface SendArgs {
    * collects these from socket.io's local node iteration.
    */
   viewerLangs?: Set<string>;
+  /**
+   * Slice 7.5: when set, the message originated from an AI improve action.
+   * Stamps `messages.improved_at = now()` on insert so the ✨ badge renders
+   * for receivers. Value is the `usageLogId` returned by `ai.improveMessage`,
+   * available later for thumbs feedback / send-original tracking.
+   */
+  improvedFromUsageLogId?: string;
 }
 
 /**
@@ -158,6 +165,8 @@ export interface SendMessage {
   translations?: Record<string, string>;
   /** Echoed for optimistic-UI reconciliation when the caller passed it. */
   localId?: string;
+  /** Slice 7.5: ISO timestamp when message was AI-improved (✨ badge). */
+  improvedAt?: string | null;
 }
 
 export interface SendOk {

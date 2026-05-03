@@ -1,6 +1,8 @@
-import { HTMLAttributes, ReactNode, useEffect, useRef } from 'react';
+import { HTMLAttributes, ReactNode, createContext, useContext, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+
+const ModalIdContext = createContext<string | undefined>(undefined);
 
 export interface ModalProps {
   open: boolean;
@@ -31,6 +33,8 @@ export type ModalBodyProps = HTMLAttributes<HTMLDivElement>;
 export type ModalFooterProps = HTMLAttributes<HTMLDivElement>;
 
 export function ModalHeader({ onClose, title, subtitle, actions, className = '', children, ...rest }: ModalHeaderProps) {
+  const modalId = useContext(ModalIdContext);
+  const titleId = modalId ? `${modalId}-title` : undefined;
   return (
     <div
       className={`px-5 pt-5 pb-4 flex items-start justify-between gap-4 ${className}`.trim()}
@@ -38,7 +42,7 @@ export function ModalHeader({ onClose, title, subtitle, actions, className = '',
     >
       <div className="min-w-0">
         {title !== undefined ? (
-          <h2 className="text-[17px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{title}</h2>
+          <h2 id={titleId} className="text-[17px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{title}</h2>
         ) : null}
         {subtitle !== undefined ? (
           <p className="mt-1 text-[13px] text-[var(--color-ink-soft)]">{subtitle}</p>
@@ -130,7 +134,7 @@ export default function Modal({
         className="relative w-full outline-none bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] animate-[v2p-pop_180ms_ease-out] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {children}
+        <ModalIdContext.Provider value={id}>{children}</ModalIdContext.Provider>
       </div>
     </div>
   );

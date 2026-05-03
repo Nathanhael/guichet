@@ -201,6 +201,12 @@ export interface Message {
   readAt?: string | null;
   editedAt?: string | null;
   deletedAt?: string | null;
+  /**
+   * Stamped by the server when the agent applies an AI-improved draft to
+   * an outgoing message (slice 7). Drives the ✨ AI badge in Message.
+   * Optional for backward compatibility with cached pre-migration messages.
+   */
+  improvedAt?: string | null;
   replyToId?: string | null;
   replyTo?: { id: string; senderName: string; text: string; mediaUrl?: string | null } | null;
   reactions: Record<string, string[]>;

@@ -5,7 +5,7 @@
 // the three fragments.
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CornerUpLeft, Pencil, Trash2, Loader2, Ban, Ghost } from 'lucide-react';
+import { CornerUpLeft, Pencil, Trash2, Loader2, Ban, Ghost, Sparkles } from 'lucide-react';
 import { useStoreShallow } from '../../store/useStore';
 import Avatar from '../ui/Avatar';
 import GuestBadge from '../GuestBadge';
@@ -66,7 +66,7 @@ export default function Message({
     text: message.text || message.originalText || '',
     senderLang: message.senderLang || '',
     viewerLang: user?.lang || 'en',
-    enabled: translationEnabled && !message.system && !message.whisper,
+    enabled: translationEnabled && !message.system,
     prewarmed: message.translations?.[user?.lang || 'en'],
   });
 
@@ -253,13 +253,13 @@ export default function Message({
               <div className="flex gap-1.5 justify-end">
                 <button
                   onClick={() => setEditing(false)}
-                  className="text-[12px] font-medium px-2.5 py-1 rounded-[var(--radius-btn)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)]"
+                  className="text-[12px] font-medium px-2.5 py-1 rounded-[var(--radius-btn)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
                 >
                   {t('cancel') || 'Cancel'}
                 </button>
                 <button
                   onClick={submitEdit}
-                  className="text-[12px] font-medium px-2.5 py-1 rounded-[var(--radius-btn)] bg-[var(--color-accent)] text-white hover:opacity-90"
+                  className="text-[12px] font-medium px-2.5 py-1 rounded-[var(--radius-btn)] bg-[var(--color-accent)] text-[var(--color-btn-text-inverse)] hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
                 >
                   {t('save') || 'Save'}
                 </button>
@@ -308,6 +308,21 @@ export default function Message({
         {(() => {
           const hasReactions = Object.values(message.reactions || {}).some((ids) => ids.length > 0);
           const showMeta = isGroupEnd || hasReactions || (isEdited && !isDeleted);
+          // Slice 6: ✨ AI badge — visible when the message was AI-improved
+          // (server stamps `improvedAt`, slice 7) and/or when the viewer is
+          // currently looking at a machine translation rather than the
+          // original. Both signals collapse into one badge with a combined
+          // tooltip so the metadata row stays compact.
+          const isImproved = !!message.improvedAt && !isDeleted;
+          const isShowingTranslation = !!translated && !showOriginal && !isDeleted;
+          let badgeTitle: string | null = null;
+          if (isImproved && isShowingTranslation) {
+            badgeTitle = `${t('ai_badge_translated')} · ${t('ai_badge_improved')}`;
+          } else if (isImproved) {
+            badgeTitle = t('ai_badge_improved');
+          } else if (isShowingTranslation) {
+            badgeTitle = t('ai_badge_translated');
+          }
           if (!showMeta) return null;
           return (
             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -338,6 +353,16 @@ export default function Message({
               <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-muted)] shrink-0">
                 {isEdited && !isDeleted && (
                   <span className="italic">{t('edited') || 'edited'}</span>
+                )}
+                {badgeTitle && (
+                  <span
+                    data-testid="ai-badge"
+                    title={badgeTitle}
+                    aria-label={badgeTitle}
+                    className="inline-flex items-center text-[var(--color-accent)]"
+                  >
+                    <Sparkles size={12} strokeWidth={2} aria-hidden="true" />
+                  </span>
                 )}
                 {isGroupEnd && <span className="tabular-nums">{time}</span>}
                 {isGroupEnd && isMine && !isDeleted && !message.system && (

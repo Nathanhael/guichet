@@ -16,6 +16,7 @@ import EditUserProfileModal from '../components/platform/EditUserProfileModal';
 import GroupMappingsPanel from '../components/platform/GroupMappingsPanel';
 import PendingInvitesTab from '../components/platform/PendingInvitesTab';
 import PlatformArchiveViewer from '../components/admin/PlatformArchiveViewer';
+import PlatformSecurity from '../components/platform/PlatformSecurity';
 import type { PlatformTab, Partner, GlobalUser } from '../components/platform/types';
 import {
   Building2,
@@ -25,6 +26,7 @@ import {
   Activity,
   FileText,
   Archive,
+  ShieldCheck,
 } from 'lucide-react';
 
 const SIDEBAR_WIDTH_KEY = 'guichet.platformSidebarWidth';
@@ -115,6 +117,7 @@ export default function PlatformView() {
 
             <NavGroupLabel>Platform</NavGroupLabel>
             <div className="flex flex-col gap-0.5">
+              {navItem('ai-security', t('platform_tab_ai_security'), <ShieldCheck className="h-4 w-4" />)}
               {navItem('health', t('health_tab'), <Activity className="h-4 w-4" />)}
               {navItem('audit', t('audit_tab'), <FileText className="h-4 w-4" />)}
               {navItem('archive', t('archive_tab'), <Archive className="h-4 w-4" />)}
@@ -148,6 +151,7 @@ export default function PlatformView() {
             )}
             {activeTab === 'invites' && <PendingInvitesTab />}
             {activeTab === 'sso' && <GroupMappingsPanel />}
+            {activeTab === 'ai-security' && <PlatformSecurity />}
             {activeTab === 'health' && <PlatformSystemHealth />}
             {activeTab === 'audit' && <PlatformAuditLog />}
             {activeTab === 'archive' && <PlatformArchiveViewer />}

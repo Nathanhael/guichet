@@ -27,6 +27,23 @@ export const partners = pgTable('partners', {
   aiModel: text('ai_model'),
   aiConfig: jsonb('ai_config').default({}),
   aiFeatures: jsonb('ai_features').default({}),
+  // Two-tier admin (decision 12): platform operator sets the envelope of
+  // features a partner admin is ALLOWED to enable. Partner admin's `aiFeatures`
+  // must validate as a subset of `aiFeaturesAvailable`. NULL = unrestricted.
+  aiFeaturesAvailable: jsonb('ai_features_available'),
+  // Per-partner AI policy overrides. NULL = inherit platform default.
+  aiPiiRedaction: text('ai_pii_redaction'),       // 'on' | 'off' | NULL (inherit)
+  aiAuditVerbosity: text('ai_audit_verbosity'),   // 'metadata' | 'full' | NULL (inherit)
+  // Glossary for translation/improvement (decision 19).
+  // Shape: { preserve: string[], forbidden: string[] }
+  aiTerms: jsonb('ai_terms').default({}).$type<{ preserve?: string[]; forbidden?: string[] }>(),
+  // Per-action custom prompt instructions (decision 23).
+  // Shape: { improve?: string; translate?: string; summarize?: string }
+  aiCustomInstructions: jsonb('ai_custom_instructions').default({}).$type<{
+    improve?: string;
+    translate?: string;
+    summarize?: string;
+  }>(),
   // SSO attribute mapping — per-partner IdP claim name overrides. Shape:
   // { locale?: string, firstName?: string, lastName?: string }. Null = use
   // defaults (Entra `preferredLanguage`, `givenName`, `sn`).
@@ -154,6 +171,12 @@ export const messages = pgTable('messages', {
   reactions: jsonb('reactions').$type<Record<string, string[]>>().default({}),
   editedAt: timestamp('edited_at', { mode: 'string' }),
   deletedAt: timestamp('deleted_at', { mode: 'string' }),
+  /**
+   * Set by AI improve action (slice 7) when the agent applies an AI-improved
+   * draft to the outgoing message. Renders the ✨ AI badge next to the
+   * timestamp in `Message`. Nullable; null = original human-typed message.
+   */
+  improvedAt: timestamp('improved_at', { mode: 'string' }),
   linkPreviews: jsonb('link_previews').$type<Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }>>(),
   attachments: jsonb('attachments').$type<Array<{ url: string; name: string; mimeType: string; size: number }>>(),
   // Self-referencing FK applied at DB level (ALTER TABLE); omit .references() to avoid circular type inference
@@ -449,6 +472,9 @@ export const aiUsageLog = pgTable('ai_usage_log', {
   latencyMs: integer('latency_ms'),
   success: boolean('success').notNull().default(true),
   errorMessage: text('error_message'),
+  // Slice 2.5 / 7: holds full prompt+response when partner audit_verbosity = 'full',
+  // and side-channels like sentOriginal (decision 30). NULL otherwise.
+  metadata: jsonb('metadata'),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
 }, (table) => [
   index('idx_ai_usage_partner_created').on(table.partnerId, table.createdAt),
@@ -516,6 +542,34 @@ export const dailyAgentStatus = pgTable('daily_agent_status', {
 }, (table) => [
   index('idx_daily_agent_status_partner_date').on(table.partnerId, table.date),
   uniqueIndex('idx_daily_agent_status_unique').on(table.date, table.userId, table.partnerId),
+]);
+
+/**
+ * AI feedback — thumbs up/down on AI-generated outputs (improve / translate / summarize).
+ * Slice 7 (decision 29 + 30): captures user signal so admins can tune prompts and
+ * partners can see whether AI suggestions actually shipped to customers.
+ *
+ * Body fields (`originalText`, `aiOutput`) are persisted ONLY when the partner's
+ * audit verbosity is 'full'. When verbosity is 'metadata' (the default), only
+ * the rating + comment + linkage are stored — no message bodies. The `userFinalChoice`
+ * column reflects whether the user ultimately sent the AI suggestion or reverted
+ * to the original; populated via the `markImproveResult` flow.
+ */
+export const aiFeedback = pgTable('ai_feedback', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  partnerId: text('partner_id').notNull().references(() => partners.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+  action: text('action').notNull(),                          // 'improve' | 'translate' | 'summarize'
+  usageLogId: text('usage_log_id').references(() => aiUsageLog.id, { onDelete: 'set null' }),
+  rating: text('rating').notNull(),                          // 'up' | 'down'
+  originalText: text('original_text'),                       // only when audit_verbosity = 'full'
+  aiOutput: text('ai_output'),                               // only when audit_verbosity = 'full'
+  userFinalChoice: text('user_final_choice'),                // 'sent_improved' | 'sent_original' | NULL
+  comment: text('comment'),
+  createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
+}, (table) => [
+  index('idx_ai_feedback_partner_created').on(table.partnerId, table.createdAt),
+  index('idx_ai_feedback_usage_log').on(table.usageLogId),
 ]);
 
 // ─── Saved Views ─────────────────────────────────────────────────────────────
