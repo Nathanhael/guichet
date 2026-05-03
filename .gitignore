@@ -134,6 +134,8 @@ testing/
 !client/src/components/chat/__tests__/Message.test.tsx
 !client/src/components/chat/__tests__/Message.lazy.test.tsx
 !client/src/components/chat/__tests__/Message.kind.test.tsx
+!client/src/components/__tests__/CannedResponsePicker.test.tsx
+!client/src/components/admin/__tests__/AdminCannedResponses.test.tsx
 
 # Test infra (re-tracked)
 !server/vitest.config.ts
