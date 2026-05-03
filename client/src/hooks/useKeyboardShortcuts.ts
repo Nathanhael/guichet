@@ -20,6 +20,7 @@ interface UseKeyboardShortcutsOptions {
   onToggleAiCopilot: () => void;
   onOpenStatusPicker: () => void;
   onToggleFocus: () => void;
+  onToggleMic: () => void;
 }
 
 /**
@@ -46,6 +47,7 @@ interface UseKeyboardShortcutsOptions {
  *  - Ctrl+Shift+C   → toggle AI copilot sidebar (was Ctrl+Shift+A; freed Chrome tab search)
  *  - Ctrl+.         → open status picker
  *  - Ctrl+Shift+F   → toggle focus mode (enter AND exit; Esc only exits)
+ *  - Alt+M          → toggle mic dictation (start/stop) on the active chat compose
  */
 export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void {
   const {
@@ -67,6 +69,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onToggleAiCopilot,
     onOpenStatusPicker,
     onToggleFocus,
+    onToggleMic,
   } = options;
 
   useEffect(() => {
@@ -182,6 +185,15 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
         return;
       }
 
+      // Alt+M — toggle mic dictation. ComposeArea owns the gating: silently
+      // no-ops if voice transcription is disabled for the partner, the
+      // browser lacks MediaRecorder, or a transcription is already in flight.
+      if (alt && !ctrl && !shift && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        onToggleMic();
+        return;
+      }
+
       // Ctrl+/ — toggle whisper. Match on e.key so AZERTY layouts where `/`
       // is produced by Shift+: still fire (physical Slash position on AZERTY
       // is `!`/`§`, not `/`, so e.code === 'Slash' would be wrong).
@@ -238,5 +250,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions): void
     onToggleAiCopilot,
     onOpenStatusPicker,
     onToggleFocus,
+    onToggleMic,
   ]);
 }

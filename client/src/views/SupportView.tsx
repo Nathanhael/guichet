@@ -409,6 +409,9 @@ export default function SupportView() {
       const s = useStore.getState();
       s.setViewMode(s.viewMode === 'focus' ? 'normal' : 'focus');
     },
+    onToggleMic: () => {
+      if (activeTab) chatWindowRef.current?.toggleMic();
+    },
   });
 
   // ── Guards ──

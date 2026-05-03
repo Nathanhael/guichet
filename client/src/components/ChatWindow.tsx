@@ -67,6 +67,7 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
   useImperativeHandle(ref, () => ({
     focusTextarea: () => composeRef.current?.focus(),
     toggleWhisper: () => composeRef.current?.toggleWhisper(),
+    toggleMic: () => composeRef.current?.toggleMic(),
     openTransferMenu: () => setShowTransferMenu(true),
     triggerCloseTicket: () => setShowCloseConfirm(true),
   }), []);

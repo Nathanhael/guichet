@@ -20,6 +20,13 @@ import { useVoiceTranscribe } from '../../hooks/useVoiceTranscribe';
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
   focus: () => void;
+  /**
+   * Start dictation if mic is idle, stop if currently recording. No-op
+   * when transcribing (mid-flight upload) or when the mic button isn't
+   * available (partner toggle off, browser unsupported, no permission yet).
+   * Used by the Alt+M global shortcut.
+   */
+  toggleMic: () => void;
 }
 
 interface ComposeAreaProps {
@@ -106,11 +113,6 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
   const { livePreview, dismiss: dismissPreview } = useComposeLinkPreview({ text: compose.text });
 
-  useImperativeHandle(ref, () => ({
-    toggleWhisper: () => setWhisperMode((v) => !v),
-    focus: () => compose.focus(),
-  }), [compose]);
-
   // Surface server-side rejection of outgoing messages as a localized toast
   // for the currently-open ticket. The matching optimistic bubble is removed
   // in the slice action triggered by useSocket — this effect only handles
@@ -173,6 +175,25 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   });
   const showMicButton = voiceEnabled && voice.isSupported;
   const elapsedLabel = `${Math.floor(voice.elapsedSec / 60)}:${String(voice.elapsedSec % 60).padStart(2, '0')}`;
+
+  // Imperative handle lives AFTER `voice` + `showMicButton` are in scope so
+  // the toggleMic closure can read them. Keep this single useImperativeHandle
+  // — duplicate calls with the same ref clobber.
+  useImperativeHandle(ref, () => ({
+    toggleWhisper: () => setWhisperMode((v) => !v),
+    focus: () => compose.focus(),
+    toggleMic: () => {
+      // Match the visual gating of the mic button below — if the button
+      // isn't rendered, the shortcut is also a no-op.
+      if (!showMicButton) return;
+      if (voice.isTranscribing) return;
+      if (voice.isRecording) {
+        void voice.stopRecording();
+      } else {
+        void voice.startRecording();
+      }
+    },
+  }), [compose, showMicButton, voice]);
 
   /** Core send logic -- uploads pending files, then emits socket event with the given text. */
   async function doSend(finalText: string, opts?: { improvedFromUsageLogId?: string }) {

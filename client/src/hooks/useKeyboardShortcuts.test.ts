@@ -21,6 +21,7 @@ describe('useKeyboardShortcuts', () => {
     onToggleAiCopilot: vi.fn(),
     onOpenStatusPicker: vi.fn(),
     onToggleFocus: vi.fn(),
+    onToggleMic: vi.fn(),
   };
 
   function fire(key: string, opts: Partial<KeyboardEventInit> = {}) {
@@ -297,5 +298,25 @@ describe('useKeyboardShortcuts', () => {
     fire('f', { ctrlKey: true });
     expect(handlers.onOpenSearch).toHaveBeenCalledOnce();
     expect(handlers.onToggleFocus).not.toHaveBeenCalled();
+  });
+
+  // ── Voice dictation ────────────────────────────────────────────────────────
+
+  it('Alt+M fires onToggleMic', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('m', { altKey: true });
+    expect(handlers.onToggleMic).toHaveBeenCalledOnce();
+  });
+
+  it('plain m without Alt does NOT fire onToggleMic', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('m');
+    expect(handlers.onToggleMic).not.toHaveBeenCalled();
+  });
+
+  it('Ctrl+M does NOT fire onToggleMic (browser-reserved)', () => {
+    renderHook(() => useKeyboardShortcuts({ enabled: true, ...handlers }));
+    fire('m', { ctrlKey: true });
+    expect(handlers.onToggleMic).not.toHaveBeenCalled();
   });
 });
