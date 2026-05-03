@@ -1,6 +1,9 @@
 import { z } from 'zod';
+import { eq, and } from 'drizzle-orm';
 import { router, partnerScopedProcedure } from '../trpc.js';
 import { notFound, forbidden } from '../../utils/trpcErrors.js';
+import { db } from '../../db.js';
+import { aiUsageLog, aiFeedback } from '../../db/schema.js';
 import {
   getCachedSummary,
   setCachedSummary,
@@ -8,7 +11,11 @@ import {
   runAiAction,
   verifyTicketOwnership,
   fetchTicketMessages,
+  getCachedTranslation,
+  setCachedTranslation,
+  getProvider,
 } from '../../services/ai/index.js';
+import { getEffectiveAuditVerbosity } from '../../services/ai/auditVerbosity.js';
 import { canUseSupportWorkflows } from '../../services/roles.js';
 
 export const aiRouter = router({
@@ -37,7 +44,9 @@ export const aiRouter = router({
         maxTokens: 1024,
       });
 
-      return { improved: result.content.trim() };
+      // usageLogId lets the client annotate the row later (slice 7 thumbs
+      // feedback + sentOriginal tracking via ai.markImproveResult / submitFeedback).
+      return { improved: result.content.trim(), usageLogId: result.usageLogId };
     }),
 
   /**
@@ -46,11 +55,16 @@ export const aiRouter = router({
    */
   translateMessage: partnerScopedProcedure
     .input(z.object({
+      messageId: z.string(),
       text: z.string().min(1).max(5000, 'Message too long (max 5000 chars)'),
       targetLang: z.enum(['nl', 'en', 'fr']),
     }))
     .mutation(async ({ input, ctx }) => {
       const partnerId = ctx.user.partnerId;
+
+      // Cache check first — auto-fire on every mount means many cache hits.
+      const cached = await getCachedTranslation(input.messageId, input.targetLang);
+      if (cached) return { translated: cached };
 
       const result = await runAiAction({
         partnerId,
@@ -65,7 +79,10 @@ export const aiRouter = router({
         maxTokens: 1024,
       });
 
-      return { translated: result.content.trim() };
+      const translated = result.content.trim();
+      await setCachedTranslation(input.messageId, input.targetLang, translated);
+
+      return { translated };
     }),
 
   /**
@@ -121,5 +138,108 @@ export const aiRouter = router({
       await setCachedSummary(input.ticketId, summary);
 
       return { summary, cached: false };
+    }),
+
+  /**
+   * Health check — used by the client to gate AI-driven UI affordances
+   * (mic button, improve button) when the provider is unreachable.
+   * Reuses the provider's internal isAvailable() cache.
+   */
+  healthCheck: partnerScopedProcedure.query(async ({ ctx }) => {
+    let available = false;
+    try {
+      const provider = await getProvider(ctx.user.partnerId);
+      available = await provider.isAvailable();
+    } catch {
+      available = false;
+    }
+    return { available, lastChecked: new Date().toISOString() };
+  }),
+
+  /**
+   * Mark whether the user sent the AI-improved message or reverted to the original.
+   * Decision 30: persists the final user choice as a side-channel on the existing
+   * ai_usage_log row via metadata.sentOriginal — no new table for this signal.
+   *
+   * Multi-tenant guard: row lookup filters by (id AND partnerId) so a caller can
+   * never poke at another partner's usage log.
+   */
+  markImproveResult: partnerScopedProcedure
+    .input(z.object({
+      usageLogId: z.string(),
+      sentOriginal: z.boolean(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const partnerId = ctx.user.partnerId;
+
+      const rows = await db
+        .select()
+        .from(aiUsageLog)
+        .where(and(eq(aiUsageLog.id, input.usageLogId), eq(aiUsageLog.partnerId, partnerId)))
+        .limit(1);
+
+      const row = rows[0];
+      if (!row) throw notFound('AI usage log');
+
+      // Preserve any existing metadata keys (e.g. cache hit flags, debug breadcrumbs)
+      // so this mutation only affects the sentOriginal axis.
+      const existing = (row.metadata && typeof row.metadata === 'object') ? row.metadata as Record<string, unknown> : {};
+      const merged = { ...existing, sentOriginal: input.sentOriginal };
+
+      await db
+        .update(aiUsageLog)
+        .set({ metadata: merged })
+        .where(and(eq(aiUsageLog.id, input.usageLogId), eq(aiUsageLog.partnerId, partnerId)))
+        .returning();
+
+      return { ok: true };
+    }),
+
+  /**
+   * Record thumbs-up/down feedback on an AI output (decision 29).
+   * Body fields (originalText, aiOutput) are persisted ONLY when the partner's
+   * effective audit verbosity is 'full'. Otherwise we keep just the rating +
+   * comment + linkage — no message content lands in ai_feedback.
+   */
+  submitFeedback: partnerScopedProcedure
+    .input(z.object({
+      usageLogId: z.string(),
+      rating: z.enum(['up', 'down']),
+      comment: z.string().max(500).optional(),
+      originalText: z.string().optional(),
+      aiOutput: z.string().optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const partnerId = ctx.user.partnerId;
+
+      const rows = await db
+        .select()
+        .from(aiUsageLog)
+        .where(and(eq(aiUsageLog.id, input.usageLogId), eq(aiUsageLog.partnerId, partnerId)))
+        .limit(1);
+
+      const usageRow = rows[0];
+      if (!usageRow) throw notFound('AI usage log');
+
+      const verbosity = await getEffectiveAuditVerbosity(partnerId);
+      const persistBody = verbosity === 'full';
+
+      const inserted = await db
+        .insert(aiFeedback)
+        .values({
+          partnerId,
+          userId: ctx.user.id,
+          action: usageRow.action,
+          usageLogId: input.usageLogId,
+          rating: input.rating,
+          comment: input.comment ?? null,
+          originalText: persistBody ? (input.originalText ?? null) : null,
+          aiOutput: persistBody ? (input.aiOutput ?? null) : null,
+          userFinalChoice: null,
+        })
+        .returning();
+
+      const feedbackId = inserted[0]?.id ?? '';
+      return { feedbackId };
     }),
 });

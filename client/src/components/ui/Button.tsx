@@ -18,13 +18,13 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary:
-    'bg-[var(--color-accent)] text-white border border-transparent hover:opacity-90 active:opacity-80',
+    'bg-[var(--color-accent)] text-[var(--color-btn-text-inverse)] border border-transparent hover:opacity-90 active:opacity-80',
   secondary:
     'bg-[var(--color-bg-surface)] text-[var(--color-ink)] border border-[var(--color-border-strong)] ' +
     'shadow-[var(--shadow-soft)] hover:bg-[var(--color-hover)]',
   danger:
     'bg-transparent text-[var(--color-urgent)] border border-[var(--color-urgent)] ' +
-    'hover:bg-[var(--color-urgent)] hover:text-white',
+    'hover:bg-[var(--color-urgent)] hover:text-[var(--color-btn-text-inverse)]',
   ghost:
     'bg-transparent text-[var(--color-ink-soft)] border border-transparent hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]',
 };

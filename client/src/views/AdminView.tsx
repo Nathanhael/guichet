@@ -15,6 +15,7 @@ import AdminCannedResponses from '../components/admin/AdminCannedResponses';
 import AdminBusinessHours from '../components/admin/AdminBusinessHours';
 import AdminDepartments from '../components/admin/AdminDepartments';
 import AdminAlerts from '../components/admin/AdminAlerts';
+import AdminAi from '../components/admin/AdminAi';
 import AdminTeam from '../components/admin/AdminTeam';
 import AdminAuditLog from '../components/admin/AdminAuditLog';
 import PartnerUnavailable from '../components/PartnerUnavailable';
@@ -31,6 +32,7 @@ import {
   Clock,
   Tag,
   Zap,
+  Sparkles,
 } from 'lucide-react';
 
 const DashboardView = lazy(() => import('../components/admin/dashboard/DashboardView'));
@@ -52,7 +54,8 @@ type AdminTab =
   | 'audit_log'
   | 'feedback'
   | 'labels'
-  | 'canned_responses';
+  | 'canned_responses'
+  | 'ai_customization';
 // DISABLED_FEATURE: removed 'knowledge_base' | 'webhooks'
 
 const SIDEBAR_WIDTH_KEY = 'guichet.adminSidebarWidth';
@@ -161,6 +164,7 @@ export default function AdminView() {
               {navItem('business_hours', 'Business Hours', <Clock className="h-4 w-4" />)}
               {navItem('labels', t('labels'), <Tag className="h-4 w-4" />)}
               {navItem('canned_responses', t('canned_responses') || 'Quick Replies', <Zap className="h-4 w-4" />)}
+              {navItem('ai_customization', t('admin_tab_ai') || 'AI Customization', <Sparkles className="h-4 w-4" />)}
               {/* DISABLED_FEATURE: Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
             </div>
           </nav>
@@ -191,6 +195,7 @@ export default function AdminView() {
           {view === 'feedback' && <AdminFeedback />}
           {view === 'labels' && <AdminLabels />}
           {view === 'canned_responses' && <AdminCannedResponses />}
+          {view === 'ai_customization' && <AdminAi />}
           {/* DISABLED_FEATURE: Knowledge Base, Webhooks — tab panels hidden until production-ready */}
         </main>
       </div>

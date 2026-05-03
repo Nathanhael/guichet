@@ -161,11 +161,12 @@ const TICKETS: SeedTicket[] = [
 ];
 
 const PARTNER_USERS: SeedUser[] = [
-  { id: 'admin_emma',     name: 'Emma Admin',     email: 'emma@acme.test',    lang: 'en', role: 'admin',   departments: [] },
-  { id: 'support_lucas',  name: 'Lucas Support',  email: 'lucas@acme.test',   lang: 'fr', role: 'support', departments: ['DSC', 'FOT'] },
+  { id: 'admin_emma',     name: 'Emma Admin',     email: 'emma.admin@bartrhotmail.onmicrosoft.com', lang: 'en', role: 'admin',   departments: [] },
+  { id: 'admin_bart',     name: 'Bart Admin',     email: 'bart_r_@hotmail.com', lang: 'en', role: 'admin',   departments: [] },
+  { id: 'support_lucas',  name: 'Lucas Support',  email: 'lucas.support@bartrhotmail.onmicrosoft.com', lang: 'fr', role: 'support', departments: ['DSC', 'FOT'] },
   { id: 'support_sophie', name: 'Sophie Support', email: 'sophie@acme.test',  lang: 'nl', role: 'support', departments: ['TEC'] },
   { id: 'support_oliver', name: 'Oliver Support', email: 'oliver@acme.test',  lang: 'en', role: 'support', departments: ['DSC', 'FOT', 'TEC'] },
-  { id: 'agent_julie',    name: 'Julie Agent',    email: 'julie@acme.test',   lang: 'fr', role: 'agent',   departments: [] },
+  { id: 'agent_julie',    name: 'Julie Agent',    email: 'julie.agent@bartrhotmail.onmicrosoft.com', lang: 'fr', role: 'agent',   departments: [] },
   { id: 'agent_kevin',    name: 'Kevin Agent',    email: 'kevin@acme.test',   lang: 'en', role: 'agent',   departments: [] },
   { id: 'agent_thomas',   name: 'Thomas Agent',   email: 'thomas@acme.test',  lang: 'nl', role: 'agent',   departments: [] },
   { id: 'agent_marc',     name: 'Marc Agent',     email: 'marc@acme.test',    lang: 'fr', role: 'agent',   departments: [] },
@@ -245,7 +246,7 @@ async function seedMinimal() {
   await db.insert(schema.users).values({
     id: 'platform_bart',
     name: 'Bart Operator',
-    email: 'bart@guichet.io',
+    email: 'bart.platform@bartrhotmail.onmicrosoft.com',
     lang: 'en',
     isPlatformOperator: true,
     accessibilityPrefs: {},

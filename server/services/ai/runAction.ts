@@ -17,6 +17,8 @@ import {
   logUsage,
 } from './index.js';
 import { getAiContext } from './context.js';
+import { getEffectiveAuditVerbosity } from './auditVerbosity.js';
+import { applyPartnerCustomization } from './promptCustomization.js';
 
 type AiFeature =
   | 'messageImprovement'
@@ -37,10 +39,14 @@ interface RunAiActionOpts {
 /**
  * Run an AI action with the full gate → limit → prompt → call → log pipeline.
  * Throws TRPCError on feature-disabled, rate-limited, or provider failure.
+ *
+ * The returned `usageLogId` is the row id of the persisted ai_usage_log entry
+ * (or null if the DB write failed). Callers expose it to the client when
+ * follow-up annotations matter — e.g. ai.markImproveResult / ai.submitFeedback.
  */
 export async function runAiAction(
   opts: RunAiActionOpts,
-): Promise<{ content: string; model: string }> {
+): Promise<{ content: string; model: string; usageLogId: string | null }> {
   const { logger } = getAiContext();
 
   // 1. Feature gate
@@ -61,13 +67,19 @@ export async function runAiAction(
     });
   }
 
-  // 3. Build prompt
+  // 3. Build prompt — interpolate user vars, then apply partner glossary +
+  //    custom-instruction prefix (slice 8.5).
   const template = await getPromptTemplate(opts.action, opts.partnerId);
-  const prompt = interpolate(template, opts.vars);
+  const interpolated = interpolate(template, opts.vars);
+  const prompt = await applyPartnerCustomization(interpolated, opts.action, opts.partnerId);
 
   // 4. Call provider
   const provider = await getProvider(opts.partnerId);
   const start = Date.now();
+
+  // Slice 2.5: gate full prompt/response capture on partner audit verbosity.
+  const verbosity = await getEffectiveAuditVerbosity(opts.partnerId);
+  const captureFull = verbosity === 'full';
 
   try {
     const result = await provider.chat({
@@ -77,8 +89,8 @@ export async function runAiAction(
       maxTokens: opts.maxTokens,
     });
 
-    // 5. Log usage (fire-and-forget)
-    logUsage({
+    // 5. Log usage and capture the row id for caller-side annotations.
+    const usageLogId = await logUsage({
       partnerId: opts.partnerId,
       userId: opts.userId,
       action: opts.action,
@@ -88,9 +100,11 @@ export async function runAiAction(
       outputTokens: result.outputTokens,
       latencyMs: Date.now() - start,
       success: true,
+      prompt: captureFull ? prompt : undefined,
+      response: captureFull ? result.content : undefined,
     });
 
-    return { content: result.content, model: result.model };
+    return { content: result.content, model: result.model, usageLogId };
   } catch (err) {
     const latencyMs = Date.now() - start;
     const errorMessage = err instanceof Error ? err.message : String(err);
@@ -106,6 +120,7 @@ export async function runAiAction(
       latencyMs,
       success: false,
       errorMessage,
+      prompt: captureFull ? prompt : undefined,
     });
 
     logger.error({ err: errorMessage, action: opts.action, partnerId: opts.partnerId }, 'AI action failed');

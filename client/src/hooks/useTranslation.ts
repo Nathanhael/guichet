@@ -108,6 +108,7 @@ export function useAutoTranslation(opts: {
       if (!isMounted.current) return;
 
       const result = await translateMutation.mutateAsync({
+        messageId,
         text,
         targetLang: viewerLang as 'nl' | 'en' | 'fr',
       });

@@ -41,6 +41,17 @@ const PLATFORM_TARGET_TYPES = [
 // here; missing entries silently widen the "all" bucket instead of breaking
 // the query.
 const PLATFORM_ACTIONS = [
+  // ai (emitted by services/ai/auditConfig.ts via platform/partners.ts)
+  'ai.api_key_rotated',
+  'ai.base_url_changed',
+  'ai.custom_instructions_changed',
+  'ai.deployment_changed',
+  'ai.enabled_changed',
+  'ai.features_changed',
+  'ai.model_changed',
+  'ai.privacy_changed',
+  'ai.provider_changed',
+  'ai.terms_changed',
   // auth / security
   'auth.break_glass',
   'security.account_locked',
@@ -65,6 +76,7 @@ const PLATFORM_ACTIONS = [
   'partner.reactivated',
   'partner.deleted',
   // platform
+  'platform.ai_security_updated',
   'platform.enter_partner',
   'platform_operator_bootstrap',
   // sso

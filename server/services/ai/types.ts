@@ -14,11 +14,24 @@ export interface ChatResult {
   model: string;
 }
 
+export interface TranscribeParams {
+  audio: Buffer;
+  mimeType: string;
+  languageHint?: 'nl' | 'fr' | 'en';
+}
+
+export interface TranscribeResult {
+  transcript: string;
+  durationSeconds?: number;
+}
+
 export interface AiProvider {
   readonly name: string;
   chat(params: ChatParams): Promise<ChatResult>;
   chatStream(params: ChatParams): AsyncIterable<string>;
   isAvailable(): Promise<boolean>;
+  /** Optional speech-to-text. Only providers with STT capability implement it. */
+  transcribe?(params: TranscribeParams): Promise<TranscribeResult>;
 }
 
 // ─── Prompt Template Types ──────────────────────────────────────────────────
@@ -29,7 +42,8 @@ export type AiAction =
   | 'summarize'
   | 'improve'
   | 'translate'
-  | 'match_canned';
+  | 'match_canned'
+  | 'transcribe';
 
 export interface PromptTemplate {
   id: string;
@@ -52,6 +66,13 @@ export interface AiUsageEntry {
   latencyMs: number;
   success: boolean;
   errorMessage?: string;
+  /**
+   * Full prompt/response content. Only populated when the partner's effective
+   * audit verbosity is 'full' (slice 2.5). Persistence layer ignores these
+   * fields until the ai_usage_log.metadata column lands in a follow-up slice.
+   */
+  prompt?: string;
+  response?: string;
 }
 
 // ─── Partner AI Config ──────────────────────────────────────────────────────
@@ -65,6 +86,8 @@ export interface PartnerAiConfig {
   /** When true, messages are auto-translated based on senderLang vs viewerLang */
   translation?: boolean;
   autoSummarizeOnClose?: boolean;
+  /** When true, support staff can dictate replies via mic; backend exposes /transcribe */
+  voiceTranscription?: boolean;
   rateLimits?: {
     perMinute?: number;
     perDay?: number;

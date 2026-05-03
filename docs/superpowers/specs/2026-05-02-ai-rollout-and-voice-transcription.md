@@ -336,7 +336,7 @@ function unredactPii(text: string, tokens: Record<string, string>): string
 
 Regex patterns:
 - Email: `/\b[\w.+-]+@[\w-]+\.[\w.-]+\b/g`
-- BE phone: `/\b(?:\+32|0)\s?\d{2,3}\s?\d{2}\s?\d{2}\s?\d{2}\b/g`
+- BE phone: `/(?<!\w)(?:\+32|0)\s?\d{2,3}\s?\d{2}\s?\d{2}\s?\d{2}\b/g` *(front anchor is `(?<!\w)` not `\b` — `\b` cannot fire between a space and a `+`, so the `+32 …` form would otherwise leak)*
 - Rijksregisternummer: `/\b\d{2}\.?\d{2}\.?\d{2}-?\d{3}\.?\d{2}\b/g`
 - Credit card: 13-19 digits with Luhn validation (helper function)
 

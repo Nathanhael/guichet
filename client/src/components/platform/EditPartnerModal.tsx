@@ -14,6 +14,7 @@ const BOOLEAN_FEATURES: { key: Exclude<keyof AiFeatures, 'messageImprovement'>; 
   { key: 'translation', label: 'Auto-Translation', description: 'Automatically translate messages between nl/en/fr based on user language' },
   { key: 'autoSummarizeOnClose', label: 'Auto-Summarize on Close', description: 'Generate summary when ticket is closed' },
   { key: 'queueLangAwareness', label: 'Queue Language Awareness', description: 'Show per-language staffing header + cross-lang banner; pre-warm translations for cross-lang tickets' },
+  { key: 'voiceTranscription', label: 'Voice Transcription', description: 'Support staff can dictate replies via microphone (Azure Whisper)' },
 ];
 
 const IMPROVEMENT_OPTIONS: { value: ImprovementMode; label: string }[] = [
@@ -45,6 +46,9 @@ function Toggle({ on, onToggle, size = 'md', label }: { on: boolean; onToggle: (
   );
 }
 
+type PiiOverride = 'on' | 'off' | null;
+type AuditOverride = 'metadata' | 'full' | null;
+
 export default function EditPartnerModal({ partner, onClose }: EditPartnerModalProps) {
   const t = useT();
   const utils = trpc.useUtils();
@@ -52,7 +56,11 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
     name: string;
     aiEnabled: boolean;
     aiFeatures: AiFeatures;
-  }>({ name: '', aiEnabled: false, aiFeatures: {} });
+    aiFeaturesAvailable: AiFeatures;
+    whisperDeployment: string;
+    aiPiiRedaction: PiiOverride;
+    aiAuditVerbosity: AuditOverride;
+  }>({ name: '', aiEnabled: false, aiFeatures: {}, aiFeaturesAvailable: {}, whisperDeployment: '', aiPiiRedaction: null, aiAuditVerbosity: null });
 
   // Hydrate the form when the modal opens onto a partner (prop→state sync).
   useEffect(() => {
@@ -63,11 +71,23 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
       else if (raw.messageImprovement === 'forced') improvement = 'forced';
       else if (typeof raw.messageImprovement === 'string') improvement = raw.messageImprovement as ImprovementMode;
 
+      const aiConfig = ((partner as Record<string, unknown>).aiConfig ?? {}) as { whisperDeployment?: string };
+      const envelope = ((partner as Record<string, unknown>).aiFeaturesAvailable ?? {}) as AiFeatures;
+      const partnerRecord = partner as Record<string, unknown>;
+      const piiRaw = partnerRecord.aiPiiRedaction;
+      const piiOverride: PiiOverride = piiRaw === 'on' || piiRaw === 'off' ? piiRaw : null;
+      const auditRaw = partnerRecord.aiAuditVerbosity;
+      const auditOverride: AuditOverride = auditRaw === 'metadata' || auditRaw === 'full' ? auditRaw : null;
+
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         name: partner.name,
         aiEnabled: partner.aiEnabled ?? false,
         aiFeatures: { ...raw, messageImprovement: improvement },
+        aiFeaturesAvailable: envelope,
+        whisperDeployment: aiConfig.whisperDeployment ?? '',
+        aiPiiRedaction: piiOverride,
+        aiAuditVerbosity: auditOverride,
       });
     }
   }, [partner]);
@@ -78,6 +98,13 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
     setForm(prev => ({
       ...prev,
       aiFeatures: { ...prev.aiFeatures, [key]: !prev.aiFeatures[key] },
+    }));
+  }
+
+  function toggleEnvelope(key: Exclude<keyof AiFeatures, 'messageImprovement'>) {
+    setForm(prev => ({
+      ...prev,
+      aiFeaturesAvailable: { ...prev.aiFeaturesAvailable, [key]: !prev.aiFeaturesAvailable[key] },
     }));
   }
 
@@ -96,6 +123,10 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
           name: form.name,
           aiEnabled: form.aiEnabled,
           aiFeatures: form.aiFeatures,
+          aiFeaturesAvailable: form.aiFeaturesAvailable,
+          aiConfig: { whisperDeployment: form.whisperDeployment },
+          aiPiiRedaction: form.aiPiiRedaction,
+          aiAuditVerbosity: form.aiAuditVerbosity,
         },
       })}
       submitLabel={t('save_profile')}
@@ -176,6 +207,93 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
                     />
                   </div>
                 ))}
+
+                <div className="py-3">
+                  <label className={FIELD_LABEL}>Whisper Deployment</label>
+                  <input
+                    type="text"
+                    className={INPUT}
+                    value={form.whisperDeployment}
+                    onChange={e => setForm(prev => ({ ...prev, whisperDeployment: e.target.value }))}
+                    placeholder="whisper"
+                  />
+                  <div className="text-[12px] text-[var(--color-ink-muted)] mt-1">Azure deployment name for speech-to-text. Leave blank to use the default.</div>
+                </div>
+
+                {/* Slice 10b: feature envelope (platform max). Partner admin
+                    cannot enable any feature outside this set. Stricter-only
+                    enforcement is on the server (see featuresEnvelope.ts). */}
+                <div className="pt-4">
+                  <h3 className={SECTION_LABEL}>Feature Envelope (Platform Max)</h3>
+                  <p className="text-[12px] text-[var(--color-ink-muted)] mt-1 mb-3">
+                    Features the partner admin is allowed to enable. The settings above cannot exceed this envelope.
+                  </p>
+                  <div className="divide-y divide-[var(--color-border)]">
+                    {BOOLEAN_FEATURES.map(({ key, label }) => (
+                      <div key={`env-${key}`} className="flex items-center justify-between py-3 gap-4">
+                        <div className="text-[13px] font-medium text-[var(--color-ink)]">{label}</div>
+                        <Toggle
+                          size="sm"
+                          on={!!form.aiFeaturesAvailable[key]}
+                          onToggle={() => toggleEnvelope(key)}
+                          label={`Envelope: ${label}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Slice 10c: per-partner security overrides (PII redaction +
+                    audit verbosity). Inherit = NULL on the partner column,
+                    falling back to the platform-level system_settings default. */}
+                <div className="pt-4">
+                  <h3 className={SECTION_LABEL}>Security Overrides</h3>
+                  <p className="text-[12px] text-[var(--color-ink-muted)] mt-1 mb-3">{t('edit_partner_security_title')}</p>
+                  <div className="py-3">
+                    <div className="text-[13px] font-medium text-[var(--color-ink)]">{t('edit_partner_pii_label')}</div>
+                    <div className="text-[12px] text-[var(--color-ink-muted)] mt-0.5 mb-2">{t('edit_partner_pii_help')}</div>
+                    <div className="flex flex-wrap gap-3">
+                      {([
+                        { value: null, label: 'PII: Inherit' },
+                        { value: 'on' as const, label: 'PII: On' },
+                        { value: 'off' as const, label: 'PII: Off' },
+                      ]).map(({ value, label }) => (
+                        <label key={String(value)} className="flex items-center gap-2 text-[12px] text-[var(--color-ink)]">
+                          <input
+                            type="radio"
+                            name="aiPiiRedaction"
+                            aria-label={label}
+                            checked={form.aiPiiRedaction === value}
+                            onChange={() => setForm(prev => ({ ...prev, aiPiiRedaction: value }))}
+                          />
+                          {value === null ? t('edit_partner_inherit_option') : label.replace('PII: ', '')}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="py-3">
+                    <div className="text-[13px] font-medium text-[var(--color-ink)]">{t('edit_partner_audit_label')}</div>
+                    <div className="text-[12px] text-[var(--color-ink-muted)] mt-0.5 mb-2">{t('edit_partner_audit_help')}</div>
+                    <div className="flex flex-wrap gap-3">
+                      {([
+                        { value: null, label: 'Audit: Inherit' },
+                        { value: 'metadata' as const, label: 'Audit: Metadata' },
+                        { value: 'full' as const, label: 'Audit: Full' },
+                      ]).map(({ value, label }) => (
+                        <label key={String(value)} className="flex items-center gap-2 text-[12px] text-[var(--color-ink)]">
+                          <input
+                            type="radio"
+                            name="aiAuditVerbosity"
+                            aria-label={label}
+                            checked={form.aiAuditVerbosity === value}
+                            onChange={() => setForm(prev => ({ ...prev, aiAuditVerbosity: value }))}
+                          />
+                          {value === null ? t('edit_partner_inherit_option') : label.replace('Audit: ', '')}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : (
               <p className="text-[12px] text-[var(--color-ink-muted)] italic">AI is disabled for this tenant. Enable the toggle above to configure individual features.</p>

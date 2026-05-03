@@ -138,6 +138,8 @@ export async function runSend(
     whisper: isWhisper ? 1 : 0,
     createdAt: now,
     reactions: {},
+    // Slice 7.5: stamp the AI-improve marker so receivers see the ✨ badge.
+    improvedAt: args.improvedFromUsageLogId ? now : null,
   });
 
   const message: SendMessage = {
@@ -159,6 +161,7 @@ export async function runSend(
     reactions: {},
     replyToId: args.replyToId ?? null,
     ...(args.localId ? { localId: args.localId } : {}),
+    ...(args.improvedFromUsageLogId ? { improvedAt: now } : {}),
   };
 
   // Reply snippet — fetch + truncate. Matches legacy `resolveReplySnippet`.

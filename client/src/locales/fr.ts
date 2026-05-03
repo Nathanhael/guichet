@@ -60,6 +60,14 @@ const fr: Record<string, string> = {
     ai_improved: 'Am\u00e9lior\u00e9 par IA',
     ai_will_improve: "L'IA am\u00e9liorera avant l'envoi",
     revert_to_original: "Revenir \u00e0 l'original",
+    improve_modal_title: "L'IA a am\u00e9lior\u00e9 votre message",
+    improve_modal_original_label: 'Original',
+    improve_modal_improved_label: 'Am\u00e9lior\u00e9',
+    improve_send_improved: 'Envoyer la version am\u00e9lior\u00e9e',
+    improve_send_original: "Envoyer l'original",
+    improve_thumbs_up_aria: 'Noter positivement la suggestion IA',
+    improve_thumbs_down_aria: 'Noter n\u00e9gativement la suggestion IA',
+    improve_feedback_thanks_toast: 'Merci pour votre retour',
     add_message_or_send: 'Ajoutez un message ou appuyez sur Entr\u00e9e pour envoyer',
     confirm_delete_message: 'Supprimer ce message ? Cette action est irr\u00e9versible.',
 
@@ -68,6 +76,10 @@ const fr: Record<string, string> = {
     translated_for_recipient: 'traduit pour le destinataire',
     show_translation: 'Afficher la traduction',
     show_original: 'Afficher l\'original',
+
+    // AI badge tooltips (slice 3)
+    ai_badge_translated: 'Traduit par l\'IA',
+    ai_badge_improved: 'Amélioré par l\'IA',
 
     no_tickets: 'Aucun ticket trouv\u00e9.',
     no_archived: 'Rien d\u2019archiv\u00e9 pour l\u2019instant',
@@ -168,6 +180,20 @@ const fr: Record<string, string> = {
     config_feature_identity: 'Politiques de sécurité — complexité des mots de passe, délais de session, exigences MFA et seuils de verrouillage pour les comptes opérateurs plateforme',
     audit_tab: 'Audit',
     archive_tab: 'Archives',
+    'ai-security_tab': 'S\u00e9curit\u00e9 IA',
+    platform_tab_ai_security: 'S\u00e9curit\u00e9 IA',
+    ai_security_panel_desc: 'Param\u00e8tres globaux de s\u00e9curit\u00e9 IA appliqu\u00e9s \u00e0 chaque partenaire sauf surcharge explicite.',
+    ai_security_pii_label: 'Masquage des PII',
+    ai_security_pii_hint: 'Supprime les e-mails, num\u00e9ros de t\u00e9l\u00e9phone et num\u00e9ros d\'identification des messages avant l\'envoi au fournisseur IA.',
+    ai_security_pii_on: 'Activ\u00e9 \u2014 supprime les e-mails / t\u00e9l\u00e9phones / ID avant les appels IA',
+    ai_security_pii_off: 'D\u00e9sactiv\u00e9',
+    ai_security_audit_label: 'Verbosit\u00e9 de l\'audit',
+    ai_security_audit_hint: 'Contr\u00f4le la quantit\u00e9 de donn\u00e9es des requ\u00eates IA \u00e9crites dans le journal d\'audit.',
+    ai_security_audit_metadata: 'M\u00e9tadonn\u00e9es uniquement \u2014 journalise tokens, co\u00fbts, action',
+    ai_security_audit_full: 'Contenu complet \u2014 journalise aussi les invites et r\u00e9ponses compl\u00e8tes',
+    ai_security_save: 'Enregistrer',
+    ai_security_saved_toast: 'Param\u00e8tres de s\u00e9curit\u00e9 IA enregistr\u00e9s.',
+    ai_security_save_error: 'Impossible d\'enregistrer les param\u00e8tres de s\u00e9curit\u00e9 IA.',
     last_active: 'Derni\u00e8re activit\u00e9',
     never: 'Jamais',
     status_linked_sso: 'Li\u00e9 (SSO)',
@@ -242,6 +268,14 @@ const fr: Record<string, string> = {
     inactive_status: 'INACTIF',
     placeholder_partner_id: 'ex. acme-corp',
     placeholder_partner_name: 'ex. Acme Corporation',
+
+    // Slice 10c: surcharges de sécurité par partenaire
+    edit_partner_security_title: 'Surcharges de sécurité',
+    edit_partner_pii_label: 'Masquage des PII',
+    edit_partner_pii_help: 'Retirer les informations personnelles identifiables des invites IA. Hériter utilise la valeur par défaut de la plateforme.',
+    edit_partner_audit_label: 'Verbosité de l\'audit',
+    edit_partner_audit_help: 'Niveau de détail des requêtes IA journalisées. Métadonnées n\'enregistre que les compteurs ; Complet inclut le contenu des invites. Hériter utilise la valeur par défaut de la plateforme.',
+    edit_partner_inherit_option: 'Hériter',
     invite_resent_success: 'E-mail d\'invitation renvoy\u00e9 avec succ\u00e8s.',
     invite_resent_error: '\u00c9chec du renvoi de l\'invitation',
     en: 'Anglais',
@@ -719,5 +753,16 @@ const fr: Record<string, string> = {
     queue_staffing_waiting: '{n} en attente',
     queue_staffing_oldest: 'le plus ancien : {duration}',
     chat_cross_lang_banner: 'Vos réponses sont traduites automatiquement en {lang} pour l\'agent.',
+
+    // Dictée vocale (slice 5)
+    voice_start: 'Démarrer la dictée',
+    voice_stop: 'Arrêter la dictée',
+    voice_transcribing: 'Transcription…',
+    mic_blocked: 'Microphone bloqué — autorisez-le dans les paramètres du navigateur.',
+    mic_no_device: 'Aucun microphone détecté.',
+    mic_unsupported: 'La dictée vocale n\'est pas prise en charge dans ce navigateur.',
+    transcribe_failed: 'Échec de la transcription. Réessayez.',
+    transcribe_too_long: 'Enregistrement arrêté à la limite de 60 secondes.',
+    transcribe_empty: 'Aucune parole détectée.',
 };
 export default fr;

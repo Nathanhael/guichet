@@ -60,6 +60,14 @@ const nl: Record<string, string> = {
     ai_improved: 'AI verbeterd',
     ai_will_improve: 'AI verbetert voor verzending',
     revert_to_original: 'Terugzetten naar origineel',
+    improve_modal_title: 'AI heeft je bericht verbeterd',
+    improve_modal_original_label: 'Origineel',
+    improve_modal_improved_label: 'Verbeterd',
+    improve_send_improved: 'Verbeterde versie versturen',
+    improve_send_original: 'Origineel versturen',
+    improve_thumbs_up_aria: 'AI-resultaat positief beoordelen',
+    improve_thumbs_down_aria: 'AI-resultaat negatief beoordelen',
+    improve_feedback_thanks_toast: 'Bedankt voor je feedback',
     add_message_or_send: 'Voeg een bericht toe of druk op Enter om te versturen',
     confirm_delete_message: 'Dit bericht verwijderen? Dit kan niet ongedaan worden gemaakt.',
 
@@ -68,6 +76,10 @@ const nl: Record<string, string> = {
     translated_for_recipient: 'vertaald naar ontvanger',
     show_translation: 'Toon vertaling',
     show_original: 'Toon origineel',
+
+    // AI badge tooltips (slice 3)
+    ai_badge_translated: 'Vertaald door AI',
+    ai_badge_improved: 'Verbeterd door AI',
 
     no_tickets: 'Geen tickets gevonden.',
     no_archived: 'Nog niets gearchiveerd',
@@ -168,6 +180,20 @@ const nl: Record<string, string> = {
     config_feature_identity: 'Beveiligingsbeleid — wachtwoordcomplexiteit, sessietime-outs, MFA-vereisten en vergrendelingsdrempels voor platformoperatoraccounts',
     audit_tab: 'Audit',
     archive_tab: 'Archief',
+    'ai-security_tab': 'AI-beveiliging',
+    platform_tab_ai_security: 'AI-beveiliging',
+    ai_security_panel_desc: 'Globale standaardinstellingen voor AI-beveiliging die op elke partner worden toegepast tenzij expliciet overschreven.',
+    ai_security_pii_label: 'PII-redactie',
+    ai_security_pii_hint: 'Verwijder e-mails, telefoonnummers en ID-nummers uit berichten voordat ze naar de AI-provider worden gestuurd.',
+    ai_security_pii_on: 'Aan — verwijder e-mails / telefoons / ID\'s vóór AI-oproepen',
+    ai_security_pii_off: 'Uit',
+    ai_security_audit_label: 'Auditdetailniveau',
+    ai_security_audit_hint: 'Bepaalt hoeveel AI-aanvraaggegevens in het auditlogboek worden geschreven.',
+    ai_security_audit_metadata: 'Alleen metadata — log tokens, kosten, actie',
+    ai_security_audit_full: 'Volledige inhoud — log ook volledige prompts en antwoorden',
+    ai_security_save: 'Opslaan',
+    ai_security_saved_toast: 'AI-beveiligingsstandaarden opgeslagen.',
+    ai_security_save_error: 'Kan AI-beveiligingsstandaarden niet opslaan.',
     last_active: 'Laatst Actief',
     never: 'Nooit',
     status_linked_sso: 'Gekoppeld (SSO)',
@@ -242,6 +268,14 @@ const nl: Record<string, string> = {
     inactive_status: 'INACTIEF',
     placeholder_partner_id: 'bv. acme-corp',
     placeholder_partner_name: 'bv. Acme Corporation',
+
+    // Slice 10c: beveiligingsoverrides per partner
+    edit_partner_security_title: 'Beveiligingsoverrides',
+    edit_partner_pii_label: 'PII-redactie',
+    edit_partner_pii_help: 'Persoonlijk identificeerbare gegevens uit AI-prompts verwijderen. Overerven gebruikt de platformstandaard.',
+    edit_partner_audit_label: 'Auditdetailniveau',
+    edit_partner_audit_help: 'Hoeveel AI-aanvraagdetails worden gelogd. Metadata registreert alleen tellingen; Volledig bevat prompt-inhoud. Overerven gebruikt de platformstandaard.',
+    edit_partner_inherit_option: 'Overerven',
     invite_resent_success: 'Uitnodigingsmail opnieuw verstuurd.',
     invite_resent_error: 'Uitnodiging opnieuw versturen mislukt',
     en: 'Engels',
@@ -719,5 +753,16 @@ const nl: Record<string, string> = {
     queue_staffing_waiting: '{n} wachtend',
     queue_staffing_oldest: 'oudste {duration}',
     chat_cross_lang_banner: 'Antwoorden worden automatisch vertaald naar {lang} voor de agent.',
+
+    // Spraakdictee (slice 5)
+    voice_start: 'Start dicteren',
+    voice_stop: 'Stop dicteren',
+    voice_transcribing: 'Transcriberen…',
+    mic_blocked: 'Microfoon geblokkeerd — sta toe in browserinstellingen.',
+    mic_no_device: 'Geen microfoon gevonden.',
+    mic_unsupported: 'Spraakdictee wordt niet ondersteund in deze browser.',
+    transcribe_failed: 'Transcriptie mislukt. Probeer opnieuw.',
+    transcribe_too_long: 'Opname gestopt bij de limiet van 60 seconden.',
+    transcribe_empty: 'Geen spraak gedetecteerd.',
 };
 export default nl;

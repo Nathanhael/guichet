@@ -365,4 +365,73 @@ export const partnerConfigRouter = router({
         return { success: true };
       });
     }),
+
+  // Slice 10.5: partner-admin-side editor for the AI glossary + per-action
+  // custom instructions. The platform sets the envelope (slice 9); this is
+  // partner-scoped configuration of the prompt context that lives in
+  // promptCustomization.ts.
+  updateAiCustomization: adminProcedure
+    .input(z.object({
+      aiTerms: z.object({
+        preserve: z.array(z.string().min(1).max(80)).max(50).default([]),
+        forbidden: z.array(z.string().min(1).max(80)).max(50).default([]),
+      }).optional(),
+      aiCustomInstructions: z.object({
+        improve: z.string().max(2000).optional(),
+        translate: z.string().max(2000).optional(),
+        summarize: z.string().max(2000).optional(),
+      }).optional(),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const partnerId = ctx.user.partnerId;
+      if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+      const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
+      if (input.aiTerms !== undefined) updateData.aiTerms = input.aiTerms;
+      if (input.aiCustomInstructions !== undefined) updateData.aiCustomInstructions = input.aiCustomInstructions;
+
+      await db.update(partners).set(updateData).where(eq(partners.id, partnerId));
+
+      await db.insert(auditLog).values({
+        action: 'partner.config_updated',
+        actorId: ctx.user.id,
+        partnerId,
+        targetType: 'partner',
+        targetId: partnerId,
+        metadata: {
+          details: 'AI customization updated',
+          aiTerms: input.aiTerms !== undefined,
+          aiCustomInstructions: input.aiCustomInstructions !== undefined,
+        },
+      });
+
+      return { success: true };
+    }),
+
+  getAiCustomization: adminProcedure.query(async ({ ctx }) => {
+    const partnerId = ctx.user.partnerId;
+    if (!partnerId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No active partner context' });
+
+    const rows = await db
+      .select({ aiTerms: partners.aiTerms, aiCustomInstructions: partners.aiCustomInstructions })
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+
+    const row = rows[0];
+    const terms = (row?.aiTerms ?? {}) as { preserve?: string[]; forbidden?: string[] };
+    const instructions = (row?.aiCustomInstructions ?? {}) as Record<string, string | undefined>;
+
+    return {
+      aiTerms: {
+        preserve: terms.preserve ?? [],
+        forbidden: terms.forbidden ?? [],
+      },
+      aiCustomInstructions: {
+        improve: instructions.improve ?? '',
+        translate: instructions.translate ?? '',
+        summarize: instructions.summarize ?? '',
+      },
+    };
+  }),
 });

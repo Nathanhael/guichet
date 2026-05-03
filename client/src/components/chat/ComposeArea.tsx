@@ -3,16 +3,19 @@ import useStore, { useStoreShallow } from '../../store/useStore';
 import { getSocket } from '../../hooks/useSocket';
 import { useT } from '../../i18n';
 import { Ticket, Message } from '../../types';
-import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send, ALargeSmall } from 'lucide-react';
+import { X, Ghost, ImageIcon, Smile, Sparkles, FileText, Send, ALargeSmall, Mic, Square } from 'lucide-react';
 import { EditorContent } from '@tiptap/react';
 import FormatToolbar from './FormatToolbar';
 import LinkPreviewCard from './LinkPreviewCard';
+import ImproveDiffModal from './ImproveDiffModal';
 import Toast from '../Toast';
 import { getFileTypeLabel } from '../../utils/fileUtils';
 import { useComposeEditor } from '../../hooks/useComposeEditor';
 import { useComposeAttachments } from '../../hooks/useComposeAttachments';
 import { useComposeLinkPreview } from '../../hooks/useComposeLinkPreview';
 import { useComposeAiImprove } from '../../hooks/useComposeAiImprove';
+import { useAiHealth } from '../../hooks/useAiHealth';
+import { useVoiceTranscribe } from '../../hooks/useVoiceTranscribe';
 
 export interface ComposeAreaHandle {
   toggleWhisper: () => void;
@@ -24,7 +27,7 @@ interface ComposeAreaProps {
   isClosed: boolean;
   isSupport: boolean;
   compact?: boolean;
-  aiConfig?: { messageImprovement?: string; [key: string]: unknown } | null;
+  aiConfig?: { messageImprovement?: string; voiceTranscription?: boolean; [key: string]: unknown } | null;
   replyingTo?: Message | null;
   onClearReply?: () => void;
 }
@@ -131,6 +134,10 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     revertImprove,
     improveAndSend,
     reset: resetAiImprove,
+    pendingImprove,
+    confirmSendImproved,
+    confirmSendOriginal,
+    dismissImprove,
   } = useComposeAiImprove({
     text: compose.text,
     // replaceText keeps the editor and the text mirror in lockstep and
@@ -139,11 +146,36 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     setText: compose.replaceText,
     isSupport,
     aiConfig,
-    doSend: (finalText) => doSend(finalText),
+    doSend: (finalText, opts) => doSend(finalText, opts),
   });
 
+  const aiHealth = useAiHealth({ enabled: improvementMode === 'optional' || improvementMode === 'forced' });
+
+  // Voice transcription (slice 5). Support-only per Decision 1; the partner
+  // toggle gates the actual button so the hook can stay always-mounted —
+  // simpler than threading the gate through a conditional hook (forbidden
+  // by React rules).
+  const voiceEnabled = !!aiConfig?.voiceTranscription && isSupport;
+  const voice = useVoiceTranscribe({
+    enabled: voiceEnabled,
+    onTranscript: (transcript: string) => {
+      const current = compose.text;
+      const trimmedCurrent = current.trimEnd();
+      // Decision 5: append with a leading space if compose is non-empty so
+      // dictation never glues onto the prior word; replace if the box is
+      // empty so the very first dictation doesn't gain a leading space.
+      if (trimmedCurrent.length === 0) {
+        compose.replaceText(transcript);
+      } else {
+        compose.replaceText(`${trimmedCurrent} ${transcript}`);
+      }
+    },
+  });
+  const showMicButton = voiceEnabled && voice.isSupported;
+  const elapsedLabel = `${Math.floor(voice.elapsedSec / 60)}:${String(voice.elapsedSec % 60).padStart(2, '0')}`;
+
   /** Core send logic -- uploads pending files, then emits socket event with the given text. */
-  async function doSend(finalText: string) {
+  async function doSend(finalText: string, opts?: { improvedFromUsageLogId?: string }) {
     if (!user?.id) return;
 
     const hasPending = pendingFiles.length > 0;
@@ -166,6 +198,11 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     }
 
     const localId = `pending-${ticket.id}-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    // Slice 7: when the agent confirmed an AI-improved draft, optimistically
+    // stamp `improvedAt` so the ✨ AI badge renders before the server echo
+    // arrives. The server will overwrite with its authoritative timestamp on
+    // the message:new echo.
+    const stampedImprovedAt = opts?.improvedFromUsageLogId ? new Date().toISOString() : undefined;
     const optimisticMsg: Message = {
       id: localId,
       ticketId: ticket.id,
@@ -193,6 +230,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       createdAt: new Date().toISOString(),
       reactions: {},
       pending: true,
+      improvedAt: stampedImprovedAt,
     };
     useStore.getState().addMessage(ticket.id, optimisticMsg);
 
@@ -204,6 +242,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       attachments: attachments && attachments.length > 0 ? attachments : undefined,
       whisper: whisperMode,
       replyToId: replyingTo?.id,
+      improvedFromUsageLogId: opts?.improvedFromUsageLogId,
     };
 
     if (socket.connected) {
@@ -374,7 +413,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           } ${isDragOver ? 'outline outline-2 outline-[var(--color-accent)] outline-offset-0' : ''}`}
         >
           {whisperMode && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-whisper-ink)] text-white text-[11px] font-semibold">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-whisper-ink)] text-[var(--color-btn-text-inverse)] text-[11px] font-semibold">
               <Ghost size={12} strokeWidth={2} />
               <span>{t('whisper_label') || 'Whisper'}</span>
             </div>
@@ -394,8 +433,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               onClick={() => setWhisperMode((v) => !v)}
               aria-label={t('whisper_mode') || 'Toggle whisper mode'}
               title={t('whisper_mode')}
-              className={`${compact ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center rounded-full transition-colors ${whisperMode
-                ? 'bg-[var(--color-whisper-ink)] text-white'
+              className={`${compact ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${whisperMode
+                ? 'bg-[var(--color-whisper-ink)] text-[var(--color-btn-text-inverse)]'
                 : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]'
                 }`}
             >
@@ -409,7 +448,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               onClick={() => setShowFormatToolbar((v) => !v)}
               aria-label={t('formatting') || 'Toggle formatting'}
               title={t('formatting') || 'Formatting'}
-              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors ${showFormatToolbar
+              className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${showFormatToolbar
                 ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
                 : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]'
                 }`}
@@ -440,7 +479,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               onClick={compose.toggleEmojiGrid}
               aria-label={t('emoji') || 'Emoji'}
               aria-expanded={compose.isEmojiGridOpen}
-              className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
               title={t('emoji') || 'Emoji'}
             >
               <Smile size={18} />
@@ -474,15 +513,56 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           </div>
         </div>
 
-        {/* AI Improve button -- only in 'optional' mode */}
-        {improvementMode === 'optional' && compose.text.trim().length >= 10 && !originalText && (
+        {/* Voice transcription (slice 5). Three visual states: idle, recording
+            (pulsing red dot + elapsed timer), transcribing (spinner + label).
+            Hidden entirely when partner toggle is off, when this is the agent
+            surface, or when MediaRecorder is missing in this browser. */}
+        {showMicButton && voice.isTranscribing && (
+          <div
+            className="flex items-center gap-1.5 h-9 px-2 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] font-semibold text-[var(--color-ink-soft)]"
+            aria-live="polite"
+          >
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-[v2p-dot_1s_ease-in-out_infinite]" />
+            <span>{t('voice_transcribing') || 'Transcribing…'}</span>
+          </div>
+        )}
+        {showMicButton && !voice.isTranscribing && voice.isRecording && (
+          <button
+            type="button"
+            onClick={() => { void voice.stopRecording(); }}
+            aria-pressed={true}
+            aria-label={t('voice_stop') || 'Stop dictation'}
+            title={t('voice_stop') || 'Stop dictation'}
+            className="flex items-center gap-1.5 h-9 px-2 rounded-[var(--radius-pill)] bg-[var(--color-urgent-soft,var(--color-bg-elevated))] text-[var(--color-urgent)] hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          >
+            <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-urgent)] animate-[v2p-pulse_1.8s_ease-in-out_infinite]" />
+            <span className="font-mono text-[11px] tabular-nums">{elapsedLabel}</span>
+            <Square size={12} strokeWidth={2.5} fill="currentColor" />
+          </button>
+        )}
+        {showMicButton && !voice.isRecording && !voice.isTranscribing && (
+          <button
+            type="button"
+            onClick={() => { void voice.startRecording(); }}
+            aria-pressed={false}
+            aria-label={t('voice_start') || 'Start dictation'}
+            title={t('voice_start') || 'Start dictation'}
+            disabled={voice.isTranscribing}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] disabled:opacity-40 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
+          >
+            <Mic size={18} strokeWidth={2} />
+          </button>
+        )}
+
+        {/* AI Improve button — only in 'optional' mode and only when AI provider is reachable */}
+        {improvementMode === 'optional' && aiHealth.available && compose.text.trim().length >= 10 && !originalText && (
           <button
             type="button"
             onClick={handleImprove}
             disabled={improving}
             aria-label={t('improve_message') || 'Improve message'}
             title={t('improve_message') || 'Improve message'}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] disabled:opacity-40 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] disabled:opacity-40 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
             {improving ? (
               <span className="text-[10px] font-semibold opacity-60">...</span>
@@ -496,7 +576,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           type="submit"
           disabled={uploading || improving || (!compose.text.trim() && pendingFiles.length === 0)}
           aria-label={t('send') || 'Send'}
-          className={`${compact ? 'w-9 h-9 rounded-full' : 'h-9 px-3 rounded-[var(--radius-pill)]'} flex items-center ${compact ? 'justify-center' : 'gap-2'} text-[12px] font-semibold text-white disabled:opacity-40 shadow-[var(--shadow-soft)] hover:opacity-90 transition-opacity ${
+          className={`${compact ? 'w-9 h-9 rounded-full' : 'h-9 px-3 rounded-[var(--radius-pill)]'} flex items-center ${compact ? 'justify-center' : 'gap-2'} text-[12px] font-semibold text-[var(--color-btn-text-inverse)] disabled:opacity-40 shadow-[var(--shadow-soft)] hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
             whisperMode ? 'bg-[var(--color-whisper-ink)]' : 'bg-[var(--color-accent)]'
           }`}
           title={improvementMode === 'forced' ? (t('ai_will_improve') || 'AI will improve before sending') : (t('send') || 'Send')}
@@ -517,6 +597,19 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
         </div>{/* /unified compose box */}
 
+        {/* Voice transcription error chip — Decision 9: surface the i18n
+            error key as a small inline chip beneath the compose box. The
+            chip auto-clears on the next mic-button click (startRecording
+            resets `error` to null). */}
+        {showMicButton && voice.error && (
+          <div
+            className="mt-1.5 px-3 py-1.5 rounded-[var(--radius-btn)] bg-[var(--color-urgent-soft,var(--color-bg-elevated))] text-[11px] font-medium text-[var(--color-urgent)]"
+            role="alert"
+          >
+            {t(voice.error) || voice.error}
+          </div>
+        )}
+
         {charCount > 3500 && (
           <div className="flex justify-end mt-1 pr-1">
             <span className={`font-mono text-[11px] tabular-nums ${
@@ -528,6 +621,14 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         )}
       </div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {pendingImprove && (
+        <ImproveDiffModal
+          pending={pendingImprove}
+          onSendImproved={() => { void confirmSendImproved(); }}
+          onSendOriginal={() => { void confirmSendOriginal(); }}
+          onDismiss={dismissImprove}
+        />
+      )}
     </form>
   );
 });

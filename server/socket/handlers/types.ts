@@ -82,6 +82,13 @@ export const messageSendSchema = z.object({
   replyToId: z.string().optional(),
   /** Client-generated ID echoed back in message:new for optimistic reconciliation */
   localId: z.string().max(100).optional(),
+  /**
+   * Slice 7.5: when set, the message originated from an AI improve action.
+   * The server stamps `messages.improved_at` on insert so the client AI badge
+   * can render. Value is the `usageLogId` returned by `ai.improveMessage`,
+   * available later for thumbs feedback / send-original tracking.
+   */
+  improvedFromUsageLogId: z.string().max(100).optional(),
 });
 export type MessageSendPayload = z.infer<typeof messageSendSchema>;
 
