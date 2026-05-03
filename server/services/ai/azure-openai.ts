@@ -168,7 +168,7 @@ export class AzureOpenAiProvider implements AiProvider {
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        throw new Error(`Whisper transcription timed out after ${AzureOpenAiProvider.TRANSCRIBE_TIMEOUT_MS}ms`);
+        throw new Error(`Whisper transcription timed out after ${AzureOpenAiProvider.TRANSCRIBE_TIMEOUT_MS}ms`, { cause: err });
       }
       throw err;
     }
