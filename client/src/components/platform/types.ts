@@ -17,6 +17,7 @@ export interface AiFeatures {
   autoSummarizeOnClose?: boolean;
   queueLangAwareness?: boolean;
   voiceTranscription?: boolean;
+  cannedTranslation?: boolean;
 }
 
 export interface Partner {

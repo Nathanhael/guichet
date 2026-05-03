@@ -10,6 +10,7 @@ export interface AiFeatures {
   autoSummarizeOnClose?: boolean;
   queueLangAwareness?: boolean;
   voiceTranscription?: boolean;
+  cannedTranslation?: boolean;
 }
 
 const IMPROVEMENT_LEVEL: Record<ImprovementMode, number> = {
@@ -24,6 +25,7 @@ const BOOLEAN_FEATURES: ReadonlyArray<keyof AiFeatures> = [
   'autoSummarizeOnClose',
   'queueLangAwareness',
   'voiceTranscription',
+  'cannedTranslation',
 ];
 
 export type ValidationResult =

@@ -117,13 +117,14 @@ describe('validateAiFeaturesEnvelope', () => {
     }
   });
 
-  it('covers all 5 boolean features (chatSummarization, translation, autoSummarizeOnClose, queueLangAwareness, voiceTranscription)', () => {
+  it('covers all 6 boolean features (chatSummarization, translation, autoSummarizeOnClose, queueLangAwareness, voiceTranscription, cannedTranslation)', () => {
     const allOn: AiFeatures = {
       chatSummarization: true,
       translation: true,
       autoSummarizeOnClose: true,
       queueLangAwareness: true,
       voiceTranscription: true,
+      cannedTranslation: true,
     };
     const allOff: AiFeatures = {
       chatSummarization: false,
@@ -131,12 +132,22 @@ describe('validateAiFeaturesEnvelope', () => {
       autoSummarizeOnClose: false,
       queueLangAwareness: false,
       voiceTranscription: false,
+      cannedTranslation: false,
     };
     const blocked = validateAiFeaturesEnvelope(allOn, allOff);
     expect(blocked.ok).toBe(false);
-    if (!blocked.ok) expect(blocked.violations).toHaveLength(5);
+    if (!blocked.ok) expect(blocked.violations).toHaveLength(6);
 
     const subset = validateAiFeaturesEnvelope(allOff, allOn);
     expect(subset.ok).toBe(true);
+  });
+
+  it('rejects when proposed enables cannedTranslation but envelope blocks it', () => {
+    const result = validateAiFeaturesEnvelope(
+      { cannedTranslation: true },
+      { cannedTranslation: false },
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.violations).toContain('cannedTranslation');
   });
 });

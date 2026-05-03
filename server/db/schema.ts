@@ -338,6 +338,16 @@ export const cannedResponses = pgTable('canned_responses', {
   title: text('title').notNull(),
   body: text('body').notNull(),
   shortcut: text('shortcut'),                          // e.g. "/greet", "/close"
+  // Two-letter language code matching users.lang. The language `body` is written in.
+  // Inert until partner enables aiFeatures.cannedTranslation.
+  sourceLang: text('source_lang').notNull().default('en'),
+  // { "nl": "...", "fr": "...", ... }. The sourceLang entry is intentionally
+  // omitted (lives in `body`). `{}` reads as "no translations yet" regardless
+  // of feature flag state.
+  bodyTranslations: jsonb('body_translations').notNull().default({}).$type<Record<string, string>>(),
+  // Per-language stale flags set when `body` is edited; cleared on regenerate.
+  // { "nl": true, "fr": true } = both translations need regeneration.
+  staleTranslations: jsonb('stale_translations').notNull().default({}).$type<Record<string, boolean>>(),
   createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at', { mode: 'string' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).notNull().defaultNow(),
