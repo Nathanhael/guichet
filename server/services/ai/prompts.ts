@@ -29,7 +29,7 @@ Conversation:
 {{messages}}
 </user_content>`,
 
-  improve: `Rewrite the following message to be clearer, more professional, and well-structured. Keep the same meaning and tone. Do not add information that wasn't in the original.
+  improve: `Rewrite the following message to be clearer, more professional, and well-structured. Keep the same meaning, tone, AND language as the original — if the original is Dutch, reply in Dutch; French stays French; English stays English. Do not add information that wasn't in the original. Reply with ONLY the rewritten message itself — no preamble, no surrounding quotes, no commentary, no "Here's a clearer version" introduction.
 
 Original message:
 <user_content>
