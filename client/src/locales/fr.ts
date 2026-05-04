@@ -254,7 +254,7 @@ const fr: Record<string, string> = {
     col_status: 'Statut',
     col_access_scope: 'Port\u00e9e d\'acc\u00e8s',
     col_actions: 'Actions',
-    manage_access: 'G\u00e9rer l\'acc\u00e8s',
+    access_managed_in_azure_banner: 'Les adh\u00e9sions et les r\u00f4les sont en lecture seule ici. Pour accorder, modifier ou r\u00e9voquer l\'acc\u00e8s, modifiez les attributions de groupe de s\u00e9curit\u00e9 Azure dans Entra.',
     partner_id: 'ID Partenaire',
     display_name: 'Nom d\'affichage',
     save_profile: 'Enregistrer le profil',

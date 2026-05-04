@@ -3,24 +3,18 @@ import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
 import { useT } from '../../i18n';
-import { Pencil, X, Search, Users, Shield, Trash2, ChevronLeft, ChevronRight, UserPlus, Moon, FileText, AlertTriangle } from 'lucide-react';
+import { X, Search, Users, ChevronLeft, ChevronRight, Moon, FileText, Info } from 'lucide-react';
 import Toast from '../Toast';
-import ConfirmDialog from '../ConfirmDialog';
 import MemberAuditDrawer from './MemberAuditDrawer';
-import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 
 // Shared Soft Product style constants — mirrors the other admin panels.
 const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
 const INPUT = 'h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
-const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-40 disabled:cursor-not-allowed transition-all';
 const SECONDARY_BTN = 'h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed';
-const FIELD_LABEL = 'block text-[11px] font-medium text-[var(--color-ink-muted)] mb-1.5';
 const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 export default function AdminTeam() {
   const t = useT();
-  const isExternal = useIsExternalAdmin();
-  const guestTooltip = t('guest_admin_disabled_tooltip');
   const { activeMembershipId, memberships } = useStoreShallow((s) => ({
     activeMembershipId: s.activeMembershipId,
     memberships: s.memberships,
@@ -36,11 +30,6 @@ export default function AdminTeam() {
   const [auditUserId, setAuditUserId] = useState<{ id: string; name: string } | null>(null);
   const LIMIT = 12;
 
-  const utils = trpc.useUtils();
-  const invalidate = () => {
-    utils.partner.listMembers.invalidate();
-    utils.partner.memberStats.invalidate();
-  };
   const { data, isLoading } = trpc.partner.listMembers.useQuery(
     {
       limit: LIMIT,
@@ -60,31 +49,13 @@ export default function AdminTeam() {
   const { data: stats } = trpc.partner.memberStats.useQuery(undefined, {
     enabled: !!activeMembershipId,
   });
-  const { data: pendingInvites } = trpc.partner.listMembers.useQuery(
-    { limit: 50, offset: 0, excludeAdmin: false, pendingInvite: true },
-    { enabled: !!activeMembershipId && !isExternal }
-  );
   const total = stats?.total ?? 0;
   const supportCount = stats?.support ?? 0;
   const agentCount = stats?.agents ?? 0;
   const dormantCount = stats?.dormant ?? 0;
   const guestsCount = stats?.guests ?? 0;
 
-  const removeMutation = trpc.partner.removeMember.useMutation({
-    onSuccess: invalidate,
-    onError: (err) => setToast({ message: err.message, type: 'error' })
-  });
-
-  const updateMemberMutation = trpc.partner.updateMember.useMutation({
-    onSuccess: () => { setEditingMembershipId(null); invalidate(); },
-    onError: (err) => setToast({ message: err.message, type: 'error' })
-  });
-
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [editingMembershipId, setEditingMembershipId] = useState<string | null>(null);
-  const [editDepts, setEditDepts] = useState<string[]>([]);
-  const [confirmRemove, setConfirmRemove] = useState<{ membershipId: string; name: string } | null>(null);
 
   const handleRoleFilter = (role: '' | 'agent' | 'support') => {
     setRoleFilter(role);
@@ -166,48 +137,19 @@ export default function AdminTeam() {
         ))}
       </div>
 
-      {/* B2B Guests — invite + pending Azure handoff list. Internal SSO members
-          are not shown here (they self-provision via Azure group mapping). Hidden
-          from B2B guest admins themselves. */}
-      {!isExternal && (
-        <div className={`${CARD} px-4 py-3`}>
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <div className="flex items-center gap-2 shrink-0">
-              <AlertTriangle className="h-4 w-4 text-[var(--color-accent-amber)]" aria-hidden />
-              <div>
-                <span className="text-[13px] font-semibold text-[var(--color-ink)]">{t('b2b_guest_invites')}</span>
-                <p className="text-[11px] text-[var(--color-ink-muted)]">
-                  {pendingInvites && pendingInvites.length > 0
-                    ? t('pending_invites_count').replace('{count}', String(pendingInvites.length))
-                    : t('no_pending_invites_hint')}
-                </p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-1.5 flex-1">
-              {pendingInvites?.map((p) => (
-                <span
-                  key={p.membershipId}
-                  title={p.email || undefined}
-                  className="inline-flex items-center gap-2 pl-1 pr-2.5 h-7 rounded-[var(--radius-pill)] bg-[color-mix(in_srgb,var(--color-accent-amber)_14%,transparent)]"
-                >
-                  <span className="w-5 h-5 rounded-full bg-[var(--color-accent-amber)] text-white flex items-center justify-center text-[9px] font-semibold">
-                    {p.name?.slice(0, 2).toUpperCase()}
-                  </span>
-                  <span className="text-[12px] text-[var(--color-ink)] truncate max-w-[160px]">{p.name}</span>
-                  <span className="text-[10px] uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{p.role}</span>
-                </span>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className={`${PRIMARY_BTN} whitespace-nowrap shrink-0`}
-            >
-              <UserPlus className="h-3.5 w-3.5" aria-hidden />
-              {t('invite_b2b_guest')}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Memberships are Azure-managed: roles + access come from SSO group
+          mappings, B2B guests are provisioned in Entra. This panel is a
+          read-only roster — to grant, change, or revoke access, the platform
+          admin updates Azure group assignments. */}
+      <div
+        role="note"
+        className="flex items-start gap-2 rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-2"
+      >
+        <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-[var(--color-ink-muted)]" aria-hidden />
+        <p className="text-[12px] text-[var(--color-ink-soft)] leading-relaxed">
+          {t('access_managed_in_azure_banner')}
+        </p>
+      </div>
 
       <div className={`${CARD} overflow-hidden flex flex-col`}>
           <div className="px-4 py-2.5 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
@@ -338,58 +280,8 @@ export default function AdminTeam() {
                     <td className="px-4 py-2">
                       {member.role === 'agent' ? (
                         <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('selects_per_ticket')}</span>
-                      ) : editingMembershipId === member.membershipId ? (
-                        <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] shadow-[var(--shadow-soft)] p-3 min-w-[220px] space-y-2">
-                          <div className="max-h-40 overflow-y-auto pr-1 space-y-0.5">
-                            {departments.map(d => (
-                              <label key={d.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 rounded-[var(--radius-btn)] hover:bg-[var(--color-hover)] transition-colors">
-                                <input
-                                  type="checkbox"
-                                  checked={editDepts.includes(d.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) setEditDepts([...editDepts, d.id]);
-                                    else setEditDepts(editDepts.filter(id => id !== d.id));
-                                  }}
-                                  className="w-3.5 h-3.5 accent-[var(--color-accent)]"
-                                />
-                                <span className="text-[12px] text-[var(--color-ink)]">{d.name}</span>
-                              </label>
-                            ))}
-                          </div>
-                          {member.role === 'support' && editDepts.length === 0 && (
-                            <p className="text-[11px] text-[var(--color-urgent)]">{t('support_requires_department')}</p>
-                          )}
-                          <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
-                            <button
-                              onClick={() => updateMemberMutation.mutate({ membershipId: member.membershipId, departments: editDepts })}
-                              disabled={isExternal || updateMemberMutation.isPending || (member.role === 'support' && editDepts.length === 0)}
-                              aria-disabled={isExternal || undefined}
-                              title={isExternal ? guestTooltip : undefined}
-                              data-guest-disabled={isExternal || undefined}
-                              className={`${PRIMARY_BTN} flex-1 justify-center h-8`}
-                            >
-                              {updateMemberMutation.isPending ? '…' : t('save')}
-                            </button>
-                            <button
-                              onClick={() => setEditingMembershipId(null)}
-                              className={`${SECONDARY_BTN} flex-1 justify-center h-8`}
-                            >
-                              {t('cancel')}
-                            </button>
-                          </div>
-                        </div>
                       ) : (
-                        <div
-                          aria-disabled={isExternal || undefined}
-                          title={isExternal ? guestTooltip : undefined}
-                          data-guest-disabled={isExternal || undefined}
-                          className={`group/dept flex flex-wrap gap-1.5 items-center min-h-[28px] rounded-[var(--radius-btn)] p-1 -m-1 transition-colors ${isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-[var(--color-hover)]'}`}
-                          onClick={() => {
-                            if (isExternal) return;
-                            setEditingMembershipId(member.membershipId);
-                            setEditDepts((member.departments as string[]) || []);
-                          }}
-                        >
+                        <div className="flex flex-wrap gap-1.5 items-center min-h-[28px]">
                           {member.departments && (member.departments as string[]).length > 0
                             ? (member.departments as string[]).map((dId: string) => {
                                 const dInfo = departments.find(d => d.id === dId);
@@ -400,34 +292,18 @@ export default function AdminTeam() {
                                 );
                               })
                             : <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('no_departments_assigned')}</span>}
-                          <Pencil className="h-3 w-3 opacity-40 group-hover/row:opacity-80 transition-opacity ml-auto text-[var(--color-ink-muted)]" aria-hidden />
                         </div>
                       )}
                     </td>
                     <td className="px-4 py-2 text-right">
-                      <div className="inline-flex items-center gap-0.5">
-                        <button
-                          onClick={() => setAuditUserId({ id: member.userId, name: member.name })}
-                          className="w-7 h-7 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors opacity-0 group-hover/row:opacity-100"
-                          aria-label={t('audit_history_for').replace('{name}', member.name)}
-                          title={t('audit_history')}
-                        >
-                          <FileText className="h-3.5 w-3.5" aria-hidden />
-                        </button>
-                        {member.isExternal && (
-                          <button
-                            onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
-                            disabled={isExternal}
-                            aria-disabled={isExternal || undefined}
-                            title={isExternal ? guestTooltip : t('remove_b2b_guest')}
-                            data-guest-disabled={isExternal || undefined}
-                            className="w-7 h-7 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
-                            aria-label={t('remove_member_aria').replace('{name}', member.name)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        onClick={() => setAuditUserId({ id: member.userId, name: member.name })}
+                        className="w-7 h-7 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors opacity-0 group-hover/row:opacity-100"
+                        aria-label={t('audit_history_for').replace('{name}', member.name)}
+                        title={t('audit_history')}
+                      >
+                        <FileText className="h-3.5 w-3.5" aria-hidden />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -436,19 +312,6 @@ export default function AdminTeam() {
           </div>
         </div>
 
-      {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); invalidate(); }} />}
-      {confirmRemove && (
-        <ConfirmDialog
-          title={t('remove_member_title')}
-          message={t('remove_member_message').replace('{name}', confirmRemove.name)}
-          confirmLabel={t('remove')}
-          onConfirm={() => {
-            removeMutation.mutate({ membershipId: confirmRemove.membershipId });
-            setConfirmRemove(null);
-          }}
-          onCancel={() => setConfirmRemove(null)}
-        />
-      )}
       <MemberAuditDrawer
         userId={auditUserId?.id ?? null}
         userName={auditUserId?.name}
@@ -456,207 +319,6 @@ export default function AdminTeam() {
         onClose={() => setAuditUserId(null)}
       />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
-  );
-}
-
-function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, onInvited: () => void }) {
-  const t = useT();
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
-  const [role, setRole] = useState<'support'|'admin'>('support');
-  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [invited, setInvited] = useState<{ email: string; name: string; role: 'support' | 'admin' } | null>(null);
-
-  const { activeMembershipId, memberships } = useStoreShallow((s) => ({
-    activeMembershipId: s.activeMembershipId,
-    memberships: s.memberships,
-  }));
-  const activeMembership = memberships.find(m => m.id === activeMembershipId);
-  const departments = activeMembership?.manifest?.departments || [];
-
-  const inviteMutation = trpc.partner.inviteExternalUser.useMutation({
-    onSuccess: () => {
-      // Hold the modal open on success to surface the Azure B2B handoff
-      // banner — the local record is created, but the invitee can't log in
-      // until a platform operator registers them as a guest in the tenant.
-      setInvited({ email, name, role });
-    },
-    onError: (err) => setToast({ message: err.message, type: 'error' })
-  });
-
-  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    inviteMutation.mutate({
-      email, name, role, departments: selectedDepts,
-    });
-  };
-
-  const handleDismiss = () => { if (invited) onInvited(); else onClose(); };
-
-  if (invited) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]">
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleDismiss} aria-label={t('close')} />
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] p-6 w-full max-w-[520px] relative z-10 animate-[v2p-pop_180ms_ease-out]"
-        >
-          <div className="flex items-center gap-2.5 mb-5">
-            <Shield className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
-            <h3 className="text-lg font-semibold text-[var(--color-ink)]">{t('local_record_created')}</h3>
-          </div>
-          <div className="space-y-4">
-            <div
-              className="rounded-[var(--radius-card)] border border-[var(--color-accent-amber)] p-4 space-y-1"
-              style={{ background: 'color-mix(in srgb, var(--color-accent-amber) 14%, transparent)' }}
-            >
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-[var(--color-accent-amber)] shrink-0 mt-0.5" aria-hidden />
-                <div className="space-y-1">
-                  <p className="text-[13px] font-semibold text-[var(--color-ink)]">{t('azure_b2b_required')}</p>
-                  <p className="text-[12px] text-[var(--color-ink-soft)] leading-relaxed">
-                    {t('azure_b2b_explanation').replace('{name}', invited.name)}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] p-3">
-              <p className="text-[11px] font-medium text-[var(--color-ink-muted)] uppercase tracking-[0.06em] mb-2">{t('handoff_details')}</p>
-              <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]">
-                <dt className="text-[var(--color-ink-muted)]">{t('handoff_name')}</dt>
-                <dd className="text-[var(--color-ink)]">{invited.name}</dd>
-                <dt className="text-[var(--color-ink-muted)]">{t('handoff_email')}</dt>
-                <dd className="text-[var(--color-ink)] font-mono">{invited.email}</dd>
-                <dt className="text-[var(--color-ink-muted)]">{t('handoff_role')}</dt>
-                <dd className="text-[var(--color-ink)] capitalize">{invited.role}</dd>
-                <dt className="text-[var(--color-ink-muted)]">{t('handoff_azure_step')}</dt>
-                <dd className="text-[var(--color-ink)]">{t('handoff_azure_step_value')}</dd>
-              </dl>
-            </div>
-            <div className="flex gap-2 pt-2 border-t border-[var(--color-border)]">
-              <button
-                type="button"
-                onClick={() => navigator.clipboard.writeText(
-                  t('handoff_clipboard_text')
-                    .replace('{name}', invited.name)
-                    .replace('{email}', invited.email)
-                    .replace('{role}', invited.role)
-                )}
-                className={`${SECONDARY_BTN} flex-1 justify-center`}
-              >
-                {t('copy_handoff')}
-              </button>
-              <button
-                type="button"
-                onClick={onInvited}
-                className={`${PRIMARY_BTN} flex-1 justify-center`}
-              >
-                {t('done')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label={t('close')} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] p-6 w-full max-w-[520px] relative z-10 animate-[v2p-pop_180ms_ease-out]"
-      >
-        <div className="flex items-center gap-2.5 mb-5">
-          <Shield className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
-          <h3 className="text-lg font-semibold text-[var(--color-ink)]">{t('invite_external_user_title')}</h3>
-        </div>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className={FIELD_LABEL}>{t('field_label_name')}</label>
-              <input
-                type="text"
-                required
-                placeholder={t('placeholder_full_name')}
-                value={name}
-                onChange={e => setName(e.target.value)}
-                className={`${INPUT} w-full`}
-              />
-            </div>
-            <div>
-              <label className={FIELD_LABEL}>{t('field_label_email')}</label>
-              <input
-                type="email"
-                required
-                placeholder={t('placeholder_user_email')}
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className={`${INPUT} w-full font-mono text-[12px]`}
-              />
-            </div>
-          </div>
-          <div>
-            <label className={FIELD_LABEL}>{t('col_role')}</label>
-            <select
-              value={role}
-              onChange={e => setRole(e.target.value as 'support' | 'admin')}
-              className={`${INPUT} w-full`}
-            >
-              <option value="support">{t('role_external_support')}</option>
-              <option value="admin">{t('role_partner_manager')}</option>
-            </select>
-          </div>
-          {role === 'support' && departments.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className={FIELD_LABEL}>{t('assigned_departments')}</label>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDepts(selectedDepts.length === departments.length ? [] : departments.map(d => d.id))}
-                  className="text-[12px] text-[var(--color-accent)] hover:underline"
-                >
-                  {selectedDepts.length === departments.length ? t('deselect_all') : t('select_all')}
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] p-2">
-                {departments.map(d => (
-                  <label key={d.id} className="flex items-center gap-2 text-[12px] text-[var(--color-ink)] cursor-pointer rounded-[var(--radius-btn)] px-2 py-1 hover:bg-[var(--color-hover)] transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={selectedDepts.includes(d.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) setSelectedDepts([...selectedDepts, d.id]);
-                        else setSelectedDepts(selectedDepts.filter(id => id !== d.id));
-                      }}
-                      className="w-3.5 h-3.5 accent-[var(--color-accent)]"
-                    />
-                    <span>{d.name}</span>
-                  </label>
-                ))}
-              </div>
-              {role === 'support' && selectedDepts.length === 0 && (
-                <p className="text-[11px] text-[var(--color-urgent)]">{t('support_requires_department')}</p>
-              )}
-            </div>
-          )}
-          <div className="flex gap-2 pt-3 border-t border-[var(--color-border)]">
-            <button type="button" onClick={onClose} className={`${SECONDARY_BTN} flex-1 justify-center`}>{t('cancel')}</button>
-            <button
-              type="submit"
-              disabled={inviteMutation.isPending || (role === 'support' && selectedDepts.length === 0)}
-              className={`${PRIMARY_BTN} flex-1 justify-center`}
-            >
-              {inviteMutation.isPending ? t('btn_sending') : t('btn_send_invite')}
-            </button>
-          </div>
-        </form>
-        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      </div>
     </div>
   );
 }

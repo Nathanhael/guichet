@@ -254,7 +254,7 @@ const nl: Record<string, string> = {
     col_status: 'Status',
     col_access_scope: 'Toegangsbereik',
     col_actions: 'Acties',
-    manage_access: 'Toegang Beheren',
+    access_managed_in_azure_banner: 'Lidmaatschappen en rollen zijn hier alleen-lezen. Om toegang te geven, wijzigen of in te trekken: pas de Azure security group-toewijzingen aan in Entra.',
     partner_id: 'Partner ID',
     display_name: 'Weergavenaam',
     save_profile: 'Profiel Opslaan',
