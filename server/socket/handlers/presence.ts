@@ -13,6 +13,7 @@ import {
 import { findTicketMessagesPaginated, findTicketLabelIds } from '../../services/messageQueries.js';
 import { mapMessageRow } from '../../utils/messageMapper.js';
 import { findUserName } from '../../services/userQueries.js';
+import { translateFirstAgentMessage } from '../../services/ai/firstMessageTranslate.js';
 import {
   requireIdentified,
   validatePayload,
@@ -127,6 +128,42 @@ export function register(socket: Socket, ctx: HandlerContext): void {
       socket.join(Rooms.ticket(ticketId));
       const { messages: msgRows, hasMore, nextCursor } = await findTicketMessagesPaginated(ticketId, { limit: 100 });
       const msgs = msgRows.map(mapMessageRow);
+
+      // Best-effort: translate the first agent message to support's lang
+      // before emitting history, so msg #1 renders pre-translated and the
+      // client's useAutoTranslation skips its own request. Cache hits are
+      // ~instant; cold-cache calls race a 1500ms budget. On budget miss
+      // or any failure, the client falls back to its on-demand translate.
+      const firstAgentMsg = msgs.find(
+        (m) => !m.system && !m.whisper && m.senderRole === 'agent' && !!m.text,
+      );
+      if (firstAgentMsg && supportLang && firstAgentMsg.senderLang !== supportLang) {
+        try {
+          const translated = await Promise.race([
+            translateFirstAgentMessage({
+              messageId: firstAgentMsg.id,
+              text: firstAgentMsg.text ?? firstAgentMsg.originalText,
+              senderLang: firstAgentMsg.senderLang,
+              supportLang,
+              partnerId: callerPartnerId,
+              supportUserId: supportId,
+            }),
+            new Promise<null>((r) => setTimeout(() => r(null), 1500)),
+          ]);
+          if (translated) {
+            firstAgentMsg.translations = {
+              ...(firstAgentMsg.translations ?? {}),
+              [supportLang]: translated,
+            };
+          }
+        } catch (err) {
+          logger.warn(
+            { err: err instanceof Error ? err.message : String(err), ticketId, supportLang },
+            '[support:join] first-msg translate skipped (non-fatal)',
+          );
+        }
+      }
+
       const labelIds = await findTicketLabelIds(ticketId);
       socket.emit('ticket:history', { ticketId, messages: msgs, labels: labelIds, hasMore, nextCursor });
 
