@@ -104,7 +104,7 @@ export default function AdminArchive() {
       <div className="flex-1 min-w-0">
         {/* Header + Filters */}
         <div className="flex items-center gap-3 mb-5 flex-wrap">
-          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)] mr-auto">Archive</h2>
+          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)] mr-auto">{t('archive')}</h2>
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => {
@@ -127,13 +127,13 @@ export default function AdminArchive() {
               value={search}
               onChange={(e) => { setSearch(e.target.value); resetPagination(); }}
               placeholder={t('archive_search_placeholder')}
-              title="Matches agent name, support name, or any reference value (Order ID, tracking #, case #, …)"
+              title={t('archive_search_title')}
               className={`${INPUT} w-52`}
             />
             <div className={`flex items-center gap-1.5 ${INPUT.replace('h-9 px-3', 'h-9 px-2')}`}>
               <input
                 type="date"
-                aria-label="Start date"
+                aria-label={t('archive_start_date_aria')}
                 value={dateFrom}
                 onChange={(e) => { setDateFrom(e.target.value); resetPagination(); }}
                 className="bg-transparent text-[12px] outline-none text-[var(--color-ink)]"
@@ -141,7 +141,7 @@ export default function AdminArchive() {
               <span className="text-[12px] text-[var(--color-ink-muted)]">→</span>
               <input
                 type="date"
-                aria-label="End date"
+                aria-label={t('archive_end_date_aria')}
                 value={dateTo}
                 onChange={(e) => { setDateTo(e.target.value); resetPagination(); }}
                 className="bg-transparent text-[12px] outline-none text-[var(--color-ink)]"
@@ -152,29 +152,29 @@ export default function AdminArchive() {
                 onClick={() => { setDateFrom(''); setDateTo(''); resetPagination(); }}
                 className="text-[12px] font-medium text-[var(--color-accent)] hover:underline px-1"
               >
-                ✕ Clear
+                {t('clear_dates')}
               </button>
             )}
             {departments.length > 0 && (
               <select
                 value={dept}
-                aria-label="Filter by department"
+                aria-label={t('archive_filter_dept_aria')}
                 onChange={(e) => { setDept(e.target.value); resetPagination(); }}
                 className={SELECT}
               >
-                <option value="all">All depts</option>
+                <option value="all">{t('archive_all_depts')}</option>
                 {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
             )}
             {supportMembers.length > 0 && (
               <select
                 value={supportFilter}
-                aria-label="Filter by support agent"
+                aria-label={t('archive_filter_support_aria')}
                 onChange={(e) => { setSupportFilter(e.target.value); resetPagination(); }}
                 className={SELECT}
               >
-                <option value="all">All support</option>
-                <option value="none">Abandoned (no support)</option>
+                <option value="all">{t('archive_all_support')}</option>
+                <option value="none">{t('archive_abandoned_no_support')}</option>
                 {supportMembers.map((m) => <option key={m.userId} value={m.userId}>{m.name}</option>)}
               </select>
             )}
@@ -184,9 +184,9 @@ export default function AdminArchive() {
                 onChange={(e) => setLabelFilter(e.target.value)}
                 className={SELECT}
               >
-                <option value="all">All labels</option>
-                <option value="none">No label</option>
-                <option value="any">Has label</option>
+                <option value="all">{t('archive_all_labels')}</option>
+                <option value="none">{t('archive_no_label')}</option>
+                <option value="any">{t('archive_has_label')}</option>
                 {allLabels.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             )}
@@ -199,20 +199,20 @@ export default function AdminArchive() {
             {filteredTickets.length === 0 && !loading ? (
               <div className="flex flex-col items-center justify-center py-20 text-[var(--color-ink-muted)]">
                 <Inbox className="h-10 w-10 opacity-50 mb-3" strokeWidth={1.5} />
-                <p className="text-[13px]">No results.</p>
+                <p className="text-[13px]">{t('no_results')}</p>
               </div>
             ) : (
               <table className="w-full text-[13px] border-collapse">
                 <thead>
                   <tr className="border-b border-[var(--color-border)]">
-                    <th className={COL_HEAD}>Dept</th>
-                    <th className={COL_HEAD}>Agent</th>
-                    <th className={COL_HEAD}>Ref</th>
-                    <th className={COL_HEAD}>Support</th>
-                    <th className={COL_HEAD}>Labels</th>
-                    <th className={COL_HEAD}>Duration</th>
-                    <th className={COL_HEAD}>Created</th>
-                    <th className={COL_HEAD}>Closed</th>
+                    <th className={COL_HEAD}>{t('col_dept')}</th>
+                    <th className={COL_HEAD}>{t('col_agent')}</th>
+                    <th className={COL_HEAD}>{t('archive_col_ref')}</th>
+                    <th className={COL_HEAD}>{t('col_support')}</th>
+                    <th className={COL_HEAD}>{t('labels')}</th>
+                    <th className={COL_HEAD}>{t('archive_col_duration')}</th>
+                    <th className={COL_HEAD}>{t('col_created')}</th>
+                    <th className={COL_HEAD}>{t('col_closed')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
@@ -237,7 +237,7 @@ export default function AdminArchive() {
                           : <span className="text-[var(--color-ink-muted)] opacity-50">—</span>}
                       </td>
                       <td className="px-4 py-3 text-[13px] text-[var(--color-ink-soft)]">
-                        {ticket.supportName || <span className="italic text-[var(--color-ink-muted)]">Abandoned</span>}
+                        {ticket.supportName || <span className="italic text-[var(--color-ink-muted)]">{t('archive_abandoned_inline')}</span>}
                       </td>
                       <td className="px-4 py-3">
                         {ticket.labels && (ticket.labels as string[]).length > 0 ? (
@@ -261,7 +261,7 @@ export default function AdminArchive() {
           </div>
 
           <div className="px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between bg-[var(--color-bg-elevated)]">
-            <span className="text-[12px] text-[var(--color-ink-muted)]">{tickets.length} chats loaded</span>
+            <span className="text-[12px] text-[var(--color-ink-muted)]">{t('archive_chats_loaded').replace('{count}', String(tickets.length))}</span>
             {hasMore && (
               <button
                 onClick={() => {
@@ -271,7 +271,7 @@ export default function AdminArchive() {
                 disabled={loading}
                 className="h-8 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-surface)] hover:bg-[var(--color-hover)] text-[13px] font-medium text-[var(--color-ink)] disabled:opacity-40 transition-colors"
               >
-                {loading ? 'Loading…' : 'Load more'}
+                {loading ? t('loading') : t('load_more')}
               </button>
             )}
           </div>
@@ -281,7 +281,7 @@ export default function AdminArchive() {
       {/* Preview Panel */}
       {preview && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setPreview(null)} aria-label="Close" />
+          <div className="absolute inset-0 bg-black/40" onClick={() => setPreview(null)} aria-label={t('close')} />
           <div role="dialog" aria-modal="true" className="relative w-[560px] bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] h-full flex flex-col">
             {/* Preview Header */}
             <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-start justify-between gap-3 shrink-0">
@@ -291,7 +291,7 @@ export default function AdminArchive() {
                   <span className="text-[15px] font-semibold text-[var(--color-ink)]">{preview.agentName}</span>
                 </div>
                 <p className="text-[12px] text-[var(--color-ink-muted)]">
-                  {preview.supportName ? `Support: ${preview.supportName}` : 'No support joined'} · {duration(preview)}
+                  {preview.supportName ? `${t('support_prefix')} ${preview.supportName}` : t('archive_no_support_joined')} · {duration(preview)}
                 </p>
                 {preview.labels && (preview.labels as string[]).length > 0 && (
                   <div className="flex gap-1 mt-2 flex-wrap">
@@ -305,7 +305,7 @@ export default function AdminArchive() {
               </div>
               <button
                 onClick={() => setPreview(null)}
-                aria-label="Close"
+                aria-label={t('close')}
                 className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors shrink-0"
               >
                 <X className="h-4 w-4" />
@@ -315,7 +315,7 @@ export default function AdminArchive() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {previewMessages.length === 0 ? (
-                <p className="text-center text-[13px] text-[var(--color-ink-muted)] mt-8">No messages.</p>
+                <p className="text-center text-[13px] text-[var(--color-ink-muted)] mt-8">{t('no_messages')}</p>
               ) : previewMessages.map((msg) => (
                 <div
                   key={msg.id}
@@ -326,11 +326,11 @@ export default function AdminArchive() {
                     <span className="text-[11px] text-[var(--color-ink-muted)] tabular-nums">
                       {new Date(msg.timestamp).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    {msg.whisper && <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-whisper-ink)]">whisper</span>}
+                    {msg.whisper && <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-whisper-ink)]">{t('whisper_label')}</span>}
                   </div>
                   <p className="text-[14px] leading-relaxed break-words text-[var(--color-ink)]">{msg.text}</p>
                   {msg.mediaUrl && (
-                    <img src={msg.mediaUrl} alt="attachment" className="mt-2 max-h-60 object-contain rounded-[var(--radius-btn)]" />
+                    <img src={msg.mediaUrl} alt={t('archive_image_alt')} className="mt-2 max-h-60 object-contain rounded-[var(--radius-btn)]" />
                   )}
                 </div>
               ))}
@@ -338,7 +338,7 @@ export default function AdminArchive() {
 
             {/* Preview Footer */}
             <div className="px-6 py-3 border-t border-[var(--color-border)] shrink-0">
-              <p className="text-[12px] text-[var(--color-ink-muted)] text-center">Read-only archive — conversation closed</p>
+              <p className="text-[12px] text-[var(--color-ink-muted)] text-center">{t('archive_read_only')}</p>
             </div>
           </div>
         </div>

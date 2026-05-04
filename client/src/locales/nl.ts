@@ -697,6 +697,26 @@ const nl: Record<string, string> = {
     wh_recent_deliveries: 'Recente leveringen',
     wh_no_deliveries: 'Nog geen leveringen',
 
+    // AdminArchive — filter chrome + table + preview pane
+    archive_search_title: 'Komt overeen met agentnaam, supportnaam of een referentiewaarde (besteI-ID, tracking #, dossier #, …)',
+    archive_start_date_aria: 'Startdatum',
+    archive_end_date_aria: 'Einddatum',
+    archive_filter_dept_aria: 'Filter op afdeling',
+    archive_filter_support_aria: 'Filter op supportmedewerker',
+    archive_all_depts: 'Alle afdelingen',
+    archive_all_support: 'Alle support',
+    archive_abandoned_no_support: 'Verlaten (geen support)',
+    archive_all_labels: 'Alle labels',
+    archive_no_label: 'Geen label',
+    archive_has_label: 'Heeft label',
+    archive_col_ref: 'Ref',
+    archive_col_duration: 'Duur',
+    archive_abandoned_inline: 'Verlaten',
+    archive_chats_loaded: '{count} chats geladen',
+    archive_no_support_joined: 'Geen support gekoppeld',
+    archive_image_alt: 'bijlage',
+    archive_read_only: 'Alleen-lezen archief — gesprek gesloten',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Vet',
     fmt_italic: 'Cursief',

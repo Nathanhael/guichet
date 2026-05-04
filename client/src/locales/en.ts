@@ -724,6 +724,26 @@ const en: Record<string, string> = {
     wh_recent_deliveries: 'Recent Deliveries',
     wh_no_deliveries: 'No deliveries yet',
 
+    // AdminArchive — filter chrome + table + preview pane
+    archive_search_title: 'Matches agent name, support name, or any reference value (Order ID, tracking #, case #, …)',
+    archive_start_date_aria: 'Start date',
+    archive_end_date_aria: 'End date',
+    archive_filter_dept_aria: 'Filter by department',
+    archive_filter_support_aria: 'Filter by support agent',
+    archive_all_depts: 'All depts',
+    archive_all_support: 'All support',
+    archive_abandoned_no_support: 'Abandoned (no support)',
+    archive_all_labels: 'All labels',
+    archive_no_label: 'No label',
+    archive_has_label: 'Has label',
+    archive_col_ref: 'Ref',
+    archive_col_duration: 'Duration',
+    archive_abandoned_inline: 'Abandoned',
+    archive_chats_loaded: '{count} chats loaded',
+    archive_no_support_joined: 'No support joined',
+    archive_image_alt: 'attachment',
+    archive_read_only: 'Read-only archive — conversation closed',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Bold',
     fmt_italic: 'Italic',
