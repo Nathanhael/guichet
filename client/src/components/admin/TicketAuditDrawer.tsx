@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
+import { useT } from '../../i18n';
 import AuditMetadataDrawer, { AuditEntry } from './AuditMetadataDrawer';
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function TicketAuditDrawer({ ticketId, ticketLabel, onClose }: Props) {
+  const t = useT();
   const [selected, setSelected] = useState<AuditEntry | null>(null);
 
   const query = trpc.partner.audit.getForTicket.useQuery(
@@ -39,18 +41,18 @@ export default function TicketAuditDrawer({ ticketId, ticketLabel, onClose }: Pr
       />
       <aside
         role="dialog"
-        aria-label="Ticket audit history"
+        aria-label={t('ticket_audit_aria')}
         className="fixed top-0 right-0 h-full w-full max-w-xl bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] z-50 overflow-y-auto flex flex-col"
       >
         <div className="flex justify-between items-start p-5 border-b border-[var(--color-border)]">
           <div className="min-w-0">
-            <h3 className="text-[16px] font-semibold text-[var(--color-ink)]">Audit History</h3>
+            <h3 className="text-[16px] font-semibold text-[var(--color-ink)]">{t('ticket_audit')}</h3>
             <p className="text-[12px] text-[var(--color-ink-muted)] mt-1 truncate">{ticketLabel || ticketId}</p>
           </div>
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
-            aria-label="Close"
+            aria-label={t('close')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -58,15 +60,13 @@ export default function TicketAuditDrawer({ ticketId, ticketLabel, onClose }: Pr
 
         <div className="p-5 flex-1">
           {query.isLoading ? (
-            <p className="text-[13px] text-[var(--color-ink-muted)]">Loading…</p>
+            <p className="text-[13px] text-[var(--color-ink-muted)]">{t('loading')}</p>
           ) : query.error ? (
             <p className="text-[13px] text-[var(--color-urgent)]">{query.error.message}</p>
           ) : entries.length === 0 ? (
             <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] px-4 py-10 text-center">
-              <p className="text-[13px] font-medium text-[var(--color-ink-soft)] mb-1">No audit history</p>
-              <p className="text-[12px] text-[var(--color-ink-muted)]">
-                No audit entries reference this ticket yet.
-              </p>
+              <p className="text-[13px] font-medium text-[var(--color-ink-soft)] mb-1">{t('no_audit_history')}</p>
+              <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_ticket_audit_hint')}</p>
             </div>
           ) : (
             <ul
@@ -89,7 +89,7 @@ export default function TicketAuditDrawer({ ticketId, ticketLabel, onClose }: Pr
                       </span>
                     </div>
                     <p className="text-[11px] text-[var(--color-ink-muted)]">
-                      {entry.actorName || entry.actorId || 'System'}
+                      {entry.actorName || entry.actorId || t('system')}
                       {entry.targetType ? ` · ${entry.targetType}` : ''}
                     </p>
                   </button>
