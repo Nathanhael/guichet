@@ -6,40 +6,9 @@ import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 import { useUrlParam } from '../../hooks/useUrlState';
 import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
+import { formatAuditDetails } from '../../utils/auditFormat';
 import Button from '../ui/Button';
 import SectionLabel from '../ui/SectionLabel';
-
-function formatDetails(log: { action: string; metadata?: unknown; targetId: string | null }) {
-  const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
-  switch (log.action) {
-    case 'member.added':
-      return `Added ${String(metadata.email || log.targetId || '-')}`;
-    case 'member.invited':
-      return `Invited ${String(metadata.email || log.targetId || '-')}`;
-    case 'member.removed': {
-      const ext = metadata.wasExternal === true ? ' (guest)' : '';
-      return `Removed membership${ext}`;
-    }
-    case 'member.updated':
-      return `Role ${String(metadata.oldRole || '?')} -> ${String(metadata.newRole || '?')}`;
-    case 'partner.config_updated':
-      return 'Tenant configuration updated';
-    case 'label.created':
-      return `Label: ${String(metadata.name || '-')}`;
-    case 'kb.created':
-      return `KB article: ${String(metadata.title || '-')}`;
-    case 'webhook.created':
-      return `Webhook: ${String(metadata.url || '-')}`;
-    case 'sso.membership_auto_created':
-      return `SSO auto-created membership (${String(metadata.role || '?')})`;
-    case 'sso.role_synced':
-      return `SSO role ${String(metadata.oldRole || '?')} -> ${String(metadata.newRole || '?')}`;
-    case 'sso.membership_revoked':
-      return `SSO revoked membership — ${String(metadata.reason || '')}`;
-    default:
-      return JSON.stringify(metadata);
-  }
-}
 
 const inputClass =
   'w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2 text-[13px] text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors';
@@ -361,7 +330,7 @@ export default function AdminAuditLog() {
                   <td className="p-3 text-[12px] text-[var(--color-ink)]">{log.actorName || <span className="text-[var(--color-ink-muted)]">{t('system')}</span>}</td>
                   <td className="p-3 text-[11px] font-mono text-[var(--color-ink-soft)]">{log.targetId || '-'}</td>
                   <td className="p-3 text-[12px] text-[var(--color-ink-soft)] max-w-xs">
-                    <div>{formatDetails(log)}</div>
+                    <div>{formatAuditDetails(log, t)}</div>
                   </td>
                 </tr>
               ))}
