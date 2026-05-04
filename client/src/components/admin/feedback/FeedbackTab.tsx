@@ -3,8 +3,10 @@ import { Check, ChevronDown, Inbox } from 'lucide-react';
 import { Skeleton } from '../DashboardHelpers';
 import Avatar from '../../ui/Avatar';
 import { trpc } from '../../../utils/trpc';
+import { useT } from '../../../i18n';
 
 export default function FeedbackTab() {
+  const t = useT();
   const [showDismissed, setShowDismissed] = useState(false);
 
   const utils = trpc.useUtils();
@@ -31,13 +33,13 @@ export default function FeedbackTab() {
           </div>
         ) : feedbackQuery.error ? (
           <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-8 text-center">
-            <p className="text-[13px] font-medium text-[var(--color-urgent)]">Failed to load feedback</p>
+            <p className="text-[13px] font-medium text-[var(--color-urgent)]">{t('feedback_load_failed')}</p>
             <p className="text-[12px] text-[var(--color-ink-muted)] mt-2">{feedbackQuery.error.message}</p>
           </div>
         ) : activeFeedback.length === 0 ? (
           <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-10 text-center">
             <Inbox className="h-10 w-10 mx-auto text-[var(--color-ink-muted)] opacity-60 mb-3" strokeWidth={1.5} />
-            <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">All caught up! No active feedback.</p>
+            <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">{t('feedback_all_caught_up')}</p>
           </div>
         ) : (
           activeFeedback.map((f) => (
@@ -61,10 +63,10 @@ export default function FeedbackTab() {
                   onClick={() => markTreated(f.id)}
                   disabled={markTreatedMutation.isPending}
                   className="shrink-0 inline-flex items-center gap-1.5 px-3 h-8 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[13px] font-medium text-[var(--color-ink)] disabled:opacity-50 transition-colors"
-                  title="Mark as treated"
+                  title={t('feedback_mark_treated')}
                 >
                   <Check className="h-4 w-4" />
-                  {markTreatedMutation.isPending ? 'Processing…' : 'Dismiss'}
+                  {markTreatedMutation.isPending ? t('feedback_processing') : t('feedback_dismiss')}
                 </button>
               </div>
               <p className="text-[14px] leading-relaxed text-[var(--color-ink)] whitespace-pre-wrap">{f.text}</p>
@@ -80,7 +82,7 @@ export default function FeedbackTab() {
             className="w-full flex items-center justify-between text-left px-4 py-3 rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-soft)] hover:bg-[var(--color-hover)] transition-colors"
           >
             <div className="flex items-center gap-3">
-              <span className="text-[14px] font-semibold text-[var(--color-ink)]">Dismissed Feedback</span>
+              <span className="text-[14px] font-semibold text-[var(--color-ink)]">{t('feedback_dismissed_section')}</span>
               <span className="bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] text-[11px] font-semibold px-2 py-0.5 rounded-[var(--radius-pill)]">
                 {dismissedFeedback.length}
               </span>
@@ -97,7 +99,7 @@ export default function FeedbackTab() {
                       <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{f.role}</span>
                       <span className="text-[11px] bg-[var(--color-bg-surface)] text-[var(--color-ink-muted)] px-2 py-0.5 rounded-[var(--radius-pill)] flex items-center gap-1 font-medium">
                         <Check className="h-3 w-3" />
-                        Treated
+                        {t('feedback_treated_pill')}
                       </span>
                     </div>
                     <span className="text-[12px] text-[var(--color-ink-muted)]">

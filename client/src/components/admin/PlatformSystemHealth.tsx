@@ -65,18 +65,22 @@ function StatusDot({ ok }: { ok: boolean }) {
 
 type PillKind = 'valid' | 'broken' | 'error';
 
-function StatusPill({ kind }: { kind: PillKind }) {
+function StatusPill({ kind, t }: { kind: PillKind; t: (k: string) => string }) {
   const styles: Record<PillKind, string> = {
     valid: 'bg-[var(--color-ok-soft,rgba(34,197,94,0.12))] text-[var(--color-ok)]',
     broken: 'bg-[var(--color-urgent-soft,rgba(239,68,68,0.12))] text-[var(--color-urgent)]',
     error: 'bg-[var(--color-accent-amber-soft,rgba(245,158,11,0.14))] text-[var(--color-accent-amber)]',
   };
-  const label: Record<PillKind, string> = { valid: 'VALID', broken: 'BROKEN', error: 'ERROR' };
+  const labelKey: Record<PillKind, string> = {
+    valid: 'health_status_valid',
+    broken: 'health_status_broken',
+    error: 'health_status_error',
+  };
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded-[var(--radius-pill)] text-[11px] font-semibold tracking-[0.04em] ${styles[kind]}`}
     >
-      {label[kind]}
+      {t(labelKey[kind])}
     </span>
   );
 }
@@ -87,17 +91,17 @@ function recordKind(r: { valid?: boolean; error?: string | null }): PillKind {
 }
 
 /** Compact "5 min ago" / "2 h ago" / "3 d ago" — falls back to absolute date past 30 days. */
-function relativeTime(iso: string, now: number = Date.now()): string {
+function relativeTime(iso: string, t: (k: string) => string, now: number = Date.now()): string {
   const then = new Date(iso).getTime();
   const sec = Math.max(0, Math.round((now - then) / 1000));
-  if (sec < 45) return 'just now';
-  if (sec < 90) return '1 min ago';
+  if (sec < 45) return t('relative_just_now');
+  if (sec < 90) return t('relative_one_min_ago');
   const min = Math.round(sec / 60);
-  if (min < 60) return `${min} min ago`;
+  if (min < 60) return t('relative_min_ago').replace('{count}', String(min));
   const hr = Math.round(min / 60);
-  if (hr < 24) return `${hr} h ago`;
+  if (hr < 24) return t('relative_hr_ago').replace('{count}', String(hr));
   const day = Math.round(hr / 24);
-  if (day < 30) return `${day} d ago`;
+  if (day < 30) return t('relative_d_ago').replace('{count}', String(day));
   return new Date(iso).toLocaleDateString();
 }
 
@@ -172,16 +176,18 @@ export default function PlatformSystemHealth() {
   if (health) {
     if (!health.redis) alerts.push({ id: 'redis-down', message: t('redis_unreachable'), severity: 'critical' });
     if (!health.postgres) alerts.push({ id: 'pg-down', message: t('postgres_unreachable'), severity: 'critical' });
-    if (health.chainBroken) alerts.push({ id: 'chain-broken', message: 'Audit chain integrity broken — investigate immediately.', severity: 'critical' });
+    if (health.chainBroken) alerts.push({ id: 'chain-broken', message: t('health_audit_chain_broken_alert'), severity: 'critical' });
     if (!health.gdprSuccess) alerts.push({ id: 'gdpr-failed', message: t('gdpr_purge_failed'), severity: 'critical' });
     const lastRun = new Date(health.gdprLastRun).getTime();
     // eslint-disable-next-line react-hooks/purity
     if (Date.now() - lastRun > 25 * 60 * 60 * 1000) alerts.push({ id: 'gdpr-overdue', message: t('gdpr_purge_overdue'), severity: 'warning' });
-    if (health.chainStale) alerts.push({ id: 'chain-stale', message: 'Audit chain has not been verified in over 25 hours.', severity: 'warning' });
+    if (health.chainStale) alerts.push({ id: 'chain-stale', message: t('health_audit_chain_stale_alert'), severity: 'warning' });
     if (health.slaBreachBurst >= health.slaBreachBurstThreshold) {
       alerts.push({
         id: 'sla-burst',
-        message: `${health.slaBreachBurst} SLA breaches recorded in the last hour (threshold ${health.slaBreachBurstThreshold}).`,
+        message: t('health_sla_burst_alert')
+          .replace('{count}', String(health.slaBreachBurst))
+          .replace('{threshold}', String(health.slaBreachBurstThreshold)),
         severity: 'warning',
       });
     }
@@ -195,9 +201,9 @@ export default function PlatformSystemHealth() {
   if (isError || !health) {
     return (
       <div className={`${CARD} p-6 border-l-4 border-[var(--color-urgent)]`}>
-        <p className="text-[14px] font-semibold text-[var(--color-urgent)] mb-2">Failed to load system health data.</p>
-        {error && <p className="text-[12px] text-[var(--color-ink-muted)] mb-4">Error: {error.message}</p>}
-        <button onClick={() => refetch()} className={PRIMARY_BTN}>Retry Connection</button>
+        <p className="text-[14px] font-semibold text-[var(--color-urgent)] mb-2">{t('health_load_failed')}</p>
+        {error && <p className="text-[12px] text-[var(--color-ink-muted)] mb-4">{t('health_error_prefix').replace('{message}', error.message)}</p>}
+        <button onClick={() => refetch()} className={PRIMARY_BTN}>{t('health_retry_connection')}</button>
       </div>
     );
   }
@@ -277,7 +283,7 @@ export default function PlatformSystemHealth() {
           <div className="grid grid-cols-3 gap-8">
             <div>
               <p className={FIELD_LABEL}>{t('retention_period')}</p>
-              <p className="text-[18px] font-medium text-[var(--color-ink)] mt-1.5 tabular-nums">30 Days</p>
+              <p className="text-[18px] font-medium text-[var(--color-ink)] mt-1.5 tabular-nums">{t('health_30_days')}</p>
             </div>
             <div>
               <p className={FIELD_LABEL}>{t('records_purged')}</p>
@@ -292,16 +298,15 @@ export default function PlatformSystemHealth() {
       </div>
 
       <div>
-        <h2 className={SECTION_H}>Audit Chain Integrity</h2>
+        <h2 className={SECTION_H}>{t('health_section_audit_chain')}</h2>
         <div className={`${CARD} p-6`}>
           <div className="flex items-start justify-between gap-6 mb-6 pb-6 border-b border-[var(--color-border)]">
             <div className="flex-1 flex gap-3">
               <ShieldCheck className="h-5 w-5 text-[var(--color-ink-muted)] shrink-0 mt-0.5" />
               <div>
-                <p className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">WORM Archive Verification</p>
+                <p className="text-[14px] font-semibold text-[var(--color-ink)] mb-1">{t('health_worm_verification_title')}</p>
                 <p className="text-[12px] text-[var(--color-ink-muted)]">
-                  Scans every archived audit entry and recomputes its SHA-256 chain hash. Run after
-                  any suspected tampering or before compliance review.
+                  {t('health_worm_verification_desc')}
                 </p>
               </div>
             </div>
@@ -313,10 +318,10 @@ export default function PlatformSystemHealth() {
               data-retry-remaining={retryRemaining}
             >
               {chainVerify.isPending
-                ? 'Verifying…'
+                ? t('health_verifying')
                 : retryRemaining > 0
-                  ? `Retry in ${retryRemaining}s`
-                  : 'Verify Now'}
+                  ? t('health_retry_in_seconds').replace('{seconds}', String(retryRemaining))
+                  : t('health_verify_now')}
             </button>
           </div>
 
@@ -332,7 +337,7 @@ export default function PlatformSystemHealth() {
                 className="text-[12px] font-medium text-[var(--color-accent-amber)] mb-4"
                 data-testid="chain-verify-staleness-banner"
               >
-                Last verification was {days} day{days === 1 ? '' : 's'} ago — run a fresh scan.
+                {t(days === 1 ? 'health_last_verification_stale_singular' : 'health_last_verification_stale_plural').replace('{days}', String(days))}
               </p>
             );
           })()}
@@ -341,14 +346,14 @@ export default function PlatformSystemHealth() {
             <p className="text-[12px] font-medium text-[var(--color-urgent)] mb-4">
               {chainVerify.error.data?.code === 'TOO_MANY_REQUESTS'
                 ? retryRemaining > 0
-                  ? `Rate limited — retry in ${retryRemaining}s`
+                  ? t('health_rate_limited').replace('{seconds}', String(retryRemaining))
                   : chainVerify.error.message
-                : 'Verification failed — check server logs.'}
+                : t('health_verification_failed')}
             </p>
           )}
 
           {chainVerify.isPending && !lastVerify && (
-            <p className="text-[12px] text-[var(--color-ink-muted)] animate-pulse">Scanning archive…</p>
+            <p className="text-[12px] text-[var(--color-ink-muted)] animate-pulse">{t('health_scanning_archive')}</p>
           )}
 
           {lastVerify && (() => {
@@ -370,50 +375,52 @@ export default function PlatformSystemHealth() {
                   <span aria-hidden="true">{headlineMark}</span>
                   {kind === 'valid' && (
                     <>
-                      Chain healthy · {totalRuns} run{totalRuns === 1 ? '' : 's'} verified · last {relativeTime(lastVerify.ranAt)}
+                      {t(totalRuns === 1 ? 'health_chain_healthy_singular' : 'health_chain_healthy_plural')
+                        .replace('{count}', String(totalRuns))
+                        .replace('{when}', relativeTime(lastVerify.ranAt, t))}
                     </>
                   )}
-                  {kind === 'broken' && <>Chain integrity broken — investigate immediately.</>}
-                  {kind === 'error' && <>Last verification could not complete — see error below.</>}
+                  {kind === 'broken' && <>{t('health_chain_broken_headline')}</>}
+                  {kind === 'error' && <>{t('health_chain_error_headline')}</>}
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   <div>
-                    <p className={FIELD_LABEL}>Status</p>
+                    <p className={FIELD_LABEL}>{t('health_status')}</p>
                     <div className="mt-1.5">
-                      <StatusPill kind={kind} />
+                      <StatusPill kind={kind} t={t} />
                     </div>
                   </div>
                   <div>
-                    <p className={FIELD_LABEL}>Entries Checked</p>
+                    <p className={FIELD_LABEL}>{t('health_entries_checked')}</p>
                     <p className="text-[18px] font-medium text-[var(--color-ink)] mt-1.5 tabular-nums">{lastVerify.checked.toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className={FIELD_LABEL}>Last Verified</p>
-                    <p className="text-[14px] font-medium text-[var(--color-ink)] mt-1.5">{relativeTime(lastVerify.ranAt)}</p>
+                    <p className={FIELD_LABEL}>{t('health_last_verified')}</p>
+                    <p className="text-[14px] font-medium text-[var(--color-ink)] mt-1.5">{relativeTime(lastVerify.ranAt, t)}</p>
                     <p className="text-[11px] text-[var(--color-ink-muted)] mt-0.5 tabular-nums">{new Date(lastVerify.ranAt).toLocaleString()}</p>
                     {lastVerify.ranBy === 'system-scheduler' ? (
                       <p className="text-[11px] text-[var(--color-ink-muted)] mt-1 flex items-center gap-1.5">
                         <span className="inline-block px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-                          Scheduled
+                          {t('health_scheduled_badge')}
                         </span>
-                        {lastVerify.ranByName || 'Daily scheduler'}
+                        {lastVerify.ranByName || t('health_daily_scheduler')}
                       </p>
                     ) : lastVerify.ranByName ? (
-                      <p className="text-[11px] text-[var(--color-ink-muted)] mt-1">By {lastVerify.ranByName}</p>
+                      <p className="text-[11px] text-[var(--color-ink-muted)] mt-1">{t('health_by_actor').replace('{name}', lastVerify.ranByName)}</p>
                     ) : lastVerify.ranBy ? (
-                      <p className="text-[11px] text-[var(--color-ink-muted)] mt-1">By {lastVerify.ranBy}</p>
+                      <p className="text-[11px] text-[var(--color-ink-muted)] mt-1">{t('health_by_actor').replace('{name}', lastVerify.ranBy)}</p>
                     ) : null}
                   </div>
                   {lastVerify.brokenAt && (
                 <div className="md:col-span-3 pt-4 border-t border-[var(--color-border)]">
-                  <p className={`${FIELD_LABEL} text-[var(--color-urgent)]`}>Broken At (archive id)</p>
+                  <p className={`${FIELD_LABEL} text-[var(--color-urgent)]`}>{t('health_broken_at_archive')}</p>
                   <p className="font-mono text-[12px] break-all text-[var(--color-ink)] mt-1.5">{lastVerify.brokenAt}</p>
                 </div>
               )}
               {lastVerify.error && (
                 <div className="md:col-span-3 pt-4 border-t border-[var(--color-border)]">
-                  <p className={`${FIELD_LABEL} text-[var(--color-accent-amber)]`}>Error</p>
+                  <p className={`${FIELD_LABEL} text-[var(--color-accent-amber)]`}>{t('health_error_label')}</p>
                   <p className="font-mono text-[12px] break-all text-[var(--color-ink)] mt-1.5">{lastVerify.error}</p>
                 </div>
               )}
@@ -423,7 +430,7 @@ export default function PlatformSystemHealth() {
           })()}
 
           {!lastVerify && !chainVerify.isPending && (
-            <p className="text-[12px] text-[var(--color-ink-muted)]">No verification has been run yet.</p>
+            <p className="text-[12px] text-[var(--color-ink-muted)]">{t('health_no_verification_yet')}</p>
           )}
 
           {chainHistory && chainHistory.length > 1 && (() => {
@@ -434,7 +441,7 @@ export default function PlatformSystemHealth() {
             return (
             <div className="mt-6 pt-6 border-t border-[var(--color-border)]">
               <div className="flex items-center justify-between mb-3">
-                <p className={FIELD_LABEL}>Run History</p>
+                <p className={FIELD_LABEL}>{t('health_run_history')}</p>
                 <div className="flex items-center gap-2">
                   {chainHistory.length > HISTORY_PREVIEW && (
                     <button
@@ -443,7 +450,7 @@ export default function PlatformSystemHealth() {
                       className={SECONDARY_BTN}
                       data-testid="chain-history-toggle"
                     >
-                      {historyExpanded ? 'Show less' : `Show all (${chainHistory.length})`}
+                      {historyExpanded ? t('health_show_less') : t('health_show_all_count').replace('{count}', String(chainHistory.length))}
                     </button>
                   )}
                   <button
@@ -451,9 +458,9 @@ export default function PlatformSystemHealth() {
                     onClick={() => exportChainHistoryCsv(chainHistory)}
                     data-testid="export-chain-history-csv"
                     className={SECONDARY_BTN}
-                    title="Download full chain verification history as CSV for compliance attestation"
+                    title={t('health_export_csv_title')}
                   >
-                    <Download className="h-3.5 w-3.5" /> Export CSV
+                    <Download className="h-3.5 w-3.5" /> {t('filter_export_csv')}
                   </button>
                 </div>
               </div>
@@ -464,30 +471,30 @@ export default function PlatformSystemHealth() {
                 >
                   <thead>
                     <tr className="border-b border-[var(--color-border)]">
-                      <th className="p-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">When</th>
-                      <th className="p-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">Status</th>
-                      <th className="p-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">Checked</th>
-                      <th className="p-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">By</th>
+                      <th className="p-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('health_col_when')}</th>
+                      <th className="p-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('health_status')}</th>
+                      <th className="p-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('health_col_checked')}</th>
+                      <th className="p-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('health_col_by')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
                     {visible.map((h, i) => (
                       <tr key={`${h.ranAt}-${i}`}>
                         <td className="p-3 text-[12px] text-[var(--color-ink)] whitespace-nowrap">
-                          <div className="text-[12px]">{relativeTime(h.ranAt)}</div>
+                          <div className="text-[12px]">{relativeTime(h.ranAt, t)}</div>
                           <div className="text-[10px] text-[var(--color-ink-muted)] tabular-nums mt-0.5">
                             {new Date(h.ranAt).toLocaleString()}
                           </div>
                         </td>
-                        <td className="p-3"><StatusPill kind={recordKind(h)} /></td>
+                        <td className="p-3"><StatusPill kind={recordKind(h)} t={t} /></td>
                         <td className="p-3 text-[12px] text-[var(--color-ink-soft)] tabular-nums">{h.checked.toLocaleString()}</td>
                         <td className="p-3 text-[12px] text-[var(--color-ink-soft)]">
                           {h.ranBy === 'system-scheduler' ? (
                             <span data-testid="history-scheduler-badge" className="flex items-center gap-1.5">
                               <span className="inline-block px-1.5 py-0.5 rounded-[var(--radius-pill)] text-[10px] bg-[var(--color-accent-soft)] text-[var(--color-accent)]">
-                                Scheduled
+                                {t('health_scheduled_badge')}
                               </span>
-                              {h.ranByName || 'Daily scheduler'}
+                              {h.ranByName || t('health_daily_scheduler')}
                             </span>
                           ) : (
                             h.ranByName || h.ranBy || '—'
@@ -500,7 +507,7 @@ export default function PlatformSystemHealth() {
               </div>
               {!historyExpanded && hiddenCount > 0 && (
                 <p className="text-[11px] text-[var(--color-ink-muted)] mt-2 text-center">
-                  {hiddenCount} earlier run{hiddenCount === 1 ? '' : 's'} hidden
+                  {t(hiddenCount === 1 ? 'health_earlier_runs_hidden_singular' : 'health_earlier_runs_hidden_plural').replace('{count}', String(hiddenCount))}
                 </p>
               )}
             </div>

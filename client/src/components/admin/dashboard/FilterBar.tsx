@@ -147,7 +147,7 @@ export function FilterBar({
           disabled={!onExportCsv}
           className={SECONDARY_BTN}
         >
-          {t('export_csv')}
+          {t('filter_export_csv')}
         </button>
         <button
           type="button"
