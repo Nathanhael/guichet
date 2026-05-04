@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
+import { useT } from '../../i18n';
 import AuditMetadataDrawer, { AuditEntry } from './AuditMetadataDrawer';
 
 interface Props {
@@ -36,6 +37,7 @@ function extractFacets(entry: { metadata: unknown }): {
 // invites/updates/removals, SSO role syncs, etc.) — narrower than the full
 // partner audit page and deep-linked from member rows and the admin chips.
 export default function MemberAuditDrawer({ userId, userName, departments, onClose }: Props) {
+  const t = useT();
   const deptNameFor = (id: string) => departments?.find((d) => d.id === id)?.name ?? id;
   const [selected, setSelected] = useState<AuditEntry | null>(null);
 
@@ -66,18 +68,18 @@ export default function MemberAuditDrawer({ userId, userName, departments, onClo
       />
       <aside
         role="dialog"
-        aria-label="Member audit history"
+        aria-label={t('member_audit_aria')}
         className="fixed top-0 right-0 h-full w-full max-w-xl bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] z-50 overflow-y-auto flex flex-col"
       >
         <div className="flex justify-between items-start p-5 border-b border-[var(--color-border)]">
           <div className="min-w-0">
-            <h3 className="text-[16px] font-semibold text-[var(--color-ink)]">Member audit</h3>
+            <h3 className="text-[16px] font-semibold text-[var(--color-ink)]">{t('member_audit')}</h3>
             <p className="text-[12px] text-[var(--color-ink-muted)] mt-1 truncate">{userName || userId}</p>
           </div>
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
-            aria-label="Close"
+            aria-label={t('close')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -85,15 +87,13 @@ export default function MemberAuditDrawer({ userId, userName, departments, onClo
 
         <div className="p-5 flex-1">
           {query.isLoading ? (
-            <p className="text-[13px] text-[var(--color-ink-muted)]">Loading…</p>
+            <p className="text-[13px] text-[var(--color-ink-muted)]">{t('loading')}</p>
           ) : query.error ? (
             <p className="text-[13px] text-[var(--color-urgent)]">{query.error.message}</p>
           ) : entries.length === 0 ? (
             <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] px-4 py-10 text-center">
-              <p className="text-[13px] font-medium text-[var(--color-ink-soft)] mb-1">No audit history</p>
-              <p className="text-[12px] text-[var(--color-ink-muted)]">
-                No audit entries reference this user yet.
-              </p>
+              <p className="text-[13px] font-medium text-[var(--color-ink-soft)] mb-1">{t('no_audit_history')}</p>
+              <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_member_audit_hint')}</p>
             </div>
           ) : (
             <ul
@@ -121,7 +121,7 @@ export default function MemberAuditDrawer({ userId, userName, departments, onClo
                         </span>
                       </div>
                       <p className="text-[11px] text-[var(--color-ink-muted)]">
-                        {entry.actorName || entry.actorId || 'System'}
+                        {entry.actorName || entry.actorId || t('system')}
                       </p>
                       {(roleLabel || (facets.departments && facets.departments.length > 0)) && (
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -131,7 +131,7 @@ export default function MemberAuditDrawer({ userId, userName, departments, onClo
                             </span>
                           )}
                           {facets.departments && facets.departments.length === 0 && (
-                            <span className="text-[10px] italic text-[var(--color-ink-muted)]">no departments</span>
+                            <span className="text-[10px] italic text-[var(--color-ink-muted)]">{t('no_dept_chip')}</span>
                           )}
                           {facets.departments?.map((id) => (
                             <span
