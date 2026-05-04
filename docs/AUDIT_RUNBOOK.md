@@ -26,7 +26,6 @@ Treat this as the first document to open when:
 | Shared verify runner | `server/services/chainVerifySchedule.ts::runChainVerify` | Persists results to `system_settings`, broadcasts the chain-broken webhook, and emits the `audit:chain:broken` socket event to the platform-operators room on critical breaks. Used by both the operator button and the daily scheduler. |
 | Daily scheduler | `server/services/chainVerifySchedule.ts::scheduleDailyChainVerify` | Armed at boot with a 10–40m startup jitter, then a 24h interval. Uses synthetic actor `system-scheduler`. |
 | Platform verify UI | `client/src/components/admin/PlatformSystemHealth.tsx` | "Verify chain" button + staleness banner + run history table + CSV export. |
-| Partner verify UI | `client/src/components/admin/PartnerAuditVerify.tsx` | Per-tenant verify button — returns the partner-scoped slice only. |
 | Ticket lifecycle module | `server/services/ticketLifecycle/` | Owns every state transition that produces an audit row. Emits ticket.created / closed / assigned / transferred / returned_to_queue / reopened / **left / reclaimed**. The audit insert runs INSIDE the lifecycle transaction — a DB failure rolls back the whole event. |
 | GDPR purge | `server/services/gdpr.ts::runDailyPurge` | Daily retention enforcement. Refuses to run if the chain fails to verify; surfaces last-run + outcome via the Health page. |
 
@@ -43,7 +42,6 @@ identity:
 |---|---|---|---|
 | Platform operator clicks "Verify" | Their user id | Their display name | `false` |
 | Daily scheduler tick | `system-scheduler` | `Daily scheduler` | `true` |
-| Partner admin clicks "Verify chain" | Their user id | Their display name | n/a (partner record only) |
 
 The verify-history UI (System Health → Run History) stamps a `Scheduled` badge
 on scheduler rows so operators can distinguish the two at a glance.
