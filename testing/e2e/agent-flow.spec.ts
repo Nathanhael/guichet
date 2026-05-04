@@ -100,8 +100,8 @@ test.describe('Agent Flow — Ticket Lifecycle', () => {
     const testMsg = `E2E msg ${Date.now()}`;
     await page.keyboard.type(testMsg);
 
-    // julie is fr-locale; "envoyer" / NL "verzenden" / EN "send".
-    const sendBtn = page.locator('button').filter({ hasText: /send|verzend|envoyer/i }).first();
+    // julie is fr-locale; "envoyer" / NL "stuur" / EN "send".
+    const sendBtn = page.locator('button').filter({ hasText: /send|stuur|verzend|envoyer/i }).first();
     await expect(sendBtn).toBeVisible({ timeout: 5000 });
     await sendBtn.click();
     await page.waitForTimeout(2000);
