@@ -7,6 +7,7 @@ import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 import CrossPartnerActivityPanel from './CrossPartnerActivityPanel';
 import { useUrlParam } from '../../hooks/useUrlState';
 import { auditSeverity, severityRowClass } from '../../utils/auditSeverity';
+import { formatAuditDetails } from '../../utils/auditFormat';
 
 // Shared style constants — mirrors the Soft Product token usage across the
 // other admin panels so visual density and spacing stay consistent.
@@ -16,87 +17,6 @@ const PRIMARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--ra
 const SECONDARY_BTN = 'h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[var(--color-ink)] text-[13px] font-medium transition-colors disabled:opacity-40';
 const FIELD_LABEL = 'block text-[11px] font-medium text-[var(--color-ink-muted)] mb-1.5';
 const COL_HEAD = 'px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
-
-function formatAuditDetails(log: { action: string; metadata?: unknown; targetId: string | null; actorName: string | null }) {
-  const metadata = (log.metadata && typeof log.metadata === 'object') ? log.metadata as Record<string, unknown> : {};
-
-  switch (log.action) {
-    // Partner
-    case 'partner.created':
-      return 'Created tenant';
-    case 'partner.config_updated':
-      return `Updated tenant configuration`;
-    case 'partner.deactivated':
-      return 'Tenant deactivated';
-    case 'partner.reactivated':
-      return 'Tenant reactivated';
-    case 'partner.deleted':
-      return 'Tenant deleted';
-    // Platform
-    case 'platform.enter_partner':
-      return `Platform entry into tenant ${log.targetId || '-'}`;
-    case 'platform_operator_bootstrap':
-      return 'Platform operator auto-created on first startup';
-    // Members
-    case 'member.added':
-      return `Added member ${String(metadata.email || log.targetId || '-')}`;
-    case 'member.invited':
-      return `Invited ${String(metadata.email || log.targetId || '-')}`;
-    case 'member.removed':
-      return `Removed membership ${String(metadata.membershipId || log.targetId || '-')}`;
-    case 'member.updated':
-      return `Role ${String(metadata.oldRole || '?')} -> ${String(metadata.newRole || '?')}`;
-    // Users
-    case 'user.deleted':
-      return `User deleted ${log.targetId || ''}`;
-    case 'user.login':
-      return `Login from IP ${String(metadata.ip || metadata.IP || '-')}`;
-    case 'user.profile_updated':
-      return 'Profile updated';
-    case 'user.sessions_revoked':
-      return `Revoked active sessions for ${log.targetId || 'user'}`;
-    // Security
-    case 'security.account_locked':
-      return `Account locked after failed login attempts`;
-    case 'security.mfa_disabled':
-      return 'MFA disabled by user';
-    case 'security.mfa_disabled_by_admin':
-      return 'MFA disabled by admin';
-    case 'security.mfa_enabled':
-      return 'MFA enabled';
-    case 'security.mfa_recovery_codes_regenerated':
-      return 'MFA recovery codes regenerated';
-    case 'security.user_unlocked_by_admin':
-      return 'Account unlocked by admin';
-    // SSO
-    case 'sso.email_conflict':
-      return `SSO email conflict: ${String(metadata.email || '-')}`;
-    case 'sso.group_mapping_added':
-      return `Mapped Azure group ${String(metadata.azureGroupId || '-')}`;
-    case 'sso.group_mapping_updated':
-      return `Updated group mapping ${log.targetId || '-'}`;
-    case 'sso.group_mapping_removed':
-      return `Removed Azure group ${String(metadata.azureGroupId || '-')}`;
-    case 'sso.membership_auto_created':
-      return `Auto-created membership via SSO`;
-    case 'sso.no_matching_groups':
-      return 'SSO login: no matching group mappings';
-    // System
-    case 'system.archive_run':
-      return `Archived ${String(metadata.count || '?')} records`;
-    case 'system.gdpr_purge':
-      return `Purged ${String(metadata.ticketsPurged || '?')} tickets, ${String(metadata.messagesPurged || '?')} messages`;
-    // Content
-    case 'kb.created':
-      return `KB article: ${String(metadata.title || '-')}`;
-    case 'label.created':
-      return `Label: ${String(metadata.name || '-')}`;
-    case 'webhook.created':
-      return `Webhook: ${String(metadata.url || '-')}`;
-    default:
-      return JSON.stringify(metadata);
-  }
-}
 
 export default function PlatformAuditLog() {
   const t = useT();
@@ -483,7 +403,7 @@ export default function PlatformAuditLog() {
                   <td className="px-4 py-3 text-[11px] font-mono text-[var(--color-ink-muted)]">{log.partnerId || '-'}</td>
                   <td className="px-4 py-3 text-[11px] font-mono text-[var(--color-ink-muted)]">{log.targetId || '-'}</td>
                   <td className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)] max-w-xs">
-                    <div className="text-[var(--color-ink)]">{formatAuditDetails(log)}</div>
+                    <div className="text-[var(--color-ink)]">{formatAuditDetails(log, t)}</div>
                     <div className="font-mono text-[11px] text-[var(--color-ink-muted)] truncate mt-0.5">{JSON.stringify(log.metadata)}</div>
                   </td>
                 </tr>
