@@ -266,7 +266,7 @@ export default function ChatHeader({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span className="text-[11px] italic">
-                    {t('waiting_for_support') || 'Waiting for support'}
+                    {t('waiting_for_support')}
                   </span>
                 </span>
               ) : null;
@@ -355,22 +355,22 @@ export default function ChatHeader({
                 {optimisticLabels.length === 0 && canAdd && (
                   <button
                     onClick={openPicker}
-                    aria-label={t('add_label') || 'Add label'}
-                    title={t('add_label') || 'Add label'}
+                    aria-label={t('add_label')}
+                    title={t('add_label')}
                     className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-[var(--radius-pill)] bg-transparent text-[var(--color-ink-muted)] border border-dashed border-[var(--color-border)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] hover:border-solid"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
-                    {t('label') || 'Label'}
+                    {t('label')}
                   </button>
                 )}
 
                 {optimisticLabels.length > 0 && overflow === 0 && canAdd && (
                   <button
                     onClick={openPicker}
-                    aria-label={t('add_label') || 'Add label'}
-                    title={t('add_label') || 'Add label'}
+                    aria-label={t('add_label')}
+                    title={t('add_label')}
                     className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-accent)]"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -394,7 +394,7 @@ export default function ChatHeader({
                 {showLabelPicker && (
                   <div className="absolute left-0 top-full mt-1.5 bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] z-50 min-w-[220px] max-h-[280px] overflow-y-auto animate-fade-in">
                     <div className="sticky top-0 bg-[var(--color-bg-surface)] border-b border-[var(--color-border)] px-3 py-2 text-[11px] font-semibold text-[var(--color-ink-muted)]">
-                      {t('labels') || 'Labels'} · {optimisticLabels.length}
+                      {t('labels')} · {optimisticLabels.length}
                     </div>
                     {(allLabels || []).map((label) => {
                       const isActive = optimisticLabels.includes(label.id);
@@ -422,7 +422,7 @@ export default function ChatHeader({
           {/* Ticket status badge — only when closed */}
           {!focusMode && !compact && ticket.status === 'closed' && (
             <span className="text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 rounded-[var(--radius-pill)] shrink-0 bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)]">
-              {t('status_closed') || 'closed'}
+              {t('status_closed')}
             </span>
           )}
 
@@ -469,8 +469,8 @@ export default function ChatHeader({
           {onOpenSearch && (
             <button
               onClick={onOpenSearch}
-              aria-label={t('search_in_conversation') || 'Search in conversation'}
-              title={t('search_in_conversation') || 'Search in conversation'}
+              aria-label={t('search_in_conversation')}
+              title={t('search_in_conversation')}
               className="h-8 w-8 flex items-center justify-center rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
             >
               <Search size={14} />
@@ -484,19 +484,19 @@ export default function ChatHeader({
               <button
                 ref={transferTriggerRef}
                 onClick={() => setShowTransferMenu(!showTransferMenu)}
-                aria-label={t('transfer') || 'Transfer'}
+                aria-label={t('transfer')}
                 aria-expanded={showTransferMenu}
                 aria-haspopup="menu"
-                title={t('transfer') || 'Transfer'}
+                title={t('transfer')}
                 className="h-8 px-3 flex items-center text-[12px] font-medium rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
               >
-                {t('transfer') || 'Transfer'}
+                {t('transfer')}
               </button>
               {showTransferMenu && (
                 <div className="absolute right-0 top-full mt-1.5 bg-[var(--color-bg-surface)] rounded-[var(--radius-card)] shadow-[var(--shadow-modal)] min-w-[220px] z-50 overflow-hidden">
                   <div className="px-3 pt-2 pb-1">
                     <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">
-                      {t('transfer_to_department') || 'Transfer to department'}
+                      {t('transfer_to_department')}
                     </span>
                   </div>
                   <div className="px-3 pb-2">
@@ -504,8 +504,8 @@ export default function ChatHeader({
                       type="text"
                       value={transferNote}
                       onChange={(e) => setTransferNote(e.target.value)}
-                      placeholder={t('transfer_note_placeholder') || 'Add context...'}
-                      aria-label={t('transfer_note_placeholder') || 'Add context'}
+                      placeholder={t('transfer_note_placeholder')}
+                      aria-label={t('transfer_note_placeholder')}
                       className="w-full text-[12px] bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] px-2.5 py-1.5 text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
                     />
                   </div>
@@ -540,7 +540,7 @@ export default function ChatHeader({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               )}
-              {t('close') || 'Close'}
+              {t('close')}
             </button>
           )}
 
@@ -552,13 +552,13 @@ export default function ChatHeader({
           {viewMode === 'focus' && isSupport && (
             <button
               onClick={toggleFocusMode}
-              aria-label={t('focus_mode_exit') || 'Exit focus mode'}
-              title={t('focus_mode_exit') || 'Exit focus mode'}
+              aria-label={t('focus_mode_exit')}
+              title={t('focus_mode_exit')}
               className="h-8 inline-flex items-center gap-1.5 px-2.5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] text-[11px] font-medium"
             >
-              <span>{t('focus_mode_pill') || 'Focus'}</span>
+              <span>{t('focus_mode_pill')}</span>
               <kbd className="font-mono text-[9px] px-1 py-px rounded bg-[var(--color-bg-surface)] border border-[var(--color-border)] text-[var(--color-ink-soft)]">
-                {t('focus_mode_esc_hint') || 'ESC'}
+                {t('focus_mode_esc_hint')}
               </kbd>
             </button>
           )}
@@ -574,8 +574,8 @@ export default function ChatHeader({
                 }
                 onClose();
               }}
-              aria-label={t('leave') || 'Leave'}
-              title={t('leave') || 'Leave'}
+              aria-label={t('leave')}
+              title={t('leave')}
               className="h-8 w-8 flex items-center justify-center rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
             >
               <X size={14} strokeWidth={2} />

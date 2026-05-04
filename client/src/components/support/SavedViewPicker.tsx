@@ -114,8 +114,8 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
             ? 'border-[var(--color-accent)] text-[var(--color-accent)] bg-[var(--color-accent-soft)]'
             : 'border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)]'
         }`}
-        title={t('savedViews') || 'Saved views'}
-        aria-label={t('savedViews') || 'Saved views'}
+        title={t('savedViews')}
+        aria-label={t('savedViews')}
       >
         <Bookmark size={12} strokeWidth={2} />
       </button>
@@ -128,11 +128,11 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
           style={{ top: dropdownPos.top, left: dropdownPos.left }}
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-border)]">
-            <SectionLabel>{t('savedViews') || 'Saved views'}</SectionLabel>
+            <SectionLabel>{t('savedViews')}</SectionLabel>
             <button
               onClick={() => setIsOpen(false)}
               className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
-              aria-label={t('close') || 'Close'}
+              aria-label={t('close')}
             >
               <X size={12} strokeWidth={2} />
             </button>
@@ -141,7 +141,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
           <div className="max-h-56 overflow-y-auto py-1">
             {views.length === 0 ? (
               <p className="text-[12px] text-[var(--color-ink-muted)] px-3 py-3">
-                {t('noSavedViews') || 'No saved views'}
+                {t('noSavedViews')}
               </p>
             ) : (
               views.map((view) => (
@@ -164,8 +164,8 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                         ? 'text-[var(--color-accent)] opacity-100'
                         : 'text-[var(--color-ink-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-accent)]'
                     }`}
-                    title={view.isDefault ? (t('removeDefault') || 'Remove default') : (t('setDefault') || 'Set as default')}
-                    aria-label={view.isDefault ? (t('removeDefault') || 'Remove default') : (t('setDefault') || 'Set as default')}
+                    title={view.isDefault ? (t('removeDefault')) : (t('setDefault'))}
+                    aria-label={view.isDefault ? (t('removeDefault')) : (t('setDefault'))}
                   >
                     <Star size={12} strokeWidth={2} fill={view.isDefault ? 'currentColor' : 'none'} />
                   </button>
@@ -173,8 +173,8 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                   <button
                     onClick={() => deleteMutation.mutate(view.id)}
                     className="flex-shrink-0 text-[var(--color-ink-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-urgent)] transition-opacity"
-                    title={t('delete') || 'Delete'}
-                    aria-label={t('delete') || 'Delete'}
+                    title={t('delete')}
+                    aria-label={t('delete')}
                   >
                     <Trash2 size={12} strokeWidth={2} />
                   </button>
@@ -197,7 +197,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                       setSaveName('');
                     }
                   }}
-                  placeholder={t('viewName') || 'View name…'}
+                  placeholder={t('viewName')}
                   className="flex-1 min-w-0 rounded-[var(--radius-btn)] bg-[var(--color-bg-base)] border border-[var(--color-border)] text-[var(--color-ink)] text-[12px] px-2 py-1 outline-none focus:border-[var(--color-accent)]"
                   autoFocus
                 />
@@ -207,7 +207,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                   onClick={handleSave}
                   disabled={!saveName.trim() || createMutation.isPending}
                 >
-                  {t('save') || 'Save'}
+                  {t('save')}
                 </Button>
                 <button
                   onClick={() => {
@@ -215,7 +215,7 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                     setSaveName('');
                   }}
                   className="text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] transition-colors"
-                  aria-label={t('cancel') || 'Cancel'}
+                  aria-label={t('cancel')}
                 >
                   <X size={12} strokeWidth={2} />
                 </button>
@@ -225,11 +225,11 @@ export default function SavedViewPicker({ currentFilters, onApply }: SavedViewPi
                 onClick={() => setShowSaveInput(true)}
                 disabled={!hasFilters}
                 className="flex items-center gap-1.5 text-[12px] font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] disabled:opacity-40 disabled:cursor-not-allowed w-full transition-colors"
-                title={!hasFilters ? (t('noActiveFilter') || 'Apply a filter first') : undefined}
+                title={!hasFilters ? (t('noActiveFilter')) : undefined}
               >
                 <Plus size={12} strokeWidth={2} />
                 <span>
-                  {t('saveCurrentView') || 'Save current view'}
+                  {t('saveCurrentView')}
                 </span>
               </button>
             )}

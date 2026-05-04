@@ -126,7 +126,7 @@ export default function AdminArchive() {
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); resetPagination(); }}
-              placeholder={t('archive_search_placeholder') || 'Name or ref value…'}
+              placeholder={t('archive_search_placeholder')}
               title="Matches agent name, support name, or any reference value (Order ID, tracking #, case #, …)"
               className={`${INPUT} w-52`}
             />

@@ -80,13 +80,13 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     onError: (err) => {
       if (err.code === 'file_too_large') {
         setToast({
-          message: t('file_too_large') || `File exceeds 10MB limit`,
+          message: t('file_too_large'),
           type: 'error',
         });
       } else {
         const msg = err.detail
-          ? `${t('upload_failed') || 'Upload failed'}: ${err.detail}`
-          : t('upload_failed') || 'Upload failed. Please try again.';
+          ? `${t('upload_failed')}: ${err.detail}`
+          : t('upload_failed');
         setToast({ message: msg, type: 'error' });
       }
     },
@@ -104,8 +104,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
     whisperMode,
     isSupport,
     placeholder: whisperMode
-      ? (t('whisper_placeholder') || 'Private note for support staff…')
-      : (t('type_message') || 'Type a message…'),
+      ? (t('whisper_placeholder'))
+      : (t('type_message')),
     onSubmit: () => sendMessage(),
     onEscape: () => {
       if (replyingTo && onClearReply) onClearReply();
@@ -123,7 +123,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
   useEffect(() => {
     if (!lastRejection || lastRejection.ticketId !== ticket.id) return;
     setToast({
-      message: t(lastRejection.code) || t('guard_blocked_title') || 'Message blocked',
+      message: t(lastRejection.code) || t('guard_blocked_title'),
       type: 'error',
     });
     setLastRejection(null);
@@ -230,7 +230,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
 
     const socket = getSocket();
     if (!socket) {
-      setToast({ message: t('not_connected') || 'Not connected. Please wait and try again.', type: 'error' });
+      setToast({ message: t('not_connected'), type: 'error' });
       return;
     }
 
@@ -290,11 +290,11 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
       // back. Soft info toast tells the user their message will land shortly.
       // If reconnect doesn't complete within 10s, surface the real error and
       // mark the optimistic bubble as failed so they can retry manually.
-      setToast({ message: t('reconnecting_queue') || 'Reconnecting — your message will send in a moment…', type: 'success' });
+      setToast({ message: t('reconnecting_queue'), type: 'success' });
       const timeoutHandle = setTimeout(() => {
         socket.off('connect', onConnect);
         useStore.getState().updateMessageState(ticket.id, localId, { pending: false });
-        setToast({ message: t('reconnect_failed') || 'Still disconnected. Message not sent.', type: 'error' });
+        setToast({ message: t('reconnect_failed'), type: 'error' });
       }, 10000);
       const onConnect = () => {
         clearTimeout(timeoutHandle);
@@ -351,7 +351,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           <div className="flex items-start gap-2 px-3 py-2 mb-2 bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] border-l-[3px] border-[var(--color-accent)]">
             <div className="flex-1 min-w-0">
               <div className="text-[11px] font-semibold text-[var(--color-accent)] truncate">
-                {t('replying_to') || 'Replying to'} {replyingTo.senderName}
+                {t('replying_to')} {replyingTo.senderName}
               </div>
               <div className="text-[12px] text-[var(--color-ink-soft)] truncate">{replyDisplayText}</div>
             </div>
@@ -364,14 +364,14 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           <div className="flex items-center justify-between mb-2 px-3 py-1.5 bg-[var(--color-accent-soft)] rounded-[var(--radius-btn)]">
             <span className="text-[11px] font-semibold text-[var(--color-accent)] flex items-center gap-1.5">
               <Sparkles size={12} />
-              {t('ai_improved') || 'AI improved'}
+              {t('ai_improved')}
             </span>
             <button
               type="button"
               onClick={revertImprove}
               className="text-[11px] font-medium text-[var(--color-accent)] hover:opacity-80 underline underline-offset-2"
             >
-              {t('revert_to_original') || 'Revert to original'}
+              {t('revert_to_original')}
             </button>
           </div>
         )}
@@ -397,7 +397,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
                     type="button"
                     onClick={() => removeFile(idx)}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-[var(--color-bg-surface)] rounded-full shadow-[var(--shadow-soft)] text-[var(--color-ink-muted)] hover:text-[var(--color-urgent)]"
-                    title={t('remove') || 'Remove'}
+                    title={t('remove')}
                   >
                     <X size={10} />
                   </button>
@@ -430,8 +430,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             <button
               type="button"
               onClick={() => dismissPreview(livePreview.url)}
-              aria-label={t('dismiss_preview') || 'Dismiss preview'}
-              title={t('dismiss_preview') || 'Dismiss preview'}
+              aria-label={t('dismiss_preview')}
+              title={t('dismiss_preview')}
               className="absolute top-1 right-1 w-5 h-5 flex items-center justify-center bg-[var(--color-bg-surface)] rounded-full shadow-[var(--shadow-soft)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
             >
               <X size={10} strokeWidth={2.5} />
@@ -452,7 +452,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
           {whisperMode && (
             <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-whisper-ink)] text-[var(--color-btn-text-inverse)] text-[11px] font-semibold">
               <Ghost size={12} strokeWidth={2} />
-              <span>{t('whisper_label') || 'Whisper'}</span>
+              <span>{t('whisper_label')}</span>
             </div>
           )}
 
@@ -468,7 +468,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             <button
               type="button"
               onClick={() => setWhisperMode((v) => !v)}
-              aria-label={t('whisper_mode') || 'Toggle whisper mode'}
+              aria-label={t('whisper_mode')}
               title={t('whisper_mode')}
               className={`${compact ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${whisperMode
                 ? 'bg-[var(--color-whisper-ink)] text-[var(--color-btn-text-inverse)]'
@@ -483,8 +483,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             <button
               type="button"
               onClick={() => setShowFormatToolbar((v) => !v)}
-              aria-label={t('formatting') || 'Toggle formatting'}
-              title={t('formatting') || 'Formatting'}
+              aria-label={t('formatting')}
+              title={t('formatting')}
               className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${showFormatToolbar
                 ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent)]'
                 : 'text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]'
@@ -494,14 +494,14 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             </button>
           )}
 
-          <label className={`${compact ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] cursor-pointer transition-colors`} title={t('attach_file') || 'Attach file'}>
+          <label className={`${compact ? 'w-8 h-8' : 'w-9 h-9'} flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] cursor-pointer transition-colors`} title={t('attach_file')}>
             <ImageIcon size={compact ? 16 : 18} strokeWidth={2} />
             <input
               ref={fileRef}
               type="file"
               multiple
               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
-              aria-label={t('attach_file') || 'Attach files'}
+              aria-label={t('attach_file')}
               className="hidden"
               onChange={handleFileChange}
             />
@@ -514,10 +514,10 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             <button
               type="button"
               onClick={compose.toggleEmojiGrid}
-              aria-label={t('emoji') || 'Emoji'}
+              aria-label={t('emoji')}
               aria-expanded={compose.isEmojiGridOpen}
               className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
-              title={t('emoji') || 'Emoji'}
+              title={t('emoji')}
             >
               <Smile size={18} />
             </button>
@@ -539,12 +539,12 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
               editor={editor}
               data-placeholder={
               uploading
-                ? (t('uploading') || 'Uploading…')
+                ? (t('uploading'))
                 : pendingFiles.length > 0
-                  ? (t('add_message_or_send') || 'Add a message or press Enter to send')
+                  ? (t('add_message_or_send'))
                   : whisperMode
-                    ? (t('whisper_placeholder') || 'Private note for support staff…')
-                    : (t('type_message') || 'Type a message…')
+                    ? (t('whisper_placeholder'))
+                    : (t('type_message'))
             }
             />
           </div>
@@ -560,7 +560,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             aria-live="polite"
           >
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-[v2p-dot_1s_ease-in-out_infinite]" />
-            <span>{t('voice_transcribing') || 'Transcribing…'}</span>
+            <span>{t('voice_transcribing')}</span>
           </div>
         )}
         {showMicButton && !voice.isTranscribing && voice.isRecording && (
@@ -568,8 +568,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             type="button"
             onClick={() => { void voice.stopRecording(); }}
             aria-pressed={true}
-            aria-label={t('voice_stop') || 'Stop dictation'}
-            title={t('voice_stop') || 'Stop dictation'}
+            aria-label={t('voice_stop')}
+            title={t('voice_stop')}
             className="flex items-center gap-1.5 h-9 px-2 rounded-[var(--radius-pill)] bg-[var(--color-urgent-soft,var(--color-bg-elevated))] text-[var(--color-urgent)] hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
             <span className="inline-block w-2 h-2 rounded-full bg-[var(--color-urgent)] animate-[v2p-pulse_1.8s_ease-in-out_infinite]" />
@@ -582,8 +582,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             type="button"
             onClick={() => { void voice.startRecording(); }}
             aria-pressed={false}
-            aria-label={t('voice_start') || 'Start dictation'}
-            title={t('voice_start') || 'Start dictation'}
+            aria-label={t('voice_start')}
+            title={t('voice_start')}
             disabled={voice.isTranscribing}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] disabled:opacity-40 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
@@ -597,8 +597,8 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
             type="button"
             onClick={handleImprove}
             disabled={improving}
-            aria-label={t('improve_message') || 'Improve message'}
-            title={t('improve_message') || 'Improve message'}
+            aria-label={t('improve_message')}
+            title={t('improve_message')}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] disabled:opacity-40 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
           >
             {improving ? (
@@ -612,15 +612,15 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         <button
           type="submit"
           disabled={uploading || improving || (!compose.text.trim() && pendingFiles.length === 0)}
-          aria-label={t('send') || 'Send'}
+          aria-label={t('send')}
           className={`${compact ? 'w-9 h-9 rounded-full' : 'h-9 px-3 rounded-[var(--radius-pill)]'} flex items-center ${compact ? 'justify-center' : 'gap-2'} text-[12px] font-semibold text-[var(--color-btn-text-inverse)] disabled:opacity-40 shadow-[var(--shadow-soft)] hover:opacity-90 transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] ${
             whisperMode ? 'bg-[var(--color-whisper-ink)]' : 'bg-[var(--color-accent)]'
           }`}
-          title={improvementMode === 'forced' ? (t('ai_will_improve') || 'AI will improve before sending') : (t('send') || 'Send')}
+          title={improvementMode === 'forced' ? (t('ai_will_improve')) : (t('send'))}
         >
           <Send size={14} strokeWidth={2.25} />
           {!compact && (
-            <span>{whisperMode ? (t('whisper_label') || 'Whisper') : (t('send') || 'Send')}</span>
+            <span>{whisperMode ? (t('whisper_label')) : (t('send'))}</span>
           )}
         </button>
         </div>
@@ -628,7 +628,7 @@ const ComposeArea = forwardRef<ComposeAreaHandle, ComposeAreaProps>(function Com
         {/* Drag-drop overlay — visible only while a drag is active */}
         {isDragOver && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-[var(--color-accent-soft)] rounded-[var(--radius-card)] text-[12px] font-semibold text-[var(--color-accent)]">
-            {t('drop_files_to_attach') || 'Drop files to attach'}
+            {t('drop_files_to_attach')}
           </div>
         )}
 

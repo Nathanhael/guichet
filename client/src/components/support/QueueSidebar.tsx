@@ -267,14 +267,14 @@ export default function QueueSidebar({
         {activeLangCounts.size >= 2 && (
           <div className="flex items-center gap-1 flex-wrap pt-1.5 mt-1 border-t border-[var(--color-border)]">
             <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mr-1">
-              {t('lang_label') || 'Lang'}
+              {t('lang_label')}
             </span>
             <button
               onClick={() => setFilterLang(null)}
               className={deptChipClass(filterLang === null)}
               title={translationEnabled
-                ? (t('lang_filter_all_translated') || 'Show all languages')
-                : (t('lang_filter_all_no_translation') || 'Show all — you may not speak some')}
+                ? (t('lang_filter_all_translated'))
+                : (t('lang_filter_all_no_translation'))}
             >
               {t('all')}
               <span className={`text-[10px] tabular-nums ${filterLang === null ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{activeLangTotal}</span>
@@ -287,7 +287,7 @@ export default function QueueSidebar({
                   onClick={() => setFilterLang(filterLang === lang ? null : lang)}
                   className={deptChipClass(filterLang === lang)}
                   title={lang === viewerLang
-                    ? (t('lang_filter_your_lang') || 'Your language')
+                    ? (t('lang_filter_your_lang'))
                     : translationEnabled
                       ? `Filter to ${lang.toUpperCase()}`
                       : `${lang.toUpperCase()} — translation is off`}
@@ -309,7 +309,7 @@ export default function QueueSidebar({
             data-queue-search
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t('search_messages') || 'Search messages…'}
+            placeholder={t('search_messages')}
             className="flex-1 rounded-[var(--radius-btn)] bg-[var(--color-bg-base)] border border-[var(--color-border)] px-2.5 py-1.5 text-[12px] text-[var(--color-ink)] outline-none placeholder:text-[var(--color-ink-muted)] focus:border-[var(--color-accent)]"
           />
         </div>
@@ -321,8 +321,8 @@ export default function QueueSidebar({
             ? (
               queueFiltered.length === 0 ? (
                 <li className="p-8 text-center">
-                  <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">{t('queue_empty') || 'All caught up'}</p>
-                  <p className="mt-1 text-[11px] text-[var(--color-ink-muted)]">{t('queue_empty_hint') || 'Nothing waiting right now.'}</p>
+                  <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">{t('queue_empty')}</p>
+                  <p className="mt-1 text-[11px] text-[var(--color-ink-muted)]">{t('queue_empty_hint')}</p>
                 </li>
               ) : (
                 <>
@@ -330,7 +330,7 @@ export default function QueueSidebar({
                     <>
                       <li className="px-3 pt-3 pb-1 flex items-center gap-1.5">
                         <SectionLabel className="text-[var(--color-accent)]">
-                          {t('my_chats') || 'My chats'}
+                          {t('my_chats')}
                         </SectionLabel>
                         <Pill tone="accent">{myChats.length}</Pill>
                       </li>
@@ -353,7 +353,7 @@ export default function QueueSidebar({
                     <>
                       <li className="px-3 pt-3 pb-1 flex items-center gap-1.5">
                         <SectionLabel>
-                          {t('queue') || 'Queue'}
+                          {t('queue')}
                         </SectionLabel>
                         <Pill tone="muted">{unassigned.length}</Pill>
                       </li>
@@ -380,7 +380,7 @@ export default function QueueSidebar({
                         onClick={() => setOtherAgentsExpanded((v) => !v)}
                       >
                         <SectionLabel>
-                          {t('other_agents') || 'Claimed by others'}
+                          {t('other_agents')}
                         </SectionLabel>
                         <Pill tone="muted">{otherAgents.length}</Pill>
                         <span className="text-[10px] text-[var(--color-ink-muted)] ml-auto">{otherAgentsExpanded ? '▴' : '▾'}</span>
@@ -413,7 +413,7 @@ export default function QueueSidebar({
                 </li>
               ) : !searchResults.data?.length ? (
                 <li className="p-8 text-center">
-                  <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_results') || 'No results'}</p>
+                  <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_results')}</p>
                 </li>
               ) : (searchResults.data || []).map((result: { messageId: string; ticketId: string; text: string | null; createdAt: string; ticketDept: string; ticketStatus: string; agentName: string | null; senderName: string | null }) => (
                 <li
@@ -459,20 +459,20 @@ export default function QueueSidebar({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading') || 'Loading…'}</p>
+                    <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading')}</p>
                   </li>
                 ) : archiveFiltered.length === 0 ? (
                   <li className="p-8 text-center flex flex-col items-center gap-2">
                     <Archive className="h-6 w-6 text-[var(--color-ink-muted)] opacity-40" strokeWidth={1.5} />
                     <p className="text-[13px] font-medium text-[var(--color-ink-soft)]">
                       {archivedTickets.length === 0
-                        ? (t('no_archived') || 'Nothing archived yet')
-                        : (t('no_archived_for_filter') || 'No archived tickets match this filter')}
+                        ? (t('no_archived'))
+                        : (t('no_archived_for_filter'))}
                     </p>
                     <p className="text-[11px] text-[var(--color-ink-muted)] leading-relaxed max-w-[200px]">
                       {archivedTickets.length === 0
-                        ? (t('no_archived_hint') || 'Closed conversations will show up here once they\u2019re wrapped up.')
-                        : (t('no_archived_for_filter_hint') || 'Try a different department or language.')}
+                        ? (t('no_archived_hint'))
+                        : (t('no_archived_for_filter_hint'))}
                     </p>
                   </li>
                 ) : archiveFiltered.map((ticket) => (
@@ -494,7 +494,7 @@ export default function QueueSidebar({
                       disabled={archiveQuery.isFetching}
                       className="w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] px-3 py-2 text-[12px] font-medium text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {archiveQuery.isFetching ? (t('loading') || 'Loading…') : (t('load_more') || 'Load more')}
+                      {archiveQuery.isFetching ? (t('loading')) : (t('load_more'))}
                     </button>
                   </li>
                 )}

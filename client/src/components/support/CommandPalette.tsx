@@ -76,7 +76,7 @@ export default function CommandPalette({ commands, onClose }: CommandPaletteProp
   }
 
   return (
-    <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true" aria-label={t('cmd_palette_title') || 'Command palette'}>
+    <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true" aria-label={t('cmd_palette_title')}>
       <div className="absolute inset-0 bg-[var(--color-scrim)]" onClick={onClose} />
 
       <div className="absolute inset-0 flex items-start justify-center pt-[20vh] px-4">
@@ -89,7 +89,7 @@ export default function CommandPalette({ commands, onClose }: CommandPaletteProp
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('cmd_palette_placeholder') || 'Type a command…'}
+              placeholder={t('cmd_palette_placeholder')}
               className="flex-1 bg-transparent border-none text-[var(--color-ink)] text-[14px] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:ring-0"
             />
             <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--color-border)] text-[var(--color-ink-muted)] select-none">ESC</kbd>
@@ -98,7 +98,7 @@ export default function CommandPalette({ commands, onClose }: CommandPaletteProp
           <div ref={listRef} className="max-h-80 overflow-y-auto py-1">
             {filtered.length === 0 && (
               <div className="px-4 py-6 text-center text-[var(--color-ink-muted)] text-[12px]">
-                {t('cmd_no_results') || 'No matching commands'}
+                {t('cmd_no_results')}
               </div>
             )}
 

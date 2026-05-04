@@ -253,8 +253,7 @@ export default function UserMenuChip({
     }
     if (confirmBeforeSwitch) {
       const proceed = window.confirm(
-        t('partner_switch_confirm') ||
-          'Switch tenant? Open chats and unsaved drafts will be lost.',
+        t('partner_switch_confirm'),
       );
       if (!proceed) {
         setOpen(false);
@@ -317,7 +316,7 @@ export default function UserMenuChip({
 
           {showStatus && (
             <div className="border-b border-[var(--color-border)]">
-              <div className={SECTION}>{t('status') || 'Status'}</div>
+              <div className={SECTION}>{t('status')}</div>
               <div className="px-3.5 pb-2.5 flex gap-1.5">
                 {STATUSES.map(s => {
                   const active = agentStatus === s.key;
@@ -342,7 +341,7 @@ export default function UserMenuChip({
 
           {workspaceSwitchable && (
             <div className="border-b border-[var(--color-border)]">
-              <div className={SECTION}>{t('switch_workspace') || 'Workspace'}</div>
+              <div className={SECTION}>{t('switch_workspace')}</div>
               <div className="px-1.5 pb-2 flex flex-col gap-0.5">
                 {isPlatformOperator && (() => {
                   const active = !activeMembershipId;
@@ -416,12 +415,12 @@ export default function UserMenuChip({
               ) : (
                 <BellOff className="h-3.5 w-3.5 text-[var(--color-ink-muted)]" />
               )}
-              {t('notification_sounds') || 'Notification sounds'}
+              {t('notification_sounds')}
             </span>
             <ToggleSwitch
               enabled={soundEnabled}
               onToggle={toggleSoundEnabled}
-              label={t('notification_sounds') || 'Notification sounds'}
+              label={t('notification_sounds')}
             />
           </div>
 
@@ -483,7 +482,7 @@ export default function UserMenuChip({
             >
               <Keyboard className="h-4 w-4 shrink-0 text-[var(--color-ink-muted)]" />
               <span className="flex-1 text-left">
-                {t('keyboard_shortcuts') || 'Keyboard shortcuts'}
+                {t('keyboard_shortcuts')}
               </span>
               <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-ink-muted)] select-none">
                 Ctrl+K

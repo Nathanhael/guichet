@@ -38,13 +38,13 @@ export default function SearchBar({ query, onQueryChange, matchCount, currentMat
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={t('search_in_conversation') || 'Search in conversation'}
+        placeholder={t('search_in_conversation')}
         className="flex-1 rounded-[var(--radius-btn)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] px-2.5 py-1 text-[12px] text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] outline-none focus:border-[var(--color-accent)]"
-        aria-label={t('search_in_conversation') || 'Search in conversation'}
+        aria-label={t('search_in_conversation')}
       />
       {hasQuery && (
         <span className="text-[11px] font-medium text-[var(--color-ink-soft)] tabular-nums shrink-0 min-w-[60px] text-right">
-          {hasMatches ? `${currentMatchIndex + 1} / ${matchCount}` : (t('no_results') || 'No results')}
+          {hasMatches ? `${currentMatchIndex + 1} / ${matchCount}` : (t('no_results'))}
         </span>
       )}
       <button onClick={onPrev} disabled={!hasMatches} className="p-1 rounded-[var(--radius-btn)] text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)] disabled:opacity-30 disabled:hover:bg-transparent transition-colors" aria-label="Previous match">

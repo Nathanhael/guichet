@@ -109,7 +109,7 @@ export default function ImproveDiffModal({
         title={
           <span className="flex items-center gap-2">
             <Sparkles size={16} className="text-[var(--color-accent)]" />
-            {t('improve_modal_title') || 'AI improved your message'}
+            {t('improve_modal_title')}
           </span>
         }
         onClose={onDismiss}
@@ -118,7 +118,7 @@ export default function ImproveDiffModal({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="rounded-[var(--radius-card)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-muted)] mb-1.5">
-              {t('improve_modal_original_label') || 'Original'}
+              {t('improve_modal_original_label')}
             </div>
             <div className="text-[13px] text-[var(--color-ink-soft)] whitespace-pre-wrap break-words">
               {pending.original}
@@ -126,7 +126,7 @@ export default function ImproveDiffModal({
           </div>
           <div className="rounded-[var(--radius-card)] border border-[var(--color-accent)] bg-[var(--color-accent-soft)] p-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-accent)] mb-1.5">
-              {t('improve_modal_improved_label') || 'Improved'}
+              {t('improve_modal_improved_label')}
             </div>
             <div className="text-[13px] text-[var(--color-ink)] whitespace-pre-wrap break-words">
               {pending.improved}
@@ -138,7 +138,7 @@ export default function ImproveDiffModal({
           <div className="mt-3 flex items-center gap-2">
             <span className="text-[11px] text-[var(--color-ink-muted)]">
               {feedbackToast
-                ? t('improve_feedback_thanks_toast') || 'Thanks for the feedback'
+                ? t('improve_feedback_thanks_toast')
                 : ''}
             </span>
             <div className="ml-auto flex items-center gap-1">
@@ -147,9 +147,9 @@ export default function ImproveDiffModal({
               </span>
               <button
                 type="button"
-                aria-label={t('improve_thumbs_up_aria') || 'Rate AI output thumbs up'}
+                aria-label={t('improve_thumbs_up_aria')}
                 aria-keyshortcuts="ArrowUp"
-                title={`${t('improve_thumbs_up_aria') || 'Thumbs up'} (↑)`}
+                title={`${t('improve_thumbs_up_aria')} (↑)`}
                 aria-pressed={feedbackChoice === 'up'}
                 disabled={feedbackChoice !== null}
                 onClick={() => handleThumbs('up')}
@@ -163,9 +163,9 @@ export default function ImproveDiffModal({
               </button>
               <button
                 type="button"
-                aria-label={t('improve_thumbs_down_aria') || 'Rate AI output thumbs down'}
+                aria-label={t('improve_thumbs_down_aria')}
                 aria-keyshortcuts="ArrowDown"
-                title={`${t('improve_thumbs_down_aria') || 'Thumbs down'} (↓)`}
+                title={`${t('improve_thumbs_down_aria')} (↓)`}
                 aria-pressed={feedbackChoice === 'down'}
                 disabled={feedbackChoice !== null}
                 onClick={() => handleThumbs('down')}
@@ -186,16 +186,16 @@ export default function ImproveDiffModal({
           <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] opacity-80 select-none">
             Esc
           </kbd>
-          {t('improve_modal_esc_hint') || 'to close'}
+          {t('improve_modal_esc_hint')}
         </span>
         <Button variant="secondary" onClick={onSendOriginal}>
-          {t('improve_send_original') || 'Send original'}
+          {t('improve_send_original')}
           <kbd className="ml-2 text-[10px] font-mono font-normal px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-current opacity-60 select-none">
             Shift+Enter
           </kbd>
         </Button>
         <Button variant="primary" onClick={onSendImproved}>
-          {t('improve_send_improved') || 'Send improved'}
+          {t('improve_send_improved')}
           <kbd className="ml-2 text-[10px] font-mono font-normal px-1.5 py-0.5 rounded-[var(--radius-btn)] border border-current opacity-60 select-none">
             Enter
           </kbd>

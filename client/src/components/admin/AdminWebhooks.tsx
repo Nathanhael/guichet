@@ -179,7 +179,7 @@ export default function AdminWebhooks() {
           <button
             onClick={() => invalidate()}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
-            title={t('refresh') || 'Refresh'}
+            title={t('refresh')}
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
@@ -261,7 +261,7 @@ export default function AdminWebhooks() {
       <div className="space-y-3">
         {isLoading ? (
           <div className={`${CARD} px-4 py-8 text-center text-[13px] text-[var(--color-ink-muted)]`}>
-            {t('loading') || 'Loading…'}
+            {t('loading')}
           </div>
         ) : !hooks || hooks.length === 0 ? (
           <div className={`${CARD} px-4 py-12 text-center`}>

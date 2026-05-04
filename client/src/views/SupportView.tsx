@@ -468,7 +468,7 @@ export default function SupportView() {
                 <button
                   onClick={toggleSidebar}
                   title="Ctrl+B"
-                  aria-label={t('collapse_sidebar') || 'Collapse sidebar'}
+                  aria-label={t('collapse_sidebar')}
                   className="shrink-0 w-7 h-7 flex items-center justify-center rounded-[var(--radius-btn)] border border-[var(--color-border)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)] transition-colors"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} />
@@ -560,7 +560,7 @@ export default function SupportView() {
                 maxWidth={420}
                 isOpen={rightSidebarExpanded}
                 onToggle={toggleRightSidebar}
-                collapsedLabel={t('ticket_context') || 'CONTEXT'}
+                collapsedLabel={t('ticket_context')}
                 collapsedIcon={<Clock className="h-4 w-4 opacity-40" />}
               >
                 <TicketSidebar

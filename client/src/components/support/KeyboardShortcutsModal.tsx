@@ -73,12 +73,11 @@ export default function KeyboardShortcutsModal({ open, onClose }: KeyboardShortc
     <Modal open={open} onClose={onClose} id="keyboard-shortcuts" maxWidth={560}>
       <ModalHeader
         onClose={onClose}
-        title={t('keyboard_shortcuts') || 'Keyboard shortcuts'}
-        subtitle={t('keyboard_shortcuts_subtitle') || 'Press Ctrl+K to run any command from the palette.'}
+        title={t('keyboard_shortcuts')}
+        subtitle={t('keyboard_shortcuts_subtitle')}
       />
       <div className="px-5 pb-3 text-[11px] text-[var(--color-ink-muted)] leading-relaxed">
-        {t('keyboard_shortcuts_browser_note') ||
-          'Some browser shortcuts (Ctrl+F) are replaced by app equivalents while Guichet has focus.'}
+        {t('keyboard_shortcuts_browser_note')}
       </div>
       <ModalBody className="pb-5 max-h-[60vh] overflow-y-auto custom-scrollbar">
         <div className="flex flex-col gap-5">

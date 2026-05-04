@@ -185,11 +185,11 @@ export default function AgentView() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[12px] font-semibold text-[var(--color-ink)] truncate">
-                      {t('queue_position') || 'Queue position'}: #{queuePosition.position}
+                      {t('queue_position')}: #{queuePosition.position}
                     </p>
                     {queuePosition.etaMins > 0 && (
                       <p className="text-[11px] text-[var(--color-ink-muted)] truncate">
-                        {t('estimated_wait') || 'Estimated wait'}: ~{queuePosition.etaMins} {t('minutes') || 'min'}
+                        {t('estimated_wait')}: ~{queuePosition.etaMins} {t('minutes')}
                       </p>
                     )}
                   </div>

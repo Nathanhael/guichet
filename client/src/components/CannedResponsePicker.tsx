@@ -169,7 +169,7 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
       style={style}
       className="z-[60] rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] p-4"
     >
-      <p className="text-[12px] text-[var(--color-ink-muted)] italic">{t('no_canned_responses') || 'No matching responses'}</p>
+      <p className="text-[12px] text-[var(--color-ink-muted)] italic">{t('no_canned_responses')}</p>
     </div>
   ) : (
     <div
@@ -181,7 +181,7 @@ export default function CannedResponsePicker({ inputText, dept, ticketId, onSele
       className="z-[60] rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] max-h-64 overflow-y-auto"
     >
       <div className="px-3 py-2 border-b border-[var(--color-border)]">
-        <SectionLabel>{t('canned_responses') || 'Quick replies'}</SectionLabel>
+        <SectionLabel>{t('canned_responses')}</SectionLabel>
       </div>
       {filtered.map((r: CannedResponse, idx: number) => (
         <button

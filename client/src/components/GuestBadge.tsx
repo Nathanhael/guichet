@@ -41,11 +41,11 @@ export default function GuestBadge({ isExternal, size = 'inline', className = ''
   return (
     <span
       className={`inline-flex items-center rounded-[var(--radius-pill)] font-semibold border border-[var(--color-accent-amber)] text-[var(--color-accent-amber)] leading-none ${sizeClass} ${className}`.trim()}
-      title={t('guest_badge_tooltip') || 'External partner guest (B2B)'}
-      aria-label={t('guest_badge_aria') || 'External guest user'}
+      title={t('guest_badge_tooltip')}
+      aria-label={t('guest_badge_aria')}
       data-testid="guest-badge"
     >
-      {t('guest_badge') || 'Guest'}
+      {t('guest_badge')}
     </span>
   );
 }

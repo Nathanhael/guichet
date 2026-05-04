@@ -47,8 +47,8 @@ function getDateLabel(dateStr: string, t: (key: string) => string, userLang?: st
   const msgDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = Math.floor((today.getTime() - msgDate.getTime()) / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return t('today') || 'Today';
-  if (diffDays === 1) return t('yesterday') || 'Yesterday';
+  if (diffDays === 0) return t('today');
+  if (diffDays === 1) return t('yesterday');
   const locale = langToLocale[userLang || 'en'] || 'en-GB';
   return date.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 }

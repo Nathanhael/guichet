@@ -435,9 +435,9 @@ export default function AdminTeam() {
       {showInviteModal && <InviteExternalUserModal onClose={() => setShowInviteModal(false)} onInvited={() => { setShowInviteModal(false); invalidate(); }} />}
       {confirmRemove && (
         <ConfirmDialog
-          title={t('remove_member_title') || 'Remove member'}
+          title={t('remove_member_title')}
           message={`Remove ${confirmRemove.name} from this partner? They will lose access to all partner resources.`}
-          confirmLabel={t('remove') || 'Remove'}
+          confirmLabel={t('remove')}
           onConfirm={() => {
             removeMutation.mutate({ membershipId: confirmRemove.membershipId });
             setConfirmRemove(null);

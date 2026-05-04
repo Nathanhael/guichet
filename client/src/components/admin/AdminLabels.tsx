@@ -95,13 +95,13 @@ export default function AdminLabels() {
     <div className="max-w-3xl">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('labels') || 'Labels'}</h2>
-          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('labels_desc') || 'Categorize and tag conversations'}</p>
+          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('labels')}</h2>
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('labels_desc')}</p>
         </div>
         <button
           onClick={() => invalidate()}
           className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
-          title={t('refresh') || 'Refresh'}
+          title={t('refresh')}
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
@@ -111,24 +111,24 @@ export default function AdminLabels() {
 
       {/* Create new label */}
       <div className={`${CARD} p-5 mb-6`}>
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('create_new_label') || 'Create New Label'}</h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('create_new_label')}</h3>
         <div className="flex items-end gap-4 flex-wrap">
           <div className="flex-1 min-w-[200px]">
-            <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_name') || 'Name'} *</label>
+            <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_name')} *</label>
             <input
               type="text"
               value={newName}
               onChange={(e) => { setNewName(e.target.value); setFieldErrors({}); }}
               onKeyDown={(e) => e.key === 'Enter' && addLabel()}
-              placeholder={t('label_name_placeholder') || 'e.g. Bug Report'}
+              placeholder={t('label_name_placeholder')}
               className={`${INPUT} ${fieldErrors.name ? 'border-[var(--color-urgent)]' : ''}`}
               maxLength={50}
             />
             <FieldError error={fieldErrors.name} />
           </div>
           <div>
-            <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_color') || 'Color'} *</label>
-            <div className="flex gap-1.5 p-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)]" role="radiogroup" aria-label={t('label_color') || 'Color'}>
+            <label className="text-[12px] font-medium text-[var(--color-ink-soft)] mb-1.5 block">{t('label_color')} *</label>
+            <div className="flex gap-1.5 p-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)]" role="radiogroup" aria-label={t('label_color')}>
               {COLORS.map((c) => (
                 <button
                   key={c.key}
@@ -151,7 +151,7 @@ export default function AdminLabels() {
             className="h-9 px-4 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-accent)] hover:brightness-110 text-white text-[13px] font-medium shadow-[var(--shadow-soft)] disabled:opacity-50 transition-all shrink-0"
           >
             <Plus className="h-3.5 w-3.5" />
-            {createMutation.isPending ? (t('adding_label') || 'Adding…') : (t('add_label') || 'Add')}
+            {createMutation.isPending ? (t('adding_label')) : (t('add_label'))}
           </button>
         </div>
       </div>
@@ -159,18 +159,18 @@ export default function AdminLabels() {
       {/* Labels list */}
       <div className={`${CARD} overflow-hidden`}>
         <div className="grid grid-cols-[auto_1fr_auto] border-b border-[var(--color-border)]">
-          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)] w-16 text-center">{t('label_color') || 'Color'}</div>
-          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('labels') || 'Label'}</div>
+          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)] w-16 text-center">{t('label_color')}</div>
+          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('labels')}</div>
           <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]"></div>
         </div>
 
         {isLoading ? (
           <div className="px-4 py-8 text-center text-[13px] text-[var(--color-ink-muted)]">
-            {t('loading') || 'Loading…'}
+            {t('loading')}
           </div>
         ) : !labels || labels.length === 0 ? (
           <div className="px-4 py-12 text-center text-[13px] text-[var(--color-ink-muted)]">
-            {t('no_labels') || 'No labels created yet'}
+            {t('no_labels')}
           </div>
         ) : (
           labels.map((l) => (
@@ -208,14 +208,14 @@ export default function AdminLabels() {
                       onClick={saveEdit}
                       disabled={!editName.trim() || updateMutation.isPending}
                       className={ICON_BTN}
-                      title={t('save_label') || 'Save'}
+                      title={t('save_label')}
                     >
                       <Check className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={cancelEdit}
                       className={ICON_BTN}
-                      title={t('cancel') || 'Cancel'}
+                      title={t('cancel')}
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -231,8 +231,8 @@ export default function AdminLabels() {
                     <button
                       onClick={() => startEdit(l.id, l.name, l.color)}
                       className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
-                      title={t('edit_label') || 'Edit'}
-                      aria-label={`${t('edit_label') || 'Edit'} ${l.name}`}
+                      title={t('edit_label')}
+                      aria-label={`${t('edit_label')} ${l.name}`}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
@@ -240,8 +240,8 @@ export default function AdminLabels() {
                       onClick={() => confirmDeleteLabel(l.id, l.name)}
                       disabled={deletingId === l.id}
                       className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
-                      title={t('delete') || 'Delete'}
-                      aria-label={`${t('delete') || 'Delete'} ${l.name}`}
+                      title={t('delete')}
+                      aria-label={`${t('delete')} ${l.name}`}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -255,15 +255,15 @@ export default function AdminLabels() {
 
       {labels && labels.length > 0 && (
         <div className="mt-3 text-[12px] text-[var(--color-ink-muted)] text-right">
-          {labels.length} {t('labels') || 'label(s)'}
+          {labels.length} {t('labels')}
         </div>
       )}
 
       {confirmDelete && (
         <ConfirmDialog
-          title={t('delete_label_title') || 'Delete Label'}
-          message={t('delete_label_message') || 'This will remove the label from all tickets. This action cannot be undone.'}
-          confirmLabel={t('delete') || 'Delete'}
+          title={t('delete_label_title')}
+          message={t('delete_label_message')}
+          confirmLabel={t('delete')}
           onConfirm={executeDelete}
           onCancel={() => setConfirmDelete(null)}
         />

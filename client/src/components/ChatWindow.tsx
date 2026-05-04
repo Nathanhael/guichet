@@ -452,10 +452,10 @@ const ChatWindow = forwardRef<ChatWindowHandle, ChatWindowProps>(function ChatWi
 
       {showCloseConfirm && (
         <ConfirmDialog
-          title={t('close_ticket_title') || 'Close ticket?'}
-          message={t('close_ticket_body') || 'The chat will be closed for both the agent and the support team. This cannot be undone.'}
-          confirmLabel={t('yes_close') || 'Yes, close'}
-          cancelLabel={t('cancel') || 'Cancel'}
+          title={t('close_ticket_title')}
+          message={t('close_ticket_body')}
+          confirmLabel={t('yes_close')}
+          cancelLabel={t('cancel')}
           onConfirm={confirmCloseTicket}
           onCancel={() => setShowCloseConfirm(false)}
         />

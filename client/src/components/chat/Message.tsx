@@ -130,7 +130,7 @@ export default function Message({
   // tickets as well as live chats; no presence-store lookup needed.
   const isSenderExternal = !!message.senderIsExternal;
 
-  const originalDisplayText = isDeleted ? (t('message_deleted') || 'This message was deleted') : (message.text || '');
+  const originalDisplayText = isDeleted ? (t('message_deleted')) : (message.text || '');
   // Translated text is always primary when available — UX decision 2026-05-03:
   // monolingual support staff couldn't read the original after the legacy
   // toggle, so "Show original" now reveals the source text underneath the
@@ -221,7 +221,7 @@ export default function Message({
             <GuestBadge isExternal={isSenderExternal} />
             {isSupport && (
               <span className="text-[10px] font-semibold uppercase tracking-[0.04em] px-1.5 py-0.5 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)] leading-none">
-                {t('support') || 'Support'}
+                {t('support')}
               </span>
             )}
           </div>
@@ -231,7 +231,7 @@ export default function Message({
           <div className="flex items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--color-whisper-ink)]">
               <Ghost className="w-[11px] h-[11px]" strokeWidth={2} />
-              {t('whisper_label') || 'Whisper'}
+              {t('whisper_label')}
             </span>
             <span className="text-[12px] font-medium text-[var(--color-ink-soft)]">
               {message.senderName}
@@ -259,20 +259,20 @@ export default function Message({
                   onClick={() => setEditing(false)}
                   className="text-[12px] font-medium px-2.5 py-1 rounded-[var(--radius-btn)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
                 >
-                  {t('cancel') || 'Cancel'}
+                  {t('cancel')}
                 </button>
                 <button
                   onClick={submitEdit}
                   className="text-[12px] font-medium px-2.5 py-1 rounded-[var(--radius-btn)] bg-[var(--color-accent)] text-[var(--color-btn-text-inverse)] hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)]"
                 >
-                  {t('save') || 'Save'}
+                  {t('save')}
                 </button>
               </div>
             </div>
           ) : isDeleted ? (
             <div className="flex items-center gap-1.5 text-[12px] text-[var(--color-ink-muted)] italic">
               <Ban size={14} strokeWidth={1.5} className="shrink-0" />
-              {t('message_deleted') || 'This message was deleted'}
+              {t('message_deleted')}
             </div>
           ) : (
             <MessageContent
@@ -306,7 +306,7 @@ export default function Message({
             {translating ? (
               <span className="text-[11px] text-[var(--color-ink-muted)] italic flex items-center gap-1">
                 <Loader2 className="animate-spin" size={10} />
-                {t('translating') || 'translating...'}
+                {t('translating')}
               </span>
             ) : translated ? (
               <button
@@ -314,8 +314,8 @@ export default function Message({
                 className="text-[11px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink-soft)] underline underline-offset-2"
               >
                 {showOriginal
-                  ? (t('hide_original') || 'Hide original')
-                  : (t('show_original') || `Show original (${message.senderLang})`)}
+                  ? (t('hide_original'))
+                  : (t('show_original'))}
               </button>
             ) : null}
           </div>
@@ -373,7 +373,7 @@ export default function Message({
 
               <span className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-muted)] shrink-0">
                 {isEdited && !isDeleted && (
-                  <span className="italic">{t('edited') || 'edited'}</span>
+                  <span className="italic">{t('edited')}</span>
                 )}
                 {badgeTitle && (
                   <span
@@ -431,8 +431,8 @@ export default function Message({
                 {onReply && !isDeleted && (
                   <button
                     onClick={() => onReply(message)}
-                    title={t('reply') || 'Reply'}
-                    aria-label={t('reply') || 'Reply'}
+                    title={t('reply')}
+                    aria-label={t('reply')}
                     className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
                   >
                     <CornerUpLeft size={15} />
@@ -441,8 +441,8 @@ export default function Message({
                 {canEdit && (
                   <button
                     onClick={startEdit}
-                    title={t('edit') || 'Edit'}
-                    aria-label={t('edit') || 'Edit'}
+                    title={t('edit')}
+                    aria-label={t('edit')}
                     className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-accent)] hover:bg-[var(--color-hover)]"
                   >
                     <Pencil size={14} />
@@ -451,8 +451,8 @@ export default function Message({
                 {canDelete && (
                   <button
                     onClick={() => { setConfirmDelete(true); setShowActions(false); }}
-                    title={t('delete') || 'Delete'}
-                    aria-label={t('delete') || 'Delete'}
+                    title={t('delete')}
+                    aria-label={t('delete')}
                     className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full text-[var(--color-ink-soft)] hover:text-[var(--color-urgent)] hover:bg-[var(--color-urgent-soft)]"
                   >
                     <Trash2 size={14} />
@@ -466,9 +466,9 @@ export default function Message({
 
       {confirmDelete && (
         <ConfirmDialog
-          title={t('delete') || 'Delete'}
-          message={t('confirm_delete_message') || 'Delete this message? This cannot be undone.'}
-          confirmLabel={t('delete') || 'Delete'}
+          title={t('delete')}
+          message={t('confirm_delete_message')}
+          confirmLabel={t('delete')}
           onConfirm={deleteMessage}
           onCancel={() => setConfirmDelete(false)}
         />

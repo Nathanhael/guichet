@@ -303,7 +303,7 @@ export default function AdminDepartments() {
       <div className="flex justify-between items-end mb-5">
         <div>
           <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">Departments</h2>
-          <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">{t('manage_departments') || 'Manage your organization structure'}</p>
+          <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">{t('manage_departments')}</p>
         </div>
         <button
           onClick={handleAdd}
@@ -375,7 +375,7 @@ export default function AdminDepartments() {
         <div className="grid grid-cols-[1fr_1fr_1fr_180px_60px] border-b border-[var(--color-border)]">
           <div className={COL_HEAD}>Name</div>
           <div className={COL_HEAD}>Description</div>
-          <div className={COL_HEAD}>{t('ref_fields_label') || 'Ref fields'}</div>
+          <div className={COL_HEAD}>{t('ref_fields_label')}</div>
           <div className={COL_HEAD}>SLA</div>
           <div className={`${COL_HEAD} text-right`}></div>
         </div>
@@ -384,8 +384,8 @@ export default function AdminDepartments() {
         {departments.length === 0 && (
           <div className="px-4 py-16 text-center">
             <Building2 className="w-10 h-10 mx-auto text-[var(--color-ink-muted)] opacity-50 mb-3" aria-hidden />
-            <p className="text-[13px] font-medium text-[var(--color-ink)]">{t('no_departments') || 'No departments configured'}</p>
-            <p className="text-[12px] text-[var(--color-ink-muted)] mt-1">{t('no_departments_hint') || 'Add a department to get started.'}</p>
+            <p className="text-[13px] font-medium text-[var(--color-ink)]">{t('no_departments')}</p>
+            <p className="text-[12px] text-[var(--color-ink-muted)] mt-1">{t('no_departments_hint')}</p>
           </div>
         )}
 
@@ -421,7 +421,7 @@ export default function AdminDepartments() {
 
                 {/* Reference Fields */}
                 <div>
-                  <label className={FIELD_LABEL}>{t('ref_fields_label') || 'Reference fields'}</label>
+                  <label className={FIELD_LABEL}>{t('ref_fields_label')}</label>
                   <div className="space-y-2">
                     {editDraft.referenceFields.map((field, fIdx) => (
                       <div key={fIdx} className="flex items-center gap-2">
@@ -430,7 +430,7 @@ export default function AdminDepartments() {
                           value={field.label}
                           onChange={(e) => updateRefFieldLabel(fIdx, e.target.value)}
                           className={`${INPUT} flex-1`}
-                          placeholder={t('ref_field_placeholder') || 'Field label (e.g. Invoice Number)'}
+                          placeholder={t('ref_field_placeholder')}
                         />
                         <button
                           type="button"
@@ -440,9 +440,9 @@ export default function AdminDepartments() {
                               ? 'bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)]'
                               : 'bg-[var(--color-accent)] text-white'
                           }`}
-                          title={field.optional ? t('mark_required') || 'Mark as required' : t('mark_optional') || 'Mark as optional'}
+                          title={field.optional ? t('mark_required') : t('mark_optional')}
                         >
-                          {field.optional ? t('optional') || 'Optional' : t('required_short') || 'Required'}
+                          {field.optional ? t('optional') : t('required_short')}
                         </button>
                         <button
                           onClick={() => removeRefField(fIdx)}
@@ -460,8 +460,8 @@ export default function AdminDepartments() {
                     className="mt-2 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline"
                   >
                     <Plus className="h-3 w-3" aria-hidden />
-                    {t('add_ref_field') || 'Add field'}
-                    {editDraft.referenceFields.length >= 5 && <span className="ml-2 text-[var(--color-ink-muted)]">({t('max_ref_fields') || 'Maximum 5 fields'})</span>}
+                    {t('add_ref_field')}
+                    {editDraft.referenceFields.length >= 5 && <span className="ml-2 text-[var(--color-ink-muted)]">({t('max_ref_fields')})</span>}
                   </button>
                 </div>
 
