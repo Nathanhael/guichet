@@ -114,10 +114,6 @@ Client access: `trpc.<router>.<procedure>`
 | `reactivatePartner` | mutation | platform | Reactivate a deactivated partner |
 | `deletePartner` | mutation | platform | Soft-delete a partner |
 | `listGlobalUsers` | query | platform | List all users with memberships |
-| `inviteUser` | mutation | platform | Invite a new user to a partner |
-| `deleteUser` | mutation | platform | Soft-delete a user |
-| `removeMembership` | mutation | platform | Remove a user's membership from a partner |
-| `updateMembership` | mutation | platform | Update a user's membership role/departments |
 | `getAuditLog` | query | platform | Query audit log with filters and cursor pagination |
 | `exportAuditLog` | query | platform | Export audit log as downloadable data |
 | `getMailConfig` | query | platform | Get current mail provider configuration |
