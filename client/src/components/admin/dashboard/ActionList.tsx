@@ -1,3 +1,5 @@
+import { useT } from '../../../i18n';
+
 /**
  * Dashboard Z1 — Action list.
  *
@@ -68,6 +70,7 @@ const COUNT_BADGE =
   'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[11px] text-[var(--color-ink-muted)]';
 
 export function ActionList({ data, loading, error, onRetry }: ActionListProps) {
+  const t = useT();
   if (loading) {
     return (
       <div data-testid="action-list-loading" className="flex flex-col gap-2" aria-busy="true">
@@ -82,14 +85,14 @@ export function ActionList({ data, loading, error, onRetry }: ActionListProps) {
     return (
       <div data-testid="action-list-error" className="flex items-center justify-between gap-3" role="alert">
         <span className="text-[13px] text-[var(--color-ink-muted)]">
-          Could not load action list.
+          {t('error_action_list_load')}
         </span>
         <button
           type="button"
           onClick={onRetry}
           className="h-8 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[12px] text-[var(--color-ink)]"
         >
-          Retry
+          {t('retry')}
         </button>
       </div>
     );
@@ -107,7 +110,7 @@ export function ActionList({ data, loading, error, onRetry }: ActionListProps) {
     return (
       <div className="flex items-center gap-2 text-[13px] text-[var(--color-ink-muted)]">
         <span aria-hidden className="text-[var(--color-ok,green)]">✓</span>
-        <span>All clear today</span>
+        <span>{t('all_clear_today')}</span>
       </div>
     );
   }
@@ -116,7 +119,7 @@ export function ActionList({ data, loading, error, onRetry }: ActionListProps) {
     <div className="flex flex-col gap-4">
       {data.slaBreaches.length > 0 && (
         <Category
-          title="SLA breaches"
+          title={t('action_sla_breaches')}
           countTestId="action-list-count-sla"
           count={data.slaBreaches.length}
         >
@@ -133,7 +136,7 @@ export function ActionList({ data, loading, error, onRetry }: ActionListProps) {
 
       {data.abandoned.length > 0 && (
         <Category
-          title="Abandoned"
+          title={t('action_abandoned')}
           countTestId="action-list-count-abandoned"
           count={data.abandoned.length}
         >
@@ -150,7 +153,7 @@ export function ActionList({ data, loading, error, onRetry }: ActionListProps) {
 
       {data.untreatedFeedback.length > 0 && (
         <Category
-          title="Untreated feedback"
+          title={t('action_untreated_feedback')}
           countTestId="action-list-count-feedback"
           count={data.untreatedFeedback.length}
         >
@@ -167,7 +170,7 @@ export function ActionList({ data, loading, error, onRetry }: ActionListProps) {
 
       {data.pendingInvites.length > 0 && (
         <Category
-          title="Pending invites"
+          title={t('action_pending_invites')}
           countTestId="action-list-count-invites"
           count={data.pendingInvites.length}
         >

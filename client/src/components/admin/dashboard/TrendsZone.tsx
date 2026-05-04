@@ -7,6 +7,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useT } from '../../../i18n';
 
 /**
  * Dashboard Z4 — Trend charts.
@@ -39,10 +40,10 @@ export interface TrendsZoneProps {
   onRetry?: () => void;
 }
 
-const GRANULARITY_LABEL: Record<TrendGranularity, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
+const GRANULARITY_KEY: Record<TrendGranularity, string> = {
+  daily: 'granularity_daily',
+  weekly: 'granularity_weekly',
+  monthly: 'granularity_monthly',
 };
 
 const TOOLTIP_STYLE: React.CSSProperties = {
@@ -62,6 +63,7 @@ const TICK = {
 } as const;
 
 export function TrendsZone({ data, loading, error, onRetry }: TrendsZoneProps) {
+  const t = useT();
   if (loading) {
     return (
       <div data-testid="trends-loading" className="grid grid-cols-3 gap-3" aria-busy="true">
@@ -79,14 +81,14 @@ export function TrendsZone({ data, loading, error, onRetry }: TrendsZoneProps) {
     return (
       <div data-testid="trends-error" className="flex items-center justify-between gap-3" role="alert">
         <span className="text-[13px] text-[var(--color-ink-muted)]">
-          Could not load trend data.
+          {t('error_trends_load')}
         </span>
         <button
           type="button"
           onClick={onRetry}
           className="h-8 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[12px] text-[var(--color-ink)]"
         >
-          Retry
+          {t('retry')}
         </button>
       </div>
     );
@@ -103,7 +105,7 @@ export function TrendsZone({ data, loading, error, onRetry }: TrendsZoneProps) {
   if (minPoints < 3) {
     return (
       <div className="text-[13px] text-[var(--color-ink-muted)]">
-        Not enough data — first chart appears at 3+ data points.
+        {t('trends_not_enough_data')}
       </div>
     );
   }
@@ -115,24 +117,24 @@ export function TrendsZone({ data, loading, error, onRetry }: TrendsZoneProps) {
       className="flex flex-col gap-3"
     >
       <div className="text-[11px] uppercase tracking-wide text-[var(--color-ink-muted)]">
-        {GRANULARITY_LABEL[data.granularity]}
+        {t(GRANULARITY_KEY[data.granularity])}
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <ChartPanel
           testId="trends-chart-volume"
-          title="Volume"
+          title={t('trends_chart_volume')}
           data={data.series.volume}
           color="var(--color-accent)"
         />
         <ChartPanel
           testId="trends-chart-csat"
-          title="CSAT"
+          title={t('trends_chart_csat')}
           data={data.series.csat}
           color="var(--color-accent)"
         />
         <ChartPanel
           testId="trends-chart-response"
-          title="Avg response (min)"
+          title={t('trends_chart_response')}
           data={data.series.avgResponseMinutes}
           color="var(--color-accent)"
         />
