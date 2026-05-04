@@ -717,6 +717,27 @@ const fr: Record<string, string> = {
     archive_image_alt: 'pièce jointe',
     archive_read_only: 'Archive en lecture seule — conversation terminée',
 
+    // AdminSatisfaction — CSAT analytics dashboard
+    satisfaction_title: 'Analyse de satisfaction',
+    satisfaction_desc: 'Évaluations des tickets, tendances et comparaison par membre du personnel',
+    csat_all_depts: 'Tous les départements',
+    col_avg: 'Moy.',
+    col_stars: 'Étoiles',
+    col_total: 'Total',
+    col_rank: 'Rang',
+    no_data_short: 'Aucune donnée',
+    rating_star_singular: '{count} étoile',
+    rating_star_plural: '{count} étoiles',
+    chart_avg_rating: 'Évaluation moy.',
+    chart_count: 'Nombre',
+    panel_rating_trend: 'Tendance des évaluations',
+    panel_rating_distribution: 'Distribution des évaluations',
+    panel_by_department: 'Par département',
+    panel_staff_leaderboard: 'Classement du personnel',
+    stat_average_rating: 'Évaluation moyenne',
+    stat_total_ratings: 'Total des évaluations',
+    stat_comment_rate: 'Taux de commentaires',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Gras',
     fmt_italic: 'Italique',

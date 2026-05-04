@@ -717,6 +717,27 @@ const nl: Record<string, string> = {
     archive_image_alt: 'bijlage',
     archive_read_only: 'Alleen-lezen archief — gesprek gesloten',
 
+    // AdminSatisfaction — CSAT analytics dashboard
+    satisfaction_title: 'Tevredenheidsanalyse',
+    satisfaction_desc: 'Ticketbeoordelingen, trends en vergelijking per medewerker',
+    csat_all_depts: 'Alle afdelingen',
+    col_avg: 'Gem.',
+    col_stars: 'Sterren',
+    col_total: 'Totaal',
+    col_rank: 'Rang',
+    no_data_short: 'Geen gegevens',
+    rating_star_singular: '{count} ster',
+    rating_star_plural: '{count} sterren',
+    chart_avg_rating: 'Gem. beoordeling',
+    chart_count: 'Aantal',
+    panel_rating_trend: 'Beoordelingstrend',
+    panel_rating_distribution: 'Beoordelingsdistributie',
+    panel_by_department: 'Per afdeling',
+    panel_staff_leaderboard: 'Topmedewerkers',
+    stat_average_rating: 'Gemiddelde beoordeling',
+    stat_total_ratings: 'Aantal beoordelingen',
+    stat_comment_rate: 'Commentaarpercentage',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Vet',
     fmt_italic: 'Cursief',

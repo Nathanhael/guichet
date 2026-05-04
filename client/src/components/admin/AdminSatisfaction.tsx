@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
+import { useT } from '../../i18n';
 
 interface AnalyticsData {
   trend: { date: string; avg: number; count: number }[];
@@ -86,6 +87,7 @@ function ChipButton({ active, onClick, children }: { active: boolean; onClick: (
 }
 
 export default function AdminSatisfaction() {
+  const t = useT();
   const { memberships, activeMembershipId } = useStoreShallow((s) => ({
     memberships: s.memberships,
     activeMembershipId: s.activeMembershipId,
@@ -112,7 +114,7 @@ export default function AdminSatisfaction() {
   const fullDist = stats
     ? [1, 2, 3, 4, 5].map(r => ({
         rating: r,
-        label: `${r} Star${r > 1 ? 's' : ''}`,
+        label: t(r === 1 ? 'rating_star_singular' : 'rating_star_plural').replace('{count}', String(r)),
         count: stats.distribution.find(d => d.rating === r)?.count || 0,
       }))
     : [];
@@ -123,7 +125,7 @@ export default function AdminSatisfaction() {
       : 0;
 
   const presets = [
-    { key: 'today', label: 'Today' },
+    { key: 'today', label: t('today') },
     { key: '7d', label: '7D' },
     { key: '30d', label: '30D' },
     { key: '90d', label: '90D' },
@@ -134,11 +136,11 @@ export default function AdminSatisfaction() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">Satisfaction Analytics</h1>
-          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">Ticket ratings, trends and per-staff comparison</p>
+          <h1 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('satisfaction_title')}</h1>
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('satisfaction_desc')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 p-1 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)]">
-          <ChipButton active={dept === 'all'} onClick={() => setDept('all')}>All Depts</ChipButton>
+          <ChipButton active={dept === 'all'} onClick={() => setDept('all')}>{t('csat_all_depts')}</ChipButton>
           {departments.map(d => (
             <ChipButton key={d.id} active={dept === d.id} onClick={() => setDept(d.id)}>{d.name}</ChipButton>
           ))}
@@ -186,15 +188,15 @@ export default function AdminSatisfaction() {
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-4">
-          <StatCard label="Average Rating" value={stats ? stats.summary.avg.toFixed(2) : '—'} color="dark" />
-          <StatCard label="Total Ratings" value={stats ? stats.summary.total : '—'} color="dark" />
-          <StatCard label="Comment Rate" value={stats ? `${commentRate}%` : '—'} color="dark" />
+          <StatCard label={t('stat_average_rating')} value={stats ? stats.summary.avg.toFixed(2) : '—'} color="dark" />
+          <StatCard label={t('stat_total_ratings')} value={stats ? stats.summary.total : '—'} color="dark" />
+          <StatCard label={t('stat_comment_rate')} value={stats ? `${commentRate}%` : '—'} color="dark" />
         </div>
       )}
 
       {/* Charts row */}
       <div className="grid grid-cols-2 gap-4">
-        <Panel title="Rating Trend">
+        <Panel title={t('panel_rating_trend')}>
           {isLoading ? (
             <Skeleton className="h-48" />
           ) : (
@@ -214,7 +216,7 @@ export default function AdminSatisfaction() {
                 <Line
                   type="monotone"
                   dataKey="avg"
-                  name="Avg Rating"
+                  name={t('chart_avg_rating')}
                   stroke="var(--color-accent)"
                   strokeWidth={2}
                   dot={false}
@@ -224,7 +226,7 @@ export default function AdminSatisfaction() {
           )}
         </Panel>
 
-        <Panel title="Rating Distribution">
+        <Panel title={t('panel_rating_distribution')}>
           {isLoading ? (
             <Skeleton className="h-48" />
           ) : (
@@ -234,7 +236,7 @@ export default function AdminSatisfaction() {
                 <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={{ stroke: 'var(--color-border)' }} />
                 <YAxis tick={CHART_TICK} tickLine={false} axisLine={{ stroke: 'var(--color-border)' }} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} labelStyle={{ color: 'var(--color-ink)' }} />
-                <Bar dataKey="count" name="Count" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="count" name={t('chart_count')} radius={[4, 4, 0, 0]}>
                   {fullDist.map(entry => (
                     <Cell key={entry.rating} fill={barFill(entry.rating)} />
                   ))}
@@ -246,23 +248,23 @@ export default function AdminSatisfaction() {
       </div>
 
       {/* Department breakdown */}
-      <Panel title="By Department">
+      <Panel title={t('panel_by_department')}>
         {isLoading ? (
           <Skeleton className="h-32" />
         ) : (
           <table className="w-full">
             <thead>
               <tr>
-                <th className={COL_HEAD}>Department</th>
-                <th className={COL_HEAD}>Avg</th>
-                <th className={COL_HEAD}>Stars</th>
-                <th className={`${COL_HEAD} text-right`}>Total</th>
+                <th className={COL_HEAD}>{t('department')}</th>
+                <th className={COL_HEAD}>{t('col_avg')}</th>
+                <th className={COL_HEAD}>{t('col_stars')}</th>
+                <th className={`${COL_HEAD} text-right`}>{t('col_total')}</th>
               </tr>
             </thead>
             <tbody>
               {(stats?.byDept || []).length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-[var(--color-ink-muted)] text-[13px] py-4">No data</td>
+                  <td colSpan={4} className="text-[var(--color-ink-muted)] text-[13px] py-4">{t('no_data_short')}</td>
                 </tr>
               ) : (
                 (stats?.byDept || []).map(row => (
@@ -280,24 +282,24 @@ export default function AdminSatisfaction() {
       </Panel>
 
       {/* Staff leaderboard */}
-      <Panel title="Staff Leaderboard">
+      <Panel title={t('panel_staff_leaderboard')}>
         {isLoading ? (
           <Skeleton className="h-32" />
         ) : (
           <table className="w-full">
             <thead>
               <tr>
-                <th className={COL_HEAD}>Rank</th>
-                <th className={COL_HEAD}>Name</th>
-                <th className={COL_HEAD}>Avg</th>
-                <th className={COL_HEAD}>Stars</th>
-                <th className={`${COL_HEAD} text-right`}>Total</th>
+                <th className={COL_HEAD}>{t('col_rank')}</th>
+                <th className={COL_HEAD}>{t('col_name')}</th>
+                <th className={COL_HEAD}>{t('col_avg')}</th>
+                <th className={COL_HEAD}>{t('col_stars')}</th>
+                <th className={`${COL_HEAD} text-right`}>{t('col_total')}</th>
               </tr>
             </thead>
             <tbody>
               {(stats?.byStaff || []).length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-[var(--color-ink-muted)] text-[13px] py-4">No data</td>
+                  <td colSpan={5} className="text-[var(--color-ink-muted)] text-[13px] py-4">{t('no_data_short')}</td>
                 </tr>
               ) : (
                 (stats?.byStaff || [])
