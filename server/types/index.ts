@@ -63,6 +63,7 @@ export interface Message {
   replyToId?: string;
   reactions: Record<string, string[]>;
   linkPreviews?: Array<{ url: string; title?: string; description?: string; image?: string; siteName?: string }> | null;
+  translations?: Record<string, string>;
 }
 
 export interface Rating {
