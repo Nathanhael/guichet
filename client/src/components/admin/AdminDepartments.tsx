@@ -144,7 +144,7 @@ export default function AdminDepartments() {
     },
     onError: (err) => {
       setIsSaving(false);
-      setToast({ message: 'Failed to update departments: ' + err.message, type: 'error' });
+      setToast({ message: t('toast_failed_update_depts').replace('{message}', err.message), type: 'error' });
     }
   });
 
@@ -152,7 +152,7 @@ export default function AdminDepartments() {
     onSuccess: () => {
       utils.partner.getManifest.invalidate();
       setSlaEditingIdx(null);
-      setToast({ message: 'SLA updated', type: 'success' });
+      setToast({ message: t('toast_sla_updated'), type: 'success' });
     },
     onError: (e) => setToast({ message: e.message, type: 'error' }),
   });
@@ -178,7 +178,7 @@ export default function AdminDepartments() {
     if (slaEditingIdx === null) return;
     const dept = departments[slaEditingIdx];
     if (!dept?.id) {
-      setToast({ message: 'Save department before configuring SLA.', type: 'error' });
+      setToast({ message: t('toast_save_dept_before_sla'), type: 'error' });
       return;
     }
     updateSla.mutate({
@@ -208,13 +208,13 @@ export default function AdminDepartments() {
   function saveEdit() {
     if (!editDraft || editingIdx === null) return;
     if (!editDraft.name.trim()) {
-      setToast({ message: 'Department name is required.', type: 'error' });
+      setToast({ message: t('toast_dept_name_required'), type: 'error' });
       return;
     }
     // Check unique labels
     const labels = editDraft.referenceFields.map(f => f.label.trim()).filter(Boolean);
     if (new Set(labels).size !== labels.length) {
-      setToast({ message: 'Reference field labels must be unique.', type: 'error' });
+      setToast({ message: t('toast_ref_field_labels_unique'), type: 'error' });
       return;
     }
 
@@ -302,7 +302,7 @@ export default function AdminDepartments() {
     <div className="max-w-5xl">
       <div className="flex justify-between items-end mb-5">
         <div>
-          <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">Departments</h2>
+          <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">{t('departments_title')}</h2>
           <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">{t('manage_departments')}</p>
         </div>
         <button
@@ -314,7 +314,7 @@ export default function AdminDepartments() {
           className={PRIMARY_BTN}
         >
           <Plus className="h-3.5 w-3.5" aria-hidden />
-          Add department
+          {t('add_department')}
         </button>
       </div>
 
@@ -328,35 +328,29 @@ export default function AdminDepartments() {
         >
           <button
             onClick={dismissHelp}
-            aria-label="Dismiss help"
+            aria-label={t('dismiss_help')}
             className="absolute top-2.5 right-2.5 w-6 h-6 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
           >
             <X className="h-3 w-3" aria-hidden />
           </button>
           <div className="flex items-center gap-2 mb-3">
             <HelpCircle className="h-4 w-4 text-[var(--color-accent)]" aria-hidden />
-            <h3 className="text-[13px] font-semibold text-[var(--color-ink)]">How departments work</h3>
+            <h3 className="text-[13px] font-semibold text-[var(--color-ink)]">{t('how_departments_work')}</h3>
           </div>
           <dl className="grid grid-cols-[96px_1fr] gap-x-4 gap-y-2.5 text-[12px] leading-relaxed">
-            <dt className="font-semibold text-[var(--color-ink)]">Department</dt>
+            <dt className="font-semibold text-[var(--color-ink)]">{t('dept_help_dt_dept')}</dt>
             <dd className="text-[var(--color-ink-soft)]">
-              A routing bucket for tickets. Support staff assigned to a dept see only tickets routed there.
+              {t('dept_help_dd_dept')}
             </dd>
-            <dt className="font-semibold text-[var(--color-ink)]">Ref fields</dt>
+            <dt className="font-semibold text-[var(--color-ink)]">{t('dept_help_dt_ref')}</dt>
             <dd className="text-[var(--color-ink-soft)]">
-              Extra fields a customer fills before opening a ticket (e.g. <em>Order ID</em>, <em>Account number</em>). Optional fields can be skipped. Up to 5 per dept.
+              {t('dept_help_dd_ref')}
             </dd>
-            <dt className="font-semibold text-[var(--color-ink)]">SLA</dt>
+            <dt className="font-semibold text-[var(--color-ink)]">{t('dept_help_dt_sla')}</dt>
             <dd className="text-[var(--color-ink-soft)] space-y-1.5">
-              <p>
-                First-response target. Every ticket in this dept must get a first staff reply within <em>X</em> minutes; a warning chip highlights the ticket at <em>Y%</em> of budget so support reacts before breach. Business-hours aware.
-              </p>
-              <p className="text-[var(--color-ink-muted)]">
-                Example: 30 min target with 75% warn → warning fires at 22 min, breach logged at 30 min.
-              </p>
-              <p className="text-[var(--color-ink-muted)]">
-                To set: click <strong>Set SLA</strong> on a row → toggle on → enter minutes + warn-at % → save. Breached tickets show a red border in the queue; history lives under <strong>Alerts → SLA Breaches</strong>.
-              </p>
+              <p>{t('dept_help_dd_sla_p1')}</p>
+              <p className="text-[var(--color-ink-muted)]">{t('dept_help_dd_sla_p2')}</p>
+              <p className="text-[var(--color-ink-muted)]">{t('dept_help_dd_sla_p3')}</p>
             </dd>
           </dl>
         </div>
@@ -366,17 +360,17 @@ export default function AdminDepartments() {
           className="mb-4 inline-flex items-center gap-1 text-[12px] text-[var(--color-accent)] hover:underline"
         >
           <HelpCircle className="h-3 w-3" aria-hidden />
-          How departments work
+          {t('how_departments_work')}
         </button>
       )}
 
       <div className={`${CARD} overflow-hidden`}>
         {/* Header row — uses a grid that mirrors the body rows so columns line up. */}
         <div className="grid grid-cols-[1fr_1fr_1fr_180px_60px] border-b border-[var(--color-border)]">
-          <div className={COL_HEAD}>Name</div>
-          <div className={COL_HEAD}>Description</div>
+          <div className={COL_HEAD}>{t('col_name')}</div>
+          <div className={COL_HEAD}>{t('description')}</div>
           <div className={COL_HEAD}>{t('ref_fields_label')}</div>
-          <div className={COL_HEAD}>SLA</div>
+          <div className={COL_HEAD}>{t('col_sla')}</div>
           <div className={`${COL_HEAD} text-right`}></div>
         </div>
 
@@ -397,24 +391,24 @@ export default function AdminDepartments() {
               <div className="border-b border-[var(--color-border)] p-5 space-y-4 bg-[var(--color-accent-soft)]">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className={FIELD_LABEL}>Name *</label>
+                    <label className={FIELD_LABEL}>{t('dept_name_required_label')}</label>
                     <input
                       type="text"
                       value={editDraft.name}
                       onChange={(e) => setEditDraft({ ...editDraft, name: e.target.value })}
                       className={`${INPUT} w-full`}
-                      placeholder="e.g. Sales"
+                      placeholder={t('dept_name_placeholder')}
                       autoFocus
                     />
                   </div>
                   <div>
-                    <label className={FIELD_LABEL}>Description</label>
+                    <label className={FIELD_LABEL}>{t('description')}</label>
                     <input
                       type="text"
                       value={editDraft.description}
                       onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
                       className={`${INPUT} w-full`}
-                      placeholder="Briefly describe this department"
+                      placeholder={t('dept_description_placeholder')}
                     />
                   </div>
                 </div>
@@ -447,7 +441,7 @@ export default function AdminDepartments() {
                         <button
                           onClick={() => removeRefField(fIdx)}
                           className={ICON_BTN}
-                          aria-label="Remove field"
+                          aria-label={t('remove_field_aria')}
                         >
                           <X className="h-3.5 w-3.5" aria-hidden />
                         </button>
@@ -475,14 +469,14 @@ export default function AdminDepartments() {
                     className={PRIMARY_BTN}
                   >
                     <Check className="h-3.5 w-3.5" aria-hidden />
-                    Save
+                    {t('save')}
                   </button>
                   <button
                     onClick={cancelEdit}
                     className={SECONDARY_BTN}
                   >
                     <X className="h-3.5 w-3.5" aria-hidden />
-                    Cancel
+                    {t('cancel')}
                   </button>
                 </div>
               </div>
@@ -501,7 +495,7 @@ export default function AdminDepartments() {
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(idx); }
                   }}
                   aria-disabled={isExternal || undefined}
-                  title={isExternal ? guestTooltip : 'Click to edit department'}
+                  title={isExternal ? guestTooltip : t('click_edit_dept')}
                   className={`px-4 py-3 text-[13px] font-medium text-[var(--color-ink)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
                     isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
                   }`}
@@ -517,7 +511,7 @@ export default function AdminDepartments() {
                     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); startEdit(idx); }
                   }}
                   aria-disabled={isExternal || undefined}
-                  title={isExternal ? guestTooltip : 'Click to edit description'}
+                  title={isExternal ? guestTooltip : t('click_edit_description')}
                   className={`px-4 py-3 text-[13px] text-[var(--color-ink-soft)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
                     isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
                   }`}
@@ -525,7 +519,7 @@ export default function AdminDepartments() {
                   {dept.description || (
                     <span className="inline-flex items-center gap-1 text-[var(--color-ink-muted)] italic">
                       <Plus className="h-3 w-3" aria-hidden />
-                      Add description
+                      {t('add_description')}
                     </span>
                   )}
                 </div>
@@ -545,7 +539,7 @@ export default function AdminDepartments() {
                     }
                   }}
                   aria-disabled={isExternal || undefined}
-                  title={isExternal ? guestTooltip : 'Click to edit reference fields'}
+                  title={isExternal ? guestTooltip : t('click_edit_ref_fields')}
                   data-guest-disabled={isExternal || undefined}
                   className={`px-4 py-3 text-[12px] text-[var(--color-ink-soft)] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-inset ${
                     isExternal ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'
@@ -560,8 +554,8 @@ export default function AdminDepartments() {
                         // the solid neutral pill.
                         <span
                           key={i}
-                          aria-label={f.optional ? `${f.label} (optional)` : f.label}
-                          title={f.optional ? 'Optional field' : undefined}
+                          aria-label={f.optional ? t('dept_optional_field_label').replace('{label}', f.label) : f.label}
+                          title={f.optional ? t('dept_optional_field_title') : undefined}
                           className={`inline-flex items-center px-1.5 h-5 rounded-[var(--radius-pill)] text-[11px] ${
                             f.optional
                               ? 'border border-dashed border-[var(--color-border)] text-[var(--color-ink-muted)]'
@@ -576,7 +570,7 @@ export default function AdminDepartments() {
                   ) : (
                     <span className="inline-flex items-center gap-1 text-[var(--color-ink-muted)] italic">
                       <Plus className="h-3 w-3" aria-hidden />
-                      Add fields
+                      {t('add_fields')}
                     </span>
                   )}
                 </div>
@@ -590,7 +584,7 @@ export default function AdminDepartments() {
                           onChange={(e) => setSlaDraft({ ...slaDraft, enabled: e.target.checked })}
                           className="w-3.5 h-3.5 accent-[var(--color-accent)]"
                         />
-                        On
+                        {t('sla_on')}
                       </label>
                       <input
                         type="number"
@@ -616,7 +610,7 @@ export default function AdminDepartments() {
                         onClick={saveSla}
                         disabled={isExternal || updateSla.isPending}
                         aria-disabled={isExternal || undefined}
-                        title={isExternal ? guestTooltip : 'Save'}
+                        title={isExternal ? guestTooltip : t('save')}
                         data-guest-disabled={isExternal || undefined}
                         className="w-6 h-6 inline-flex items-center justify-center rounded-full text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] disabled:opacity-40 disabled:cursor-not-allowed"
                       >
@@ -625,7 +619,7 @@ export default function AdminDepartments() {
                       <button
                         onClick={cancelSlaEdit}
                         className="w-6 h-6 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)]"
-                        title="Cancel"
+                        title={t('cancel')}
                       >
                         <X className="h-3 w-3" aria-hidden />
                       </button>
@@ -634,7 +628,10 @@ export default function AdminDepartments() {
                     <div className="flex items-center gap-1.5">
                       <span
                         className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[11px] font-medium text-[var(--color-accent)] tabular-nums cursor-help"
-                        title={`First reply within ${dept.sla.firstResponseMinutes} min · warn at ${Math.round(dept.sla.firstResponseMinutes * dept.sla.warnAtPercent / 100)} min (${dept.sla.warnAtPercent}%)`}
+                        title={t('sla_first_reply_within')
+                          .replace('{minutes}', String(dept.sla.firstResponseMinutes))
+                          .replace('{warnMin}', String(Math.round(dept.sla.firstResponseMinutes * dept.sla.warnAtPercent / 100)))
+                          .replace('{percent}', String(dept.sla.warnAtPercent))}
                       >
                         {dept.sla.firstResponseMinutes}m · {dept.sla.warnAtPercent}%
                       </span>
@@ -644,7 +641,7 @@ export default function AdminDepartments() {
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
                         className={`${ICON_BTN} w-6 h-6 opacity-0 group-hover/row:opacity-100`}
-                        title={isExternal ? guestTooltip : 'Edit SLA'}
+                        title={isExternal ? guestTooltip : t('sla_edit')}
                       >
                         <Pencil className="h-3 w-3" aria-hidden />
                       </button>
@@ -653,9 +650,9 @@ export default function AdminDepartments() {
                     <div className="flex items-center gap-1.5">
                       <span
                         className="text-[11px] text-[var(--color-ink-muted)] cursor-help"
-                        title="No SLA configured — no breach alerts will fire for this department"
+                        title={t('sla_no_configured')}
                       >
-                        Off
+                        {t('sla_off')}
                       </span>
                       <button
                         onClick={() => startSlaEdit(idx)}
@@ -663,9 +660,9 @@ export default function AdminDepartments() {
                         aria-disabled={isExternal || undefined}
                         data-guest-disabled={isExternal || undefined}
                         className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[11px] font-medium text-[var(--color-ink)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        title={isExternal ? guestTooltip : 'Set SLA'}
+                        title={isExternal ? guestTooltip : t('sla_set')}
                       >
-                        Set SLA
+                        {t('sla_set')}
                       </button>
                     </div>
                   )}
@@ -677,8 +674,8 @@ export default function AdminDepartments() {
                     aria-disabled={isExternal || undefined}
                     data-guest-disabled={isExternal || undefined}
                     className={`w-8 h-8 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100`}
-                    title={isExternal ? guestTooltip : 'Delete'}
-                    aria-label="Delete department"
+                    title={isExternal ? guestTooltip : t('delete')}
+                    aria-label={t('delete_dept_aria')}
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden />
                   </button>
@@ -692,8 +689,8 @@ export default function AdminDepartments() {
                 <Trash2 className="w-4 h-4 text-[var(--color-urgent)] shrink-0" aria-hidden />
                 <span className="text-[13px] text-[var(--color-ink)] flex-1">
                   {(memberCounts[dept.id] || 0) > 0
-                    ? `${memberCounts[dept.id]} member${memberCounts[dept.id] === 1 ? '' : 's'} will become generalists.`
-                    : 'Delete this department?'}
+                    ? t(memberCounts[dept.id] === 1 ? 'delete_dept_members_warning_singular' : 'delete_dept_members_warning_plural').replace('{count}', String(memberCounts[dept.id]))
+                    : t('delete_dept_simple')}
                 </span>
                 <button
                   onClick={confirmDelete}
@@ -703,13 +700,13 @@ export default function AdminDepartments() {
                   data-guest-disabled={isExternal || undefined}
                   className={DANGER_BTN}
                 >
-                  Confirm delete
+                  {t('confirm_delete_btn')}
                 </button>
                 <button
                   onClick={() => setDeletingIdx(null)}
                   className={SECONDARY_BTN}
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
               </div>
             )}
