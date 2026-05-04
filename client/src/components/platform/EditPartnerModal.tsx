@@ -216,7 +216,7 @@ export default function EditPartnerModal({ partner, onClose }: EditPartnerModalP
                     onChange={e => setForm(prev => ({ ...prev, whisperDeployment: e.target.value }))}
                     placeholder="whisper"
                   />
-                  <div className="text-[12px] text-[var(--color-ink-muted)] mt-1">Azure deployment name for speech-to-text. Leave blank to use the default.</div>
+                  <div className="text-[12px] text-[var(--color-ink-muted)] mt-1">Azure deployment name of a Whisper model. Default: <code className="font-mono">whisper</code>.</div>
                 </div>
 
                 {/* Slice 10b: feature envelope (platform max). Partner admin
