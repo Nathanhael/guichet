@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { ScrollText } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
+import { useT } from '../../i18n';
 import Toast from '../Toast';
 import AuditMetadataDrawer, { type AuditEntry } from './AuditMetadataDrawer';
 import { useUrlParam } from '../../hooks/useUrlState';
@@ -43,6 +45,7 @@ const inputClass =
   'w-full rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-2 text-[13px] text-[var(--color-ink)] placeholder:text-[var(--color-ink-muted)] focus:outline-none focus:border-[var(--color-accent)] transition-colors';
 
 export default function AdminAuditLog() {
+  const t = useT();
   const LIMIT = 50;
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<string[]>([]);
@@ -85,26 +88,6 @@ export default function AdminAuditLog() {
 
   const { data: actionList } = trpc.partner.audit.listActions.useQuery();
   const { data: targetTypeList } = trpc.partner.audit.listTargetTypes.useQuery();
-
-  const verifyChain = trpc.partner.audit.verifyChain.useMutation({
-    onSuccess: (r) => {
-      if (r.error) {
-        setToast({ message: `Chain verify failed: ${r.error}`, type: 'error' });
-        return;
-      }
-      if (!r.valid) {
-        const where = r.brokenInScope
-          ? `in your tenant (row ${r.brokenAt})`
-          : 'outside your tenant';
-        setToast({ message: `Chain broken ${where} — ${r.partnerChecked} of your rows checked`, type: 'error' });
-        return;
-      }
-      setToast({ message: `Chain OK — ${r.partnerChecked} of your rows verified`, type: 'success' });
-    },
-    onError: (err) => {
-      setToast({ message: err.message || 'Chain verify failed', type: 'error' });
-    },
-  });
 
   const queryParams = {
     limit: LIMIT,
@@ -162,7 +145,7 @@ export default function AdminAuditLog() {
       });
 
       if (!rows || rows.length === 0) {
-        setToast({ message: 'Nothing to export', type: 'error' });
+        setToast({ message: t('no_data_export'), type: 'error' });
         return;
       }
 
@@ -173,13 +156,13 @@ export default function AdminAuditLog() {
         blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json;charset=utf-8;' });
         filename = `guichet_audit_${stamp}.json`;
       } else {
-        const headers = ['Time', 'Action', 'Actor', 'Target type', 'Target id', 'Metadata'];
+        const headers = [t('col_time'), t('col_action'), t('col_actor'), t('col_target_type'), t('col_target_id'), t('col_metadata')];
         const csv = [
           headers.join(','),
           ...rows.map(l => [
             new Date(l.createdAt).toISOString(),
             l.action,
-            l.actorName || 'System',
+            l.actorName || t('system'),
             l.targetType || '',
             l.targetId || '',
             JSON.stringify(l.metadata).replace(/"/g, '""'),
@@ -197,7 +180,7 @@ export default function AdminAuditLog() {
       document.body.removeChild(link);
     } catch (err) {
       console.error(err);
-      setToast({ message: 'Export failed', type: 'error' });
+      setToast({ message: t('export_failed'), type: 'error' });
     }
   }
 
@@ -205,36 +188,25 @@ export default function AdminAuditLog() {
     <div className="max-w-6xl space-y-6 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">Audit log</h2>
-          <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">
-            Security-relevant actions in this tenant. Export for compliance review.
-          </p>
+          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('audit_log_title')}</h2>
+          <p className="text-[13px] text-[var(--color-ink-soft)] mt-1">{t('audit_log_partner_desc')}</p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => verifyChain.mutate()}
-            disabled={verifyChain.isPending}
-            data-testid="verify-chain-btn"
-          >
-            {verifyChain.isPending ? 'Verifying…' : 'Verify chain'}
-          </Button>
-          <Button variant="primary" size="md" onClick={() => handleExport('csv')}>Export CSV</Button>
-          <Button variant="secondary" size="md" onClick={() => handleExport('json')}>Export JSON</Button>
+          <Button variant="primary" size="md" onClick={() => handleExport('csv')}>{t('export_csv')}</Button>
+          <Button variant="secondary" size="md" onClick={() => handleExport('json')}>{t('export_json')}</Button>
         </div>
       </div>
 
       <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-soft)] p-4 flex flex-col gap-3">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
           <div className="space-y-1">
-            <SectionLabel>Action</SectionLabel>
+            <SectionLabel>{t('action_type')}</SectionLabel>
             <select
               value={filterAction}
               onChange={e => setFilterAction(e.target.value)}
               className={inputClass}
             >
-              <option value="">All actions</option>
+              <option value="">{t('all_actions')}</option>
               {(actionList || []).map(a => (
                 <option key={a} value={a}>{a}</option>
               ))}
@@ -242,13 +214,13 @@ export default function AdminAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <SectionLabel>Actor</SectionLabel>
+            <SectionLabel>{t('actor_who')}</SectionLabel>
             <select
               value={filterActorId}
               onChange={e => setFilterActorId(e.target.value)}
               className={inputClass}
             >
-              <option value="">All actors</option>
+              <option value="">{t('all_actors')}</option>
               {actors.map(([id, name]) => (
                 <option key={id!} value={id!}>{name}</option>
               ))}
@@ -256,14 +228,14 @@ export default function AdminAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <SectionLabel>Target type</SectionLabel>
+            <SectionLabel>{t('col_target_type')}</SectionLabel>
             <select
               id="target-type-filter"
               value={filterTargetType}
               onChange={e => setFilterTargetType(e.target.value)}
               className={inputClass}
             >
-              <option value="">All targets</option>
+              <option value="">{t('all_target_types')}</option>
               {(targetTypeList || []).map(tt => (
                 <option key={tt} value={tt}>{tt}</option>
               ))}
@@ -271,11 +243,11 @@ export default function AdminAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <SectionLabel>Target id</SectionLabel>
+            <SectionLabel>{t('col_target_id')}</SectionLabel>
             <input
               id="target-id-filter"
               type="text"
-              placeholder="Search target id"
+              placeholder={t('search_target_id')}
               value={filterTargetId}
               onChange={e => setFilterTargetId(e.target.value)}
               className={inputClass}
@@ -283,7 +255,7 @@ export default function AdminAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <SectionLabel>From</SectionLabel>
+            <SectionLabel>{t('from_date')}</SectionLabel>
             <input
               type="date"
               value={dateFrom}
@@ -293,7 +265,7 @@ export default function AdminAuditLog() {
           </div>
 
           <div className="space-y-1">
-            <SectionLabel>To</SectionLabel>
+            <SectionLabel>{t('to_date')}</SectionLabel>
             <input
               type="date"
               value={dateTo}
@@ -313,33 +285,56 @@ export default function AdminAuditLog() {
             className="rounded border-[var(--color-border)] text-[var(--color-accent)] focus:ring-[var(--color-accent)]"
           />
           <label htmlFor="was-external-filter" className="text-[12px] text-[var(--color-ink-soft)] cursor-pointer">
-            Guest (external) actions only
+            {t('guest_actions_only')}
           </label>
         </div>
       </div>
 
       {isLoading ? (
-        <div className="py-8 text-center text-[13px] text-[var(--color-ink-muted)]">Loading…</div>
+        <div className="py-8 text-center text-[13px] text-[var(--color-ink-muted)]">{t('loading_log')}</div>
       ) : (
         <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[720px]">
             <thead>
               <tr className="bg-[var(--color-bg-elevated)] border-b border-[var(--color-border)]">
-                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Time</th>
-                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Action</th>
-                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Actor</th>
-                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Target</th>
-                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">Details</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">{t('col_time')}</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">{t('col_action')}</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">{t('col_actor')}</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">{t('col_target')}</th>
+                <th className="p-3 text-[11px] font-semibold text-[var(--color-ink-muted)]">{t('col_details')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
-              {items.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-16 text-center">
-                    <p className="text-[13px] text-[var(--color-ink-muted)]">No entries</p>
-                  </td>
-                </tr>
-              )}
+              {items.length === 0 && (() => {
+                const hasFilters = !!(filterAction || filterActorId || filterTargetId || filterTargetType || filterWasExternal || dateFrom || dateTo);
+                return (
+                  <tr>
+                    <td colSpan={5} className="py-20 text-center">
+                      <ScrollText className="w-10 h-10 mx-auto text-[var(--color-ink-muted)] opacity-60 mb-3" aria-hidden />
+                      <p className="text-[13px] font-medium text-[var(--color-ink)]">
+                        {hasFilters ? t('no_audit_entries') : t('no_audit_entries_empty')}
+                      </p>
+                      <p className="text-[12px] text-[var(--color-ink-muted)] mt-1 max-w-md mx-auto">
+                        {hasFilters ? t('no_audit_entries_hint') : t('no_audit_entries_empty_hint')}
+                      </p>
+                      {hasFilters && (
+                        <Button
+                          variant="secondary"
+                          size="md"
+                          className="mt-4"
+                          onClick={() => {
+                            setFilterAction(''); setFilterActorId(''); setFilterTargetId('');
+                            setFilterTargetType(''); setFilterWasExternal(false);
+                            setDateFrom(''); setDateTo('');
+                          }}
+                        >
+                          {t('clear_filters')}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })()}
               {items.map(log => (
                 <tr
                   key={log.id}
@@ -363,7 +358,7 @@ export default function AdminAuditLog() {
                 >
                   <td className="p-3 text-[11px] font-mono text-[var(--color-ink-soft)] whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
                   <td className="p-3 text-[12px] font-semibold text-[var(--color-ink)]">{log.action}</td>
-                  <td className="p-3 text-[12px] text-[var(--color-ink)]">{log.actorName || <span className="text-[var(--color-ink-muted)]">System</span>}</td>
+                  <td className="p-3 text-[12px] text-[var(--color-ink)]">{log.actorName || <span className="text-[var(--color-ink-muted)]">{t('system')}</span>}</td>
                   <td className="p-3 text-[11px] font-mono text-[var(--color-ink-soft)]">{log.targetId || '-'}</td>
                   <td className="p-3 text-[12px] text-[var(--color-ink-soft)] max-w-xs">
                     <div>{formatDetails(log)}</div>
@@ -379,11 +374,11 @@ export default function AdminAuditLog() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4 text-[11px] text-[var(--color-ink-muted)]">
             <div className="flex items-center gap-2">
-              <span>Records per page</span>
+              <span>{t('records_per_page')}</span>
               <span className="font-medium text-[var(--color-ink-soft)]">{LIMIT}</span>
             </div>
             <span className="text-[var(--color-border-strong)]">·</span>
-            <span>Page {page + 1}</span>
+            <span>{t('page_indicator')} {page + 1}</span>
           </div>
 
           <div className="flex gap-2">
@@ -398,7 +393,7 @@ export default function AdminAuditLog() {
                 setCursor(prev || undefined);
               }}
             >
-              ← Newer
+              ← {t('newer')}
             </Button>
             <Button
               variant="secondary"
@@ -411,7 +406,7 @@ export default function AdminAuditLog() {
                 }
               }}
             >
-              Older →
+              {t('older')} →
             </Button>
           </div>
         </div>

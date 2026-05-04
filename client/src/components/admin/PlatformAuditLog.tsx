@@ -419,15 +419,35 @@ export default function PlatformAuditLog() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
-              {(!visibleData || visibleData.length === 0) && (
-                <tr>
-                  <td colSpan={6} className="py-20 text-center">
-                    <ScrollText className="w-10 h-10 mx-auto text-[var(--color-ink-muted)] opacity-60 mb-3" aria-hidden />
-                    <p className="text-[13px] font-medium text-[var(--color-ink)]">{t('no_audit_entries') || 'No audit entries'}</p>
-                    <p className="text-[12px] text-[var(--color-ink-muted)] mt-1">{t('no_audit_entries_hint') || 'Audit log entries will appear here as actions are performed.'}</p>
-                  </td>
-                </tr>
-              )}
+              {(!visibleData || visibleData.length === 0) && (() => {
+                const hasFilters = !!(filterAction || filterPartnerId || filterActorId || filterTargetId || filterTargetType || dateFrom || dateTo);
+                return (
+                  <tr>
+                    <td colSpan={6} className="py-20 text-center">
+                      <ScrollText className="w-10 h-10 mx-auto text-[var(--color-ink-muted)] opacity-60 mb-3" aria-hidden />
+                      <p className="text-[13px] font-medium text-[var(--color-ink)]">
+                        {hasFilters ? t('no_audit_entries') : t('no_audit_entries_empty')}
+                      </p>
+                      <p className="text-[12px] text-[var(--color-ink-muted)] mt-1 max-w-md mx-auto">
+                        {hasFilters ? t('no_audit_entries_hint') : t('no_audit_entries_empty_hint')}
+                      </p>
+                      {hasFilters && (
+                        <button
+                          onClick={() => {
+                            setFilterAction(''); setFilterPartnerId(''); setFilterActorId('');
+                            setFilterTargetId(''); setFilterTargetType('');
+                            setDateFrom(''); setDateTo('');
+                            resetCursor();
+                          }}
+                          className={`${SECONDARY_BTN} mt-4`}
+                        >
+                          {t('clear_filters')}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })()}
               {visibleData?.map((log) => (
                 <tr
                   key={log.id}
