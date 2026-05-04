@@ -254,7 +254,6 @@ const nl: Record<string, string> = {
     col_status: 'Status',
     col_access_scope: 'Toegangsbereik',
     col_actions: 'Acties',
-    edit_profile: 'Profiel Bewerken',
     manage_access: 'Toegang Beheren',
     partner_id: 'Partner ID',
     display_name: 'Weergavenaam',

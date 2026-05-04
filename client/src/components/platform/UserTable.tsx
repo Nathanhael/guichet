@@ -11,7 +11,6 @@ import { getRoleDisplayName } from '../../utils/roles';
 
 interface UserTableProps {
   onInviteClick: () => void;
-  onEditProfile: (user: GlobalUser) => void;
   onManageAccess: (user: GlobalUser) => void;
 }
 
@@ -19,7 +18,7 @@ const INPUT =
   'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
 const TH = 'px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
-export default function UserTable({ onInviteClick, onEditProfile, onManageAccess }: UserTableProps) {
+export default function UserTable({ onInviteClick, onManageAccess }: UserTableProps) {
   const t = useT();
   const utils = trpc.useUtils();
   const [userSearch, setUserSearch] = useState('');
@@ -158,7 +157,6 @@ export default function UserTable({ onInviteClick, onEditProfile, onManageAccess
                   </td>
                   <td className="px-4 py-3 text-right align-top">
                     <div className="flex flex-wrap justify-end gap-1.5">
-                      <Button variant="secondary" size="sm" onClick={() => onEditProfile(u)}>{t('edit_profile')}</Button>
                       <Button variant="secondary" size="sm" onClick={() => onManageAccess(u)}>{t('manage_access')}</Button>
                       <Button
                         variant="ghost"

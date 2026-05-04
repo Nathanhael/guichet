@@ -260,7 +260,6 @@ const en: Record<string, string> = {
     col_status: 'Status',
     col_access_scope: 'Access Scope',
     col_actions: 'Actions',
-    edit_profile: 'Edit Profile',
     manage_access: 'Manage Access',
     partner_id: 'Partner ID',
     display_name: 'Display Name',

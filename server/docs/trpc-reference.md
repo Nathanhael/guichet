@@ -110,7 +110,6 @@ Client access: `trpc.<router>.<procedure>`
 | `listPartners` | query | platform | List all tenant organizations |
 | `createPartner` | mutation | platform | Create a new partner/tenant |
 | `updatePartner` | mutation | platform | Update partner settings |
-| `updateUser` | mutation | platform | Update global user profile |
 | `deactivatePartner` | mutation | platform | Deactivate a partner (blocks logins + tickets) |
 | `reactivatePartner` | mutation | platform | Reactivate a deactivated partner |
 | `deletePartner` | mutation | platform | Soft-delete a partner |
