@@ -192,8 +192,7 @@ describe('post-#71 capability-gate enforcement (source-level)', () => {
       expect(auditSource).toMatch(re);
     });
 
-    it('verifyChain + exportAuditLog stay on partnerAdminProcedure (no guest gate)', () => {
-      expect(auditSource).toMatch(/\bverifyChain:\s*partnerAdminProcedure\b/);
+    it('exportAuditLog stays on partnerAdminProcedure (no guest gate)', () => {
       expect(auditSource).toMatch(/\bexportAuditLog:\s*partnerAdminProcedure\b/);
     });
   });

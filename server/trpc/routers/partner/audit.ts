@@ -3,42 +3,8 @@ import { router, partnerAdminProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
 import { auditLog, users } from '../../../db/schema.js';
 import { eq, desc, gte, lte, and, sql, notLike } from 'drizzle-orm';
-import { TRPCError } from '@trpc/server';
-import { getRedisClients } from '../../../utils/redis.js';
-import logger from '../../../utils/logger.js';
 import { wrapError } from '../../../utils/trpcErrors.js';
-import { verifyAuditChain } from '../../../services/archive.js';
 import { trpcActor } from '../../../services/auth/index.js';
-
-const PARTNER_VERIFY_CHAIN_WINDOW_SECS = 60;
-const PARTNER_VERIFY_CHAIN_MAX_PER_WINDOW = 1;
-
-// Per-(partner+user) throttle for partner-scoped chain verify. Walking the
-// full audit_archive is expensive (SHA-256 over every row) so a partner admin
-// spamming the button can stall the database for everyone. Fails open on
-// Redis outages — the route is already gated by partnerAdminProcedure so the
-// blast radius without Redis is small.
-async function assertPartnerVerifyChainAllowed(partnerId: string, userId: string): Promise<void> {
-  try {
-    const { pubClient } = getRedisClients();
-    if (!pubClient) return;
-    const key = `rate:verify-audit-chain:partner:${partnerId}:${userId}`;
-    const count = await pubClient.incr(key);
-    if (count === 1) await pubClient.expire(key, PARTNER_VERIFY_CHAIN_WINDOW_SECS);
-    if (count > PARTNER_VERIFY_CHAIN_MAX_PER_WINDOW) {
-      const ttl = await pubClient.ttl(key);
-      const retryAfter = ttl > 0 ? ttl : PARTNER_VERIFY_CHAIN_WINDOW_SECS;
-      logger.warn({ partnerId, userId, count }, '[audit] partner verify-chain rate limit exceeded');
-      throw new TRPCError({
-        code: 'TOO_MANY_REQUESTS',
-        message: `Chain verification is rate-limited. Retry in ${retryAfter}s.`,
-      });
-    }
-  } catch (err) {
-    if (err instanceof TRPCError) throw err;
-    logger.warn({ err }, '[audit] partner verify-chain rate-limit check failed, allowing');
-  }
-}
 
 const PARTNER_ACTIONS = [
   'member.added',
@@ -216,26 +182,6 @@ export const partnerAuditRouter = router({
       } catch (err: unknown) {
         wrapError(err, `partner audit getForTicket (${input.ticketId})`);
       }
-    }),
-
-  // Partner-scoped chain verify. Walks the full archive (the hash chain is
-  // global, so integrity cannot be proven in isolation) but returns only the
-  // partner-relevant slice: how many of this tenant's rows were verified and,
-  // on failure, whether the broken row lives inside their scope. The broken
-  // row id itself is only returned when it belongs to this partner — leaking
-  // another tenant's row id here would be a cross-tenant disclosure.
-  verifyChain: partnerAdminProcedure
-    .mutation(async ({ ctx }) => {
-      await assertPartnerVerifyChainAllowed(ctx.user.partnerId, ctx.user.id);
-      const result = await verifyAuditChain({ partnerId: ctx.user.partnerId });
-      return {
-        valid: result.valid,
-        partnerChecked: result.partnerChecked ?? 0,
-        brokenInScope: result.brokenInPartnerScope ?? false,
-        brokenAt: result.brokenInPartnerScope ? (result.brokenAt ?? null) : null,
-        error: result.error ?? null,
-        ranAt: new Date().toISOString(),
-      };
     }),
 
   exportAuditLog: partnerAdminProcedure
