@@ -104,7 +104,6 @@ const PLATFORM_ACTIONS = [
   // user
   'user.deleted',
   'user.login',
-  'user.profile_updated',
   'user.sessions_revoked',
 ] as const;
 

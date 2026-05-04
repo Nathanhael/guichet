@@ -254,7 +254,6 @@ const fr: Record<string, string> = {
     col_status: 'Statut',
     col_access_scope: 'Port\u00e9e d\'acc\u00e8s',
     col_actions: 'Actions',
-    edit_profile: 'Modifier le profil',
     manage_access: 'G\u00e9rer l\'acc\u00e8s',
     partner_id: 'ID Partenaire',
     display_name: 'Nom d\'affichage',

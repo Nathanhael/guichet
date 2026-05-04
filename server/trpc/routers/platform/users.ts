@@ -10,45 +10,6 @@ import logger from '../../../utils/logger.js';
 import { wrapError } from '../../../utils/trpcErrors.js';
 
 export const platformUsersRouter = router({
-  updateUser: platformProcedure
-    .input(z.object({
-      id: z.string(),
-      data: z.object({
-        name: z.string().optional(),
-        email: z.string().email().optional(),
-      })
-    }))
-    .mutation(async ({ input, ctx }) => {
-      const before = await db.select().from(users).where(eq(users.id, input.id)).limit(1);
-
-      const allowedFields: Partial<typeof users.$inferInsert> = {};
-      if (input.data.name !== undefined) allowedFields.name = input.data.name;
-      if (input.data.email !== undefined) allowedFields.email = input.data.email;
-      allowedFields.updatedAt = new Date().toISOString();
-
-      await db.update(users)
-        .set(allowedFields)
-        .where(eq(users.id, input.id));
-
-      if (before[0]) {
-        const diff: Record<string, { from: string | null; to: string }> = {};
-        if (input.data.name && input.data.name !== before[0].name) diff.name = { from: before[0].name, to: input.data.name };
-        if (input.data.email && input.data.email !== before[0].email) diff.email = { from: before[0].email, to: input.data.email };
-
-        if (Object.keys(diff).length > 0) {
-          await db.insert(auditLog).values({
-            id: randomUUID(),
-            action: 'user.profile_updated',
-            actorId: ctx.user.id,
-            targetType: 'user',
-            targetId: input.id,
-            metadata: { changes: diff }
-          });
-        }
-      }
-      return { success: true };
-    }),
-
   listGlobalUsers: platformProcedure
     .input(z.object({
       cursor: z.string().optional(),
