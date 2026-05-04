@@ -764,6 +764,28 @@ const nl: Record<string, string> = {
     ratings_1_2_stars: '1-2 sterren',
     ratings_no_for_dept: 'Geen {dept}-beoordelingen',
 
+    // PlatformArchiveViewer — cross-tenant audit + ticket archive
+    archive_subtitle: 'Tamper-bestendig auditlogboek + gesloten tickets',
+    archive_subtab_audit: 'Auditlog-archief',
+    archive_subtab_tickets: 'Ticketarchief',
+    filter_by_action_placeholder: 'Filter op actie…',
+    filter_by_dept_placeholder: 'Filter op afdeling…',
+    verify_chain: 'Keten verifiëren',
+    verifying_ellipsis: 'Verifiëren…',
+    run_archive_now: 'Archief nu uitvoeren',
+    running_ellipsis: 'Bezig…',
+    chain_integrity_verified: 'Ketenintegriteit geverifieerd — {count} items gecontroleerd',
+    chain_broken_at: 'Keten gebroken bij item {brokenAt} — {count} items gecontroleerd',
+    archive_complete_summary: 'Archief voltooid — {auditCount} auditrecords, {ticketCount} tickets gearchiveerd',
+    no_archived_audit: 'Geen gearchiveerde auditrecords.',
+    no_archived_tickets: 'Geen gearchiveerde tickets.',
+    col_partner: 'Partner',
+    col_chain_hash: 'Ketenhash',
+    col_messages: 'Berichten',
+    col_archived: 'Gearchiveerd',
+    entries_loaded: '{count} items geladen',
+    tickets_loaded: '{count} tickets geladen',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Vet',
     fmt_italic: 'Cursief',

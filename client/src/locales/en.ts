@@ -791,6 +791,28 @@ const en: Record<string, string> = {
     ratings_1_2_stars: '1-2 Stars',
     ratings_no_for_dept: 'No {dept} ratings',
 
+    // PlatformArchiveViewer — cross-tenant audit + ticket archive
+    archive_subtitle: 'Tamper-evident audit log + closed tickets',
+    archive_subtab_audit: 'Audit Log Archive',
+    archive_subtab_tickets: 'Ticket Archive',
+    filter_by_action_placeholder: 'Filter by action…',
+    filter_by_dept_placeholder: 'Filter by dept…',
+    verify_chain: 'Verify Chain',
+    verifying_ellipsis: 'Verifying…',
+    run_archive_now: 'Run Archive Now',
+    running_ellipsis: 'Running…',
+    chain_integrity_verified: 'Chain integrity verified — {count} entries checked',
+    chain_broken_at: 'Chain broken at entry {brokenAt} — {count} entries checked',
+    archive_complete_summary: 'Archive complete — {auditCount} audit entries, {ticketCount} tickets archived',
+    no_archived_audit: 'No archived audit entries.',
+    no_archived_tickets: 'No archived tickets.',
+    col_partner: 'Partner',
+    col_chain_hash: 'Chain Hash',
+    col_messages: 'Messages',
+    col_archived: 'Archived',
+    entries_loaded: '{count} entries loaded',
+    tickets_loaded: '{count} tickets loaded',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Bold',
     fmt_italic: 'Italic',

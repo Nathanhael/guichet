@@ -764,6 +764,28 @@ const fr: Record<string, string> = {
     ratings_1_2_stars: '1-2 étoiles',
     ratings_no_for_dept: 'Aucune évaluation {dept}',
 
+    // PlatformArchiveViewer — cross-tenant audit + ticket archive
+    archive_subtitle: 'Journal d\'audit infalsifiable + tickets clôturés',
+    archive_subtab_audit: 'Archive du journal d\'audit',
+    archive_subtab_tickets: 'Archive des tickets',
+    filter_by_action_placeholder: 'Filtrer par action…',
+    filter_by_dept_placeholder: 'Filtrer par département…',
+    verify_chain: 'Vérifier la chaîne',
+    verifying_ellipsis: 'Vérification…',
+    run_archive_now: 'Exécuter l\'archive maintenant',
+    running_ellipsis: 'Exécution…',
+    chain_integrity_verified: 'Intégrité de la chaîne vérifiée — {count} entrées vérifiées',
+    chain_broken_at: 'Chaîne rompue à l\'entrée {brokenAt} — {count} entrées vérifiées',
+    archive_complete_summary: 'Archivage terminé — {auditCount} entrées d\'audit, {ticketCount} tickets archivés',
+    no_archived_audit: 'Aucune entrée d\'audit archivée.',
+    no_archived_tickets: 'Aucun ticket archivé.',
+    col_partner: 'Partenaire',
+    col_chain_hash: 'Hash de chaîne',
+    col_messages: 'Messages',
+    col_archived: 'Archivé',
+    entries_loaded: '{count} entrées chargées',
+    tickets_loaded: '{count} tickets chargés',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Gras',
     fmt_italic: 'Italique',
