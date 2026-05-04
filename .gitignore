@@ -123,6 +123,7 @@ testing/
 # Client behavioral tests (curated)
 !client/src/components/ExternalGuestGuard.test.tsx
 !client/src/utils/__tests__/notifications.test.ts
+!client/src/utils/__tests__/auditFormat.test.ts
 !client/src/hooks/useComposeAiImprove.test.ts
 !client/src/hooks/useComposeAttachments.test.ts
 !client/src/hooks/useComposeEditor.test.tsx
