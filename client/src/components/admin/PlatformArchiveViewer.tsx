@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { trpc } from '../../utils/trpc';
+import { useT } from '../../i18n';
 
 const LIMIT = 50;
 const DEBOUNCE_MS = 500;
@@ -56,14 +57,15 @@ function fmt(iso?: string | null) {
 }
 
 export default function PlatformArchiveViewer() {
+  const t = useT();
   const [subTab, setSubTab] = useState<SubTab>('audit');
 
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
         <div>
-          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">Archive</h2>
-          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">Tamper-evident audit log + closed tickets</p>
+          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('archive')}</h2>
+          <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('archive_subtitle')}</p>
         </div>
         <div className="ml-auto inline-flex gap-1 p-1 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)]">
           {(['audit', 'tickets'] as const).map((tab) => (
@@ -76,7 +78,7 @@ export default function PlatformArchiveViewer() {
                   : 'text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]'
               }`}
             >
-              {tab === 'audit' ? 'Audit Log Archive' : 'Ticket Archive'}
+              {tab === 'audit' ? t('archive_subtab_audit') : t('archive_subtab_tickets')}
             </button>
           ))}
         </div>
@@ -89,6 +91,7 @@ export default function PlatformArchiveViewer() {
 
 /* --- Audit Archive Panel --- */
 function AuditArchivePanel() {
+  const t = useT();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allItems, setAllItems] = useState<AuditArchiveEntry[]>([]);
   const [actionFilter, setActionFilter] = useState('');
@@ -138,7 +141,7 @@ function AuditArchivePanel() {
           type="text"
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value)}
-          placeholder="Filter by action…"
+          placeholder={t('filter_by_action_placeholder')}
           className={`${INPUT} w-52`}
         />
         <select
@@ -146,7 +149,7 @@ function AuditArchivePanel() {
           onChange={(e) => { setPartnerFilter(e.target.value); resetAndReload(); }}
           className={`${INPUT} w-48`}
         >
-          <option value="">All partners</option>
+          <option value="">{t('all_partners')}</option>
           {partnerList.map((p) => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
@@ -169,15 +172,15 @@ function AuditArchivePanel() {
             onClick={() => { setActionFilter(''); setDebouncedAction(''); setPartnerFilter(''); setDateFrom(''); setDateTo(''); resetAndReload(); }}
             className={SECONDARY_BTN}
           >
-            Clear
+            {t('clear')}
           </button>
         )}
         <div className="ml-auto flex gap-2">
           <button onClick={() => chainQuery.mutate()} disabled={chainQuery.isPending} className={SECONDARY_BTN}>
-            {chainQuery.isPending ? 'Verifying…' : 'Verify Chain'}
+            {chainQuery.isPending ? t('verifying_ellipsis') : t('verify_chain')}
           </button>
           <button onClick={() => archiveMutation.mutate()} disabled={archiveMutation.isPending} className={SECONDARY_BTN}>
-            {archiveMutation.isPending ? 'Running…' : 'Run Archive Now'}
+            {archiveMutation.isPending ? t('running_ellipsis') : t('run_archive_now')}
           </button>
         </div>
       </div>
@@ -192,8 +195,8 @@ function AuditArchivePanel() {
           <span className={`mt-1 inline-block w-1.5 h-1.5 rounded-full shrink-0 ${chainQuery.data.valid ? 'bg-[var(--color-ok)]' : 'bg-[var(--color-urgent)]'}`} />
           <span>
             {chainQuery.data.valid
-              ? `Chain integrity verified — ${chainQuery.data.checked} entries checked`
-              : `Chain broken at entry ${chainQuery.data.brokenAt} — ${chainQuery.data.checked} entries checked`}
+              ? t('chain_integrity_verified').replace('{count}', String(chainQuery.data.checked))
+              : t('chain_broken_at').replace('{brokenAt}', String(chainQuery.data.brokenAt)).replace('{count}', String(chainQuery.data.checked))}
           </span>
         </div>
       )}
@@ -201,7 +204,9 @@ function AuditArchivePanel() {
       {/* Archive run result */}
       {archiveMutation.data && (
         <div className="mb-4 rounded-[var(--radius-card)] bg-[var(--color-accent-soft)] px-4 py-3 text-[13px] font-medium text-[var(--color-accent)]">
-          Archive complete — {archiveMutation.data.auditCount} audit entries, {archiveMutation.data.ticketCount} tickets archived
+          {t('archive_complete_summary')
+            .replace('{auditCount}', String(archiveMutation.data.auditCount))
+            .replace('{ticketCount}', String(archiveMutation.data.ticketCount))}
         </div>
       )}
 
@@ -209,19 +214,19 @@ function AuditArchivePanel() {
       <div className={`${CARD} overflow-hidden`}>
         <div className="overflow-x-auto">
           {items.length === 0 && !query.isFetching ? (
-            <p className="text-center text-[13px] text-[var(--color-ink-muted)] py-12">No archived audit entries.</p>
+            <p className="text-center text-[13px] text-[var(--color-ink-muted)] py-12">{t('no_archived_audit')}</p>
           ) : (
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-[var(--color-border)] text-left">
-                  <th className={COL_HEAD}>Action</th>
-                  <th className={COL_HEAD}>Partner</th>
-                  <th className={COL_HEAD}>Actor</th>
-                  <th className={COL_HEAD}>Target Type</th>
-                  <th className={COL_HEAD}>Target ID</th>
-                  <th className={COL_HEAD}>Created</th>
-                  <th className={COL_HEAD}>Archived</th>
-                  <th className={COL_HEAD}>Chain Hash</th>
+                  <th className={COL_HEAD}>{t('col_action')}</th>
+                  <th className={COL_HEAD}>{t('col_partner')}</th>
+                  <th className={COL_HEAD}>{t('col_actor')}</th>
+                  <th className={COL_HEAD}>{t('col_target_type')}</th>
+                  <th className={COL_HEAD}>{t('col_target_id')}</th>
+                  <th className={COL_HEAD}>{t('col_created')}</th>
+                  <th className={COL_HEAD}>{t('col_archived')}</th>
+                  <th className={COL_HEAD}>{t('col_chain_hash')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -247,14 +252,14 @@ function AuditArchivePanel() {
         </div>
 
         <div className="px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between">
-          <span className="text-[12px] text-[var(--color-ink-muted)] tabular-nums">{items.length} entries loaded</span>
+          <span className="text-[12px] text-[var(--color-ink-muted)] tabular-nums">{t('entries_loaded').replace('{count}', String(items.length))}</span>
           {nextCursor && (
             <button
               onClick={() => { setAllItems(items); setCursor(nextCursor); }}
               disabled={query.isFetching}
               className={SECONDARY_BTN}
             >
-              {query.isFetching ? 'Loading…' : 'Load more'}
+              {query.isFetching ? t('loading') : t('load_more')}
             </button>
           )}
         </div>
@@ -265,6 +270,7 @@ function AuditArchivePanel() {
 
 /* --- Ticket Archive Panel --- */
 function TicketArchivePanel() {
+  const t = useT();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allItems, setAllItems] = useState<ArchivedTicket[]>([]);
   const [partnerFilter, setPartnerFilter] = useState('');
@@ -318,7 +324,7 @@ function TicketArchivePanel() {
           onChange={(e) => { setPartnerFilter(e.target.value); resetAndReload(); }}
           className={`${INPUT} w-48`}
         >
-          <option value="">All partners</option>
+          <option value="">{t('all_partners')}</option>
           {partnerList.map((p) => (
             <option key={p.id} value={p.id}>{p.name}</option>
           ))}
@@ -327,7 +333,7 @@ function TicketArchivePanel() {
           type="text"
           value={deptFilter}
           onChange={(e) => setDeptFilter(e.target.value)}
-          placeholder="Filter by dept…"
+          placeholder={t('filter_by_dept_placeholder')}
           className={`${INPUT} w-44`}
         />
         <input
@@ -348,7 +354,7 @@ function TicketArchivePanel() {
             onClick={() => { setPartnerFilter(''); setDeptFilter(''); setDebouncedDept(''); setDateFrom(''); setDateTo(''); resetAndReload(); }}
             className={SECONDARY_BTN}
           >
-            Clear
+            {t('clear')}
           </button>
         )}
       </div>
@@ -357,20 +363,20 @@ function TicketArchivePanel() {
       <div className={`${CARD} overflow-hidden`}>
         <div className="overflow-x-auto">
           {items.length === 0 && !query.isFetching ? (
-            <p className="text-center text-[13px] text-[var(--color-ink-muted)] py-12">No archived tickets.</p>
+            <p className="text-center text-[13px] text-[var(--color-ink-muted)] py-12">{t('no_archived_tickets')}</p>
           ) : (
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-[var(--color-border)] text-left">
-                  <th className={COL_HEAD}>Partner</th>
-                  <th className={COL_HEAD}>Dept</th>
-                  <th className={COL_HEAD}>Agent</th>
-                  <th className={COL_HEAD}>Support</th>
-                  <th className={COL_HEAD}>Messages</th>
-                  <th className={COL_HEAD}>Duration</th>
-                  <th className={COL_HEAD}>Created</th>
-                  <th className={COL_HEAD}>Closed</th>
-                  <th className={COL_HEAD}>Archived</th>
+                  <th className={COL_HEAD}>{t('col_partner')}</th>
+                  <th className={COL_HEAD}>{t('col_dept')}</th>
+                  <th className={COL_HEAD}>{t('col_agent')}</th>
+                  <th className={COL_HEAD}>{t('col_support')}</th>
+                  <th className={COL_HEAD}>{t('col_messages')}</th>
+                  <th className={COL_HEAD}>{t('archive_col_duration')}</th>
+                  <th className={COL_HEAD}>{t('col_created')}</th>
+                  <th className={COL_HEAD}>{t('col_closed')}</th>
+                  <th className={COL_HEAD}>{t('col_archived')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)]">
@@ -395,14 +401,14 @@ function TicketArchivePanel() {
         </div>
 
         <div className="px-4 py-3 border-t border-[var(--color-border)] flex items-center justify-between">
-          <span className="text-[12px] text-[var(--color-ink-muted)] tabular-nums">{items.length} tickets loaded</span>
+          <span className="text-[12px] text-[var(--color-ink-muted)] tabular-nums">{t('tickets_loaded').replace('{count}', String(items.length))}</span>
           {nextCursor && (
             <button
               onClick={() => { setAllItems(items); setCursor(nextCursor); }}
               disabled={query.isFetching}
               className={SECONDARY_BTN}
             >
-              {query.isFetching ? 'Loading…' : 'Load more'}
+              {query.isFetching ? t('loading') : t('load_more')}
             </button>
           )}
         </div>
