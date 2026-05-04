@@ -165,6 +165,23 @@ export async function runDailyPurge() {
     }
 
     await db.transaction(async (tx) => {
+      // Capture actor IDs from purgeable tickets BEFORE the DELETE — otherwise
+      // the post-delete subqueries return ∅ and the audit_log UPDATE silently
+      // no-ops. (CR-02 only fixed the NULL-array case; the source-rows-already-
+      // deleted case was the actual hole found by gdpr.test integration test.)
+      const actorIdsResult = await tx.execute(sql`
+        SELECT DISTINCT actor_id FROM (
+          SELECT agent_id AS actor_id FROM tickets
+            WHERE created_at < ${cutoffDate} AND status = 'closed' AND agent_id IS NOT NULL
+          UNION
+          SELECT support_id AS actor_id FROM tickets
+            WHERE created_at < ${cutoffDate} AND status = 'closed' AND support_id IS NOT NULL
+        ) ids
+      `);
+      const purgedActorIds = ((actorIdsResult.rows as unknown as { actor_id: string | null }[]) ?? [])
+        .map(r => r.actor_id)
+        .filter((id): id is string => !!id);
+
       // Only delete tickets that are closed (and thus have been archived above).
       // Open/pending tickets are never purged to prevent data loss.
       await tx.execute(sql`DELETE FROM messages WHERE ticket_id IN (SELECT id FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed')`);
@@ -184,34 +201,24 @@ export async function runDailyPurge() {
       `);
       await tx.execute(sql`DELETE FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'`);
 
-      // CR-02 fix: Anonymize audit_log — filter NULLs from array_agg to prevent
-      // the IN predicate from silently matching nothing when support_id is NULL
-      const auditResult = await tx.execute(sql`
-        UPDATE audit_log SET actor_id = NULL
-        WHERE actor_id IN (
-          SELECT DISTINCT unnest(
-            array_agg(agent_id) FILTER (WHERE agent_id IS NOT NULL)
-            || array_agg(support_id) FILTER (WHERE support_id IS NOT NULL)
-          )
-          FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'
-        ) AND created_at < ${cutoffDate}
-      `);
-      const auditAnonymized = (auditResult as { rowCount?: number }).rowCount ?? 0;
+      // Anonymize audit_log using captured actor IDs. audit_archive is NOT touched —
+      // it is WORM with a SHA-256 chain over actor_id, so any UPDATE breaks
+      // verifyAuditChain() and self-blocks the next purge run. PII retention in
+      // audit_archive is a deliberate trade-off (see docs/AUDIT_RUNBOOK.md
+      // "audit_archive — Indefinite, never purged"). Long-term resolution is
+      // tracked in wiki decisions/guichet-audit-archive-redaction-design.
+      let auditAnonymized = 0;
+      if (purgedActorIds.length > 0) {
+        const auditResult = await tx.update(auditLogTable)
+          .set({ actorId: null })
+          .where(and(
+            inArray(auditLogTable.actorId, purgedActorIds),
+            lt(auditLogTable.createdAt, cutoffDate),
+          ));
+        auditAnonymized = (auditResult as unknown as { rowCount?: number }).rowCount ?? 0;
+      }
 
-      // Anonymize audit_archive: same NULL-safe treatment
-      const archiveResult = await tx.execute(sql`
-        UPDATE audit_archive SET actor_id = NULL
-        WHERE actor_id IN (
-          SELECT DISTINCT unnest(
-            array_agg(agent_id) FILTER (WHERE agent_id IS NOT NULL)
-            || array_agg(support_id) FILTER (WHERE support_id IS NOT NULL)
-          )
-          FROM tickets WHERE created_at < ${cutoffDate} AND status = 'closed'
-        ) AND created_at < ${cutoffDate}
-      `);
-      const archiveAnonymized = (archiveResult as { rowCount?: number }).rowCount ?? 0;
-
-      logger.info({ auditAnonymized, archiveAnonymized, cutoffDate }, '[purge] Audit records anonymized (actorId set to NULL)');
+      logger.info({ auditAnonymized, purgedActorCount: purgedActorIds.length, cutoffDate }, '[purge] audit_log actorIds anonymized; audit_archive intentionally untouched (WORM)');
     });
 
     // Delete uploaded files only after DB transaction committed successfully.
