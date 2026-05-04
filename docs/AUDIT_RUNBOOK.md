@@ -62,47 +62,7 @@ servers restarts simultaneously (e.g. after a deploy).
 
 ---
 
-## 3. Partner-scoped verify semantics
-
-`trpc.partner.audit.verifyChain` (file: `server/trpc/routers/partner/audit.ts`)
-lets tenant admins verify the chain without exposing cross-tenant data.
-
-### What the tenant sees
-
-| Field | Meaning |
-|---|---|
-| `valid` | Global chain validity. If false, SOMETHING is wrong — but the tenant doesn't know what. |
-| `partnerChecked` | How many of THIS tenant's rows were verified. |
-| `brokenInScope` | Whether the broken row (if any) belongs to THIS tenant. |
-| `brokenAt` | The row id ONLY when `brokenInScope=true`. Otherwise `null`. |
-| `error` | Service-level error surfaced as an infra problem, not a silent pass. |
-
-### Why the walk is always global
-
-The hash chain is a single linked sequence across all tenants — truncating
-the walk to one tenant's rows would break the hash relationship and falsely
-report `valid=false`. So the walk is always global, but the RESPONSE is
-sliced. The global `checked` count is intentionally not exposed.
-
-### Why brokenAt is nulled out cross-tenant
-
-Leaking another tenant's `audit_archive.id` in a partner-scoped response is
-a cross-tenant disclosure — the id is the primary key to a row that
-partner has no visibility into otherwise. If the break is outside the
-caller's scope they see `valid=false`, `brokenInScope=false`, `brokenAt=null`.
-That tells them "the platform is investigating" without disclosing whose
-rows are affected.
-
-### Rate limiting
-
-Per-(partner+user) window: 1 call / 60s. Keyed by
-`rate:verify-audit-chain:partner:<partnerId>:<userId>`. Fails OPEN on Redis
-outage — a broken Redis must not lock a tenant out of their own compliance
-check.
-
----
-
-## 4. Webhook payload on chain break
+## 3. Webhook payload on chain break
 
 `broadcastWebhook('audit.chain_broken', ...)` fires when
 `verifyAuditChain` returns `valid=false` with a non-null `brokenAt` AND the
@@ -129,7 +89,7 @@ infra alarms for the operator, not compliance signals for the tenant.
 
 ---
 
-## 5. Response playbook — chain tamper detected
+## 4. Response playbook — chain tamper detected
 
 Triggered by: red `Audit chain integrity broken` banner on the Health page,
 the `audit:chain:broken` socket toast, OR a `critical` row in the verify
@@ -161,7 +121,7 @@ history with `brokenAt` set.
 
 ---
 
-## 6. Response playbook — verify service error
+## 5. Response playbook — verify service error
 
 Triggered by: a verify history row with `error` set (severity=warn) — the
 Health page chain panel shows status `ERROR` and the run history table
@@ -182,7 +142,7 @@ this first, then re-run the purge.
 
 ---
 
-## 7. Response playbook — ticket emitter silenced
+## 6. Response playbook — ticket emitter silenced
 
 Triggered by: an unexplained gap in `audit_log` rows for `ticket.*` actions
 during a window with normal ticket traffic. (No active alert fires for this
@@ -213,7 +173,7 @@ the next create/close/assign/transfer/leave/reclaim action.
 
 ---
 
-## 8. Response playbook — GDPR purge not running
+## 7. Response playbook — GDPR purge not running
 
 Triggered by: amber `GDPR purge overdue` banner on the Health page (last
 `system.gdpr_purge` audit row >25h ago) or red `GDPR purge failed` banner.
@@ -235,7 +195,7 @@ Triggered by: amber `GDPR purge overdue` banner on the Health page (last
 If the most recent `[purge]` log entry shows `AUDIT_CHAIN_VERIFY_FAIL_MSG`,
 the chain was broken AND the purge has refused to run as a precaution.
 
-1. Fix the chain first (section 5 or 6).
+1. Fix the chain first (section 4 or 5).
 2. Manually re-run the purge after chain is verified.
 3. Do NOT disable the chain-verify gate in the purge. That guard exists
    because a broken chain means we cannot prove what we're deleting —
@@ -244,7 +204,7 @@ the chain was broken AND the purge has refused to run as a precaution.
 
 ---
 
-## 9. Retention windows
+## 8. Retention windows
 
 | Data | Retention | Defined in |
 |---|---|---|
@@ -260,7 +220,7 @@ the chain was broken AND the purge has refused to run as a precaution.
 
 ---
 
-## 10. Test coverage — what locks these invariants
+## 9. Test coverage — what locks these invariants
 
 | Invariant | Test file |
 |---|---|
