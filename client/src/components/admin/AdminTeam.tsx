@@ -109,10 +109,10 @@ export default function AdminTeam() {
 
   const pillBase = 'h-7 px-2.5 inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] text-[12px] font-medium transition-colors whitespace-nowrap';
   const filters: Array<{ key: string; label: string; count: number; active: boolean; handler: () => void }> = [
-    { key: 'all', label: 'All', count: total, active: !roleFilter && !dormantOnly && !guestsOnly, handler: () => handleRoleFilter('') },
-    { key: 'support', label: 'Support', count: supportCount, active: roleFilter === 'support', handler: () => handleRoleFilter('support') },
-    { key: 'agents', label: 'Agents', count: agentCount, active: roleFilter === 'agent', handler: () => handleRoleFilter('agent') },
-    { key: 'guests', label: 'Guest B2B', count: guestsCount, active: guestsOnly, handler: handleGuestsFilter },
+    { key: 'all', label: t('all'), count: total, active: !roleFilter && !dormantOnly && !guestsOnly, handler: () => handleRoleFilter('') },
+    { key: 'support', label: t('support'), count: supportCount, active: roleFilter === 'support', handler: () => handleRoleFilter('support') },
+    { key: 'agents', label: t('filter_agents'), count: agentCount, active: roleFilter === 'agent', handler: () => handleRoleFilter('agent') },
+    { key: 'guests', label: t('filter_guests_b2b'), count: guestsCount, active: guestsOnly, handler: handleGuestsFilter },
   ];
 
   return (
@@ -122,9 +122,9 @@ export default function AdminTeam() {
         <div className="flex items-center gap-3">
           <Users className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
           <div>
-            <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">Team management</h2>
+            <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">{t('team_management_title')}</h2>
             <p className="text-[13px] text-[var(--color-ink-soft)] mt-0.5">
-              Define roles and departmental access for your organization.
+              {t('team_management_desc')}
             </p>
           </div>
         </div>
@@ -133,7 +133,7 @@ export default function AdminTeam() {
           {dormantCount > 0 && (
             <button
               onClick={handleDormantFilter}
-              title="B2B guests inactive for 30+ days — review for removal"
+              title={t('dormant_guest_review_tooltip')}
               className={`h-9 px-3 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] text-[12px] font-medium transition-colors whitespace-nowrap border ${
                 dormantOnly
                   ? 'bg-[var(--color-accent-amber)] text-white border-[var(--color-accent-amber)]'
@@ -141,7 +141,7 @@ export default function AdminTeam() {
               }`}
             >
               <Moon className="h-3.5 w-3.5" aria-hidden />
-              {dormantCount} stale {dormantCount === 1 ? 'guest' : 'guests'}
+              {dormantCount} {t(dormantCount === 1 ? 'stale_guest_singular' : 'stale_guest_plural')}
             </button>
           )}
         </div>
@@ -175,11 +175,11 @@ export default function AdminTeam() {
             <div className="flex items-center gap-2 shrink-0">
               <AlertTriangle className="h-4 w-4 text-[var(--color-accent-amber)]" aria-hidden />
               <div>
-                <span className="text-[13px] font-semibold text-[var(--color-ink)]">B2B Guest invites</span>
+                <span className="text-[13px] font-semibold text-[var(--color-ink)]">{t('b2b_guest_invites')}</span>
                 <p className="text-[11px] text-[var(--color-ink-muted)]">
                   {pendingInvites && pendingInvites.length > 0
-                    ? `${pendingInvites.length} awaiting Azure tenant registration`
-                    : 'No pending invites — invite an external partner to start'}
+                    ? t('pending_invites_count').replace('{count}', String(pendingInvites.length))
+                    : t('no_pending_invites_hint')}
                 </p>
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function AdminTeam() {
               className={`${PRIMARY_BTN} whitespace-nowrap shrink-0`}
             >
               <UserPlus className="h-3.5 w-3.5" aria-hidden />
-              Invite B2B guest
+              {t('invite_b2b_guest')}
             </button>
           </div>
         </div>
@@ -212,12 +212,12 @@ export default function AdminTeam() {
       <div className={`${CARD} overflow-hidden flex flex-col`}>
           <div className="px-4 py-2.5 border-b border-[var(--color-border)] flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 text-[12px] text-[var(--color-ink-muted)]">
-              <span>
-                Showing <span className="text-[var(--color-ink)] tabular-nums">{displayData.length}</span> {displayData.length === 1 ? 'member' : 'members'}
+              <span className="tabular-nums">
+                {t(displayData.length === 1 ? 'showing_members_singular' : 'showing_members_plural').replace('{count}', String(displayData.length))}
               </span>
               <span className="text-[var(--color-border)]">|</span>
               <span>
-                Page <span className="text-[var(--color-ink)] tabular-nums">{page + 1}</span>
+                {t('page_label')} <span className="text-[var(--color-ink)] tabular-nums">{page + 1}</span>
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export default function AdminTeam() {
                   <button
                     onClick={() => setSearch('')}
                     className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
-                    aria-label="Clear search"
+                    aria-label={t('clear_search')}
                   >
                     <X className="h-3 w-3" aria-hidden />
                   </button>
@@ -247,14 +247,14 @@ export default function AdminTeam() {
                 className={SECONDARY_BTN}
               >
                 <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-                Previous
+                {t('btn_previous')}
               </button>
               <button
                 disabled={displayData.length < LIMIT}
                 onClick={() => setPage(p => p + 1)}
                 className={SECONDARY_BTN}
               >
-                Next
+                {t('btn_next')}
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden />
               </button>
             </div>
@@ -263,9 +263,9 @@ export default function AdminTeam() {
             <table className="w-full border-collapse">
               <thead className="bg-[var(--color-bg-surface)] shadow-[0_1px_0_var(--color-border)]">
                 <tr>
-                  <th className={COL_HEAD}>Identity</th>
-                  <th className={COL_HEAD}>Role</th>
-                  <th className={COL_HEAD}>Department access</th>
+                  <th className={COL_HEAD}>{t('col_identity')}</th>
+                  <th className={COL_HEAD}>{t('col_role')}</th>
+                  <th className={COL_HEAD}>{t('col_department_access')}</th>
                   <th className={`${COL_HEAD} text-right`}></th>
                 </tr>
               </thead>
@@ -274,20 +274,24 @@ export default function AdminTeam() {
                   <tr>
                     <td colSpan={4} className="py-20 text-center">
                       <div className="w-8 h-8 mx-auto rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin mb-3" aria-hidden />
-                      <p className="text-[12px] text-[var(--color-ink-muted)]">Loading directory…</p>
+                      <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading_directory')}</p>
                     </td>
                   </tr>
                 ) : displayData.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-20 text-center">
                       <Search className="h-9 w-9 mx-auto text-[var(--color-ink-muted)] opacity-50 mb-3" aria-hidden />
-                      <p className="text-[13px] font-medium text-[var(--color-ink)]">No members match {search ? `"${search}"` : 'the current filters'}</p>
+                      <p className="text-[13px] font-medium text-[var(--color-ink)]">
+                        {search
+                          ? t('no_members_match_query').replace('{query}', search)
+                          : t('no_members_match_filters')}
+                      </p>
                       {search && (
                         <button
                           onClick={() => setSearch('')}
                           className="mt-3 text-[12px] text-[var(--color-accent)] hover:underline"
                         >
-                          Clear search
+                          {t('clear_search')}
                         </button>
                       )}
                     </td>
@@ -309,7 +313,7 @@ export default function AdminTeam() {
                             )}
                             <div className="flex items-center gap-2">
                               {member.isExternal && !member.externalId && !member.lastActiveAt ? (
-                                <span className="inline-flex items-center px-1.5 h-4 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[10px] font-medium text-[var(--color-accent)]">Invite pending</span>
+                                <span className="inline-flex items-center px-1.5 h-4 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[10px] font-medium text-[var(--color-accent)]">{t('invite_pending_pill')}</span>
                               ) : member.lastActiveAt && (
                                 <span className="text-[11px] text-[var(--color-ink-muted)]">
                                   {t('last_active_on').replace('{date}', new Date(member.lastActiveAt).toLocaleDateString())}
@@ -328,12 +332,12 @@ export default function AdminTeam() {
                             : 'bg-[var(--color-bg-elevated)] text-[var(--color-ink)]'
                         }`}
                       >
-                        {member.isExternal ? `External ${member.role}` : member.role}
+                        {member.isExternal ? t('external_role_prefix').replace('{role}', member.role) : member.role}
                       </span>
                     </td>
                     <td className="px-4 py-2">
                       {member.role === 'agent' ? (
-                        <span className="text-[12px] text-[var(--color-ink-muted)] italic">Selects per ticket</span>
+                        <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('selects_per_ticket')}</span>
                       ) : editingMembershipId === member.membershipId ? (
                         <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] shadow-[var(--shadow-soft)] p-3 min-w-[220px] space-y-2">
                           <div className="max-h-40 overflow-y-auto pr-1 space-y-0.5">
@@ -353,7 +357,7 @@ export default function AdminTeam() {
                             ))}
                           </div>
                           {member.role === 'support' && editDepts.length === 0 && (
-                            <p className="text-[11px] text-[var(--color-urgent)]">Support requires at least one department</p>
+                            <p className="text-[11px] text-[var(--color-urgent)]">{t('support_requires_department')}</p>
                           )}
                           <div className="flex items-center gap-2 pt-2 border-t border-[var(--color-border)]">
                             <button
@@ -364,13 +368,13 @@ export default function AdminTeam() {
                               data-guest-disabled={isExternal || undefined}
                               className={`${PRIMARY_BTN} flex-1 justify-center h-8`}
                             >
-                              {updateMemberMutation.isPending ? '…' : 'Save'}
+                              {updateMemberMutation.isPending ? '…' : t('save')}
                             </button>
                             <button
                               onClick={() => setEditingMembershipId(null)}
                               className={`${SECONDARY_BTN} flex-1 justify-center h-8`}
                             >
-                              Cancel
+                              {t('cancel')}
                             </button>
                           </div>
                         </div>
@@ -395,7 +399,7 @@ export default function AdminTeam() {
                                   </span>
                                 );
                               })
-                            : <span className="text-[12px] text-[var(--color-ink-muted)] italic">No departments assigned</span>}
+                            : <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('no_departments_assigned')}</span>}
                           <Pencil className="h-3 w-3 opacity-40 group-hover/row:opacity-80 transition-opacity ml-auto text-[var(--color-ink-muted)]" aria-hidden />
                         </div>
                       )}
@@ -405,8 +409,8 @@ export default function AdminTeam() {
                         <button
                           onClick={() => setAuditUserId({ id: member.userId, name: member.name })}
                           className="w-7 h-7 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors opacity-0 group-hover/row:opacity-100"
-                          aria-label={`Audit history for ${member.name}`}
-                          title="Audit history"
+                          aria-label={t('audit_history_for').replace('{name}', member.name)}
+                          title={t('audit_history')}
                         >
                           <FileText className="h-3.5 w-3.5" aria-hidden />
                         </button>
@@ -415,10 +419,10 @@ export default function AdminTeam() {
                             onClick={() => setConfirmRemove({ membershipId: member.membershipId, name: member.name })}
                             disabled={isExternal}
                             aria-disabled={isExternal || undefined}
-                            title={isExternal ? guestTooltip : 'Remove B2B guest'}
+                            title={isExternal ? guestTooltip : t('remove_b2b_guest')}
                             data-guest-disabled={isExternal || undefined}
                             className="w-7 h-7 inline-flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[color-mix(in_srgb,var(--color-urgent)_14%,transparent)] hover:text-[var(--color-urgent)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover/row:opacity-100"
-                            aria-label={`Remove ${member.name}`}
+                            aria-label={t('remove_member_aria').replace('{name}', member.name)}
                           >
                             <Trash2 className="h-3.5 w-3.5" aria-hidden />
                           </button>
@@ -436,7 +440,7 @@ export default function AdminTeam() {
       {confirmRemove && (
         <ConfirmDialog
           title={t('remove_member_title')}
-          message={`Remove ${confirmRemove.name} from this partner? They will lose access to all partner resources.`}
+          message={t('remove_member_message').replace('{name}', confirmRemove.name)}
           confirmLabel={t('remove')}
           onConfirm={() => {
             removeMutation.mutate({ membershipId: confirmRemove.membershipId });
@@ -457,6 +461,7 @@ export default function AdminTeam() {
 }
 
 function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, onInvited: () => void }) {
+  const t = useT();
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<'support'|'admin'>('support');
@@ -493,7 +498,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
   if (invited) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]">
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleDismiss} aria-label="Close" />
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleDismiss} aria-label={t('close')} />
         <div
           role="dialog"
           aria-modal="true"
@@ -501,7 +506,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
         >
           <div className="flex items-center gap-2.5 mb-5">
             <Shield className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
-            <h3 className="text-lg font-semibold text-[var(--color-ink)]">Local record created</h3>
+            <h3 className="text-lg font-semibold text-[var(--color-ink)]">{t('local_record_created')}</h3>
           </div>
           <div className="space-y-4">
             <div
@@ -511,40 +516,45 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
               <div className="flex items-start gap-2">
                 <AlertTriangle className="h-4 w-4 text-[var(--color-accent-amber)] shrink-0 mt-0.5" aria-hidden />
                 <div className="space-y-1">
-                  <p className="text-[13px] font-semibold text-[var(--color-ink)]">Azure B2B invite still required</p>
+                  <p className="text-[13px] font-semibold text-[var(--color-ink)]">{t('azure_b2b_required')}</p>
                   <p className="text-[12px] text-[var(--color-ink-soft)] leading-relaxed">
-                    {invited.name} is registered in Guichet but cannot log in yet. A platform operator must add them as a <strong>B2B guest</strong> in the Azure tenant before they can SSO. Forward the handoff details to your IT admin.
+                    {t('azure_b2b_explanation').replace('{name}', invited.name)}
                   </p>
                 </div>
               </div>
             </div>
             <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] p-3">
-              <p className="text-[11px] font-medium text-[var(--color-ink-muted)] uppercase tracking-[0.06em] mb-2">Handoff details</p>
+              <p className="text-[11px] font-medium text-[var(--color-ink-muted)] uppercase tracking-[0.06em] mb-2">{t('handoff_details')}</p>
               <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[12px]">
-                <dt className="text-[var(--color-ink-muted)]">Name</dt>
+                <dt className="text-[var(--color-ink-muted)]">{t('handoff_name')}</dt>
                 <dd className="text-[var(--color-ink)]">{invited.name}</dd>
-                <dt className="text-[var(--color-ink-muted)]">Email</dt>
+                <dt className="text-[var(--color-ink-muted)]">{t('handoff_email')}</dt>
                 <dd className="text-[var(--color-ink)] font-mono">{invited.email}</dd>
-                <dt className="text-[var(--color-ink-muted)]">Role</dt>
+                <dt className="text-[var(--color-ink-muted)]">{t('handoff_role')}</dt>
                 <dd className="text-[var(--color-ink)] capitalize">{invited.role}</dd>
-                <dt className="text-[var(--color-ink-muted)]">Azure step</dt>
-                <dd className="text-[var(--color-ink)]">Invite as B2B guest, map tenant groups</dd>
+                <dt className="text-[var(--color-ink-muted)]">{t('handoff_azure_step')}</dt>
+                <dd className="text-[var(--color-ink)]">{t('handoff_azure_step_value')}</dd>
               </dl>
             </div>
             <div className="flex gap-2 pt-2 border-t border-[var(--color-border)]">
               <button
                 type="button"
-                onClick={() => navigator.clipboard.writeText(`${invited.name} <${invited.email}> — needs Azure B2B guest invite for Guichet (role: ${invited.role})`)}
+                onClick={() => navigator.clipboard.writeText(
+                  t('handoff_clipboard_text')
+                    .replace('{name}', invited.name)
+                    .replace('{email}', invited.email)
+                    .replace('{role}', invited.role)
+                )}
                 className={`${SECONDARY_BTN} flex-1 justify-center`}
               >
-                Copy handoff
+                {t('copy_handoff')}
               </button>
               <button
                 type="button"
                 onClick={onInvited}
                 className={`${PRIMARY_BTN} flex-1 justify-center`}
               >
-                Done
+                {t('done')}
               </button>
             </div>
           </div>
@@ -555,7 +565,7 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-[fade-in_150ms_ease-out]">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label="Close" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} aria-label={t('close')} />
       <div
         role="dialog"
         aria-modal="true"
@@ -563,27 +573,27 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
       >
         <div className="flex items-center gap-2.5 mb-5">
           <Shield className="h-5 w-5 text-[var(--color-accent)]" aria-hidden />
-          <h3 className="text-lg font-semibold text-[var(--color-ink)]">Invite external user</h3>
+          <h3 className="text-lg font-semibold text-[var(--color-ink)]">{t('invite_external_user_title')}</h3>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className={FIELD_LABEL}>Name</label>
+              <label className={FIELD_LABEL}>{t('field_label_name')}</label>
               <input
                 type="text"
                 required
-                placeholder="Full name"
+                placeholder={t('placeholder_full_name')}
                 value={name}
                 onChange={e => setName(e.target.value)}
                 className={`${INPUT} w-full`}
               />
             </div>
             <div>
-              <label className={FIELD_LABEL}>Email</label>
+              <label className={FIELD_LABEL}>{t('field_label_email')}</label>
               <input
                 type="email"
                 required
-                placeholder="user@domain.com"
+                placeholder={t('placeholder_user_email')}
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className={`${INPUT} w-full font-mono text-[12px]`}
@@ -591,26 +601,26 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
             </div>
           </div>
           <div>
-            <label className={FIELD_LABEL}>Role</label>
+            <label className={FIELD_LABEL}>{t('col_role')}</label>
             <select
               value={role}
               onChange={e => setRole(e.target.value as 'support' | 'admin')}
               className={`${INPUT} w-full`}
             >
-              <option value="support">External support</option>
-              <option value="admin">Partner manager / SPOC</option>
+              <option value="support">{t('role_external_support')}</option>
+              <option value="admin">{t('role_partner_manager')}</option>
             </select>
           </div>
           {role === 'support' && departments.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className={FIELD_LABEL}>Assigned departments</label>
+                <label className={FIELD_LABEL}>{t('assigned_departments')}</label>
                 <button
                   type="button"
                   onClick={() => setSelectedDepts(selectedDepts.length === departments.length ? [] : departments.map(d => d.id))}
                   className="text-[12px] text-[var(--color-accent)] hover:underline"
                 >
-                  {selectedDepts.length === departments.length ? 'Deselect all' : 'Select all'}
+                  {selectedDepts.length === departments.length ? t('deselect_all') : t('select_all')}
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-1.5 max-h-32 overflow-y-auto rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] p-2">
@@ -630,18 +640,18 @@ function InviteExternalUserModal({ onClose, onInvited }: { onClose: () => void, 
                 ))}
               </div>
               {role === 'support' && selectedDepts.length === 0 && (
-                <p className="text-[11px] text-[var(--color-urgent)]">Support requires at least one department</p>
+                <p className="text-[11px] text-[var(--color-urgent)]">{t('support_requires_department')}</p>
               )}
             </div>
           )}
           <div className="flex gap-2 pt-3 border-t border-[var(--color-border)]">
-            <button type="button" onClick={onClose} className={`${SECONDARY_BTN} flex-1 justify-center`}>Cancel</button>
+            <button type="button" onClick={onClose} className={`${SECONDARY_BTN} flex-1 justify-center`}>{t('cancel')}</button>
             <button
               type="submit"
               disabled={inviteMutation.isPending || (role === 'support' && selectedDepts.length === 0)}
               className={`${PRIMARY_BTN} flex-1 justify-center`}
             >
-              {inviteMutation.isPending ? 'Sending…' : 'Send invite'}
+              {inviteMutation.isPending ? t('btn_sending') : t('btn_send_invite')}
             </button>
           </div>
         </form>
