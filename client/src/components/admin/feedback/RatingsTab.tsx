@@ -4,12 +4,14 @@ import { Stars, Skeleton } from '../DashboardHelpers';
 import Avatar from '../../ui/Avatar';
 import { trpc } from '../../../utils/trpc';
 import { usePartner } from '../../../hooks/usePartner';
+import { useT } from '../../../i18n';
 import { aggregateSupportRatings, buildUserMaps, RatingInput, UserInput, DeptBreakdown as DeptBreakdownData } from './supportRatings';
 
 const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
 const COL_HEAD = 'px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 export default function RatingsTab() {
+  const t = useT();
   const [selectedSupport, setSelectedSupport] = useState('ALL');
   const { manifest } = usePartner();
   const departments = useMemo(() => manifest.departments || [], [manifest.departments]);
@@ -48,7 +50,7 @@ export default function RatingsTab() {
   if (ratingsQuery.error) {
     return (
       <div className={`${CARD} p-8 text-center`}>
-        <p className="text-[13px] font-medium text-[var(--color-urgent)]">Failed to load ratings</p>
+        <p className="text-[13px] font-medium text-[var(--color-urgent)]">{t('ratings_load_failed')}</p>
         <p className="text-[12px] text-[var(--color-ink-muted)] mt-2">{ratingsQuery.error.message}</p>
       </div>
     );
@@ -57,7 +59,7 @@ export default function RatingsTab() {
   if (ratings.length === 0) {
     return (
       <div className={`${CARD} p-10 text-center`}>
-        <p className="text-[var(--color-ink-soft)] text-[13px]">No ratings submitted yet.</p>
+        <p className="text-[var(--color-ink-soft)] text-[13px]">{t('ratings_none_yet')}</p>
       </div>
     );
   }
@@ -72,29 +74,29 @@ export default function RatingsTab() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className={`${CARD} p-4`}>
-          <p className="text-[12px] text-[var(--color-ink-muted)]">Total ratings</p>
+          <p className="text-[12px] text-[var(--color-ink-muted)]">{t('stat_total_ratings')}</p>
           <p className="text-[24px] font-semibold mt-1 text-[var(--color-ink)]">{total}</p>
         </div>
         <div className={`${CARD} p-4`}>
-          <p className="text-[12px] text-[var(--color-ink-muted)]">Average</p>
+          <p className="text-[12px] text-[var(--color-ink-muted)]">{t('ratings_summary_average')}</p>
           <div className="flex items-center gap-2 mt-1">
             <p className="text-[24px] font-semibold text-[var(--color-ink)]">{avg.toFixed(1)}</p>
             <Stars value={Math.round(avg)} />
           </div>
         </div>
         <div className={`${CARD} p-4`}>
-          <p className="text-[12px] text-[var(--color-ink-muted)]">5-star</p>
+          <p className="text-[12px] text-[var(--color-ink-muted)]">{t('ratings_summary_5star')}</p>
           <p className="text-[24px] font-semibold mt-1 text-[var(--color-ok)]">{fiveStar}</p>
         </div>
         <div className={`${CARD} p-4`}>
-          <p className="text-[12px] text-[var(--color-ink-muted)]">1-2 star</p>
+          <p className="text-[12px] text-[var(--color-ink-muted)]">{t('ratings_summary_low_star')}</p>
           <p className="text-[24px] font-semibold mt-1 text-[var(--color-urgent)]">{lowStar}</p>
         </div>
       </div>
 
       {/* Distribution */}
       <div className={`${CARD} p-5`}>
-        <p className="text-[13px] font-semibold mb-3 text-[var(--color-ink)]">Distribution</p>
+        <p className="text-[13px] font-semibold mb-3 text-[var(--color-ink)]">{t('distribution')}</p>
         <div className="space-y-2">
           {[5, 4, 3, 2, 1].map((star) => {
             const count = ratings.filter((r) => r.rating === star).length;
@@ -119,15 +121,15 @@ export default function RatingsTab() {
       {Object.keys(supportRatings).length > 0 && (
         <div>
           <div className="flex items-center justify-between gap-4 mt-8 mb-4">
-            <p className="text-[16px] font-semibold text-[var(--color-ink)]">Ratings by Support</p>
+            <p className="text-[16px] font-semibold text-[var(--color-ink)]">{t('ratings_by_support')}</p>
             <div className="flex items-center gap-2">
-              <span className="text-[12px] font-medium text-[var(--color-ink-muted)]">View</span>
+              <span className="text-[12px] font-medium text-[var(--color-ink-muted)]">{t('ratings_view_label')}</span>
               <select
                 value={selectedSupport}
                 onChange={(e) => setSelectedSupport(e.target.value)}
                 className="h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none"
               >
-                <option value="ALL">All Support (Overview)</option>
+                <option value="ALL">{t('ratings_all_support_overview')}</option>
                 {Object.keys(supportRatings).sort().map((name) => (
                   <option key={name} value={name}>{name}</option>
                 ))}
@@ -141,11 +143,11 @@ export default function RatingsTab() {
                 <table className="w-full min-w-[960px] text-left text-[13px] border-collapse">
                   <thead>
                     <tr className="border-b border-[var(--color-border)]">
-                      <th className={COL_HEAD}>Support Name</th>
-                      <th className={`${COL_HEAD} text-center`}>Avg Rating</th>
-                      <th className={`${COL_HEAD} text-center`}>Trend</th>
-                      <th className={`${COL_HEAD} text-center`}>Total</th>
-                      <th className={`${COL_HEAD} text-right`}>Action</th>
+                      <th className={COL_HEAD}>{t('col_support_name')}</th>
+                      <th className={`${COL_HEAD} text-center`}>{t('col_avg_rating')}</th>
+                      <th className={`${COL_HEAD} text-center`}>{t('col_trend')}</th>
+                      <th className={`${COL_HEAD} text-center`}>{t('col_total')}</th>
+                      <th className={`${COL_HEAD} text-right`}>{t('col_action')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
@@ -166,8 +168,8 @@ export default function RatingsTab() {
                             </td>
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-center gap-4 text-[12px] font-medium">
-                                <span className="text-[var(--color-ok)]">5★ ({e.ratings.filter((r) => r.rating === 5).length})</span>
-                                <span className="text-[var(--color-urgent)]">1-2★ ({e.ratings.filter((r) => r.rating <= 2).length})</span>
+                                <span className="text-[var(--color-ok)]">{t('ratings_5star_count').replace('{count}', String(e.ratings.filter((r) => r.rating === 5).length))}</span>
+                                <span className="text-[var(--color-urgent)]">{t('ratings_low_star_count').replace('{count}', String(e.ratings.filter((r) => r.rating <= 2).length))}</span>
                               </div>
                             </td>
                             <td className="px-6 py-4 text-center">
@@ -178,7 +180,7 @@ export default function RatingsTab() {
                                 onClick={() => setSelectedSupport(name)}
                                 className="text-[13px] font-medium text-[var(--color-accent)] hover:underline"
                               >
-                                Details
+                                {t('ratings_details_btn')}
                               </button>
                             </td>
                           </tr>
@@ -201,7 +203,7 @@ export default function RatingsTab() {
 
       {/* Recent ratings */}
       <div className={`${CARD} overflow-hidden`}>
-        <p className="text-[13px] font-semibold px-5 py-3 border-b border-[var(--color-border)] text-[var(--color-ink)]">Recent ratings</p>
+        <p className="text-[13px] font-semibold px-5 py-3 border-b border-[var(--color-border)] text-[var(--color-ink)]">{t('ratings_recent')}</p>
         <div className="divide-y divide-[var(--color-border)]">
           {ratings.slice(0, 50).map((r) => (
             <div key={r.id} className="px-5 py-3 flex items-start gap-3">
@@ -209,11 +211,11 @@ export default function RatingsTab() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 overflow-x-auto text-[12px] text-[var(--color-ink-muted)]">
                   <span>
-                    Agent <span className="font-medium text-[var(--color-ink-soft)]">{supportNameMap[r.agentId] || r.agentId}</span>
+                    {t('ratings_agent_label')} <span className="font-medium text-[var(--color-ink-soft)]">{supportNameMap[r.agentId] || r.agentId}</span>
                   </span>
                   {r.supportId && (
                     <span>
-                      Support <span className="font-medium text-[var(--color-ink-soft)]">{supportNameMap[r.supportId] || r.supportId}</span>
+                      {t('ratings_support_label')} <span className="font-medium text-[var(--color-ink-soft)]">{supportNameMap[r.supportId] || r.supportId}</span>
                     </span>
                   )}
                   <span>
@@ -234,7 +236,7 @@ export default function RatingsTab() {
             className="inline-flex items-center gap-2 text-[13px] font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-ink)] transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Overview
+            {t('ratings_back_overview')}
           </button>
         </div>
       )}
@@ -259,6 +261,7 @@ function SupportDetail({
   departments: DeptInfo[];
   onBack: () => void;
 }) {
+  const t = useT();
   if (!entry) return null;
   const hasRatings = entry.total > 0;
   const avg = hasRatings ? (entry.sum / entry.total).toFixed(1) : '—';
@@ -285,14 +288,14 @@ function SupportDetail({
           </div>
           <div className="h-10 w-px bg-[var(--color-border)] mx-1" />
           <div className="bg-[var(--color-bg-elevated)] rounded-[var(--radius-card)] px-4 py-2 text-center">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">Total Ratings</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">{t('stat_total_ratings')}</p>
             <p className="text-[18px] font-semibold text-[var(--color-ink)]">{entry.total}</p>
           </div>
         </div>
       </div>
       {departments.length === 0 ? (
         <p className="text-[13px] text-[var(--color-ink-muted)] mt-6 py-6 text-center rounded-[var(--radius-card)] border-2 border-dashed border-[var(--color-border)]">
-          No departments configured for this partner
+          {t('ratings_no_dept_configured')}
         </p>
       ) : (
         <div className={`grid gap-4 mt-6 ${gridCols}`}>
@@ -322,6 +325,7 @@ function DeptBreakdownCard({
   description?: string;
   data: DeptBreakdownData;
 }) {
+  const t = useT();
   return (
     <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] p-5">
       <div className="flex justify-between items-start mb-4 gap-3">
@@ -329,28 +333,28 @@ function DeptBreakdownCard({
           <span className="text-[13px] font-semibold text-[var(--color-ink)]">{deptName}</span>
           {description && <p className="text-[12px] text-[var(--color-ink-muted)] mt-0.5 truncate">{description}</p>}
         </div>
-        <span className="shrink-0 text-[11px] font-medium bg-[var(--color-bg-surface)] text-[var(--color-ink-soft)] px-2 py-0.5 rounded-[var(--radius-pill)] tabular-nums">{data.total} ratings</span>
+        <span className="shrink-0 text-[11px] font-medium bg-[var(--color-bg-surface)] text-[var(--color-ink-soft)] px-2 py-0.5 rounded-[var(--radius-pill)] tabular-nums">{t('ratings_count_for_dept').replace('{count}', String(data.total))}</span>
       </div>
       {data.total > 0 ? (
         <div className="space-y-2.5">
           <div className="flex justify-between items-center bg-[var(--color-bg-surface)] px-3 py-2 rounded-[var(--radius-btn)]">
-            <span className="text-[12px] font-medium text-[var(--color-ink-muted)]">Average Score</span>
+            <span className="text-[12px] font-medium text-[var(--color-ink-muted)]">{t('ratings_average_score')}</span>
             <span className="text-[16px] font-semibold text-[var(--color-ink)]">{(data.sum / data.total).toFixed(1)}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-[var(--color-bg-surface)] px-3 py-2 rounded-[var(--radius-btn)] text-center">
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">5 Stars</span>
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">{t('ratings_5_stars')}</span>
               <span className="text-[16px] font-semibold text-[var(--color-ok)]">{data.count5}</span>
             </div>
             <div className="bg-[var(--color-bg-surface)] px-3 py-2 rounded-[var(--radius-btn)] text-center">
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">1-2 Stars</span>
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">{t('ratings_1_2_stars')}</span>
               <span className="text-[16px] font-semibold text-[var(--color-urgent)]">{data.countLow}</span>
             </div>
           </div>
         </div>
       ) : (
         <div className="py-5 text-center rounded-[var(--radius-btn)] border-2 border-dashed border-[var(--color-border)]">
-          <p className="text-[12px] text-[var(--color-ink-muted)]">No {deptId} ratings</p>
+          <p className="text-[12px] text-[var(--color-ink-muted)]">{t('ratings_no_for_dept').replace('{dept}', deptId)}</p>
         </div>
       )}
     </div>
