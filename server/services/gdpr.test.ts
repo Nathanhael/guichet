@@ -188,7 +188,7 @@ describe('runDailyPurge', () => {
     const txCallback = dbMock.transaction.mock.calls[0][0];
     const txMock = { execute: vi.fn().mockResolvedValue({ rowCount: 0 }) };
     await txCallback(txMock);
-    expect(txMock.execute).toHaveBeenCalledTimes(7); // messages, ticket_labels, app_feedback, ratings agent_id anon, tickets + audit_log anonymize + audit_archive anonymize (ratings rows survive — comments nullified by a separate step)
+    expect(txMock.execute).toHaveBeenCalledTimes(6); // SELECT actor_ids pre-DELETE + DELETE messages + DELETE ticket_labels + DELETE app_feedback + UPDATE ratings agent_id + DELETE tickets. audit_log anon goes through tx.update() (drizzle inArray), counted separately if needed. audit_archive UPDATE removed entirely (WORM — see decisions/guichet-audit-archive-redaction-design).
   });
 
   it('does NOT delete tickets within the retention window', async () => {
