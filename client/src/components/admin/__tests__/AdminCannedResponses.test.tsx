@@ -145,7 +145,7 @@ describe('AdminCannedResponses — feature OFF', () => {
   it('does not render the 3-tab editor when editing a row', () => {
     h.listData = [makeCanned({ bodyTranslations: { nl: 'Hallo', fr: 'Bonjour' } })];
     render(<AdminCannedResponses />);
-    fireEvent.click(screen.getByLabelText('Edit Greeting'));
+    fireEvent.click(screen.getByLabelText('canned_edit_for_aria'));
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
     expect(screen.queryByTestId('edit-source-lang')).not.toBeInTheDocument();
     expect(screen.queryByTestId('regenerate-nl')).not.toBeInTheDocument();
@@ -165,7 +165,7 @@ describe('AdminCannedResponses — feature ON', () => {
   it('renders three language tabs in the edit form (one source + two translation)', () => {
     h.listData = [makeCanned({ bodyTranslations: { nl: 'Hallo', fr: 'Bonjour' } })];
     render(<AdminCannedResponses />);
-    fireEvent.click(screen.getByLabelText('Edit Greeting'));
+    fireEvent.click(screen.getByLabelText('canned_edit_for_aria'));
 
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(3);
@@ -181,7 +181,7 @@ describe('AdminCannedResponses — feature ON', () => {
       staleTranslations: { nl: true, fr: false },
     })];
     render(<AdminCannedResponses />);
-    fireEvent.click(screen.getByLabelText('Edit Greeting'));
+    fireEvent.click(screen.getByLabelText('canned_edit_for_aria'));
     // Switch to NL tab.
     fireEvent.click(screen.getByRole('tab', { name: /NL/ }));
     expect(screen.getByText('admin_canned_translate_stale')).toBeInTheDocument();
@@ -193,7 +193,7 @@ describe('AdminCannedResponses — feature ON', () => {
       staleTranslations: { nl: true, fr: false },
     })];
     render(<AdminCannedResponses />);
-    fireEvent.click(screen.getByLabelText('Edit Greeting'));
+    fireEvent.click(screen.getByLabelText('canned_edit_for_aria'));
     fireEvent.click(screen.getByRole('tab', { name: /NL/ }));
     fireEvent.click(screen.getByTestId('regenerate-nl'));
     expect(h.regenerateMutate).toHaveBeenCalledWith({ id: 'c1', langs: ['nl'] });
@@ -202,7 +202,7 @@ describe('AdminCannedResponses — feature ON', () => {
   it('saves bodyTranslations only when the admin touched a translation tab', () => {
     h.listData = [makeCanned({ bodyTranslations: { nl: 'Hallo', fr: 'Bonjour' } })];
     render(<AdminCannedResponses />);
-    fireEvent.click(screen.getByLabelText('Edit Greeting'));
+    fireEvent.click(screen.getByLabelText('canned_edit_for_aria'));
     // Switch to NL tab and edit.
     fireEvent.click(screen.getByRole('tab', { name: /NL/ }));
     fireEvent.change(screen.getByTestId('edit-body-nl'), { target: { value: 'Hallo (edited)' } });
@@ -218,7 +218,7 @@ describe('AdminCannedResponses — feature ON', () => {
   it('does NOT include bodyTranslations on save when only title was changed', () => {
     h.listData = [makeCanned({ bodyTranslations: { nl: 'Hallo', fr: 'Bonjour' } })];
     render(<AdminCannedResponses />);
-    fireEvent.click(screen.getByLabelText('Edit Greeting'));
+    fireEvent.click(screen.getByLabelText('canned_edit_for_aria'));
     fireEvent.change(screen.getAllByDisplayValue('Greeting')[0], { target: { value: 'Renamed' } });
 
     fireEvent.click(screen.getByText('save'));

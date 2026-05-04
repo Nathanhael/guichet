@@ -236,19 +236,19 @@ export default function AdminCannedResponses() {
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-4">{t('create_new_response')}</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className={LABEL}>Title *</label>
+            <label className={LABEL}>{t('canned_title_required_label')}</label>
             <input
               type="text"
               value={newTitle}
               onChange={(e) => { setNewTitle(e.target.value); setFieldErrors({}); }}
-              placeholder="e.g. Greeting"
+              placeholder={t('canned_title_placeholder')}
               className={`${INPUT} ${fieldErrors.title ? 'border-[var(--color-urgent)]' : ''}`}
             />
             <FieldError error={fieldErrors.title} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={LABEL}>Department</label>
+              <label className={LABEL}>{t('department')}</label>
               <select
                 value={newDept}
                 onChange={(e) => setNewDept(e.target.value)}
@@ -266,7 +266,7 @@ export default function AdminCannedResponses() {
                 type="text"
                 value={newShortcut}
                 onChange={(e) => setNewShortcut(e.target.value)}
-                placeholder="e.g. /greet"
+                placeholder={t('canned_shortcut_placeholder')}
                 className={INPUT}
               />
             </div>
@@ -288,11 +288,11 @@ export default function AdminCannedResponses() {
           </div>
         )}
         <div className="mb-4">
-          <label className={LABEL}>Body *</label>
+          <label className={LABEL}>{t('canned_body_required_label')}</label>
           <textarea
             value={newBody}
             onChange={(e) => { setNewBody(e.target.value); setFieldErrors({}); }}
-            placeholder="Hello {{agentName}}, how can I help you today?"
+            placeholder={t('canned_body_placeholder')}
             rows={3}
             className={`${TEXTAREA} ${fieldErrors.body ? 'border-[var(--color-urgent)]' : ''}`}
           />
@@ -342,8 +342,8 @@ export default function AdminCannedResponses() {
       {/* Responses list */}
       <div className={`${CARD} overflow-hidden`}>
         <div className="grid grid-cols-[1fr_120px_120px_80px] border-b border-[var(--color-border)]">
-          <div className={COL_HEAD}>Title</div>
-          <div className={COL_HEAD}>Dept</div>
+          <div className={COL_HEAD}>{t('col_title')}</div>
+          <div className={COL_HEAD}>{t('col_dept')}</div>
           <div className={COL_HEAD}>{t('shortcut')}</div>
           <div className={COL_HEAD}></div>
         </div>
@@ -365,7 +365,7 @@ export default function AdminCannedResponses() {
                   <div className="border-b border-[var(--color-border)] last:border-b-0 p-4 bg-[var(--color-bg-elevated)]">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                       <div>
-                        <label className={LABEL}>Title</label>
+                        <label className={LABEL}>{t('col_title')}</label>
                         <input
                           type="text"
                           value={editTitle}
@@ -374,7 +374,7 @@ export default function AdminCannedResponses() {
                         />
                       </div>
                       <div>
-                        <label className={LABEL}>Dept</label>
+                        <label className={LABEL}>{t('col_dept')}</label>
                         <select
                           value={editDept}
                           onChange={(e) => setEditDept(e.target.value)}
@@ -392,7 +392,7 @@ export default function AdminCannedResponses() {
                           type="text"
                           value={editShortcut}
                           onChange={(e) => setEditShortcut(e.target.value)}
-                          placeholder="(none)"
+                          placeholder={t('canned_shortcut_none_placeholder')}
                           className={INPUT}
                         />
                       </div>
@@ -458,7 +458,7 @@ export default function AdminCannedResponses() {
                           if (isSource) {
                             return (
                               <div key={lang} className="mb-3">
-                                <label className={LABEL}>Body</label>
+                                <label className={LABEL}>{t('canned_body_label')}</label>
                                 <textarea
                                   value={editBody}
                                   onChange={(e) => setEditBody(e.target.value)}
@@ -468,7 +468,7 @@ export default function AdminCannedResponses() {
                                 />
                                 {bodyChangedFromOriginal && (
                                   <p className="text-[11px] text-[var(--color-ink-muted)] mt-1.5">
-                                    Saving will mark the other translations as stale.
+                                    {t('canned_save_marks_stale_hint')}
                                   </p>
                                 )}
                               </div>
@@ -508,7 +508,7 @@ export default function AdminCannedResponses() {
                       </>
                     ) : (
                       <div className="mb-3">
-                        <label className={LABEL}>Body</label>
+                        <label className={LABEL}>{t('canned_body_label')}</label>
                         <textarea
                           value={editBody}
                           onChange={(e) => setEditBody(e.target.value)}
@@ -550,7 +550,7 @@ export default function AdminCannedResponses() {
                         )}
                       </div>
                       <div className="px-4 py-3 text-[12px] text-[var(--color-ink-soft)] flex items-center">
-                        {cr.dept ? (departments.find(d => d.id === cr.dept)?.name || cr.dept) : <span className="italic text-[var(--color-ink-muted)]">global</span>}
+                        {cr.dept ? (departments.find(d => d.id === cr.dept)?.name || cr.dept) : <span className="italic text-[var(--color-ink-muted)]">{t('canned_global_inline')}</span>}
                       </div>
                       <div className="px-4 py-3 text-[12px] font-mono text-[var(--color-ink-soft)] flex items-center">
                         {cr.shortcut || <span className="italic font-sans text-[var(--color-ink-muted)]">—</span>}
@@ -559,8 +559,8 @@ export default function AdminCannedResponses() {
                         <button
                           onClick={(e) => { e.stopPropagation(); startEdit(cr); }}
                           className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
-                          title="Edit"
-                          aria-label={`Edit ${cr.title}`}
+                          title={t('edit')}
+                          aria-label={t('canned_edit_for_aria').replace('{title}', cr.title)}
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
@@ -568,8 +568,8 @@ export default function AdminCannedResponses() {
                           onClick={(e) => { e.stopPropagation(); deleteResponse(cr.id); }}
                           disabled={deleteMutation.isPending}
                           className={`${ICON_BTN} opacity-0 group-hover:opacity-100`}
-                          title="Delete"
-                          aria-label={`Delete ${cr.title}`}
+                          title={t('delete')}
+                          aria-label={t('canned_delete_for_aria').replace('{title}', cr.title)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -591,7 +591,7 @@ export default function AdminCannedResponses() {
 
       {responses && responses.length > 0 && (
         <div className="mt-3 text-[12px] text-[var(--color-ink-muted)] text-right">
-          {responses.length} response{responses.length !== 1 ? 's' : ''}
+          {t(responses.length === 1 ? 'canned_response_count_singular' : 'canned_response_count_plural').replace('{count}', String(responses.length))}
         </div>
       )}
     </div>
