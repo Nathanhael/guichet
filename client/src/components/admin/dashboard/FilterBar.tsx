@@ -2,6 +2,7 @@ import type {
   DashboardFilters,
   DashboardPreset,
 } from '../../../hooks/useDashboardFilters';
+import { useT } from '../../../i18n';
 
 /**
  * Dashboard filter bar — controlled component.
@@ -16,12 +17,7 @@ import type {
  * provided so the visual chrome stays in place.
  */
 
-const PRESET_BUTTONS: { value: DashboardPreset; label: string }[] = [
-  { value: 'today', label: 'Today' },
-  { value: '7d', label: '7d' },
-  { value: '14d', label: '14d' },
-  { value: '30d', label: '30d' },
-];
+const PRESET_VALUES: DashboardPreset[] = ['today', '7d', '14d', '30d'];
 
 export interface FilterBarProps {
   filters: DashboardFilters;
@@ -57,10 +53,15 @@ export function FilterBar({
   onExportCsv,
   onExportPdf,
 }: FilterBarProps) {
+  const t = useT();
+  const presetLabel = (value: DashboardPreset): string => {
+    if (value === 'today') return t('today');
+    return value;
+  };
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-1" role="group" aria-label="Date preset">
-        {PRESET_BUTTONS.map(({ value, label }) => {
+      <div className="flex items-center gap-1" role="group" aria-label={t('filter_date_preset_aria')}>
+        {PRESET_VALUES.map((value) => {
           const active = filters.preset === value;
           return (
             <button
@@ -70,17 +71,17 @@ export function FilterBar({
               onClick={() => applyPreset(value)}
               className={`${PRESET_BTN_BASE} ${active ? PRESET_BTN_ON : PRESET_BTN_OFF}`}
             >
-              {label}
+              {presetLabel(value)}
             </button>
           );
         })}
       </div>
 
       <label className="flex items-center gap-1.5 text-[12px] text-[var(--color-ink-muted)]">
-        <span className="sr-only">From date</span>
+        <span className="sr-only">{t('filter_from_date')}</span>
         <input
           type="date"
-          aria-label="From date"
+          aria-label={t('filter_from_date')}
           value={filters.dateFrom ?? ''}
           onChange={(e) =>
             setFilter('dateFrom', e.target.value === '' ? undefined : e.target.value)
@@ -90,10 +91,10 @@ export function FilterBar({
       </label>
 
       <label className="flex items-center gap-1.5 text-[12px] text-[var(--color-ink-muted)]">
-        <span className="sr-only">To date</span>
+        <span className="sr-only">{t('filter_to_date')}</span>
         <input
           type="date"
-          aria-label="To date"
+          aria-label={t('filter_to_date')}
           value={filters.dateTo ?? ''}
           onChange={(e) =>
             setFilter('dateTo', e.target.value === '' ? undefined : e.target.value)
@@ -103,16 +104,16 @@ export function FilterBar({
       </label>
 
       <label className="flex items-center gap-1.5 text-[12px] text-[var(--color-ink-muted)]">
-        <span className="sr-only">Department</span>
+        <span className="sr-only">{t('department')}</span>
         <select
-          aria-label="Department"
+          aria-label={t('department')}
           value={filters.dept ?? ''}
           onChange={(e) =>
             setFilter('dept', e.target.value === '' ? undefined : e.target.value)
           }
           className={INPUT}
         >
-          <option value="">All departments</option>
+          <option value="">{t('filter_all_departments_full')}</option>
           {departments.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name}
@@ -124,11 +125,11 @@ export function FilterBar({
       <label className="flex items-center gap-2 text-[12px] text-[var(--color-ink-muted)]">
         <input
           type="checkbox"
-          aria-label="Exclude weekends"
+          aria-label={t('filter_exclude_weekends')}
           checked={filters.excludeWeekends}
           onChange={(e) => setFilter('excludeWeekends', e.target.checked)}
         />
-        Exclude weekends
+        {t('filter_exclude_weekends')}
       </label>
 
       <div className="ml-auto flex items-center gap-2">
@@ -138,7 +139,7 @@ export function FilterBar({
           disabled={!onRefresh}
           className={SECONDARY_BTN}
         >
-          Refresh
+          {t('refresh')}
         </button>
         <button
           type="button"
@@ -146,7 +147,7 @@ export function FilterBar({
           disabled={!onExportCsv}
           className={SECONDARY_BTN}
         >
-          Export CSV
+          {t('export_csv')}
         </button>
         <button
           type="button"
@@ -154,7 +155,7 @@ export function FilterBar({
           disabled={!onExportPdf}
           className={SECONDARY_BTN}
         >
-          Export PDF
+          {t('filter_export_pdf')}
         </button>
       </div>
     </div>

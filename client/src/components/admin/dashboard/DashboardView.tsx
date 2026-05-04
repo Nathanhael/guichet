@@ -17,6 +17,7 @@ import {
   type OnboardingChecklistData,
 } from './OnboardingChecklist';
 import { exportDashboardCsv, exportDashboardPdf } from '../../../utils/dashboardExport';
+import { useT } from '../../../i18n';
 
 /**
  * AdminView default `dashboard` tab.
@@ -39,6 +40,7 @@ export interface DashboardViewProps {
 export function DashboardView({
   departments = [],
 }: DashboardViewProps = {}) {
+  const t = useT();
   const { filters, applyPreset, setFilter, reset } = useDashboardFilters();
 
   const range = useMemo(() => resolveDateRange(filters), [filters]);
@@ -140,7 +142,7 @@ export function DashboardView({
     >
       <header
         data-testid="dashboard-filter-bar"
-        aria-label="Dashboard filters"
+        aria-label={t('dashboard_filters_aria')}
         className="flex items-center justify-between"
       >
         <FilterBar
@@ -155,7 +157,7 @@ export function DashboardView({
         />
       </header>
 
-      <DashboardZone testId="dashboard-zone-actions" title="Action list">
+      <DashboardZone testId="dashboard-zone-actions" title={t('zone_action_list')}>
         <ActionList
           data={actionListData}
           loading={actionListQuery.isLoading}
@@ -163,7 +165,7 @@ export function DashboardView({
           onRetry={() => actionListQuery.refetch()}
         />
       </DashboardZone>
-      <DashboardZone testId="dashboard-zone-scorecard" title="Scorecard">
+      <DashboardZone testId="dashboard-zone-scorecard" title={t('zone_scorecard')}>
         <Scorecard
           data={scorecardData}
           loading={scorecardQuery.isLoading}
@@ -171,7 +173,7 @@ export function DashboardView({
           onRetry={() => scorecardQuery.refetch()}
         />
       </DashboardZone>
-      <DashboardZone testId="dashboard-zone-staffing" title="Staffing fit">
+      <DashboardZone testId="dashboard-zone-staffing" title={t('zone_staffing_fit')}>
         <StaffingHeatmapZone
           data={staffingHeatmapData}
           loading={staffingHeatmapQuery.isLoading}
@@ -180,7 +182,7 @@ export function DashboardView({
           excludeWeekends={filters.excludeWeekends}
         />
       </DashboardZone>
-      <DashboardZone testId="dashboard-zone-trends" title="Trends">
+      <DashboardZone testId="dashboard-zone-trends" title={t('zone_trends')}>
         <TrendsZone
           data={trendsData}
           loading={trendsQuery.isLoading}
@@ -188,7 +190,7 @@ export function DashboardView({
           onRetry={() => trendsQuery.refetch()}
         />
       </DashboardZone>
-      <DashboardZone testId="dashboard-zone-breakdown" title="Breakdown">
+      <DashboardZone testId="dashboard-zone-breakdown" title={t('zone_breakdown')}>
         <StaffBreakdownTable
           data={staffBreakdownData}
           loading={staffBreakdownQuery.isLoading}
