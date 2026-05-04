@@ -260,7 +260,7 @@ const en: Record<string, string> = {
     col_status: 'Status',
     col_access_scope: 'Access Scope',
     col_actions: 'Actions',
-    manage_access: 'Manage Access',
+    access_managed_in_azure_banner: 'Memberships and roles are read-only here. To grant, change, or revoke access, update the user’s Azure security group assignments in Entra.',
     partner_id: 'Partner ID',
     display_name: 'Display Name',
     save_profile: 'Save Profile',

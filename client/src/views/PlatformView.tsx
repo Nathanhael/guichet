@@ -10,17 +10,13 @@ import UserTable from '../components/platform/UserTable';
 import CreatePartnerModal from '../components/platform/CreatePartnerModal';
 import EditPartnerModal from '../components/platform/EditPartnerModal';
 import DeletePartnerModal from '../components/platform/DeletePartnerModal';
-import InviteUserModal from '../components/platform/InviteUserModal';
-import ManageAccessModal from '../components/platform/ManageAccessModal';
 import GroupMappingsPanel from '../components/platform/GroupMappingsPanel';
-import PendingInvitesTab from '../components/platform/PendingInvitesTab';
 import PlatformArchiveViewer from '../components/admin/PlatformArchiveViewer';
 import PlatformSecurity from '../components/platform/PlatformSecurity';
-import type { PlatformTab, Partner, GlobalUser } from '../components/platform/types';
+import type { PlatformTab, Partner } from '../components/platform/types';
 import {
   Building2,
   Users,
-  Mail,
   KeyRound,
   Activity,
   FileText,
@@ -48,8 +44,6 @@ export default function PlatformView() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
   const [partnerToDelete, setPartnerToDelete] = useState<Partner | null>(null);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [editingUser, setEditingUser] = useState<GlobalUser | null>(null);
 
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => readInitialWidth());
   const dragStateRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -109,7 +103,6 @@ export default function PlatformView() {
             <div className="flex flex-col gap-0.5">
               {navItem('partners', t('partners_tab'), <Building2 className="h-4 w-4" />)}
               {navItem('users', t('users_tab'), <Users className="h-4 w-4" />)}
-              {navItem('invites', t('invites_tab'), <Mail className="h-4 w-4" />)}
               {navItem('sso', t('sso_tab'), <KeyRound className="h-4 w-4" />)}
             </div>
 
@@ -140,13 +133,7 @@ export default function PlatformView() {
                 onDeletePartner={setPartnerToDelete}
               />
             )}
-            {activeTab === 'users' && (
-              <UserTable
-                onInviteClick={() => setShowInviteModal(true)}
-                onManageAccess={setEditingUser}
-              />
-            )}
-            {activeTab === 'invites' && <PendingInvitesTab />}
+            {activeTab === 'users' && <UserTable />}
             {activeTab === 'sso' && <GroupMappingsPanel />}
             {activeTab === 'ai-security' && <PlatformSecurity />}
             {activeTab === 'health' && <PlatformSystemHealth />}
@@ -158,8 +145,6 @@ export default function PlatformView() {
         <CreatePartnerModal open={showCreateModal} onClose={() => setShowCreateModal(false)} />
         <EditPartnerModal partner={editingPartner} onClose={() => setEditingPartner(null)} />
         <DeletePartnerModal partner={partnerToDelete} onClose={() => setPartnerToDelete(null)} />
-        <InviteUserModal open={showInviteModal} onClose={() => setShowInviteModal(false)} />
-        <ManageAccessModal user={editingUser} onClose={() => setEditingUser(null)} />
       </div>
     </ErrorBoundary>
   );

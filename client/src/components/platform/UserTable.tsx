@@ -1,26 +1,20 @@
 import { useState, useCallback } from 'react';
-import { UserPlus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import ConfirmDialog from '../ConfirmDialog';
 import Toast from '../Toast';
 import Button from '../ui/Button';
 import Pill from '../ui/Pill';
-import type { GlobalUser, PartnerMembership, UserRole } from './types';
+import type { PartnerMembership, UserRole } from './types';
 import { getRoleDisplayName } from '../../utils/roles';
-
-interface UserTableProps {
-  onInviteClick: () => void;
-  onManageAccess: (user: GlobalUser) => void;
-}
 
 const INPUT =
   'w-full h-9 px-3 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] text-[13px] text-[var(--color-ink)] border border-transparent focus:border-[var(--color-accent)] focus:outline-none placeholder:text-[var(--color-ink-muted)]';
 const TH = 'px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
-export default function UserTable({ onInviteClick, onManageAccess }: UserTableProps) {
+export default function UserTable() {
   const t = useT();
-  const utils = trpc.useUtils();
   const [userSearch, setUserSearch] = useState('');
   const [selectedPartnerId, setSelectedPartnerId] = useState<string>('all');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -31,10 +25,6 @@ export default function UserTable({ onInviteClick, onManageAccess }: UserTablePr
   const { data: globalUsersData } = trpc.platform.listGlobalUsers.useQuery();
   const globalUsers = globalUsersData?.users;
   const { data: partners } = trpc.platform.listPartners.useQuery();
-
-  const deleteUser = trpc.platform.deleteUser.useMutation({
-    onSuccess: () => utils.platform.listGlobalUsers.invalidate(),
-  });
 
   const revokeSessions = trpc.user.revokeSessions.useMutation({
     onSuccess: () => showToast('Sessions revoked'),
@@ -90,9 +80,6 @@ export default function UserTable({ onInviteClick, onManageAccess }: UserTablePr
             </div>
           </div>
         </div>
-        <Button variant="primary" size="md" leading={<UserPlus className="h-3.5 w-3.5" />} onClick={onInviteClick} className="shrink-0">
-          {t('invite_new_user')}
-        </Button>
       </div>
 
       <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] shadow-[var(--shadow-card)] overflow-hidden">
@@ -157,31 +144,20 @@ export default function UserTable({ onInviteClick, onManageAccess }: UserTablePr
                   </td>
                   <td className="px-4 py-3 text-right align-top">
                     <div className="flex flex-wrap justify-end gap-1.5">
-                      <Button variant="secondary" size="sm" onClick={() => onManageAccess(u)}>{t('manage_access')}</Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setConfirmDialog({
-                          title: 'Revoke Sessions',
-                          message: `Force sign-out all active sessions for ${u.name}?`,
-                          confirmLabel: 'Revoke Sessions',
-                          onConfirm: () => { revokeSessions.mutate({ userId: u.id }); setConfirmDialog(null); },
-                        })}
-                      >
-                        Revoke Sessions
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => setConfirmDialog({
-                          title: t('delete_account'),
-                          message: t('confirm_delete_account').replace('{name}', u.name),
-                          confirmLabel: t('delete_account'),
-                          onConfirm: () => { deleteUser.mutate(u.id); setConfirmDialog(null); },
-                        })}
-                      >
-                        {t('delete_account')}
-                      </Button>
+                      {u.externalId && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmDialog({
+                            title: 'Revoke Sessions',
+                            message: `Force sign-out all active sessions for ${u.name}?`,
+                            confirmLabel: 'Revoke Sessions',
+                            onConfirm: () => { revokeSessions.mutate({ userId: u.id }); setConfirmDialog(null); },
+                          })}
+                        >
+                          Revoke Sessions
+                        </Button>
+                      )}
                     </div>
                   </td>
                 </tr>

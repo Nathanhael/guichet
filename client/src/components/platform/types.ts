@@ -1,4 +1,4 @@
-export type PlatformTab = 'partners' | 'users' | 'invites' | 'sso' | 'ai-security' | 'health' | 'audit' | 'archive';
+export type PlatformTab = 'partners' | 'users' | 'sso' | 'ai-security' | 'health' | 'audit' | 'archive';
 export type UserRole = 'agent' | 'support' | 'admin' | 'platform_operator';
 
 export interface PartnerMembership {
@@ -6,6 +6,7 @@ export interface PartnerMembership {
   partnerId: string;
   partnerName: string;
   role: string;
+  source: 'sso' | 'manual';
 }
 
 export type ImprovementMode = 'off' | 'optional' | 'forced';
