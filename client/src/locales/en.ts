@@ -744,6 +744,27 @@ const en: Record<string, string> = {
     archive_image_alt: 'attachment',
     archive_read_only: 'Read-only archive — conversation closed',
 
+    // AdminSatisfaction — CSAT analytics dashboard
+    satisfaction_title: 'Satisfaction Analytics',
+    satisfaction_desc: 'Ticket ratings, trends and per-staff comparison',
+    csat_all_depts: 'All Depts',
+    col_avg: 'Avg',
+    col_stars: 'Stars',
+    col_total: 'Total',
+    col_rank: 'Rank',
+    no_data_short: 'No data',
+    rating_star_singular: '{count} Star',
+    rating_star_plural: '{count} Stars',
+    chart_avg_rating: 'Avg Rating',
+    chart_count: 'Count',
+    panel_rating_trend: 'Rating Trend',
+    panel_rating_distribution: 'Rating Distribution',
+    panel_by_department: 'By Department',
+    panel_staff_leaderboard: 'Staff Leaderboard',
+    stat_average_rating: 'Average Rating',
+    stat_total_ratings: 'Total Ratings',
+    stat_comment_rate: 'Comment Rate',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Bold',
     fmt_italic: 'Italic',
