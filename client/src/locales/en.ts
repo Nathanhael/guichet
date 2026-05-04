@@ -685,6 +685,20 @@ const en: Record<string, string> = {
     unpublish: 'Unpublish',
     tags: 'Tags',
     content: 'Content',
+    // AdminKnowledgeBase — placeholders + per-row actions
+    kb_title_placeholder: 'e.g. How to reset a customer password',
+    kb_body_placeholder: 'Write the article content here… (Markdown supported)',
+    kb_dept_placeholder: '(all)',
+    kb_tags_placeholder_create: 'billing, faq',
+    kb_tags_placeholder_edit: 'tag1, tag2',
+    kb_dept_fallback_all: 'all',
+    kb_publish_for_aria: 'Publish {title}',
+    kb_unpublish_for_aria: 'Unpublish {title}',
+    kb_edit_for_aria: 'Edit {title}',
+    kb_delete_for_aria: 'Delete {title}',
+    kb_article_count_singular: '{count} article',
+    kb_article_count_plural: '{count} articles',
+    kb_of_total_count: '(of {total})',
 
     // Webhooks
     webhooks: 'Webhooks',
