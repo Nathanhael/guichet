@@ -658,6 +658,20 @@ const nl: Record<string, string> = {
     unpublish: 'Depubliceren',
     tags: 'Tags',
     content: 'Inhoud',
+    // AdminKnowledgeBase — placeholders + per-row actions
+    kb_title_placeholder: 'bijv. Een klantwachtwoord opnieuw instellen',
+    kb_body_placeholder: 'Schrijf de artikelinhoud hier… (Markdown ondersteund)',
+    kb_dept_placeholder: '(alle)',
+    kb_tags_placeholder_create: 'facturatie, faq',
+    kb_tags_placeholder_edit: 'tag1, tag2',
+    kb_dept_fallback_all: 'alle',
+    kb_publish_for_aria: '{title} publiceren',
+    kb_unpublish_for_aria: '{title} depubliceren',
+    kb_edit_for_aria: '{title} bewerken',
+    kb_delete_for_aria: '{title} verwijderen',
+    kb_article_count_singular: '{count} artikel',
+    kb_article_count_plural: '{count} artikelen',
+    kb_of_total_count: '(van {total})',
 
     // Webhooks
     webhooks: 'Webhooks',
