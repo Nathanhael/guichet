@@ -52,7 +52,7 @@ export async function translateFirstAgentMessage(
   if (!senderLang || senderLang === supportLang) return null;
   if (!SUPPORTED_LANGS.has(supportLang)) return null;
 
-  let translationEnabled = false;
+  let translationEnabled: boolean;
   try {
     translationEnabled = await isFeatureEnabled(partnerId, 'translation');
   } catch {
