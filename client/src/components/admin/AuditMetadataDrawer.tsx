@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X, Check, Copy } from 'lucide-react';
+import { useT } from '../../i18n';
 
 export type AuditEntry = {
   id: string;
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Props) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
       />
       <aside
         role="dialog"
-        aria-label="Audit entry details"
+        aria-label={t('audit_entry_details')}
         className="fixed top-0 right-0 h-full w-full max-w-xl bg-[var(--color-bg-surface)] shadow-[var(--shadow-modal)] z-50 overflow-y-auto flex flex-col"
       >
         <div className="flex justify-between items-start p-5 border-b border-[var(--color-border)]">
@@ -78,7 +80,7 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
           <button
             onClick={onClose}
             className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors shrink-0"
-            aria-label="Close"
+            aria-label={t('close')}
           >
             <X className="h-4 w-4" />
           </button>
@@ -86,12 +88,12 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
 
         <div className="p-5 space-y-4 border-b border-[var(--color-border)]">
           <Field
-            label="Actor"
-            value={entry.actorName || entry.actorId || 'System'}
+            label={t('col_actor')}
+            value={entry.actorName || entry.actorId || t('system')}
             action={
               onFilterBy && entry.actorId
                 ? {
-                    label: 'Filter by actor',
+                    label: t('audit_filter_by_actor'),
                     onClick: () => {
                       onFilterBy('actorId', entry.actorId!);
                       onClose();
@@ -101,12 +103,12 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
             }
           />
           <Field
-            label="Target type"
+            label={t('col_target_type')}
             value={entry.targetType || '—'}
             action={
               onFilterBy && entry.targetType
                 ? {
-                    label: 'Filter',
+                    label: t('audit_filter'),
                     onClick: () => {
                       onFilterBy('targetType', entry.targetType!);
                       onClose();
@@ -116,13 +118,13 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
             }
           />
           <Field
-            label="Target id"
+            label={t('col_target_id')}
             value={entry.targetId || '—'}
             mono
             action={
               onFilterBy && entry.targetId
                 ? {
-                    label: 'Filter',
+                    label: t('audit_filter'),
                     onClick: () => {
                       onFilterBy('targetId', entry.targetId!);
                       onClose();
@@ -132,14 +134,14 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
             }
           />
           {entry.partnerId !== undefined && (
-            <Field label="Partner id" value={entry.partnerId || '—'} mono />
+            <Field label={t('col_partner_id')} value={entry.partnerId || '—'} mono />
           )}
-          <Field label="Audit entry id" value={entry.id} mono />
+          <Field label={t('audit_entry_id_label')} value={entry.id} mono />
         </div>
 
         {diffRows.length > 0 && (
           <div className="p-5 border-b border-[var(--color-border)]">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-3">Changes</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mb-3">{t('audit_changes_section')}</p>
             <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] overflow-hidden">
               <table
                 className="w-full border-collapse"
@@ -147,9 +149,9 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
               >
                 <thead>
                   <tr className="border-b border-[var(--color-border)]">
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">Field</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">Before</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">After</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('audit_diff_col_field')}</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('audit_diff_col_before')}</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]">{t('audit_diff_col_after')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
@@ -168,13 +170,13 @@ export default function AuditMetadataDrawer({ entry, onClose, onFilterBy }: Prop
 
         <div className="p-5 flex-1">
           <div className="flex justify-between items-center mb-3 gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">Metadata (JSON)</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">{t('audit_metadata_json')}</p>
             <button
               onClick={handleCopy}
               className="h-7 px-2.5 inline-flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-hover)] text-[12px] font-medium text-[var(--color-ink)] transition-colors"
               id="audit-drawer-copy"
             >
-              {copied ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy JSON</>}
+              {copied ? <><Check className="h-3 w-3" /> {t('audit_copied')}</> : <><Copy className="h-3 w-3" /> {t('audit_copy_json')}</>}
             </button>
           </div>
           <pre

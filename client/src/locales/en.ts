@@ -855,6 +855,26 @@ const en: Record<string, string> = {
     toast_dept_name_required: 'Department name is required.',
     toast_ref_field_labels_unique: 'Reference field labels must be unique.',
 
+    // AuditMetadataDrawer + CrossPartnerActivityPanel
+    audit_entry_details: 'Audit entry details',
+    audit_entry_id_label: 'Audit entry id',
+    audit_filter_by_actor: 'Filter by actor',
+    audit_filter: 'Filter',
+    audit_changes_section: 'Changes',
+    audit_diff_col_field: 'Field',
+    audit_diff_col_before: 'Before',
+    audit_diff_col_after: 'After',
+    audit_metadata_json: 'Metadata (JSON)',
+    audit_copy_json: 'Copy JSON',
+    audit_copied: 'Copied',
+    cross_partner_loading: 'Loading cross-partner activity…',
+    cross_partner_title: 'Cross-partner activity (top {count})',
+    cross_partner_total_events: '{count} total events',
+    col_events: 'Events',
+    col_pct_of_total: '% of total',
+    col_last_activity: 'Last activity',
+    cross_partner_filter_btn: 'Filter →',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Bold',
     fmt_italic: 'Italic',
