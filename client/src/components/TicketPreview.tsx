@@ -61,7 +61,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
     };
   }, [ticket.id, isStatic, trpcUtils]);
 
-  const modeLabel = readOnly ? (t('history_mode') || 'Archived') : (t('preview_mode') || 'Preview');
+  const modeLabel = readOnly ? (t('history_mode')) : (t('preview_mode'));
 
   return (
     <div className="h-full flex flex-col p-4">
@@ -85,7 +85,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
             )}
             <button
               onClick={onClose}
-              aria-label={t('close') || 'Close'}
+              aria-label={t('close')}
               className="w-8 h-8 inline-flex items-center justify-center rounded-[var(--radius-btn)] text-[var(--color-ink-soft)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
             >
               <X className="h-4 w-4" />
@@ -97,7 +97,7 @@ export default function TicketPreview({ ticket, messages: propMessages, onJoin, 
           {messageQuery.isLoading ? (
             <div className="h-full flex flex-col items-center justify-center gap-3">
               <div className="h-6 w-6 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin" />
-              <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading') || 'Loading'}</p>
+              <p className="text-[12px] text-[var(--color-ink-muted)]">{t('loading')}</p>
             </div>
           ) : !messages || messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center">

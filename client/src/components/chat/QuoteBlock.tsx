@@ -60,7 +60,7 @@ export default function QuoteBlock({
     >
       <div className="text-[11px] font-semibold text-[var(--color-accent)] truncate">{senderName}</div>
       <div className="text-[12px] text-[var(--color-ink-soft)] truncate">
-        {isDeleted ? <em className="text-[var(--color-ink-muted)]">{t('message_deleted') || 'Message deleted'}</em> : (displayText || '[Attachment]')}
+        {isDeleted ? <em className="text-[var(--color-ink-muted)]">{t('message_deleted')}</em> : (displayText || '[Attachment]')}
       </div>
     </div>
   );

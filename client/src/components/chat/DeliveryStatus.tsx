@@ -9,7 +9,7 @@ export default function DeliveryStatus({ deliveredAt, readAt }: DeliveryStatusPr
   const t = useT();
   const isRead = !!readAt;
   const isDelivered = !!deliveredAt;
-  const label = isRead ? (t('status_read') || 'Read') : isDelivered ? (t('status_delivered') || 'Delivered') : (t('status_sent') || 'Sent');
+  const label = isRead ? (t('status_read')) : isDelivered ? (t('status_delivered')) : (t('status_sent'));
   const color = isRead ? 'var(--color-accent)' : 'var(--color-ink-muted)';
   const showDouble = isDelivered || isRead;
 

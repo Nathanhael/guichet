@@ -862,8 +862,6 @@ const en: Record<string, string> = {
     admin_ai_save: 'Save',
     admin_ai_saved_toast: 'AI customization saved',
 
-    // Missing-key cleanup — keys referenced in components without translations,
-    // which previously rendered as raw `snake_case` text via `t(k) || 'fallback'`.
     active_workspace: 'Active workspace',
     collapse_sidebar: 'Collapse sidebar',
     delete: 'Delete',

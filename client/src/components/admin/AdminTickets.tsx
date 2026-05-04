@@ -195,7 +195,7 @@ export default function AdminTickets() {
         <div className="p-3 border-b border-[var(--color-border)]">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
-              {t('live_queue') || 'Ticket Queue'} <span className="text-[var(--color-ink-soft)]">({filteredTickets.length})</span>
+              {t('live_queue')} <span className="text-[var(--color-ink-soft)]">({filteredTickets.length})</span>
             </h2>
             {ticketsQuery.isFetching && (
               <div className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-[v2p-pulse_1.8s_ease-in-out_infinite]" />
@@ -250,7 +250,7 @@ export default function AdminTickets() {
                 onClick={() => setDeptFilter('all')}
                 className={deptChipClass(deptFilter === 'all')}
               >
-                {t('all') || 'All'}
+                {t('all')}
                 <span className={`text-[10px] tabular-nums ${deptFilter === 'all' ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{deptCounts.all || 0}</span>
               </button>
               {departments.map((dept) => (
@@ -271,16 +271,16 @@ export default function AdminTickets() {
           {langCounts.size >= 2 && (
             <div className="flex items-center gap-1 flex-wrap pt-1.5 mt-2 border-t border-[var(--color-border)]">
               <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mr-1">
-                {t('lang_label') || 'Lang'}
+                {t('lang_label')}
               </span>
               <button
                 onClick={() => setFilterLang(null)}
                 className={deptChipClass(filterLang === null)}
                 title={translationEnabled
-                  ? (t('lang_filter_all_translated') || 'Show all languages')
-                  : (t('lang_filter_all_no_translation') || 'Show all — you may not speak some')}
+                  ? (t('lang_filter_all_translated'))
+                  : (t('lang_filter_all_no_translation'))}
               >
-                {t('all') || 'All'}
+                {t('all')}
                 <span className={`text-[10px] tabular-nums ${filterLang === null ? 'text-white/80' : 'text-[var(--color-accent)]'}`}>{langTotal}</span>
               </button>
               {Array.from(langCounts.keys())
@@ -291,7 +291,7 @@ export default function AdminTickets() {
                     onClick={() => setFilterLang(filterLang === lang ? null : lang)}
                     className={deptChipClass(filterLang === lang)}
                     title={lang === viewerLang
-                      ? (t('lang_filter_your_lang') || 'Your language')
+                      ? (t('lang_filter_your_lang'))
                       : translationEnabled
                         ? `Filter to ${lang.toUpperCase()}`
                         : `${lang.toUpperCase()} — translation is off`}
@@ -318,7 +318,7 @@ export default function AdminTickets() {
           {filteredTickets.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-40 text-[var(--color-ink-muted)]">
               <Inbox className="h-10 w-10 mb-2 opacity-40" strokeWidth={1.5} />
-              <p className="text-[12px]">{t('queue_empty') || 'No tickets found'}</p>
+              <p className="text-[12px]">{t('queue_empty')}</p>
             </div>
           ) : (
             <div>
@@ -382,8 +382,8 @@ export default function AdminTickets() {
             <div className="w-16 h-16 rounded-[var(--radius-card)] bg-[var(--color-bg-elevated)] flex items-center justify-center mb-4">
               <MessageSquare className="h-8 w-8 text-[var(--color-ink-muted)] opacity-70" strokeWidth={1.5} />
             </div>
-            <h3 className="text-[16px] font-semibold text-[var(--color-ink)]">{t('active_workspace') || 'Active Workspace'}</h3>
-            <p className="text-[13px] mt-1.5 text-[var(--color-ink-muted)]">{t('select_ticket_hint') || 'Select a ticket from the queue to start'}</p>
+            <h3 className="text-[16px] font-semibold text-[var(--color-ink)]">{t('active_workspace')}</h3>
+            <p className="text-[13px] mt-1.5 text-[var(--color-ink-muted)]">{t('select_ticket_hint')}</p>
           </div>
         ) : (
           <div className="flex-1 flex flex-col overflow-hidden">

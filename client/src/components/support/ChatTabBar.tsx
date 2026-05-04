@@ -20,7 +20,7 @@ export default function ChatTabBar({ tabs, activeTab, onSelectTab, onCloseTab }:
     return (
       <div className="border-b border-[var(--color-border)] px-4 py-3">
         <span className="text-[12px] text-[var(--color-ink-muted)]">
-          {t('no_active_chats') || 'No active chats'}
+          {t('no_active_chats')}
         </span>
       </div>
     );

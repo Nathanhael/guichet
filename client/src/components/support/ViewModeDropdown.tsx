@@ -52,9 +52,9 @@ export default function ViewModeDropdown() {
       <button
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
-        aria-label={t('view_mode') || 'View Mode'}
+        aria-label={t('view_mode')}
         aria-expanded={open}
-        title={t('view_mode') || 'View Mode'}
+        title={t('view_mode')}
         className="flex items-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-surface)] border border-[var(--color-border)] px-2 py-1.5 hover:bg-[var(--color-hover)] text-[var(--color-ink)] transition-colors"
       >
         <span className="text-sm leading-none">{current.icon}</span>

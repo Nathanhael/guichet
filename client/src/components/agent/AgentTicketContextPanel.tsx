@@ -48,8 +48,8 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
   const supportJoined = !!ticket.supportId && !!ticket.supportName;
 
   const statusLabel = isClosed
-    ? t('status_closed') || 'Closed'
-    : t('waiting_for_support') || 'Waiting for support…';
+    ? t('status_closed')
+    : t('waiting_for_support');
 
   const statusDot = isClosed
     ? 'bg-[var(--color-ink-muted)]'
@@ -62,7 +62,7 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
           <Avatar name={ticket.supportName!} size={36} statusDot="online" />
           <div className="flex flex-col min-w-0">
             <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
-              {t('connected_with') || 'Connected with'}
+              {t('connected_with')}
             </span>
             <span className="text-[13px] font-semibold text-[var(--color-ink)] truncate">
               {ticket.supportName}
@@ -76,14 +76,14 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
         </div>
       )}
 
-      <Row label={t('department') || 'Department'}>
+      <Row label={t('department')}>
         <span className="inline-flex items-center rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[var(--color-accent)] text-[11px] font-semibold px-2 py-0.5 leading-none">
           {departmentName}
         </span>
       </Row>
 
       {ticket.agentLang && (
-        <Row label={t('language') || 'Language'}>
+        <Row label={t('language')}>
           <span className="inline-flex items-center rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] text-[var(--color-ink-muted)] text-[11px] font-medium px-1.5 py-0.5">
             {ticket.agentLang.toUpperCase()}
           </span>
@@ -93,7 +93,7 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
       {allRefs.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
-            {t('references') || 'References'}
+            {t('references')}
           </span>
           {allRefs.map((ref, idx) => (
             <button
@@ -117,7 +117,7 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
         </div>
       )}
 
-      <Row label={t('started') || 'Started'}>
+      <Row label={t('started')}>
         <span className="text-[12px] text-[var(--color-ink-soft)] tabular-nums">{getTicketTime(ticket.createdAt)}</span>
       </Row>
 
@@ -128,7 +128,7 @@ export default function AgentTicketContextPanel({ ticket, onRequestClose }: Agen
           className="mt-2 w-full h-9 flex items-center justify-center gap-1.5 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-danger-soft)] text-[var(--color-ink)] hover:text-[var(--color-danger)] text-[13px] font-medium transition-colors"
         >
           <X className="h-3.5 w-3.5" />
-          {t('close') || 'Close'}
+          {t('close')}
         </button>
       )}
     </div>

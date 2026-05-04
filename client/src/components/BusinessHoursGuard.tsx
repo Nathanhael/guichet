@@ -53,7 +53,7 @@ export default function BusinessHoursGuard({ children, mode = 'block' }: Busines
                 <Pause className="h-6 w-6 text-[var(--color-accent-amber)]" strokeWidth={2} />
               </div>
               <h1 className="text-[24px] font-semibold tracking-[-0.3px] mb-2">
-                {t('support_chat_closed') || 'Support is closed'}
+                {t('support_chat_closed')}
               </h1>
               <p className="text-[13px] text-[var(--color-ink-muted)] leading-relaxed mb-6 max-w-sm mx-auto">
                 New requests can't be submitted right now. Existing conversations remain available when already open.

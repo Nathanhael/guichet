@@ -27,11 +27,11 @@ export default function TicketSidebar({ ticket, onPreviewTicket, onToggle }: Tic
   return (
     <>
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]">
-        <SectionLabel>{t('ticket_context') || 'Context'}</SectionLabel>
+        <SectionLabel>{t('ticket_context')}</SectionLabel>
         <button
           onClick={onToggle}
           className="p-1 rounded-[var(--radius-btn)] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)] hover:bg-[var(--color-hover)] transition-colors"
-          title={t('collapse_sidebar') || 'Collapse'}
+          title={t('collapse_sidebar')}
         >
           <ChevronRight className="h-4 w-4" strokeWidth={2} />
         </button>
@@ -40,12 +40,12 @@ export default function TicketSidebar({ ticket, onPreviewTicket, onToggle }: Tic
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-4">
         <section>
           <div className="mb-2 flex items-center gap-1.5">
-            <SectionLabel>{t('past_tickets') || 'History'}</SectionLabel>
+            <SectionLabel>{t('past_tickets')}</SectionLabel>
             <span className="text-[11px] text-[var(--color-ink-muted)] tabular-nums">({pastList.length})</span>
           </div>
           {pastList.length === 0 ? (
             <p className="text-[12px] text-[var(--color-ink-muted)] italic">
-              {t('no_history') || 'First contact'}
+              {t('no_history')}
             </p>
           ) : (
             <div className="space-y-2">

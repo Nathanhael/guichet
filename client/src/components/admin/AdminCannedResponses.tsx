@@ -223,7 +223,7 @@ export default function AdminCannedResponses() {
         <button
           onClick={() => refetch()}
           className="w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors"
-          title={t('refresh') || 'Refresh'}
+          title={t('refresh')}
         >
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
@@ -254,7 +254,7 @@ export default function AdminCannedResponses() {
                 onChange={(e) => setNewDept(e.target.value)}
                 className={INPUT}
               >
-                <option value="">{t('global') || 'Global (all depts)'}</option>
+                <option value="">{t('global')}</option>
                 {departments.map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
@@ -350,7 +350,7 @@ export default function AdminCannedResponses() {
 
         {isLoading ? (
           <div className="px-4 py-8 text-center text-[13px] text-[var(--color-ink-muted)]">
-            {t('loading') || 'Loading…'}
+            {t('loading')}
           </div>
         ) : !responses || responses.length === 0 ? (
           <div className="px-4 py-12 text-center text-[13px] text-[var(--color-ink-muted)]">
@@ -380,7 +380,7 @@ export default function AdminCannedResponses() {
                           onChange={(e) => setEditDept(e.target.value)}
                           className={INPUT}
                         >
-                          <option value="">{t('global') || 'Global (all depts)'}</option>
+                          <option value="">{t('global')}</option>
                           {departments.map((d) => (
                             <option key={d.id} value={d.id}>{d.name}</option>
                           ))}

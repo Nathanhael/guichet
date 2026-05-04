@@ -101,7 +101,7 @@ export default function LoginView() {
       <div className="h-screen w-screen flex items-center justify-center bg-[var(--color-bg-base)]">
         <div className="flex flex-col items-center gap-4">
           <div className="h-8 w-8 rounded-full border-2 border-[var(--color-border)] border-t-[var(--color-accent)] animate-spin" />
-          <p className="text-[13px] text-[var(--color-ink-soft)]">{t('loading') || 'Loading...'}</p>
+          <p className="text-[13px] text-[var(--color-ink-soft)]">{t('loading')}</p>
         </div>
       </div>
     );
@@ -223,7 +223,7 @@ export default function LoginView() {
               <div className="flex items-center gap-3 pt-1">
                 <div className="flex-1 h-px bg-[var(--color-border)]" />
                 <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--color-ink-muted)]">
-                  {t('or') || 'or'}
+                  {t('or')}
                 </span>
                 <div className="flex-1 h-px bg-[var(--color-border)]" />
               </div>

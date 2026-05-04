@@ -52,9 +52,9 @@ export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardP
 
         {/* Last 3 messages */}
         <div className="px-5 py-4">
-          <SectionLabel className="mb-3">{t('recent_messages') || 'Recent messages'}</SectionLabel>
+          <SectionLabel className="mb-3">{t('recent_messages')}</SectionLabel>
           {messages.length === 0 ? (
-            <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_data') || 'No messages'}</p>
+            <p className="text-[12px] text-[var(--color-ink-muted)]">{t('no_data')}</p>
           ) : (
             <div className="flex flex-col gap-3">
               {messages.map((msg) => (
@@ -73,7 +73,7 @@ export default function TicketPreviewCard({ ticket, onJoin }: TicketPreviewCardP
         {/* Join button */}
         <div className="px-5 py-4 border-t border-[var(--color-border)]">
           <Button variant="primary" size="md" className="w-full" onClick={() => onJoin(ticket)}>
-            {t('join_ticket') || 'Join'}
+            {t('join_ticket')}
           </Button>
         </div>
       </div>

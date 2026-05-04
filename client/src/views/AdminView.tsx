@@ -159,8 +159,8 @@ export default function AdminView() {
             <div className="flex flex-col gap-0.5">
               {navItem('business_hours', 'Business Hours', <Clock className="h-4 w-4" />)}
               {navItem('labels', t('labels'), <Tag className="h-4 w-4" />)}
-              {navItem('canned_responses', t('canned_responses') || 'Quick Replies', <Zap className="h-4 w-4" />)}
-              {navItem('ai_customization', t('admin_tab_ai') || 'AI Customization', <Sparkles className="h-4 w-4" />)}
+              {navItem('canned_responses', t('canned_responses'), <Zap className="h-4 w-4" />)}
+              {navItem('ai_customization', t('admin_tab_ai'), <Sparkles className="h-4 w-4" />)}
               {/* DISABLED_FEATURE: Knowledge Base, Webhooks — NavButtons hidden until production-ready */}
             </div>
           </nav>
