@@ -697,6 +697,26 @@ const fr: Record<string, string> = {
     wh_recent_deliveries: 'Livraisons r\u00e9centes',
     wh_no_deliveries: 'Aucune livraison',
 
+    // AdminArchive — filter chrome + table + preview pane
+    archive_search_title: 'Correspond au nom de l\'agent, au nom du support ou à toute valeur de référence (ID commande, # suivi, # dossier, …)',
+    archive_start_date_aria: 'Date de début',
+    archive_end_date_aria: 'Date de fin',
+    archive_filter_dept_aria: 'Filtrer par département',
+    archive_filter_support_aria: 'Filtrer par agent de support',
+    archive_all_depts: 'Tous les départements',
+    archive_all_support: 'Tout le support',
+    archive_abandoned_no_support: 'Abandonné (aucun support)',
+    archive_all_labels: 'Tous les libellés',
+    archive_no_label: 'Aucun libellé',
+    archive_has_label: 'Avec libellé',
+    archive_col_ref: 'Réf',
+    archive_col_duration: 'Durée',
+    archive_abandoned_inline: 'Abandonné',
+    archive_chats_loaded: '{count} discussions chargées',
+    archive_no_support_joined: 'Aucun support rattaché',
+    archive_image_alt: 'pièce jointe',
+    archive_read_only: 'Archive en lecture seule — conversation terminée',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Gras',
     fmt_italic: 'Italique',
