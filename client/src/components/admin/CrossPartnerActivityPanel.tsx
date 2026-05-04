@@ -1,4 +1,5 @@
 import { trpc } from '../../utils/trpc';
+import { useT } from '../../i18n';
 
 /**
  * Cross-partner audit activity rollup.
@@ -18,6 +19,7 @@ type Props = {
 const COL_HEAD = 'px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--color-ink-muted)]';
 
 export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPartner }: Props) {
+  const t = useT();
   const { data, isLoading } = trpc.platform.getCrossPartnerActivity.useQuery(
     { dateFrom, dateTo, limit: 10 },
     { refetchOnWindowFocus: false, staleTime: 30_000 },
@@ -26,7 +28,7 @@ export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPa
   if (isLoading) {
     return (
       <div className="rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-5">
-        <p className="text-[13px] text-[var(--color-ink-muted)]">Loading cross-partner activity…</p>
+        <p className="text-[13px] text-[var(--color-ink-muted)]">{t('cross_partner_loading')}</p>
       </div>
     );
   }
@@ -43,19 +45,19 @@ export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPa
       data-testid="cross-partner-activity-panel"
     >
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-        <p className="text-[13px] font-semibold text-[var(--color-ink)]">Cross-partner activity (top {data.length})</p>
+        <p className="text-[13px] font-semibold text-[var(--color-ink)]">{t('cross_partner_title').replace('{count}', String(data.length))}</p>
         <p className="text-[12px] text-[var(--color-ink-muted)] tabular-nums">
-          {total.toLocaleString()} total events
+          {t('cross_partner_total_events').replace('{count}', total.toLocaleString())}
         </p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-[var(--color-border)]">
-              <th className={COL_HEAD}>Partner</th>
-              <th className={`${COL_HEAD} text-right`}>Events</th>
-              <th className={`${COL_HEAD} text-right`}>% of total</th>
-              <th className={COL_HEAD}>Last activity</th>
+              <th className={COL_HEAD}>{t('col_partner')}</th>
+              <th className={`${COL_HEAD} text-right`}>{t('col_events')}</th>
+              <th className={`${COL_HEAD} text-right`}>{t('col_pct_of_total')}</th>
+              <th className={COL_HEAD}>{t('col_last_activity')}</th>
               <th className={COL_HEAD} />
             </tr>
           </thead>
@@ -85,7 +87,7 @@ export default function CrossPartnerActivityPanel({ dateFrom, dateTo, onSelectPa
                       data-testid={`cross-partner-activity-select-${partnerId}`}
                       className="text-[12px] font-medium px-2.5 h-7 rounded-[var(--radius-pill)] bg-[var(--color-bg-elevated)] hover:bg-[var(--color-accent-soft)] hover:text-[var(--color-accent)] text-[var(--color-ink-soft)] transition-colors"
                     >
-                      Filter →
+                      {t('cross_partner_filter_btn')}
                     </button>
                   </td>
                 </tr>

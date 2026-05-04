@@ -828,6 +828,26 @@ const nl: Record<string, string> = {
     toast_dept_name_required: 'Afdelingsnaam is verplicht.',
     toast_ref_field_labels_unique: 'Labels van referentievelden moeten uniek zijn.',
 
+    // AuditMetadataDrawer + CrossPartnerActivityPanel
+    audit_entry_details: 'Auditrecord-details',
+    audit_entry_id_label: 'Auditrecord-id',
+    audit_filter_by_actor: 'Filteren op actor',
+    audit_filter: 'Filteren',
+    audit_changes_section: 'Wijzigingen',
+    audit_diff_col_field: 'Veld',
+    audit_diff_col_before: 'Voor',
+    audit_diff_col_after: 'Na',
+    audit_metadata_json: 'Metadata (JSON)',
+    audit_copy_json: 'JSON kopiëren',
+    audit_copied: 'Gekopieerd',
+    cross_partner_loading: 'Cross-partner-activiteit laden…',
+    cross_partner_title: 'Cross-partner-activiteit (top {count})',
+    cross_partner_total_events: '{count} totale gebeurtenissen',
+    col_events: 'Gebeurtenissen',
+    col_pct_of_total: '% van totaal',
+    col_last_activity: 'Laatste activiteit',
+    cross_partner_filter_btn: 'Filteren →',
+
     // Format toolbar (chat compose)
     fmt_bold: 'Vet',
     fmt_italic: 'Cursief',
