@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { X } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import ConfirmDialog from '../ConfirmDialog';
@@ -146,11 +146,13 @@ export default function UserTable() {
                     <div className="flex flex-wrap justify-end gap-1.5">
                       {u.externalId && (
                         <Button
-                          variant="ghost"
+                          variant="danger"
                           size="sm"
+                          leading={<LogOut className="h-3.5 w-3.5" aria-hidden />}
+                          title={`Force sign-out all active sessions for ${u.name}`}
                           onClick={() => setConfirmDialog({
                             title: 'Revoke Sessions',
-                            message: `Force sign-out all active sessions for ${u.name}?`,
+                            message: `Force sign-out all active sessions for ${u.name}? They'll have to sign in again via SSO.`,
                             confirmLabel: 'Revoke Sessions',
                             onConfirm: () => { revokeSessions.mutate({ userId: u.id }); setConfirmDialog(null); },
                           })}

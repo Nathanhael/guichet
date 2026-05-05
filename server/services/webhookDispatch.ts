@@ -93,8 +93,6 @@ export type WebhookEvent =
   | 'ticket.reopened'
   | 'message.created'
   | 'rating.submitted'
-  | 'user.created'
-  | 'user.deleted'
   // Fired when verifyAuditChain detects a hash mismatch. Global signal, not
   // tenant-specific, but fanned out to every active partner webhook that
   // subscribes so compliance contacts are paged via the channels they already

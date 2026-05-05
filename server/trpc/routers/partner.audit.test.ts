@@ -267,11 +267,16 @@ describe('partnerAuditRouter.listActions', () => {
     const result = await makeCaller().listActions();
     expect(Array.isArray(result)).toBe(true);
     expect(result.length).toBeGreaterThan(0);
-    expect(result).toContain('member.removed');
     expect(result).toContain('sso.membership_revoked');
+    expect(result).toContain('ticket.transferred');
     // Should NOT contain actions outside the partner scope (e.g. platform-level).
     expect(result).not.toContain('partner.created');
     expect(result).not.toContain('platform.user_deleted');
+    // Should NOT contain member.* — those mutations were removed in the
+    // Azure-only purge; keeping them here would suggest an active emitter.
+    expect(result).not.toContain('member.invited');
+    expect(result).not.toContain('member.removed');
+    expect(result).not.toContain('member.updated');
   });
 
   it('rejects non-admin on listActions', async () => {

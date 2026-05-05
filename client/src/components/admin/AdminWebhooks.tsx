@@ -18,8 +18,6 @@ const ALL_EVENTS = [
   'ticket.reopened',
   'message.created',
   'rating.submitted',
-  'user.created',
-  'user.deleted',
   'audit.chain_broken',
   '*',
 ] as const;
