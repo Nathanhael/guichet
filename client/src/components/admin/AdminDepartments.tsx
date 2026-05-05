@@ -299,7 +299,7 @@ export default function AdminDepartments() {
   }
 
   return (
-    <div className="max-w-5xl">
+    <div>
       <div className="flex justify-between items-end mb-5">
         <div>
           <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">{t('departments_title')}</h2>

@@ -70,7 +70,7 @@ export default function AdminAi() {
   ];
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div>
@@ -119,7 +119,7 @@ export default function AdminAi() {
               <p className={`${FIELD_HELP} mt-0 mb-1.5`}>{help}</p>
               <textarea
                 id={id}
-                className={`${INPUT} min-h-[80px] text-[12px]`}
+                className={`${INPUT} min-h-[260px] text-[12px]`}
                 value={value}
                 maxLength={MAX_INSTRUCTION}
                 onChange={e => set(e.target.value)}

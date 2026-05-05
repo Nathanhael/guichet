@@ -25,10 +25,6 @@ export const partners = pgTable('partners', {
   aiModel: text('ai_model'),
   aiConfig: jsonb('ai_config').default({}),
   aiFeatures: jsonb('ai_features').default({}),
-  // Two-tier admin (decision 12): platform operator sets the envelope of
-  // features a partner admin is ALLOWED to enable. Partner admin's `aiFeatures`
-  // must validate as a subset of `aiFeaturesAvailable`. NULL = unrestricted.
-  aiFeaturesAvailable: jsonb('ai_features_available'),
   // Per-partner AI policy overrides. NULL = inherit platform default.
   aiPiiRedaction: text('ai_pii_redaction'),       // 'on' | 'off' | NULL (inherit)
   aiAuditVerbosity: text('ai_audit_verbosity'),   // 'metadata' | 'full' | NULL (inherit)

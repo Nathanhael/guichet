@@ -219,6 +219,7 @@ const nl: Record<string, string> = {
     azure_group_name: 'Groepsnaam',
     default_role: 'Standaard Rol',
     admin_role_warning: 'Gebruikers die via deze mapping worden ingericht krijgen volledige partner admin rechten.',
+    admin_gets_all_departments: 'Admins krijgen automatisch toegang tot alle afdelingen — geen selectie nodig.',
     actions: 'Acties',
     partner: 'Partner',
     edit: 'Bewerken',

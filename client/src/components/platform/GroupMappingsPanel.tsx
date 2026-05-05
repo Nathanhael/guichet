@@ -235,7 +235,7 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
       azureGroupId: azureGroupId.trim(),
       azureGroupName: azureGroupName.trim() || undefined,
       defaultRole,
-      defaultDepartments: defaultRole === 'agent' ? [] : selectedDepts,
+      defaultDepartments: defaultRole === 'support' ? selectedDepts : [],
     });
   };
 
@@ -290,7 +290,12 @@ function AddMappingModal({ ssoPartners, onClose, onAdded }: {
                 <p className="text-[11px] text-[var(--color-urgent)] mt-1">{t('admin_role_warning')}</p>
               )}
             </div>
-            {defaultRole !== 'agent' && partnerDepts.length > 0 && (
+            {defaultRole === 'admin' && (
+              <p className="text-[12px] text-[var(--color-ink-soft)] bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] px-3 py-2">
+                {t('admin_gets_all_departments')}
+              </p>
+            )}
+            {defaultRole === 'support' && partnerDepts.length > 0 && (
               <DepartmentsPicker
                 partnerDepts={partnerDepts}
                 selectedDepts={selectedDepts}
@@ -342,7 +347,7 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
       id: mapping.id,
       azureGroupName: azureGroupName.trim() || undefined,
       defaultRole,
-      defaultDepartments: defaultRole === 'agent' ? [] : selectedDepts,
+      defaultDepartments: defaultRole === 'support' ? selectedDepts : [],
     });
   };
 
@@ -376,7 +381,12 @@ function EditMappingModal({ mapping, onClose, onUpdated }: {
                 <p className="text-[11px] text-[var(--color-urgent)] mt-1">{t('admin_role_warning')}</p>
               )}
             </div>
-            {defaultRole !== 'agent' && partnerDepts.length > 0 && (
+            {defaultRole === 'admin' && (
+              <p className="text-[12px] text-[var(--color-ink-soft)] bg-[var(--color-bg-elevated)] rounded-[var(--radius-btn)] px-3 py-2">
+                {t('admin_gets_all_departments')}
+              </p>
+            )}
+            {defaultRole === 'support' && partnerDepts.length > 0 && (
               <DepartmentsPicker
                 partnerDepts={partnerDepts}
                 selectedDepts={selectedDepts}

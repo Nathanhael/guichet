@@ -92,7 +92,7 @@ export default function AdminLabels() {
   const ICON_BTN = 'w-8 h-8 flex items-center justify-center rounded-full text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-ink)] transition-colors disabled:opacity-50';
 
   return (
-    <div className="max-w-3xl">
+    <div>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('labels')}</h2>

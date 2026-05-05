@@ -225,6 +225,7 @@ const en: Record<string, string> = {
     azure_group_name: 'Group Display Name',
     default_role: 'Default Role',
     admin_role_warning: 'Users provisioned via this mapping will have full partner admin rights.',
+    admin_gets_all_departments: 'Admins automatically have access to all departments — no selection needed.',
     actions: 'Actions',
     partner: 'Partner',
     edit: 'Edit',

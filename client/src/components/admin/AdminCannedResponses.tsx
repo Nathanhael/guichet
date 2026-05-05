@@ -214,7 +214,7 @@ export default function AdminCannedResponses() {
     : 0;
 
   return (
-    <div className="max-w-4xl">
+    <div>
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('canned_responses')}</h2>
