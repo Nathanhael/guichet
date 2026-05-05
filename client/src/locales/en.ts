@@ -1133,6 +1133,8 @@ const en: Record<string, string> = {
     admin_tab_ai: 'AI',
     admin_ai_title: 'AI Customization',
     admin_ai_desc: 'Tune how AI assists your team',
+    admin_ai_disabled_pill: 'Disabled',
+    admin_ai_disabled_banner: 'AI is currently disabled for this tenant. The settings below are preserved but inactive — they only apply once a platform admin re-enables AI.',
     admin_ai_glossary_title: 'Glossary',
     admin_ai_glossary_help: 'Words the AI must always preserve verbatim or never use. Comma-separated.',
     admin_ai_glossary_preserve_label: 'Preserve verbatim',

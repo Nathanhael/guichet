@@ -1120,6 +1120,8 @@ const nl: Record<string, string> = {
     admin_tab_ai: 'AI',
     admin_ai_title: 'AI-aanpassing',
     admin_ai_desc: 'Stem af hoe AI je team helpt',
+    admin_ai_disabled_pill: 'Uitgeschakeld',
+    admin_ai_disabled_banner: 'AI is momenteel uitgeschakeld voor deze tenant. De onderstaande instellingen blijven bewaard maar zijn niet actief — ze gelden pas zodra een platformbeheerder AI opnieuw inschakelt.',
     admin_ai_glossary_title: 'Woordenlijst',
     admin_ai_glossary_help: 'Woorden die de AI altijd letterlijk moet behouden of nooit mag gebruiken. Komma-gescheiden.',
     admin_ai_glossary_preserve_label: 'Letterlijk behouden',

@@ -154,7 +154,7 @@ export default function AdminAuditLog() {
   }
 
   return (
-    <div className="max-w-6xl space-y-6 pb-24">
+    <div className="space-y-6 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('audit_log_title')}</h2>
@@ -340,7 +340,7 @@ export default function AdminAuditLog() {
       )}
 
       <div className="fixed bottom-0 left-0 right-0 bg-[var(--color-bg-base)] border-t border-[var(--color-border)] p-4 z-20">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-4 text-[11px] text-[var(--color-ink-muted)]">
             <div className="flex items-center gap-2">
               <span>{t('records_per_page')}</span>

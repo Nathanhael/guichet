@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Info } from 'lucide-react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
 import Toast from '../Toast';
@@ -7,6 +8,7 @@ import Button from '../ui/Button';
 const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)] p-5';
 const FIELD_LABEL = 'block text-[12px] font-medium text-[var(--color-ink)] mb-1';
 const INPUT = 'w-full px-3 py-2 text-[13px] border border-[var(--color-border)] rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40';
+const INPUT_DISABLED = 'opacity-60 cursor-not-allowed';
 const SECTION_LABEL = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)]';
 const SECTION_HELP = 'text-[12px] text-[var(--color-ink-muted)] mt-1';
 const FIELD_HELP = 'text-[11px] text-[var(--color-ink-muted)] mt-1 leading-snug';
@@ -22,7 +24,22 @@ export default function AdminAi() {
   const t = useT();
   const utils = trpc.useUtils();
   const query = trpc.partner.getAiCustomization.useQuery();
+  const aiConfigQuery = trpc.partner.getAiConfig.useQuery(undefined, { staleTime: 60_000 });
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  // AI is "effectively off" when the global kill-switch is flipped, OR when
+  // every feature in the partner's aiFeatures resolves to off (the server
+  // already returns DEFAULT_CONFIG when partner.aiEnabled = false). Customizing
+  // glossary + custom instructions has no effect in that state, so the form
+  // stays read-only — but values are preserved so re-enabling AI restores them.
+  const aiCfg = aiConfigQuery.data;
+  const aiEffectivelyOff = !aiCfg
+    ? false
+    : !aiCfg.globalAiEnabled
+      || (aiCfg.messageImprovement === 'off'
+        && !aiCfg.translation
+        && !aiCfg.voiceTranscription
+        && !aiCfg.cannedTranslation);
 
   const updateMutation = trpc.partner.updateAiCustomization.useMutation({
     onSuccess: () => {
@@ -69,14 +86,40 @@ export default function AdminAi() {
     { id: 'ai-translate', label: t('admin_ai_instructions_translate_label'), help: t('admin_ai_instructions_translate_help'), value: translate, set: setTranslate },
   ];
 
+  const inputCls = aiEffectivelyOff ? `${INPUT} ${INPUT_DISABLED}` : INPUT;
+
   return (
     <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div>
-        <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('admin_ai_title')}</h2>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('admin_ai_title')}</h2>
+          {aiEffectivelyOff && (
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius-pill)] text-[11px] font-semibold uppercase tracking-[0.06em] bg-[color-mix(in_srgb,var(--color-accent-amber)_18%,transparent)] text-[var(--color-accent-amber)]"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-accent-amber)]" aria-hidden />
+              {t('admin_ai_disabled_pill')}
+            </span>
+          )}
+        </div>
         <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('admin_ai_desc')}</p>
       </div>
+
+      {aiEffectivelyOff && (
+        <div
+          role="note"
+          className="flex items-start gap-2 rounded-[var(--radius-card)] border border-[var(--color-accent-amber)] bg-[color-mix(in_srgb,var(--color-accent-amber)_10%,transparent)] p-3"
+        >
+          <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-[var(--color-accent-amber)]" aria-hidden />
+          <p className="text-[12px] text-[var(--color-ink-soft)] leading-relaxed">
+            {t('admin_ai_disabled_banner')}
+          </p>
+        </div>
+      )}
 
       <section className={CARD}>
         <h3 className={SECTION_LABEL}>{t('admin_ai_glossary_title')}</h3>
@@ -87,10 +130,12 @@ export default function AdminAi() {
             <input
               id="ai-preserve"
               type="text"
-              className={INPUT}
+              className={inputCls}
               value={preserve}
               onChange={e => setPreserve(e.target.value)}
               placeholder="FTTP, MVNO, VoIP"
+              disabled={aiEffectivelyOff}
+              aria-disabled={aiEffectivelyOff || undefined}
             />
             <p className={FIELD_HELP}>{t('admin_ai_glossary_preserve_help')}</p>
           </div>
@@ -99,10 +144,12 @@ export default function AdminAi() {
             <input
               id="ai-forbidden"
               type="text"
-              className={INPUT}
+              className={inputCls}
               value={forbidden}
               onChange={e => setForbidden(e.target.value)}
               placeholder="competitor name"
+              disabled={aiEffectivelyOff}
+              aria-disabled={aiEffectivelyOff || undefined}
             />
             <p className={FIELD_HELP}>{t('admin_ai_glossary_forbidden_help')}</p>
           </div>
@@ -119,10 +166,12 @@ export default function AdminAi() {
               <p className={`${FIELD_HELP} mt-0 mb-1.5`}>{help}</p>
               <textarea
                 id={id}
-                className={`${INPUT} min-h-[260px] text-[12px]`}
+                className={`${inputCls} min-h-[260px] text-[12px]`}
                 value={value}
                 maxLength={MAX_INSTRUCTION}
                 onChange={e => set(e.target.value)}
+                disabled={aiEffectivelyOff}
+                aria-disabled={aiEffectivelyOff || undefined}
               />
               <div className={COUNTER}>{value.length} / {MAX_INSTRUCTION}</div>
             </div>
@@ -131,7 +180,12 @@ export default function AdminAi() {
       </section>
 
       <div className="pt-2">
-        <Button variant="primary" onClick={handleSave} disabled={updateMutation.isPending}>
+        <Button
+          variant="primary"
+          onClick={handleSave}
+          disabled={updateMutation.isPending || aiEffectivelyOff}
+          title={aiEffectivelyOff ? t('admin_ai_disabled_banner') : undefined}
+        >
           {t('admin_ai_save')}
         </Button>
       </div>
