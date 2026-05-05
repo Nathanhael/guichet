@@ -150,6 +150,16 @@ describe('AdminCannedResponses — feature OFF', () => {
     expect(screen.queryByTestId('edit-source-lang')).not.toBeInTheDocument();
     expect(screen.queryByTestId('regenerate-nl')).not.toBeInTheDocument();
   });
+
+  it('shows the auto-translation OFF pill next to the title', () => {
+    render(<AdminCannedResponses />);
+    expect(screen.getByText('admin_canned_translation_off_pill')).toBeInTheDocument();
+  });
+
+  it('shows the auto-translation OFF banner explaining the state', () => {
+    render(<AdminCannedResponses />);
+    expect(screen.getByText('admin_canned_translation_off_banner')).toBeInTheDocument();
+  });
 });
 
 describe('AdminCannedResponses — feature ON', () => {
@@ -160,6 +170,12 @@ describe('AdminCannedResponses — feature ON', () => {
   it('renders the source-language picker on create', () => {
     render(<AdminCannedResponses />);
     expect(screen.getByTestId('new-source-lang')).toBeInTheDocument();
+  });
+
+  it('does NOT show the OFF pill or banner when feature is on', () => {
+    render(<AdminCannedResponses />);
+    expect(screen.queryByText('admin_canned_translation_off_pill')).not.toBeInTheDocument();
+    expect(screen.queryByText('admin_canned_translation_off_banner')).not.toBeInTheDocument();
   });
 
   it('renders three language tabs in the edit form (one source + two translation)', () => {

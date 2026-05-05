@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { trpc } from '../../utils/trpc';
 import { useT } from '../../i18n';
-import { Plus, Trash2, RefreshCw, Pencil, X, Check, MessageSquareText, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, RefreshCw, Pencil, X, Check, MessageSquareText, AlertTriangle, Info } from 'lucide-react';
 import ErrorBox from './ErrorBox';
 import FieldError from '../FieldError';
 import BionicText from '../BionicText';
@@ -217,7 +217,19 @@ export default function AdminCannedResponses() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('canned_responses')}</h2>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--color-ink)]">{t('canned_responses')}</h2>
+            {!featureOn && !aiConfigQuery.isLoading && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-[var(--radius-pill)] text-[11px] font-semibold uppercase tracking-[0.06em] bg-[color-mix(in_srgb,var(--color-accent-amber)_18%,transparent)] text-[var(--color-accent-amber)]"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--color-accent-amber)]" aria-hidden />
+                {t('admin_canned_translation_off_pill')}
+              </span>
+            )}
+          </div>
           <p className="text-[13px] text-[var(--color-ink-muted)] mt-1">{t('canned_responses_desc')}</p>
         </div>
         <button
@@ -228,6 +240,18 @@ export default function AdminCannedResponses() {
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
+
+      {!featureOn && !aiConfigQuery.isLoading && (
+        <div
+          role="note"
+          className="mb-6 flex items-start gap-2 rounded-[var(--radius-card)] border border-[var(--color-accent-amber)] bg-[color-mix(in_srgb,var(--color-accent-amber)_10%,transparent)] p-3"
+        >
+          <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-[var(--color-accent-amber)]" aria-hidden />
+          <p className="text-[12px] text-[var(--color-ink-soft)] leading-relaxed">
+            {t('admin_canned_translation_off_banner')}
+          </p>
+        </div>
+      )}
 
       <ErrorBox error={error} />
 

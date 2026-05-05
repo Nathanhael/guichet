@@ -617,6 +617,8 @@ const fr: Record<string, string> = {
     // Canned Responses
     canned_responses: 'R\u00e9ponses pr\u00e9d\u00e9finies',
     canned_responses_desc: 'R\u00e9ponses pr\u00e9-\u00e9crites pour des r\u00e9ponses rapides',
+    admin_canned_translation_off_pill: 'Traduction auto : D\u00e9sactiv\u00e9e',
+    admin_canned_translation_off_banner: 'La traduction automatique est d\u00e9sactiv\u00e9e \u2014 les r\u00e9ponses pr\u00e9d\u00e9finies sont enregistr\u00e9es uniquement dans leur langue source et ne sont pas traduites vers la langue du destinataire. Un administrateur de plateforme peut activer \u00ab Canned Translation \u00bb via PlatformView \u2192 Modifier le partenaire \u2192 Fonctionnalit\u00e9s IA.',
     create_new_response: 'Nouvelle r\u00e9ponse',
     no_canned_responses: 'Aucune r\u00e9ponse pr\u00e9d\u00e9finie',
     shortcut: 'Raccourci',
