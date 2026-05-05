@@ -124,6 +124,12 @@
 
 /* ===== DARK MODE OVERRIDES ===== */
 
+/* color-scheme drives native UI controls (time/date pickers, scrollbars,
+   form chrome). Without this the browser renders pickers in light mode
+   even when the app is dark, producing a jarring white popover. */
+html { color-scheme: light; }
+html.dark { color-scheme: dark; }
+
 .dark {
   --color-bg: #0e1020;
   --color-surface: #171a30;
