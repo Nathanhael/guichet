@@ -1120,6 +1120,8 @@ const fr: Record<string, string> = {
     admin_tab_ai: 'IA',
     admin_ai_title: 'Personnalisation IA',
     admin_ai_desc: 'Affinez l’aide apportée par l’IA à votre équipe',
+    admin_ai_disabled_pill: 'Désactivée',
+    admin_ai_disabled_banner: 'L’IA est actuellement désactivée pour ce locataire. Les paramètres ci-dessous sont conservés mais inactifs — ils ne s’appliquent qu’une fois que l’IA est réactivée par un administrateur de plateforme.',
     admin_ai_glossary_title: 'Glossaire',
     admin_ai_glossary_help: 'Mots que l’IA doit toujours préserver ou ne jamais utiliser. Séparés par des virgules.',
     admin_ai_glossary_preserve_label: 'Préserver à l’identique',
