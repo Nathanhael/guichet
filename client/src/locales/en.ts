@@ -644,6 +644,8 @@ const en: Record<string, string> = {
     // Canned Responses
     canned_responses: 'Canned Responses',
     canned_responses_desc: 'Pre-written replies for quick agent responses',
+    admin_canned_translation_off_pill: 'Auto-translation: Off',
+    admin_canned_translation_off_banner: 'Auto-translation is off — canned responses are saved in their source language only and won’t be translated to recipient languages. A platform admin can enable “Canned Translation” in PlatformView → Edit Partner → AI Features.',
     create_new_response: 'Create New Response',
     no_canned_responses: 'No canned responses yet',
     shortcut: 'Shortcut',

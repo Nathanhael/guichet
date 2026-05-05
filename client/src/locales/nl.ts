@@ -617,6 +617,8 @@ const nl: Record<string, string> = {
     // Canned Responses
     canned_responses: 'Standaardantwoorden',
     canned_responses_desc: 'Vooraf geschreven antwoorden voor snelle reacties',
+    admin_canned_translation_off_pill: 'Auto-vertaling: Uit',
+    admin_canned_translation_off_banner: 'Auto-vertaling staat uit — kant-en-klare antwoorden worden alleen in de bron-taal opgeslagen en worden niet vertaald naar de taal van de ontvanger. Een platformbeheerder kan “Canned Translation” inschakelen via PlatformView → Edit Partner → AI Features.',
     create_new_response: 'Nieuw antwoord aanmaken',
     no_canned_responses: 'Nog geen standaardantwoorden',
     shortcut: 'Sneltoets',
