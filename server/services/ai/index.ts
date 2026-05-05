@@ -20,7 +20,7 @@ export type { AiProvider, ChatParams, ChatResult, AiAction, AiUsageEntry, Partne
 export { getProvider, isAiEnabled, clearProviderCache } from './factory.js';
 export { checkRateLimit, getUsageCounts } from './rateLimit.js';
 export { logUsage } from './usage.js';
-export { getPromptTemplate, interpolate } from './prompts.js';
+export { getPromptTemplate, interpolate, stripPromptArtifacts } from './prompts.js';
 export { getPartnerAiConfig, isFeatureEnabled } from './config.js';
 export { getCachedTranslation, setCachedTranslation, invalidateTranslation } from './translateCache.js';
 export { formatMessagesForAi } from './messageFormatter.js';

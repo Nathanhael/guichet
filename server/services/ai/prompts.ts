@@ -122,3 +122,17 @@ export function interpolate(template: string, vars: Record<string, string>): str
       .replace(/>/g, '&gt;');
   });
 }
+
+/**
+ * Strip prompt-template artifacts that some models echo back into their reply
+ * (e.g. the `<user_content>` boundary delimiters). The templates instruct the
+ * model to reply with only the answer, but smaller / cheaper models sometimes
+ * include the wrappers anyway — those then surface verbatim in chat bubbles.
+ *
+ * Safe because user input has its angle brackets escaped to entities before
+ * interpolation, so any literal `<user_content>` / `</user_content>` in a
+ * response is guaranteed to come from the model, not from the user.
+ */
+export function stripPromptArtifacts(text: string): string {
+  return text.replace(/<\/?user_content>/g, '').trim();
+}
