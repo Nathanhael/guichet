@@ -259,10 +259,10 @@ export async function runDailyPurge() {
       .where(lt(agentStatusLog.startedAt, statusCutoff));
     logger.info({ cutoff: statusCutoff }, '[gdpr] Purged old agent_status_log entries');
 
-    // Step: Purge abandoned invites — user rows created by inviteExternalUser /
-    // platform inviteUser that were never claimed via SSO or local login.
-    // Keeps orphan rows from persisting indefinitely and narrows the
-    // claim-by-email window beyond the shorter sso.ts INVITE_TTL_DAYS guard.
+    // Step: Purge abandoned invites — user rows with no externalId that have
+    // never claimed via SSO. After the Azure-only purge no production path
+    // creates such rows anymore (SSO callback stamps externalId on insert);
+    // this remains as a defensive backstop for legacy data + non-prod fixtures.
     const invitesPurged = await purgeAbandonedInvites();
     if (invitesPurged > 0) {
       logger.info({ invitesPurged }, '[purge] Abandoned invites purged');

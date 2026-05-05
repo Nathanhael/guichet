@@ -64,11 +64,6 @@ const PLATFORM_ACTIONS = [
   'kb.created',
   'label.created',
   'webhook.created',
-  // members
-  'member.added',
-  'member.invited',
-  'member.removed',
-  'member.updated',
   // partner
   'partner.created',
   'partner.config_updated',
@@ -102,7 +97,6 @@ const PLATFORM_ACTIONS = [
   'ticket.returned_to_queue',
   'ticket.reopened',
   // user
-  'user.deleted',
   'user.login',
   'user.sessions_revoked',
 ] as const;

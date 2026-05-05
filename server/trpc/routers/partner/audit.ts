@@ -7,10 +7,6 @@ import { wrapError } from '../../../utils/trpcErrors.js';
 import { trpcActor } from '../../../services/auth/index.js';
 
 const PARTNER_ACTIONS = [
-  'member.added',
-  'member.invited',
-  'member.removed',
-  'member.updated',
   'partner.config_updated',
   'label.created',
   'kb.created',

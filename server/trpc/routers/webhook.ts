@@ -16,8 +16,6 @@ const WEBHOOK_EVENTS = [
   'ticket.reopened',
   'message.created',
   'rating.submitted',
-  'user.created',
-  'user.deleted',
   // Cross-tenant compliance signal — fires when the platform operator runs
   // verifyAuditChain and the SHA-256 hash chain doesn't reconcile. Partners
   // subscribe this to their on-call / compliance channel.
