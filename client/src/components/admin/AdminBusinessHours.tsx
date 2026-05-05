@@ -272,8 +272,8 @@ export default function AdminBusinessHours() {
                 const daySchedule = schedule.weekly[day];
                 return (
                   <tr key={day}>
-                    <td className="px-4 py-4 text-[13px] font-medium text-[var(--color-ink)]">{t(`day_${day}`)}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3 text-[13px] font-medium text-[var(--color-ink)]">{t(`day_${day}`)}</td>
+                    <td className="px-4 py-3">
                       <OpenClosedToggle
                         closed={daySchedule.closed}
                         openLabel={t('bh_open')}
@@ -287,11 +287,11 @@ export default function AdminBusinessHours() {
                         })}
                       />
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-3">
                       {daySchedule.closed ? (
                         <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('bh_no_intake_windows')}</span>
                       ) : (
-                        <div className="space-y-2.5">
+                        <div className="space-y-1.5">
                           {daySchedule.windows.map((window, index) => (
                             <div key={`${day}-${index}`} className="flex items-center gap-2">
                               <input
@@ -300,7 +300,7 @@ export default function AdminBusinessHours() {
                                 onChange={(e) => updateSchedule((next) => {
                                   next.weekly[day].windows[index].start = e.target.value;
                                 })}
-                                className={`${INPUT} w-[110px]`}
+                                className={`${INPUT} w-[136px]`}
                               />
                               <span className="text-[11px] text-[var(--color-ink-muted)]">{t('bh_to')}</span>
                               <input
@@ -309,7 +309,7 @@ export default function AdminBusinessHours() {
                                 onChange={(e) => updateSchedule((next) => {
                                   next.weekly[day].windows[index].end = e.target.value;
                                 })}
-                                className={`${INPUT} w-[110px]`}
+                                className={`${INPUT} w-[136px]`}
                               />
                               <button
                                 onClick={() => updateSchedule((next) => {
@@ -318,23 +318,25 @@ export default function AdminBusinessHours() {
                                     next.weekly[day].closed = true;
                                   }
                                 })}
-                                className={GHOST_BTN}
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-[var(--radius-btn)] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-urgent)] transition-colors"
                                 aria-label={t('bh_remove')}
+                                title={t('bh_remove')}
                               >
                                 <Trash2 className="w-3.5 h-3.5" aria-hidden />
-                                {t('bh_remove')}
                               </button>
+                              {index === daySchedule.windows.length - 1 && (
+                                <button
+                                  onClick={() => updateSchedule((next) => {
+                                    next.weekly[day].windows.push({ start: '07:30', end: '22:30' });
+                                  })}
+                                  className={`${GHOST_BTN} ml-auto`}
+                                >
+                                  <Plus className="w-3.5 h-3.5" aria-hidden />
+                                  {t('bh_add_window')}
+                                </button>
+                              )}
                             </div>
                           ))}
-                          <button
-                            onClick={() => updateSchedule((next) => {
-                              next.weekly[day].windows.push({ start: '07:30', end: '22:30' });
-                            })}
-                            className={SECONDARY_BTN}
-                          >
-                            <Plus className="w-3.5 h-3.5" aria-hidden />
-                            {t('bh_add_window')}
-                          </button>
                         </div>
                       )}
                     </td>
@@ -465,9 +467,11 @@ export default function AdminBusinessHours() {
                   )}
 
                   {!exception.closed && (
-                    <div className="space-y-2.5 pt-1 border-t border-[var(--color-border)]">
-                      {(exception.windows ?? []).map((window, windowIndex) => (
-                        <div key={`${exception.id}-${windowIndex}`} className="flex items-center gap-2 pt-2.5">
+                    <div className="space-y-1.5 pt-2.5 border-t border-[var(--color-border)]">
+                      {(exception.windows ?? []).map((window, windowIndex) => {
+                        const isLast = windowIndex === (exception.windows?.length ?? 0) - 1;
+                        return (
+                        <div key={`${exception.id}-${windowIndex}`} className="flex items-center gap-2">
                           <input
                             type="time"
                             value={window.start}
@@ -480,7 +484,7 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className={`${INPUT} w-[110px]`}
+                            className={`${INPUT} w-[136px]`}
                           />
                           <span className="text-[11px] text-[var(--color-ink-muted)]">{t('bh_to')}</span>
                           <input
@@ -495,7 +499,7 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className={`${INPUT} w-[110px]`}
+                            className={`${INPUT} w-[136px]`}
                           />
                           <button
                             onClick={() => {
@@ -507,32 +511,34 @@ export default function AdminBusinessHours() {
                               });
                               setIsDirty(true);
                             }}
-                            className={GHOST_BTN}
+                            className="h-8 w-8 inline-flex items-center justify-center rounded-[var(--radius-btn)] text-[var(--color-ink-muted)] hover:bg-[var(--color-hover)] hover:text-[var(--color-urgent)] transition-colors"
                             aria-label={t('bh_remove_window')}
+                            title={t('bh_remove_window')}
                           >
                             <Trash2 className="w-3.5 h-3.5" aria-hidden />
-                            {t('bh_remove_window')}
                           </button>
+                          {isLast && (
+                            <button
+                              onClick={() => {
+                                setSchedule((current) => {
+                                  const next = cloneSchedule(current);
+                                  next.exceptions[index].windows = [
+                                    ...(next.exceptions[index].windows ?? []),
+                                    { start: '07:30', end: '22:30' },
+                                  ];
+                                  next.exceptions = sortBusinessHoursExceptions(next.exceptions);
+                                  return next;
+                                });
+                                setIsDirty(true);
+                              }}
+                              className={`${GHOST_BTN} ml-auto`}
+                            >
+                              <Plus className="w-3.5 h-3.5" aria-hidden />
+                              {t('bh_add_window')}
+                            </button>
+                          )}
                         </div>
-                      ))}
-                      <button
-                        onClick={() => {
-                          setSchedule((current) => {
-                            const next = cloneSchedule(current);
-                            next.exceptions[index].windows = [
-                              ...(next.exceptions[index].windows ?? []),
-                              { start: '07:30', end: '22:30' },
-                            ];
-                            next.exceptions = sortBusinessHoursExceptions(next.exceptions);
-                            return next;
-                          });
-                          setIsDirty(true);
-                        }}
-                        className={SECONDARY_BTN}
-                      >
-                        <Plus className="w-3.5 h-3.5" aria-hidden />
-                        {t('bh_add_window')}
-                      </button>
+                      );})}
                     </div>
                   )}
                 </div>

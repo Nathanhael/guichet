@@ -13,6 +13,7 @@ import ConnectionStatus from '../components/ConnectionStatus';
 import UserMenuChip from '../components/ui/UserMenuChip';
 import TicketForm from '../components/agent/TicketForm';
 import AgentTicketContextPanel from '../components/agent/AgentTicketContextPanel';
+import AgentChatHeader from '../components/agent/AgentChatHeader';
 import { trpc } from '../utils/trpc';
 import type { ChatWindowHandle } from '../types/command';
 
@@ -233,6 +234,7 @@ export default function AgentView() {
           {inChat ? (
             <div className="flex-1 min-h-0 w-full">
               <div className="h-full flex flex-col overflow-hidden bg-[var(--color-bg-base)]">
+                <AgentChatHeader ticket={activeTicket!} />
                 <ChatWindow ref={chatWindowRef} key={activeTicket!.id} ticket={activeTicket!} hideHeader />
               </div>
             </div>

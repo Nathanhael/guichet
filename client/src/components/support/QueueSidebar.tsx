@@ -170,8 +170,8 @@ export default function QueueSidebar({
     [archiveLangCounts],
   );
   const archiveFiltered = useMemo(
-    () => (filterLang ? archivedTickets.filter((tk) => tk.agentLang === filterLang) : archivedTickets),
-    [archivedTickets, filterLang],
+    () => (filterLang && !translationEnabled ? archivedTickets.filter((tk) => tk.agentLang === filterLang) : archivedTickets),
+    [archivedTickets, filterLang, translationEnabled],
   );
 
   // Active lang map/total for the rendered language bar — switches with the tab.
@@ -199,10 +199,10 @@ export default function QueueSidebar({
         (tk) =>
           tk.status !== 'closed' &&
           (filterDept === 'all' || tk.dept === filterDept) &&
-          (!filterLang || tk.agentLang === filterLang) &&
+          (translationEnabled || !filterLang || tk.agentLang === filterLang) &&
           ticketDeptAllowed(tk.dept),
       ),
-    [tickets, filterDept, filterLang, ticketDeptAllowed],
+    [tickets, filterDept, filterLang, translationEnabled, ticketDeptAllowed],
   );
 
   const myChats = useMemo(
@@ -264,7 +264,7 @@ export default function QueueSidebar({
           ))}
         </div>
 
-        {activeLangCounts.size >= 2 && (
+        {activeLangCounts.size >= 2 && !translationEnabled && (
           <div className="flex items-center gap-1 flex-wrap pt-1.5 mt-1 border-t border-[var(--color-border)]">
             <span className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-muted)] mr-1">
               {t('lang_label')}

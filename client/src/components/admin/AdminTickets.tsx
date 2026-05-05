@@ -7,6 +7,7 @@ import TicketAuditDrawer from './TicketAuditDrawer';
 import { Ticket } from '../../types';
 import { useT, useLang } from '../../i18n';
 import { usePartner } from '../../hooks/usePartner';
+import { getSocket } from '../../hooks/useSocket';
 import { Search, X, Inbox, MessageSquare } from 'lucide-react';
 
 type TicketStatus = 'open' | 'pending' | 'closed';
@@ -39,7 +40,8 @@ function useDebounce(value: string, ms: number) {
 }
 
 export default function AdminTickets() {
-  const { tickets, setTickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket, unreadTickets, clearUnread } = useStoreShallow((s) => ({
+  const { user, tickets, setTickets, supportOpenTickets, addSupportOpenTicket, removeSupportOpenTicket, unreadTickets, clearUnread } = useStoreShallow((s) => ({
+    user: s.user,
     tickets: s.tickets,
     setTickets: s.setTickets,
     supportOpenTickets: s.supportOpenTickets,
@@ -157,6 +159,14 @@ export default function AdminTickets() {
   }, [openTabTickets, activeTab]);
 
   function closeTab(ticketId: string) {
+    // Mirror SupportView.closeTab: tell the server the admin is leaving so
+    // ticket.supportId is cleared (or the secondary participant promoted).
+    // Without this the ticket clings to the admin's id until close/transfer
+    // and the queue keeps showing it as "in chat".
+    const ticket = tickets.find((tk: Ticket) => tk.id === ticketId);
+    if (ticket && ticket.status !== 'closed') {
+      getSocket()?.emit('support:leave', { ticketId });
+    }
     removeSupportOpenTicket(ticketId);
     if (activeTab === ticketId) {
       const remaining = openTabTickets.filter((tk: Ticket) => tk.id !== ticketId);
@@ -174,8 +184,22 @@ export default function AdminTickets() {
   }
 
   function joinOpenTicket(ticket: Ticket) {
+    // Mirror SupportView.joinTicket: emit support:join so the server can
+    // assign the admin as primary support and notify the agent's room.
+    // Without this the ticket's supportId stays null and the agent's
+    // sidebar keeps rendering "waiting for support" even though messages
+    // are flowing.
+    if (user) {
+      getSocket()?.emit('support:join', {
+        ticketId: ticket.id,
+        supportId: user.id,
+        supportName: user.name,
+        supportLang: user.lang || 'en',
+      });
+    }
     addSupportOpenTicket(ticket.id);
     setActiveTab(ticket.id);
+    clearUnread(ticket.id);
     setPreviewTicketId(null);
   }
 
