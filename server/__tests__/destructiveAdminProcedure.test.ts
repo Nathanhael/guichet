@@ -114,6 +114,7 @@ describe('post-#71 capability-gate enforcement (source-level)', () => {
 
     it.each([
       ['listAdmins'],
+      ['updateMemberDepartments'],
     ])('members.%s uses partnerAdminProcedure', (op) => {
       const re = new RegExp(`\\b${op}:\\s*partnerAdminProcedure\\b`);
       expect(membersSource).toMatch(re);
@@ -121,6 +122,7 @@ describe('post-#71 capability-gate enforcement (source-level)', () => {
 
     it.each([
       ['listAdmins'],
+      ['updateMemberDepartments'],
     ])('members.%s body asserts destructive_admin capability inline', (op) => {
       const re = new RegExp(
         `\\b${op}:\\s*partnerAdminProcedure[\\s\\S]{0,4000}?trpcActor\\(\\s*ctx\\s*,\\s*\\{\\s*capability:\\s*['"]destructive_admin['"]`,

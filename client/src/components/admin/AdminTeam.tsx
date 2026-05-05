@@ -2,10 +2,13 @@ import { useState } from 'react';
 import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '../../utils/trpc';
 import { useStoreShallow } from '../../store/useStore';
+import { useIsExternalAdmin } from '../../hooks/useIsExternalAdmin';
 import { useT } from '../../i18n';
-import { X, Search, Users, ChevronLeft, ChevronRight, Moon, FileText, Info } from 'lucide-react';
+import { X, Search, Users, ChevronLeft, ChevronRight, Moon, FileText, Info, Pencil } from 'lucide-react';
 import Toast from '../Toast';
 import MemberAuditDrawer from './MemberAuditDrawer';
+import Modal, { ModalHeader, ModalBody, ModalFooter } from '../ui/Modal';
+import Button from '../ui/Button';
 
 // Shared Soft Product style constants — mirrors the other admin panels.
 const CARD = 'rounded-[var(--radius-card)] bg-[var(--color-bg-surface)] shadow-[var(--shadow-card)]';
@@ -28,6 +31,8 @@ export default function AdminTeam() {
   const [dormantOnly, setDormantOnly] = useState(false);
   const [guestsOnly, setGuestsOnly] = useState(false);
   const [auditUserId, setAuditUserId] = useState<{ id: string; name: string } | null>(null);
+  const [editingDepts, setEditingDepts] = useState<{ membershipId: string; name: string; current: string[] } | null>(null);
+  const isExternal = useIsExternalAdmin();
   const LIMIT = 12;
 
   const { data, isLoading } = trpc.partner.listMembers.useQuery(
@@ -280,6 +285,29 @@ export default function AdminTeam() {
                     <td className="px-4 py-2">
                       {member.role === 'agent' ? (
                         <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('selects_per_ticket')}</span>
+                      ) : member.role === 'support' && !isExternal ? (
+                        <button
+                          type="button"
+                          onClick={() => setEditingDepts({
+                            membershipId: member.membershipId,
+                            name: member.name,
+                            current: (member.departments as string[]) || [],
+                          })}
+                          className="group/dept w-full text-left flex flex-wrap gap-1.5 items-center min-h-[28px] -mx-2 px-2 py-1 rounded-[var(--radius-btn)] hover:bg-[var(--color-hover)] transition-colors"
+                          aria-label={t('edit_departments_for').replace('{name}', member.name)}
+                        >
+                          {member.departments && (member.departments as string[]).length > 0
+                            ? (member.departments as string[]).map((dId: string) => {
+                                const dInfo = departments.find(d => d.id === dId);
+                                return (
+                                  <span key={dId} className="inline-flex items-center px-2 h-6 rounded-[var(--radius-pill)] bg-[var(--color-accent-soft)] text-[11px] font-medium text-[var(--color-accent)]">
+                                    {dInfo ? dInfo.name : dId}
+                                  </span>
+                                );
+                              })
+                            : <span className="text-[12px] text-[var(--color-ink-muted)] italic">{t('no_departments_assigned')}</span>}
+                          <Pencil className="h-3 w-3 ml-auto text-[var(--color-ink-muted)] opacity-0 group-hover/dept:opacity-100 transition-opacity" aria-hidden />
+                        </button>
                       ) : (
                         <div className="flex flex-wrap gap-1.5 items-center min-h-[28px]">
                           {member.departments && (member.departments as string[]).length > 0
@@ -318,7 +346,126 @@ export default function AdminTeam() {
         departments={departments}
         onClose={() => setAuditUserId(null)}
       />
+      {editingDepts && (
+        <EditDepartmentsModal
+          membershipId={editingDepts.membershipId}
+          memberName={editingDepts.name}
+          current={editingDepts.current}
+          partnerDepartments={departments}
+          onClose={() => setEditingDepts(null)}
+          onSaved={() => {
+            setToast({ message: t('departments_updated'), type: 'success' });
+            setEditingDepts(null);
+          }}
+        />
+      )}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
+  );
+}
+
+function EditDepartmentsModal({
+  membershipId,
+  memberName,
+  current,
+  partnerDepartments,
+  onClose,
+  onSaved,
+}: {
+  membershipId: string;
+  memberName: string;
+  current: string[];
+  partnerDepartments: Array<{ id: string; name: string }>;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const t = useT();
+  const [selected, setSelected] = useState<string[]>(current);
+  const [error, setError] = useState<string | null>(null);
+  const utils = trpc.useUtils();
+
+  const mutation = trpc.partner.updateMemberDepartments.useMutation({
+    onSuccess: () => {
+      utils.partner.listMembers.invalidate();
+      utils.partner.memberStats.invalidate();
+      onSaved();
+    },
+    onError: (err) => setError(err.message),
+  });
+
+  const toggle = (id: string) => {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const allSelected = selected.length === partnerDepartments.length;
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selected.length === 0) {
+      setError(t('support_requires_one_department'));
+      return;
+    }
+    mutation.mutate({ membershipId, departments: selected });
+  };
+
+  return (
+    <Modal open={true} onClose={onClose} id="edit-member-departments" maxWidth={480}>
+      <ModalHeader
+        onClose={onClose}
+        title={t('edit_department_access')}
+        subtitle={t('edit_department_access_subtitle').replace('{name}', memberName)}
+      />
+      <form onSubmit={handleSubmit}>
+        <ModalBody className="max-h-[60vh] overflow-y-auto">
+          {partnerDepartments.length === 0 ? (
+            <p className="text-[13px] text-[var(--color-ink-muted)] italic py-2">{t('no_departments_configured')}</p>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[12px] text-[var(--color-ink-soft)]">
+                  {t('selected_count').replace('{count}', String(selected.length)).replace('{total}', String(partnerDepartments.length))}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelected(allSelected ? [] : partnerDepartments.map(d => d.id))}
+                  className="text-[12px] font-medium text-[var(--color-accent)] hover:underline"
+                >
+                  {allSelected ? t('deselect_all') : t('select_all')}
+                </button>
+              </div>
+              <div className="space-y-1 rounded-[var(--radius-btn)] border border-[var(--color-border)] bg-[var(--color-bg-elevated)] p-2">
+                {partnerDepartments.map(d => (
+                  <label
+                    key={d.id}
+                    className="flex items-center gap-2 text-[13px] cursor-pointer px-2 py-1.5 rounded-[var(--radius-btn)] hover:bg-[var(--color-hover)]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(d.id)}
+                      onChange={() => toggle(d.id)}
+                      className="h-3.5 w-3.5 accent-[var(--color-accent)]"
+                    />
+                    <span className="text-[var(--color-ink)]">{d.name}</span>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+          {error && (
+            <p className="text-[12px] text-[var(--color-urgent)] mt-2" role="alert">{error}</p>
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Button type="button" variant="secondary" size="md" onClick={onClose}>{t('cancel')}</Button>
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            disabled={mutation.isPending || selected.length === 0 || partnerDepartments.length === 0}
+          >
+            {mutation.isPending ? '…' : t('save')}
+          </Button>
+        </ModalFooter>
+      </form>
+    </Modal>
   );
 }
