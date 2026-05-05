@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { router, adminProcedure, partnerAdminProcedure } from '../../trpc.js';
 import { db } from '../../../db.js';
-import { partners, users, memberships } from '../../../db/schema.js';
+import { partners, users, memberships, auditLog } from '../../../db/schema.js';
 import { eq, ne, and, or, ilike, sql } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 import { wrapError } from '../../../utils/trpcErrors.js';
@@ -195,5 +195,66 @@ export const partnerMembersRouter = router({
         if (row.role === 'agent') agents += row.count;
       }
       return { total, support, agents, dormant, guests };
+    }),
+
+  // Department slicing is partner-internal operational config (Azure carries
+  // no dept claim). Restricted to `role === 'support'`: admins get all depts
+  // automatically; agents pick per-ticket. SSO re-sync re-seeds depts only on
+  // role change ([sso.ts:484-491]), so manual edits survive same-role logins.
+  updateMemberDepartments: partnerAdminProcedure
+    .input(z.object({
+      membershipId: z.string(),
+      departments: z.array(z.string()).min(1),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      try {
+        const actor = trpcActor(ctx, { capability: 'destructive_admin' });
+
+        const row = await db
+          .select({ id: memberships.id, role: memberships.role, userId: memberships.userId })
+          .from(memberships)
+          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, actor.partnerId)))
+          .limit(1);
+
+        if (row.length === 0) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Membership not found' });
+        }
+
+        if (row[0].role !== 'support') {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Only support members carry department assignments',
+          });
+        }
+
+        const partner = await db
+          .select({ departments: partners.departments })
+          .from(partners)
+          .where(eq(partners.id, actor.partnerId))
+          .limit(1);
+        const validIds = new Set(((partner[0]?.departments as Array<{ id: string }>) || []).map(d => d.id));
+        const unknown = input.departments.filter(d => !validIds.has(d));
+        if (unknown.length > 0) {
+          throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown department id: ${unknown[0]}` });
+        }
+
+        await db
+          .update(memberships)
+          .set({ departments: input.departments })
+          .where(and(eq(memberships.id, input.membershipId), eq(memberships.partnerId, actor.partnerId)));
+
+        await db.insert(auditLog).values({
+          action: 'member.updated',
+          actorId: actor.userId,
+          partnerId: actor.partnerId,
+          targetType: 'user',
+          targetId: row[0].userId,
+          metadata: { departments: input.departments },
+        });
+
+        return { success: true };
+      } catch (err: unknown) {
+        wrapError(err, 'updateMemberDepartments');
+      }
     }),
 });
