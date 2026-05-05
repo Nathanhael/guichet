@@ -10,6 +10,7 @@
 import { runAiAction } from './runAction.js';
 import { isFeatureEnabled } from './config.js';
 import { getAiContext } from './context.js';
+import { shouldSkipTranslation } from './translateGuards.js';
 
 export type SupportedLang = 'nl' | 'fr' | 'en';
 export const ALL_LANGS: readonly SupportedLang[] = ['nl', 'fr', 'en'];
@@ -33,6 +34,15 @@ export async function translateCanned(
 ): Promise<Partial<Record<SupportedLang, string>>> {
   const { logger } = getAiContext();
   const targets = langs.filter((l) => l !== sourceLang);
+
+  // Digits/punctuation/emoji-only canneds aren't translation-worthy and
+  // cheaper models tend to refuse with a meta-reply. Mirror the body for
+  // every target so callers still get a per-language map.
+  if (shouldSkipTranslation(body)) {
+    const out: Partial<Record<SupportedLang, string>> = {};
+    for (const target of targets) out[target] = body;
+    return out;
+  }
 
   const results = await Promise.allSettled(
     targets.map((target) =>

@@ -16,6 +16,7 @@ import {
   checkRateLimit,
   logUsage,
 } from './index.js';
+import { stripPromptArtifacts } from './prompts.js';
 import { getAiContext } from './context.js';
 import { getEffectiveAuditVerbosity } from './auditVerbosity.js';
 import { applyPartnerCustomization } from './promptCustomization.js';
@@ -90,6 +91,12 @@ export async function runAiAction(
       maxTokens: opts.maxTokens,
     });
 
+    // Strip any prompt-template boundary tags the model may have echoed back.
+    // Cheaper models occasionally include the `<user_content>` delimiters in
+    // their reply despite the "Reply with ONLY ..." instruction — those leak
+    // into chat bubbles and translation caches if not sanitized here.
+    const cleaned = stripPromptArtifacts(result.content);
+
     // 5. Log usage and capture the row id for caller-side annotations.
     const usageLogId = await logUsage({
       partnerId: opts.partnerId,
@@ -102,10 +109,10 @@ export async function runAiAction(
       latencyMs: Date.now() - start,
       success: true,
       prompt: captureFull ? prompt : undefined,
-      response: captureFull ? result.content : undefined,
+      response: captureFull ? cleaned : undefined,
     });
 
-    return { content: result.content, model: result.model, usageLogId };
+    return { content: cleaned, model: result.model, usageLogId };
   } catch (err) {
     const latencyMs = Date.now() - start;
     const errorMessage = err instanceof Error ? err.message : String(err);

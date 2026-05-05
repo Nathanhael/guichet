@@ -23,6 +23,7 @@ import { runAiAction } from './runAction.js';
 import { getCachedTranslation, setCachedTranslation } from './translateCache.js';
 import { isFeatureEnabled } from './config.js';
 import { getAiContext } from './context.js';
+import { shouldSkipTranslation } from './translateGuards.js';
 
 const SUPPORTED_LANGS = new Set(['nl', 'fr', 'en']);
 type Lang = 'nl' | 'fr' | 'en';
@@ -51,6 +52,10 @@ export async function translateFirstAgentMessage(
   if (!text || text.trim().length === 0) return null;
   if (!senderLang || senderLang === supportLang) return null;
   if (!SUPPORTED_LANGS.has(supportLang)) return null;
+  // Digits-only / punctuation-only / emoji-only inputs trip cheaper models
+  // into emitting meta-replies. Skip the AI call and let the client fall
+  // back to the source text on render.
+  if (shouldSkipTranslation(text)) return null;
 
   let translationEnabled: boolean;
   try {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { eq, and } from 'drizzle-orm';
+import { TRPCError } from '@trpc/server';
 import { router, partnerScopedProcedure } from '../trpc.js';
 import { notFound } from '../../utils/trpcErrors.js';
 import { db } from '../../db.js';
@@ -11,6 +12,7 @@ import {
   getProvider,
 } from '../../services/ai/index.js';
 import { getEffectiveAuditVerbosity } from '../../services/ai/auditVerbosity.js';
+import { shouldSkipTranslation } from '../../services/ai/translateGuards.js';
 
 export const aiRouter = router({
   /**
@@ -24,6 +26,19 @@ export const aiRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const partnerId = ctx.user.partnerId;
+
+      // Pre-flight skip: digits / punctuation / emoji-only inputs don't
+      // have semantic content to improve. Cheaper models reply with a
+      // meta-refusal ("I'm sorry, that looks like placeholder text...")
+      // which then opens the diff modal with junk. Reject upstream so the
+      // forced-mode caller falls through to a direct send and the optional-
+      // mode caller silently no-ops.
+      if (shouldSkipTranslation(input.text)) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No improvable content in this message',
+        });
+      }
 
       const result = await runAiAction({
         partnerId,
@@ -55,6 +70,14 @@ export const aiRouter = router({
     }))
     .mutation(async ({ input, ctx }) => {
       const partnerId = ctx.user.partnerId;
+
+      // Digits/whitespace/punctuation-only inputs are not translation-worthy
+      // and cheaper models reply with meta-refusals on these. Echo the source
+      // and cache it so the on-mount auto-fire stays a noop next time.
+      if (shouldSkipTranslation(input.text)) {
+        await setCachedTranslation(input.messageId, input.targetLang, input.text);
+        return { translated: input.text };
+      }
 
       // Cache check first — auto-fire on every mount means many cache hits.
       const cached = await getCachedTranslation(input.messageId, input.targetLang);
