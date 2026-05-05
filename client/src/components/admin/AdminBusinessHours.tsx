@@ -140,7 +140,7 @@ export default function AdminBusinessHours() {
   if (isLoading) return <div className="p-8 text-[13px] text-[var(--color-ink-muted)]">{t('loading')}</div>;
 
   return (
-    <div className="min-w-[1120px] max-w-5xl space-y-5">
+    <div className="min-w-[1120px] space-y-5">
       <div className="flex items-end justify-between gap-6 pb-1">
         <div>
           <h2 className="text-xl font-semibold text-[var(--color-ink)] tracking-tight">{t('bh_title')}</h2>

@@ -219,6 +219,7 @@ const fr: Record<string, string> = {
     azure_group_name: 'Nom du groupe',
     default_role: 'R\u00f4le par d\u00e9faut',
     admin_role_warning: 'Les utilisateurs provisionn\u00e9s via ce mapping auront les droits complets d\'administrateur partenaire.',
+    admin_gets_all_departments: 'Les administrateurs ont automatiquement acc\u00e8s \u00e0 tous les d\u00e9partements \u2014 aucune s\u00e9lection requise.',
     actions: 'Actions',
     partner: 'Partenaire',
     edit: 'Modifier',

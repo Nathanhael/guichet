@@ -12,7 +12,6 @@ import { validateWebhookUrl } from '../../../services/webhookDispatch.js';
 import { encrypt } from '../../../services/encryption.js';
 import { type BusinessHoursSchedule } from '../../../services/businessHours.js';
 import { emitAiConfigAudits } from '../../../services/ai/auditConfig.js';
-import { validateAiFeaturesEnvelope, type AiFeatures } from '../../../services/ai/featuresEnvelope.js';
 import config from '../../../config.js';
 
 // 24/7 schedule seeded for new partners. Admins personalize via AdminBusinessHours.
@@ -112,13 +111,6 @@ export const platformPartnersRouter = router({
           voiceTranscription: z.boolean().optional(),
           cannedTranslation: z.boolean().optional(),
         }).optional(),
-        aiFeaturesAvailable: z.object({
-          messageImprovement: z.enum(['off', 'optional', 'forced']).optional(),
-          translation: z.boolean().optional(),
-          queueLangAwareness: z.boolean().optional(),
-          voiceTranscription: z.boolean().optional(),
-          cannedTranslation: z.boolean().optional(),
-        }).nullable().optional(),
         aiConfig: z.object({
           baseUrl: z.string().url().optional(),
           apiKey: z.string().optional(),
@@ -145,32 +137,12 @@ export const platformPartnersRouter = router({
 
       const before = await db.select().from(partners).where(eq(partners.id, input.id)).limit(1);
 
-      // Two-tier envelope check (slice 9): ensure the resulting state's
-      // aiFeatures fits within aiFeaturesAvailable, considering both the
-      // proposed change and existing values.
-      if (input.data.aiFeatures !== undefined || input.data.aiFeaturesAvailable !== undefined) {
-        const beforeData = (before[0] ?? {}) as Record<string, unknown>;
-        const finalFeatures = (input.data.aiFeatures ?? beforeData.aiFeatures ?? {}) as AiFeatures;
-        const finalEnvelope =
-          input.data.aiFeaturesAvailable !== undefined
-            ? input.data.aiFeaturesAvailable
-            : (beforeData.aiFeaturesAvailable as AiFeatures | null | undefined);
-        const validation = validateAiFeaturesEnvelope(finalFeatures, finalEnvelope ?? null);
-        if (!validation.ok) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: `aiFeatures violates platform envelope: ${validation.violations.join(', ')}`,
-          });
-        }
-      }
-
       const updateData: Record<string, unknown> = { updatedAt: new Date().toISOString() };
       if (input.data.name !== undefined) updateData.name = input.data.name;
       if (input.data.industry !== undefined) updateData.industry = input.data.industry;
       if (input.data.departments !== undefined) updateData.departments = input.data.departments;
       if (input.data.aiEnabled !== undefined) updateData.aiEnabled = input.data.aiEnabled;
       if (input.data.aiFeatures !== undefined) updateData.aiFeatures = input.data.aiFeatures;
-      if (input.data.aiFeaturesAvailable !== undefined) updateData.aiFeaturesAvailable = input.data.aiFeaturesAvailable;
       if (input.data.aiConfig !== undefined) {
         const configToStore = { ...input.data.aiConfig } as Record<string, unknown>;
         if (configToStore.apiKey && typeof configToStore.apiKey === 'string') {
