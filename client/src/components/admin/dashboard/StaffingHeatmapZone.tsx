@@ -404,6 +404,7 @@ interface ThinRatioEditorProps {
 function ThinRatioEditor({ current }: ThinRatioEditorProps) {
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState<string>(current.toString());
+  const [localError, setLocalError] = useState<string | null>(null);
   const utils = trpc.useUtils();
   const mutation = trpc.partner.updateDashboardConfig.useMutation({
     onSuccess: () => {
@@ -413,9 +414,21 @@ function ThinRatioEditor({ current }: ThinRatioEditorProps) {
   });
 
   function handleSave() {
-    const parsed = Number(value);
-    if (!Number.isFinite(parsed)) return;
-    if (parsed < 0.5 || parsed > 50) return;
+    setLocalError(null);
+    const trimmed = value.trim();
+    if (trimmed === '') {
+      setLocalError('Required.');
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (!Number.isFinite(parsed)) {
+      setLocalError('Must be a number.');
+      return;
+    }
+    if (parsed < 0.5 || parsed > 50) {
+      setLocalError('0.5 – 50.');
+      return;
+    }
     if (Math.abs(parsed - current) < 0.01) {
       setOpen(false);
       return;
@@ -429,6 +442,8 @@ function ThinRatioEditor({ current }: ThinRatioEditorProps) {
         type="button"
         onClick={() => {
           setValue(current.toString());
+          setLocalError(null);
+          mutation.reset();
           setOpen(true);
         }}
         title="Adjust the tickets-per-staff threshold for the understaffed flag"
@@ -439,42 +454,54 @@ function ThinRatioEditor({ current }: ThinRatioEditorProps) {
     );
   }
 
+  const errorMsg = localError ?? (mutation.error ? mutation.error.message : null);
+
   return (
-    <div className="shrink-0 flex items-center gap-1.5 text-[11px]">
-      <label htmlFor="thin-ratio-input" className="text-[var(--color-ink-muted)]">
-        Thin above
-      </label>
-      <input
-        id="thin-ratio-input"
-        type="number"
-        min={0.5}
-        max={50}
-        step={0.5}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') handleSave();
-          if (e.key === 'Escape') setOpen(false);
-        }}
-        autoFocus
-        className="w-16 h-7 px-2 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] border border-[var(--color-border)] text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-accent)]"
-      />
-      <span className="text-[var(--color-ink-muted)]">/h</span>
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={mutation.isPending}
-        className="h-7 px-2 rounded-[var(--radius-btn)] bg-[var(--color-accent)] text-white text-[11px] disabled:opacity-50"
-      >
-        Save
-      </button>
-      <button
-        type="button"
-        onClick={() => setOpen(false)}
-        className="h-7 px-2 rounded-[var(--radius-btn)] text-[11px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
-      >
-        Cancel
-      </button>
+    <div className="shrink-0 flex flex-col items-end gap-1 text-[11px]">
+      <div className="flex items-center gap-1.5">
+        <label htmlFor="thin-ratio-input" className="text-[var(--color-ink-muted)]">
+          Thin above
+        </label>
+        <input
+          id="thin-ratio-input"
+          type="number"
+          min={0.5}
+          max={50}
+          step={0.5}
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            if (localError) setLocalError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleSave();
+            if (e.key === 'Escape') setOpen(false);
+          }}
+          autoFocus
+          className={`w-16 h-7 px-2 rounded-[var(--radius-btn)] bg-[var(--color-bg-elevated)] border ${
+            errorMsg ? 'border-[var(--color-danger,#ef4444)]' : 'border-[var(--color-border)]'
+          } text-[var(--color-ink)] focus:outline-none focus:border-[var(--color-accent)]`}
+        />
+        <span className="text-[var(--color-ink-muted)]">/h</span>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={mutation.isPending}
+          className="h-7 px-2 rounded-[var(--radius-btn)] bg-[var(--color-accent)] text-white text-[11px] disabled:opacity-50"
+        >
+          {mutation.isPending ? 'Saving…' : 'Save'}
+        </button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="h-7 px-2 rounded-[var(--radius-btn)] text-[11px] text-[var(--color-ink-muted)] hover:text-[var(--color-ink)]"
+        >
+          Cancel
+        </button>
+      </div>
+      {errorMsg && (
+        <span className="text-[10px] text-[var(--color-danger,#ef4444)]">{errorMsg}</span>
+      )}
     </div>
   );
 }
